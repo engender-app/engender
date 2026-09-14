@@ -283,7 +283,7 @@ try {
      the fake microphone - the same recipe voice-compare-gallery.mjs uses. */
   await dress('light');
   const recordOneBenchmark = async () => {
-    await page.goto(`${base}/settings/voice?tab=record`, { waitUntil: 'networkidle' });
+    await page.goto(`${base}/practice/voice?tab=record`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-vb-record]');
     await page.locator('[data-vb-record]').click();
     /* Long enough to clear the reading floor the passage step measures
@@ -310,12 +310,14 @@ try {
   await recordOneBenchmark();
   await recordOneBenchmark();
 
-  await settle('/settings/voice');
-  await page.locator('button:has-text("Benchmarks")').click();
-  await page.waitForTimeout(400);
+  /* The compare half of the voice screen, asked for by its own tab
+     parameter rather than by clicking a segment whose label has moved
+     twice since the recipe this borrowed was written. */
+  await settle('/practice/voice?tab=compare');
+  await page.waitForSelector('[data-voice-cell]', { timeout: 20000 });
   const cells = page.locator('[data-voice-cell]');
-  await cells.nth(0).click();
-  await cells.nth(1).click();
+  await cells.nth(0).locator('.kit-row-main').click();
+  await cells.nth(1).locator('.kit-row-main').click();
   await page.locator('[data-compare]').click();
   await page.waitForSelector('.vc-take');
   await page.waitForTimeout(1200);
@@ -333,6 +335,32 @@ try {
     'A take playing on the compare screen'
   );
   await pause('.vc-take');
+
+  /* 7. The photo journey's timelapse preview - the surface the ticket did
+     not count, which was a seventh `<video controls>` and is the same
+     player now. Guarded: a timelapse records as it plays, so this is the
+     one scene that can legitimately take too long, and a sign-off without
+     it is worth more than a run that dies here. */
+  try {
+    await settle('/media/photos/export');
+    if (await page.locator('[data-segment="timelapse"]').count()) {
+      await page.locator('[data-segment="timelapse"]').click();
+      await page.waitForTimeout(300);
+      await page.locator('[data-generate]').click();
+      await page.waitForSelector('.journey-preview [data-transport]', { timeout: 120000 });
+      await page.waitForTimeout(1200);
+      await crop(
+        'timelapse-preview',
+        '.journey-preview',
+        '.journey-preview [data-transport]',
+        'The photo journey preview: a timelapse this app just rendered, played through the same transport as a recording and a note'
+      );
+    } else {
+      errors.push('timelapse-preview: this browser cannot record, so the screen offers no timelapse');
+    }
+  } catch (error) {
+    errors.push(`timelapse-preview: ${error.message.split('\n')[0]}`);
+  }
 } finally {
   await writeFile(
     `${outDir}/${tag}-shots.json`,

@@ -1,5 +1,6 @@
-/* The transport by keyboard alone, and what it says while being driven
-   (phase 10 redesign ticket 46).
+/* The four things a hand-built transport can quietly lose (phase 10
+   redesign ticket 46): the keyboard, the spoken position, full screen, and
+   working with the radio off.
 
    The native `<audio controls>` and `<video controls>` this replaced were
    keyboard-operable and screen-reader labelled with nobody doing any work,
@@ -16,8 +17,15 @@
    not a transport anybody can follow: the scrub carries a role, a name, a
    range, and an `aria-valuetext` that reads as a position in a length.
 
+   Full screen and the offline check are here for the same reason: they are
+   behaviours the native elements had for free, and each is one line of this
+   file rather than a claim in a commit message. The page is put offline
+   before anything is played, so a player that had reached for a CDN - which
+   is what the libraries this ticket turned down do by default - would fail
+   here rather than in somebody's kitchen.
+
    Run against a demo build:
-     VITE_DEMO=1 npm run build && node tests/media-transport-keyboard.mjs */
+     VITE_DEMO=1 npm run build && node tests/media-transport-check.mjs */
 import { preview } from 'vite';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -157,6 +165,11 @@ try {
   await settle('/entry/new/today');
   await page.waitForSelector('[data-add-recording-file]');
 
+  /* The radio off, from here on. Everything below plays from a file this
+     device already holds, so nothing in the transport may need the network
+     to draw itself or to run. */
+  await page.context().setOffline(true);
+
   await importFile('[data-add-recording-file]', media.voice, 'audio/webm');
   await page.waitForSelector('.recording-row [data-transport]');
   await page.waitForTimeout(800);
@@ -191,6 +204,31 @@ try {
     (await pausedIn('.recording-row')) && !(await pausedIn('.video-row'))
   );
 
+  /* Full screen: it takes the whole player rather than the picture alone,
+     so the transport goes with it, and the system's own way out has to
+     leave it cleanly. */
+  await page.locator('.video-row [data-video-full]').click();
+  await page.waitForTimeout(600);
+  const inFull = await page.evaluate(() => ({
+    element: !!document.fullscreenElement,
+    hasTransport: !!document.fullscreenElement?.querySelector('[data-transport]')
+  }));
+  check('full screen takes the player, transport and all', inFull.element && inFull.hasTransport);
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(600);
+  const left = await page.evaluate(() => ({
+    element: !!document.fullscreenElement,
+    label: document.querySelector('.video-row [data-video-full]')?.getAttribute('aria-label')
+  }));
+  check('Escape leaves it, and the control goes back to saying "full screen"', !left.element && !!left.label);
+
+  const stillThere = await page.locator('.video-row [data-transport-scrub]').count();
+  check('and the player is still on the page afterwards', stillThere === 1);
+
+  /* Played with the radio off from the first import to here. */
+  check('everything above ran offline', await page.evaluate(() => !navigator.onLine));
+
   /* And no `controls` attribute survives anywhere: the whole point is that
      the browser's transport is not what anybody sees. */
   const natives = await page.evaluate(
@@ -203,4 +241,6 @@ try {
   await app.close();
 }
 
-process.exitCode = finish('the transport is operable by keyboard alone, on both media') ? 1 : 0;
+process.exitCode = finish(
+  'the transport is keyboard-operable, spoken, full-screenable and offline, on both media'
+) ? 1 : 0;
