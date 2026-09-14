@@ -62,6 +62,12 @@
   "video_not_a_video": "That file isn’t a video.",
   "video_too_long": "A video note is up to 30 seconds. Pick a shorter one, or record it here.",
   "video_too_large": "That video is too large to store, and it couldn’t be made smaller.",
+  "mt_play": "Play",
+  "mt_pause": "Pause",
+  "mt_position": "Position",
+  "mt_position_read": "{at} of {of}",
+  "mt_full": "Full screen",
+  "mt_leave_full": "Leave full screen",
   "gender_label": "Gender",
   "gender_hint": "However it feels right now. There are no wrong answers.",
   "quick_log_dims_title": "Log your scales too?",
@@ -3283,6 +3289,21 @@
   "area_suspend_confirm": "Pause it",
   "area_suspend_cancel": "Not yet",
   "vm_empty_title": "No recordings yet",
+  "vm_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} recording, {total} in all",
+        "countPlural=other": "{count} recordings, {total} in all"
+      }
+    }
+  ],
   "vm_empty_body": "Voice memos you record inside an entry gather here, browsable in one place without having to remember which day you made them.",
   "vm_open_entry_aria": "Open the entry from {date}",
   "saved_questions_open": "Saved questions",
