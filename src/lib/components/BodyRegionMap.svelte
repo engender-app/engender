@@ -1,9 +1,17 @@
 <!-- The body map's figure (phase 10 redesign ticket 40).
 
-     A body, drawn neutral, with each region an area of it that carries its
-     own reading. `whole_body` is the silhouette itself - not decoration
-     under the regions but a region, filled by its own reading, and tapped
-     wherever the eight are not.
+     A wooden artist's mannequin, with each region one of its own parts,
+     carrying that part's reading. `whole_body` is the connective mannequin
+     - the limbs and the ball joints - not decoration under the regions but
+     a region, filled by its own reading, and tapped wherever the eight are
+     not.
+
+     The mannequin is the reference Alicja gave (2026-09-14) and it is the
+     right answer to "neutral but still a body" because it is already the
+     answer the world uses: a body everybody reads as a body and nobody
+     reads as a particular one, with no face, no hair, no skin and no sex
+     characteristics - not as an omission somebody has to notice and
+     approve, but because that is what the object is for.
 
      **Neutral is about how the body is drawn, not about whether it is.**
      The first build took the ticket at its word - "there is no body
@@ -66,6 +74,7 @@
     placeRegions,
     type RegionDrawing
   } from './bodyRegionFigure';
+  import { rampStyle } from './mapChannels';
   import { roleAttrs } from './kit/role';
   import type { Role } from '$lib/theme/roles';
 
@@ -91,16 +100,19 @@
 
   /** The step's own fill and ink from the role's ramp, or nothing at level
       0 - an empty shape is drawn by the absence of a fill rather than by a
-      colour standing for absence. The ink comes with the fill because the
+      colour standing for absence, which is the rule `rampStyle` carries for
+      both of the app's body maps (mapChannels.ts). The ink comes with the fill because the
       mixed mark sits on it and has to be read off it; roles.ts computes one
       per step and kit-roles.test.ts holds every one to 4.5:1 against that
       step's own fill, so the mark is legible by construction rather than by
       a colour somebody eyeballed. */
-  const paint = (level: number) => {
-    if (level === 0 || !role) return '';
-    const step = role.heat[level];
-    return `--region-fill:${step.fill};--region-ink:${step.ink}`;
-  };
+  const paint = (level: number) =>
+    role
+      ? rampStyle(level, (step) => ({
+          '--region-fill': role.heat[step].fill,
+          '--region-ink': role.heat[step].ink
+        }))
+      : '';
 
   /** What a screen reader is told, which is the whole of what the colour
       says: a shape's fill and its mark are not readable, so the name
@@ -161,7 +173,14 @@
         style={paint(levelOf(placement.ground?.id ?? ''))}
       >
         {#each GROUND_SHAPES as shape, i (i)}
-          <rect x={shape.left} y={shape.top} width={shape.width} height={shape.height} rx={shape.r} />
+          <rect
+            x={shape.left}
+            y={shape.top}
+            width={shape.width}
+            height={shape.height}
+            rx={shape.r}
+            ry={shape.ry ?? shape.r}
+          />
         {/each}
       </g>
 
@@ -178,7 +197,18 @@
           data-region-level={levelOf(region.id)}
         >
           {#each drawing.shapes as shape, n (n)}
-            <rect x={shape.left} y={shape.top} width={shape.width} height={shape.height} rx={shape.r} />
+            {#if shape.d}
+              <path d={shape.d} />
+            {:else}
+              <rect
+                x={shape.left}
+                y={shape.top}
+                width={shape.width}
+                height={shape.height}
+                rx={shape.r}
+                ry={shape.ry ?? shape.r}
+              />
+            {/if}
           {/each}
           {#if isMixed(region.id)}
             {@const at = markAt(drawing)}
@@ -291,14 +321,21 @@
     inset: 0;
   }
 
-  /* The body. No stroke, so its seven pieces union into one form rather
-     than showing their own edges; --region-fill is absent when nothing is
-     logged against the whole body, and it falls to the card's second
-     surface, which is what an unlogged body should look like. */
-  .region-body rect {
+  /* The connective mannequin: the limbs and the ball joints. A lighter
+     edge than a region's, so the figure reads as one jointed object
+     throughout while the named parts stay the things being looked at - with
+     no edge at all the limbs were a ghost beside them whenever nothing was
+     logged against the whole body.
+
+     --region-fill is absent in exactly that case, and it falls to the
+     card's second surface, which is what an unlogged body should be. */
+  .region-body > rect {
     fill: var(--region-fill, var(--surface-2));
-    stroke: none;
-    transition: fill var(--dur-med) var(--ease-out);
+    stroke: var(--outline);
+    stroke-width: 0.7;
+    transition:
+      fill var(--dur-med) var(--ease-out),
+      stroke var(--dur-med) var(--ease-out);
   }
 
   /* A region of the body. The fill is its reading; the stroke is
@@ -306,7 +343,8 @@
      ramp is a mix of the stripe into the card's surface, so painted over
      the body's own fill it would come out a colour that was partly its
      neighbour's. */
-  .region-part > rect {
+  .region-part > rect,
+  .region-part > path {
     fill: var(--region-fill, transparent);
     stroke: var(--outline);
     stroke-width: 1.2;
@@ -319,7 +357,8 @@
   /* Nothing logged in this range: the outline alone, firmer, the way the
      injection map draws a never-used site as a hollow dot rather than as
      the pale end of its ramp. */
-  .region-part.is-empty > rect {
+  .region-part.is-empty > rect,
+  .region-part.is-empty > path {
     fill: var(--surface);
     fill-opacity: 0.55;
     stroke-width: 1.6;
@@ -328,14 +367,15 @@
   /* Selection: the stroke takes the role's mark colour and thickens. Never
      a travelling indicator - two regions are not adjacent the way tabs are,
      and a pill flying across a torso is motion for its own sake. */
-  .region-part.is-picked > rect {
+  .region-part.is-picked > rect,
+  .region-part.is-picked > path {
     stroke: var(--role-mark, var(--accent));
     stroke-width: 2.6;
   }
 
-  .region-body.is-picked rect {
+  .region-body.is-picked > rect {
     stroke: var(--role-mark, var(--accent));
-    stroke-width: 1.4;
+    stroke-width: 1.8;
   }
 
   /* The mark's own bars, which are rects inside the region's group and so
@@ -347,18 +387,38 @@
     stroke: none;
   }
 
-  /* The arrival, top to bottom. Opacity only on an SVG group, so nothing
-     moves in the drawing itself and no shape can be painted at a
-     destination it did not travel to. base.css flattens this under reduced
-     motion. */
+  /* The arrival, top to bottom, one --stagger-step apart.
+
+     A region clips open from its own left edge rather than fading up, which
+     is rule 10's whole point - "blocks are solid objects on a flat page, so
+     they move like objects: they slide in from their own edge and clip,
+     never fade from nothing" - and it is the same movement `kit-block-in`
+     gives a tile. An SVG group has no CSS layout box, so a percentage in
+     `clip-path` resolves against its fill box, which is the group's own
+     bounding box: 100% is exactly the shape's own width whatever part of
+     the body it is. Nothing moves and nothing is painted at a destination it
+     did not travel to; only how much of it is drawn changes.
+
+     base.css flattens this under reduced motion. */
   .region-arrive {
     animation: region-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--region-i, 0) * var(--stagger-step));
   }
 
   @keyframes region-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0); }
+  }
+
+  /* The cluster's chips are ordinary boxes, so they take the kit's own
+     block arrival rather than the group's. */
+  .region-chip.region-arrive {
+    animation-name: region-chip-in;
+  }
+
+  @keyframes region-chip-in {
+    from { clip-path: inset(-3px 100% -3px -3px round var(--r-block)); }
+    to { clip-path: inset(-3px round var(--r-block)); }
   }
 
   /* The hit boxes. Transparent, and over the drawing: the touch target is a

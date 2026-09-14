@@ -13,6 +13,7 @@ import {
   GROUND_ZONES,
   MIN_STAGE_HEIGHT,
   MIN_STAGE_WIDTH,
+  PELVIS,
   REGION_DRAWINGS,
   TORSO,
   TOUCH_PX,
@@ -45,21 +46,40 @@ test('the regions run down the body, which is the order they arrive in', () => {
   );
 });
 
-/* The neutrality rule, in the one place it lives. A contour is allowed -
-   the figure is a body - but the torso may not narrow at a waist, swell at
-   a bust or flare at a hip, because those are the three that say which body
-   this is, and they are exactly the three regions the ticket names as
-   costing most to get wrong. One rect of one width is what guarantees it. */
-test('the torso is a constant-width column, which is what makes the figure neutral', () => {
-  assert.equal(TORSO.width, 38);
-  assert.ok(TORSO.height > TORSO.width, 'the torso should be taller than it is wide');
-  // Left and right edge are mirrored about the midline, so it cannot lean.
-  assert.equal(TORSO.left + TORSO.width / 2, FIGURE_BOX.width / 2);
-  // And every other piece of the silhouette is centred or mirrored too.
+/* The neutrality rule, in the one place it lives.
+
+   A contour is allowed - the figure is a wooden artist's mannequin, which
+   is a body everybody reads as a body and nobody reads as a particular one.
+   What is not allowed is a trunk that pulls in at a waist, swells at a bust
+   or flares at a hip, because those are the three that say which body this
+   is, and they are exactly the three regions the ticket names as costing
+   most to get wrong. Two rects of one width each is what guarantees it. */
+test('the trunk is two constant-width blocks, which is what makes the figure neutral', () => {
+  for (const block of [TORSO, PELVIS]) {
+    // One width: a rect cannot taper, so no waist, no bust and no hip flare.
+    assert.ok(block.width > 0);
+    // Mirrored about the midline, so it cannot lean either.
+    assert.equal(block.left + block.width / 2, FIGURE_BOX.width / 2);
+  }
+  assert.ok(TORSO.width > PELVIS.width, 'a ribcage is wider than a pelvis on a mannequin');
+
+  // And every piece of the connective mannequin is centred or mirrored too.
   const centres = GROUND_SHAPES.map((s) => s.left + s.width / 2);
   for (const centre of centres) {
     const mirrored = centres.some((other) => Math.abs(other - (FIGURE_BOX.width - centre)) < 0.001);
     assert.ok(mirrored, `a silhouette piece at ${centre} has no mirror`);
+  }
+});
+
+/* Every region drawn on the trunk is mirrored too, so a shape cannot say
+   something about one side of a body that it does not say about the other. */
+test('every drawn region is mirrored about the midline', () => {
+  for (const drawing of REGION_DRAWINGS) {
+    const centres = drawing.shapes.map((s) => s.left + s.width / 2);
+    for (const centre of centres) {
+      const mirrored = centres.some((other) => Math.abs(other - (FIGURE_BOX.width - centre)) < 0.001);
+      assert.ok(mirrored, `${drawing.region} has a shape at ${centre} with no mirror`);
+    }
   }
 });
 

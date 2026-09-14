@@ -127,7 +127,7 @@
     width: 360px;
   }
   .scene h2 {
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
     font-weight: var(--weight-bold);
     margin: 0;
   }
