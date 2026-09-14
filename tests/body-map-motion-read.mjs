@@ -6,10 +6,11 @@
    disappearing in 1 frame"). Two things must never be true:
 
    - **painted at its destination before it travelled there.** For the
-     arrival that means a shape at its resting opacity and scale before its
-     own stagger step has begun. Every shape starts at opacity 0 and 0.94
-     scale and runs --dur-slow from `--region-i * --stagger-step`, so a
-     shape whose first sample is already settled is one that never arrived.
+     arrival that means a shape fully drawn before its own stagger step has
+     begun. Each region clips open from its own left edge over --dur-slow,
+     starting at `--region-i * --stagger-step` (rule 10: a block slides in
+     from its own edge, never fades from nothing), so a shape whose first
+     sample is already whole is one that never arrived.
    - **in neither state for a frame.** For the selection change that means a
      frame where the shape being picked is not yet drawn as picked and the
      one being dropped is no longer drawn as picked, or a frame where a
@@ -65,7 +66,7 @@ for (const scene of scenes) {
        the first spend at least one frame under its resting opacity. */
     if (scene.name.startsWith('arrive')) {
       const first = present[0];
-      const settled = present.find((r) => r.row.o >= 0.999 && r.row.t === 'none');
+      const settled = present.find((r) => r.row.o >= 0.999 && r.row.clip === 'none');
       if (settled && settled.i === first.i && key !== 'whole_body') {
         note(scene.name, 'no-travel', `${key} was already at rest on its first frame (${first.at}ms)`);
       }

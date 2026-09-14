@@ -70,18 +70,12 @@ const dress = async (theme) => {
   await page.waitForTimeout(500);
 };
 
-/* The contrast walk's own reader. Two things make a naive one lie here, and
-   both are in the memory of earlier passes on this repo:
-
-   - `getComputedStyle` hands back `color-mix(...)` unresolved as
-     `oklab(...)` on a tinted ground, so a regex colour parser skips exactly
-     the elements this ticket added. Painting the value into a canvas and
-     reading the pixel back is what resolves it.
-   - a region's ground is a *sibling* rather than an ancestor - the shapes
-     are absolutely positioned over one another - so walking up the tree for
-     the first opaque background finds the card, not the fill underneath.
-     The figure is the special case: a shape's own fill is its ground. */
-const WALK = `(() => {
+/* The colour arithmetic both probes below need, written once. Painting a
+   value into a canvas rather than parsing it is the whole point: a fill on
+   this screen is a color-mix, which getComputedStyle hands back unresolved
+   as oklab(...), so a regex colour parser skips exactly the elements this
+   ticket added. */
+const COLOUR = `
   const paint = (value) => {
     const c = document.createElement('canvas');
     c.width = c.height = 1;
@@ -109,6 +103,21 @@ const WALK = `(() => {
     const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
     return (a + 0.05) / (b + 0.05);
   };
+`;
+
+/* The contrast walk's own reader. Two things make a naive one lie here, and
+   both are in the memory of earlier passes on this repo:
+
+   - `getComputedStyle` hands back `color-mix(...)` unresolved as
+     `oklab(...)` on a tinted ground, so a regex colour parser skips exactly
+     the elements this ticket added. Painting the value into a canvas and
+     reading the pixel back is what resolves it.
+   - a region's ground is a *sibling* rather than an ancestor - the shapes
+     are absolutely positioned over one another - so walking up the tree for
+     the first opaque background finds the card, not the fill underneath.
+     The figure is the special case: a shape's own fill is its ground. */
+const WALK = `(() => {
+  ${COLOUR}
 
   /* The ground under an element: its own background where it has an opaque
      one, otherwise composited down from its ancestors. A shape's fill is
@@ -166,26 +175,8 @@ const WALK = `(() => {
    The fill is a color-mix, which getComputedStyle hands back unresolved as
    oklab(...), so every colour goes through a canvas rather than a regex. */
 const MIXED = `(() => {
-  const paint = (value) => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 1;
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.fillStyle = value;
-    ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-    return { r, g, b };
-  };
-  const lum = ({ r, g, b }) => {
-    const ch = (v) => {
-      const s = v / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    };
-    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
-  };
-  const ratio = (fg, bg) => {
-    const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
-    return (a + 0.05) / (b + 0.05);
-  };
+  ${COLOUR}
+
   const out = [];
   /* The figure is an SVG now: a region is a <g> carrying the ramp's fill
      and ink as custom properties, with its rects taking them. Read the
@@ -197,7 +188,9 @@ const MIXED = `(() => {
     const declared = s.getPropertyValue('--region-fill').trim();
     const fill = declared || card;
     const onFigure = el.hasAttribute('data-region-art');
-    const drawn = onFigure ? el.querySelector('rect') : el.querySelector('.region-chip');
+    /* rect or path: the head's two halves are paths, because a dome and a
+       jaw are shapes a rounded rectangle cannot be. */
+    const drawn = onFigure ? el.querySelector('rect, path') : el.querySelector('.region-chip');
     const drawnStyle = getComputedStyle(drawn);
     const edge = onFigure ? drawnStyle.stroke : drawnStyle.borderTopColor;
     out.push({

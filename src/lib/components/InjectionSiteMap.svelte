@@ -20,6 +20,7 @@
   import { INJECTION_SITES, type InjectionSiteKey } from '$lib/data/doseSchedule';
   import { recencyHeatLevel, recencySpan } from '$lib/data/metricRange';
   import { injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
+  import { rampStyle } from './mapChannels';
   import { sitePosition } from './injectionSiteMap';
 
   const listHeadId = $props.id();
@@ -59,9 +60,10 @@
   /** The dot's fill as a custom property, so the list's swatches can be
       the same colour by the same route. Level 0 sets nothing: an empty dot
       is drawn by the absence of a fill rather than by a colour that stands
-      for absence. */
+      for absence - which is `rampStyle`'s rule (mapChannels.ts), shared with
+      the body map since redesign ticket 40 gave that one a ramp too. */
   const swatchStyle = (level: number | null) =>
-    level === null || level === 0 ? '' : `--dot-fill:var(--heat-${level})`;
+    rampStyle(level, (step) => ({ '--dot-fill': `var(--heat-${step})` }));
 
   const dotStyle = (site: (typeof INJECTION_SITES)[number]) => {
     const { top, left } = sitePosition(site);

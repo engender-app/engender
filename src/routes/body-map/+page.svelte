@@ -318,7 +318,7 @@
   /* Which region the charts describe. Rule 2's 17px, not a display size:
      the screen's title is the field's, and this is a line under a figure. */
   .body-map-reading-head {
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
     font-weight: var(--weight-bold);
     margin: 0 0 var(--space-2);
   }

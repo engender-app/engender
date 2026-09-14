@@ -37,7 +37,7 @@ import type { BodyRegion } from '../data/types';
 
 /** The drawing's own coordinate space, which is also the SVG's viewBox.
     Taller than wide, because a body is. */
-export const FIGURE_BOX = { width: 100, height: 158 } as const;
+export const FIGURE_BOX = { width: 100, height: 164 } as const;
 
 export interface Box {
   left: number;
@@ -47,41 +47,75 @@ export interface Box {
 }
 
 /** A rounded rectangle. Everything here is one of these, the silhouette
-    included - a circle is a rect whose radius is half its side - so the
-    geometry stays checkable with one set of helpers. */
+    included - a circle is a rect whose radius is half its side, and an egg
+    is one whose two radii differ - so the geometry stays checkable with one
+    set of helpers. */
 export interface Shape extends Box {
   r: number;
+  /** The vertical radius, where it differs from `r`. */
+  ry?: number;
+  /** Path data, for the two shapes a rounded rectangle cannot be: the
+      mannequin's head is an egg split across two regions, so its halves are
+      a dome and a jaw - each rounded on one side and flat on the other,
+      which `rect` has no way to say. The box above stays the shape's
+      bounding box either way, so every geometry test reads the same thing
+      whichever way a shape is drawn. */
+  d?: string;
 }
 
 export const GROUND_REGION = 'whole_body';
 
-/* The silhouette, in pieces that overlap into one form. Drawn with no
-   stroke, so the overlaps are seamless and this reads as one body rather
-   than as seven parts.
+/* The silhouette: a wooden artist's mannequin, the kind sold for learning
+   proportions (Alicja's reference, 2026-09-14, after the first two attempts
+   at this).
 
-   The proportions are deliberately a little stylised - a larger head and a
-   longer neck than a figure drawing would use - and that is load-bearing
-   rather than a style choice: `hairline`, `face_jaw` and `voice_throat` are
-   three separate regions stacked inside the head and neck, and each of them
-   owes a finger 48px. At anatomical proportions those three share about
-   90px on a phone and cannot all have one. */
+   It is the right answer to "neutral but still a body" because it is
+   already the answer the world uses. A mannequin is a body everybody reads
+   as a body and nobody reads as a particular one - it has no face, no hair,
+   no skin and no sex characteristics, and that is not an omission somebody
+   has to notice and approve, it is what the object is for. Drawing one
+   costs no neutrality argument at all.
+
+   It also segments itself. A mannequin is blocks and ball joints, and the
+   seams fall almost exactly where this screen's regions do: a head above a
+   neck, a ribcage above a waist ball above a pelvis, paddles at the ends of
+   the limbs. So the regions are not shapes laid over a drawing - they are
+   the drawing's own parts, which is what the ticket asked for by a
+   different route. What is left for `whole_body` is the connective
+   mannequin: the upper arms and forearms, the thighs and shins, and the
+   ball joints between them.
+
+   Neutrality still gets a rule rather than a promise. The ribcage and the
+   pelvis are both drawn at one constant width and mirrored about the
+   midline, so neither can pull in at a waist, swell at a bust or flare at a
+   hip; `TORSO` names the ribcage and the test reads it. */
 export const GROUND_SHAPES: Shape[] = [
-  { left: 37, top: 3, width: 26, height: 26, r: 13 }, // head
-  { left: 44, top: 27, width: 12, height: 12, r: 5 }, // neck
-  /* The torso: one width from top to bottom. This single fact is the whole
-     of what makes the figure neutral, so the test reads it by name. */
-  { left: 31, top: 37, width: 38, height: 66, r: 11 },
-  /* The arms run past the torso's foot, so the hands drawn at their ends
-     have an arm to sit on rather than floating below one. */
-  { left: 17, top: 41, width: 12, height: 71, r: 6 }, // arms
-  { left: 71, top: 41, width: 12, height: 71, r: 6 },
-  { left: 33, top: 100, width: 15, height: 55, r: 7 }, // legs
-  { left: 52, top: 100, width: 15, height: 55, r: 7 }
+  // Left arm: upper, elbow ball, forearm. Hanging close to the trunk, the
+  // way a mannequin stands when nobody has posed it.
+  { left: 23, top: 64, width: 10, height: 20, r: 5 },
+  { left: 22, top: 81, width: 12, height: 12, r: 6 },
+  { left: 23.5, top: 90, width: 9, height: 18, r: 4.5 },
+  // Right arm, mirrored.
+  { left: 67, top: 64, width: 10, height: 20, r: 5 },
+  { left: 66, top: 81, width: 12, height: 12, r: 6 },
+  { left: 67.5, top: 90, width: 9, height: 18, r: 4.5 },
+  // Left leg: hip ball, thigh, knee ball, shin.
+  { left: 36, top: 103, width: 12, height: 12, r: 6 },
+  { left: 37, top: 111, width: 10, height: 20, r: 5 },
+  { left: 36, top: 128, width: 12, height: 12, r: 6 },
+  { left: 37.5, top: 137, width: 9, height: 16, r: 4.5 },
+  // Right leg, mirrored.
+  { left: 52, top: 103, width: 12, height: 12, r: 6 },
+  { left: 53, top: 111, width: 10, height: 20, r: 5 },
+  { left: 52, top: 128, width: 12, height: 12, r: 6 },
+  { left: 53.5, top: 137, width: 9, height: 16, r: 4.5 }
 ];
 
-/** The torso, which is the one piece whose shape the neutrality rule is
-    about. Named rather than indexed so the test says what it is checking. */
-export const TORSO = GROUND_SHAPES[2];
+/** The ribcage and the pelvis: the two pieces the neutrality rule is
+    actually about, named rather than indexed so the test says what it is
+    checking. Both are drawn at one width and mirrored about the midline. */
+export const TORSO = { left: 32, top: 69, width: 36, height: 17, r: 6 } as const;
+export const PELVIS = { left: 34, top: 93, width: 32, height: 11, r: 5 } as const;
 
 export interface RegionDrawing {
   region: string;
@@ -93,68 +127,90 @@ export interface RegionDrawing {
   zones: Box[];
 }
 
-/* Down the body, which is the reading order and the order the shapes arrive
+/* Down the body, which is the reading order and the order the parts arrive
    in. The zones tile the stage in bands; the drawing sits inside them.
 
-   `hands_feet` is four shapes and three zones: a hand at the end of each
-   arm, and the feet, which share one zone because nothing else is down
+   Each region is a piece of the mannequin rather than a block on top of
+   one. The head is one egg split at a seam, the way the mannequin's own
+   joints are seams: a dome above and a jaw below. The shoulders are the two
+   ball joints plus the yoke they hang from. `hips_waist` is the waist ball
+   and the pelvis together, because on a mannequin they are one movement.
+
+   `hands_feet` is four paddles and three zones: a hand at the end of each
+   forearm, and the feet, which share a band because nothing else is down
    there. A region in two places on a body is still one region with one
    accessible name, so only the first of its zones is a real button - the
    rest are aria-hidden and out of the tab order, so a screen reader hears
    one control while a finger can reach either end. */
 export const REGION_DRAWINGS: RegionDrawing[] = [
   {
+    /* The cranium: the top of the egg. Narrow, because a mannequin's head
+       is taller than it is wide - the first pass drew each half at the full
+       width its band allowed and got two flat discs rather than a head. */
     region: 'hairline',
-    shapes: [{ left: 41, top: 5, width: 18, height: 7, r: 3 }],
-    zones: [{ left: 25, top: 0, width: 50, height: 16 }]
+    shapes: [{ left: 41, top: 3, width: 18, height: 17, r: 9, d: 'M41 20 A9 17 0 0 1 59 20 Z' }],
+    zones: [{ left: 25, top: 0, width: 50, height: 20 }]
   },
   {
+    // The jaw: the bottom of the egg, a shade narrower. The two together are
+    // a mannequin head, and the line between them is a seam like every other
+    // seam on one.
     region: 'face_jaw',
-    shapes: [{ left: 40, top: 17, width: 20, height: 10, r: 4 }],
-    zones: [{ left: 25, top: 16, width: 50, height: 16 }]
+    shapes: [{ left: 42, top: 20, width: 16, height: 16, r: 8, d: 'M42 20 A8 16 0 0 0 58 20 Z' }],
+    zones: [{ left: 25, top: 20, width: 50, height: 17 }]
   },
   {
+    // The neck, which on a mannequin is a short post between two joints.
     region: 'voice_throat',
-    shapes: [{ left: 44.5, top: 33, width: 11, height: 6, r: 3 }],
-    zones: [{ left: 25, top: 32, width: 50, height: 15 }]
+    shapes: [{ left: 45, top: 37, width: 10, height: 13, r: 4 }],
+    zones: [{ left: 25, top: 37, width: 50, height: 15 }]
   },
   {
-    /* Across the torso's top and over both arms, because a shoulder is the
-       join and not a piece of the trunk. */
+    /* Both ball joints and the yoke between them: a shoulder is the join and
+       not a piece of the trunk, which is exactly how a mannequin is built. */
     region: 'shoulders',
-    shapes: [{ left: 20, top: 48, width: 60, height: 9, r: 4 }],
-    zones: [{ left: 0, top: 47, width: 100, height: 16 }]
+    shapes: [
+      { left: 21, top: 53, width: 15, height: 15, r: 7.5 },
+      { left: 64, top: 53, width: 15, height: 15, r: 7.5 },
+      { left: 35, top: 54, width: 30, height: 12, r: 5 }
+    ],
+    zones: [{ left: 0, top: 52, width: 100, height: 16 }]
   },
   {
     region: 'chest',
-    shapes: [{ left: 35, top: 65, width: 30, height: 14, r: 5 }],
-    zones: [{ left: 30, top: 63, width: 40, height: 19 }]
+    shapes: [TORSO],
+    zones: [{ left: 32, top: 68, width: 36, height: 19 }]
   },
   {
+    // The waist ball and the pelvis block, which move as one.
     region: 'hips_waist',
-    shapes: [{ left: 35, top: 84, width: 30, height: 13, r: 5 }],
-    zones: [{ left: 30, top: 82, width: 40, height: 17 }]
+    shapes: [{ left: 44, top: 87, width: 12, height: 11, r: 5.5 }, PELVIS],
+    zones: [{ left: 32, top: 87, width: 36, height: 17 }]
   },
   {
     region: 'genitals',
-    shapes: [{ left: 42, top: 101, width: 16, height: 10, r: 4 }],
-    zones: [{ left: 30, top: 99, width: 40, height: 16 }]
+    shapes: [{ left: 43, top: 105, width: 14, height: 11, r: 5 }],
+    zones: [{ left: 36, top: 104, width: 28, height: 16 }]
   },
   {
+    // The paddles: one at the end of each forearm, one at the end of each
+    // shin, each overlapping the limb it belongs to so the figure is jointed
+    // rather than scattered.
     region: 'hands_feet',
     shapes: [
-      { left: 18.5, top: 101, width: 9, height: 9, r: 4 },
-      { left: 72.5, top: 101, width: 9, height: 9, r: 4 },
-      { left: 34.5, top: 140, width: 12, height: 9, r: 4 },
-      { left: 53.5, top: 140, width: 12, height: 9, r: 4 }
+      { left: 22, top: 105, width: 12, height: 12, r: 5.5 },
+      { left: 66, top: 105, width: 12, height: 12, r: 5.5 },
+      { left: 35, top: 150, width: 14, height: 11, r: 4 },
+      { left: 51, top: 150, width: 14, height: 11, r: 4 }
     ],
     zones: [
-      { left: 25, top: 115, width: 50, height: 43 },
-      { left: 0, top: 99, width: 30, height: 16 },
-      { left: 70, top: 99, width: 30, height: 16 }
+      { left: 0, top: 144, width: 100, height: 20 },
+      { left: 0, top: 104, width: 36, height: 16 },
+      { left: 64, top: 104, width: 36, height: 16 }
     ]
   }
 ];
+
 
 /** Where a tap means the whole body: everywhere the eight are not. Beside
     the head, along the arms, beside the legs.
@@ -166,12 +222,15 @@ export const REGION_DRAWINGS: RegionDrawing[] = [
     which is the right answer: that is a chest, and it is also the whole
     body, and the more specific of the two is what somebody aimed at. */
 export const GROUND_ZONES: Box[] = [
-  { left: 0, top: 0, width: 25, height: 47 },
-  { left: 75, top: 0, width: 25, height: 47 },
-  { left: 0, top: 63, width: 30, height: 36 },
-  { left: 70, top: 63, width: 30, height: 36 },
-  { left: 0, top: 115, width: 25, height: 43 },
-  { left: 75, top: 115, width: 25, height: 43 }
+  // Beside the head and the neck.
+  { left: 0, top: 0, width: 25, height: 52 },
+  { left: 75, top: 0, width: 25, height: 52 },
+  // Beside the trunk, which is where the arms hang.
+  { left: 0, top: 68, width: 32, height: 36 },
+  { left: 68, top: 68, width: 32, height: 36 },
+  /* The legs, which are the mannequin's own and not a named region: the
+     band between the hips and the feet. */
+  { left: 0, top: 120, width: 100, height: 24 }
 ];
 
 const DRAWING_BY_REGION = new Map(REGION_DRAWINGS.map((drawing) => [drawing.region, drawing]));
