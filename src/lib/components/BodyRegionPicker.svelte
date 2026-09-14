@@ -1,9 +1,8 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN, feelingToSliderValue, sliderToFeeling } from '$lib/data/bodyMap';
+  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { disclose } from '$lib/motion/reveal';
   import DimensionSlider from './DimensionSlider.svelte';
-  import type { BodyRegionFeeling } from '$lib/data/types';
 
   let {
     regions,
@@ -12,15 +11,15 @@
     onFeeling,
   }: {
     regions: { id: string; name: string }[];
-    values: Record<string, BodyRegionFeeling>;
+    values: Record<string, number>;
     onToggle: (id: string) => void;
-    onFeeling: (id: string, feeling: BodyRegionFeeling) => void;
+    onFeeling: (id: string, value: number) => void;
   } = $props();
 
   /* One bipolar scale per picked region (ticket 99): dysphoria at the low
      end, euphoria at the high end, the same shape the day-level dimension
-     takes, where the two per-axis sliders used to be. Storage keeps both
-     axes - bodyMap.ts owns the projection both ways. */
+     takes. Storage is that same slider position now (ticket 39), so there
+     is no projection left to own. */
 </script>
 
 <div class="tag-picker">
@@ -54,8 +53,8 @@
           min: BODY_REGION_INTENSITY_MIN,
           max: BODY_REGION_INTENSITY_MAX
         }}
-        value={feelingToSliderValue(values[r.id])}
-        onInput={(v) => onFeeling(r.id, sliderToFeeling(v))}
+        value={values[r.id]}
+        onInput={(v) => onFeeling(r.id, v)}
       />
     </div>
   {/each}

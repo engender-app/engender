@@ -33,7 +33,7 @@ const existingEntry = (): Entry => ({
   photos: [{ id: 'p1', fileName: 'p1.jpg', starred: false }],
   recordings: [{ id: 'r1', fileName: 'r1.webm' }],
   videos: [{ id: 'n1', fileName: 'n1.webm' }],
-  bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
+  bodyRegions: { chest: 20 },
   starred: false,
   presentationId: null
 });
@@ -62,7 +62,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.deepEqual(draft.tags, ['e-happy']);
   assert.deepEqual(draft.photos, [{ kind: 'stored', photo: { id: 'p1', fileName: 'p1.jpg', starred: false } }]);
   assert.deepEqual(draft.recordings, [{ kind: 'stored', recording: { id: 'r1', fileName: 'r1.webm' } }]);
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 60, euphoria: null } });
+  assert.deepEqual(draft.bodyRegions, { chest: 20 });
 });
 
 test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty', () => {
@@ -92,15 +92,16 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   assert.equal(byTag.hasMoodOnlyContent, false);
   assert.deepEqual(byTag.tags, ['e-happy']);
 
-  // Picking a region only puts its sliders on screen (ticket 31). Content
-  // arrives when an axis does, so the draft is still empty until then.
+  // Picking a region only puts its slider on screen at the midpoint
+  // (ticket 31). Content arrives when it moves, so the draft is still
+  // empty until then.
   const byBodyRegion = createEntryDraft(1);
   byBodyRegion.toggleBodyRegion('chest');
   assert.equal(byBodyRegion.isEmpty, true);
-  byBodyRegion.setBodyRegionFeeling('chest', { dysphoria: null, euphoria: 70 });
+  byBodyRegion.setBodyRegionFeeling('chest', 85);
   assert.equal(byBodyRegion.isEmpty, false);
   assert.equal(byBodyRegion.hasMoodOnlyContent, false);
-  assert.deepEqual(byBodyRegion.bodyRegions, { chest: { dysphoria: null, euphoria: 70 } });
+  assert.deepEqual(byBodyRegion.bodyRegions, { chest: 85 });
 });
 
 test('setDim merges into the existing dims without clobbering the others', () => {
@@ -119,31 +120,30 @@ test('toggleTag adds an absent tag and removes a present one', () => {
   assert.deepEqual(draft.tags, ['e-sad']);
 });
 
-test('toggleBodyRegion adds a region with neither axis set and removes it again', () => {
+test('toggleBodyRegion adds a region at the midpoint and removes it again', () => {
   const draft = createEntryDraft(1);
   draft.toggleBodyRegion('chest');
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: null, euphoria: null } });
+  assert.deepEqual(draft.bodyRegions, { chest: 50 });
 
-  draft.setBodyRegionFeeling('chest', { dysphoria: 80, euphoria: null });
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 80, euphoria: null } });
+  draft.setBodyRegionFeeling('chest', 10);
+  assert.deepEqual(draft.bodyRegions, { chest: 10 });
 
   draft.toggleBodyRegion('chest');
   assert.deepEqual(draft.bodyRegions, {});
 });
 
-test('setBodyRegionFeeling writes one region\'s whole feeling, overwriting both axes', () => {
+test('setBodyRegionFeeling overwrites a region\'s position outright', () => {
   const draft = createEntryDraft(1);
   draft.toggleBodyRegion('chest');
 
-  draft.setBodyRegionFeeling('chest', { dysphoria: null, euphoria: 70 });
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: null, euphoria: 70 } });
+  draft.setBodyRegionFeeling('chest', 70);
+  assert.deepEqual(draft.bodyRegions, { chest: 70 });
 
-  // Overwrite, not merge: the picker's one bipolar slider (ticket 99) only
-  // ever produces a single axis, and dragging back across the midpoint has
-  // to take the side it came from with it. Both-set rows still exist from
-  // the two-slider UI, so a whole-feeling write is still sayable.
-  draft.setBodyRegionFeeling('chest', { dysphoria: 30, euphoria: null });
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: null } });
+  // Overwrite, not merge: the picker's slider (ticket 99) only ever
+  // produces one position, so a later write replaces it outright, the
+  // same as dragging the slider itself would.
+  draft.setBodyRegionFeeling('chest', 30);
+  assert.deepEqual(draft.bodyRegions, { chest: 30 });
 });
 
 test('addPhoto stages a picked photo; removing it drops it without marking it removed', () => {
@@ -228,7 +228,7 @@ test('toUpsert() for an existing entry carries its id, drops a falsy timestamp a
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
+    bodyRegions: { chest: 20 },
     attachPhotos: [photo(2)],
     removePhotoIds: ['p1'],
     attachRecordings: [new Uint8Array([9])],
@@ -261,14 +261,14 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   original.tags.push('should-not-appear');
   original.photos.push({ id: 'p2', fileName: 'p2.jpg', starred: false });
   original.recordings.push({ id: 'r2', fileName: 'r2.webm' });
-  original.bodyRegions.chest.dysphoria = 999;
+  original.bodyRegions.chest = 999;
 
   assert.equal(draft.note, 'typed after load');
   assert.deepEqual(draft.dims, { masculinity: 40 });
   assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
   assert.equal(draft.photos.length, 1);
   assert.equal(draft.recordings.length, 1);
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 60, euphoria: null } });
+  assert.deepEqual(draft.bodyRegions, { chest: 20 });
 });
 
 test('a fresh draft never arrives with a presentation pre-filled, and setPresentation replaces it', () => {

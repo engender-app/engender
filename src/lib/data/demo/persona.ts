@@ -16,7 +16,6 @@ import type { PreferenceValues } from '../prefs/catalogue';
 import type { LabResultInput } from '../journal/labs';
 import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
-import type { BodyRegionFeeling } from '../types';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
 import type { AppointmentInput } from '../journal/appointments';
@@ -146,15 +145,17 @@ function buildEntries(today: number): PersonaEntry[] {
   const wobble = (day: number, spread: number) => ((day * 37) % (spread * 2 + 1)) - spread;
   const regionArc = (day: number) =>
     Math.max(0, Math.min(1, (day - (today - REGION_ARC_DAYS)) / REGION_ARC_DAYS));
-  const bodyRegionsOn = (day: number): Record<string, BodyRegionFeeling> => {
+  const bodyRegionsOn = (day: number): Record<string, number> => {
     const progress = regionArc(day);
-    const logged: Record<string, BodyRegionFeeling> = {};
+    const logged: Record<string, number> = {};
     for (const [region, offset] of Object.entries(REGION_OFFSETS)) {
       if ((day + offset) % 3 === 0) continue;
-      logged[region] = {
-        dysphoria: clampIntensity(86 - progress * 50 + wobble(day + offset, 9)),
-        euphoria: clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9))
-      };
+      const dysphoria = clampIntensity(86 - progress * 50 + wobble(day + offset, 9));
+      const euphoria = clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9));
+      // One slider position per region now (ticket 39, ADR-0081): whichever
+      // intensity is larger sets the side, the same rule the v79 migration
+      // applies to an old both-axes row.
+      logged[region] = Math.round(dysphoria >= euphoria ? 50 - dysphoria / 2 : 50 + euphoria / 2);
     }
     return logged;
   };

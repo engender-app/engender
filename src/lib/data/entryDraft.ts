@@ -9,10 +9,10 @@
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */
 
-import { bodyRegionIsLogged, copyBodyRegions } from './bodyMap';
+import { BODY_REGION_MIDPOINT, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
 import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
-import type { BodyRegionFeeling, Entry, EntryTemplate } from './types';
+import type { Entry, EntryTemplate } from './types';
 import type {
   EntryCycleEventInput,
   EntryDoseLogInput,
@@ -36,7 +36,7 @@ export interface EntryDraft {
   note: string;
   dims: Record<string, number>;
   tags: string[];
-  bodyRegions: Record<string, BodyRegionFeeling>;
+  bodyRegions: Record<string, number>;
   photos: EditorPhoto[];
   /** Stored photo ids taken off in this edit, removed on save rather than
       on the tap: nothing is committed until Save, so a removal the user
@@ -77,14 +77,12 @@ export interface EntryDraft {
       the same pure seam ticket 08's debrief offer reads. */
   applyTemplate(template: EntryTemplate): void;
   /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
-      a region picked and then left alone carries nothing and is dropped on
-      save (ticket 31), so picking one is not itself content. */
+      a region picked and left at the midpoint carries nothing and is
+      dropped on save (ticket 31), so picking one is not itself content. */
   toggleBodyRegion(key: string): void;
-  /** Writes one region's whole feeling, the way the picker's single bipolar
-      slider produces it: at most one axis carries a value, the other is
-      null. Overwrites both sides, so dragging across the midpoint takes
-      back the side it came from. */
-  setBodyRegionFeeling(key: string, feeling: BodyRegionFeeling): void;
+  /** Writes one region's position on the shared 0-100 scale, the way the
+      picker's slider produces it. */
+  setBodyRegionFeeling(key: string, value: number): void;
   addPhoto(photo: NormalizedPhoto): void;
   removePhoto(index: number): void;
   addRecording(bytes: Uint8Array): void;
@@ -106,10 +104,10 @@ export interface EntryDraft {
     one-time fill EntryEditor.svelte's `onFirstResult` applies once the
     stored entry arrives over the async round trip. */
 /** How many regions actually say something, by the one rule bodyMap.ts
-    states: a region on screen with both axes still null is a slider waiting
-    for input, not content. */
-function loggedRegionCount(bodyRegions: Record<string, BodyRegionFeeling>): number {
-  return Object.values(bodyRegions).filter(bodyRegionIsLogged).length;
+    states: a region on screen still at the midpoint is a slider waiting for
+    input, not content. */
+function loggedRegionCount(bodyRegions: Record<string, number>): number {
+  return Object.values(bodyRegions).filter((value) => value !== BODY_REGION_MIDPOINT).length;
 }
 
 export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: number | null): EntryDraft {
@@ -193,12 +191,12 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         const { [key]: _removed, ...rest } = this.bodyRegions;
         this.bodyRegions = rest;
       } else {
-        this.bodyRegions = { ...this.bodyRegions, [key]: { dysphoria: null, euphoria: null } };
+        this.bodyRegions = { ...this.bodyRegions, [key]: BODY_REGION_MIDPOINT };
       }
     },
 
-    setBodyRegionFeeling(key, feeling) {
-      this.bodyRegions[key] = feeling;
+    setBodyRegionFeeling(key, value) {
+      this.bodyRegions[key] = value;
     },
 
     addPhoto(photo) {
