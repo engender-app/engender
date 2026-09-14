@@ -1193,7 +1193,16 @@ export function findHydrationYanks(frames) {
  *  the cast's own clock, so a PNG and the finding it belongs to cannot
  *  come apart - and both transports name them identically. */
 export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP) {
-  if (cast.length < 4) throw new Error(`only ${cast.length} screencast frames`);
+  /* Three, because a cold load that paints once and then holds still
+     produces exactly three compositor frames - the outgoing page, the new
+     document's blank, and the screen - and then nothing, since a screencast
+     only emits on a new frame. That is what the lock gate became once
+     ticket 127 stopped it mounting a splash first, and the floor of four
+     this used to carry turned the clean result into
+     `only 3 screencast frames` three runs out of four (ticket 134). Below
+     three the camera never caught a painted screen at all, which is still
+     worth refusing: a recording nobody looked at must not read as clean. */
+  if (cast.length < 3) throw new Error(`only ${cast.length} screencast frames`);
   const decoded = cast.map((f) => {
     const png = decodePng(Buffer.from(f.data, 'base64'));
     return { png, gray: grayFrame(png), at: f.at };
