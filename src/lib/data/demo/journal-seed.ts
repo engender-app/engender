@@ -53,6 +53,13 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
   const { customTag, presentations, entries, milestones, reminders, appointments, documents, labResults, tallyEvents } =
     persona(today);
 
+  /* What the journal held before this ran, so the check at the end reads a
+     delta rather than assuming an empty journal - the callers all clear
+     first, but this function is the one that knows what it wrote and it
+     should not need them to. */
+  const heldBefore = await journal.entries.countAll();
+  let written = 0;
+
   await journal.tags.addTag(customTag.groupKey, customTag.label);
 
   // Presentations before entries: an entry naming one by `presentationName`
@@ -69,6 +76,7 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
       ...entry,
       presentationId: presentationName ? presentationIds.get(presentationName) : undefined
     });
+    written++;
     for (let i = 0; i < photoCount; i++) {
       await journal.photos.attach({ entryId }, await demoPhoto(entry.epochDay + i));
     }
@@ -91,6 +99,7 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
     const appointmentId = await journal.appointments.upsertAppointment(appointment);
     if (debrief) {
       const entryId = await journal.entries.upsertEntry({ epochDay: appointment.epochDay, ...debrief });
+      written++;
       await journal.checklists.recordDebriefEntry(entryId, appointmentId);
     }
   }
@@ -99,6 +108,16 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
 
   for (const result of labResults) await journal.labs.upsertResult(result);
   for (const event of tallyEvents) await journal.tally.log(event);
+
+  /* And it is all still there (ticket 135). A seed that stops part way
+     through throws where it stops - `upsertEntry` refusing a presentation
+     something else deleted underneath it, for one - but a seed whose rows
+     are removed after it wrote them finishes quietly and leaves a journal
+     that is missing days nobody asked it about. The count is the cheapest
+     thing that can tell the two apart from the inside. */
+  const gained = (await journal.entries.countAll()) - heldBefore;
+  if (gained !== written)
+    throw new Error(`the demo seed wrote ${written} entries, the journal gained ${gained}`);
 }
 
 /* A real JPEG rather than a row pointing at a file that is not there.
