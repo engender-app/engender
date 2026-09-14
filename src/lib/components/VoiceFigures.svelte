@@ -119,6 +119,11 @@
      the same trap). */
   const SPARK_HEIGHT = 30;
 
+  /** Half the ring's own width, which is the room the plot gives up at each
+      end so the ring on the last reading is not cut in half by the block's
+      edge. */
+  const RING = '7px';
+
   interface Line {
     /** One polyline per unbroken stretch: a figure a take did not measure
         is a gap in the line, not a break in the series. */
@@ -280,7 +285,14 @@
               {/each}
             </svg>
             {#if line.ring}
-              <span class="vf-ring" style="left: {line.ring.x}%; top: {line.ring.y}%"></span>
+              <!-- Placed against the plot rather than against the box: a
+                   percentage `left` resolves on the padding box, so a ring
+                   at 100% would sit half outside the block the padding was
+                   added to keep it inside. -->
+              <span
+                class="vf-ring"
+                style="left: calc({RING} + (100% - {RING} * 2) * {(line.ring.x / 100).toFixed(4)}); top: {line.ring.y}%"
+              ></span>
             {/if}
           </div>
           <p class="vf-against">{m.vb_history_run({ count: line.readings })}</p>
@@ -413,6 +425,7 @@
     position: relative;
     margin-top: var(--space-2);
     height: 30px;
+    /* The same 7px the ring is placed against - see RING in the script. */
     padding: 0 7px;
   }
 
