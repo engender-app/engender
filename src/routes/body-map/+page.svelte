@@ -331,12 +331,36 @@
   .body-map-charts {
     /* A chart card is its plot plus its own heading and padding. The plot
        is the kit's own number ($lib/charts/geometry), and the chrome is
-       measured once here rather than guessed: kit.css pads the card and
-       sets the heading's line box, and both are stated in tokens. */
+       stated in the tokens kit.css uses for it: the rule between two cards
+       and its padding, and the heading's own line box.
+
+       What this reserves is the whole block, not a card, because the two
+       cards are not the same height as each other and neither is constant -
+       an annotated series carries marks a bare one does not. Measured
+       across four regions the block holds at 388px while the cards inside
+       it go from 121+232 to 121+142, which is the point: the figure above
+       does not move when the region under it changes. */
     --chart-card-chrome: calc(var(--space-5) + var(--space-4) + 1.25em);
-    min-height: calc(2 * (var(--plot-h) + var(--chart-card-chrome)) + var(--space-3));
+    --charts-reserve: calc(2 * (var(--plot-h) + var(--chart-card-chrome)) + var(--space-3));
+    min-height: var(--charts-reserve);
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+
+  /* The skeleton stands in the same footprint rather than its own. Two of
+     the kit's blocks came to 474px against the charts' 388, so the block
+     shrank by 86px the moment the data landed - the same jump under the
+     figure that reserving the height exists to prevent, arriving by the
+     other door.
+
+     Stated as the reserve rather than as 100%: the block's own height is
+     auto with a floor, so a percentage on a child of it resolves to auto
+     and changes nothing, which is what the first attempt at this did.
+     `clip` rather than `hidden`, because `hidden` makes a scroll container
+     the browser will then scroll. */
+  .body-map-charts :global([data-skeleton]) {
+    height: var(--charts-reserve);
+    overflow: clip;
   }
 </style>
