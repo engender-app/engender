@@ -29,19 +29,19 @@ test('a duration nobody knows yet is zero rather than NaN', () => {
 test('starting one thing stops whatever was playing', () => {
   const stopped: string[] = [];
   const first = claimPlayback(() => stopped.push('first'));
-  assert.deepEqual(stopped, []);
+  assert.deepEqual([...stopped], []);
 
   const second = claimPlayback(() => stopped.push('second'));
-  assert.deepEqual(stopped, ['first']);
+  assert.deepEqual([...stopped], ['first']);
 
   claimPlayback(() => stopped.push('third'));
-  assert.deepEqual(stopped, ['first', 'second']);
+  assert.deepEqual([...stopped], ['first', 'second']);
 
   // Releasing a claim that has already been taken over stops nothing: the
   // player that lost it has been stopped once already.
   first();
   second();
-  assert.deepEqual(stopped, ['first', 'second']);
+  assert.deepEqual([...stopped], ['first', 'second']);
 });
 
 test('releasing the current claim leaves nothing to stop', () => {
@@ -50,5 +50,5 @@ test('releasing the current claim leaves nothing to stop', () => {
   release();
 
   claimPlayback(() => stopped.push('second'));
-  assert.deepEqual(stopped, []);
+  assert.deepEqual([...stopped], []);
 });
