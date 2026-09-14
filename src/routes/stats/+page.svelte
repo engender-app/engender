@@ -1286,12 +1286,15 @@
        this screen; a destination with nothing to show on it is a row. The
        three wrapped rows that used to open the list went with redesign
        ticket 11: last month and last year are the quick picks under the
-       title, and any range is the span on the rail. The milestone timeline
-       joins instead - it was reachable from one row on Home, which ticket
-       13 takes away, and the past half of the arc belongs to this door. -->
+       title, and any range is the span on the rail.
+
+       The milestone timeline joined this list in ticket 13 and left again
+       in redesign ticket 43, which merged the rail into the milestones
+       screen on the Transition door. It was the one row here that opened
+       another area's screen, and every other row on this list lights this
+       same tab; Look back keeps the readings it owns. -->
   <SectionHeading text={m.stats_look_back()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
-    <ListRow key="timeline" icon="timeline" title={m.timeline()} subtitle={m.tl_intro()} href="/timeline" />
     <ListRow
       key="body-map"
       icon="grid"
