@@ -55,7 +55,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import VoiceFigures from '$lib/components/VoiceFigures.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
-  import VoicingRibbon from '$lib/components/VoicingRibbon.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -176,13 +175,12 @@
       is arriving yet, otherwise nothing at all.
 
       Silence is reported in words as well as drawn, so somebody who cannot
-      see the ribbon gets the same answer - the contract the figure this
-      replaced was held to. It clears the moment a voice arrives rather
-      than lingering. */
-  let liveLine = $derived.by(() => {
-    if (phase === 'retry') return retryAdvice.join(' ');
-    if (liveAdvice.length > 0) return liveAdvice.join(' ');
-    return frames.some((frame) => frame.hz !== null) ? '' : m.vb_hearing_silent();
+      see the figure gets the same answer. It clears the moment a voice
+      arrives rather than lingering. */
+  let liveLines = $derived.by(() => {
+    if (phase === 'retry') return retryAdvice;
+    if (liveAdvice.length > 0) return liveAdvice;
+    return frames.some((frame) => frame.hz !== null) ? [] : [m.vb_hearing_silent()];
   });
   /* Whose typical ranges belong on the figure: the language of the passage
      being read, not the app's (ADR-0059). A passage of somebody's own words
@@ -540,14 +538,50 @@
            the voice has been going, and anything to do differently about
            the room or the level. -->
       {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
-        <!-- One rail of the last two seconds: filled where the tracker
-             found a voice, gaps for the breaths and the commas, empty when
-             nothing is arriving. Presence has no magnitude, which is what
-             lets it say "this is working" in 6px where a pitch figure
-             needed 148 and a gutter. -->
+        <!-- The pitch graph is back on the reading step (Alicja, 2026-09-14:
+             "reading the passage should display a graph with live pitch"),
+             which reverses her own call of 2026-09-04 that took it off. What
+             stood in for it there was a 6px voicing ribbon, invented for
+             "the one step that cannot show a graph"; the step can show one
+             again, so the stand-in has gone rather than sitting under a
+             trace that says the same thing with more in it - a break in the
+             line is a frame that was not voiced.
+
+             `pitch` rather than `steadiness`: reading has no note to hold,
+             so the question is where the voice is, on the absolute Hz axis
+             with the passage language's own reference bands behind it
+             (ADR-0059). The vowel step keeps `steadiness` for the opposite
+             reason - one shape to hit, and a flat line is the whole answer.
+
+             No run bar under it (`targetSeconds` null). That mark is the
+             hold task's and this task has no hold in it, which is the whole
+             of ticket 41; the coverage cue below is what a read is measured
+             by.
+
+             **No bands, and that is a measurement rather than a
+             preference.** ADR-0059's rule is that bands never appear
+             without their citation, and the citation is three paragraphs:
+             drawn here it came to 300px and pushed the passage itself off a
+             390x844 screen, so the words somebody was told to read aloud
+             were not on the screen while they read them. The bands and
+             their source are on the take's own figure a moment later, which
+             is where somebody can actually read them - ADR-0059 already
+             says that is the point of putting them there. What the live
+             figure keeps is the absolute Hz axis and the person's own
+             comfort bracket, which is line work rather than a citation. -->
         <div class="vb-live" data-vb-live in:wipe|global out:wipe|global>
-          <span class="vb-live-label">{m.vb_hearing_label()}</span>
-          <VoicingRibbon data-vb-hearing {frames} label={m.vb_hearing_label()} />
+          <VoiceGauge
+            data-vb-gauge
+            {role}
+            {comfort}
+            reading="pitch"
+            language={null}
+            {frames}
+            report={reading}
+            targetSeconds={null}
+            label={m.vb_practise_gauge()}
+            advice={liveLines}
+          />
 
           <!-- How much of the reading has arrived, against the floor the
                gate is actually applying (ticket 41). It replaced the held
@@ -576,8 +610,6 @@
               <span class="vb-covered-fill" style="--vb-covered: {coverage.toFixed(4)}"></span>
             </div>
           </div>
-
-          <p class="vb-live-advice" aria-live="polite">{liveLine}</p>
         </div>
       {/if}
 
@@ -750,15 +782,6 @@
     transition: transform var(--dur-fast) var(--ease-out);
   }
 
-  .vb-live-advice {
-    margin: 0;
-    /* One line of room kept whether or not there is anything to say, so
-       nothing jumps up the screen the moment a check clears. */
-    min-height: calc(var(--text-sm) * 1.5);
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--muted);
-  }
 
   .vb-take {
     margin-top: var(--space-5);

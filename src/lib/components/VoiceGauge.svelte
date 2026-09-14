@@ -77,6 +77,7 @@
     DEFAULT_PITCH_AXIS,
     pitchAxis,
     semitonesFrom,
+    plainHzTicks,
     steadinessAxis,
     steadinessTicks,
     type BandLanguage,
@@ -129,7 +130,12 @@
     reading?: 'pitch' | 'steadiness';
     /** Whose figures the bands are (bands.ts's `bandsFor`). Read only in
         `pitch`; a steadiness figure cites nothing. */
-    language: BandLanguage;
+    /** Whose published ranges belong behind the trace, or null for none.
+        Null is not an omission: ADR-0059's rule is that bands never appear
+        without their citation, so a figure with no population to cite draws
+        neither, and both the vowel step and the reading step are that
+        figure for their own reasons (see `reading`). */
+    language: BandLanguage | null;
     languageGuessed?: boolean;
     role?: Role;
     [attribute: string]: unknown;
@@ -224,7 +230,11 @@
     trace={frames}
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
-    ticks={steadiness && heldHz !== null ? steadinessTicks(heldHz) : undefined}
+    ticks={steadiness && heldHz !== null
+      ? steadinessTicks(heldHz)
+      : language === null
+        ? plainHzTicks(axis)
+        : undefined}
     tickLabel={steadiness && heldHz !== null
       ? (hz) => semitoneLabel(semitonesFrom(heldHz, hz))
       : hzLabel}
