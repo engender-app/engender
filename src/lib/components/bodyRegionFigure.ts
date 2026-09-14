@@ -54,68 +54,51 @@ export interface Shape extends Box {
   r: number;
   /** The vertical radius, where it differs from `r`. */
   ry?: number;
-  /** Path data, for the two shapes a rounded rectangle cannot be: the
-      mannequin's head is an egg split across two regions, so its halves are
-      a dome and a jaw - each rounded on one side and flat on the other,
-      which `rect` has no way to say. The box above stays the shape's
-      bounding box either way, so every geometry test reads the same thing
-      whichever way a shape is drawn. */
-  d?: string;
 }
 
 export const GROUND_REGION = 'whole_body';
 
-/* The silhouette: a wooden artist's mannequin, the kind sold for learning
-   proportions (Alicja's reference, 2026-09-14, after the first two attempts
-   at this).
+/* The silhouette, which is the one this screen has always had: a head, a
+   torso, two arms, a pelvis, two thighs and two shins, in soft rounded
+   forms (Alicja picked it back out of the before/after on 2026-09-14,
+   after a mannequin and after a column of blocks).
 
-   It is the right answer to "neutral but still a body" because it is
-   already the answer the world uses. A mannequin is a body everybody reads
-   as a body and nobody reads as a particular one - it has no face, no hair,
-   no skin and no sex characteristics, and that is not an omission somebody
-   has to notice and approve, it is what the object is for. Drawing one
-   costs no neutrality argument at all.
+   Kept in its own vocabulary rather than redrawn - the same shapes in the
+   same proportions the old figure used - and re-sized for one reason: three
+   regions stack inside the head and neck and each of them owes a finger
+   48px, which the old head at r11 could not give. Everything the ticket
+   changed is what happens *on* the body, not the body.
 
-   It also segments itself. A mannequin is blocks and ball joints, and the
-   seams fall almost exactly where this screen's regions do: a head above a
-   neck, a ribcage above a waist ball above a pelvis, paddles at the ends of
-   the limbs. So the regions are not shapes laid over a drawing - they are
-   the drawing's own parts, which is what the ticket asked for by a
-   different route. What is left for `whole_body` is the connective
-   mannequin: the upper arms and forearms, the thighs and shins, and the
-   ball joints between them.
-
-   Neutrality still gets a rule rather than a promise. The ribcage and the
-   pelvis are both drawn at one constant width and mirrored about the
-   midline, so neither can pull in at a waist, swell at a bust or flare at a
-   hip; `TORSO` names the ribcage and the test reads it. */
+   Neutrality is carried the way Alicja stated it: the outline has to be
+   neutral, not gendered. So the torso is one width from the shoulders down,
+   the pelvis is never wider than it - the old drawing had it 2 units wider,
+   which is a hip flare, small but there - and every piece is mirrored about
+   the midline. All three are tests. */
 export const GROUND_SHAPES: Shape[] = [
-  // Left arm: upper, elbow ball, forearm. Hanging close to the trunk, the
-  // way a mannequin stands when nobody has posed it.
-  { left: 23, top: 64, width: 10, height: 20, r: 5 },
-  { left: 22, top: 81, width: 12, height: 12, r: 6 },
-  { left: 23.5, top: 90, width: 9, height: 18, r: 4.5 },
-  // Right arm, mirrored.
-  { left: 67, top: 64, width: 10, height: 20, r: 5 },
-  { left: 66, top: 81, width: 12, height: 12, r: 6 },
-  { left: 67.5, top: 90, width: 9, height: 18, r: 4.5 },
-  // Left leg: hip ball, thigh, knee ball, shin.
-  { left: 36, top: 103, width: 12, height: 12, r: 6 },
-  { left: 37, top: 111, width: 10, height: 20, r: 5 },
-  { left: 36, top: 128, width: 12, height: 12, r: 6 },
-  { left: 37.5, top: 137, width: 9, height: 16, r: 4.5 },
-  // Right leg, mirrored.
-  { left: 52, top: 103, width: 12, height: 12, r: 6 },
-  { left: 53, top: 111, width: 10, height: 20, r: 5 },
-  { left: 52, top: 128, width: 12, height: 12, r: 6 },
-  { left: 53.5, top: 137, width: 9, height: 16, r: 4.5 }
+  /* The head is narrow and tall rather than round, which is the one place
+     this drawing departs from the old one's proportions and is forced
+     rather than chosen: `hairline` and `face_jaw` stack inside it and each
+     owes a finger 48px, so the head cannot be shorter than two touch bands
+     however small a head would look. Narrow keeps it from reading as an
+     oval balanced on a body. */
+  { left: 39, top: 2, width: 22, height: 36, r: 11 }, // head
+  { left: 45, top: 34, width: 10, height: 14, r: 5 }, // neck
+  { left: 31, top: 50, width: 38, height: 52, r: 12 }, // torso
+  { left: 17, top: 54, width: 12, height: 60, r: 6 }, // arms
+  { left: 71, top: 54, width: 12, height: 60, r: 6 },
+  { left: 31, top: 99, width: 38, height: 16, r: 8 }, // pelvis
+  { left: 33, top: 113, width: 14, height: 32, r: 7 }, // thighs
+  { left: 53, top: 113, width: 14, height: 32, r: 7 },
+  { left: 34, top: 142, width: 12, height: 20, r: 6 }, // shins
+  { left: 54, top: 142, width: 12, height: 20, r: 6 }
 ];
 
-/** The ribcage and the pelvis: the two pieces the neutrality rule is
-    actually about, named rather than indexed so the test says what it is
-    checking. Both are drawn at one width and mirrored about the midline. */
-export const TORSO = { left: 32, top: 69, width: 36, height: 17, r: 6 } as const;
-export const PELVIS = { left: 34, top: 93, width: 32, height: 11, r: 5 } as const;
+/** The torso and the pelvis: the two pieces the neutrality rule is actually
+    about, named rather than indexed so the test says what it is checking.
+    Both are drawn at one width, the pelvis is never the wider of the two,
+    and both are mirrored about the midline. */
+export const TORSO = GROUND_SHAPES[2];
+export const PELVIS = GROUND_SHAPES[5];
 
 export interface RegionDrawing {
   region: string;
@@ -144,64 +127,50 @@ export interface RegionDrawing {
    one control while a finger can reach either end. */
 export const REGION_DRAWINGS: RegionDrawing[] = [
   {
-    /* The cranium: the top of the egg. Narrow, because a mannequin's head
-       is taller than it is wide - the first pass drew each half at the full
-       width its band allowed and got two flat discs rather than a head. */
     region: 'hairline',
-    shapes: [{ left: 41, top: 3, width: 18, height: 17, r: 9, d: 'M41 20 A9 17 0 0 1 59 20 Z' }],
+    shapes: [{ left: 42, top: 4, width: 16, height: 12, r: 5 }],
     zones: [{ left: 25, top: 0, width: 50, height: 20 }]
   },
   {
-    // The jaw: the bottom of the egg, a shade narrower. The two together are
-    // a mannequin head, and the line between them is a seam like every other
-    // seam on one.
     region: 'face_jaw',
-    shapes: [{ left: 42, top: 20, width: 16, height: 16, r: 8, d: 'M42 20 A8 16 0 0 0 58 20 Z' }],
+    shapes: [{ left: 41, top: 22, width: 18, height: 13, r: 5 }],
     zones: [{ left: 25, top: 20, width: 50, height: 17 }]
   },
   {
-    // The neck, which on a mannequin is a short post between two joints.
     region: 'voice_throat',
-    shapes: [{ left: 45, top: 37, width: 10, height: 13, r: 4 }],
+    shapes: [{ left: 45.5, top: 38, width: 9, height: 10, r: 4 }],
     zones: [{ left: 25, top: 37, width: 50, height: 15 }]
   },
   {
-    /* Both ball joints and the yoke between them: a shoulder is the join and
-       not a piece of the trunk, which is exactly how a mannequin is built. */
+    // Across the torso's top and over both arms: a shoulder is the join.
     region: 'shoulders',
-    shapes: [
-      { left: 21, top: 53, width: 15, height: 15, r: 7.5 },
-      { left: 64, top: 53, width: 15, height: 15, r: 7.5 },
-      { left: 35, top: 54, width: 30, height: 12, r: 5 }
-    ],
+    shapes: [{ left: 24, top: 55, width: 52, height: 10, r: 4 }],
     zones: [{ left: 0, top: 52, width: 100, height: 16 }]
   },
   {
     region: 'chest',
-    shapes: [TORSO],
+    shapes: [{ left: 35, top: 70, width: 30, height: 15, r: 6 }],
     zones: [{ left: 32, top: 68, width: 36, height: 19 }]
   },
   {
-    // The waist ball and the pelvis block, which move as one.
     region: 'hips_waist',
-    shapes: [{ left: 44, top: 87, width: 12, height: 11, r: 5.5 }, PELVIS],
+    shapes: [{ left: 35, top: 89, width: 30, height: 13, r: 6 }],
     zones: [{ left: 32, top: 87, width: 36, height: 17 }]
   },
   {
     region: 'genitals',
-    shapes: [{ left: 43, top: 105, width: 14, height: 11, r: 5 }],
+    shapes: [{ left: 42, top: 106, width: 16, height: 12, r: 5 }],
     zones: [{ left: 36, top: 104, width: 28, height: 16 }]
   },
   {
-    // The paddles: one at the end of each forearm, one at the end of each
-    // shin, each overlapping the limb it belongs to so the figure is jointed
-    // rather than scattered.
+    // One at the end of each arm and one at the end of each leg, each
+    // overlapping the limb it belongs to.
     region: 'hands_feet',
     shapes: [
-      { left: 22, top: 105, width: 12, height: 12, r: 5.5 },
-      { left: 66, top: 105, width: 12, height: 12, r: 5.5 },
-      { left: 35, top: 150, width: 14, height: 11, r: 4 },
-      { left: 51, top: 150, width: 14, height: 11, r: 4 }
+      { left: 18, top: 106, width: 10, height: 12, r: 5 },
+      { left: 72, top: 106, width: 10, height: 12, r: 5 },
+      { left: 33, top: 149, width: 14, height: 10, r: 4 },
+      { left: 53, top: 149, width: 14, height: 10, r: 4 }
     ],
     zones: [
       { left: 0, top: 144, width: 100, height: 20 },
@@ -210,6 +179,7 @@ export const REGION_DRAWINGS: RegionDrawing[] = [
     ]
   }
 ];
+
 
 
 /** Where a tap means the whole body: everywhere the eight are not. Beside
