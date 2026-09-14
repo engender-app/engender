@@ -16,8 +16,17 @@
      Real buttons over the drawing, never tappable SVG paths - the rule
      InjectionSiteMap.svelte already follows, for the same three reasons: a
      <button> gets the focus ring, the touch target and the accessible name
-     for free. Here there is no SVG at all. The shapes *are* the buttons, so
-     the drawing and the hit targets cannot drift apart.
+     for free. Here there is no SVG at all: the button is transparent and
+     the shape is drawn inside it, which is the same arrangement as a 14px
+     dot inside a 48px button and for the same reason.
+
+     Two rectangles, on purpose. The drawing wants a 22px hairline and a
+     51px chest; the finger wants 48px of everything. Making the shape its
+     own button forced every shape to 48px, and eight of those stacked with
+     their gaps came to 602px - a figure that filled a phone screen on its
+     own, with the charts it exists to point at entirely below the fold.
+     bodyRegionFigure.ts holds both rectangles and the rule that no two
+     buttons overlap.
 
      Three channels, one each, the way the injection map's dots carry three:
 
@@ -48,7 +57,14 @@
   import { m } from '$lib/paraglide/messages';
   import type { RegionSideReading } from '$lib/data/bodyMap';
   import type { BodyRegion } from '$lib/data/types';
-  import { GROUND_SLOT, fillLevel, placeRegions, slotStyle } from './bodyRegionFigure';
+  import {
+    FIGURE_SLOTS,
+    GROUND_SLOT,
+    fillLevel,
+    hitBox,
+    placeRegions,
+    slotStyle
+  } from './bodyRegionFigure';
   import { roleAttrs } from './kit/role';
   import type { Role } from '$lib/theme/roles';
 
@@ -110,6 +126,20 @@
       elsewhere cluster cannot drift apart. `place` is the shape's own
       geometry where it has any - the cluster's items are laid out by flow
       and pass none. */
+  /** The drawn shape's box as percentages of the button around it, so the
+      shape sits exactly where the arrangement puts it on the stage while
+      the button is free to be bigger. */
+  const insetOf = (slot: (typeof FIGURE_SLOTS)[number]) => {
+    const hit = hitBox(slot);
+    const pct = (value: number, of: number) => `${((value / of) * 100).toFixed(3)}%`;
+    return [
+      `left:${pct(slot.left - hit.left, hit.width)}`,
+      `top:${pct(slot.top - hit.top, hit.height)}`,
+      `width:${pct(slot.width, hit.width)}`,
+      `height:${pct(slot.height, hit.height)}`
+    ].join(';');
+  };
+
   const shapeAttrs = (region: BodyRegion, place = '') => {
     const reading = byRegion.get(region.id);
     const level = fillLevel(reading);
@@ -142,10 +172,12 @@
            sit inside. -->
       <button
         type="button"
-        class="region-shape is-ground press"
+        class="region-hit is-ground press"
         {...shapeAttrs(placement.ground, slotStyle(GROUND_SLOT))}
         onclick={() => onSelect(placement.ground!.id)}
-      ></button>
+      >
+        <span class="region-shape is-ground" aria-hidden="true"></span>
+      </button>
     {/if}
 
     {#each placement.slots as { slot, region }, i (region.id)}
@@ -153,10 +185,15 @@
            order the body reads in (rule 10, ticket 19's staggered blocks). -->
       <button
         type="button"
-        class="region-shape press region-arrive"
-        {...shapeAttrs(region, `${slotStyle(slot)};--region-i:${i + 1}`)}
+        class="region-hit press"
+        {...shapeAttrs(region, `${slotStyle(hitBox(slot))};--region-i:${i + 1}`)}
         onclick={() => onSelect(region.id)}
-      ></button>
+      >
+        <!-- The shape inside the button, at the size the drawing wants: the
+             button's box is the touch target and this is what is seen. Its
+             own percentages are of the button, not of the stage. -->
+        <span class="region-shape region-arrive" aria-hidden="true" style={insetOf(slot)}></span>
+      </button>
     {/each}
   </div>
 
@@ -169,14 +206,20 @@
     <div class="region-elsewhere">
       <p class="region-elsewhere-head">{m.body_map_elsewhere()}</p>
       <div class="region-elsewhere-shapes">
-        {#each placement.elsewhere as region (region.id)}
+        {#each placement.elsewhere as region, i (region.id)}
           <button
             type="button"
             class="region-elsewhere-item press"
-            {...shapeAttrs(region)}
+            {...shapeAttrs(region, `--region-i:${placement.slots.length + i + 1}`)}
             onclick={() => onSelect(region.id)}
           >
-            <span class="region-shape is-inline" aria-hidden="true"></span>
+            <!-- Continuing the figure's own stagger rather than appearing
+                 whole: the cluster is docked to the figure and sits below
+                 it, so it takes the next steps after the eight. Arriving
+                 fully formed while the shapes above were still coming in is
+                 a thing painted at its destination without travelling
+                 there, which is the definition being measured. -->
+            <span class="region-shape is-inline region-arrive" aria-hidden="true"></span>
             <span class="region-elsewhere-name">{region.name}</span>
           </button>
         {/each}
@@ -199,7 +242,7 @@
     position: relative;
     width: 100%;
     max-width: 320px;
-    aspect-ratio: 100 / 166;
+    aspect-ratio: 100 / 135;
     margin: 0 auto;
   }
 
@@ -234,19 +277,30 @@
       transform var(--dur-med) var(--ease-out);
   }
 
-  .region-stage .region-shape {
+  /* The button: the touch target, and nothing to look at. It is bigger than
+     the shape inside it wherever the drawing wants a shape under 48px. */
+  .region-hit {
+    position: absolute;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .region-hit > .region-shape {
     position: absolute;
     /* The eight sit on whole_body, and whole_body carries a reading of its
        own, so at the deep end of the ramp the ground was the same colour as
        everything on it and the figure read as one slab. A ring of the card's
        own surface, just outside each shape's edge, lifts them off it -
        every shape then meets the ground across a line of page rather than
-       across its own colour. Inside the 2-unit floor on the gaps, so two
-       neighbours' rings never touch. */
+       across its own colour. The gap floor in the arrangement holds two
+       neighbours' rings apart. */
     --region-base: var(--surface);
   }
 
-  .region-stage .region-shape::before {
+  .region-hit > .region-shape::before {
     content: '';
     position: absolute;
     inset: -3px;
@@ -255,9 +309,13 @@
     pointer-events: none;
   }
 
-  /* The ground is under them, so it takes no ring - it has nothing to be
-     lifted off. */
-  .region-stage .region-shape.is-ground::before {
+  /* The ground fills its button, which is the whole stage, and is under the
+     eight - so it takes no ring; it has nothing to be lifted off. */
+  .region-hit.is-ground > .region-shape {
+    inset: 0;
+  }
+
+  .region-hit.is-ground > .region-shape::before {
     content: none;
   }
 
@@ -267,7 +325,6 @@
      line weight alone, one step down. It is still a full control. */
   .region-shape.is-ground {
     border-width: 1px;
-    --region-base: var(--surface);
   }
 
   /* Mixed: the region went both ways in this range. Two short bars in the
@@ -280,16 +337,6 @@
      two of something says that where one of anything does not. The ink is
      the ramp's own for this step, so it holds against the fill it sits on
      at every level; at level 0 there is no fill and it falls to --text. */
-  .region-shape[data-region-mixed],
-  [data-region-mixed] > .region-shape {
-    position: relative;
-  }
-
-  .region-stage .region-shape[data-region-mixed] {
-    position: absolute;
-  }
-
-  .region-shape[data-region-mixed]::after,
   [data-region-mixed] > .region-shape::after {
     content: '';
     position: absolute;
@@ -301,7 +348,7 @@
       linear-gradient(var(--region-ink, var(--text)) 0 2px, transparent 2px 5px, var(--region-ink, var(--text)) 5px 7px);
   }
 
-  .region-shape:hover,
+  .region-hit:hover > .region-shape,
   .region-elsewhere-item:hover > .region-shape {
     border-color: var(--role-mark, var(--accent));
   }
@@ -310,7 +357,6 @@
      the shape grows a little in place. Never a travelling indicator - two
      regions are not adjacent the way tabs are, and a pill flying across a
      torso is motion for its own sake. */
-  .region-shape[aria-pressed='true'],
   [aria-pressed='true'] > .region-shape {
     border-color: var(--role-mark, var(--accent));
     border-width: 3px;

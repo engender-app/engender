@@ -9,9 +9,10 @@ import {
   FIGURE_SLOTS,
   GROUND_REGION,
   GROUND_SLOT,
-  MIN_SLOT_UNITS,
   STAGE_HEIGHT,
+  TOUCH_UNITS,
   fillLevel,
+  hitBox,
   placeRegions,
   slotStyle
 } from './bodyRegionFigure.ts';
@@ -51,14 +52,11 @@ test('every slot is centred on the midline and sits inside the ground', () => {
   }
 });
 
-test('the shapes do not overlap, so a tap lands on exactly one region', () => {
+test('the drawn shapes do not overlap either', () => {
   for (let i = 1; i < FIGURE_SLOTS.length; i += 1) {
     const above = FIGURE_SLOTS[i - 1];
     const below = FIGURE_SLOTS[i];
-    assert.ok(
-      above.top + above.height <= below.top,
-      `${above.region} and ${below.region} overlap`
-    );
+    assert.ok(above.top + above.height <= below.top, `${above.region} and ${below.region} overlap`);
   }
 });
 
@@ -102,13 +100,28 @@ test('a slot writes itself as percentages of the figure box', () => {
   assert.ok(!style.includes('NaN'));
 });
 
-/* A shape is its own hit target now, so the drawing carries the 48px floor
-   rather than an invisible button around a 14px dot. */
-test('no shape is drawn shorter than the touch target', () => {
-  for (const slot of [...FIGURE_SLOTS, GROUND_SLOT]) {
+/* The drawing and the target are two rectangles. A shape may be drawn as
+   short as a hairline wants; the button around it is never under 48px on
+   either side, and it still has to be the shape's own button - so no two of
+   them may overlap, or a tap lands on two regions at once. */
+test('every region has a 48px button, whatever size its shape is drawn', () => {
+  const px = (units: number) => (units * STAGE_HEIGHT) / FIGURE_BOX.height;
+  for (const slot of FIGURE_SLOTS) {
+    const hit = hitBox(slot);
+    assert.ok(px(hit.height) >= 47.9, `${slot.region}'s button is ${px(hit.height)}px tall`);
+    assert.ok(px(hit.width) >= 47.9, `${slot.region}'s button is ${px(hit.width)}px wide`);
+    assert.ok(hit.height >= slot.height && hit.width >= slot.width, `${slot.region}'s button is smaller than its shape`);
+    assert.ok(hit.top >= 0 && hit.top + hit.height <= FIGURE_BOX.height, `${slot.region}'s button is off the box`);
+  }
+});
+
+test('no two buttons overlap, so a tap lands on exactly one region', () => {
+  for (let i = 1; i < FIGURE_SLOTS.length; i += 1) {
+    const above = hitBox(FIGURE_SLOTS[i - 1]);
+    const below = hitBox(FIGURE_SLOTS[i]);
     assert.ok(
-      slot.height >= MIN_SLOT_UNITS,
-      `${slot.region} is ${(slot.height * STAGE_HEIGHT) / FIGURE_BOX.height}px tall, under 48`
+      above.top + above.height <= below.top + 0.001,
+      `${above.region}'s button runs into ${below.region}'s`
     );
   }
 });
@@ -123,4 +136,17 @@ test('no two shapes are closer than their separator rings', () => {
     const gapPx = ((below.top - (above.top + above.height)) * STAGE_HEIGHT) / FIGURE_BOX.height;
     assert.ok(gapPx >= 10, `${above.region} to ${below.region} is ${gapPx}px, under the two rings' 10px`);
   }
+});
+
+/* whole_body is the ground, so the eight sitting on it cover its middle and
+   the only part of it a finger can reach is what they leave over. That
+   leftover has to be a target in its own right: a clear band below the last
+   shape, one touch target tall and the full width of the figure. */
+test('the ground keeps a clear band a finger can actually hit', () => {
+  const lowest = FIGURE_SLOTS.map(hitBox).reduce((low, hit) =>
+    hit.top + hit.height > low.top + low.height ? hit : low
+  );
+  const band = GROUND_SLOT.top + GROUND_SLOT.height - (lowest.top + lowest.height);
+  assert.ok(band >= TOUCH_UNITS, `the ground's clear band is ${band} units, under the touch floor`);
+  assert.equal(GROUND_SLOT.width, FIGURE_BOX.width);
 });
