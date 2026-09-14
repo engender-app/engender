@@ -4014,9 +4014,11 @@ try {
   }
   await page.locator('[data-segment="compare"]').click();
   await page.waitForSelector('[data-voice-cell]');
-  if ((await page.locator('[data-comfort-band]').count()) !== 0) {
-    throw new Error('the compare tab still shows the practise tab\'s comfort row');
-  }
+  /* Waited on rather than counted: the tab swap is a state change and rule
+     10 makes it move, so the row on its way out is in the tree for a frame
+     or two after the incoming tab's first row is. What the walk is about is
+     that it goes, not which frame it goes on. */
+  await page.locator('[data-comfort-band]').waitFor({ state: 'detached', timeout: 5000 });
 
   /* Redesign ticket 42. The fixture writes six benchmarks now, so what this
      tab shows is the list rather than its empty notice - and the two things
