@@ -58,12 +58,11 @@
 }
 .photo-add:hover { background: var(--accent-soft); }
 
-.voice-player { flex: 1; min-width: 0; max-width: 320px; height: 36px; }
-
-/* The stored note and the live preview are the same box, so the rules live
-   once here rather than half in VideoNotePlayer.svelte's own <style> - the
-   drift this file's other comments keep warning about. */
-.video-note-player, .video-preview video {
+/* The live preview's box. The stored note shared this rule until ticket 46,
+   which gave the note a transport, a frame and a full-screen state of its
+   own - one shape in two states is one component's business, and what is
+   left here belongs to the preview alone. */
+.video-preview video {
   width: 100%; max-height: 40vh;
   border-radius: var(--r-block);
   background: #000;
