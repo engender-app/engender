@@ -84,20 +84,30 @@
   });
 </script>
 
-{#if url}
-  <!-- Uncovered from its own edge rather than faded up from nothing
-       (DIRECTION rule 10): the row is a block and blocks clip in. `|global`
-       because the {#if} above is what flips, and a transition on a child of
-       a block that is itself appearing would otherwise never play. -->
-  <div class="voice-player" in:wipe|global>
+<!-- The box is there from the first frame, at the height a transport is,
+     and the transport is uncovered inside it once the file has been read.
+     Two reasons it is this way round: nothing below the player moves when it
+     arrives (the standing motion clause - a row that grows by 48px in one
+     frame moves everything under it in one frame), and what does arrive
+     arrives by being uncovered from its own edge rather than faded up from
+     nothing (DIRECTION rule 10: blocks clip in). `|global` because the {#if}
+     is what flips, and a transition on a child of something that is itself
+     appearing would otherwise never play. -->
+<div class="voice-player">
+  {#if url}
     <audio bind:this={media} src={url} preload="metadata"></audio>
-    <MediaTransport {media} {peaks} {onDuration} />
-  </div>
-{/if}
+    <div class="voice-player-in" in:wipe|global>
+      <MediaTransport {media} {peaks} {onDuration} />
+    </div>
+  {/if}
+</div>
 
 <style>
   .voice-player {
     flex: 1;
     min-width: 0;
+    /* The transport's own row height, held whether or not there is anything
+       to play yet. */
+    min-height: var(--touch-target);
   }
 </style>
