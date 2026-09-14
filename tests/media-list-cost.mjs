@@ -174,6 +174,18 @@ try {
   console.log(`  after the list was first drawn: made ${afterList.made}, revoked ${afterList.revoked}`);
   console.log(`  after leaving it: made ${leftList.made}, revoked ${leftList.revoked}`);
 
+  /* The cache is the point of the second number, so it is gated rather than
+     printed: a regression that decoded on every mount would still print two
+     numbers and, without this, still exit 0. Four times faster is far below
+     the ~28x measured and far above anything a warm run could reach by
+     accident. */
+  if (warm * 4 > cold) {
+    console.log(
+      `\nCACHE: the second visit took ${warm}ms against ${cold}ms cold - the peaks are being recomputed per mount`
+    );
+    process.exitCode = 1;
+  }
+
   const leaked = leftList.made - leftList.revoked;
   console.log('');
   console.log(
