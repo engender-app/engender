@@ -330,6 +330,26 @@ export function steadinessAxis(referenceHz: number | null): PitchAxis | null {
 /** Where the gutter's numbers go on a steadiness axis: one per semitone,
     as frequencies, so the figure's one Hz-to-y mapping still does the
     placing. */
+/** Round hertz across an axis, for a figure that draws no bands.
+
+    A scale mark, not a claim: these are the round numbers between the axis
+    ends and they name nobody's range, which is what lets an absolute figure
+    be readable without a citation under it (ADR-0059's rule is about
+    published ranges, and a hundred hertz is not one). The reading step took
+    this when the bands left it - a trace on an unlabelled box says the voice
+    moved and never says where it is.
+
+    Fifty hertz apart, which puts four or five marks on the default 70-330
+    axis: closer and the labels collide at 148px of figure, wider and the
+    only marks are at the ends. */
+export function plainHzTicks(axis: PitchAxis, everyHz = 50): number[] {
+  const ticks: number[] = [];
+  for (let hz = Math.ceil(axis.lowHz / everyHz) * everyHz; hz <= axis.highHz; hz += everyHz) {
+    ticks.push(hz);
+  }
+  return ticks;
+}
+
 export function steadinessTicks(referenceHz: number): number[] {
   const ticks: number[] = [];
   for (let semitone = -STEADINESS_SEMITONES; semitone <= STEADINESS_SEMITONES; semitone++) {
