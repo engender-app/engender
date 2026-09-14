@@ -76,22 +76,12 @@ async function seed(page) {
   await page.waitForTimeout(1500);
 }
 
-for (const theme of THEMES) {
-  const page = await openPage();
-  await seed(page);
-  await dress(page, theme);
-
-  /* 1. The record summary: the pitch figure with its density, and the
-        figure blocks under it. A take has to be read for either to exist,
-        so the passage is read at the fake microphone's steady rate and the
-        vowel step skipped. */
-  await settle(page, '/practice/voice?tab=record');
-  await clearToasts(page);
+/** One take, read to the passage's floor and its vowels skipped, leaving
+    the flow on its summary. */
+async function read(page) {
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(9500);
   await page.locator('[data-vb-stop]').click();
-  /* Three held vowels, each skipped: what this ticket changed is on the
-     summary, and a vowel take of a sawtooth proves nothing about it. */
   for (let vowel = 0; vowel < 3; vowel++) {
     await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
     await page.locator('[data-vb-skip]').click();
@@ -99,6 +89,34 @@ for (const theme of THEMES) {
   }
   await page.waitForSelector('[data-vb-take]', { timeout: 20000 });
   await clearToasts(page);
+}
+
+for (const theme of THEMES) {
+  const page = await openPage();
+  await seed(page);
+  await dress(page, theme);
+
+  /* 1. The record summary: the pitch figure with its density, and the
+        figure blocks under it. A take has to be read for either to exist,
+        so the passage is read at the fake microphone's wandering rate and
+        the three held vowels are skipped.
+
+        Twice, because the two states of a figure block are both this
+        ticket's: the first take has nothing behind it and says so, and the
+        second draws the history with the ring on itself. The seeded
+        benchmarks cannot supply that history - they were recorded through a
+        capture chain this browser is not (ADR-0061), which is the rule
+        working rather than a fixture problem. */
+  await settle(page, '/practice/voice?tab=record');
+  await clearToasts(page);
+  await read(page);
+  await page.locator('[data-vb-figures]').screenshot({ path: `${outDir}/figures-first-trans-${theme}.png` });
+  await page.locator('[data-vb-save]').click();
+  await page.waitForTimeout(1500);
+
+  await settle(page, '/practice/voice?tab=record');
+  await clearToasts(page);
+  await read(page);
   await page.locator('[data-vb-take]').screenshot({ path: `${outDir}/take-trans-${theme}.png` });
   await page.locator('[data-vb-figures]').screenshot({ path: `${outDir}/figures-trans-${theme}.png` });
   await page.close();

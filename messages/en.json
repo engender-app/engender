@@ -3003,6 +3003,7 @@
   "vb_history_first": "Your first take, so there is nothing behind it yet.",
   "vb_history_other_passage": "The first reading of this passage.",
   "vb_history_other_setup": "The first reading on this setup.",
+  "vb_history_unread": "No earlier reading of this one.",
   "vb_hz": "{value} Hz",
   "vb_hz_range": "{low} to {high} Hz",
   "vb_semitones": "{value} semitones",
