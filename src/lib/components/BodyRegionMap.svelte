@@ -326,11 +326,17 @@
      --region-fill replaces the fill when the whole body has a reading of its
      own, and is absent when it does not, which is what an unlogged body
      should be. */
+  /* The contour is the one main has always drawn: --outline at 1.5 of a
+     100-unit box (Alicja, 2026-09-14: "give it the same stroke that the old
+     version had"). The edge layer shows only the outer half of its stroke,
+     the face layer covering the rest, so the width here is twice the line
+     that ends up on the page. */
   .region-body-edge > rect {
     fill: var(--outline);
     stroke: var(--outline);
-    stroke-width: 1.6;
+    stroke-width: 3;
     stroke-linejoin: round;
+    transition: stroke-width var(--dur-med) var(--ease-out);
   }
 
   .region-body-face > rect {
@@ -342,7 +348,7 @@
   .region-body.is-picked .region-body-edge > rect {
     fill: var(--role-mark, var(--accent));
     stroke: var(--role-mark, var(--accent));
-    stroke-width: 2.6;
+    stroke-width: 5;
   }
 
   /* The seam: the panel grown back out to its band, in the card's own
@@ -354,15 +360,23 @@
   /* A panel. The fill is the region's reading; with none, the card's colour
      and a firmer edge, so undrawn never reads as the palest step of the
      ramp. */
+  /* A panel at rest carries its stroke at zero width rather than not at
+     all, which is what lets the selection grow one from nothing. An
+     unfilled panel's own outline stays lighter than the contour around the
+     body: the contour is the figure's edge and this is a boundary inside
+     it. */
   .region-tile > rect {
     fill: var(--region-fill, var(--surface));
-    stroke: none;
-    transition: fill var(--dur-med) var(--ease-out);
+    stroke: var(--outline);
+    stroke-width: 0;
+    transition:
+      fill var(--dur-med) var(--ease-out),
+      stroke var(--dur-med) var(--ease-out),
+      stroke-width var(--dur-med) var(--ease-out);
   }
 
   .region-tile.is-empty > rect {
     fill: var(--surface);
-    stroke: var(--outline);
     stroke-width: 0.9;
   }
 
@@ -376,18 +390,20 @@
   .region-tile {
     transform-box: fill-box;
     transform-origin: center;
-    transition:
-      transform var(--dur-med) var(--ease-out),
-      stroke var(--dur-med) var(--ease-out);
+    transition: transform var(--dur-med) var(--ease-out);
   }
 
   .region-tile.is-picked {
     transform: scale(1.04);
   }
 
+  /* The picked edge grows from nothing to its full width on the shape that
+     was tapped, rather than appearing at it (Alicja, 2026-09-14). A panel
+     with a reading starts at 0 and an empty one at the contour's own 1.5, so
+     the edge always travels to where it ends up. */
   .region-tile.is-picked > rect {
     stroke: var(--text);
-    stroke-width: 0.9;
+    stroke-width: 1.8;
   }
 
   /* The mark's own bars. Held out of the panel's rules by class rather than
