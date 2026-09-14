@@ -157,9 +157,30 @@ export function bandsFor(
   passageKey: string,
   appLocale: string
 ): { language: BandLanguage; guessed: boolean } {
-  const known = passageKey.startsWith('builtin-');
-  const fromPassage = known ? passageKey.slice('builtin-'.length) : appLocale;
-  return { language: fromPassage === 'pl' ? 'pl' : 'en', guessed: !known };
+  const known = passageLanguage(passageKey);
+  return { language: known ?? asBandLanguage(appLocale), guessed: known === null };
+}
+
+/** The language a passage key names, or null where it names none: a custom
+    passage carries a fingerprint of its own text and the practise tab reads
+    no passage at all (data/voice/passages.ts).
+
+    Its own function because two callers ask it and they do different things
+    with the null. The bands guess the app's own language and say they
+    guessed (above); the gate's plausible-rate check takes the most
+    permissive threshold there is rather than guess at all (quality.ts). One
+    place that knows how a key is shaped, so the two cannot disagree about
+    what a built-in key looks like. */
+export function passageLanguage(passageKey: string): BandLanguage | null {
+  if (!passageKey.startsWith('builtin-')) return null;
+  return asBandLanguage(passageKey.slice('builtin-'.length));
+}
+
+/** A locale as a band language. Anything with no published figures of its
+    own reads English's rather than drawing a band for a population nobody
+    has measured. */
+function asBandLanguage(locale: string): BandLanguage {
+  return locale === 'pl' ? 'pl' : 'en';
 }
 
 export interface PitchAxis {
