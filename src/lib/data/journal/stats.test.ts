@@ -945,3 +945,87 @@ test('tagShare is bounded by its range at both ends', async () => {
 
   assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 2 }]);
 });
+
+/* the body map's own read (phase 10 redesign ticket 40) */
+
+test('the body map reads every region at once, each on the side it mostly sat on', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // chest: two dysphoria readings and nothing the other way.
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: 40 } }); // dysphoria 20
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 2, mood: 3, bodyRegions: { chest: 20 } }); // dysphoria 60
+  // hairline: euphoria only.
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 3, mood: 4, bodyRegions: { hairline: 80 } }); // euphoria 60
+  // voice_throat: the binder split - one each way, the louder one painted.
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 4, mood: 2, bodyRegions: { voice_throat: 5 } }); // dysphoria 90
+  await journal.entries.upsertEntry({ epochDay: 102, timestamp: 5, mood: 4, bodyRegions: { voice_throat: 65 } }); // euphoria 30
+
+  const byRegion = new Map(
+    (await journal.stats.bodyRegionMap(100, 102)).map((reading) => [reading.region, reading])
+  );
+
+  assert.deepEqual(byRegion.get('chest'), {
+    region: 'chest',
+    side: 'dysphoria',
+    value: 40,
+    mixed: false,
+    count: 2
+  });
+  assert.deepEqual(byRegion.get('hairline'), {
+    region: 'hairline',
+    side: 'euphoria',
+    value: 60,
+    mixed: false,
+    count: 1
+  });
+  assert.deepEqual(byRegion.get('voice_throat'), {
+    region: 'voice_throat',
+    side: 'dysphoria',
+    value: 90,
+    mixed: true,
+    count: 2
+  });
+  // A region nothing was logged against in the range is simply absent; the
+  // figure draws every region it has and reads an absence as undrawn.
+  assert.equal(byRegion.has('genitals'), false);
+});
+
+test('the body map reaches a region somebody added themselves', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const mine = await journal.bodyRegions.addCustomRegion('Scars');
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { [mine.id]: 15 } }); // dysphoria 70
+
+  const readings = await journal.stats.bodyRegionMap(100, 100);
+  assert.deepEqual(readings.find((r) => r.region === mine.id), {
+    region: mine.id,
+    side: 'dysphoria',
+    value: 70,
+    mixed: false,
+    count: 1
+  });
+});
+
+test('the body map excludes trashed entries, honours the range, and filters by presentation', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    presentationId: girl.id,
+    bodyRegions: { chest: 30 } // dysphoria 40
+  });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: 10 } }); // dysphoria 80
+  await journal.entries.upsertEntry({ epochDay: 200, mood: 3, bodyRegions: { chest: 0 } }); // out of range
+  const trashed = await journal.entries.upsertEntry({ epochDay: 100, mood: 1, bodyRegions: { chest: 0 } });
+  await journal.entries.deleteEntry(trashed);
+
+  assert.deepEqual(await journal.stats.bodyRegionMap(100, 102), [
+    { region: 'chest', side: 'dysphoria', value: 60, mixed: false, count: 2 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, girl.id), [
+    { region: 'chest', side: 'dysphoria', value: 40, mixed: false, count: 1 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, null), [
+    { region: 'chest', side: 'dysphoria', value: 80, mixed: false, count: 1 }
+  ]);
+});

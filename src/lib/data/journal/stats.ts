@@ -19,6 +19,7 @@
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { ConstellationReading } from '../constellationData';
+import { regionReading, type RegionSideReading, type RegionSides } from '../bodyMap';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
@@ -201,6 +202,29 @@ export interface StatsArea {
       `presentationId` is ticket 18's same filter, forwarded to
       getRegionSomaticBreakdown. */
   bodyRegionBreakdown(region: string, presentationId?: string | null): Promise<RegionSomaticBreakdown>;
+  /** What the body map paints: one reading per region that has any in the
+      range, both ends inclusive (phase 10 redesign ticket 40).
+
+      Not `bodyRegionTrend` twice per region. That answers "how did this one
+      region go over time", one point per day per axis, and the figure asks
+      the opposite question - every region at once, each collapsed to one
+      reading - so it would be two calls times however many regions somebody
+      has, which is unbounded since ticket 30 (a custom region is an
+      ordinary reference-data row). One grouped statement instead, and the
+      side rule applied to its rows in `regionReading` (bodyMap.ts).
+
+      A region with no readings in the range is **absent** rather than
+      present at zero, so the figure can draw undrawn and faintest
+      differently - the same distinction the injection map's never-used dot
+      carries. The caller has the region list; this only says which of them
+      the range has anything to say about.
+
+      `presentationId` is ticket 18's same three-state filter (ADR-0048). */
+  bodyRegionMap(
+    fromEpochDay: number,
+    toEpochDay: number,
+    presentationId?: string | null
+  ): Promise<RegionSideReading[]>;
   /** One point per day at least one completed wear session started in the
       range, oldest first, both ends inclusive - the same DayAverage shape
       as bodyRegionTrend, so a wear-time trend overlays the same chart
@@ -496,6 +520,48 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
     async bodyRegionBreakdown(region, presentationId) {
       return getRegionSomaticBreakdown(driver, region, presentationId);
+    },
+
+    async bodyRegionMap(fromEpochDay, toEpochDay, presentationId) {
+      /* Both sides in one pass over the same rows, rather than the two
+         statements `axisFilter` gives one axis at a time: the figure has to
+         know a region went both ways, and two separate reads could only tell
+         it that by being compared afterwards. The CHECK excludes the
+         midpoint from storage (schema.ts), so every row belongs to exactly
+         one of these two branches and the counts always sum to the region's
+         row count.
+
+         The projections are `axisFilter`'s own arithmetic, so a mean here
+         and a point on the chart card below are the same number on the same
+         scale. */
+      const presFilter = entryPresentationFilter(presentationId);
+      const rows = await driver.query<{
+        region: string;
+        dysphoria_count: number;
+        euphoria_count: number;
+        dysphoria_mean: number | null;
+        euphoria_mean: number | null;
+      }>(
+        `SELECT ebr.region AS region,
+                SUM(CASE WHEN ebr.value < 50 THEN 1 ELSE 0 END) AS dysphoria_count,
+                SUM(CASE WHEN ebr.value > 50 THEN 1 ELSE 0 END) AS euphoria_count,
+                AVG(CASE WHEN ebr.value < 50 THEN (50 - ebr.value) * 2 END) AS dysphoria_mean,
+                AVG(CASE WHEN ebr.value > 50 THEN (ebr.value - 50) * 2 END) AS euphoria_mean
+         FROM entry e
+         JOIN entry_body_region ebr ON ebr.entry_id = e.id
+         WHERE e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?${presFilter.sql}
+         GROUP BY ebr.region ORDER BY ebr.region`,
+        [fromEpochDay, toEpochDay, ...presFilter.params]
+      );
+      return rows.map((row) =>
+        regionReading({
+          region: row.region,
+          dysphoriaCount: row.dysphoria_count,
+          euphoriaCount: row.euphoria_count,
+          dysphoriaMean: row.dysphoria_mean,
+          euphoriaMean: row.euphoria_mean
+        } satisfies RegionSides)
+      );
     },
 
     async wearTimeTrend(fromEpochDay, toEpochDay) {

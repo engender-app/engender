@@ -23,7 +23,7 @@
 
 import { makeLiveGauge, type LiveGauge } from '$lib/audio/live';
 import type { PitchFrame } from '$lib/audio/pitch';
-import type { QualityCheck, QualityReport } from '$lib/audio/quality';
+import type { QualityGate, QualityReport } from '$lib/audio/quality';
 import { captureChainOfStream, openMicrophone, recordStream, type MicRefusal } from './voiceRecording';
 
 /** Formants under 4 kHz need 8 kHz of bandwidth; 16 kHz is the standard
@@ -95,7 +95,7 @@ async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
     already opened and returns null instead of a session nothing will ever
     read; both call sites hang their own `AbortController` on `onDestroy`. */
 export async function startTake(
-  checks: readonly QualityCheck[],
+  gate: QualityGate,
   signal?: AbortSignal
 ): Promise<TakeSession | MicRefusal | null> {
   // Unprocessed: a benchmark measures the microphone's own answer, not the
@@ -119,7 +119,7 @@ export async function startTake(
   analyser.fftSize = ANALYSER_FFT_SIZE;
   context.createMediaStreamSource(stream).connect(analyser);
 
-  const gauge: LiveGauge = makeLiveGauge(ANALYSIS_SAMPLE_RATE, checks);
+  const gauge: LiveGauge = makeLiveGauge(ANALYSIS_SAMPLE_RATE, gate);
   const latest = new Float32Array(analyser.fftSize);
   let lastPollAt = context.currentTime;
 

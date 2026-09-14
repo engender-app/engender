@@ -31,6 +31,7 @@
 
 import { paddedRange, type PaddedRange, type Sample, type SeriesPoint } from './geometry';
 import { comparabilityBreak, type ComparableTake, type SeriesBreak } from '../audio/benchmarkDelta';
+import { plausibleRate } from '../audio/quality';
 import type { OwnSeriesMetricKey } from '../data/voice/metrics';
 
 export type { SeriesBreak };
@@ -119,7 +120,19 @@ const FIGURES: Record<OwnSeriesMetricKey, FigureShape> = {
     minPad: 5
   },
   spread: { read: (b) => b.semitoneSd, minPad: 0.2 },
-  rate: { read: (b) => b.wordsPerMinute, minPad: 2 },
+  /* A rate nobody could have read at is a gap rather than a reading
+     (redesign ticket 41). Benchmarks recorded before the passage had a
+     working length gate could be a few words of an abandoned take divided
+     into the whole passage's word count, which reports roughly twice the
+     true speaking rate, and there is no stored field that proves it either
+     way. Dropping the impossible ones leaves a shorter honest line instead
+     of an honest one with a spike in it; nothing is recomputed, because the
+     stored pitch track recovers the duration and not how many words were
+     actually read. */
+  rate: {
+    read: (b) => (plausibleRate(b.wordsPerMinute, b.passageKey) ? b.wordsPerMinute : null),
+    minPad: 2
+  },
   resonance: {
     read: (b) => b.f1Hz,
     second: { read: (b) => b.f2Hz, scale: 'own' },
