@@ -3903,6 +3903,36 @@ try {
   fail('measurements protocol notice dedup and dismiss persistence', e);
 }
 
+/* Ticket 135: a demo-bar state jump is a journal clear and a reseed through
+   the worker, and the persona's seed writes presentations before the
+   entries that name them. A second jump starting inside the first deletes
+   those presentations between the two steps, so `upsertEntry` refuses the
+   entry that names one and the seed stops there - `unknown presentation` in
+   the page, and a journal holding whatever the persona had got to. The
+   sweep did this on every run, because it waited for `[data-home-hello]`
+   and Home was already on screen when it clicked.
+
+   Dispatched rather than clicked, so what refuses the second jump is the
+   bar's own guard and not Playwright waiting for the button to come back. */
+try {
+  await fresh('/');
+  const before = errors.length;
+  await page.click('[data-reset-demo]');
+  await page.waitForSelector('[data-demo-busy]', { timeout: 5000 });
+  await page.locator('[data-fill-every-feature]').dispatchEvent('click');
+  await page.waitForSelector('[data-demo-busy]', { state: 'detached', timeout: 60000 });
+  await booted();
+  if (new URL(page.url()).pathname !== '/') {
+    throw new Error(`the overlapping jump ran anyway: ${page.url()}`);
+  }
+  const interrupted = errors.slice(before).filter((e) => /unknown presentation/.test(e));
+  if (interrupted.length) throw new Error(`the seed was interrupted: ${interrupted[0]}`);
+
+  ok('the demo bar refuses a second state jump while one is still writing');
+} catch (e) {
+  fail('demo bar state jump overlap', e);
+}
+
 /* Phase 5 ticket 36: the persona alone leaves most of the More hub in its
    empty state, which is why this ticket exists - a review pass through
    those screens was "a tour of empty states with a few exceptions"
