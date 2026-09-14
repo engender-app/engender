@@ -24,14 +24,17 @@
    What the queue does not do - on either platform - is isolate a
    transaction. An unrelated call made while one is open still lands between
    its BEGIN and COMMIT, because both drivers have one connection and one
-   queue. Nothing today issues journal work concurrently with a transaction,
-   and the web driver has the same exposure, so this is a property the two
-   share rather than something Android introduces. */
+   queue. That much is a property the two share rather than something
+   Android introduces, and it is what lets a transaction's own callback
+   reach the connection at all. What it cost until ticket 134 was a second
+   *transaction* being able to start inside the first one's window;
+   oneTransactionAtATime() below is where that no longer happens. */
 
 import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './sqlocal-driver.ts';
+import { oneTransactionAtATime } from './transactor.ts';
 
 interface SqliteBridge {
   open(options: { name: string; hexKey?: string }): Promise<void>;
@@ -143,17 +146,11 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
 
     /* The steps are queued individually, so a statement the callback makes
        lands between the BEGIN and the COMMIT rather than behind both. */
-    async transaction<T>(fn: () => T | Promise<T>): Promise<T> {
-      await afterOpen(() => Sqlite.beginTransaction());
-      try {
-        const result = await fn();
-        await afterOpen(() => Sqlite.commitTransaction());
-        return result;
-      } catch (err) {
-        await afterOpen(() => Sqlite.rollbackTransaction());
-        throw err;
-      }
-    },
+    transaction: oneTransactionAtATime({
+      begin: () => afterOpen(() => Sqlite.beginTransaction()),
+      commit: () => afterOpen(() => Sqlite.commitTransaction()),
+      rollback: () => afterOpen(() => Sqlite.rollbackTransaction())
+    }),
 
     async close() {
       await afterOpen(() => Sqlite.close());

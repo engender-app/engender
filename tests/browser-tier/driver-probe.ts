@@ -69,7 +69,44 @@ async function run() {
      SELECT COUNT(*) AS n FROM numbered GROUP BY day - rn ORDER BY n DESC LIMIT 1`
   ).then((rows) => rows[0]?.n ?? 0);
 
+  /* Ticket 134: two transactions started at once. Overlapping writes are
+     ordinary in the app - an entry save and the photo store's write land on
+     their own schedules, and boot's housekeeping passes run with the screens
+     live - and until this ticket the second one's BEGIN landed inside the
+     first one's window, which SQLite refuses ("cannot start a transaction
+     within a transaction"). Worse than the error: the loser's error path
+     then sent a ROLLBACK, taking the winner's committed work with it. So
+     what is asserted is both halves - no failure, and both rows there. */
+  const pair = `concurrent-${Date.now()}`;
+  const concurrent = await Promise.allSettled([
+    result.driver.transaction(async () => {
+      await result.driver.run(
+        'INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES (?, 1, 1000, 1000)',
+        [`${pair}-a`]
+      );
+      // An await inside the callback is the whole point: it is the gap the
+      // other transaction's BEGIN used to fall into.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }),
+    result.driver.transaction(async () => {
+      await result.driver.run(
+        'INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES (?, 1, 1000, 1000)',
+        [`${pair}-b`]
+      );
+    })
+  ]);
+  const bothLanded = await result.driver
+    .query<{ n: number }>('SELECT COUNT(*) AS n FROM entry WHERE uuid IN (?, ?)', [`${pair}-a`, `${pair}-b`])
+    .then((rows) => rows[0].n);
+  await result.driver.run('DELETE FROM entry WHERE uuid IN (?, ?)', [`${pair}-a`, `${pair}-b`]);
+
   publish(NAME, {
+    concurrentTransactions: {
+      rejected: concurrent
+        .filter((r) => r.status === 'rejected')
+        .map((r) => String((r as PromiseRejectedResult).reason?.message ?? r)),
+      committed: bothLanded
+    },
     userVersion,
     latestSchemaVersion: LATEST_SCHEMA_VERSION,
     persistDenied: result.persistDenied,
