@@ -75,17 +75,15 @@ export const GROUND_REGION = 'whole_body';
    which is a hip flare, small but there - and every piece is mirrored about
    the midline. All three are tests. */
 export const GROUND_SHAPES: Shape[] = [
-  /* The head is narrow and tall rather than round, which is the one place
-     this drawing departs from the old one's proportions and is forced
-     rather than chosen: `hairline` and `face_jaw` stack inside it and each
-     owes a finger 48px, so the head cannot be shorter than two touch bands
-     however small a head would look. Narrow keeps it from reading as an
-     oval balanced on a body. */
-  { left: 39, top: 2, width: 22, height: 36, r: 11 }, // head
-  { left: 45, top: 34, width: 10, height: 14, r: 5 }, // neck
-  { left: 31, top: 50, width: 38, height: 52, r: 12 }, // torso
-  { left: 17, top: 54, width: 12, height: 60, r: 6 }, // arms
-  { left: 71, top: 54, width: 12, height: 60, r: 6 },
+  /* The old drawing's own proportions. Points rather than areas is what
+     buys them back: two regions inside the head need 48px between their
+     *dots*, not 48px of head each, and a button may run past the piece of
+     the body its dot sits on. */
+  { left: 39, top: 3, width: 22, height: 26, r: 11 }, // head
+  { left: 45, top: 26, width: 10, height: 20, r: 5 }, // neck
+  { left: 31, top: 44, width: 38, height: 58, r: 12 }, // torso
+  { left: 17, top: 48, width: 12, height: 66, r: 6 }, // arms
+  { left: 71, top: 48, width: 12, height: 66, r: 6 },
   { left: 31, top: 99, width: 38, height: 16, r: 8 }, // pelvis
   { left: 33, top: 113, width: 14, height: 32, r: 7 }, // thighs
   { left: 53, top: 113, width: 14, height: 32, r: 7 },
@@ -100,112 +98,109 @@ export const GROUND_SHAPES: Shape[] = [
 export const TORSO = GROUND_SHAPES[2];
 export const PELVIS = GROUND_SHAPES[5];
 
-export interface RegionDrawing {
+/** A point on the body, and the button around it.
+
+    Points rather than areas (Alicja, 2026-09-14: "no areas, just points to
+    click"). It is also the shape the app's other body map has always had -
+    InjectionSiteMap draws twelve dots on a silhouette and shades each one by
+    how long ago its site was used - so the two maps now differ only in the
+    drawing under them, which is what the ticket asked for when it said to
+    share the ramp and leave the artwork apart.
+
+    The button is wider than it is tall because it can afford to be: every
+    point sits on the midline, so nothing is beside it to collide with, and
+    only the vertical gap has to hold the touch floor. */
+export interface RegionPoint {
   region: string;
-  /** What is drawn for this region, on the silhouette. More than one shape
-      where the region is in more than one place - hands and feet are four. */
-  shapes: Shape[];
-  /** Where a tap selects it. More than one box for the same reason, and
-      never overlapping another region's. */
-  zones: Box[];
+  /** Where the dots go, in figure units. More than one where the region is
+      in more than one place on a body: `hands_feet` gets a foot each, which
+      is what keeps it *on* the body - the old drawing put its single dot
+      between the ankles, on nothing at all.
+
+      A region in two places is still one region with one accessible name,
+      so only the first of its points is a real button; the rest are
+      aria-hidden and out of the tab order, so a screen reader hears one
+      control while a finger can reach either. */
+  points: { x: number; y: number }[];
 }
 
-/* Down the body, which is the reading order and the order the parts arrive
-   in. The zones tile the stage in bands; the drawing sits inside them.
+/** How far apart two points must sit down the figure, in box units: one
+    touch target at the smallest stage the component allows. */
+export const POINT_GAP = 15;
 
-   Each region is a piece of the mannequin rather than a block on top of
-   one. The head is one egg split at a seam, the way the mannequin's own
-   joints are seams: a dome above and a jaw below. The shoulders are the two
-   ball joints plus the yoke they hang from. `hips_waist` is the waist ball
-   and the pelvis together, because on a mannequin they are one movement.
+/** The button's own size in box units, which is what MIN_STAGE is derived
+    from. Wide and short, for the reason above. */
+export const HIT_WIDTH = 30;
+export const HIT_HEIGHT = 15;
 
-   `hands_feet` is four paddles and three zones: a hand at the end of each
-   forearm, and the feet, which share a band because nothing else is down
-   there. A region in two places on a body is still one region with one
-   accessible name, so only the first of its zones is a real button - the
-   rest are aria-hidden and out of the tab order, so a screen reader hears
-   one control while a finger can reach either end. */
-export const REGION_DRAWINGS: RegionDrawing[] = [
-  {
-    region: 'hairline',
-    shapes: [{ left: 42, top: 4, width: 16, height: 12, r: 5 }],
-    zones: [{ left: 25, top: 0, width: 50, height: 20 }]
-  },
-  {
-    region: 'face_jaw',
-    shapes: [{ left: 41, top: 22, width: 18, height: 13, r: 5 }],
-    zones: [{ left: 25, top: 20, width: 50, height: 17 }]
-  },
-  {
-    region: 'voice_throat',
-    shapes: [{ left: 45.5, top: 38, width: 9, height: 10, r: 4 }],
-    zones: [{ left: 25, top: 37, width: 50, height: 15 }]
-  },
-  {
-    // Across the torso's top and over both arms: a shoulder is the join.
-    region: 'shoulders',
-    shapes: [{ left: 24, top: 55, width: 52, height: 10, r: 4 }],
-    zones: [{ left: 0, top: 52, width: 100, height: 16 }]
-  },
-  {
-    region: 'chest',
-    shapes: [{ left: 35, top: 70, width: 30, height: 15, r: 6 }],
-    zones: [{ left: 32, top: 68, width: 36, height: 19 }]
-  },
-  {
-    region: 'hips_waist',
-    shapes: [{ left: 35, top: 89, width: 30, height: 13, r: 6 }],
-    zones: [{ left: 32, top: 87, width: 36, height: 17 }]
-  },
-  {
-    region: 'genitals',
-    shapes: [{ left: 42, top: 106, width: 16, height: 12, r: 5 }],
-    zones: [{ left: 36, top: 104, width: 28, height: 16 }]
-  },
-  {
-    // One at the end of each arm and one at the end of each leg, each
-    // overlapping the limb it belongs to.
-    region: 'hands_feet',
-    shapes: [
-      { left: 18, top: 106, width: 10, height: 12, r: 5 },
-      { left: 72, top: 106, width: 10, height: 12, r: 5 },
-      { left: 33, top: 149, width: 14, height: 10, r: 4 },
-      { left: 53, top: 149, width: 14, height: 10, r: 4 }
-    ],
-    zones: [
-      { left: 0, top: 144, width: 100, height: 20 },
-      { left: 0, top: 104, width: 36, height: 16 },
-      { left: 64, top: 104, width: 36, height: 16 }
-    ]
-  }
+/* Down the body, which is the reading order and the order the points arrive
+   in. Each one sits on the part of the silhouette it names - the old
+   drawing's table had `shoulders` on the left arm and `hands_feet` between
+   the ankles, which is the defect this ticket exists to fix, so
+   `bodyRegionFigure.test.ts` checks every point against the piece of the
+   body it belongs to rather than against a coordinate somebody typed. */
+export const REGION_POINTS: RegionPoint[] = [
+  { region: 'hairline', points: [{ x: 50, y: 10 }] },
+  { region: 'face_jaw', points: [{ x: 50, y: 25 }] },
+  { region: 'voice_throat', points: [{ x: 50, y: 42 }] },
+  { region: 'shoulders', points: [{ x: 50, y: 58 }] },
+  { region: 'chest', points: [{ x: 50, y: 75 }] },
+  { region: 'hips_waist', points: [{ x: 50, y: 92 }] },
+  { region: 'genitals', points: [{ x: 50, y: 109 }] },
+  { region: 'hands_feet', points: [{ x: 40, y: 152 }, { x: 60, y: 152 }] }
 ];
 
+/** Which piece of the silhouette each point has to land on, by index into
+    GROUND_SHAPES. The test reads this, so a point that drifts off its own
+    body part fails rather than merely looking wrong. */
+export const POINT_HOME: Record<string, number[]> = {
+  hairline: [0],
+  face_jaw: [0],
+  voice_throat: [1],
+  shoulders: [2],
+  chest: [2],
+  hips_waist: [2],
+  genitals: [5],
+  hands_feet: [8, 9]
+};
+
+/** The button around one dot. Narrowed where a region has two of them, so
+    a pair side by side still cannot overlap each other. */
+export function hitBox(at: { x: number; y: number }, of = 1): Box {
+  const width = HIT_WIDTH / of;
+  return { left: at.x - width / 2, top: at.y - HIT_HEIGHT / 2, width, height: HIT_HEIGHT };
+}
+
+/** Every button on the figure, in body order, with the region each belongs
+    to and whether it is that region's real control. */
+export function hitBoxes(): { region: string; box: Box; primary: boolean }[] {
+  return REGION_POINTS.flatMap((point) =>
+    point.points.map((at, i) => ({
+      region: point.region,
+      box: hitBox(at, point.points.length),
+      primary: i === 0
+    }))
+  );
+}
+
+/** Where a tap means the whole body: the whole figure, underneath the
+    points, so it is reached wherever none of them is.
+
+    Its own drawing is the silhouette - `whole_body` is the body, which is
+    literally what it means - and the dots sit on top of it. Tapping a dot
+    selects that dot's region; tapping the body anywhere else selects the
+    whole of it. That is the injection map's own arrangement and it needs no
+    tiling: the eight only have to stay apart from each other. */
+export const GROUND_ZONE: Box = {
+  left: 0,
+  top: 0,
+  width: FIGURE_BOX.width,
+  height: FIGURE_BOX.height
+};
+
+const POINT_BY_REGION = new Map(REGION_POINTS.map((point) => [point.region, point]));
 
 
-/** Where a tap means the whole body: everywhere the eight are not. Beside
-    the head, along the arms, beside the legs.
-
-    Its own drawing is the silhouette, which runs under the eight rather
-    than inside these, so the ground is the one region whose shapes do not
-    sit in its own zones - the "tap what you see" test exempts it by name.
-    Tapping the middle of the torso selects whichever region is drawn there,
-    which is the right answer: that is a chest, and it is also the whole
-    body, and the more specific of the two is what somebody aimed at. */
-export const GROUND_ZONES: Box[] = [
-  // Beside the head and the neck.
-  { left: 0, top: 0, width: 25, height: 52 },
-  { left: 75, top: 0, width: 25, height: 52 },
-  // Beside the trunk, which is where the arms hang.
-  { left: 0, top: 68, width: 32, height: 36 },
-  { left: 68, top: 68, width: 32, height: 36 },
-  /* The legs, which are the mannequin's own and not a named region: the
-     band between the hips and the feet. */
-  { left: 0, top: 120, width: 100, height: 24 }
-];
-
-const DRAWING_BY_REGION = new Map(REGION_DRAWINGS.map((drawing) => [drawing.region, drawing]));
-
-const ALL_ZONES = [...REGION_DRAWINGS.flatMap((d) => d.zones), ...GROUND_ZONES];
 
 /** `--touch-target`, which is Android's 48dp floor and the stricter of the
     two platforms this ships on. */
@@ -222,15 +217,13 @@ export const TOUCH_PX = 48;
    wide for that zone to be 48px; the shortest is the same sum down. The
    component puts both on the stage as a `min-width` and a `min-height`, and
    the stage grows past its aspect ratio rather than shrinking a target. */
-const narrowest = Math.min(...ALL_ZONES.map((zone) => zone.width));
-const shortest = Math.min(...ALL_ZONES.map((zone) => zone.height));
+const narrowestHit = Math.min(...REGION_POINTS.map((p) => HIT_WIDTH / p.points.length));
+export const MIN_STAGE_WIDTH = Math.ceil((TOUCH_PX * FIGURE_BOX.width) / narrowestHit);
+export const MIN_STAGE_HEIGHT = Math.ceil((TOUCH_PX * FIGURE_BOX.height) / HIT_HEIGHT);
 
-export const MIN_STAGE_WIDTH = Math.ceil((TOUCH_PX * FIGURE_BOX.width) / narrowest);
-export const MIN_STAGE_HEIGHT = Math.ceil((TOUCH_PX * FIGURE_BOX.height) / shortest);
-
-/** What a zone measures on a stage of this size, in CSS px. The test walks
-    every zone through it at `MIN_STAGE_WIDTH` x `MIN_STAGE_HEIGHT`, which is
-    the smallest the component will ever let the stage be. */
+/** What a box measures on a stage of this size, in CSS px. The test walks
+    every button through it at `MIN_STAGE_WIDTH` x `MIN_STAGE_HEIGHT`, which
+    is the smallest the component will ever let the stage be. */
 export function zonePx(zone: Box, stageWidth: number, stageHeight: number): { w: number; h: number } {
   return {
     w: (zone.width / FIGURE_BOX.width) * stageWidth,
@@ -239,11 +232,10 @@ export function zonePx(zone: Box, stageWidth: number, stageHeight: number): { w:
 }
 
 export interface FigurePlacement {
-  /** The regions with a place on the figure, in body order. A built-in
+  /** The regions with a point on the figure, in body order. A built-in
       somebody hid or deleted is simply absent; the rest keep their places,
-      because where a shape is drawn is what says which part of the body it
-      is. */
-  drawn: { drawing: RegionDrawing; region: BodyRegion }[];
+      because where a point sits is what says which part of the body it is. */
+  drawn: { point: RegionPoint; region: BodyRegion }[];
   ground: BodyRegion | null;
   /** Everything with nowhere on the figure: `body_facial_hair`, which has no
       one place on a body, and every region somebody added themselves. */
@@ -253,13 +245,13 @@ export interface FigurePlacement {
 export function placeRegions(regions: BodyRegion[]): FigurePlacement {
   const byId = new Map(regions.map((region) => [region.id, region]));
   return {
-    drawn: REGION_DRAWINGS.flatMap((drawing) => {
-      const region = byId.get(drawing.region);
-      return region ? [{ drawing, region }] : [];
+    drawn: REGION_POINTS.flatMap((point) => {
+      const region = byId.get(point.region);
+      return region ? [{ point, region }] : [];
     }),
     ground: byId.get(GROUND_REGION) ?? null,
     elsewhere: regions.filter(
-      (region) => region.id !== GROUND_REGION && !DRAWING_BY_REGION.has(region.id)
+      (region) => region.id !== GROUND_REGION && !POINT_BY_REGION.has(region.id)
     )
   };
 }
@@ -309,12 +301,12 @@ export function contains(outer: Box, inner: Box): boolean {
   );
 }
 
-/** Where a region's mixed mark goes: just inside the top-right corner of its
-    largest shape, which is the one the eye lands on where a region is drawn
-    in more than one place. */
-export function markAt(drawing: RegionDrawing): { x: number; y: number } {
-  const biggest = drawing.shapes.reduce((best, shape) =>
-    shape.width * shape.height > best.width * best.height ? shape : best
-  );
-  return { x: biggest.left + biggest.width - 5.4, y: biggest.top + 1.8 };
+/** Where a point's mixed mark goes: beside the dot rather than on it.
+
+    On it there is nowhere to put two bars that a 22px dot can hold, and the
+    dot's own fill runs the whole ramp underneath them. Beside it the mark
+    sits on the body, whose colour does not move, so it reads the same at
+    every step. */
+export function markAt(at: { x: number; y: number }): { x: number; y: number } {
+  return { x: at.x + 5.5, y: at.y - 6 };
 }
