@@ -36,7 +36,13 @@
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
   import { bandsFor, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
+  import {
+    VOWEL_GATE,
+    passageGate,
+    readingFloorSeconds,
+    type QualityCheck,
+    type QualityReport
+  } from '$lib/audio/quality';
   import type { Formants } from '$lib/audio/resonance';
   import { fitFormantScale, type VowelFormants, type VowelLabel } from '$lib/audio/vowelScale';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -56,16 +62,18 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { wipe } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
   let { onSaved }: { onSaved: () => void } = $props();
 
-  /** What the gate wants of a held vowel, and what the run bar fills
-      towards. The passage has no target of its own - it is done when the
-      person stops reading - so its bar fills towards the gate's own floor. */
+  /** What the gate wants of a held vowel, and what its run bar fills
+      towards. The passage has no target of this shape at all: it is judged
+      on how much voice it carried altogether, against a floor computed from
+      its own word count (`readingFloorSeconds`), and that is what the
+      coverage cue below fills towards. */
   const VOWEL_SECONDS = 3;
-  const PASSAGE_TARGET_SECONDS = 1.5;
   /** A ceiling on a take nobody stopped: a microphone left open is a
       microphone left open, and the vowel step ends itself once it has what
       it needs anyway. */
@@ -163,9 +171,6 @@
       as well as on the finished take: the point of it is to be visible
       while somebody is speaking. */
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
-  /** The voice's longest unbroken run so far, as the gate counts it. */
-  let heldSeconds = $derived((reading?.longestVoicedSeconds ?? 0).toFixed(1));
-
   /** The sentence beside the ribbon, in priority order: what to do
       differently if the gate has found something, otherwise that nothing
       is arriving yet, otherwise nothing at all.
@@ -183,10 +188,27 @@
      being read, not the app's (ADR-0059). A passage of somebody's own words
      carries no language, so the app's is a guess and the caption says so. */
   let bands = $derived(bandsFor(passageKey, getLocale()));
-  let targetSeconds = $derived(step === 'vowel' ? VOWEL_SECONDS : PASSAGE_TARGET_SECONDS);
+
+  /** The gate this step's take is judged by, and the same one the live
+      readout is running - quality.ts's contract is that those cannot
+      disagree, and passing one value to both is how that is kept. */
+  let passageFloorSeconds = $derived(readingFloorSeconds(wordCountOf(passageText), bands.language));
+  let gate = $derived(step === 'vowel' ? VOWEL_GATE : passageGate(wordCountOf(passageText), bands.language));
+
+  /** How much of the reading the take has carried, against the floor it has
+      to clear. It only ever fills: `voicedSeconds` is a running total and
+      nothing takes voice back out of it, which is the whole reason the
+      passage step shows this and not the held run it used to - a meter that
+      dropped to nothing at every word boundary was teaching somebody
+      reading aloud to hold their voice through the commas. */
+  let coverage = $derived(
+    passageFloorSeconds > 0
+      ? Math.max(0, Math.min(1, (reading?.voicedSeconds ?? 0) / passageFloorSeconds))
+      : 0
+  );
 
   /** The gate's own findings, in words, and only ever about the recording. */
-  function adviceFor(checks: readonly QualityCheck[], forStep: Step): string[] {
+  function adviceFor(checks: readonly QualityCheck[]): string[] {
     return checks.map((check) => {
       switch (check) {
         case 'clipping':
@@ -194,7 +216,12 @@
         case 'noise':
           return m.vb_fail_noise();
         case 'tooShort':
-          return forStep === 'vowel' ? m.vb_fail_short() : m.vb_fail_short_passage();
+          return m.vb_fail_short();
+        // One length failure on the passage, so this keeps its wording and
+        // becomes true: after ticket 41 it fires only when somebody really
+        // did read too little of it.
+        case 'underRead':
+          return m.vb_fail_short_passage();
         case 'unsteady':
           return m.vb_fail_unsteady();
       }
@@ -213,8 +240,13 @@
     };
   });
 
-  let liveAdvice = $derived(reading ? adviceFor(reading.failed, step) : []);
-  let retryAdvice = $derived(adviceFor(failed, step));
+  /* The coverage failure is left out of the live sentence: the cue beside
+     it is saying that continuously and in the gate's own terms, and a line
+     reading "Read a little more of it." for the whole of a read somebody is
+     part-way through is nagging rather than advice. It comes back on the
+     retry, where it is the verdict on a take rather than a running state. */
+  let liveAdvice = $derived(reading ? adviceFor(reading.failed.filter((c) => c !== 'underRead')) : []);
+  let retryAdvice = $derived(adviceFor(failed));
 
   let poll: ReturnType<typeof setInterval> | null = null;
 
@@ -223,10 +255,10 @@
     poll = null;
   }
 
-  async function start(checks: readonly QualityCheck[]) {
+  async function start() {
     const controller = new AbortController();
     opening = controller;
-    const opened = await startTake(checks, controller.signal);
+    const opened = await startTake(gate, controller.signal);
     if (opening === controller) opening = null;
     // The screen went away while the microphone was opening: startTake has
     // already stopped whatever it opened, so there is nothing left to do.
@@ -275,7 +307,12 @@
     }
 
     if (step === 'passage') {
-      const analysed = analysePassage(take.samples, ANALYSIS_SAMPLE_RATE, wordCountOf(passageText));
+      const analysed = analysePassage(
+        take.samples,
+        ANALYSIS_SAMPLE_RATE,
+        wordCountOf(passageText),
+        bands.language
+      );
       if (!analysed.quality.passed || !analysed.figures) {
         failed = analysed.quality.failed;
         phase = 'retry';
@@ -410,7 +447,7 @@
           ? {
               label: m.vb_mic_ask(),
               primary: true,
-              onclick: () => start(step === 'vowel' ? VOWEL_CHECKS : PASSAGE_CHECKS)
+              onclick: () => start()
             }
           : undefined}
       />
@@ -484,27 +521,6 @@
         <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
       {/snippet}
 
-      {#if step === 'passage'}
-        <!-- What a benchmark is, which is worth reading once and is in the
-             way of a take in progress. It goes when the flow starts. -->
-        {#if phase === 'idle'}
-          <p class="muted small vb-hint">{m.vb_lead()}</p>
-          <p class="muted small vb-hint">{m.vb_passage_ceiling_hint()}</p>
-          {@render distance()}
-        {/if}
-        <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
-        <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
-          <Icon name="pencil" size={18} />
-          <span>{ownPassage ? m.vb_passage_own_in_use() : m.vb_passage_own()}</span>
-        </button>
-      {:else if phase !== 'recording'}
-        <!-- What to do, until it is being done: during the take the gauge is
-             saying it, and the instruction is taking up the room the gauge
-             needs. Which sound follows the step this is (VOWEL_HINTS). -->
-        <p class="muted small vb-hint">{VOWEL_HINTS[vowelKey]()}</p>
-        {@render distance()}
-      {/if}
-
       <!-- The graph goes from the reading step and stays on the held note
            (Alicja, 2026-09-04, in three passes: no live graph while reading
            a passage; a benchmark's own picture is enough right after
@@ -523,6 +539,74 @@
            The reading step keeps what the figure's words carried: how long
            the voice has been going, and anything to do differently about
            the room or the level. -->
+      {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
+        <!-- One rail of the last two seconds: filled where the tracker
+             found a voice, gaps for the breaths and the commas, empty when
+             nothing is arriving. Presence has no magnitude, which is what
+             lets it say "this is working" in 6px where a pitch figure
+             needed 148 and a gutter. -->
+        <div class="vb-live" data-vb-live in:wipe|global out:wipe|global>
+          <span class="vb-live-label">{m.vb_hearing_label()}</span>
+          <VoicingRibbon data-vb-hearing {frames} label={m.vb_hearing_label()} />
+
+          <!-- How much of the reading has arrived, against the floor the
+               gate is actually applying (ticket 41). It replaced the held
+               run, which was the hold task's meter on a task that has no
+               hold in it: it emptied at every word boundary and the person
+               who tried to satisfy it by not breathing was being trained
+               into a worse recording.
+
+               The value is written above the bar rather than in it (rule
+               9), and it is a word rather than a count of seconds - a
+               number here is something to chase, and how many seconds of
+               voice a passage owes is not a thing anybody should be
+               reading aloud against. The screen reader gets the share as a
+               progress value, which is the one place the number belongs. -->
+          <div class="vb-covered">
+            <span class="vb-live-label">{m.vb_reading_covered()}</span>
+            <div
+              class="vb-covered-rail"
+              data-vb-covered
+              role="progressbar"
+              aria-label={m.vb_reading_covered()}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(coverage * 100)}
+            >
+              <span class="vb-covered-fill" style="--vb-covered: {coverage.toFixed(4)}"></span>
+            </div>
+          </div>
+
+          <p class="vb-live-advice" aria-live="polite">{liveLine}</p>
+        </div>
+      {/if}
+
+      {#if step === 'passage'}
+        <!-- What a benchmark is, which is worth reading once and is in the
+             way of a take in progress. It goes when the flow starts. -->
+        {#if phase === 'idle'}
+          <p class="muted small vb-hint">{m.vb_lead()}</p>
+          <p class="muted small vb-hint">{m.vb_passage_ceiling_hint()}</p>
+          {@render distance()}
+        {/if}
+        <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
+        <!-- Swapping the passage mid-take is not a thing to do, and the row
+             was taking the height the live readout above needs, so it goes
+             while a take is running the way the hints above it do. -->
+        {#if phase !== 'recording'}
+          <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
+            <Icon name="pencil" size={18} />
+            <span>{ownPassage ? m.vb_passage_own_in_use() : m.vb_passage_own()}</span>
+          </button>
+        {/if}
+      {:else if phase !== 'recording'}
+        <!-- What to do, until it is being done: during the take the gauge is
+             saying it, and the instruction is taking up the room the gauge
+             needs. Which sound follows the step this is (VOWEL_HINTS). -->
+        <p class="muted small vb-hint">{VOWEL_HINTS[vowelKey]()}</p>
+        {@render distance()}
+      {/if}
+
       {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}
         <VoiceGauge
           data-vb-gauge
@@ -533,24 +617,10 @@
           languageGuessed={bands.guessed}
           {frames}
           report={reading}
-          {targetSeconds}
+          targetSeconds={VOWEL_SECONDS}
           label={m.vb_gauge_label_steady()}
           advice={phase === 'retry' ? retryAdvice : liveAdvice}
         />
-      {:else if phase === 'recording' || phase === 'retry'}
-        <!-- One rail of the last two seconds: filled where the tracker
-             found a voice, gaps for the breaths and the commas, empty when
-             nothing is arriving. Presence has no magnitude, which is what
-             lets it say "this is working" in 6px where a pitch figure
-             needed 148 and a gutter. -->
-        <div class="vb-live" data-vb-live>
-          <div class="vb-live-top">
-            <span class="vb-live-label">{m.vb_hearing_label()}</span>
-            <span class="vb-live-held">{m.vb_gauge_run({ seconds: heldSeconds })}</span>
-          </div>
-          <VoicingRibbon data-vb-hearing {frames} label={m.vb_hearing_label()} />
-          <p class="vb-live-advice" aria-live="polite">{liveLine}</p>
-        </div>
       {/if}
 
       {#if phase === 'retry'}
@@ -571,7 +641,7 @@
         <button
           class="btn btn-primary"
           data-vb-record
-          onclick={() => start(step === 'vowel' ? VOWEL_CHECKS : PASSAGE_CHECKS)}
+          onclick={() => start()}
         >
           <Icon name="mic" size={20} />
           <span>
@@ -645,22 +715,39 @@
     margin-top: var(--space-4);
   }
 
-  .vb-live-top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
   .vb-live-label {
     font-size: var(--text-sm);
     color: var(--muted);
   }
 
-  .vb-live-held {
-    font-size: var(--text-sm);
-    font-variant-numeric: tabular-nums;
-    color: var(--role-ink);
+  .vb-covered {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  /* Rule 9's bar: a 14px flat block with 2px ends. It is the heavier of the
+     two marks on this step deliberately - the ribbon says a voice is
+     arriving, this says whether the take will be kept. */
+  .vb-covered-rail {
+    height: 14px;
+    border-radius: 2px;
+    background: var(--role-wash);
+    overflow: hidden;
+  }
+
+  /* Full width and translated, rather than scaled: a scaled bar squashes
+     its own 2px ends, and the leading edge is the one part of this anybody
+     is looking at. Transform only, so the duration clamp under either
+     reduced-motion path turns every reading into a cut (materials.css). */
+  .vb-covered-fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--role-draw);
+    transform: translateX(calc((var(--vb-covered, 0) - 1) * 100%));
+    transition: transform var(--dur-fast) var(--ease-out);
   }
 
   .vb-live-advice {
