@@ -10,6 +10,13 @@
    charts/share.ts for that reason alone. tests/chart-library-graph.test.ts
    holds the rule and carries the measurement behind it. */
 
+/** The plot's drawn height in CSS px, which every line chart in the kit
+    takes. Here rather than inside AreaChart.svelte because a caller now has
+    to reserve room for one: /body-map holds its chart block's height so
+    that picking a region cannot shorten the page under the figure, and a
+    number copied into that route would be a number that drifts. */
+export const PLOT_HEIGHT = 132;
+
 export interface Point {
   /** Domain position - an epoch day, an index, whatever the caller counts in. */
   x: number;
