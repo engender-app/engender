@@ -66,6 +66,11 @@
     trailing?: Snippet;
   } = $props();
 
+  /** The waveform's height. Sized against the play control beside it - a
+      28px wave under a 44px block read as a thin line next to a solid
+      square (Alicja, on the ticket's sign-off renders). */
+  const WAVE_HEIGHT = 36;
+
   let duration = $state(0);
   let position = $state(0);
   /** True while a finger or a key is moving the playhead, which is when the
@@ -85,6 +90,10 @@
      itself is translated by it. One write per frame, no layout, and the two
      can never disagree about where the playhead is. */
   const playedPx = $derived(trackWidth * fraction);
+
+  /** The bar the playhead is standing on, which rises while it is the one
+      being played and settles back as the playhead moves off it. */
+  const liveBar = $derived(bars ? Math.min(bars.length - 1, Math.floor(fraction * bars.length)) : -1);
 
   const slider = new MeltSlider({
     min: () => 0,
@@ -235,17 +244,18 @@
       {#snippet barSet()}
         {#each bars as bar, i (i)}
           <rect
+            class:is-live={playing && i === liveBar}
             x={i * (trackWidth / bars.length) + 1}
-            y={14 - Math.max(1, bar * 13)}
+            y={WAVE_HEIGHT / 2 - Math.max(1, (bar * (WAVE_HEIGHT - 2)) / 2)}
             width={Math.max(1, trackWidth / bars.length - 2)}
-            height={Math.max(2, bar * 26)}
+            height={Math.max(2, bar * (WAVE_HEIGHT - 2))}
           />
         {/each}
       {/snippet}
       <!-- The same bars twice: the second set is clipped to the playhead, so
            the boundary between played and unplayed travels continuously
            rather than jumping a whole bar at a time. -->
-      <svg class="transport-wave" width={trackWidth} height="28" aria-hidden="true">
+      <svg class="transport-wave" width={trackWidth} height={WAVE_HEIGHT} aria-hidden="true">
         <g class="transport-bars">{@render barSet()}</g>
         <g class="transport-bars is-played">{@render barSet()}</g>
       </svg>
@@ -323,7 +333,7 @@
     position: relative;
     flex: 1;
     min-width: 72px;
-    height: 28px;
+    height: 36px;
     display: flex;
     align-items: center;
     touch-action: none;
@@ -361,6 +371,17 @@
   }
   .transport-bars rect {
     fill: color-mix(in oklab, var(--text) 32%, transparent);
+    /* The bar under the playhead stands up while it is the one being heard
+       and settles back as the playhead moves on. Scaled about its own
+       middle, so the waveform's centre line does not move, and on the
+       press duration so the rise and the fall are the same gesture the
+       controls make. */
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .transport-bars rect.is-live {
+    transform: scaleY(1.45);
   }
   .transport-bars.is-played rect {
     fill: var(--accent);
@@ -388,7 +409,7 @@
     position: absolute;
     left: 0;
     width: 2px;
-    height: 20px;
+    height: 26px;
     background: var(--text);
     translate: calc(var(--played) - 1px) 0;
   }
