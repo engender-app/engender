@@ -69,8 +69,9 @@
          hands, and a mark that cuts in or out in one frame is the yank the
          standing clause forbids. `collapse` gives the height back over the
          same curve everywhere else does, and stands down while the screen
-         is still arriving - the arrival is the blind's (ADR-0080), not
-         twenty marks each playing their own. -->
+         is still arriving (`stillArriving` in motion/reveal.ts) - the
+         arrival is the field blind's, not twenty marks each playing their
+         own over the top of it. -->
     {#if item.kind === 'today'}
       <div class="tl-item tl-today" data-tl-today transition:collapse|global>
         <span class="tl-dot is-today"></span>
