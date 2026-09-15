@@ -4790,14 +4790,15 @@ try {
     return values;
   };
 
-  /* The full-fixture tryouts sort newest-start-first (tryouts.ts's own
-     ORDER BY), so the pronoun tryout - started `today - 100`, still
-     open - is always the second row: 'layered look' (today - 40, closed),
-     then this one, then 'Alex' (today - 120, closed). Picked by position
-     rather than its label, which is arbitrary demo content and not what
-     this flow is testing. */
+  /* The pronoun tryout - started `today - 100`, still open - is the only
+     one of the three the fixture leaves running, so it is the whole of the
+     screen's Running now section (redesign ticket 53 split the screen by
+     that fact). This used to be `nth(1)` of one flat list, which was the
+     same record picked by its position in a newest-start-first order.
+     Picked by what it is rather than by its label, which is arbitrary demo
+     content and not what this flow is testing. */
   await page.goto(BASE + '/transition/tryouts', { waitUntil: 'networkidle' });
-  await page.locator('[data-tryout] a').nth(1).click();
+  await page.locator('[data-running] [data-tryout] a').first().click();
   await page.waitForSelector('[data-screen-header]');
 
   const tryoutNotice = page.locator('[data-notice="tryout-compare"]');

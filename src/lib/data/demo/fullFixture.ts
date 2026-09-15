@@ -262,7 +262,17 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       endEpochDay: spec.endEpochDay
     });
     await journal.tryouts.addPhoto(tryoutId, spec.startEpochDay + 5, await demoPhoto(6000 + spec.startEpochDay));
-    await journal.feltSense.add({ tryoutId }, { epochDay: spec.startEpochDay + 3, mood: between(2, 5) });
+    /* Readings across the tryout's own span rather than one at its start.
+       A single reading is a single mark, which is honest and is also the
+       one shape the tryouts index cannot be reviewed against (ticket 53) -
+       the screen draws how a tryout has felt over time, and every tryout
+       in the fixture having exactly one reading left that undrawable.
+       Every twelfth day, so a hundred-day tryout gets nine marks rather
+       than a line of them. */
+    const lastFeltDay = spec.endEpochDay ?? today;
+    for (let day = spec.startEpochDay + 3; day <= lastFeltDay; day += 12) {
+      await journal.feltSense.add({ tryoutId }, { epochDay: day, mood: between(1, 5) });
+    }
   }
 
   // Personal effects: several feminizing markers, plus one non-default

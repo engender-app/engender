@@ -760,6 +760,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // Keyed by the tryout's own uuid, so the owner table is joined the way
       // `forTryout` joins it.
       latestDaysForTryouts: ['feltSense', 'tryout'],
+      // The same join, every tryout at once (ticket 53).
+      byTryout: ['feltSense', 'tryout'],
       forMilestone: ['feltSense', 'milestone'],
       // Both owners' names travel on a day's rows, so both tables are read.
       onDay: ['feltSense', 'tryout', 'milestone'],

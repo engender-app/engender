@@ -2334,6 +2334,57 @@
   "tryout_adopt_update_profile_name": "Update profile name in app to \"{name}\"",
   "tryout_adopt_confirm_add": "Add milestone and adopt",
   "tryout_adopt_without_milestone": "Adopt without milestone",
+  "tryout_running_heading": "Running now",
+  "tryout_ended_heading": "Ended",
+  "tryout_unit_days_trying": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day trying",
+        "nPlural=other": "days trying"
+      }
+    }
+  ],
+  "tryout_ran_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} day",
+        "nPlural=other": "{n} days"
+      }
+    }
+  ],
+  "tryout_felt_count": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} felt-sense reading",
+        "nPlural=other": "{n} felt-sense readings"
+      }
+    }
+  ],
+  "tryout_felt_latest": "last on {day}",
+  "tryout_felt_none": "No felt sense recorded yet",
+  "tryout_feeling_today": "How it felt today",
+  "tryout_feeling_today_title": "How has it felt today?",
   "letters_title": "Time-capsule letters",
   "letters_intro": "Nothing unlocks early, not even for you.",
   "letters_compose_title": "Write a letter",
