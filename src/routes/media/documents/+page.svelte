@@ -57,7 +57,8 @@
   import { isPdfDocument } from '$lib/data/journal/documents';
   import { groupDocumentsByTarget, type DocumentGroupKind } from '$lib/data/journal/documentGroups';
   import type { DocumentFile } from '$lib/data/documents/accept';
-  import type { DocumentTargetKind, JournalDocument } from '$lib/data/types';
+  import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
+  import type { JournalDocument } from '$lib/data/types';
   import { documentsSummaryText } from '$lib/data/vocabulary/documentsSummary';
   import { totalSize } from '$lib/stores/photoFiles';
   import { pickDocument } from '$lib/stores/documentPicking';
@@ -111,10 +112,13 @@
 
   /* The file's own kind - the two the app can hold, read off the name the
      way the document's own screen already does (documents.ts's
-     `isPdfDocument`), never off what the picker claimed. */
-  const kindWord = (fileName: string) => (isPdfDocument(fileName) ? m.document_kind_pdf() : m.document_kind_image());
-  const kindIcon = (fileName: string) => (isPdfDocument(fileName) ? 'documents' : 'image');
-  const dayAndKind = (document: JournalDocument) => `${dayLabel(document.epochDay)} · ${kindWord(document.fileName)}`;
+     `isPdfDocument`), never off what the picker claimed. One read of the
+     file name per row rather than one per fact drawn from it. */
+  const documentKind = (fileName: string) =>
+    isPdfDocument(fileName)
+      ? { icon: 'documents', word: m.document_kind_pdf() }
+      : { icon: 'image', word: m.document_kind_image() };
+  const dayAndKind = (document: JournalDocument, word: string) => `${dayLabel(document.epochDay)} · ${word}`;
 
   const targets = documentTargets();
 
@@ -133,18 +137,13 @@
   };
 
   /* The group headings: the picker's own four section titles
-     (documentTargets.svelte.ts), reused rather than re-worded, and
-     `document_link_none` ("Not linked to anything") for the leftover
-     bucket - the same fact the document's own screen already states about
-     one paper, said here about a whole group of them. */
-  const GROUP_HEADING: Record<DocumentTargetKind, () => string> = {
-    milestone: m.milestones,
-    procedure: m.surgery_journey_title,
-    episode: m.regimen,
-    goal: m.roadmap_title
-  };
+     (`DOCUMENT_TARGET_SECTION_HEADING`, shared with documentTargets.svelte.ts
+     rather than re-declared), and `document_link_none` ("Not linked to
+     anything") for the leftover bucket - the same fact the document's own
+     screen already states about one paper, said here about a whole group
+     of them. */
   const groupHeading = (kind: DocumentGroupKind): string =>
-    kind === 'unattached' ? m.document_link_none() : GROUP_HEADING[kind]();
+    kind === 'unattached' ? m.document_link_none() : DOCUMENT_TARGET_SECTION_HEADING[kind]();
 
   let groups = $derived(groupDocumentsByTarget(documentsQuery.rows));
 
@@ -182,7 +181,7 @@
   <ReadGate read={documentsQuery} count={3}>
     {#snippet rows(documents)}
       {#if totalBytes !== null}
-        <div class="screen-part">
+        <div class="screen-part" data-documents-present-reading>
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             <ListRow static data-documents-summary icon="documents" title={documentsSummaryText(documents.length, totalBytes)} />
           </ListCard>
@@ -190,15 +189,16 @@
       {/if}
 
       {#each groups as group (group.kind)}
-        <div class="screen-part">
+        <div class="screen-part" data-documents-group={group.kind}>
           <SectionHeading text={groupHeading(group.kind)} />
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each group.documents as document (document.id)}
+              {@const kind = documentKind(document.fileName)}
               <ListRow
                 key={document.id}
-                icon={kindIcon(document.fileName)}
+                icon={kind.icon}
                 title={document.title}
-                subtitle={[dayAndKind(document), attachmentLine(document)]}
+                subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
                 href={`/media/documents/${document.id}`}
               />
             {/each}
