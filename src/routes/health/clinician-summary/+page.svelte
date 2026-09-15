@@ -207,21 +207,27 @@
   {/if}
 
   <!-- Generated dossier, shown as the page it will become rather than as
-       more screen (ticket 59): flush, between two hairlines marking where
-       it begins and ends - DIRECTION.md rule 4's own idiom for "a list
-       needs to begin and end", read at the scale of one document instead
-       of one row. Not `.card` (components.css): that is the box rule 4 is
-       carpeting out screen by screen, and a document freshly redesigned is
-       not the place to add its fourteenth instance. The export action sits
-       under it, not inside it: the sheet is the thing being handed over,
-       the button is the act of handing it. -->
+       more screen (ticket 59). A named area first (DIRECTION.md 3c, the
+       same pattern "Include sections" and "Drugs included" already use on
+       this screen) - a border alone did not read: the first pass drew a
+       top hairline and it sat one `--space-2` below the toggle card's own
+       bottom edge, indistinguishable from it at 14% opacity, which is what
+       every hairline on this screen already is. The name is what a person
+       actually reads; the sheet under it stays flush (rule 4), with one
+       hairline at its foot marking where the dossier ends and the action
+       begins - that edge had nothing else beside it to be confused with,
+       and read clearly. Not `.card` (components.css): that is the box rule
+       4 is carpeting out screen by screen, and a document freshly
+       redesigned is not the place to add its fourteenth instance. -->
   {#if range === null}
     <!-- Nothing to assemble until boundaries are picked -->
   {:else}
-    <!-- The heading stays in the sheet whether or not the dossier under it
-         has loaded yet: the page is the frame plus what's on it, and a
-         heading that only appeared once loading finished would read as the
-         page arriving twice. -->
+    <SectionHeading text={m.clinician_summary_preview_title()} />
+    <!-- The heading above stays whether or not the dossier below has
+         loaded yet, and so does the print-only heading inside the sheet:
+         the page is the name plus the frame plus what's on it, and either
+         one arriving after the other would read as the page turning up
+         twice. -->
     <div class="summary-page" data-summary-page>
       <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
         <h1>{m.clinician_summary_title()}</h1>
@@ -237,6 +243,9 @@
       {/if}
     </div>
     {#if dossier}
+      <!-- Under the sheet, not inside it and not floating over it: the
+           sheet is the thing being sent, the button is the act of sending
+           it. -->
       <button class="btn btn-primary btn-block summary-print no-print" data-summary-print onclick={printSummary}>
         <Icon name="share" size={18} />
         <span>{m.clinician_summary_print()}</span>
@@ -266,15 +275,16 @@
     margin-top: var(--space-2);
   }
 
-  /* Flush, between two hairlines (DIRECTION.md rule 4): where a list needs
-     to begin and end it gets a hairline, never a box - the same idiom this
-     draws at document scale rather than row scale. No `--surface` ground
-     and no `--r-block` corner: those are `.card`'s (components.css), the
-     box rule 4 spends its own carpet tickets retiring screen by screen. */
+  /* Flush (DIRECTION.md rule 4): no `--surface` ground and no `--r-block`
+     corner - those are `.card`'s (components.css), the box rule 4 spends
+     its own carpet tickets retiring screen by screen. Just the foot gets a
+     hairline, marking where the dossier ends and the print action begins;
+     the top is named instead, by the SectionHeading above, which is what
+     actually reads (see the comment on the markup). */
   .summary-page {
-    border-top: 1px solid var(--hairline);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--hairline);
-    padding-block: var(--space-4);
   }
 
   /* Under the sheet, not inside it and not floating over it (Mobbin's own
@@ -293,14 +303,13 @@
       display: none;
     }
 
-    /* The hairlines are a screen affordance for a document not yet handed
-       over; on paper it is the paper, and printing them would draw two
-       rules the reader never asked for across a page @page already
-       bounds. */
+    /* The hairline is a screen affordance for a document not yet handed
+       over; on paper it is the paper, and printing it would draw a rule
+       the reader never asked for across a page @page already bounds. */
     .summary-page {
-      border-top: none;
+      padding-top: 0;
+      padding-bottom: 0;
       border-bottom: none;
-      padding-block: 0;
     }
   }
 </style>
