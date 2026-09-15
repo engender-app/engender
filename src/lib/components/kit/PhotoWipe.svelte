@@ -90,41 +90,63 @@
       been drawn. */
   const wipeable = $derived(earlier?.fileName !== null && later?.fileName !== null);
 
-  let earlierUrl = $state<string | null>(null);
-  let laterUrl = $state<string | null>(null);
+  /* Each side is a one-deep stack rather than a single src, and replacing
+     the entry is what crossfades the two photographs.
+
+     Blanking the side and then filling it back in was the first attempt,
+     and it is a yank of the worst kind: a step to another month left the
+     plate holding neither photograph for as long as the read took - one
+     frame at 17ms in the recording, and as long as a decode on a real
+     phone. Nothing is cleared now. The photograph that was there is
+     dropped from the stack in the same breath the new one is pushed, and
+     Svelte keeps its node alive for the length of its own outro, so the
+     two overlap and no frame is left with neither. The surface under them
+     never moves, which is the other half of the rule: a surface stays one
+     object and its content is what crossfades. */
+  let earlierStack = $state<string[]>([]);
+  let laterStack = $state<string[]>([]);
   let earlierShape = $state<PhotoShape | null>(null);
   let laterShape = $state<PhotoShape | null>(null);
 
-  /* One read per side, torn down when the side changes or this unmounts -
-     the same contract PhotoThumb keeps for a thumbnail, for the same
-     reason: an object URL that outlives its <img> is a leak, and at this
-     size it is a leak of a whole photograph rather than of a tile. */
-  function load(fileName: string | null, set: (url: string | null) => void): () => void {
-    set(null);
-    if (!fileName || !wipeable) return () => {};
+  /* Every object URL this frame has minted. An <img> revokes its own as
+     its outro ends, which is the common path; this is what catches the
+     ones whose node went without one - the side-by-side fallback taking
+     over, or the screen being left. Revoking twice is a no-op, so the two
+     paths need not agree about which of them got there first. */
+  const minted: string[] = [];
 
-    let objectUrl: string | null = null;
+  /* One read per side, abandoned if the side changes under it. */
+  function load(fileName: string | null, show: (url: string) => void): (() => void) | undefined {
+    if (!fileName || !wipeable) return;
+
     let stale = false;
     readPhoto(fileName).then(
       (bytes) => {
         if (stale || !bytes) return;
-        objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
-        set(objectUrl);
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
+        minted.push(url);
+        show(url);
       },
       // A file written under another key throws out of the store rather
-      // than reading as null (encrypted-file-store.ts). The empty plate is
-      // already what the frame is showing, so there is nothing to do.
+      // than reading as null (encrypted-file-store.ts). The plate is
+      // already showing what it was showing, so there is nothing to do.
       () => {}
     );
 
     return () => {
       stale = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }
 
-  $effect(() => load(earlier?.fileName ?? null, (url) => (earlierUrl = url)));
-  $effect(() => load(later?.fileName ?? null, (url) => (laterUrl = url)));
+  $effect(() => load(earlier?.fileName ?? null, (url) => (earlierStack = [url])));
+  $effect(() => load(later?.fileName ?? null, (url) => (laterStack = [url])));
+
+  /* Nothing tracked in the body, so this runs once and its teardown is the
+     screen being left. Svelte skips outros when a component is destroyed,
+     so the <img>'s own revoke never fires on that path. */
+  $effect(() => () => {
+    for (const url of minted) URL.revokeObjectURL(url);
+  });
 
   /** How this frame reconciled two photographs of different shapes, said
       out loud rather than left for the person to notice. Both are cropped
@@ -195,30 +217,30 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
       <div class="wipe-plate">
-        {#key laterUrl}
-          {#if laterUrl}
-            <img
-              class="wipe-photo"
-              src={laterUrl}
-              alt={m.ph_cell_aria({ date: date(later) })}
-              onload={(event) => (laterShape = shapeOf(event))}
-              in:fade={{ duration: motionDuration('--dur-fast') }}
-            />
-          {/if}
-        {/key}
+        {#each laterStack as url (url)}
+          <img
+            class="wipe-photo"
+            src={url}
+            alt={m.ph_cell_aria({ date: date(later) })}
+            onload={(event) => (laterShape = shapeOf(event))}
+            in:fade={{ duration: motionDuration('--dur-fast') }}
+            out:fade={{ duration: motionDuration('--dur-fast') }}
+            onoutroend={() => URL.revokeObjectURL(url)}
+          />
+        {/each}
       </div>
       <div class="wipe-plate is-earlier">
-        {#key earlierUrl}
-          {#if earlierUrl}
-            <img
-              class="wipe-photo"
-              src={earlierUrl}
-              alt={m.ph_cell_aria({ date: date(earlier) })}
-              onload={(event) => (earlierShape = shapeOf(event))}
-              in:fade={{ duration: motionDuration('--dur-fast') }}
-            />
-          {/if}
-        {/key}
+        {#each earlierStack as url (url)}
+          <img
+            class="wipe-photo"
+            src={url}
+            alt={m.ph_cell_aria({ date: date(earlier) })}
+            onload={(event) => (earlierShape = shapeOf(event))}
+            in:fade={{ duration: motionDuration('--dur-fast') }}
+            out:fade={{ duration: motionDuration('--dur-fast') }}
+            onoutroend={() => URL.revokeObjectURL(url)}
+          />
+        {/each}
       </div>
 
       <span class="wipe-date is-earlier" data-wipe-date="left">{date(earlier)}</span>
@@ -269,25 +291,27 @@
   <div class="wipe-steps">
     {#each steps as group (group.side)}
       <div class="wipe-step" data-wipe-step={group.side}>
-        <button
-          class="icon-btn press"
-          data-wipe-back={group.side}
-          disabled={!group.back}
-          aria-label={group.backLabel}
-          onclick={() => step(group.side, -1)}
-        >
-          <Icon name="chevronLeft" size={18} />
-        </button>
         <span class="wipe-step-note">{note?.(group.photo) ?? ''}</span>
-        <button
-          class="icon-btn press"
-          data-wipe-forward={group.side}
-          disabled={!group.forward}
-          aria-label={group.forwardLabel}
-          onclick={() => step(group.side, 1)}
-        >
-          <Icon name="chevronRight" size={18} />
-        </button>
+        <span class="wipe-step-controls">
+          <button
+            class="icon-btn press"
+            data-wipe-back={group.side}
+            disabled={!group.back}
+            aria-label={group.backLabel}
+            onclick={() => step(group.side, -1)}
+          >
+            <Icon name="chevronLeft" size={18} />
+          </button>
+          <button
+            class="icon-btn press"
+            data-wipe-forward={group.side}
+            disabled={!group.forward}
+            aria-label={group.forwardLabel}
+            onclick={() => step(group.side, 1)}
+          >
+            <Icon name="chevronRight" size={18} />
+          </button>
+        </span>
       </div>
     {/each}
   </div>
@@ -356,6 +380,12 @@
      with the ink that stripe carries (rule 4, role.ts). */
   .wipe-date {
     position: absolute;
+    /* Over the divider rather than under it. The line is the same colour
+       as these blocks, so a divider standing behind one read as the block
+       being cut in half. `pointer-events: none` because a label must not
+       take the top of the divider's grab strip away from it. */
+    z-index: 1;
+    pointer-events: none;
     top: var(--space-2);
     padding: 2px var(--space-2);
     border-radius: var(--r-block);
@@ -392,12 +422,20 @@
     touch-action: none;
   }
 
+  /* The stripe between two hairlines of the ink that stripe carries, which
+     is what keeps the seam readable over any two photographs: a bare 3px
+     of one colour disappears wherever the picture happens to be near it,
+     and a photograph is not a surface whose colour this control gets to
+     choose. Two hairlines rather than a shadow, which the kit does not
+     have. */
   .wipe-line {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 3px;
     background: var(--role-draw);
+    border-left: 1px solid var(--role-fill-ink);
+    border-right: 1px solid var(--role-fill-ink);
   }
 
   .wipe-grip {
@@ -456,27 +494,41 @@
     color: var(--text-2);
   }
 
-  /* One group per side, each under the half of the frame it moves. */
+  /* One group per side, under the half of the frame it moves: that side's
+     own line, and its two controls under it.
+
+     A column rather than the `< note >` row the two-up grid used. In a row
+     the note is squeezed to about 90px between the two controls, which
+     wraps "19 weeks from the start" onto three lines; and the four
+     controls come out as one run of chevrons across the screen, with the
+     earlier side's "one further on" 60px from the later side's "one
+     further back" and nothing between them saying which photograph either
+     moves. Stacked, each note gets the whole half and each pair reads as
+     one control. */
   .wipe-steps {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+    gap: var(--space-2);
     margin-top: var(--space-2);
   }
 
   .wipe-step {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-1);
+    gap: 2px;
   }
 
   .wipe-step-note {
-    flex: 1;
-    min-width: 0;
     text-align: center;
     font-size: var(--text-xs);
     color: var(--text-2);
+  }
+
+  .wipe-step-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   @container app (min-width: 1024px) {
