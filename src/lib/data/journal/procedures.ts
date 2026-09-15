@@ -114,6 +114,13 @@ export interface ProceduresArea {
   deleteConsult(id: string): Promise<void>;
   /** A procedure's recovery photos, oldest first. */
   getPhotos(procedureId: string): Promise<ProcedurePhoto[]>;
+  /** Every procedure's recovery photos, oldest first, keyed by procedure
+      and read in one query rather than one per row - the shape
+      `consultsByProcedure` already takes for the other thing the index
+      draws against each procedure (ticket 52). A procedure with no photos
+      is absent rather than present with an empty list, so a caller reads
+      "has any" off `get` alone. */
+  photosByProcedure(): Promise<Map<string, ProcedurePhoto[]>>;
   /** What a procedure put on one day (phase 5 deepening ticket 21): the
       recovery photos taken on it, carrying the procedure they belong to.
       Its consults are appointments now and reach a day through
@@ -296,6 +303,27 @@ export function makeProceduresArea(
         [procedureId]
       );
       return rows.map((row) => ({ id: row.uuid, procedureId, epochDay: row.epoch_day, fileName: row.file_path }));
+    },
+
+    async photosByProcedure() {
+      const rows = await driver.query<{ uuid: string; procedure_uuid: string; epoch_day: number; file_path: string }>(
+        `SELECT p.uuid AS uuid, r.uuid AS procedure_uuid, p.epoch_day AS epoch_day, p.file_path AS file_path
+           FROM procedure_photo p JOIN procedure r ON r.id = p.procedure_id
+          ORDER BY p.epoch_day, p.id`
+      );
+      const byProcedure = new Map<string, ProcedurePhoto[]>();
+      for (const row of rows) {
+        const photo = {
+          id: row.uuid,
+          procedureId: row.procedure_uuid,
+          epochDay: row.epoch_day,
+          fileName: row.file_path
+        };
+        const found = byProcedure.get(row.procedure_uuid);
+        if (found) found.push(photo);
+        else byProcedure.set(row.procedure_uuid, [photo]);
+      }
+      return byProcedure;
     },
 
     /* One query rather than one per procedure: a day view that walked the
