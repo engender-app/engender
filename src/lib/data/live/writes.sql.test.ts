@@ -1074,6 +1074,7 @@ beforeAll(async () => {
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.
   await driveRead('feltSense', 'latestDaysForTryouts', () => journal.feltSense.latestDaysForTryouts([tryoutId]));
+  await driveRead('feltSense', 'byTryout', () => journal.feltSense.byTryout());
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
