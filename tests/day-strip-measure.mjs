@@ -65,8 +65,17 @@ mkdirSync(OUT, { recursive: true });
 const BEFORE = { '/health/dilation': 4505, '/practice/wear': 2794 };
 
 /* What each screen measured on this branch, pinned. A screen growing past
-   its own figure is a regression whoever caused it should see. */
-const RATCHET = { '/health/dilation': 1160, '/practice/wear': 1300 };
+   its own figure is something whoever caused it should see.
+
+   Read it as a figure about the demo fixture and not only about the code.
+   `fullFixture.ts` seeds from one `r()` sequence, and wear's sessions are
+   drawn after the tryouts', so ticket 53 adding a felt-sense reading every
+   twelfth day of every tryout moved every wear draw after it - different
+   days got sessions, the shown week got two more rows, and this screen went
+   from 1293px to 1424px with nothing on it changed. The wear seeding's own
+   comment warns about exactly this. So a failure here is a prompt to look
+   at what moved, which may be the fixture rather than the screen. */
+const RATCHET = { '/health/dilation': 1160, '/practice/wear': 1430 };
 
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
