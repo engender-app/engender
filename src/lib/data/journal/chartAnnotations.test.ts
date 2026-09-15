@@ -576,7 +576,10 @@ test('each region is judged against itself', async () => {
 
 test('a finished area marks the day it ended, on any chart covering it', async () => {
   const journal = await journalWith();
-  await journal.areaStates.setAreasFinished(['measurements'], 20100);
+  // Both halves of the row: since redesign ticket 61 `measurements` fronts
+  // the readings and the size log, and a group half-finished is not
+  // finished (areaGroups.ts).
+  await journal.areaStates.setAreasFinished(['measurements', 'sizeRecords'], 20100);
 
   const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   const finished = marks.filter((a) => a.kind === 'finishedArea');

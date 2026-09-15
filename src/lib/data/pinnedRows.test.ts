@@ -38,12 +38,12 @@ const keysOf = (rows: ReturnType<typeof pinnedRows>) => rows.map((row) => row.sp
 // --- the person's own order -------------------------------------------------
 
 test('rows come back in the order the person put them in, not the registry order', () => {
-  /* `sizes` is declared after `measurements` on the hub, so a resolution
+  /* `wear` is declared after `measurements` on the hub, so a resolution
      that quietly sorted by the registry would come back the other way
      round. That is the whole claim of the feature: the app ranks nothing. */
-  const rows = pinnedRows(arranged(['sizes', 'measurements']), reading());
+  const rows = pinnedRows(arranged(['wear', 'measurements']), reading());
 
-  assert.deepEqual(keysOf(rows), ['sizes', 'measurements']);
+  assert.deepEqual(keysOf(rows), ['wear', 'measurements']);
 });
 
 test('a pinned row carries its own reading and the day of that reading', () => {
@@ -71,9 +71,11 @@ test('a pinned row that can never report a reading says what is behind it', () =
 });
 
 test('a pin naming a finished area carries the day it ended', () => {
+  /* Both halves: the measurements row fronts two sections since redesign
+     ticket 61, and a group half-finished is not finished (areaGroups.ts). */
   const rows = pinnedRows(
     arranged(['measurements']),
-    reading({ states: { measurements: finished(TODAY - 40) } })
+    reading({ states: { measurements: finished(TODAY - 40), sizeRecords: finished(TODAY - 40) } })
   );
 
   assert.deepEqual(rows[0].line, { kind: 'finished', epochDay: TODAY - 40 });
@@ -84,19 +86,19 @@ test('a finished pin stays where the person put it rather than moving to the end
      row is somewhere the person put it, so finishing an area may not move
      it - the hub's grouping is the hub's, and this is not the hub. */
   const rows = pinnedRows(
-    arranged(['measurements', 'sizes']),
-    reading({ states: { measurements: finished(TODAY - 40) } })
+    arranged(['measurements', 'wear']),
+    reading({ states: { measurements: finished(TODAY - 40), sizeRecords: finished(TODAY - 40) } })
   );
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'sizes']);
+  assert.deepEqual(keysOf(rows), ['measurements', 'wear']);
 });
 
 // --- what resolves to nothing -----------------------------------------------
 
 test('a stale pin naming a hidden area resolves to nothing', () => {
   const rows = pinnedRows(
-    arranged(['measurements', 'sizes']),
-    reading({ states: { sizeRecords: hidden } })
+    arranged(['measurements', 'wear']),
+    reading({ states: { wearSessions: hidden } })
   );
 
   assert.deepEqual(keysOf(rows), ['measurements']);
@@ -109,9 +111,9 @@ test('a pin naming a row the registry has never held resolves to nothing', () =>
 });
 
 test('a row pinned twice is drawn once, at the first place it was put', () => {
-  const rows = pinnedRows(arranged(['measurements', 'sizes', 'measurements']), reading());
+  const rows = pinnedRows(arranged(['measurements', 'wear', 'measurements']), reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'sizes']);
+  assert.deepEqual(keysOf(rows), ['measurements', 'wear']);
 });
 
 test('pinning nothing shows nothing, which is not the same as never having arranged it', () => {
@@ -132,10 +134,10 @@ test('the resolution can be run over a shortened registry and seen to drop the r
      own output over a registry one row short, which is the same function
      the screen calls. A pin that resolved a line ago resolves to nothing
      here, which is what a renamed or retired row does to a stored pin. */
-  const pins = arranged(['measurements', 'sizes']);
-  const shortened = HUB_ROWS.filter((row) => row.key !== 'sizes');
+  const pins = arranged(['measurements', 'wear']);
+  const shortened = HUB_ROWS.filter((row) => row.key !== 'wear');
 
-  assert.deepEqual(keysOf(pinnedRows(pins, reading())), ['measurements', 'sizes']);
+  assert.deepEqual(keysOf(pinnedRows(pins, reading())), ['measurements', 'wear']);
   assert.deepEqual(keysOf(pinnedRows(pins, reading(), shortened)), ['measurements']);
 });
 
@@ -226,31 +228,31 @@ test('an arrangement keeps a pin whose area is hidden and drops one the registry
      statement and survives an edit - it just draws nothing while the area
      is hidden. A key no row answers to is not a pin at all, and an edit is
      where the arrangement stops carrying it. */
-  const kept = pinArrangement(arranged(['measurements', 'sizes', 'no-such-row']));
+  const kept = pinArrangement(arranged(['measurements', 'wear', 'no-such-row']));
 
-  assert.deepEqual(kept, ['measurements', 'sizes']);
+  assert.deepEqual(kept, ['measurements', 'wear']);
 });
 
 test('a row added lands at the end rather than in registry order', () => {
   /* Where a new pin goes is the only answer that is not a ranking: last,
      because the app may not decide that a row somebody just asked for
      belongs above one they arranged earlier. */
-  assert.deepEqual(withPin(['tryouts', 'measurements'], 'sizes'), ['tryouts', 'measurements', 'sizes']);
+  assert.deepEqual(withPin(['tryouts', 'measurements'], 'wear'), ['tryouts', 'measurements', 'wear']);
 });
 
 test('adding a row that is already pinned changes nothing', () => {
-  assert.deepEqual(withPin(['sizes', 'measurements'], 'sizes'), ['sizes', 'measurements']);
+  assert.deepEqual(withPin(['wear', 'measurements'], 'wear'), ['wear', 'measurements']);
 });
 
 test('removing a row takes it out and leaves the rest in place', () => {
-  assert.deepEqual(withoutPin(['sizes', 'measurements', 'tryouts'], 'measurements'), ['sizes', 'tryouts']);
+  assert.deepEqual(withoutPin(['wear', 'measurements', 'tryouts'], 'measurements'), ['wear', 'tryouts']);
 });
 
 test('removing the last row leaves an empty arrangement, which is not the default', () => {
   /* Null and empty are different answers (catalogue: `pinnedRows`). An
      edit that emptied the list has to store the empty list, or unpinning
      the last row reads as a fresh install and the default comes back. */
-  assert.deepEqual(withoutPin(['sizes'], 'sizes'), []);
+  assert.deepEqual(withoutPin(['wear'], 'wear'), []);
 });
 
 test('a row moved up takes the place of the one above it', () => {
@@ -299,15 +301,15 @@ test('the add list offers every row the person has not pinned, in the hub order'
 });
 
 test('a row already pinned is not offered a second time', () => {
-  assert.ok(!addable(arranged(['sizes'])).includes('sizes'));
+  assert.ok(!addable(arranged(['wear'])).includes('wear'));
 });
 
 test('a hidden area cannot be added', () => {
   const states = Object.fromEntries(
-    (HUB_ROWS.find((row) => row.key === 'sizes')?.areas ?? []).map((area) => [area, hidden])
+    (HUB_ROWS.find((row) => row.key === 'wear')?.areas ?? []).map((area) => [area, hidden])
   );
 
-  assert.ok(!addable(arranged([]), { states }).includes('sizes'));
+  assert.ok(!addable(arranged([]), { states }).includes('wear'));
 });
 
 test('the cycle log is offered only where its own gate is already open', () => {

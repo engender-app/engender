@@ -11,6 +11,11 @@
    same way. Same rule, same shape of stub, so it is checked here rather
    than in a file of its own.
 
+   Redesign ticket 61 adds `/body/sizes`, and repoints `/settings/sizes` at
+   the merged screen rather than at that new stub: the size log and the
+   measurements screen became one screen, and ADR-0036's promise is that a
+   stale bookmark lands one call away, not two.
+
    Redesign ticket 51 (ADR-0084) runs two of ADR-0036's own stubs backwards:
    modes and entry templates are reference areas, and both moved onto
    Settings rather than off it. The old /settings/presentations and
@@ -28,7 +33,8 @@ import { describe, expect, it } from 'vitest';
 
 const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/measurements', () => import('../src/routes/settings/measurements/+page.ts'), '/body/measurements'],
-  ['settings/sizes', () => import('../src/routes/settings/sizes/+page.ts'), '/body/sizes'],
+  ['settings/sizes', () => import('../src/routes/settings/sizes/+page.ts'), '/body/measurements'],
+  ['body/sizes', () => import('../src/routes/body/sizes/+page.ts'), '/body/measurements'],
   ['settings/hair-progress', () => import('../src/routes/settings/hair-progress/+page.ts'), '/body/hair-progress'],
   ['settings/hair-removal', () => import('../src/routes/settings/hair-removal/+page.ts'), '/body/hair-removal'],
   ['settings/cycle-events', () => import('../src/routes/settings/cycle-events/+page.ts'), '/health/cycle-events'],

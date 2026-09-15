@@ -1,10 +1,35 @@
 <script lang="ts">
-  /* Waist, hips, chest and underbust over time, on the surface and chart
-     kits (phase 5 UX ticket 25).
+  /* Measurements and sizes: one screen for one question about one body
+     (phase 10 redesign ticket 61).
 
-     The chart is the kit's area chart now rather than this screen's own
-     LineChart, which is what the ticket asks of the four charted feature
-     screens. What that buys beyond a consistent drawing is the scrub: a
+     They used to be two hub rows side by side in Body, and the split ran
+     the wrong way. `/body/measurements` had the chart, the scrub, a
+     protocol card per type and the history under it. `/body/sizes` had
+     1788px of grouped rows - `XS - H&M`, `15 July 2026 - true to size` -
+     with no chart, no reading and no statement anywhere that a size had
+     changed, which makes it a purchase log. Clothes changing size is one
+     of the most legible signals a transitioning body gives, and often the
+     one that lands before any number does.
+
+     So: one row, one screen, one finishable group (`areaGroups.ts`), and
+     `/body/sizes` redirects. No `/body` index was added - that costs a
+     route, a screen registry entry and the three contracts a new screen
+     owes here for the same result the two-area row already gives, which is
+     the shape `hair-progress` has had since phase 8.
+
+     Both halves are the same four things in the same order: the area's
+     name with its own controls, a picker that says which reading is
+     showing, the reading, then the log. Rule 16 wants what is true now
+     above the records, however long the records are.
+
+     **What the change lines may not do.** Neither of them ranks anything
+     (ADR-0012). No arrow, no "down from", no percentage, no colour: a size
+     returned to is drawn exactly like a size moved to, and the
+     measurement span states three numbers and their arithmetic difference
+     with no opinion about which end is better. That is the whole test, and
+     `tests/change-lines.test.ts` keeps it.
+
+     The chart is the kit's area chart, which is what buys the scrub: a
      reading was a dot you could see and not name, and an exact number now
      comes from dragging across the plot. The unit rides on the formatter,
      so the gutter at the ends of the scale says "82 cm" and nothing on the
@@ -23,9 +48,12 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { garmentCategoryName } from '$lib/data/vocabulary/labels';
+  import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '$lib/data/garmentCategories';
+  import { sizeChanges } from '$lib/data/sizeChanges';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import type { Measurement } from '$lib/data/types';
+  import type { Measurement, SizeRecord } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -33,13 +61,15 @@
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
+  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -48,8 +78,10 @@
   /* Colour that carries a value takes role 0 (DIRECTION.md): roles run a
      flag's colours before its shades, so index 0 is the only one
      guaranteed chromatic on all 8 palettes and a chart drawn in an
-     achromatic band is a chart of disabled marks. The list takes the
-     stripe after it, where a tinted disc carries no reading. */
+     achromatic band is a chart of disabled marks. The lists take the
+     stripe after it, where a tinted disc carries no reading. Both lists
+     take the same one: they are the same kind of thing on one screen, and
+     a second stripe here would say they were not. */
   const SECTION_ROLE = { chart: 0, list: 1 };
 
   /** No card for a custom type - it never had built-in guidance to give
@@ -60,6 +92,13 @@
     chest: m.measurement_protocol_chest,
     underbust: m.measurement_protocol_underbust
   };
+
+  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+  /** A change line's own grain. The ticket's example is *L in November
+      2025, M since July 2026*: what a person remembers about a size is the
+      season it started, not the afternoon they bought it, and the exact day
+      is on the record in the log below either way. */
+  const monthLabel = (epochDay: number) => fmtDay(epochDay, { month: 'long', year: 'numeric' });
 
   // Falls back off 'waist' when it has been hidden - the picker below only
   // ever offers a visible type, and defaulting to a hidden one would open
@@ -90,14 +129,21 @@
      for values that run in the hundreds. */
   let chart = $derived(paddedSeries(chartPoints, 1));
 
-  /** The unit this type was last logged in, so a new entry defaults to
-      whatever the person has been using rather than forcing 'cm' back on
-      them. `measurements` is already scoped to the selected type and
-      ordered oldest first (ADR-0012: never converted, so this is a
-      default, not a rule). */
-  function lastUnit(): string {
-    return measurements[measurements.length - 1]?.unit ?? 'cm';
-  }
+  const fmtValue = (v: number) => `${Math.round(v * 10) / 10} ${prefs.measurementUnit}`;
+  /** The change carries its sign and nothing else. A plus or a minus is
+      arithmetic; an arrow, a colour or the word "down" would be a verdict,
+      and this app does not hand out verdicts about a body (ADR-0012). */
+  const fmtChange = (v: number) => (v > 0 ? `+${fmtValue(v)}` : fmtValue(v));
+
+  /** Where this type started, where it is, and the difference - the line
+      the chart has always known and never said. Null under two readings,
+      which is the same threshold the chart itself draws at. */
+  let span = $derived.by(() => {
+    if (!chart) return null;
+    const start = chart.points[0].y;
+    const current = chart.points[chart.points.length - 1].y;
+    return { start, current, change: current - start };
+  });
 
   const record = recordEditor<Measurement, { id?: string; date: string; type: string; value: string; unit: string }>({
     blank: () => ({
@@ -129,6 +175,16 @@
     remove: (id) => journal.measurements.deleteMeasurement(id),
     findById: (id) => measurements.find((r) => r.id === id)
   });
+
+  /** The unit this type was last logged in, so a new entry defaults to
+      whatever the person has been using rather than forcing 'cm' back on
+      them. `measurements` is already scoped to the selected type and
+      ordered oldest first (ADR-0012: never converted, so this is a
+      default, not a rule). */
+  function lastUnit(): string {
+    return measurements[measurements.length - 1]?.unit ?? 'cm';
+  }
+
   let manageOpen = $state(false);
   let newTypeName = $state('');
 
@@ -158,11 +214,73 @@
   function dismissProtocol() {
     prefs.measurementProtocolDismissed = true;
   }
+
+  /* --- Sizes ------------------------------------------------------------
+
+     The category filter is this half's picker, the same job the type
+     Segmented does above: it says which reading is showing, and both the
+     change lines and the log answer to it.
+
+     'all' opens on every category at once rather than whichever came
+     first in GARMENT_CATEGORIES (Alicja, 2026-08-27) - a UI-only value
+     the picker offers alongside the real ones, never itself a category a
+     record can be saved under, so it is not in GARMENT_CATEGORIES and
+     never reaches sizeRecords.ts's validation against that list. */
+  let category = $state<'all' | GarmentCategoryKey>('all');
+
+  let sizesQuery = liveList((j) =>
+    category === 'all' ? j.sizeRecords.getRecords() : j.sizeRecords.getRecordsByCategory(category)
+  );
+  let sizeRecords = $derived(sizesQuery.rows);
+  /* Grouped by category, in the fixed catalogue's own order, and only
+     built when 'all' is showing - a single category's own records stay a
+     flat reverse-chronological list, unchanged. */
+  let sizeGroups = $derived(
+    GARMENT_CATEGORIES.map((c) => ({ category: c, records: sizeRecords.filter((r) => r.category === c) })).filter(
+      (g) => g.records.length
+    )
+  );
+  let changes = $derived(sizeChanges(sizeRecords));
+
+  const size = recordEditor<SizeRecord, { id?: string; date: string; category: string; size: string; brand: string; fitNote: string }>({
+    blank: () => ({
+      date: dateInputValueFromEpochDay(todayEpochDay()),
+      // 'all' is the filter showing, never a category a new record can be
+      // saved under - falls back to the catalogue's first entry, same as
+      // the field's own default before 'all' existed.
+      category: category === 'all' ? GARMENT_CATEGORIES[0] : category,
+      size: '',
+      brand: '',
+      fitNote: ''
+    }),
+    fromRecord: (r) => ({ id: r.id, date: dateInputValueFromEpochDay(r.epochDay), category: r.category, size: r.size, brand: r.brand, fitNote: r.fitNote }),
+    async upsert(draft) {
+      if (!draft.size.trim()) return false;
+
+      await journal.sizeRecords.upsertRecord({
+        id: draft.id,
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
+        category: draft.category,
+        size: draft.size,
+        brand: draft.brand,
+        fitNote: draft.fitNote
+      });
+      // 'all' stays put rather than narrowing to whatever was just saved -
+      // a filter showing everything should still show everything right
+      // after adding to it. A specific category still follows the edit, the
+      // same as before 'all' existed.
+      if (category !== 'all') category = draft.category as GarmentCategoryKey;
+    },
+    remove: (id) => journal.sizeRecords.deleteRecord(id),
+    findById: (id) => sizeRecords.find((r) => r.id === id)
+  });
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.body_measurements()} back="/more" subtitle={m.measurements_intro()}>
-    {#snippet actions()}
+  <ScreenHeader title={m.measurements_and_sizes()} back="/more" subtitle={m.measurements_intro()} />
+
+  <SectionHeading text={m.body_measurements()}>
+    {#snippet action()}
       <button class="icon-btn press" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
@@ -170,7 +288,7 @@
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
-  </ScreenHeader>
+  </SectionHeading>
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   {#if !prefs.measurementProtocolDismissed && PROTOCOL[type]}
@@ -190,6 +308,14 @@
   <ReadGate read={measurementsQuery} variant="block" count={1}>
     {#snippet rows()}
       <div class="screen-part">
+        {#if span}
+          <dl class="span" data-measurement-span transition:disclose>
+            <div><dt>{m.measurement_span_start()}</dt><dd>{fmtValue(span.start)}</dd></div>
+            <div><dt>{m.measurement_span_current()}</dt><dd>{fmtValue(span.current)}</dd></div>
+            <div><dt>{m.measurement_span_change()}</dt><dd>{fmtChange(span.change)}</dd></div>
+          </dl>
+        {/if}
+
         <ChartCard
           heading={vocabulary.measurementTypeName(type)}
           kind="measurements-{type}"
@@ -203,7 +329,7 @@
               max={chart.max}
               from={ends.from}
               to={ends.to}
-              formatValue={(v) => `${Math.round(v * 10) / 10} ${prefs.measurementUnit}`}
+              formatValue={fmtValue}
               scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
               ariaLabel={m.measurement_row_aria({
                 type: vocabulary.measurementTypeName(type),
@@ -222,14 +348,13 @@
               data-measurement={r.id}
               icon="ruler"
               title={`${r.value} ${r.unit}`}
-              subtitle={fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+              subtitle={dayLabel(r.epochDay)}
               chevron={false}
               onclick={() => record.openEditor(r)}
             />
           {/each}
         </ListCard>
       </div>
-      <AreaFinish group="measurements" />
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">
@@ -242,9 +367,98 @@
           action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
-      <AreaFinish group="measurements" />
     {/snippet}
   </ReadGate>
+
+  <SectionHeading text={m.size_log()}>
+    {#snippet action()}
+      <button class="icon-btn press" data-add-size aria-label={m.size_log_add_aria()} onclick={() => size.openEditor(null)}>
+        <Icon name="plus" size={22} />
+      </button>
+    {/snippet}
+  </SectionHeading>
+
+  <div class="kit-filter">
+    <label class="kit-filter-label" for="size-log-category-filter">{m.size_log_category_label()}</label>
+    <ChartPicker
+      key="size-category"
+      id="size-log-category-filter"
+      labelledBy="size-log-category-filter"
+      value={category}
+      options={[
+        { value: 'all', label: m.size_log_category_all() },
+        ...GARMENT_CATEGORIES.map((c) => ({ value: c, label: garmentCategoryName(c) }))
+      ]}
+      onPick={(v) => (category = v as 'all' | GarmentCategoryKey)}
+    />
+  </div>
+
+  {#snippet sizeRow(r: SizeRecord)}
+    <ListRow
+      key={r.id}
+      data-size-record={r.id}
+      icon="package"
+      title={r.brand ? `${r.size} · ${r.brand}` : r.size}
+      subtitle={r.fitNote ? `${dayLabel(r.epochDay)} · ${r.fitNote}` : dayLabel(r.epochDay)}
+      chevron={false}
+      onclick={() => size.openEditor(r)}
+    />
+  {/snippet}
+
+  <ReadGate read={sizesQuery} variant="line" count={3}>
+    {#snippet rows()}
+      <div class="screen-part">
+        {#if changes.length}
+          <div class="changes" data-size-changes transition:disclose>
+            {#each changes as change (`${change.category} ${change.brand}`)}
+              <p class="change">
+                <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
+                <span class="change-says">
+                  {m.size_change_line({
+                    from: change.from.size,
+                    fromDate: monthLabel(change.from.epochDay),
+                    to: change.to.size,
+                    toDate: monthLabel(change.to.epochDay)
+                  })}
+                </span>
+              </p>
+            {/each}
+          </div>
+        {/if}
+
+        {#if category === 'all'}
+          {#each sizeGroups as g (g.category)}
+            <SectionHeading text={garmentCategoryName(g.category)} />
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+              {#each [...g.records].reverse() as r (r.id)}
+                {@render sizeRow(r)}
+              {/each}
+            </ListCard>
+          {/each}
+        {:else}
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+            {#each [...sizeRecords].reverse() as r (r.id)}
+              {@render sizeRow(r)}
+            {/each}
+          </ListCard>
+        {/if}
+      </div>
+    {/snippet}
+    {#snippet empty()}
+      <div class="screen-part">
+        <Notice
+          icon="package"
+          key="sizes-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+          title={m.size_log_empty_title()}
+          text={m.size_log_empty_body()}
+          action={{ label: m.size_log_empty_action(), primary: true, onclick: () => size.openEditor(null) }}
+        />
+      </div>
+    {/snippet}
+  </ReadGate>
+
+  <AreaFinish group="measurements" />
 
   <RecordSheet
     {record}
@@ -295,6 +509,55 @@
     {/snippet}
   </RecordSheet>
 
+  <RecordSheet
+    record={size}
+    handle="size-record"
+    newTitle={m.size_log_new_sheet()}
+    editTitle={m.size_log_edit_sheet()}
+    saveLabel={m.size_log_save()}
+    deleteLabel={m.size_log_delete()}
+    canSave={(draft) => draft.size.trim().length > 0}
+    confirm={{
+      title: m.size_log_delete_sheet(),
+      question: (r) => m.size_log_delete_q({ category: garmentCategoryName(r.category) }),
+      hint: () => m.size_log_delete_hint(),
+      confirmLabel: m.size_log_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
+      <Field label={m.size_log_date_label()} id="size-log-date">
+        {#snippet children(id)}
+          <DatePicker name="size-log-date" bind:value={editor.date} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_category_label()} id="size-log-category">
+        {#snippet children(id)}
+          <select class="input" {id} bind:value={editor.category}>
+            {#each GARMENT_CATEGORIES as c (c)}
+              <option value={c}>{garmentCategoryName(c)}</option>
+            {/each}
+          </select>
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_size_label()} id="size-log-size">
+        {#snippet children(id)}
+          <input class="input" {id} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_brand_label()} id="size-log-brand">
+        {#snippet children(id)}
+          <input class="input" {id} name="size-log-brand" placeholder={m.size_log_brand_placeholder()} bind:value={editor.brand} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_fit_note_label()} id="size-log-fit-note">
+        {#snippet children(id)}
+          <input class="input" {id} name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
+        {/snippet}
+      </Field>
+    {/snippet}
+  </RecordSheet>
+
   <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurement_manage_types_intro()}</p>
@@ -332,3 +595,73 @@
     <button class="btn btn-primary" data-add-measurement-type onclick={addType}><span>{m.measurement_type_add()}</span></button>
   </Sheet>
 </div>
+
+<style>
+  /* The two change lines, drawn as one idea.
+
+     Both are flush (rule 4): text on the page with a hairline under it and
+     no ground of its own, because a block or a card here would make the
+     reading look like a control and put a fourth surface on a screen that
+     already has a chart, two lists and a notice.
+
+     Neither takes a role. Colour in this app carries a value (rule 3), and
+     the one thing these lines must never do is grade the change they
+     report - so they are set in the page's own ink and the stripe stays on
+     the chart, where it belongs to a series rather than to a verdict. */
+  .span {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin: 0;
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .span dt {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+  }
+
+  .span dd {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    /* A reading is a number, and three of them in a row want their digits
+       in the same columns whatever the value - otherwise Start and Current
+       shift against each other every time a figure changes width. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  .changes {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .change {
+    margin: 0;
+    padding: var(--space-3) 0;
+  }
+
+  .change + .change {
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* Which label and which garment the statement is about. Above the
+     statement rather than inside it: a line that read "Uniqlo skirts, L in
+     November 2025" as one sentence would invite the eye to carry the brand
+     across to the next line, and never carrying a size across two brands
+     is the whole discipline here. */
+  .change-of {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+  }
+
+  .change-says {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+  }
+</style>

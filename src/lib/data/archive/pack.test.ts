@@ -88,7 +88,7 @@ function everyPreferenceSet(): PreferenceValues {
     autoExportSchedule: 'monthly',
     lastBackupAt: 1_700_000_000_000,
     backupNoticeDismissed: true,
-    pinnedRows: ['sizes', 'measurements', 'care'],
+    pinnedRows: ['wear', 'measurements', 'care'],
     agendaKinds: ['appointment', 'letterUnlock'],
     onboardingAreas: ['measurements']
   };
@@ -207,7 +207,7 @@ test('the front page somebody arranged survives an archive, in their order', asy
 
   assert.deepEqual(
     pinnedRows(restored, reading).map((row) => row.spec.key),
-    ['sizes', 'measurements', 'care']
+    ['wear', 'measurements', 'care']
   );
   assert.deepEqual(shownAgendaKinds(restored), ['appointment', 'letterUnlock']);
 });
