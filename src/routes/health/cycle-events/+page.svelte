@@ -156,20 +156,25 @@
     <div class="screen-part">
       <!-- What is true now, before what was true before (rule 16): the
            week as a strip, and today under it at full size with the way to
-           log it on the row. -->
-      <DayStrip
-        {today}
-        markOf={(day) => markOf(day)}
-        labelOf={(day, mark) =>
-          m.strip_day_state({
-            day: fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' }),
-            state: dayKindsLabel(day) ?? m.adherence_nothing_logged()
-          })}
-        {earliest}
-        onPick={openEventFor}
-        role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
-        bind:weeksBack
-      />
+           log it on the row. Guarded on `earliest` the same way hair
+           removal's own strip is, even though this branch only runs once
+           `events.length` has already guaranteed it - one fewer thing to
+           re-derive if that guarantee ever moves. -->
+      {#if earliest !== null}
+        <DayStrip
+          {today}
+          markOf={(day) => markOf(day)}
+          labelOf={(day, mark) =>
+            m.strip_day_state({
+              day: fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' }),
+              state: dayKindsLabel(day) ?? m.adherence_nothing_logged()
+            })}
+          {earliest}
+          onPick={openEventFor}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+          bind:weeksBack
+        />
+      {/if}
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
         <ListRow
           key="cycle-events-today"
