@@ -108,7 +108,14 @@ const REACHED_FROM_INSIDE = [
   'doubt/moments',
   'doubt/comfort',
   'doubt/evidence',
-  'doubt/readings'
+  'doubt/readings',
+  /* Redesign ticket 51 (ADR-0084): modes and entry templates are reference
+     areas, so both left `hubRows.ts` entirely for a plain row on Settings -
+     reached from there and from the entry editor's chip picker, never from
+     the hub. Still built on the kit, so they stay on this list for the
+     reason the note above it gives. */
+  'settings/presentations',
+  'settings/entry-templates'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -156,7 +163,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(19);
+    expect(REACHED_FROM_INSIDE.length).toBe(21);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -225,7 +232,7 @@ describe('what a first-run journal sees', () => {
       ![
         'transition/milestones',
         'practice/resources',
-        'practice/entry-templates',
+        'settings/entry-templates',
         'health/clinician-summary',
         'settings/exposure',
         /* The metric reference explains a fixed table of seven figures
@@ -294,8 +301,8 @@ describe('what the worker is still fetching', () => {
         'transition/milestones',
         'practice/resources',
         'settings/notifications',
-        'transition/presentations',
-        'practice/entry-templates',
+        'settings/presentations',
+        'settings/entry-templates',
         // Reads no journal at all: seven figures explained, and not one of
         // the person's own numbers anywhere on it (ADR-0060).
         'practice/voice/metrics',

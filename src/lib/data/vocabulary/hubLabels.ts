@@ -13,8 +13,8 @@
 
    Every row has that line, which is the spec's user story 13 - "each row to
    tell me what is behind it, so that navigating is also reading" - and a
-   reading replaces it wherever the row has one. Thirteen rows never get a
-   reading at all; the other thirteen show their line until something is
+   reading replaces it wherever the row has one. Ten rows never get a
+   reading at all; the other fifteen show their line until something is
    written in them.
 
    The reading copy is three frames and no more, which is what keeps it
@@ -46,12 +46,10 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   roadmap: m.roadmap_title,
   letters: m.letters_title,
   tryouts: m.tryout_title,
-  presentations: m.presentations_title,
   eras: m.eras_title,
   words: m.words_title,
   doubt: m.safe_space_title,
   'voice-benchmark': m.vb_title,
-  'entry-templates': m.entry_templates_title,
   wear: m.wear_log,
   effects: m.effects_timeline,
   resources: m.resources_title,
@@ -86,12 +84,10 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,
   tryouts: m.hub_sub_tryouts,
-  presentations: m.hub_sub_presentations,
   eras: m.hub_sub_eras,
   words: m.hub_sub_words,
   doubt: m.hub_sub_doubt,
   'voice-benchmark': m.hub_sub_voice_benchmark,
-  'entry-templates': m.hub_sub_entry_templates,
   wear: m.hub_sub_wear,
   effects: m.hub_sub_effects,
   resources: m.hub_sub_resources,

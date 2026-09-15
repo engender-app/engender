@@ -20,7 +20,6 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
-  import HostedRows from '$lib/components/HostedRows.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -278,15 +277,13 @@
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
-      <!-- Moved off the More hub by phase 9 carpet ticket 16. Every other row
-           in this card is a decision about how journaling works for you, and
-           a ready-made shape for an entry is one of those - it was on the hub
-           beside logs of things that happened, which is not what it is.
-
-           Joins this card rather than making one of its own, so `card` is
-           off: hiding the templates area takes the row out and leaves the
-           card it sits in alone. -->
-      <HostedRows host="settings" />
+      <!-- Modes and entry templates, beside body regions and affirmations
+           rather than hosted off the hub (redesign ticket 51, ADR-0084):
+           both are reference areas, spent on the entry editor's chips and
+           never read on their own screen for their own sake, which is the
+           same kind of thing this card is already full of. -->
+      <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/settings/entry-templates" />
+      <ListRow key="presentations" icon="palette" title={m.presentations_title()} subtitle={m.hub_sub_presentations()} href="/settings/presentations" />
     </ListCard>
 
     <!-- ADR-0043: the manual way into cycle tracking, for someone no

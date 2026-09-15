@@ -797,7 +797,11 @@
   <MoodPicker value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
 
   {#if vocabulary.visiblePresentations.length > 0}
-    <SectionHeading text={m.presentation_label()} />
+    <SectionHeading text={m.presentation_label()}>
+      {#snippet action()}
+        <a class="kit-heading-action" href="/settings/presentations">{m.presentations_manage()}</a>
+      {/snippet}
+    </SectionHeading>
     <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
       {#each vocabulary.visiblePresentations as p (p.id)}
         {@const role = roleAt(activeFlag.roles, p.roleIndex)}
@@ -1222,7 +1226,11 @@
   {/if}
 
   <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
-    <SectionHeading text={m.use_template()} />
+    <SectionHeading text={m.use_template()}>
+      {#snippet action()}
+        <a class="kit-heading-action" href="/settings/entry-templates">{m.entry_templates_manage()}</a>
+      {/snippet}
+    </SectionHeading>
     <ListCard {role}>
       {#each vocabulary.visibleEntryTemplates as tpl (tpl.id)}
         <ListRow key={tpl.id} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />

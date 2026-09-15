@@ -97,7 +97,7 @@ const AREA_ROWS: Record<
     href: (hit) => (hit.context ? `${TRYOUTS}/${hit.context}` : MILESTONES)
   },
   tryouts: { icon: 'tag', label: () => m.tryout_title(), href: (hit) => `${TRYOUTS}/${hit.id}` },
-  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/transition/presentations' },
+  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/settings/presentations' },
   eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/transition/eras' },
   roadmapGoals: { icon: 'globe', label: () => m.roadmap_title(), href: () => '/transition/roadmap' },
   affirmations: {
