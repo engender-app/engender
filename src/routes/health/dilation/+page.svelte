@@ -14,12 +14,28 @@
      dose log's own row rather than a synonym key for the same words - no
      count,
      no streak, no colour. Tapping a gap opens the session sheet for that
-     day; tapping a logged row edits it. */
+     day; tapping a logged row edits it.
+
+     Phase 10 redesign ticket 44 kept that row and cut how many of them
+     there are. `expectedSessionDays` puts a session on nearly every day of
+     a taper that runs months, and one 60px row each captured this screen
+     at 4505px on a demo build with every feature filled - the arithmetic
+     was wrong, not the copy. The app had already made the same argument
+     about the calendar: `DAY_AHEAD_OPT_OUTS` refuses this schedule a mark
+     because an expected session on nearly every day is not information.
+
+     So the screen opens on a week as a strip with today under it at full
+     size (DIRECTION.md rule 16), and the gap rows run under that for the
+     week the strip is showing, today excepted because it is already drawn
+     above them. Tapping a cell opens the same sheet tapping a gap row
+     opens, so the write path is the one that was already here. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
+  import DayStrip from '$lib/components/DayStrip.svelte';
+  import { stripWindow, type DayMark } from '$lib/components/dayStrip';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
@@ -46,7 +62,13 @@
   /* `chart` takes 0, the only index guaranteed to be a colour on every
      palette (roles.ts) - the data line must never land on trans' achromatic
      middle stripe the way index 2 would. */
-  const SECTION_ROLE = { chart: 0, schedule: 1, sessions: 2 };
+  const SECTION_ROLE = { chart: 0, strip: 0, schedule: 1, sessions: 2 };
+
+  /* The strip's fill is a colour carrying a value, so it takes role 0 with
+     the chart rather than the sessions' own stripe (ticket 44). Index 2 is
+     trans' achromatic middle band, and a logged day filled in white on a
+     near-white page is a day drawn as nothing - the same rule the calendar
+     states for its own three readings of a day. */
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const today = todayEpochDay();
@@ -145,6 +167,38 @@
     findById: (id) => sessions.find((s) => s.id === id)
   });
 
+  /* What the strip and the rows both read a day off (ticket 44). One
+     answer for the two surfaces, so a cell and the row under it can never
+     disagree about the same day. */
+  let expectedSet = $derived(new Set(expectedDays));
+  let markOf = $derived(
+    (epochDay: number): DayMark =>
+      sessionsByDay.has(epochDay) ? 'logged' : expectedSet.has(epochDay) ? 'expected' : 'off'
+  );
+  const stateWords = (mark: DayMark) =>
+    mark === 'logged'
+      ? m.dilation_session_logged()
+      : mark === 'expected'
+        ? m.adherence_nothing_logged()
+        : m.dilation_nothing_expected();
+
+  /* Which week the strip is showing, bound out of it so the rows below
+     list that same week rather than a second one of their own. */
+  let weeksBack = $state(0);
+  let shownWeek = $derived(stripWindow(today, weeksBack));
+
+  /* The week's gap rows, newest first, today left out - it is drawn above
+     these at full size and a row for it here would be the same day twice.
+     A day the schedule expected nothing on says nothing, which is the
+     whole reason this is a week of rows and not a week of days. */
+  let weekRows = $derived(
+    Array.from({ length: shownWeek.last - shownWeek.first + 1 }, (_, i) => shownWeek.first + i)
+      .filter((epochDay) => epochDay !== today && markOf(epochDay) !== 'off')
+      .reverse()
+  );
+
+  let todayMark = $derived(markOf(today));
+
   /** A tap on any row in the expected-sessions list: the day's own session
       if one is logged, or a blank draft for that day if none is. */
   function openSessionFor(epochDay: number) {
@@ -185,97 +239,83 @@
         action={{ label: m.dilation_schedule_empty_action(), primary: true, onclick: openScheduleEditor }}
       />
     </div>
-  {:else}
+  {:else if editingSchedule}
     <div class="screen-part">
       <SectionHeading text={m.dilation_schedule_heading()} />
-      {#if editingSchedule}
-        <Field label={m.dilation_surgery_day_label()} id="dilation-surgery-day">
-          {#snippet children(id)}
-            <DatePicker name="dilation-surgery-day" bind:value={surgeryDayInput} {id} />
-          {/snippet}
-        </Field>
-        <Field label={m.dilation_start_day_label()} id="dilation-start-day">
-          {#snippet children(id)}
-            <DatePicker name="dilation-start-day" bind:value={startDayInput} {id} />
-          {/snippet}
-        </Field>
-        <p class="muted small">{m.dilation_start_day_hint()}</p>
+      <Field label={m.dilation_surgery_day_label()} id="dilation-surgery-day">
+        {#snippet children(id)}
+          <DatePicker name="dilation-surgery-day" bind:value={surgeryDayInput} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.dilation_start_day_label()} id="dilation-start-day">
+        {#snippet children(id)}
+          <DatePicker name="dilation-start-day" bind:value={startDayInput} {id} />
+        {/snippet}
+      </Field>
+      <p class="muted small">{m.dilation_start_day_hint()}</p>
 
-        <FieldGroupHeading legend={m.dilation_stage_legend()} hint={m.dilation_stage_hint()} />
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-          {#each stagesInput as stage, index (index)}
-            <div class="kit-row is-static">
-              <span class="kit-row-text cd-endpoints">
-                <span class="field">
-                  <input
-                    class="input"
-                    type="number"
-                    min="0"
-                    inputmode="numeric"
-                    data-stage-frequency={index}
-                    aria-label={m.dilation_stage_frequency_aria()}
-                    bind:value={stage.everyNDays}
-                  />
-                </span>
-                <span class="field">
-                  <input
-                    class="input"
-                    type="number"
-                    min="1"
-                    inputmode="numeric"
-                    data-stage-duration={index}
-                    aria-label={m.dilation_stage_duration_aria()}
-                    bind:value={stage.days}
-                  />
-                </span>
+      <FieldGroupHeading legend={m.dilation_stage_legend()} hint={m.dilation_stage_hint()} />
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
+        {#each stagesInput as stage, index (index)}
+          <div class="kit-row is-static">
+            <span class="kit-row-text cd-endpoints">
+              <span class="field">
+                <input
+                  class="input"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  data-stage-frequency={index}
+                  aria-label={m.dilation_stage_frequency_aria()}
+                  bind:value={stage.everyNDays}
+                />
               </span>
-              <button
-                class="kit-row-act press"
-                data-delete-stage={index}
-                aria-label={m.dilation_stage_delete_aria({ index: index + 1 })}
-                onclick={() => removeStage(index)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
-          {/each}
-        </ListCard>
-        <button class="btn btn-ghost press" data-add-stage onclick={addStage}>
-          <span>{m.dilation_stage_add()}</span>
+              <span class="field">
+                <input
+                  class="input"
+                  type="number"
+                  min="1"
+                  inputmode="numeric"
+                  data-stage-duration={index}
+                  aria-label={m.dilation_stage_duration_aria()}
+                  bind:value={stage.days}
+                />
+              </span>
+            </span>
+            <button
+              class="kit-row-act press"
+              data-delete-stage={index}
+              aria-label={m.dilation_stage_delete_aria({ index: index + 1 })}
+              onclick={() => removeStage(index)}
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          </div>
+        {/each}
+      </ListCard>
+      <button class="btn btn-ghost press" data-add-stage onclick={addStage}>
+        <span>{m.dilation_stage_add()}</span>
+      </button>
+
+      <div class="stack-3 dilation-schedule-actions">
+        <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
+          <span>{m.dilation_schedule_save()}</span>
         </button>
-
-        <div class="stack-3 dilation-schedule-actions">
-          <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
-            <span>{m.dilation_schedule_save()}</span>
-          </button>
-          <button class="btn btn-ghost" onclick={() => (editingSchedule = false)}>
-            <span>{m.cancel()}</span>
-          </button>
-        </div>
-      {:else if taper}
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-          <ListRow
-            key="dilation-schedule"
-            data-schedule
-            icon="flask"
-            title={m.dilation_surgery_day_label()}
-            subtitle={dayLong(taper.surgeryEpochDay)}
-            aria-label={m.dilation_schedule_edit_aria()}
-            onclick={openScheduleEditor}
-          />
-        </ListCard>
-      {/if}
+        <button class="btn btn-ghost" onclick={() => (editingSchedule = false)}>
+          <span>{m.cancel()}</span>
+        </button>
+      </div>
     </div>
-  {/if}
-
-  {#if taper}
-    <div class="screen-part">
-      <SectionHeading text={m.dilation_sessions_heading()} />
-      {#if sessionsQuery.loading}
-        <div out:crossfade>
-          <Skeleton variant="line" count={3} />
-        </div>
-      {:else if expectedDays.length === 0}
+  {:else if taper}
+    <!-- What is true now, before what was true before (rule 16): the week
+         as a strip, and today under it at full size with the way to log it
+         on the row. -->
+    {#if sessionsQuery.loading}
+      <div class="screen-part" out:crossfade>
+        <Skeleton variant="line" count={3} />
+      </div>
+    {:else if expectedDays.length === 0}
+      <div class="screen-part">
         <Notice
           icon="flask"
           key="dilation-sessions-empty"
@@ -283,28 +323,79 @@
           title={m.dilation_sessions_empty_title()}
           text={m.dilation_sessions_empty_body()}
         />
-      {:else}
+      </div>
+    {:else}
+      <div class="screen-part">
+        <DayStrip
+          {today}
+          markOf={(day) => markOf(day)}
+          labelOf={(day, mark) => m.strip_day_state({ day: dayLong(day), state: stateWords(mark) })}
+          earliest={taper.startEpochDay}
+          onPick={openSessionFor}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+          bind:weeksBack
+        />
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-          {#each [...expectedDays].reverse() as epochDay (epochDay)}
-            {@const logged = sessionsByDay.get(epochDay)}
-            <ListRow
-              key={String(epochDay)}
-              data-session-day={epochDay}
-              title={dayLong(epochDay)}
-              subtitle={logged?.note || undefined}
-              onclick={() => openSessionFor(epochDay)}
-            >
-              {#snippet trailing()}
-                {#if !logged}
-                  {m.adherence_nothing_logged()}
-                {:else if !logged.note}
-                  {m.dilation_session_logged()}
-                {/if}
-              {/snippet}
-            </ListRow>
-          {/each}
+          <ListRow
+            key="dilation-today"
+            data-dilation-today
+            title={m.today()}
+            subtitle={sessionsByDay.get(today)?.note || dayLong(today)}
+            onclick={() => openSessionFor(today)}
+          >
+            {#snippet trailing()}
+              {stateWords(todayMark)}
+            {/snippet}
+          </ListRow>
         </ListCard>
-      {/if}
+      </div>
+
+      <div class="screen-part">
+        <SectionHeading text={m.dilation_sessions_heading()} />
+        {#if weekRows.length === 0}
+          <p class="muted small">{m.dilation_nothing_expected()}</p>
+        {:else}
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            {#each weekRows as epochDay (epochDay)}
+              {@const logged = sessionsByDay.get(epochDay)}
+              <ListRow
+                key={String(epochDay)}
+                data-session-day={epochDay}
+                title={dayLong(epochDay)}
+                subtitle={logged?.note || undefined}
+                onclick={() => openSessionFor(epochDay)}
+              >
+                {#snippet trailing()}
+                  {#if !logged}
+                    {m.adherence_nothing_logged()}
+                  {:else if !logged.note}
+                    {m.dilation_session_logged()}
+                  {/if}
+                {/snippet}
+              </ListRow>
+            {/each}
+          </ListCard>
+        {/if}
+      </div>
+    {/if}
+
+    <!-- The schedule itself, under the reading of it rather than over: it
+         is where the taper is edited, not what a person opens this screen
+         to find out (rule 16, and the same lesson ticket 54 took on the
+         roadmap - open on where you are, not on the pack's provenance). -->
+    <div class="screen-part">
+      <SectionHeading text={m.dilation_schedule_heading()} />
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
+        <ListRow
+          key="dilation-schedule"
+          data-schedule
+          icon="flask"
+          title={m.dilation_surgery_day_label()}
+          subtitle={dayLong(taper.surgeryEpochDay)}
+          aria-label={m.dilation_schedule_edit_aria()}
+          onclick={openScheduleEditor}
+        />
+      </ListCard>
     </div>
 
     <ChartCard
