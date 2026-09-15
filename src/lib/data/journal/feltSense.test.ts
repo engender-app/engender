@@ -147,3 +147,42 @@ test('asking for no tryouts answers an empty map, and a milestone entry never la
   assert.equal((await journal.feltSense.latestDaysForTryouts([])).size, 0);
   assert.equal((await journal.feltSense.latestDaysForTryouts([tryoutId])).size, 0);
 });
+
+/* One query for a screen drawing several tryouts at once (ticket 53). */
+test('every tryout\'s readings come back grouped and oldest first, and a tryout with none is absent', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const alex = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+  const theyThem = await journal.tryouts.upsertTryout({
+    kind: 'pronouns',
+    label: 'they/them',
+    startEpochDay: 120,
+    endEpochDay: null
+  });
+  const quiet = await journal.tryouts.upsertTryout({
+    kind: 'style',
+    label: 'shorter hair',
+    startEpochDay: 130,
+    endEpochDay: null
+  });
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: 100 });
+
+  const later = await journal.feltSense.add({ tryoutId: alex }, { epochDay: 140, mood: 4 });
+  const earlier = await journal.feltSense.add({ tryoutId: alex }, { epochDay: 110, mood: 2, note: 'awkward' });
+  const only = await journal.feltSense.add({ tryoutId: theyThem }, { epochDay: 125, mood: 5 });
+  await journal.feltSense.add({ milestoneId }, { epochDay: 150, mood: 3 });
+
+  const byTryout = await journal.feltSense.byTryout();
+
+  assert.deepEqual(byTryout.get(alex), [
+    { id: earlier, epochDay: 110, mood: 2, note: 'awkward' },
+    { id: later, epochDay: 140, mood: 4, note: null }
+  ]);
+  assert.deepEqual(byTryout.get(theyThem), [{ id: only, epochDay: 125, mood: 5, note: null }]);
+  assert.equal(byTryout.has(quiet), false, 'a tryout with no readings is absent rather than empty');
+  assert.equal(byTryout.size, 2, 'and a milestone\'s reading never lands in it');
+});

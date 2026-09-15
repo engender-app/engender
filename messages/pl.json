@@ -2384,6 +2384,63 @@
   "tryout_adopt_update_profile_name": "Zaktualizuj imię profilu w aplikacji na „{name}”",
   "tryout_adopt_confirm_add": "Dodaj kamień milowy i przyjmij",
   "tryout_adopt_without_milestone": "Przyjmij bez kamienia milowego",
+  "tryout_running_heading": "Trwa teraz",
+  "tryout_ended_heading": "Zakończone",
+  "tryout_unit_days_trying": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień próby",
+        "nPlural=few": "dni próby",
+        "nPlural=many": "dni próby",
+        "nPlural=other": "dni próby"
+      }
+    }
+  ],
+  "tryout_ran_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} dzień",
+        "nPlural=few": "{n} dni",
+        "nPlural=many": "{n} dni",
+        "nPlural=other": "{n} dni"
+      }
+    }
+  ],
+  "tryout_felt_count": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} zapis odczuć",
+        "nPlural=few": "{n} zapisy odczuć",
+        "nPlural=many": "{n} zapisów odczuć",
+        "nPlural=other": "{n} zapisów odczuć"
+      }
+    }
+  ],
+  "tryout_felt_latest": "ostatni {day}",
+  "tryout_felt_none": "Nie ma jeszcze zapisu odczuć",
+  "tryout_feeling_today": "Jak to się czuło dzisiaj",
+  "tryout_feeling_today_title": "Jak to się czuło dzisiaj?",
   "letters_title": "Listy w kapsule czasu",
   "letters_intro": "Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
   "letters_compose_title": "Napisz list",

@@ -324,6 +324,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
       "a procedure's card is the width of the list and carries a display number, a rail and a photo strip; the compact depth walks all three sideways while the card around them holds still, which is LetterCard's reason at the same size (redesign ticket 52)"
   },
   {
+    file: 'src/lib/components/TryoutCard.svelte',
+    count: 1,
+    reason:
+      "a running tryout's card is the width of the list and carries a display number and the drawing its readings make; the compact depth walks both sideways while the card around them holds still, which is ProcedureRecoveryCard's reason on the same surface (redesign ticket 53)"
+  },
+  {
     file: 'src/lib/components/TodayEditor.svelte',
     count: 1,
     reason:
