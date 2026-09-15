@@ -33,6 +33,8 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
+  import DayStrip from '$lib/components/DayStrip.svelte';
+  import { stripWindow, type DayMark } from '$lib/components/dayStrip';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -44,6 +46,13 @@
   import { roleAt } from '$lib/theme/roles';
 
   const KINDS: CycleEventKind[] = ['period_occurred', 'spotting', 'nothing_this_month'];
+
+  /* The strip's fill takes role 0 (ticket 56, following ticket 44's rule for
+     dilation and wear): index 0 is the only role guaranteed chromatic on all
+     8 palettes, and a logged day filled in a palette's achromatic band is a
+     day drawn as nothing. The chart draws its own line colour
+     (CycleEventChart.svelte) and takes no role here. */
+  const SECTION_ROLE = { strip: 0, sessions: 1 };
 
   const today = todayEpochDay();
   const defaultRange = ongoingWindowRange(today, 365);
@@ -70,6 +79,48 @@
           .filter((band) => band.startEpochDay <= range!.end && band.endEpochDay >= range!.start)
       : []
   );
+
+  /* The log is a week at a time now (phase 10 redesign ticket 56, reusing
+     ticket 44's DayStrip/dayStrip.ts). A day here is `logged` or nothing -
+     there is no `expected`, the same restraint wear's own strip applies:
+     nothing schedules a cycle event, and this screen has always refused to
+     predict one. */
+  let eventsByDay = $derived.by(() => {
+    const byDay = new Map<number, CycleEvent[]>();
+    for (const event of events) {
+      byDay.set(event.epochDay, [...(byDay.get(event.epochDay) ?? []), event]);
+    }
+    return byDay;
+  });
+  let markOf = $derived((epochDay: number): DayMark => (eventsByDay.has(epochDay) ? 'logged' : 'off'));
+  let earliest = $derived(events.length === 0 ? null : Math.min(...events.map((event) => event.epochDay)));
+
+  /** What a cell, or the day row under the strip, says: the kinds logged
+      that day, joined the way a day can hold more than one event. */
+  const dayKindsLabel = (epochDay: number): string | null => {
+    const onDay = eventsByDay.get(epochDay);
+    return onDay && onDay.length ? onDay.map((event) => cycleEventKindName(event.kind)).join(' · ') : null;
+  };
+
+  let weeksBack = $state(0);
+  let shownWeek = $derived(stripWindow(today, weeksBack));
+  let weekEvents = $derived(
+    [...events]
+      .filter((event) => event.epochDay >= shownWeek.first && event.epochDay <= shownWeek.last)
+      .sort((a, b) => b.epochDay - a.epochDay)
+  );
+
+  /** A tap on a strip day: its first event if it has one, or a blank draft
+      anchored to that day if it has none - the same two ways the add
+      control already offers, pointed at one day. */
+  function openEventFor(epochDay: number) {
+    const existing = eventsByDay.get(epochDay)?.[0];
+    if (existing) {
+      record.openEditor(existing);
+      return;
+    }
+    record.editor = { date: dateInputValueFromEpochDay(epochDay), kind: 'period_occurred' };
+  }
 
   const record = recordEditor<CycleEvent, { id?: string; date: string; kind: CycleEventKind }>({
     blank: () => ({ date: dateInputValueFromEpochDay(today), kind: 'period_occurred' }),
@@ -103,12 +154,75 @@
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if events.length}
     <div class="screen-part">
+      <!-- What is true now, before what was true before (rule 16): the
+           week as a strip, and today under it at full size with the way to
+           log it on the row. Guarded on `earliest` the same way hair
+           removal's own strip is, even though this branch only runs once
+           `events.length` has already guaranteed it - one fewer thing to
+           re-derive if that guarantee ever moves. -->
+      {#if earliest !== null}
+        <DayStrip
+          {today}
+          markOf={(day) => markOf(day)}
+          labelOf={(day, mark) =>
+            m.strip_day_state({
+              day: fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' }),
+              state: dayKindsLabel(day) ?? m.adherence_nothing_logged()
+            })}
+          {earliest}
+          onPick={openEventFor}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+          bind:weeksBack
+        />
+      {/if}
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+        <ListRow
+          key="cycle-events-today"
+          data-cycle-events-today
+          icon="calendar"
+          title={m.today()}
+          subtitle={fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' })}
+          onclick={() => openEventFor(today)}
+        >
+          {#snippet trailing()}
+            {dayKindsLabel(today) ?? m.adherence_nothing_logged()}
+          {/snippet}
+        </ListRow>
+      </ListCard>
+    </div>
+
+    <div class="screen-part">
+      {#if weekEvents.length === 0}
+        <!-- Its own words rather than a day's answer stretched over seven,
+             the same line dilation's and wear's empty week carry. -->
+        <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+      {:else}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+          {#each weekEvents as event (event.id)}
+            <ListRow
+              key={event.id}
+              data-cycle-event={event.id}
+              icon="calendar"
+              title={cycleEventKindName(event.kind)}
+              subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+              chevron={false}
+              onclick={() => record.openEditor(event)}
+            />
+          {/each}
+        </ListCard>
+      {/if}
+    </div>
+
+    <div class="screen-part">
       <!-- The chart is not in a card. It is the only thing in this area of
            the screen, and a box drawn around the one thing on a screen is
            what DIRECTION.md 2b names as making a screen read as generic -
            the same call the calendar's month grid made. The endpoints sit
            above it on the kit's filter line, because they say what the
-           chart is showing rather than entering a value. -->
+           chart is showing rather than entering a value. Moved under the
+           reading and the strip (ticket 56, rule 16: what is true now comes
+           first, and a chart against a chosen range is a record of before,
+           not now) - the same move ticket 44 made for wear's own trend. -->
       <div class="kit-filter cd-endpoints">
         <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
           {#snippet children(id)}
@@ -126,25 +240,6 @@
       {:else}
         <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
       {/if}
-
-      <!-- No heading over the list. The screen is called Cycle and the
-           only wording the catalogue has for this area is that same word,
-           which would be two headers stacked (DIRECTION.md 3d). The chart
-           sits on the page and the list sits in a card, which is what
-           separates them; a name for the list is a copy ticket's to write. -->
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each [...events].reverse() as event (event.id)}
-          <ListRow
-            key={event.id}
-            data-cycle-event={event.id}
-            icon="calendar"
-            title={cycleEventKindName(event.kind)}
-            subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-            chevron={false}
-            onclick={() => record.openEditor(event)}
-          />
-        {/each}
-      </ListCard>
     </div>
   {:else}
     <div class="screen-part">
