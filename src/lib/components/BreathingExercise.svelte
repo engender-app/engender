@@ -199,12 +199,14 @@
                 {/each}
               </div>
             {:else}
-              <!-- The pattern, and not the title a second time: /doubt already
-                   heads this area with `safe_space_calm_title`, and the card
-                   was the only thing that had kept the two apart. The figure
-                   sits in the slot the phase word takes once the count is
-                   running, so starting changes what the core says rather than
-                   where it says it.
+              <!-- The pattern, and not a title a second time. Redesign
+                   ticket 47 took the section heading off /doubt entirely -
+                   the field says where this is, and the screen holds
+                   nothing but this - so the only words above the ring now
+                   are the description this component draws itself. The
+                   figure sits in the slot the phase word takes once the
+                   count is running, so starting changes what the core says
+                   rather than where it says it.
 
                    `aria-hidden`, because this sits in the live region and four
                    numerals with three separators are not something anybody can
