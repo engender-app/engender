@@ -29,7 +29,6 @@ import { areaQuiet, type AreaStates, type FinishableArea, type SuspendableArea, 
     own row keys, because that is what the screens behind them are called. */
 export type AreaGroupKey =
   | 'measurements'
-  | 'sizes'
   | 'wear'
   | 'hair-progress'
   | 'hair-removal'
@@ -40,16 +39,26 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Six of the eight front exactly one area. Hair progress fronts two, and so
-    does voice now (phase 8 features ticket 10): a benchmark and a practice
+    Five of the eight front exactly one area. Hair progress fronts two, and
+    so does voice (phase 8 features ticket 10): a benchmark and a practice
     take are both dated records of the same practice, so `voice` finishes
     them together the way hair progress finishes its stagings and its
     photographs. A voice memo belongs to an entry and travels inside
     `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
-    has no group here. */
+    has no group here.
+
+    `measurements` is the third, from phase 10 redesign ticket 61: a number
+    off a tape and a size off a label are two halves of one question about
+    the same body, and they were two rows with the half that had a reading
+    not knowing about the half that had none. One row, one screen, one
+    group - so the row reads finished only when a person has stopped with
+    both, which is the rule hair progress has always followed. The old
+    `sizes` group is gone rather than renamed: `areaState.ts` keys what is
+    finished by `sizeRecords`, the archive section, so nothing a person has
+    already finished is disturbed by the navigation above it changing
+    (ADR-0052). */
 export const AREA_GROUPS = {
-  measurements: ['measurements'],
-  sizes: ['sizeRecords'],
+  measurements: ['measurements', 'sizeRecords'],
   wear: ['wearSessions'],
   'hair-progress': ['hairStages', 'hairPhotos'],
   'hair-removal': ['hairRemovalSessions'],
@@ -61,7 +70,7 @@ export const AREA_GROUPS = {
 
 /* A finishable area with no group would be one nothing on screen could ever
    finish, silently. This line makes that a compile error instead -
-   demonstrated by deleting the `sizes` entry above and watching `Ungrouped`
+   demonstrated by deleting the `wear` entry above and watching `Ungrouped`
    stop being `never`. The other direction is covered by the `satisfies`,
    which refuses a group naming something `FINISHABLE_AREAS` does not hold. */
 type Grouped = (typeof AREA_GROUPS)[AreaGroupKey][number];

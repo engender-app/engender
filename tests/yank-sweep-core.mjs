@@ -906,8 +906,7 @@ const HYDRATION_SCENES = [
   { name: 'more', at: '/more', is: 'the hub itself' },
   { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
-  { name: 'measurements', at: '/body/measurements', is: 'measurements over time' },
-  { name: 'sizes', at: '/body/sizes', is: 'sizes and how they fit' },
+  { name: 'measurements', at: '/body/measurements', is: 'measurements over time and sizes' },
   /* Health group */
   { name: 'care', at: '/care', is: 'the care dashboard' },
   { name: 'appointment-prep', at: '/health/appointment-prep', is: 'appointment prep questions' },
