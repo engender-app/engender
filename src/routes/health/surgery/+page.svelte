@@ -9,7 +9,7 @@
      5. Archived Phase (>90 days post-op): Permanent surgical history record. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
@@ -91,8 +91,15 @@
     action: m.surgery_compare_action
   };
 
-  let photosQuery = liveList((j) =>
-    selectedId ? j.procedures.getPhotos(selectedId) : Promise.resolve([])
+  /* Every procedure's recovery photos, in one read (ticket 52). The index
+     draws each card's own strip from them, and the open procedure's album
+     is the same answer seen through `liveListIn` rather than a second
+     query - one read of `procedure_photo` per screen, and the strip and
+     the album can never disagree about what is in it. */
+  let allPhotosQuery = liveQuery((j) => j.procedures.photosByProcedure());
+  let photosByProcedure = $derived(allPhotosQuery.value ?? new Map<string, ProcedurePhoto[]>());
+  let photosQuery = liveListIn(allPhotosQuery, (byProcedure) =>
+    selectedId ? (byProcedure.get(selectedId) ?? []) : []
   );
   let photos = $derived(photosQuery.rows);
 
@@ -268,7 +275,7 @@
               selected={selectedId === procedure.id}
               {today}
               linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
-              photoCount={selectedId === procedure.id ? photos.length : 0}
+              photos={photosByProcedure.get(procedure.id) ?? []}
               checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
               onclick={() => select(procedure)}
               onedit={() => record.openEditor(procedure)}
@@ -292,7 +299,10 @@
   </ReadGate>
 
   {#if selected && selectedPhase}
-    <div class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
+    <!-- The id is what the card's own `aria-expanded` button points at
+         with `aria-controls` (ticket 52): the log is a sibling of the
+         whole list rather than a child of the card that opens it. -->
+    <div id="procedure-log-{selected.id}" class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
       {#snippet checklistBlock(title: string, readonly = false)}
         <SectionHeading text={title} />
         {#if checklistItems.length}

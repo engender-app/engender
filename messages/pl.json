@@ -2837,7 +2837,6 @@
   "surgery_delete_sheet": "Usuń operację",
   "surgery_delete_q": "Usunąć {name}?",
   "surgery_delete_hint": "Razem z nią znikną terminy konsultacji, notatki, zdjęcia i lista. Tego nie da się cofnąć.",
-  "surgery_row_aria": "Otwórz {name}",
   "surgery_day_unscheduled": "Termin jeszcze nieustalony",
   "surgery_set_date": "Ustaw datę",
   "surgery_day_upcoming": "Zostało {days}",
@@ -2883,7 +2882,6 @@
   "surgery_phase_recovery": "Gojenie",
   "surgery_phase_archived": "Historia",
   "surgery_post_op_day": "Dzień {days} po operacji",
-  "surgery_countdown_badge": "{days} do operacji",
   "surgery_consult_questions_title": "Pytania na konsultację i notatki",
   "surgery_prep_checklist_title": "Przygotowanie i formalności",
   "surgery_clearance_checklist_title": "Kwalifikacja i pakowanie",
@@ -3694,5 +3692,58 @@
   "home_edit_reset": "Wróć do domyślnego zestawu",
   "home_edit_reset_question": "Wrócić do domyślnego zestawu?",
   "home_edit_reset_hint": "Ułożona kolejność przepada, a wszystkie rodzaje wpisów w Nadchodzi wracają. Nic nie zostaje usunięte - te ekrany dalej są na swoim miejscu.",
-  "tomorrow": "Jutro"
+  "tomorrow": "Jutro",
+  "surgery_unit_post_op": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień po operacji",
+        "nPlural=few": "dni po operacji",
+        "nPlural=many": "dni po operacji",
+        "nPlural=other": "dni po operacji"
+      }
+    }
+  ],
+  "surgery_unit_to_go": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień do operacji",
+        "nPlural=few": "dni do operacji",
+        "nPlural=many": "dni do operacji",
+        "nPlural=other": "dni do operacji"
+      }
+    }
+  ],
+  "surgery_reading_no_date": "Brak daty",
+  "surgery_photo_day": "Dzień {days}",
+  "surgery_photo_more": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "jeszcze {n}",
+        "nPlural=few": "jeszcze {n}",
+        "nPlural=many": "jeszcze {n}",
+        "nPlural=other": "jeszcze {n}"
+      }
+    }
+  ]
 }
