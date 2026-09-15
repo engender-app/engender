@@ -3556,13 +3556,23 @@ try {
   const before = await boxes.count();
   if (before < 30) throw new Error('the Polish pack rendered only ' + before + ' goals');
 
+  /* Ticket 54: every track's rows stay mounted (`[data-goal]` above counts
+     all of them, hidden or not), but only the current track's panel is in
+     front, and it opens on Social - nothing is ticked yet, so it is the
+     first live track in the pack's own order. A click on a row in another
+     track needs that track's own segment first. */
+  await page.locator('[data-segment="legal"]').click();
+
   const target = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target.click(); // unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
 
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-goal][data-status="checked"]');
+  // 'attached' rather than the default 'visible': Social remains the current
+  // track after the reload (it is still all-unchecked), so the goal this
+  // just checked sits in a panel that is not the one in front.
+  await page.waitForSelector('[data-goal][data-status="checked"]', { state: 'attached' });
   const stillChecked = await page.locator('[data-goal][data-status="checked"]').count();
   if (stillChecked !== 1) throw new Error('after a reload ' + stillChecked + ' goals read as checked');
 
@@ -3575,6 +3585,8 @@ try {
   const requested = [];
   page.on('request', (request) => requested.push(request.url()));
 
+  await page.locator('[data-segment="legal"]').click(); // the reload above remounted on Social
+
   const target2 = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target2.click(); // checked -> not-my-path
   await page.waitForFunction(
@@ -3586,6 +3598,7 @@ try {
 
   await target2.click(); // not-my-path -> unchecked, leaving zero checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 0);
+  await page.locator('[data-segment="medical"]').click(); // the last `[data-goal]` in DOM order is medical's
   await page.locator('[data-goal]').last().click(); // a different goal, unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
 
@@ -6351,6 +6364,9 @@ try {
   await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
 
+  // Ticket 54: only the current track's panel starts in front; medical's
+  // own add-goal button needs its segment shown first.
+  await page.locator('[data-segment="medical"]').click();
   await page.locator('[data-add-goal="medical"]').click();
   await page.getByPlaceholder('Your step').fill('Get the referal reissued');
   await page.getByRole('button', { name: 'Add goal' }).click();
@@ -6400,6 +6416,7 @@ try {
   // The goal's sheet lists it, and the confirmation counts it before it goes.
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   await booted();
+  await page.locator('[data-segment="medical"]').click();
   await page.locator(`[data-open-goal="${goalId}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.locator('[data-delete-goal]').click();
@@ -6440,6 +6457,7 @@ try {
      rendered proves nothing. */
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   await booted();
+  await page.locator('[data-segment="medical"]').click();
   await page.locator('[data-open-goal="pl-medical-keep-opinions"]').click();
   await page.waitForSelector('[data-goal-sheet-status="pl-medical-keep-opinions"]');
   if (await page.locator('[data-save-goal]').count()) throw new Error('a built-in goal offers a way to reword it');
