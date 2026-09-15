@@ -4669,6 +4669,11 @@ try {
   await page.locator('[data-list-row="moments"]').click();
   await page.waitForURL('**/doubt/moments');
   const letterRows = page.locator('[data-list-row="letter-preview"]');
+  /* The screen arrives holding a skeleton over two reads, so counting rows
+     on the frame the URL changed counts the placeholder's. Waited for rather
+     than asserted here, so the count below still reports "showed no unlocked
+     letters" rather than a selector timeout. */
+  await letterRows.first().waitFor({ timeout: 10000 }).catch(() => {});
   const shown = await letterRows.count();
   if (shown === 0) {
     throw new Error('Safe Space showed no unlocked letters with a journal that has two');
