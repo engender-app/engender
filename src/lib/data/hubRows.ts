@@ -267,16 +267,6 @@ const ROWS = [
     finishes: null,
     line: 'read'
   },
-  {
-    key: 'clinician-summary',
-    icon: 'share',
-    href: '/health/clinician-summary',
-    home: 'health',
-    areas: [],
-    finishes: null,
-    line: 'written'
-  },
-
   // --- Transition ----------------------------------------------------------
   {
     key: 'eras',
@@ -771,9 +761,10 @@ export function hubSections(reading: HubReading): HubSection[] {
     the order its groups draw them, then the rows drawn on a screen of their
     own (phase 10 redesign ticket 15).
 
-    All twenty-five of them - twenty-seven until redesign ticket 51 moved
+    All twenty-four of them - twenty-seven until redesign ticket 51 moved
     modes and entry templates off the registry entirely and into Settings
-    (ADR-0084), which is the number the ticket's scope line uses. The six
+    (ADR-0084), and twenty-six until ticket 59 deleted the clinician-summary
+    row outright rather than hosting it, since it fronts no area. The six
     hosted rows still here are not on this screen and are still areas of this
     app: somebody looking for dilation or words looks for them here, and
     leaving them out would make the one index with a search box the one

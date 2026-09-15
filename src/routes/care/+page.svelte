@@ -326,6 +326,16 @@
       subtitle={runOut && stockRemainingLabel(runOut.projection.remaining, runOut.entry.unit)}
       href="/settings/stock"
     />
+    <!-- Ticket 59: the summary is an export over these five readings, not
+         a sixth one of its own, so it joins the card that already reads
+         them rather than getting a row that would have nothing to say
+         under it. Written by hand rather than through HostedRows
+         (ADR-0072) - ADR-0072's own registry is for an *area*, moved off
+         the hub with the hide/finish rules its screen used to apply for
+         it, and the summary fronts no area (`hubRows.ts` never gave it
+         one). Appointment prep's own row to this screen is the same
+         literal shape, unmoved by this ticket. -->
+    <ListRow key="clinician-summary" icon="share" title={m.clinician_summary_row()} href="/health/clinician-summary" />
   </ListCard>
 
   <!-- What came of all of it (phase 9 carpet ticket 16). The list above is
