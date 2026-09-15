@@ -2257,6 +2257,12 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   /* SF-002: nowrap let a longer translated string (Polish routinely runs
      longer than English) push past the viewport edge instead of wrapping. */
   max-width: min(92vw, 420px);
+  /* Sits over the nav FAB and whatever list row lands under it (bottom,
+     centered, above the nav bar), but it is a passive confirmation, not a
+     surface to interact with - most toasts have no action at all. Without
+     this a tap meant for the FAB or a row underneath lands on the toast
+     instead and goes nowhere until it clears. */
+  pointer-events: none;
 }
 .toast.is-open { opacity: 1; transform: translate(-50%, 0); }
 /* Measured at 48.3x32 by ticket 30, under the same floor and fixed the same
@@ -2265,6 +2271,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    toast, so nothing neighbours it. */
 .toast-action {
   position: relative;
+  pointer-events: auto;
   border: none; background: none; cursor: pointer;
   color: inherit; font: inherit; font-weight: var(--weight-bold);
   text-decoration: underline; padding: 4px;
