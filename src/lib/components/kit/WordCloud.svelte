@@ -38,12 +38,12 @@
      runs over one journal.
 
      Every word is a real button at `--touch-target`, so the small end of
-     the scale is still something a thumb can hit. Its own text is its
-     accessible name and there is no label over the top of it: the word is
-     what the button is, and an aria-label would only replace the word with
-     a sentence about it. That is what makes the
+     the scale is still something a thumb can hit. That is what makes the
      block airier than a tag cloud usually is, and it is the right trade:
-     the smallest word here is 15px, which is nobody's tap target. */
+     the smallest word here is 15px, which is nobody's tap target. Its own
+     text is its accessible name and there is no label over the top of it -
+     the word is what the button is, and an aria-label would only replace
+     the word with a sentence about it. */
   import type { WordWeight } from '$lib/data/wordFrequency';
 
   let {
