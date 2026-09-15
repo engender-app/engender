@@ -2609,6 +2609,24 @@
   "roadmap_intro": "Cztery ścieżki, każdą odhaczasz osobno. Kolejność w ścieżce pokazuje, jak to zwykle idzie, i nic tu nie blokuje niczego innego.",
   "roadmap_not_advice": "To opis procedury, nie porada prawna. Nic tu nie odnosi się do twojej konkretnej sprawy.",
   "roadmap_reviewed_on": "Treść sprawdzona ze źródłami: {date}.",
+  "roadmap_track_switch_label": "Ścieżka",
+  "roadmap_track_steps_left": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "Został {n} krok",
+        "nPlural=few": "Zostały {n} kroki",
+        "nPlural=many": "Zostało {n} kroków",
+        "nPlural=other": "Zostało {n} kroków"
+      }
+    }
+  ],
   "roadmap_track_social": "Społeczna",
   "roadmap_track_legal": "Prawna",
   "roadmap_track_presentational": "Wizerunkowa",
