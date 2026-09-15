@@ -5877,6 +5877,49 @@ try {
   await page.locator('[data-nav-fab]').click();
 
   ok('quick add: personal effects nudge appears only during onset window and navigates to /practice/personal-effects');
+
+  /* The axis at the top of "changes you've noticed" (phase 10 redesign
+     ticket 57). It runs on the journal this flow has just left behind - a
+     bare persona with one estradiol episode 400 days ago and nothing marked
+     against it - which is why it sits inside this flow rather than in one of
+     its own: a later flow would have to rebuild that journal to get an empty
+     line to start from.
+
+     What only a browser can answer here: that a mark drawn on the axis opens
+     the same sheet the row below it opens, and that clearing the marker takes
+     the mark off the line. The arithmetic behind the positions is
+     noticedAxis.test.ts's. */
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-noticed-axis]');
+  if ((await page.locator('[data-noticed-mark]').count()) !== 0) {
+    throw new Error('the axis drew a mark on a journal with nothing marked');
+  }
+
+  await page.locator('[data-effect-group="feminizing::body_shape"] [aria-expanded]').first().click();
+  const effectRow = page.locator('[data-list-row="breast_development"]');
+  await effectRow.waitFor();
+  /* Read rather than written down: the name is catalogue copy, and a
+     walkthrough that spells it out fails the day it is reworded. */
+  const effectName = (await effectRow.locator('.kit-row-title').first().textContent()).trim();
+  await effectRow.click();
+  await page.waitForSelector('#effect-date');
+  await fillDate(page, '#effect-date', localIso(120));
+  await page.click('[data-save-effect]');
+  await page.waitForSelector('[data-noticed-mark="breast_development"]', { timeout: 8000 });
+
+  const mark = page.locator('[data-noticed-mark="breast_development"]');
+  const markLabel = await mark.getAttribute('aria-label');
+  if (!markLabel || !markLabel.includes(effectName)) {
+    throw new Error(`the mark announced itself as "${markLabel}", which does not name ${effectName}`);
+  }
+
+  // The drawing is a way into the record, not only a picture of it.
+  await mark.click();
+  await page.waitForSelector('[data-clear-effect]', { timeout: 8000 });
+  await page.click('[data-clear-effect]');
+  await page.waitForSelector('[data-noticed-mark="breast_development"]', { state: 'detached', timeout: 8000 });
+
+  ok('personal effects: a change marked from the list lands on the axis, and its mark opens the editor again');
 } catch (e) { fail('quick add effects nudge', e); }
 
 

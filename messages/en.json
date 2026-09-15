@@ -1586,7 +1586,7 @@
   "effects_source": "The shaded bands come from the Endocrine Society's 2017 clinical practice guideline (Hembree et al.) and GenderGP's HRT timeline tables, which cite WPATH Standards of Care v7. Every other effect below is named by the source noted underneath it, with no band: a guide naming a change is not the same claim as a guideline naming its timing.",
   "effect_variability_notice": "No evidence shows that age, body type, ethnicity or family appearance reliably predicts how someone responds to hormone therapy, with one likely exception: voice deepening in people on testosterone. The bands here describe the literature. They are not a schedule for your own body.",
   "effects_no_regimen_title": "No regimen logged yet",
-  "effects_no_regimen_body": "This timeline anchors against the day your regimen began. Log a regimen episode first, and it'll pick it up from there.",
+  "effects_no_regimen_body": "Without one, the line above counts calendar months. Log a regimen episode and it'll count the months from the day you started instead.",
   "effects_no_regimen_action": "Go to regimen",
   "effects_direction_feminizing": "Feminizing",
   "effects_direction_masculinizing": "Masculinizing",
