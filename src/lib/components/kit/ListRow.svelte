@@ -118,7 +118,7 @@
     <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
   {/if}
   <span class="kit-row-text">
-    {#if title}<span class="kit-row-title">{title}</span>{/if}
+    {#if title}<span class="kit-row-title" data-row-title>{title}</span>{/if}
     {#each subtitles as line}<span class="kit-row-sub">{line}</span>{/each}
   </span>
   <!-- A static row with nothing at its trailing edge gets no trailing edge:

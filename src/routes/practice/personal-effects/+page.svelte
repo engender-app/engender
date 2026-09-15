@@ -11,7 +11,16 @@
      instant cut, and the chevron has already turned to say what happened.
 
      The group is a list card rather than a `.card` holding a `.list-group`,
-     which was two containers deep for one list. */
+     which was two containers deep for one list.
+
+     The screen opens on the axis now (phase 10 redesign ticket 57,
+     DIRECTION.md rule 16): every change already marked, at the month it was
+     noticed, before any group is opened. The groups are the log under that
+     reading and are otherwise untouched - they are still where a change is
+     marked for the first time, and still where the literature's bands are
+     drawn against the one change each belongs to. Two drawings on one
+     screen answering two questions: when did I notice this, and what do the
+     tables say about when people usually do. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -42,6 +51,13 @@
 
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
+  import NoticedAxis from '$lib/components/NoticedAxis.svelte';
+  import type { NoticedChange } from '$lib/data/noticedAxis';
+  import {
+    EFFECT_DIRECTIONS,
+    effectDirectionLabel,
+    type EffectDirection
+  } from '$lib/data/effectDirections';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
@@ -75,14 +91,7 @@
     anchor == null ? null : new Map(visibleEffects.map((e) => [e.key, literatureWindowDays(e.key, anchor)] as const))
   );
 
-  const DIRECTIONS = ['feminizing', 'masculinizing', 'other'] as const;
-  type DirectionGroup = (typeof DIRECTIONS)[number];
-  const directionOf = (e: PersonalEffectCatalogEntry): DirectionGroup => e.direction ?? 'other';
-  function directionLabel(direction: DirectionGroup): string {
-    if (direction === 'feminizing') return m.effects_direction_feminizing();
-    if (direction === 'masculinizing') return m.effects_direction_masculinizing();
-    return m.effects_direction_other();
-  }
+  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirection => e.direction ?? 'other';
 
   /* Category, then direction, is the coarse control (CONTEXT: "Effect
      category"); collapsed by default so a new journal's screen stays no
@@ -91,7 +100,7 @@
      together, since the same category groups separately under each
      direction. */
   let expandedGroups = $state(new Set<string>());
-  const groupKey = (direction: DirectionGroup, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
+  const groupKey = (direction: EffectDirection, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
   function toggleGroup(key: string) {
     const next = new Set(expandedGroups);
     if (next.has(key)) next.delete(key);
@@ -159,11 +168,42 @@
     return null;
   }
 
+  /* What the axis at the top of the screen draws: the changes that carry a
+     marker, joined to their catalogue entry (ticket 57). Only the visible
+     ones, the same catalogue the groups below and the chart inside them
+     read, so hiding an effect or turning its category off takes it off the
+     axis too. A marker for an effect that is no longer visible keeps its
+     record and stops being drawn, which is what "hiding keeps everything
+     already marked against it" already promises in the manage sheet. */
+  let noticedChanges = $derived<NoticedChange[]>(
+    visibleEffects.flatMap((effect) => {
+      const marker = markerFor(effect.key);
+      if (!marker) return [];
+      return [
+        {
+          key: effect.key,
+          label: effect.name,
+          direction: directionOf(effect),
+          firstNoticedEpochDay: marker.firstNoticedEpochDay
+        }
+      ];
+    })
+  );
+
   let editor = $state<{ effect: PersonalEffectCatalogEntry; date: string } | null>(null);
 
   function openEditor(effect: PersonalEffectCatalogEntry) {
     const existing = markerFor(effect.key);
     editor = { effect, date: dateInputValueFromEpochDay(existing?.firstNoticedEpochDay ?? today) };
+  }
+
+  /* A mark on the axis opens the same sheet its row in the list below
+     opens, which is the whole of how editing is reachable from the
+     drawing - the axis draws no marker the catalogue does not still carry,
+     so this always finds one. */
+  function openEditorByKey(key: string) {
+    const effect = visibleEffects.find((e) => e.key === key);
+    if (effect) openEditor(effect);
   }
 
   async function saveMarker() {
@@ -209,25 +249,45 @@
 
   {#if episodesQuery.loading || markersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if anchorEpochDay == null}
-    <div class="screen-part">
-      <Notice
-        icon="sparkle"
-        key="effects-no-regimen"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.effects_no_regimen_title()}
-        text={m.effects_no_regimen_body()}
-        action={{ label: m.effects_no_regimen_action(), primary: true, href: '/settings/regimen' }}
-      />
-    </div>
   {:else}
-    <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
-    <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
+    <!-- What is true now, before the records (DIRECTION.md rule 16): every
+         change already marked, at the month it was noticed, on one line. -->
+    <div class="screen-part">
+      <NoticedAxis changes={noticedChanges} {anchorEpochDay} todayEpochDay={today} onOpen={openEditorByKey} />
+    </div>
 
-    {#each DIRECTIONS as direction (direction)}
+    <!-- Under the axis rather than over it, and no longer instead of it.
+         This notice used to replace the whole screen, so a journal with no
+         regimen in it saw nothing it had marked (ticket 57) - and a person
+         can notice a change before they are on anything, or restore a
+         journal and not have typed a regimen back in yet. It reads as what
+         a regimen would buy the line above it: months counted from a start
+         day instead of calendar months. -->
+    {#if anchorEpochDay == null}
+      <div class="screen-part">
+        <Notice
+          icon="sparkle"
+          key="effects-no-regimen"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.effects_no_regimen_title()}
+          text={m.effects_no_regimen_body()}
+          action={{ label: m.effects_no_regimen_action(), primary: true, href: '/settings/regimen' }}
+        />
+      </div>
+    {/if}
+
+    <!-- All three of these are about the literature's bands, so they keep
+         the company of the chart that draws them: with no regimen there is
+         no band on the screen for them to be describing. -->
+    {#if anchorEpochDay !== null}
+      <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
+    {/if}
+
+    {#each EFFECT_DIRECTIONS as direction (direction)}
       {@const directionEffects = visibleEffects.filter((e) => directionOf(e) === direction)}
       {#if directionEffects.length}
-        <SectionHeading text={directionLabel(direction)} />
+        <SectionHeading text={effectDirectionLabel(direction)} />
         {#each vocabulary.effectCategories as cat, i (cat.key)}
           {@const groupEffects = directionEffects.filter((e) => e.categoryKey === cat.key)}
           {#if groupEffects.length}
@@ -243,7 +303,9 @@
                 </ListRow>
                 {#if expanded}
                   <div class="effect-group-body" transition:disclose>
-                    <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {#if anchorEpochDay !== null}
+                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {/if}
                     {#each groupEffects as e (e.key)}
                       {@const marker = markerFor(e.key)}
                       <ListRow
@@ -283,7 +345,9 @@
               </ListRow>
               {#if expanded}
                 <div class="effect-group-body" transition:disclose>
-                  <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
+                  {#if anchorEpochDay !== null}
+                    <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
+                  {/if}
                   {#each uncategorized as e (e.key)}
                     {@const marker = markerFor(e.key)}
                     <ListRow
@@ -306,7 +370,9 @@
       {/if}
     {/each}
 
-    <p class="muted small">{m.effects_source()}</p>
+    {#if anchorEpochDay !== null}
+      <p class="muted small">{m.effects_source()}</p>
+    {/if}
   {/if}
 
   <!-- The two changes that keep their own screen (phase 9 carpet ticket 16).
