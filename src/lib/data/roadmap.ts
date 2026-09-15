@@ -22,7 +22,7 @@
    is the order the procedure usually runs in, and it is a suggestion the
    screen renders rather than a rule anything enforces. */
 
-import type { Lean } from './types';
+import type { Lean, RoadmapGoalStatus } from './types';
 
 export const ROADMAP_TRACKS = ['social', 'legal', 'presentational', 'medical'] as const;
 
@@ -146,7 +146,7 @@ export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: Road
 
 /** One track as the screen draws it: the track itself, whether the person
     has said it is not their path, and the goals left to show. */
-interface RoadmapSection<K extends string, C> {
+export interface RoadmapSection<K extends string, C> {
   readonly track: RoadmapTrack;
   readonly dismissed: boolean;
   /** Empty for a dismissed track. The stored ticks are untouched - putting
@@ -185,4 +185,32 @@ export function roadmapSections<K extends string, C extends { readonly track: st
       customGoals: isDismissed ? [] : customGoals.filter((goal) => goal.track === track)
     };
   });
+}
+
+/** Where somebody is in the roadmap, in the pack's own terms (ticket 54,
+    DIRECTION.md rule 16): which track still has work in it, and how much of
+    it, in a plain count rather than a fraction of the whole pack.
+
+    The first non-dismissed track, in the pack's own order, that still holds
+    an unchecked goal - built-in or custom. `not-my-path` counts as resolved
+    the same way `checked` does: the Polish pack's "keep opinions" goal is
+    ADR-0068's own example of a step nobody ticks, and a person who has said
+    a whole track is not their path is not "still on" it either. Once every
+    live track is resolved this returns the last one with nothing left,
+    which is still where the person is - a finished pack is not nowhere.
+    `null` only when every track is dismissed, which the screen already
+    draws with nothing to open. */
+export function whereYouAreInRoadmap<K extends string, C extends { readonly status: RoadmapGoalStatus }>(
+  sections: readonly RoadmapSection<K, C>[],
+  statusOf: (key: K) => RoadmapGoalStatus
+): { readonly track: RoadmapTrack; readonly stepsLeft: number } | null {
+  const live = sections.filter((section) => !section.dismissed);
+  if (live.length === 0) return null;
+
+  const stepsLeft = (section: RoadmapSection<K, C>) =>
+    section.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length +
+    section.customGoals.filter((goal) => goal.status === 'unchecked').length;
+
+  const current = live.find((section) => stepsLeft(section) > 0) ?? live[live.length - 1];
+  return { track: current.track, stepsLeft: stepsLeft(current) };
 }
