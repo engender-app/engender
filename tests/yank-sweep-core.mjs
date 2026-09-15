@@ -124,7 +124,6 @@ const SCENES = [
      cannot open. This handle is on the two states that can. */
   { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', is: 'a letter unfolded to read' },
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
-  { name: 'presentations-add', at: '/transition/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
   { name: 'eras-add', at: '/transition/eras', act: '[data-add]', is: 'the add era sheet opening' },
 
   /* Settings screens (ticket 108): swatches, switchers, switches and modals */
@@ -137,6 +136,7 @@ const SCENES = [
   { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', is: 'the disguise preview sheet opening' },
   { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', is: 'the about sheet opening' },
+  { name: 'presentations-add', at: '/settings/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
   { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
   { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
   { name: 'regimen-add', at: '/settings/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
@@ -931,11 +931,9 @@ const HYDRATION_SCENES = [
   { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
-  { name: 'presentations', at: '/transition/presentations', is: 'the presentation catalogue' },
   { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
   { name: 'words', at: '/transition/words', is: "the notes' own words" },
   /* Practice group */
-  { name: 'entry-templates', at: '/practice/entry-templates', is: 'editable entry templates' },
   { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline' },
   { name: 'resources', at: '/practice/resources', is: 'organisations and helplines' },
   { name: 'voice', at: '/practice/voice', is: 'the voice benchmark' },
@@ -961,6 +959,8 @@ const HYDRATION_SCENES = [
   { name: 'affirmations', at: '/settings/affirmations', is: 'affirmations' },
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
+  { name: 'entry-templates', at: '/settings/entry-templates', is: 'editable entry templates' },
+  { name: 'presentations', at: '/settings/presentations', is: 'the presentation catalogue' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },

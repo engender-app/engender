@@ -11,6 +11,13 @@
    same way. Same rule, same shape of stub, so it is checked here rather
    than in a file of its own.
 
+   Redesign ticket 51 (ADR-0084) runs two of ADR-0036's own stubs backwards:
+   modes and entry templates are reference areas, and both moved onto
+   Settings rather than off it. The old /settings/presentations and
+   /settings/entry-templates stubs are gone - those are the real screens
+   now - and /transition/presentations and /practice/entry-templates carry
+   the stub instead, pointing back in.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -42,19 +49,9 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/roadmap', () => import('../src/routes/settings/roadmap/+page.ts'), '/transition/roadmap'],
   ['settings/letters', () => import('../src/routes/settings/letters/+page.ts'), '/transition/letters'],
   ['settings/tryouts', () => import('../src/routes/settings/tryouts/+page.ts'), '/transition/tryouts'],
-  [
-    'settings/presentations',
-    () => import('../src/routes/settings/presentations/+page.ts'),
-    '/transition/presentations'
-  ],
   ['settings/eras', () => import('../src/routes/settings/eras/+page.ts'), '/transition/eras'],
   ['settings/words', () => import('../src/routes/settings/words/+page.ts'), '/transition/words'],
   ['settings/voice', () => import('../src/routes/settings/voice/+page.ts'), '/practice/voice?tab=record'],
-  [
-    'settings/entry-templates',
-    () => import('../src/routes/settings/entry-templates/+page.ts'),
-    '/practice/entry-templates'
-  ],
   ['settings/wear', () => import('../src/routes/settings/wear/+page.ts'), '/practice/wear'],
   [
     'settings/personal-effects',
@@ -65,7 +62,17 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/photos', () => import('../src/routes/settings/photos/+page.ts'), '/media/photos'],
   ['settings/voice/memos', () => import('../src/routes/settings/voice/memos/+page.ts'), '/media/voice/memos'],
   ['settings/voice/metrics', () => import('../src/routes/settings/voice/metrics/+page.ts'), '/practice/voice/metrics'],
-  ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones']
+  ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones'],
+  [
+    'transition/presentations',
+    () => import('../src/routes/transition/presentations/+page.ts'),
+    '/settings/presentations'
+  ],
+  [
+    'practice/entry-templates',
+    () => import('../src/routes/practice/entry-templates/+page.ts'),
+    '/settings/entry-templates'
+  ]
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {

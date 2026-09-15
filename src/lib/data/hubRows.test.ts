@@ -182,13 +182,15 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('fifteen rows can report a reading and twelve never can', () => {
+test('fifteen rows can report a reading and ten never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
-  // group's first row that fronts an area of its own.
+  // group's first row that fronts an area of its own. Twelve until redesign
+  // ticket 51 took `presentations` and `entry-templates` - both 'written' -
+  // off the registry entirely.
   assert.equal(reads.length, 15);
-  assert.equal(HUB_ROWS.length - reads.length, 12);
+  assert.equal(HUB_ROWS.length - reads.length, 10);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -468,7 +470,7 @@ test('a hosted row is not on the hub at all, and its screen is named (ticket 16)
   }
   assert.deepEqual(
     HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['effects', 'side-effects', 'hair-progress', 'cycle-events', 'dilation', 'words', 'entry-templates']
+    ['effects', 'side-effects', 'hair-progress', 'cycle-events', 'dilation', 'words']
   );
 });
 
@@ -545,8 +547,7 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
     'wear',
     'hair-removal',
     'roadmap',
-    'letters',
-    'presentations'
+    'letters'
   ]);
   assert.deepEqual(group('support'), ['doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
@@ -563,8 +564,7 @@ const TITLES: Record<string, string> = {
   'hair-removal': 'Usuwanie włosów',
   wear: 'Wear log',
   photos: 'Progress photos',
-  dilation: 'Dilation',
-  'entry-templates': 'Entry templates'
+  dilation: 'Dilation'
 };
 const titleOf = (key: string): string => TITLES[key] ?? key;
 
@@ -623,7 +623,7 @@ test('a hidden area cannot be searched up, hub row or hosted', () => {
   assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
 });
 
-/* The seven rows drawn on a screen of their own are still areas of the app,
+/* The six rows drawn on a screen of their own are still areas of the app,
    and this is the only index with a box to type in: a person looking for
    dilation looks for it here. Each says which screen hosts it rather than a
    group, since no group draws it. */
@@ -650,9 +650,9 @@ test('the hub rows come first and the hosted ones after, so a match list reads a
   const keys = rows.map((row) => row.spec.key);
 
   assert.ok(keys.includes('measurements'), 'a hub row is missing');
-  assert.ok(keys.includes('entry-templates'), 'a hosted row is missing');
+  assert.ok(keys.includes('effects'), 'a hosted row is missing');
   assert.ok(
-    keys.indexOf('measurements') < keys.indexOf('entry-templates'),
+    keys.indexOf('measurements') < keys.indexOf('effects'),
     'the hosted rows are not last'
   );
 });

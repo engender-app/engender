@@ -3,8 +3,10 @@
      17, ADR-0048): list, add, rename, recolour and hide - there is no
      delete (CONTEXT: "Hidden"), so the shared record editor's `remove`
      handle is wired to throw rather than ever being reachable from this
-     screen. A surface under /more, not a preference under Settings
-     (ADR-0036): the chip it feeds only ever appears once a row exists here.
+     screen. Under Settings, not the Transition door (redesign ticket 51,
+     ADR-0084): a mode is a reference area, spent on the entry editor's
+     chips and never read here for its own sake - the same reason body
+     regions and affirmations already sit on this screen.
 
      Read through the mirrored vocabulary rather than a live query: a
      presentation is reference data the same way a tag is (reference.svelte.ts),
@@ -71,7 +73,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.presentations_title()} back="/more" subtitle={m.presentations_intro()}>
+  <ScreenHeader title={m.presentations_title()} back="/settings" subtitle={m.presentations_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.presentations_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

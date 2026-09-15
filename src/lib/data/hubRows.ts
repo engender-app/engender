@@ -48,7 +48,7 @@
 
    Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
    `home` is one of the hub's groups or one of the screens in `HUB_ROW_HOSTS`,
-   and seven of the twenty-seven now name a screen. This file stays the
+   and six of the twenty-five now name a screen. This file stays the
    registry for all of them either way, which is the point of holding the
    field here rather than deleting the rows that left: `finishes` still has to
    be claimed by exactly one row and the last-write registry still has to be
@@ -110,13 +110,16 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     wrote. A hub that lists all of them at the top level is a hub that has
     stopped ranking anything.
 
-    Six hosts for seven rows, keyed by the row key of the screen that hosts
-    them where there is one and by the tab otherwise. What this map is for is
-    naming the one screen that owes each row its link, which is what
-    `more-surfaces.test.ts` holds them to - a hosted row whose host forgot it
-    is a screen nothing reaches.
+    Redesign ticket 51 took entry templates further still: a reference area
+    (ADR-0084) is managed in Settings rather than hosted by it, so its row
+    left this map the way modes left the Transition group outright, onto a
+    plain row Settings writes out itself. Five hosts for six rows now, keyed
+    by the row key of the screen that hosts them where there is one and by
+    the tab otherwise. What this map is for is naming the one screen that
+    owes each row its link, which is what `more-surfaces.test.ts` holds them
+    to - a hosted row whose host forgot it is a screen nothing reaches.
 
-    Five of the seven are drawn by `HostedRows.svelte`, which reads
+    Five of the six are drawn by `HostedRows.svelte`, which reads
     `rowsHostedBy` below. `cycle-events` is the exception and stays written by
     hand on /health/side-effects: it sits inside a block that screen already
     gates on `cycleTrackingVisible`, its way-in row carries copy about the
@@ -128,8 +131,7 @@ export const HUB_ROW_HOSTS = {
   effects: '/practice/personal-effects',
   'side-effects': '/health/side-effects',
   surgery: '/health/surgery',
-  stats: '/stats',
-  settings: '/settings'
+  stats: '/stats'
 } as const;
 
 export type HubRowHostKey = keyof typeof HUB_ROW_HOSTS;
@@ -200,7 +202,7 @@ export interface HubRowSpec {
       - hair removal is not on the ticket's Transition list at all. Alicja
         put it in Transition, and it sits after the wear log because those
         two are the group's dated practice logs and everything after them is
-        a plan, a letter or a set of modes.
+        a plan or a letter.
       - the hosted rows are declared last, in the order their hosts appear
         above, so reading this list top to bottom is reading the hub and then
         reading what came off it. */
@@ -369,16 +371,6 @@ const ROWS = [
     finishes: null,
     line: 'written'
   },
-  {
-    key: 'presentations',
-    icon: 'palette',
-    href: '/transition/presentations',
-    home: 'transition',
-    areas: ['presentations'],
-    finishes: null,
-    line: 'written'
-  },
-
   // --- Support -------------------------------------------------------------
   {
     key: 'doubt',
@@ -539,16 +531,6 @@ const ROWS = [
     href: '/transition/words',
     home: 'stats',
     areas: [],
-    finishes: null,
-    line: 'written'
-  },
-  {
-    /* In Settings, beside the other rows about how an entry gets written. */
-    key: 'entry-templates',
-    icon: 'grid',
-    href: '/practice/entry-templates',
-    home: 'settings',
-    areas: ['entryTemplates'],
     finishes: null,
     line: 'written'
   }
@@ -789,13 +771,15 @@ export function hubSections(reading: HubReading): HubSection[] {
     the order its groups draw them, then the rows drawn on a screen of their
     own (phase 10 redesign ticket 15).
 
-    All twenty-seven of them, which is the number the ticket's scope line
-    uses. The seven hosted rows are not on this screen and are still areas of
-    this app: somebody looking for dilation or entry templates looks for them
-    here, and leaving them out would make the one index with a search box the
-    one place they cannot be found. A match draws the row the registry
-    declares - the same row its host screen draws - and following it lands on
-    the area's own screen rather than on the host.
+    All twenty-five of them - twenty-seven until redesign ticket 51 moved
+    modes and entry templates off the registry entirely and into Settings
+    (ADR-0084), which is the number the ticket's scope line uses. The six
+    hosted rows still here are not on this screen and are still areas of this
+    app: somebody looking for dilation or words looks for them here, and
+    leaving them out would make the one index with a search box the one
+    place they cannot be found. A match draws the row the registry declares -
+    the same row its host screen draws - and following it lands on the
+    area's own screen rather than on the host.
 
     Assembled here rather than filtered out of `hubSections`' output, so the
     three rules about a row's existence hold for both halves in one place: a
