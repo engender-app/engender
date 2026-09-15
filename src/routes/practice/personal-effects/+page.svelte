@@ -53,6 +53,11 @@
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
   import NoticedAxis from '$lib/components/NoticedAxis.svelte';
   import type { NoticedChange } from '$lib/data/noticedAxis';
+  import {
+    EFFECT_DIRECTIONS,
+    effectDirectionLabel,
+    type EffectDirection
+  } from '$lib/data/effectDirections';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
@@ -86,14 +91,7 @@
     anchor == null ? null : new Map(visibleEffects.map((e) => [e.key, literatureWindowDays(e.key, anchor)] as const))
   );
 
-  const DIRECTIONS = ['feminizing', 'masculinizing', 'other'] as const;
-  type DirectionGroup = (typeof DIRECTIONS)[number];
-  const directionOf = (e: PersonalEffectCatalogEntry): DirectionGroup => e.direction ?? 'other';
-  function directionLabel(direction: DirectionGroup): string {
-    if (direction === 'feminizing') return m.effects_direction_feminizing();
-    if (direction === 'masculinizing') return m.effects_direction_masculinizing();
-    return m.effects_direction_other();
-  }
+  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirection => e.direction ?? 'other';
 
   /* Category, then direction, is the coarse control (CONTEXT: "Effect
      category"); collapsed by default so a new journal's screen stays no
@@ -102,7 +100,7 @@
      together, since the same category groups separately under each
      direction. */
   let expandedGroups = $state(new Set<string>());
-  const groupKey = (direction: DirectionGroup, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
+  const groupKey = (direction: EffectDirection, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
   function toggleGroup(key: string) {
     const next = new Set(expandedGroups);
     if (next.has(key)) next.delete(key);
@@ -286,10 +284,10 @@
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
     {/if}
 
-    {#each DIRECTIONS as direction (direction)}
+    {#each EFFECT_DIRECTIONS as direction (direction)}
       {@const directionEffects = visibleEffects.filter((e) => directionOf(e) === direction)}
       {#if directionEffects.length}
-        <SectionHeading text={directionLabel(direction)} />
+        <SectionHeading text={effectDirectionLabel(direction)} />
         {#each vocabulary.effectCategories as cat, i (cat.key)}
           {@const groupEffects = directionEffects.filter((e) => e.categoryKey === cat.key)}
           {#if groupEffects.length}

@@ -39,7 +39,12 @@
      under it writes every one of these dates out in text. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
-  import { noticedAxis, type NoticedChange, type NoticedDirection } from '$lib/data/noticedAxis';
+  import {
+    EFFECT_DIRECTIONS,
+    effectDirectionLabel,
+    type EffectDirection
+  } from '$lib/data/effectDirections';
+  import { noticedAxis, type NoticedChange } from '$lib/data/noticedAxis';
   import { crossfade, wipe } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -87,18 +92,12 @@
      way a change goes, not a judgement about it, so ADR-0012 has nothing to
      say here - the same reading MilestoneRail makes of a milestone drawn
      hollow because it has not happened yet. */
-  const DIRECTION_ROLE: Record<NoticedDirection, number> = { feminizing: 0, masculinizing: 1, other: 2 };
-  const roleFor = (direction: NoticedDirection) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
+  const DIRECTION_ROLE: Record<EffectDirection, number> = { feminizing: 0, masculinizing: 1, other: 2 };
+  const roleFor = (direction: EffectDirection) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
 
-  const DIRECTION_ORDER: NoticedDirection[] = ['feminizing', 'masculinizing', 'other'];
   let directionsPresent = $derived(
-    DIRECTION_ORDER.filter((direction) => axis.marks.some((mark) => mark.direction === direction))
+    EFFECT_DIRECTIONS.filter((direction) => axis.marks.some((mark) => mark.direction === direction))
   );
-  function directionLabel(direction: NoticedDirection): string {
-    if (direction === 'feminizing') return m.effects_direction_feminizing();
-    if (direction === 'masculinizing') return m.effects_direction_masculinizing();
-    return m.effects_direction_other();
-  }
 
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -135,15 +134,20 @@
     monthsSinceOnset === null ? fmtDay(epochDay, { month: 'short' }) : String(monthsSinceOnset);
 </script>
 
-<div class="noticed-axis" data-noticed-axis>
+<!-- One uncovering for the whole block, not for the drawing alone: the
+     sentence, the line, its months and its caption are one surface arriving
+     when the journal's markers land, and a screen where the drawing wipes in
+     under text that was already painted has the text arriving in a single
+     frame - a yank by the standing rule, and two arrivals for one thing. -->
+<div class="noticed-axis" data-noticed-axis in:wipe={{ authored: true }}>
   <p class="na-summary">{summary}</p>
 
-  <!-- One uncovering for the whole drawing, left to right, so the line and
-       every mark on it arrive in the order they happened and no dot is
+  <!-- The uncovering above runs left to right across this too, so the line
+       and every mark on it arrive in the order they happened and no dot is
        painted before the line reaches it. A mark added or cleared later is
        its own object arriving or leaving (the crossfade below), which is
-       the one thing this wipe cannot cover. -->
-  <div class="na-plot" style:--lane-h="{LANE_H}px" style:height="{plotHeight}px" in:wipe={{ authored: true }}>
+       the one thing that wipe cannot cover. -->
+  <div class="na-plot" style:--lane-h="{LANE_H}px" style:height="{plotHeight}px">
     <span class="na-line"></span>
     <span class="na-today" style:--at={axis.todayPosition}></span>
     {#each axis.marks as mark (mark.key)}
@@ -183,7 +187,7 @@
     <div class="na-legend muted small">
       {#each directionsPresent as direction (direction)}
         <span class="na-legend-item">
-          <span class="na-legend-swatch" {...roleAttrs(roleFor(direction))}></span>{directionLabel(direction)}
+          <span class="na-legend-swatch" {...roleAttrs(roleFor(direction))}></span>{effectDirectionLabel(direction)}
         </span>
       {/each}
     </div>

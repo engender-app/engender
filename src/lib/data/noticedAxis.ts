@@ -21,6 +21,7 @@
    noticed it, and ADR-0012 is the standing rule that no end of a scale is
    the good end. */
 
+import type { EffectDirection } from './effectDirections';
 import { epochDayFromLocalDate, epochDayMonthsAgo, localDateFromEpochDay } from './epochDay';
 
 /** The shortest line the axis will draw, in days.
@@ -58,7 +59,7 @@ const MAX_TICKS = 8;
     months anchored on January and an onset axis's on the start day. */
 const TICK_STRIDES = [1, 2, 3, 6, 12];
 
-export type NoticedDirection = 'feminizing' | 'masculinizing' | 'other';
+export type { EffectDirection } from './effectDirections';
 
 /** A change somebody has marked, narrowed to what the drawing needs. The
     catalogue entry and the marker are two records on the screen; they arrive
@@ -66,7 +67,7 @@ export type NoticedDirection = 'feminizing' | 'masculinizing' | 'other';
 export interface NoticedChange {
   key: string;
   label: string;
-  direction: NoticedDirection;
+  direction: EffectDirection;
   firstNoticedEpochDay: number;
 }
 
