@@ -1,0 +1,489 @@
+<script lang="ts" generics="TPhoto extends { id: string; epochDay: number; fileName: string | null }">
+  /* Two photographs of the same body months apart, in one frame, with one
+     draggable divider between them (phase 10 redesign ticket 55).
+
+     What this replaces on both of its callers is a two-up grid: two
+     half-width thumbnails side by side, which at 390px is about 170px of
+     picture each and is the hardest possible way to see what changed. A
+     wipe puts both photographs at full width in the same frame, so the eye
+     compares the same pixels in the same place instead of travelling
+     between two small pictures and holding one of them in memory.
+
+     The reference is Photoroom's before/after (Mobbin, iOS,
+     https://mobbin.com/screens/c81968f1-67c1-4652-bd13-bf8595e8605c): one
+     frame, a hard divider, no crossfade and no verdict. Taken from it: the
+     divider is a line rather than a soft blend, because a blend invents
+     pixels that are in neither photograph. Not taken: its round white
+     handle with a shadow, which is the iOS material DIRECTION.md's rule 10
+     refuses - the handle here is a flat block of the area's own stripe.
+     The two dates pinned to the frame's top corners are Hers'
+     (https://mobbin.com/screens/dc7b6682-eff4-4591-be82-a6d5d9fd6f62),
+     where "Month 0" and "Month 6" sit on the pictures rather than under
+     them, which is what keeps both of them readable at every divider
+     position.
+
+     Colour never judges here and nothing about the drawing says which of
+     the two photographs is better (ADR-0012). The wipe shows two
+     photographs; the person reads them.
+
+     Full bytes, not thumbnails: a stored thumbnail is 320px on its long
+     edge (normalize.ts), and this frame is 358px wide on a phone at 1x and
+     more than a thousand device pixels at 3x. The whole point of the screen
+     is that the two pictures are the same pixels, so a blurred pair would
+     miss it. Two deliberate reads of two photographs, which is what
+     readPhoto is for (photoFiles.ts). */
+  import { m } from '$lib/paraglide/messages';
+  import type { ComparePair, CompareSide } from '$lib/data/photos/compare-state';
+  import { stepPair } from '$lib/data/photos/compare-state';
+  import { readPhoto } from '$lib/stores/photoFiles';
+  import { fade } from 'svelte/transition';
+  import { motionDuration } from '$lib/motion/tokens';
+  import type { Role } from '$lib/theme/roles';
+  import Icon from '../Icon.svelte';
+  import PhotoThumb from '../PhotoThumb.svelte';
+  import { roleAttrs } from './role';
+  import { cropDiffers, fractionAt, fractionForKey, type PhotoShape } from './photoWipe';
+
+  let {
+    photos,
+    pair,
+    onPair,
+    date,
+    note,
+    role
+  }: {
+    /** The list both indices of `pair` point into, oldest first. */
+    photos: TPhoto[];
+    /** Which two are being compared: `left` is the earlier photograph and
+        `right` the later one, always. */
+    pair: ComparePair;
+    /** A press of one of the four earlier/later controls. The caller owns
+        the pair, because on one screen it comes from a selection grid and
+        on the other from this control alone. */
+    onPair: (next: ComparePair) => void;
+    /** The date block pinned to that photograph's corner of the frame. */
+    date: (photo: TPhoto) => string;
+    /** That side's own line under the frame - what the photograph belongs
+        to, or how long after the start it was taken. Null where this
+        screen has nothing to say about it. */
+    note?: (photo: TPhoto) => string | null;
+    role?: Role;
+  } = $props();
+
+  const earlier = $derived(photos[pair.left]);
+  const later = $derived(photos[pair.right]);
+
+  /* Where the divider stands, 0 (all later) to 1 (all earlier). Kept across
+     a change of either photograph: stepping to the next month is a question
+     about the same comparison, so putting the divider back to the middle
+     would undo the thing the person was in the middle of looking at. */
+  let fraction = $state(0.5);
+  let dragging = $state(false);
+  let frame = $state<HTMLElement | null>(null);
+
+  /** The wipe needs pixels on both sides. A photo row with no stored file
+      is the demo persona's placeholder, or one whose file the orphan sweep
+      reclaimed (ADR-0008, types.ts), and wiping between two gradients shows
+      nothing - so those two go side by side instead, which is what this
+      screen drew before this control existed. Decided from the row rather
+      than from the bytes, so the frame never changes shape after it has
+      been drawn. */
+  const wipeable = $derived(earlier?.fileName !== null && later?.fileName !== null);
+
+  let earlierUrl = $state<string | null>(null);
+  let laterUrl = $state<string | null>(null);
+  let earlierShape = $state<PhotoShape | null>(null);
+  let laterShape = $state<PhotoShape | null>(null);
+
+  /* One read per side, torn down when the side changes or this unmounts -
+     the same contract PhotoThumb keeps for a thumbnail, for the same
+     reason: an object URL that outlives its <img> is a leak, and at this
+     size it is a leak of a whole photograph rather than of a tile. */
+  function load(fileName: string | null, set: (url: string | null) => void): () => void {
+    set(null);
+    if (!fileName || !wipeable) return () => {};
+
+    let objectUrl: string | null = null;
+    let stale = false;
+    readPhoto(fileName).then(
+      (bytes) => {
+        if (stale || !bytes) return;
+        objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
+        set(objectUrl);
+      },
+      // A file written under another key throws out of the store rather
+      // than reading as null (encrypted-file-store.ts). The empty plate is
+      // already what the frame is showing, so there is nothing to do.
+      () => {}
+    );
+
+    return () => {
+      stale = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }
+
+  $effect(() => load(earlier?.fileName ?? null, (url) => (earlierUrl = url)));
+  $effect(() => load(later?.fileName ?? null, (url) => (laterUrl = url)));
+
+  /** How this frame reconciled two photographs of different shapes, said
+      out loud rather than left for the person to notice. Both are cropped
+      to the frame from the middle and neither is stretched; the note
+      appears only when there is actually a difference to explain
+      (photoWipe.ts). */
+  const cropStated = $derived(cropDiffers(earlierShape, laterShape));
+
+  function shapeOf(event: Event): PhotoShape | null {
+    const image = event.currentTarget;
+    if (!(image instanceof HTMLImageElement)) return null;
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  }
+
+  /* The divider is grabbed by its own strip and moves by how far the
+     pointer has travelled since, not to wherever the pointer is: grabbing
+     48px of handle 20px off its centre would otherwise slide the divider
+     20px on the first frame, which is the one thing a wipe must not do.
+     Release changes nothing at all, for the same reason. */
+  let grabOffset = 0;
+
+  function frameBox(): { left: number; width: number } {
+    const box = frame?.getBoundingClientRect();
+    return { left: box?.left ?? 0, width: box?.width ?? 0 };
+  }
+
+  function grab(event: PointerEvent) {
+    const box = frameBox();
+    grabOffset = event.clientX - (box.left + fraction * box.width);
+    dragging = true;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  }
+
+  function drag(event: PointerEvent) {
+    if (!dragging) return;
+    fraction = fractionAt(event.clientX - grabOffset, frameBox());
+  }
+
+  function release() {
+    dragging = false;
+  }
+
+  function key(event: KeyboardEvent) {
+    const next = fractionForKey(event.key, fraction);
+    if (next === null) return;
+    event.preventDefault();
+    fraction = next;
+  }
+
+  function step(side: CompareSide, delta: -1 | 1) {
+    const next = stepPair(pair, side, delta, photos.length);
+    if (next) onPair(next);
+  }
+
+  const percent = $derived(Math.round(fraction * 100));
+
+  /* Every side's controls ask the same question the press itself asks, so a
+     control that can be pressed and a press that does nothing cannot
+     disagree (compare-state.ts). */
+  const steps = $derived([
+    { side: 'left' as const, photo: earlier, back: stepPair(pair, 'left', -1, photos.length), forward: stepPair(pair, 'left', 1, photos.length), backLabel: m.photo_wipe_earlier_back(), forwardLabel: m.photo_wipe_earlier_forward() },
+    { side: 'right' as const, photo: later, back: stepPair(pair, 'right', -1, photos.length), forward: stepPair(pair, 'right', 1, photos.length), backLabel: m.photo_wipe_later_back(), forwardLabel: m.photo_wipe_later_forward() }
+  ]);
+</script>
+
+<div class="wipe" data-photo-wipe {...roleAttrs(role)}>
+  {#if wipeable}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
+      <div class="wipe-plate">
+        {#key laterUrl}
+          {#if laterUrl}
+            <img
+              class="wipe-photo"
+              src={laterUrl}
+              alt={m.ph_cell_aria({ date: date(later) })}
+              onload={(event) => (laterShape = shapeOf(event))}
+              in:fade={{ duration: motionDuration('--dur-fast') }}
+            />
+          {/if}
+        {/key}
+      </div>
+      <div class="wipe-plate is-earlier">
+        {#key earlierUrl}
+          {#if earlierUrl}
+            <img
+              class="wipe-photo"
+              src={earlierUrl}
+              alt={m.ph_cell_aria({ date: date(earlier) })}
+              onload={(event) => (earlierShape = shapeOf(event))}
+              in:fade={{ duration: motionDuration('--dur-fast') }}
+            />
+          {/if}
+        {/key}
+      </div>
+
+      <span class="wipe-date is-earlier" data-wipe-date="left">{date(earlier)}</span>
+      <span class="wipe-date is-later" data-wipe-date="right">{date(later)}</span>
+
+      <div
+        class="wipe-handle"
+        data-wipe-handle
+        role="slider"
+        tabindex="0"
+        aria-label={m.photo_wipe_handle()}
+        aria-orientation="horizontal"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        aria-valuetext={m.photo_wipe_value({ percent })}
+        onpointerdown={grab}
+        onpointermove={drag}
+        onpointerup={release}
+        onpointercancel={release}
+        onkeydown={key}
+      >
+        <span class="wipe-line"></span>
+        <span class="wipe-grip">
+          <Icon name="chevronLeft" size={14} />
+          <Icon name="chevronRight" size={14} />
+        </span>
+      </div>
+    </div>
+  {:else}
+    <!-- Nothing to wipe between, so the two photographs go side by side
+         and each keeps its own date under it. -->
+    <div class="wipe-pair" data-wipe-fallback>
+      {#each [earlier, later] as photo, i (photo.id)}
+        <div class="wipe-half">
+          <PhotoThumb {photo} size={150} />
+          <span class="wipe-half-date" data-wipe-date={i === 0 ? 'left' : 'right'}>{date(photo)}</span>
+        </div>
+      {/each}
+    </div>
+    <p class="wipe-note" data-wipe-fallback-note>{m.photo_wipe_no_file()}</p>
+  {/if}
+
+  {#if cropStated}
+    <p class="wipe-note" data-wipe-crop-note>{m.photo_wipe_crop()}</p>
+  {/if}
+
+  <div class="wipe-steps">
+    {#each steps as group (group.side)}
+      <div class="wipe-step" data-wipe-step={group.side}>
+        <button
+          class="icon-btn press"
+          data-wipe-back={group.side}
+          disabled={!group.back}
+          aria-label={group.backLabel}
+          onclick={() => step(group.side, -1)}
+        >
+          <Icon name="chevronLeft" size={18} />
+        </button>
+        <span class="wipe-step-note">{note?.(group.photo) ?? ''}</span>
+        <button
+          class="icon-btn press"
+          data-wipe-forward={group.side}
+          disabled={!group.forward}
+          aria-label={group.forwardLabel}
+          onclick={() => step(group.side, 1)}
+        >
+          <Icon name="chevronRight" size={18} />
+        </button>
+      </div>
+    {/each}
+  </div>
+</div>
+
+<style>
+  /* Registered, or the divider cannot travel. A bare custom property
+     animates as a string and swaps at the halfway point, so a key press
+     would cut the divider from where it was to where it is going - which
+     is the one movement this control is not allowed to make. Registered, it
+     is a number the browser walks, and both the handle and the clip read
+     the same walk. (NoticedAxis.svelte's `--at` and kit.css's `--level` are
+     the same move.) */
+  @property --wipe-at {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0.5;
+  }
+
+  /* A block (rule 4): 6px corners and its own --outline edge, so the frame
+     is visible on both themes before any photograph has decoded. No
+     shadow - the kit has none and this is not where one starts. */
+  .wipe-frame {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--r-block);
+    border: 1px solid var(--outline);
+    overflow: hidden;
+    touch-action: none;
+    transition: --wipe-at var(--dur-fast) var(--ease-out);
+  }
+
+  /* A finger has to be followed exactly. Anything between the pointer and
+     the divider reads as lag rather than as easing, so the transition above
+     is for the keyboard and for a change of photograph only. */
+  .wipe-frame.is-dragging {
+    transition: none;
+  }
+
+  .wipe-plate {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* The earlier photograph is the one that is clipped, so the divider
+     uncovers the later one as it travels right to left - the journey runs
+     the way the frame's two dates read, left to right. */
+  .wipe-plate.is-earlier {
+    clip-path: inset(0 calc(100% - var(--wipe-at) * 100%) 0 0);
+  }
+
+  /* Both photographs are cropped to this one frame from the middle and
+     neither is stretched, which is what .wipe-note says out loud when the
+     two shapes actually differ. */
+  .wipe-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  /* Pinned to the frame rather than placed under it, so both dates are
+     readable wherever the divider stands. A block of the area's own stripe
+     with the ink that stripe carries (rule 4, role.ts). */
+  .wipe-date {
+    position: absolute;
+    top: var(--space-2);
+    padding: 2px var(--space-2);
+    border-radius: var(--r-block);
+    background: var(--role-draw);
+    color: var(--role-fill-ink);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+
+  .wipe-date.is-earlier {
+    left: var(--space-2);
+  }
+
+  .wipe-date.is-later {
+    right: var(--space-2);
+  }
+
+  /* 48px of grab, which is the app's touch floor, centred on a 3px line.
+     The strip is the control and the line is what it draws; splitting them
+     is what lets the target clear the floor without a 48px bar across two
+     photographs. */
+  .wipe-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--wipe-at) * 100%);
+    width: var(--touch-target);
+    margin-left: calc(var(--touch-target) / -2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  .wipe-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--role-draw);
+  }
+
+  .wipe-grip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 2px;
+    border-radius: var(--r-block);
+    background: var(--role-draw);
+    color: var(--role-fill-ink);
+  }
+
+  .wipe-handle:focus-visible {
+    outline: none;
+  }
+
+  .wipe-handle:focus-visible .wipe-grip {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* The fallback: the two-up grid this control replaced, kept for the one
+     case it cannot serve. `.photo-thumb` is PhotoThumb's own class, so it
+     needs :global() from here - and it has to be reached, because the
+     shared rule sizes a thumbnail by a fixed pixel width and each half of
+     this grid is half a screen wide. */
+  .wipe-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  .wipe-half {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .wipe-half :global(.photo-thumb) {
+    width: 100% !important;
+    aspect-ratio: 3 / 4;
+    height: auto !important;
+  }
+
+  .wipe-half-date {
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+
+  .wipe-note {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  /* One group per side, each under the half of the frame it moves. */
+  .wipe-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-top: var(--space-2);
+  }
+
+  .wipe-step {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1);
+  }
+
+  .wipe-step-note {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+
+  @container app (min-width: 1024px) {
+    .wipe {
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+</style>

@@ -166,6 +166,12 @@ describe('the surfaces', () => {
          pixels - a thumbnail row over ListCard - which is why it is a
          surface rather than "the other half of" one. */
       'PhotoSection.svelte',
+      /* Two photographs of the same body months apart, in one frame, under
+         one draggable divider (phase 10 redesign ticket 55). A surface of
+         its own: it draws a frame, two plates, two date blocks and a
+         handle, and two screens that both take fixed-position photographs
+         read it - the progress-photo comparison and hair progress. */
+      'PhotoWipe.svelte',
       /* Not a surface either, and the only kit component that draws no
          pixels of its own: the three-state gate thirty-one screens used to
          hand-write over a journal read (phase 5 audit ticket 04). It picks

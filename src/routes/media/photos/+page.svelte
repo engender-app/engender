@@ -13,9 +13,9 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
+  import type { ComparePair } from '$lib/data/photos/compare-state';
   import {
     orderAnchorsByJourney,
-    stepCompareAnchor,
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/photos/compare-state';
@@ -30,6 +30,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -88,8 +89,12 @@
     selected = toggleCompareAnchor(selected, id, photos);
   }
 
-  function step(which: 'left' | 'right', delta: -1 | 1) {
-    selected = stepCompareAnchor(selected, which, delta, photos);
+  /* The wipe owns which two photographs it is showing and hands back the
+     pair a press of its own earlier/later controls landed on; this screen
+     holds them as ids, because the grid behind it is where they were
+     picked and a live update can drop one of them. */
+  function setPair(next: ComparePair) {
+    selected = [photos[next.left].id, photos[next.right].id];
   }
 
   /* The mode control (ticket 11): a segmented Browse/Compare, matching how
@@ -135,21 +140,14 @@
   {#if comparing && pair}
     <ScreenHeader title={m.ph_compare()} back={() => (comparing = false)} />
     <p class="compare-gap" data-compare-gap>{gapLabel}</p>
-    <div class="compare-wrap">
-      {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < photos.length - 1 }] as side (side.which)}
-        <div class="compare-side" data-compare-side={side.which}>
-          <PhotoThumb photo={photos[side.i]} size={150} />
-          <div class="compare-nav">
-            <button class="icon-btn" disabled={!side.canPrev}
-              aria-label={m.ph_earlier()} onclick={() => step(side.which, -1)}><Icon name="chevronLeft" size={18} /></button>
-            <span class="small" data-compare-date>{fmtDay(photos[side.i].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            <button class="icon-btn" disabled={!side.canNext}
-              aria-label={m.ph_later()} onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
-          </div>
-          <span class="muted small">{photos[side.i].milestoneName ?? m.ph_from_entry()}</span>
-        </div>
-      {/each}
-    </div>
+    <PhotoWipe
+      {photos}
+      {pair}
+      onPair={setPair}
+      role={roleAt(activeFlag.roles, 0)}
+      date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
+      note={(photo) => photo.milestoneName ?? m.ph_from_entry()}
+    />
     {#if rangeSummaries.length}
       <SectionHeading text={m.ph_measurements_title()} />
       <ListCard role={roleAt(activeFlag.roles, 0)}>
@@ -288,22 +286,9 @@
     background: var(--surface); border: 1px solid var(--outline);
   }
 
-  /* The two-up progress-photo comparison. These lived in screens.css while
-     three screens read them; the compare screen moved to its own
-     `.compare-picker` because two date fields do not fit half of a 390px
-     screen, and voice practice moved off `.compare-side` for its own rows,
-     which left this screen as the only consumer and
-     scripts/check-screens-classes.mjs asking for them here.
-
-     `.photo-thumb` is PhotoThumb.svelte's own class, so reaching it from
-     here needs :global() - and it has to be reached, because the shared
-     rule sizes a thumbnail by a fixed pixel width and each side of this
-     grid is half a screen wide. */
-  .compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
-  .compare-side { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
-  .compare-side :global(.photo-thumb) { width: 100% !important; aspect-ratio: 3/4; height: auto !important; }
-
-  @container app (min-width: 1024px) {
-    .compare-wrap { max-width: 560px; margin-left: auto; margin-right: auto; }
-  }
+  /* The two-up grid this screen drew before redesign ticket 55 went with
+     the wipe that replaced it, `.compare-wrap`/`.compare-side` and all:
+     both halves of that comparison now live inside PhotoWipe.svelte, which
+     is also where the fallback for two photographs it cannot wipe between
+     is drawn. */
 </style>
