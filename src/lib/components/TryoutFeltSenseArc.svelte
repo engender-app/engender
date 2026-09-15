@@ -58,7 +58,15 @@
       whole pixel. */
   const BOX = { width: 100, height: 34 } as const;
 
-  const xOf = (position: number) => position * BOX.width;
+  /** How far in from each end the first and last marks sit, in the box's own
+      x units - so about 7px on a phone's card. The guide runs the full width
+      and the marks are held off its ends instead, which is the split the
+      phase rail makes and for its reason: the line is the thing that has to
+      line up with the column, and a mark centred on the column's own edge is
+      half outside the card. */
+  const MARK_INSET = 2;
+
+  const xOf = (position: number) => MARK_INSET + position * (BOX.width - 2 * MARK_INSET);
   const yOf = (level: number) => (1 - level) * BOX.height;
 
   let marks = $derived(reading.marks);
@@ -70,6 +78,11 @@
   );
 </script>
 
+<!-- Nothing at all where nothing has been recorded. A guide with no marks on
+     it is a scale drawn over an empty span, which claims a reading was
+     taken and says it was neutral; the card's own sentence says there are
+     none instead, and the control under it is the answer to that. -->
+{#if marks.length}
 <div class="felt-arc" data-felt-arc aria-hidden="true">
   <svg class="felt-svg" viewBox="0 0 {BOX.width} {BOX.height}" preserveAspectRatio="none" focusable="false">
     <!-- The middle of the scale, as rule 9's guide: 1px in --text-2, never
@@ -100,6 +113,7 @@
     {/each}
   </svg>
 </div>
+{/if}
 
 <style>
   /* Flush with the card's own column, like the phase rail: the drawing's
