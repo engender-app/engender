@@ -182,15 +182,16 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('fifteen rows can report a reading and ten never can', () => {
+test('fifteen rows can report a reading and nine never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
   // group's first row that fronts an area of its own. Twelve until redesign
   // ticket 51 took `presentations` and `entry-templates` - both 'written' -
-  // off the registry entirely.
+  // off the registry entirely. Ten until ticket 59 deleted the
+  // clinician-summary row outright rather than hosting it.
   assert.equal(reads.length, 15);
-  assert.equal(HUB_ROWS.length - reads.length, 10);
+  assert.equal(HUB_ROWS.length - reads.length, 9);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -538,7 +539,7 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
   assert.deepEqual(group('body'), ['measurements', 'sizes']);
-  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments', 'clinician-summary']);
+  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
   assert.deepEqual(group('transition'), [
     'eras',
     'milestones',
