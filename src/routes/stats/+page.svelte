@@ -78,7 +78,6 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
-  import HostedRows from '$lib/components/HostedRows.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -86,6 +85,7 @@
   import EntryCard from '$lib/components/EntryCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SpanTimeline from '$lib/components/SpanTimeline.svelte';
+  import WordsReading from '$lib/components/WordsReading.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
   import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -1140,6 +1140,15 @@
     {/if}
   </ChartCard>
 
+  <!-- The words reading (redesign ticket 62), next to the tag donut because
+       the two ask the same question of two different halves of an entry:
+       what the tags say this stretch was about, and what the notes' own
+       words say. It was a screen behind the Transition tab and a hub row
+       pointing at it, and the registry had said `home: 'stats'` since phase
+       8. Its own card rather than a row on the look-back list below: a row
+       is a way somewhere else, and this is a reading that draws here. -->
+  <WordsReading role={roleAt(activeFlag.roles, AREA_ROLE.charts)} />
+
   <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <!-- Which scale the six bars are of, named once, on the heading's line
          where a chart card keeps its context. Why it is not on each row is
@@ -1361,7 +1370,12 @@
        in redesign ticket 43, which merged the rail into the milestones
        screen on the Transition door. It was the one row here that opened
        another area's screen, and every other row on this list lights this
-       same tab; Look back keeps the readings it owns. -->
+       same tab; Look back keeps the readings it owns.
+
+       The words row left too, in redesign ticket 62, and it left in the
+       other direction: the reading it pointed at draws on this screen now
+       (WordsReading, above the tag insights), so there is nothing for a row
+       to open. Two rows left, both of them a screen this tab owns. -->
   <SectionHeading text={m.stats_look_back()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
     <ListRow
@@ -1378,12 +1392,6 @@
       subtitle={m.compare_sub()}
       href="/compare"
     />
-    <!-- Moved off the More hub by phase 9 carpet ticket 16. It belongs in
-         this list: what it draws is a reading of the words in your notes,
-         which is the same kind of look-back the wrapped recaps and the body
-         map are, and it stores nothing of its own - so no `hidden` flag can
-         reach it and the row is only ever there. -->
-    <HostedRows host="stats" />
   </ListCard>
 
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>

@@ -284,6 +284,12 @@
            same kind of thing this card is already full of. -->
       <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/settings/entry-templates" />
       <ListRow key="presentations" icon="palette" title={m.presentations_title()} subtitle={m.hub_sub_presentations()} href="/settings/presentations" />
+      <!-- The words the Look back reading skips (redesign ticket 62,
+           ADR-0084). The third reference area on this card and the one that
+           made the ADR's open question a decision: a skipped word is spent
+           on that reading and never read here for its own sake, so it is
+           managed here and takes no hub row. -->
+      <ListRow key="words" icon="note" title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} href="/settings/words" />
     </ListCard>
 
     <!-- ADR-0043: the manual way into cycle tracking, for someone no

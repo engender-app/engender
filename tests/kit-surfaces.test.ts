@@ -182,7 +182,14 @@ describe('the surfaces', () => {
       'RecordSheet.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',
-      'TileGrid.svelte'
+      'TileGrid.svelte',
+      /* One mark rather than a surface (phase 10 redesign ticket 62): words
+         whose size carries their weight, drawn on a chart card the way the
+         donut and the ordered strip are. It is in the kit rather than beside
+         the one reading that draws it because the drawing is a mark with a
+         rule of its own - five steps of the type scale, heaviest in the
+         middle - and that rule is the kind of thing this directory holds. */
+      'WordCloud.svelte'
     ]);
   });
 

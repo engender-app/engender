@@ -182,7 +182,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('fourteen rows can report a reading and nine never can', () => {
+test('fourteen rows can report a reading and eight never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -191,8 +191,10 @@ test('fourteen rows can report a reading and nine never can', () => {
   // off the registry entirely. Ten until ticket 59 deleted the
   // clinician-summary row outright rather than hosting it, and fourteen
   // since redesign ticket 61 folded the size log into the measurements row.
+  // The written eight are nine less `words`, which redesign ticket 62 took
+  // off with the screen it opened.
   assert.equal(reads.length, 14);
-  assert.equal(HUB_ROWS.length - reads.length, 9);
+  assert.equal(HUB_ROWS.length - reads.length, 8);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -448,7 +450,6 @@ test('a hosted row states the day its area ended, since the hub no longer can', 
     epochDay: TODAY - 5
   });
   assert.equal(rowLine(spec('dilation'), noReads).kind, 'not-yet');
-  assert.equal(rowLine(spec('words'), noReads).kind, 'no-stream');
 });
 
 test('every host draws something, or is the one that writes its row by hand', () => {
@@ -472,7 +473,7 @@ test('a hosted row is not on the hub at all, and its screen is named (ticket 16)
   }
   assert.deepEqual(
     HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['effects', 'side-effects', 'hair-progress', 'cycle-events', 'dilation', 'words']
+    ['effects', 'side-effects', 'hair-progress', 'cycle-events', 'dilation']
   );
 });
 

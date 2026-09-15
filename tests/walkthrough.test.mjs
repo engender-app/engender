@@ -4463,13 +4463,17 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Words moved to Stats and is not on the hub either.
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
-  await page.locator('[data-list-row="words"]').click();
-  await page.waitForURL('**/transition/words');
+  // Modes, entry templates and the words the reading skips are Settings
+  // rows now (redesign tickets 51 and 62, ADR-0084), never on the hub at
+  // all. Words has no row anywhere any more - the reading draws on Look
+  // back itself - so the old address is walked as a redirect instead.
+  await page.goto(BASE + '/transition/words', { waitUntil: 'networkidle' });
+  await page.waitForURL('**/stats');
 
-  // Modes and entry templates are Settings rows now (redesign ticket 51,
-  // ADR-0084), never on the hub at all.
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="words"]').click();
+  await page.waitForURL('**/settings/words');
+
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="entry-templates"]').click();
   await page.waitForURL('**/settings/entry-templates');
@@ -5108,14 +5112,15 @@ try {
    After "Fill every feature" rather than on a first-run journal, because the
    line saying what an open bound comes to is computed against the journal's
    own first and last entry: on an empty journal there is nothing to clamp to
-   and the line is correctly absent. The persona now seeds one era of its own
-   (redesign ticket 48, "Before HRT", both bounds dated) - checked for, then
-   cleared, so the rest of this flow keeps testing "all of it" and "earlier
-   still" against the empty slate they were written against: "all of it" is
-   both bounds left open, which is the one era that would collide with
-   *any* other era on the overlap check (`eras.ts`'s `spansOverlap` returns
-   true whenever neither side can prove non-overlap, and an era with both
-   bounds null can never prove either side). */
+   and the line is correctly absent. The persona seeds eras of its own
+   (redesign ticket 48, "Before HRT"; ticket 62 added two more that cover
+   entries, so the words reading has something to weigh) - checked for, then
+   cleared, all of them, so the rest of this flow keeps testing "all of it"
+   and "earlier still" against the empty slate they were written against:
+   "all of it" is both bounds left open, which is the one era that would
+   collide with *any* other era on the overlap check (`eras.ts`'s
+   `spansOverlap` returns true whenever neither side can prove non-overlap,
+   and an era with both bounds null can never prove either side). */
 try {
   await page.goto(BASE + '/transition/eras', { waitUntil: 'networkidle' });
   await booted();
@@ -5123,9 +5128,11 @@ try {
   if (!startingRows.includes('Before HRT')) {
     throw new Error(`the persona's own era should already be here, got: ${startingRows}`);
   }
-  await page.click('[data-era]');
-  await page.click('[data-delete-era]');
-  await page.click('[data-confirm-delete-era]');
+  while (await page.locator('[data-era]').count()) {
+    await page.click('[data-era]');
+    await page.click('[data-delete-era]');
+    await page.click('[data-confirm-delete-era]');
+  }
   await page.waitForSelector('[data-notice="eras-empty"]');
 
   // Both bounds left alone. An era with neither is the case that has to save

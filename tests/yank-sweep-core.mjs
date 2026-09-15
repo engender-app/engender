@@ -931,7 +931,6 @@ const HYDRATION_SCENES = [
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
   { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
-  { name: 'words', at: '/transition/words', is: "the notes' own words" },
   /* Practice group */
   { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline' },
   { name: 'resources', at: '/practice/resources', is: 'organisations and helplines' },
@@ -957,6 +956,7 @@ const HYDRATION_SCENES = [
   { name: 'security', at: '/settings/security', is: 'the security module' },
   { name: 'affirmations', at: '/settings/affirmations', is: 'affirmations' },
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
+  { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
   { name: 'entry-templates', at: '/settings/entry-templates', is: 'editable entry templates' },
   { name: 'presentations', at: '/settings/presentations', is: 'the presentation catalogue' },

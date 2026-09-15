@@ -23,6 +23,12 @@
    now - and /transition/presentations and /practice/entry-templates carry
    the stub instead, pointing back in.
 
+   Redesign ticket 62 does the same to the third of them, and one step
+   further: /transition/words is not a screen at all any more, since the
+   reading it held draws on the Look back door, so its stub points at
+   /stats. Its ignore list stayed behind as a reference area, which is the
+   real screen at /settings/words now, so that stub is gone too.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -56,7 +62,6 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/letters', () => import('../src/routes/settings/letters/+page.ts'), '/transition/letters'],
   ['settings/tryouts', () => import('../src/routes/settings/tryouts/+page.ts'), '/transition/tryouts'],
   ['settings/eras', () => import('../src/routes/settings/eras/+page.ts'), '/transition/eras'],
-  ['settings/words', () => import('../src/routes/settings/words/+page.ts'), '/transition/words'],
   ['settings/voice', () => import('../src/routes/settings/voice/+page.ts'), '/practice/voice?tab=record'],
   ['settings/wear', () => import('../src/routes/settings/wear/+page.ts'), '/practice/wear'],
   [
@@ -78,7 +83,8 @@ const REDIRECTS: [string, () => unknown, string][] = [
     'practice/entry-templates',
     () => import('../src/routes/practice/entry-templates/+page.ts'),
     '/settings/entry-templates'
-  ]
+  ],
+  ['transition/words', () => import('../src/routes/transition/words/+page.ts'), '/stats']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {
