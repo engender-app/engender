@@ -5908,7 +5908,7 @@ try {
   await effectRow.waitFor();
   /* Read rather than written down: the name is catalogue copy, and a
      walkthrough that spells it out fails the day it is reworded. */
-  const effectName = (await effectRow.locator('.kit-row-title').first().textContent()).trim();
+  const effectName = (await effectRow.locator('[data-row-title]').first().textContent()).trim();
   await effectRow.click();
   await page.waitForSelector('#effect-date');
   await fillDate(page, '#effect-date', localIso(120));
