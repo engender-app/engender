@@ -18,12 +18,19 @@
    incidental: the rail draws no healing horizon, no expected duration and
    no share of anything completed. The stretch it draws between the date and
    today is the distance already travelled, which is what "day N of healing"
-   already says in words (ADR-0012 - a fact about time, not a score). A band
-   running from the date to a 90-day cutoff with today's tick somewhere
-   along it would be a progress bar through a recovery, which ticket 52
-   rules out in as many words. SURGERY_RECOVERY_CUTOFF_DAYS keeps deciding
-   which phase a procedure is in (recoveryDay.ts) and decides nothing about
-   this drawing. */
+   already says in words. A band running from the date to a 90-day cutoff
+   with today's tick somewhere along it would be a progress bar through a
+   recovery, which ticket 52 rules out in as many words and which
+   recoveryDay.ts has refused since it was written - "no expected duration,
+   no phase, nothing about being ahead of or behind anything".
+   SURGERY_RECOVERY_CUTOFF_DAYS keeps deciding which phase a procedure is in
+   and decides nothing about this drawing.
+
+   Ticket 52 cites ADR-0012 for the day-N rule and that citation does not
+   check out: ADR-0012 is native units, normalized values for colour and no
+   worst-to-best legend. It is the neighbouring principle - no end of a
+   scale is the good end - rather than this one, and the rule this module
+   actually keeps is recoveryDay.ts's own. */
 
 /** How far back of the surgery date the rail will reach for a consult.
 
