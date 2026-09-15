@@ -1,8 +1,9 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
+  openingPair,
   orderAnchorsByJourney,
-  stepCompareAnchor,
+  stepPair,
   toComparePair,
   toggleCompareAnchor
 } from './compare-state.ts';
@@ -45,14 +46,29 @@ test('missing anchors are dropped instead of breaking compare state', () => {
   assert.equal(toComparePair(['p2', 'p4'], withoutP2), null);
 });
 
-test('stepCompareAnchor moves only inside bounds and never crosses sides', () => {
-  const list = photos();
+test('stepPair moves one photograph at a time, inside the list', () => {
+  assert.deepEqual(stepPair({ left: 0, right: 3 }, 'left', 1, 4), { left: 1, right: 3 });
+  assert.deepEqual(stepPair({ left: 0, right: 3 }, 'right', -1, 4), { left: 0, right: 2 });
+});
 
-  assert.deepEqual(stepCompareAnchor(['p1', 'p4'], 'left', 1, list), ['p2', 'p4']);
-  assert.deepEqual(stepCompareAnchor(['p1', 'p4'], 'right', -1, list), ['p1', 'p3']);
+test('stepPair refuses a step that would cross or meet the other side', () => {
+  // Null rather than the pair unchanged: the same answer disables the
+  // control, so a control that is pressable and a press that does nothing
+  // cannot disagree.
+  assert.equal(stepPair({ left: 0, right: 1 }, 'left', 1, 4), null);
+  assert.equal(stepPair({ left: 2, right: 3 }, 'right', -1, 4), null);
+});
 
-  assert.deepEqual(stepCompareAnchor(['p1', 'p2'], 'left', 1, list), ['p1', 'p2']);
-  assert.deepEqual(stepCompareAnchor(['p3', 'p4'], 'right', -1, list), ['p3', 'p4']);
+test('stepPair refuses a step off either end of the list', () => {
+  assert.equal(stepPair({ left: 0, right: 3 }, 'left', -1, 4), null);
+  assert.equal(stepPair({ left: 0, right: 3 }, 'right', 1, 4), null);
+});
+
+test('openingPair is the oldest and the newest, and nothing under two', () => {
+  assert.deepEqual(openingPair(4), { left: 0, right: 3 });
+  assert.deepEqual(openingPair(2), { left: 0, right: 1 });
+  assert.equal(openingPair(1), null);
+  assert.equal(openingPair(0), null);
 });
 
 test('toComparePair returns ordered indices for a full selection', () => {

@@ -873,8 +873,6 @@
   background: var(--surface); border: 1px solid var(--outline);
 }
 .compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-display); margin-bottom: var(--space-5); }
-.compare-nav { display: flex; align-items: center; gap: var(--space-1); }
-/* SH-106: was 36px; falls back to .icon-btn's 44px default. */
 
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
