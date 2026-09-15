@@ -39,9 +39,7 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
     scope. Correcting SCREENS.md is still nobody's ticket, and
     reading the routes off the hub instead of off the doc makes that
     disagreement smaller rather than pretending it is settled. */
-const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
-  doubt: 'moved onto the hub under spec 08 with the screen itself unchanged (ticket 24), so it was never rebuilt onto the kit'
-};
+const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {};
 
 /** Every screen reached only from inside another one, or from the shell -
     the part of this list the hub cannot supply. */
@@ -99,7 +97,18 @@ const REACHED_FROM_INSIDE = [
      this list for the reason the note above it gives: it is a feature screen
      in every way this file asks about, and a screen that is not here escapes
      every assertion in it. */
-  'settings/permissions'
+  'settings/permissions',
+  /* The four ways down from Safe space (phase 10 redesign ticket 47).
+     `/doubt` opens on the breathing exercise and nothing else; everything
+     that screen used to hold below it lives on one of these, reached by one
+     tap from a row and from nowhere in the hub. On this list for the reason
+     the note above it gives - the sections moved wholesale, so a screen
+     left off would take a third of Safe space out from under every
+     assertion here at once. */
+  'doubt/moments',
+  'doubt/comfort',
+  'doubt/evidence',
+  'doubt/readings'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -147,7 +156,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(15);
+    expect(REACHED_FROM_INSIDE.length).toBe(19);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -234,7 +243,15 @@ describe('what a first-run journal sees', () => {
         /* The permissions list is the same length on a first run as on a
            thousandth: it describes what the app can reach, not what anybody
            has written. There is no state in which it is empty. */
-        'settings/permissions'
+        'settings/permissions',
+        /* Safe space itself, since redesign ticket 47. What it draws is a
+           breathing exercise and five ways down, and neither depends on
+           anything having been written: on a journal with nothing in it the
+           screen is identical, which is the point of it - the screen a
+           person reaches on their worst day is the same screen every time.
+           Its four ways down each carry their own empty state, and all four
+           are on this list. */
+        'doubt'
       ].includes(route)
   );
 
@@ -287,7 +304,15 @@ describe('what the worker is still fetching', () => {
            navigator.permissions. There is no query to wait on, and a
            skeleton over a list whose rows are all known in advance would be
            a placeholder for nothing. */
-        'settings/permissions'
+        'settings/permissions',
+        /* Safe space reads the journal nowhere since redesign ticket 47.
+           The seven live queries it used to open with went down with the
+           sections that wanted them, and what is left - the breath and five
+           rows - is known before SQLite has answered anything. That is not
+           an omission but the point: a cold Android launch onto this route
+           paints the breath as soon as the shell is up. A skeleton here
+           would stand in for nothing. */
+        'doubt'
       ].includes(route)
   );
 
