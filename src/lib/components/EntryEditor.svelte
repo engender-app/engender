@@ -385,6 +385,7 @@
     return activeEpisodes
       .filter((ep) => ep.dose != null && ep.dose > 0 && !loggedDoseDrugs.has(ep.drug.toLowerCase().trim()))
       .map((ep) => ({
+        episodeId: ep.id,
         dose: ep.dose!,
         doseUnit: ep.doseUnit,
         drug: ep.drug,
@@ -924,7 +925,7 @@
 
   {#if prefs.entryDoseQuickLogEnabled && scheduleDose}
     <div class="contextual-row" data-contextual="dose-quick-log">
-      {#each dueScheduledDoses as doseItem (doseItem.drug)}
+      {#each dueScheduledDoses as doseItem (doseItem.episodeId)}
         {@const stockRow = stockFor(doseItem.drug)}
         <button
           type="button"
