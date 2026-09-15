@@ -31,8 +31,7 @@ import { calendarDuration } from '$lib/data/epochDay';
 import type { HubGroupKey, HubLine, HubRowKey } from '$lib/data/hubRows';
 
 const ROW_TITLE: Record<HubRowKey, () => string> = {
-  measurements: m.body_measurements,
-  sizes: m.size_log,
+  measurements: m.measurements_and_sizes,
   'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,
   care: m.care_title,
@@ -69,7 +68,6 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
     it say the same thing (ADR-0024). */
 const ROW_LINE: Record<HubRowKey, () => string> = {
   measurements: m.hub_sub_measurements,
-  sizes: m.hub_sub_sizes,
   'hair-progress': m.hub_sub_hair_progress,
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,

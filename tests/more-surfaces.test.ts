@@ -190,10 +190,13 @@ describe('every row the hub carries', () => {
      Redesign ticket 51 (ADR-0084) took `presentations` and `entry-templates`
      further still: both are reference areas, so both left this registry
      entirely for a plain row on /settings, the same way tag groups and body
-     regions were never on it at all. Twenty-five rows now, not twenty-seven. */
+     regions were never on it at all. Twenty-five rows then, not twenty-seven.
+
+     Redesign ticket 61 folded `sizes` into `measurements` rather than moving
+     it: one row fronting two archive sections, which is `hair-progress`'s
+     own shape. Twenty-three rows now. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
-    ['sizes', 'package', '/body/sizes', 'body', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['appointments', 'check', '/health/appointments', 'health', 'read'],

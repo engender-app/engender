@@ -157,7 +157,7 @@ test('every icon a row names is one the app can draw', () => {
 
 test('every finishable area group is fronted by exactly one row', () => {
   /* Both directions. The type-level check in hubRows.ts refuses a group no
-     row claims - proven by deleting `finishes: 'sizes'` and watching
+     row claims - proven by deleting `finishes: 'wear'` and watching
      `Unfronted` stop being `never` - and this catches the half it cannot see:
      two rows claiming one group, where the second silently overwrites the
      first in the record. */
@@ -182,15 +182,16 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('fifteen rows can report a reading and nine never can', () => {
+test('fourteen rows can report a reading and nine never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
   // group's first row that fronts an area of its own. Twelve until redesign
   // ticket 51 took `presentations` and `entry-templates` - both 'written' -
   // off the registry entirely. Ten until ticket 59 deleted the
-  // clinician-summary row outright rather than hosting it.
-  assert.equal(reads.length, 15);
+  // clinician-summary row outright rather than hosting it, and fourteen
+  // since redesign ticket 61 folded the size log into the measurements row.
+  assert.equal(reads.length, 14);
   assert.equal(HUB_ROWS.length - reads.length, 9);
 });
 
@@ -237,8 +238,8 @@ test('a whole quiet window with nothing written reads as quiet', () => {
   const quiet = TODAY - FINISH_SUGGESTION_QUIET_DAYS;
   const nearly = quiet + 1;
 
-  assert.equal(rowLine(spec('sizes'), reading({ lastWrites: { sizeRecords: nearly } })).kind, 'last');
-  assert.equal(rowLine(spec('sizes'), reading({ lastWrites: { sizeRecords: quiet } })).kind, 'quiet');
+  assert.equal(rowLine(spec('wear'), reading({ lastWrites: { wearSessions: nearly } })).kind, 'last');
+  assert.equal(rowLine(spec('wear'), reading({ lastWrites: { wearSessions: quiet } })).kind, 'quiet');
 });
 
 test('the quiet window is the one the finish offer already uses', () => {
@@ -278,8 +279,8 @@ test('a row only reads the areas it fronts, and asks for nothing else', () => {
     has: () => true
   });
 
-  rowLine(spec('sizes'), reading({ lastWrites: watched }));
-  assert.deepEqual(asked, ['sizeRecords']);
+  rowLine(spec('measurements'), reading({ lastWrites: watched }));
+  assert.deepEqual(asked, ['measurements', 'sizeRecords']);
 
   asked.length = 0;
   rowLine(spec('care'), reading({ lastWrites: watched }));
@@ -320,10 +321,10 @@ test('a row fronting two sections reads as finished only when both are', () => {
 
 test('finished wins over quiet, since the gap is no longer the observation', () => {
   const line = rowLine(
-    spec('sizes'),
+    spec('wear'),
     reading({
-      lastWrites: { sizeRecords: TODAY - 400 },
-      states: { sizeRecords: finished(TODAY - 300) }
+      lastWrites: { wearSessions: TODAY - 400 },
+      states: { wearSessions: finished(TODAY - 300) }
     })
   );
 
@@ -377,8 +378,8 @@ test('a suspend day dated in the future has not happened yet', () => {
 // --- hidden -----------------------------------------------------------------
 
 test('a hidden area takes its row off the hub', () => {
-  assert.equal(rowHidden(spec('sizes'), { sizeRecords: hidden }), true);
-  assert.equal(rowHidden(spec('sizes'), {}), false);
+  assert.equal(rowHidden(spec('wear'), { wearSessions: hidden }), true);
+  assert.equal(rowHidden(spec('wear'), {}), false);
 });
 
 test('a row fronting two sections goes only when both are hidden', () => {
@@ -516,10 +517,10 @@ test('a finished row keeps its icon and its screen', () => {
 });
 
 test('a hidden area is absent from the assembled hub rather than moved', () => {
-  const sections = hubSections(reading({ states: { sizeRecords: hidden } }));
+  const sections = hubSections(reading({ states: { wearSessions: hidden } }));
   const keys = sections.flatMap((section) => section.rows.map((row) => row.spec.key));
 
-  assert.ok(!keys.includes('sizes'));
+  assert.ok(!keys.includes('wear'));
   assert.equal(keys.length, drawnRowCount - 1);
 });
 
@@ -538,7 +539,7 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  assert.deepEqual(group('body'), ['measurements', 'sizes']);
+  assert.deepEqual(group('body'), ['measurements']);
   assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
   assert.deepEqual(group('transition'), [
     'eras',
@@ -597,7 +598,7 @@ test('matches come back in the order the groups draw them, flat', () => {
 
   assert.deepEqual(
     rows.map((row) => row.spec.key),
-    ['sizes', 'wear']
+    ['wear']
   );
 });
 
@@ -620,7 +621,14 @@ test('a match that has not ended names the group it belongs to', () => {
 });
 
 test('a hidden area cannot be searched up, hub row or hosted', () => {
-  assert.deepEqual(hubRowsMatching(reading({ states: { measurements: hidden } }), 'measure', titleOf), []);
+  /* Measurements fronts two sections since redesign ticket 61, and a row
+     goes only when every one of them is hidden - so hiding one half leaves
+     the row searchable, which is the same rule `rowHidden` states above. */
+  assert.equal(hubRowsMatching(reading({ states: { measurements: hidden } }), 'measure', titleOf).length, 1);
+  assert.deepEqual(
+    hubRowsMatching(reading({ states: { measurements: hidden, sizeRecords: hidden } }), 'measure', titleOf),
+    []
+  );
   assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
 });
 
