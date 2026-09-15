@@ -255,17 +255,21 @@ export interface WordWeight {
     No corpus, no bundled frequency table, no network, and nothing here
     compares one stretch to another - the baseline is the journal's own
     average, which is a rule for what to show rather than a verdict on what
-    was found (/compare's own rule, ADR-0012). */
+    was found. That rule is written in `/compare`'s own header ("saying
+    which period was better ... is the one thing it never does") rather
+    than in an ADR; `compareStretch.ts` attributes it to ADR-0012, which
+    is about native units and says nothing of the kind. */
 export function distinctiveWords(
   selected: readonly Pick<AnalysedNote, 'words'>[],
   baseline: readonly Pick<AnalysedNote, 'words'>[],
   ignored?: ReadonlySet<string>
 ): WordWeight[] {
+  const total = (counts: readonly WordCount[]) => counts.reduce((sum, [, count]) => sum + count, 0);
   const here = countWords(selected, ignored);
-  const journal = new Map(countWords(baseline, ignored));
-  const totalHere = here.reduce((sum, [, count]) => sum + count, 0);
-  let totalJournal = 0;
-  for (const count of journal.values()) totalJournal += count;
+  const everywhere = countWords(baseline, ignored);
+  const journal = new Map(everywhere);
+  const totalHere = total(here);
+  const totalJournal = total(everywhere);
   if (totalHere === 0 || totalJournal === 0) return [];
 
   const weighted: WordWeight[] = [];
