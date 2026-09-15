@@ -214,7 +214,6 @@
 
 <div class="wipe" data-photo-wipe {...roleAttrs(role)}>
   {#if wipeable}
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
       <div class="wipe-plate">
         {#each laterStack as url (url)}
@@ -331,6 +330,13 @@
     initial-value: 0.5;
   }
 
+  /* Its own container, because both things below that can run out of room
+     run out of room against this control's width rather than the screen's:
+     it is half as wide again on a tablet (below) as on a phone. */
+  .wipe {
+    container: wipe / inline-size;
+  }
+
   /* A block (rule 4): 6px corners and its own --outline edge, so the frame
      is visible on both themes before any photograph has decoded. No
      shadow - the kit has none and this is not where one starts. */
@@ -386,21 +392,33 @@
        take the top of the divider's grab strip away from it. */
     z-index: 1;
     pointer-events: none;
-    top: var(--space-2);
     padding: 2px var(--space-2);
     border-radius: var(--r-block);
     background: var(--role-draw);
+    /* A block's edge, drawn inside, the way every other block in the kit
+       draws it (rule 4): a white band on a pale photograph and a near-black
+       one on a dark photograph are otherwise a block with no boundary. */
+    border: 1px solid var(--outline);
     color: var(--role-fill-ink);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     white-space: nowrap;
   }
 
+  /* Opposite corners rather than both along the top, so the two can never
+     collide however long the dates are or however narrow the frame gets.
+     Side by side they do collide: at 200% zoom the frame is 145px and
+     "16 September 2025" alone is 126 of it, and two long dates overlap
+     even at 320px. A diagonal also reads the way the comparison does -
+     the earlier one where the frame starts, the later one where it
+     ends. */
   .wipe-date.is-earlier {
+    top: var(--space-2);
     left: var(--space-2);
   }
 
   .wipe-date.is-later {
+    bottom: var(--space-2);
     right: var(--space-2);
   }
 
@@ -447,6 +465,7 @@
     padding: 0 2px;
     border-radius: var(--r-block);
     background: var(--role-draw);
+    border: 1px solid var(--outline);
     color: var(--role-fill-ink);
   }
 
@@ -529,6 +548,17 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+  }
+
+  /* Two 48px targets and the gap between them are 104px, so below about
+     215px of control the two groups stop fitting side by side and the row
+     pushes the page sideways. At 200% zoom that is exactly where this
+     lands. One group per line there; neither target shrinks, because the
+     48px floor is not negotiable (base.css). */
+  @container wipe (max-width: 240px) {
+    .wipe-steps {
+      grid-template-columns: 1fr;
+    }
   }
 
   @container app (min-width: 1024px) {
