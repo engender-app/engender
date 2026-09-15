@@ -69,6 +69,18 @@
 
   let axis = $derived(noticedAxis(changes, anchorEpochDay, todayEpochDay));
 
+  /* Drawn in a fixed order rather than in the axis's own left-to-right one,
+     which is the difference between a mark travelling to its new month and
+     teleporting there. `noticedAxis` sorts by day, so re-dating a change
+     moves it in that list; Svelte then moves the node in the DOM to match,
+     and a node taken out and put back loses the transition that was about
+     to run on it. Measured: a mark re-dated from July to the May before it
+     went 235px between two frames with the list in day order, and travels
+     over --dur-med in key order (tests/noticed-axis-motion.mjs, scene
+     mark-travel). Nothing on screen depends on the paint order - every mark
+     is absolutely positioned and the lanes keep them from overlapping. */
+  let drawn = $derived([...axis.marks].sort((a, b) => (a.key < b.key ? -1 : 1)));
+
   /** How tall one lane is, in pixels, and how much room the line and the
       marks standing on it need under the first lane. Both are read by the
       style block through `--lane-h`; the height is computed here because a
@@ -150,7 +162,7 @@
   <div class="na-plot" style:--lane-h="{LANE_H}px" style:height="{plotHeight}px">
     <span class="na-line"></span>
     <span class="na-today" style:--at={axis.todayPosition}></span>
-    {#each axis.marks as mark (mark.key)}
+    {#each drawn as mark (mark.key)}
       <button
         class="na-mark"
         data-noticed-mark={mark.key}
@@ -246,6 +258,23 @@
      at 320px, the narrowest width the app supports; up and down, a lane is
      18px, so half of it each way is the whole box. Measured at 320 and 390:
      no two targets overlap on the demo's own crowded month. */
+  /* A bare custom property animates as a string - it swaps at the halfway
+     point and the mark cuts from the old month to the new one. Registered,
+     both are numbers the browser can walk (kit.css's `--level` is the same
+     move). Below Chrome 85 there is no `@property` and the snap comes back,
+     which is the right way to degrade. */
+  @property --at {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @property --lane {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
   .na-mark {
     position: absolute;
     left: 0;
@@ -258,10 +287,21 @@
     background: none;
     /* `cqw` rather than `%` so the line is measured and not the mark, and a
        date edited in the sheet travels to its new day rather than being
-       repainted there. */
+       repainted there.
+
+       The transition is on the two variables and not on `translate`, which
+       is the only spelling that runs: `translate` reads `var(--at)`, and an
+       unregistered custom property substitutes at computed-value time, so
+       the specified value is the same token either side of the edit and no
+       transition is ever set up. Measured, not reasoned about - the first
+       spelling moved a re-dated mark 235px between two frames
+       (tests/noticed-axis-motion.mjs, scene mark-travel). The stem under a
+       stacked mark grows with `--lane` for the same reason. */
     translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset)))
       calc(var(--lane) * var(--lane-h) * -1);
-    transition: translate var(--dur-med) var(--ease-out);
+    transition:
+      --at var(--dur-med) var(--ease-out),
+      --lane var(--dur-med) var(--ease-out);
   }
 
   .na-mark::before {
