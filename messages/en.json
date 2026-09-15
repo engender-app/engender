@@ -3563,6 +3563,23 @@
   "documents_empty_title": "No paper here yet",
   "documents_empty_body": "Photograph a page, say what it is and what day it is from. It is stored encrypted, like everything else.",
   "documents_empty_action": "Add a document",
+  "documents_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} document · {size}",
+        "countPlural=other": "{count} documents · {size}"
+      }
+    }
+  ],
+  "document_kind_pdf": "PDF",
+  "document_kind_image": "Photo",
   "document_new_sheet": "Name this document",
   "document_title_label": "What it is",
   "document_title_placeholder": "Psychiatric opinion",

@@ -3651,6 +3651,25 @@
   "documents_empty_title": "Jeszcze nic tu nie ma",
   "documents_empty_body": "Zrób zdjęcie kartki, napisz, co to jest i z jakiego jest dnia. Leży zaszyfrowane, tak jak reszta.",
   "documents_empty_action": "Dodaj dokument",
+  "documents_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} dokument · {size}",
+        "countPlural=few": "{count} dokumenty · {size}",
+        "countPlural=many": "{count} dokumentów · {size}",
+        "countPlural=other": "{count} dokumentów · {size}"
+      }
+    }
+  ],
+  "document_kind_pdf": "PDF",
+  "document_kind_image": "Zdjęcie",
   "document_new_sheet": "Nazwij ten dokument",
   "document_title_label": "Co to jest",
   "document_title_placeholder": "Opinia psychiatryczna",
