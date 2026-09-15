@@ -22,14 +22,21 @@
      horizon to be short of.
 
      **Open and collapsed.** A procedure still running draws all of it. One
-     past the recovery cutoff collapses to about the height of the row it
-     drew before this ticket: its phases are still on the rail, but the
-     number belongs to a reading that is still live, and an operation four
-     hundred days ago has none. What it keeps instead is exactly what it
-     said before - the date, the day count and `Permanent record` - because
-     ticket 52 holds the archived wording to mean what it already meant.
-     That is also what lets several running procedures fit at once, which
-     the screen's own intro promises. */
+     past the recovery cutoff drops the block and the strip: its phases are
+     still on the rail, but the number belongs to a reading that is still
+     live, and an operation four hundred days ago has none. What it keeps
+     instead is exactly what it said before - the date, the day count and
+     `Permanent record` - because ticket 52 holds the archived wording to
+     mean what it already meant. That density difference is what lets
+     several running procedures fit at once, which the screen's own intro
+     promises.
+
+     Measured on one journal at 390px, the same two procedures either side
+     of the change: the archived card is 155px against the 100px row it
+     replaces, and the running one 263px against 121px. So collapsed is
+     three fifths of open rather than back to a row - the rail and the
+     consult count are what it spends the extra 55px on, and both are facts
+     the row did not carry. */
   import { m } from '$lib/paraglide/messages';
   import { collapse } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
