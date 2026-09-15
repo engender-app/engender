@@ -299,7 +299,10 @@
   </ReadGate>
 
   {#if selected && selectedPhase}
-    <div class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
+    <!-- The id is what the card's own `aria-expanded` button points at
+         with `aria-controls` (ticket 52): the log is a sibling of the
+         whole list rather than a child of the card that opens it. -->
+    <div id="procedure-log-{selected.id}" class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
       {#snippet checklistBlock(title: string, readonly = false)}
         <SectionHeading text={title} />
         {#if checklistItems.length}

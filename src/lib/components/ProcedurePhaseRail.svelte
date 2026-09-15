@@ -10,10 +10,12 @@
      a name, a number and a photo strip.
 
      Decorative to a screen reader, and that is deliberate rather than
-     lazy. Every fact on this line is already written in text on the card
-     beside it - the date, the day count, how many consults there are - so
-     announcing the rail would read the same journey out twice with no dates
-     attached to the second telling.
+     lazy - but it only holds while the card beside it still writes every
+     fact on this line down in text: the date, the day count, and how many
+     consults there are. The first build of this ticket dropped the consult
+     badge and left two consults existing nowhere but as two hollow dots on
+     an `aria-hidden` line, which made this comment false rather than the
+     rail wrong. Anything added to the rail owes the card a line of text.
 
      Nothing here is a scale. The positions are square roots of distance
      from the date (procedureRail.ts says why), so a length along this line
@@ -40,11 +42,6 @@
 <div class="proc-rail" data-procedure-rail aria-hidden="true">
   <span class="proc-line"></span>
   {#if rail.gap}
-    <!-- The stretch between the date and today. Revealed by a clip rather
-         than by growing a fill inside it: a fill that scales leaves the
-         mark at full width from the first frame with colour crawling
-         across it, and the rule the app already keeps for a bar is that
-         the clipping element animates. -->
     <span
       class="proc-gap"
       style={`--gap-from: ${rail.gap.from}; --gap-to: ${rail.gap.to}`}
@@ -61,16 +58,33 @@
 </div>
 
 <style>
-  /* The marks are placed against the track and not against the rail, so a
-     mark at either end hangs into the rail's own padding instead of being
-     clipped in half - the care rail's arrangement, same reason. */
+  /* The line is flush with the card's own column - its ends sit under the
+     title's left edge and the pencil's right one - and the marks are inset
+     from it by a mark's radius instead, so nothing hangs off the column
+     into the screen's gutter. Insetting the whole rail was the first
+     attempt and read as the drawing being indented from everything above
+     it; letting the marks overhang was the second and put a dot outside the
+     text column. The line is the thing that has to line up. */
   .proc-rail {
     position: relative;
     /* Its own inline-size container, so a mark's placement is a translate
        measured in `cqw` - a percentage would measure the 10px mark. */
     container-type: inline-size;
     height: 18px;
-    margin: var(--space-2) 8px var(--space-1);
+    margin: var(--space-2) 0 var(--space-1);
+    /* Half the widest mark (the pivot, 16px). */
+    --rail-inset: 8px;
+    /* One uncovering for the whole drawing, left to right, so the line, the
+       stretch and every mark on them arrive as one object in the order they
+       happened - and no mark is ever painted at its destination before the
+       line reaches it, or scaled up from nothing. The kit's own block
+       arrival with the corners left square (rule 9: chart ink). */
+    animation: proc-rail-in var(--dur-slow) var(--ease-out) both;
+  }
+
+  @keyframes proc-rail-in {
+    from { clip-path: inset(-10px 100% -10px -10px); }
+    to { clip-path: inset(-10px); }
   }
 
   .proc-line {
@@ -78,32 +92,30 @@
     left: 0;
     right: 0;
     top: 8px;
-    height: 2px;
-    border-radius: 1px;
-    background: color-mix(in oklab, var(--role-draw, var(--accent)) 34%, var(--bg));
+    height: 3px;
+    background: color-mix(in oklab, var(--role-draw, var(--accent)) 30%, var(--bg));
   }
 
-  /* The travelled stretch, in the flag itself. It arrives from the date's
-     side - the end it grew from in life - over --dur-slow, and any later
-     change to where it ends (a day rolling over, a date edited) is a
-     transition on the same clip rather than a redraw. */
+  /* The stretch between the date and today: the same line, drawn in the
+     flag rather than in a dilution of it. Its own weight once, and it was
+     wrong - a thicker bar running to the end of its track is the grammar of
+     a progress bar whatever the arithmetic behind it refuses to compute
+     (ADR-0012), and this rail's right end is today on every procedure past
+     its date. Colour says which part of the line has been travelled without
+     drawing a track for it to fill.
+
+     Revealed by a clip rather than by growing a fill inside it, and any
+     later change to where it ends - a day rolling over, a date edited - is
+     a transition on the same clip rather than a redraw. */
   .proc-gap {
     position: absolute;
     left: 0;
     right: 0;
-    top: 7px;
-    height: 4px;
-    border-radius: 2px;
+    top: 8px;
+    height: 3px;
     background: var(--role-draw, var(--accent));
-    clip-path: inset(0 calc((1 - var(--gap-to)) * 100%) 0 calc(var(--gap-from) * 100%) round 2px);
+    clip-path: inset(0 calc((1 - var(--gap-to)) * 100%) 0 calc(var(--gap-from) * 100%));
     transition: clip-path var(--dur-med) var(--ease-out);
-    animation: proc-gap-in var(--dur-slow) var(--ease-out) both;
-  }
-
-  @keyframes proc-gap-in {
-    from {
-      clip-path: inset(0 calc((1 - var(--gap-from)) * 100%) 0 calc(var(--gap-from) * 100%) round 2px);
-    }
   }
 
   /* One box per mark, placed by a translate so a mark added or a date moved
@@ -118,19 +130,13 @@
     height: 10px;
     margin-left: -5px;
     border-radius: 50%;
-    translate: calc(var(--at) * 100cqw) 0;
+    /* `cqw` rather than `%` so the track is measured and not the 10px mark,
+       and the ends held back by --rail-inset so a mark at 0 or 1 sits on the
+       line rather than half off it. */
+    translate: calc(var(--rail-inset) + var(--at) * (100cqw - 2 * var(--rail-inset))) 0;
     background: var(--bg);
     box-shadow: inset 0 0 0 2px var(--role-draw, var(--accent));
     transition: translate var(--dur-med) var(--ease-out);
-    animation: proc-mark-in var(--dur-slow) var(--ease-out) both;
-  }
-
-  /* A mark grows into place rather than appearing at full size in one
-     frame. It scales about its own centre, which is already on the line, so
-     no frame has it anywhere but where it belongs. */
-  @keyframes proc-mark-in {
-    from { scale: 0; }
-    to { scale: 1; }
   }
 
   /* The date is the pivot, so it is the one mark drawn solid and a size up:
@@ -162,16 +168,15 @@
   /* Both spellings, the pair every other surface here keeps: the media
      query for the device setting and the attribute for the app's own. */
   @media (prefers-reduced-motion: reduce) {
+    .proc-rail { animation: none; }
     .proc-gap,
-    .proc-mark {
-      animation: none;
-      transition: none;
-    }
+    .proc-mark { transition: none; }
   }
+
+  :global(html[data-a11y-motion='reduce']) .proc-rail { animation: none; }
 
   :global(html[data-a11y-motion='reduce']) .proc-gap,
   :global(html[data-a11y-motion='reduce']) .proc-mark {
-    animation: none;
     transition: none;
   }
 </style>

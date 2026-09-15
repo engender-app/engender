@@ -209,6 +209,20 @@ for (const theme of ['light', 'dark']) {
   await page.close();
 }
 
+/* The two states with no number to draw, which the running/archived pair
+   does not reach: a procedure on the day itself, and one with no date yet.
+   Their own journal, so they cannot disturb the pair above. */
+for (const theme of ['light', 'dark']) {
+  const page = await freshPage();
+  await setLook(page, 'trans', theme);
+  await addProcedure(page, { name: 'today is the day', day: iso(0) });
+  await addProcedure(page, { name: 'no date yet', day: null });
+  await goto(page, '/health/surgery');
+  await page.waitForTimeout(SETTLED);
+  await shoot(page, '[data-list-card]', `procedure-states-trans-${theme}`);
+  await page.close();
+}
+
 process.stdout.write(`\n${shots.length} shot(s) in ${outDir}\n`);
 await browser.close();
 await app.httpServer.close();

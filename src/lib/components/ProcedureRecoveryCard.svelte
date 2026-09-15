@@ -31,6 +31,7 @@
      That is also what lets several running procedures fit at once, which
      the screen's own intro promises. */
   import { m } from '$lib/paraglide/messages';
+  import { collapse } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import ProcedurePhaseRail from './ProcedurePhaseRail.svelte';
@@ -121,11 +122,13 @@
     return formatted;
   });
 
-  /** How many thumbs fit across a phone's column beside each other. Past
-      it the strip says how many more there are rather than scrolling
-      sideways inside a card, which is a gesture a list of cards cannot
-      afford to own. */
-  const STRIP_CAP = 6;
+  /** How many thumbs fit across a phone's column beside each other. Five,
+      because the narrowest screen the app supports is 320px and leaves a
+      280px column: 5 x 44 + 4 x 8 is 252px and six of them is 304px, which
+      wraps to a second row. Past the cap the strip says how many more there
+      are rather than scrolling sideways inside a card, which is a gesture a
+      list of cards cannot afford to own. */
+  const STRIP_CAP = 5;
   let strip = $derived(photos.slice(0, STRIP_CAP));
   let stripMore = $derived(photos.length - strip.length);
 
@@ -152,12 +155,18 @@
     <!-- A row the width of the card answers a press with a wash rather than
          a scale: 0.94 on a 330px card walks its edges 10px inward while the
          list holds still, which reads as a yank (DIRECTION.md tier 1). -->
+    <!-- No aria-label. One used to read `Open {name}`, which replaced the
+         button's own content for a screen reader - so the name, the phase,
+         the number and the date it counts from, all of which are inside
+         this button, were announced as the single word `Open`. The content
+         is the name now, and `aria-expanded` is what says the button
+         toggles. -->
     <button
       type="button"
       class="proc-face"
       data-no-press
       aria-expanded={selected}
-      aria-label={m.surgery_row_aria({ name: procedure.name })}
+      aria-controls="procedure-log-{procedure.id}"
       {onclick}
     >
       <span class="proc-head">
@@ -213,12 +222,25 @@
     </div>
   {/if}
 
-  {#if linkedMilestone || checklistCount > 0 || (!open && photos.length > 0)}
-    <span class="proc-badges">
+  <!-- The consult count stays written down even though the rail draws each
+       consult as its own mark, because the rail is `aria-hidden` and a
+       drawing nobody can hear is not where a fact may live. The photo count
+       is here only on a collapsed card, which has no strip to count from.
+       `collapse` because selecting a procedure is what brings the milestone
+       and the checklist count in, and a row that cuts in is the yank the
+       standing clause forbids. -->
+  {#if linkedMilestone || checklistCount > 0 || procedure.consults.length > 0 || (!open && photos.length > 0)}
+    <span class="proc-badges" transition:collapse|global>
       {#if linkedMilestone}
         <span class="proc-badge-tag" data-linked-milestone>
           <Icon name="flag" size={13} />
           <span>{m.surgery_milestone_linked_badge()}</span>
+        </span>
+      {/if}
+      {#if procedure.consults.length > 0}
+        <span class="proc-badge-tag">
+          <Icon name="calendar" size={13} />
+          <span>{procedure.consults.length}</span>
         </span>
       {/if}
       {#if !open && photos.length > 0}
@@ -242,6 +264,7 @@
      the line on it, not a box. The hairline between two of them belongs to
      the list card holding the run, which is what `rows-divide` opts into. */
   .proc-card {
+    position: relative;
     padding: var(--space-3) 0;
   }
 
@@ -249,6 +272,23 @@
     display: flex;
     align-items: flex-start;
     gap: var(--space-3);
+  }
+
+  /* The whole card is the control, not its top row. The rail, the strip
+     and the badges are the card's own reading and there is nothing on any
+     of them to reach - a 44px wound photo that answers no touch at all is
+     the worst of the three, because every convention says a thumbnail
+     opens. So the button's own box stays where its content is, for layout
+     and for the accessible name, and its hit area is stretched over the
+     card by a pseudo-element. The pencil lifts above it. */
+  .proc-face::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* Above the rail, which is positioned in its own right, and above the
+       strip's images - without this the pseudo-element paints under both
+       and a tap on either lands on nothing. */
+    z-index: 1;
   }
 
   .proc-face {
@@ -282,11 +322,13 @@
     overflow-wrap: anywhere;
   }
 
+  /* No uppercase, no tracking. DIRECTION.md's own census names an
+     uppercase tracked label as the craft floor's tell and declines it; the
+     row this card replaced carried one, and rebuilding the card around it
+     would have kept it for another ticket. */
   .proc-phase-pill {
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     flex: 0 0 auto;
   }
 
@@ -328,9 +370,11 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* 15px on a stripe would owe 4.5:1, which no band carries, so the word
-     beside the number steps up to the 19px rule 2 allows a title written on
-     a block and answers to 3:1. */
+  /* 19px rather than the 15px a secondary line takes, because this one is
+     written on the stripe itself. It is not large text by WCAG's measure -
+     that needs 18.66px at weight 700 - so it owes 4.5:1 and gets it:
+     `--role-fill-ink` is the heat ramp's deepest step, held to 4.5:1
+     against its own fill by tests/kit-roles.test.ts. */
   .proc-unit {
     font-size: var(--text-block);
     font-weight: var(--weight-medium);
@@ -350,15 +394,20 @@
 
   .proc-when {
     font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     color: var(--text-2);
   }
 
+  /* The kit's own row action size (--touch-target, Android's 48px floor),
+     and above the face's stretched hit area rather than under it. */
   .proc-act {
+    position: relative;
+    z-index: 2;
     flex: 0 0 auto;
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     background: none;
     border: 0;
     border-radius: var(--r-block);
@@ -415,16 +464,19 @@
     color: var(--text-2);
   }
 
-  /* The wash a full-width row answers a press with, and the one the open
-     card wears while its log is showing below. Both are the control's own
-     ground rather than a container's, which is the distinction carpet 30
-     settled. */
-  .proc-top:has(.proc-face:active) {
+  /* The wash a full-width row answers a press with, and the one the card
+     wears while its log is showing below. Both are the control's own ground
+     rather than a container's, which is the distinction carpet 30 settled -
+     and it holds here because the face's hit area is the card, so the card
+     is the control rather than a box around one. The wash fades rather than
+     cutting in: selecting a procedure is a state change like any other. */
+  .proc-card:has(.proc-face:active),
+  .is-active-card {
     background: var(--role-wash);
   }
 
-  .is-active-card {
-    background: var(--role-wash);
+  .proc-card {
+    transition: background var(--dur-fast) var(--ease-out);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -432,10 +484,14 @@
     .proc-shot {
       animation: none;
     }
+
+    .proc-card { transition: none; }
   }
 
   :global(html[data-a11y-motion='reduce']) .proc-block,
   :global(html[data-a11y-motion='reduce']) .proc-shot {
     animation: none;
   }
+
+  :global(html[data-a11y-motion='reduce']) .proc-card { transition: none; }
 </style>
