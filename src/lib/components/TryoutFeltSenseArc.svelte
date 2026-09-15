@@ -81,7 +81,15 @@
 <!-- Nothing at all where nothing has been recorded. A guide with no marks on
      it is a scale drawn over an empty span, which claims a reading was
      taken and says it was neutral; the card's own sentence says there are
-     none instead, and the control under it is the answer to that. -->
+     none instead, and the control under it is the answer to that.
+
+     Keyed on how many readings there are, so recording one from the card
+     redraws the whole line left to right rather than painting a new mark
+     into a drawing that was already standing. Every other mark moves when
+     one is added - the span is the same but the marks before it shift - so
+     there is no version of this where only the new mark arrives, and the
+     drawing is one object either way. -->
+{#key marks.length}
 {#if marks.length}
 <div class="felt-arc" data-felt-arc aria-hidden="true">
   <svg class="felt-svg" viewBox="0 0 {BOX.width} {BOX.height}" preserveAspectRatio="none" focusable="false">
@@ -114,6 +122,7 @@
   </svg>
 </div>
 {/if}
+{/key}
 
 <style>
   /* Flush with the card's own column, like the phase rail: the drawing's
@@ -151,14 +160,16 @@
     stroke-width: 1;
   }
 
-  /* Rule 9's series: 2px in the area's stripe, undiluted. Thinner than the
-     marks on purpose - see the header. */
+  /* Rule 9's series: 2px in the area's stripe, undiluted, with square caps
+     and mitred joins - the rule retired round ones along with the 2.5px
+     weight, and PitchFigure and VoiceFigures are already on the square
+     pair. Thinner than the marks on purpose; see the header. */
   .felt-line {
     fill: none;
     stroke: var(--role-draw, var(--accent));
     stroke-width: 2;
-    stroke-linejoin: round;
-    stroke-linecap: round;
+    stroke-linejoin: miter;
+    stroke-linecap: square;
   }
 
   /* A reading: a 7px round dot, drawn as a zero-length stroke so the
