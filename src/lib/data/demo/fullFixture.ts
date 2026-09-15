@@ -223,10 +223,22 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   let hairPhotoCount = 0;
   for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
     await journal.hairProgress.upsertStage({ epochDay: day, scale: 'norwood_hamilton', stage: hairStages[i % hairStages.length] });
-    if (r() < 0.4) {
-      await journal.hairProgress.addPhoto(day, await demoPhoto(4000 + hairPhotoCount));
-      hairPhotoCount++;
-    }
+    /* One photograph per staging, not a 40% roll. The roll was seeded, so
+       it came up the same way every time and that way was never: the demo
+       journal had stagings and no fixed-position photographs at all, which
+       is the one thing this screen's photo half exists for and the whole
+       of what redesign ticket 55 put a wipe over. This loop only runs a
+       handful of times - 60 to 140 days a step over the tracked period -
+       so anything less than every staging leaves too few to compare.
+
+       The roll it used to be gated on is still drawn and thrown away, so
+       everything seeded after this loop lands exactly where it always did.
+       Dropping the draw instead would shift the whole rest of the demo
+       journal - hair removal, tryouts, procedures - for a change that is
+       about this screen. */
+    r();
+    await journal.hairProgress.addPhoto(day, await demoPhoto(4000 + hairPhotoCount));
+    hairPhotoCount++;
   }
 
   let hairRemovalPhotoCount = 0;
