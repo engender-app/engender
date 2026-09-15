@@ -19,11 +19,15 @@
 
      Nothing here is a scale. The positions are square roots of distance
      from the date (procedureRail.ts says why), so a length along this line
-     is not a number of days and the card writes every date out. There is no
-     axis, no ticks between the marks, and no horizon: the stretch drawn
-     ahead of the date stops at today, because a band running on to a
-     90-day cutoff with today somewhere along it is a progress bar through
-     somebody's recovery (ADR-0012, and ticket 52 out of scope). */
+     is not a number of days and the card writes every date out. There are
+     no ticks between the marks and no horizon: the stretch drawn ahead of
+     the date stops at today, because a band running on to a 90-day cutoff
+     with today somewhere along it is a progress bar through somebody's
+     recovery - which ticket 52 rules out in its Out of scope, and which
+     recoveryDay.ts's own header has refused since that module was written.
+     ADR-0012 is the neighbouring rule rather than this one: it is what says
+     no end of a scale is the good end, which is why rule 9 cites it against
+     a second colour across a spine. */
   import { procedureRail, type ProcedureMark } from '$lib/data/procedureRail';
   import type { Procedure } from '$lib/data/types';
 
@@ -87,22 +91,29 @@
     to { clip-path: inset(-10px); }
   }
 
+  /* The axis the marks sit on: rule 9's guide, which is 1px in --text-2 and
+     never the series colour. It was a 30% dilution of the stripe at the
+     stretch's own weight, which is a fourth kind of dilution the rules do
+     not sanction and, at equal weight, still read as the unfilled half of a
+     track. A hairline cannot read as a track. */
   .proc-line {
     position: absolute;
     left: 0;
     right: 0;
-    top: 8px;
-    height: 3px;
-    background: color-mix(in oklab, var(--role-draw, var(--accent)) 30%, var(--bg));
+    top: 8.5px;
+    height: 1px;
+    background: var(--text-2);
   }
 
-  /* The stretch between the date and today: the same line, drawn in the
-     flag rather than in a dilution of it. Its own weight once, and it was
-     wrong - a thicker bar running to the end of its track is the grammar of
-     a progress bar whatever the arithmetic behind it refuses to compute
-     (ADR-0012), and this rail's right end is today on every procedure past
-     its date. Colour says which part of the line has been travelled without
-     drawing a track for it to fill.
+  /* The stretch between the date and today: rule 9's series, 2px in the
+     stripe undiluted with square ends, over the guide.
+
+     It was a 4px bar over a 2px track once, and that was wrong. This rail's
+     right end is today on every procedure past its date, so a filled bar
+     running to it drew a track full to its own end - the grammar of a
+     progress bar whatever the arithmetic behind it refuses to compute, and
+     the reading `recoveryDay.ts` refuses in as many words ("nothing about
+     being ahead of or behind anything").
 
      Revealed by a clip rather than by growing a fill inside it, and any
      later change to where it ends - a day rolling over, a date edited - is
@@ -112,7 +123,7 @@
     left: 0;
     right: 0;
     top: 8px;
-    height: 3px;
+    height: 2px;
     background: var(--role-draw, var(--accent));
     clip-path: inset(0 calc((1 - var(--gap-to)) * 100%) 0 calc(var(--gap-from) * 100%));
     transition: clip-path var(--dur-med) var(--ease-out);

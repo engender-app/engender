@@ -18,8 +18,10 @@
      pivot, the stretch to today ahead of it (ProcedurePhaseRail).
 
      Nothing on it is a score. Day N is a fact about time, not a position in
-     a recovery anybody is meant to be at (ADR-0012), and the rail draws no
-     horizon to be short of.
+     a recovery anybody is meant to be at - `recoveryDay.ts`'s own rule,
+     which is where that lives rather than in the ADR ticket 52 cites for it
+     (procedureRail.ts has the note) - and the rail draws no horizon to be
+     short of.
 
      **Open and collapsed.** A procedure still running draws all of it. One
      past the recovery cutoff drops the block and the strip: its phases are
