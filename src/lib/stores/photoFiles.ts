@@ -128,3 +128,17 @@ export async function readThumbnailFile(name: string): Promise<Uint8Array | null
 export async function readPhoto(fileName: string): Promise<Uint8Array | null> {
   return store ? store.read(fileName) : null;
 }
+
+/** The combined size of every named file - the documents index's present
+    reading (ticket 58) wants a number straight away, and 0 for no store
+    yet (server-side, or before boot finishes) reads the same as an empty
+    vault rather than as a missing one. Not routed through `enqueue`: that
+    queue exists for bytes a screen is about to decode, and a size is
+    metadata no store has to read a file's bytes to produce
+    (opfs-file-store.ts's own `size`). */
+export async function totalSize(names: string[]): Promise<number> {
+  const files = store;
+  if (!files || names.length === 0) return 0;
+  const sizes = files.sizeMany ? await files.sizeMany(names) : await Promise.all(names.map((name) => files.size(name)));
+  return sizes.reduce<number>((total, size) => total + (size ?? 0), 0);
+}
