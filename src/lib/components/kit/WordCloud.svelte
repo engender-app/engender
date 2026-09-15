@@ -11,9 +11,15 @@
      Five sizes, and they are the type scale's own steps (DIRECTION.md rule
      2): 28, 21, 19, 17, 15. A continuous ramp would have put a font size on
      every word that answers to nothing, and the scale already has five
-     steps between a section heading and secondary text. Weight maps to a
-     step through its square root, so the step carries roughly the word's
-     area rather than its height - the reason a cloud is read by mass.
+     steps between a section heading and secondary text.
+
+     The ladder spans what is actually drawn - heaviest word to lightest -
+     rather than running from the heaviest down to zero. Measured against
+     zero the steps collapse on a real journal: the words a stretch is about
+     tend to arrive in a band rather than a gradient, and twenty of twenty-
+     four came out on the top step, which is a wall rather than a cloud.
+     What a reader wants off this drawing is which of *these* words weighs
+     most, so the range present is the range the sizes spend.
 
      The body face throughout, never the display face: rule 2 keeps the
      display face for a screen's own structure, and these are the person's
@@ -64,16 +70,17 @@
 
   let laid = $derived.by(() => {
     const heaviest = words[0]?.weight ?? 0;
+    const lightest = words[words.length - 1]?.weight ?? 0;
     if (heaviest <= 0) return [];
+    const span = heaviest - lightest;
     return centreOut(
-      words.map((word) => ({
-        ...word,
-        /* Square root of the share of the heaviest weight, so the steps
-           read as area. Step 1 is the top; anything at or below a
-           twenty-fifth of the heaviest sits on the last step rather than
-           falling off the drawing. */
-        step: Math.min(STEPS, 1 + Math.floor((1 - Math.sqrt(word.weight / heaviest)) * STEPS))
-      }))
+      words.map((word) => {
+        /* Where this word sits between the lightest drawn and the heaviest.
+           One word, or a set with no spread at all, is all top step: there
+           is nothing for a ladder to say about it. */
+        const share = span > 0 ? (word.weight - lightest) / span : 1;
+        return { ...word, step: Math.min(STEPS, 1 + Math.floor((1 - share) * STEPS)) };
+      })
     );
   });
 </script>
