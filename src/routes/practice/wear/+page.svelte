@@ -543,7 +543,9 @@
       {:else}
         <div class="screen-part">
           {#if weekSessions.length === 0}
-            <p class="muted small" data-wear-week-empty>{m.adherence_nothing_logged()}</p>
+            <!-- Its own words rather than a day's answer stretched over
+                 seven, the same line dilation's empty week carries. -->
+            <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
           {:else}
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
               {#each weekSessions as session (session.id)}

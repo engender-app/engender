@@ -1547,7 +1547,15 @@ button.kit-strip-day {
      fade between two paints rather than anything arriving: no cell is ever
      painted at a state it did not travel to. `background` cannot be
      transitioned between two color-mix() values without --level being a
-     registered property, so the property itself is what carries it. */
+     registered property, so the property itself is what carries it.
+
+     This reaches WeekStrip too, deliberately and worth saying out loud
+     since ticket 44 does not otherwise touch the calendar: its cells used
+     to snap from the grey they render at before `dayAverages` lands to
+     whatever heat the query answers with, and they fade now. That is the
+     standing motion clause (no appearance in one frame) applied to a
+     surface that was quietly breaking it, not a side effect - and one line
+     to take back out if the calendar wants its snap. */
   transition:
     --level var(--dur-med) var(--ease-out),
     border-color var(--dur-med) var(--ease-out);

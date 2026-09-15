@@ -353,7 +353,9 @@
       <div class="screen-part">
         <SectionHeading text={m.dilation_sessions_heading()} />
         {#if weekRows.length === 0}
-          <p class="muted small">{m.dilation_nothing_expected()}</p>
+          <!-- Its own words rather than a day's answer stretched over
+               seven: "Nothing expected" is what one cell says. -->
+          <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
         {:else}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
             {#each weekRows as epochDay (epochDay)}
