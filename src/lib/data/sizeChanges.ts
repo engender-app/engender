@@ -32,6 +32,18 @@
 import { GARMENT_CATEGORIES } from './garmentCategories';
 import type { SizeRecord } from './types';
 
+/** The label a line is about, as one string. Unambiguous however odd a
+    brand somebody types: a separator character could appear in one, and two
+    labels colliding would put two brands on one line, which is the one
+    thing this file exists to refuse.
+
+    Exported because the screen keys its rendered lines on the same thing,
+    and a key the grouping and the rendering each built their own way is two
+    statements of one idea waiting to disagree. */
+export function sizeLabelKey(category: string, brand: string): string {
+  return JSON.stringify([category, brand]);
+}
+
 /** One statement: what a category and brand were, and what they are. */
 export interface SizeChange {
   category: string;
@@ -55,11 +67,7 @@ export function sizeChanges(records: readonly SizeRecord[]): SizeChange[] {
   for (const record of records) {
     const brand = record.brand.trim();
     if (!brand) continue;
-    /* Unambiguous however odd a brand somebody types: a separator
-       character could appear in one, and two labels colliding would put
-       two brands on one line, which is the one thing this file exists to
-       refuse. */
-    const key = JSON.stringify([record.category, brand]);
+    const key = sizeLabelKey(record.category, brand);
     const group = byLabel.get(key);
     if (group) group.push(record);
     else byLabel.set(key, [record]);
