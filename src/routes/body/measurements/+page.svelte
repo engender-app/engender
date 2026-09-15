@@ -17,10 +17,21 @@
      owes here for the same result the two-area row already gives, which is
      the shape `hair-progress` has had since phase 8.
 
-     Both halves are the same four things in the same order: the area's
-     name with its own controls, a picker that says which reading is
-     showing, the reading, then the log. Rule 16 wants what is true now
-     above the records, however long the records are.
+     Both halves are the same three things in the same order: a picker
+     that says which reading is showing, the reading, then the log. Rule 16
+     wants what is true now above the records, however long the records
+     are.
+
+     The measurements half is not given a heading of its own. The screen's
+     title says both words already, a second 28px "Body measurements"
+     directly under a 48px "Measurements and sizes" is the screen saying
+     one of them twice, and it pushed the reading a card further down on a
+     screen whose whole point is that the reading comes first. So the field
+     carries the measurement controls, which is where rule 7 puts a deep
+     screen's actions, and the one heading on the page is the boundary
+     between the halves - with the size log's own add beside it, because a
+     second plus on the field would be two buttons neither of which said
+     what it added.
 
      **What the change lines may not do.** Neither of them ranks anything
      (ADR-0012). No arrow, no "down from", no percentage, no colour: a size
@@ -277,10 +288,8 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.measurements_and_sizes()} back="/more" subtitle={m.measurements_intro()} />
-
-  <SectionHeading text={m.body_measurements()}>
-    {#snippet action()}
+  <ScreenHeader title={m.measurements_and_sizes()} back="/more" subtitle={m.measurements_intro()}>
+    {#snippet actions()}
       <button class="icon-btn press" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
@@ -288,7 +297,7 @@
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
-  </SectionHeading>
+  </ScreenHeader>
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   {#if !prefs.measurementProtocolDismissed && PROTOCOL[type]}
@@ -631,6 +640,17 @@
        in the same columns whatever the value - otherwise Start and Current
        shift against each other every time a figure changes width. */
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The category filter is the sizes half's picker and the change lines
+     are what it picks, so the two are one block. `.kit-filter`'s own
+     bottom padding plus the 20 between blocks put 36 between a control and
+     the reading it governs, which read as two unrelated things - the same
+     call `.kit-reading-controls` makes for the axis picker and its range.
+     16 above the lines, which is the 20 the block rhythm asks for less the
+     4 the first line's own padding brings. */
+  .screen > .kit-filter {
+    padding-bottom: 0;
   }
 
   .changes {
