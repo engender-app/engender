@@ -170,3 +170,23 @@ test('deleting a procedure nulls a document\'s link to it, and the document surv
   assert.equal(document!.targetKind, null);
   assert.equal(document!.targetId, null);
 });
+
+test('recovery photos read back grouped by procedure in one call (ticket 52)', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+
+  const top = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20000 });
+  const facial = await journal.procedures.upsertProcedure({ name: 'facial surgery', surgeryEpochDay: 20050 });
+  const none = await journal.procedures.upsertProcedure({ name: 'orchiectomy' });
+
+  await journal.procedures.addPhoto(top, 20010, { full: new Uint8Array([1]), thumb: new Uint8Array([1]) });
+  await journal.procedures.addPhoto(top, 20002, { full: new Uint8Array([2]), thumb: new Uint8Array([2]) });
+  await journal.procedures.addPhoto(facial, 20051, { full: new Uint8Array([3]), thumb: new Uint8Array([3]) });
+
+  const byProcedure = await journal.procedures.photosByProcedure();
+  assert.deepEqual(byProcedure.get(top)?.map((photo) => photo.epochDay), [20002, 20010]);
+  assert.deepEqual(byProcedure.get(facial)?.map((photo) => photo.epochDay), [20051]);
+  assert.equal(byProcedure.has(none), false);
+  assert.deepEqual(byProcedure.get(top), await journal.procedures.getPhotos(top));
+});
