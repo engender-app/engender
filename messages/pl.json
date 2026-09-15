@@ -341,7 +341,6 @@
   "hub_sub_letters": "Pisane teraz, do otwarcia w wybranym dniu",
   "hub_sub_presentations": "Sposoby, w jakich się pokazujesz",
   "hub_sub_eras": "Nazwane odcinki czasu",
-  "hub_sub_words": "Słowa, które wracają w notatkach",
   "hub_sub_doubt": "Na dni, kiedy brakuje pewności",
   "hub_sub_entry_templates": "Gotowe szablony wpisu",
   "hub_sub_resources": "Miejsca poza tą aplikacją",
@@ -3409,17 +3408,37 @@
   "era_delete_sheet": "Usuń erę",
   "era_delete_q": "Usunąć „{name}”? Dni zostają, nazwa znika.",
   "era_start_here": "Zacznij tu erę",
-  "words_title": "Słowa",
-  "words_sub": "Jak często poszczególne słowa pojawiają się w notatkach.",
   "words_group_by_label": "Grupuj według",
   "words_mode_presentation": "Tryb",
   "words_mode_era": "Era",
   "words_pl_caveat": "Formy fleksyjne słowa liczone są osobno, więc słowo używane w różnych przypadkach jest tu niedoszacowane.",
   "words_empty": "Brak notatek ze słowami.",
-  "words_group_empty": "Brak słów dla tej grupy.",
-  "words_ignore_aria": "Ignoruj {word}",
   "words_unignore_aria": "Przywróć {word}",
   "words_ignored_title": "Ignorowane słowa",
+  "words_reading_title": "Słowa, które się wyróżniają",
+  "words_reading_note": "Wielkość pokazuje, o ile częściej dane słowo pada tutaj niż w reszcie dziennika.",
+  "words_reading_empty": "Nic się jeszcze nie wyróżnia. Te notatki używają tych samych słów co reszta dziennika.",
+  "words_reading_needs_stretch": "Nazwij erę albo dodaj tryb, a słowa z tego okresu pojawią się tutaj.",
+  "words_ignore_action": "Przestań liczyć to słowo",
+  "words_ignored_sub": "Słowa pomijane w tym odczycie.",
+  "words_ignored_empty": "Żadne słowo nie jest pomijane.",
+  "words_times": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} raz",
+        "nPlural=few": "{n} razy",
+        "nPlural=many": "{n} razy",
+        "nPlural=other": "{n} razy"
+      }
+    }
+  ],
   "stats_constellation": "Dwie skale naraz",
   "constellation_x_label": "W poziomie",
   "constellation_y_label": "W pionie",

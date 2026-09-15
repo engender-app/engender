@@ -116,6 +116,12 @@ const REACHED_FROM_INSIDE = [
      reason the note above it gives. */
   'settings/presentations',
   'settings/entry-templates',
+  /* Redesign ticket 62 (ADR-0084): the words reading draws on the Look back
+     door itself now, and the ignore list it used to carry stayed behind as a
+     reference area - reached from a plain row on Settings and from the
+     reading's own word sheet, never from the hub. Still built on the kit, so
+     it stays on this list for the reason the note above it gives. */
+  'settings/words',
   /* Ticket 59: the summary is an export rather than an area, so it left
      `hubRows.ts` entirely rather than moving to a hosted row - reached from
      a plain row on Care and from appointment prep, never from the hub.
@@ -159,7 +165,7 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the fifteen screens reached only from inside another', () => {
+  it('is the hub, plus the screens reached only from inside another', () => {
     /* The count that was here covered all 36 routes and had been raised ten
        times since it was written as 26, twice by two branches that each
        thought they were adding the 28th. The hub's own rows no longer need
@@ -169,7 +175,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(22);
+    expect(REACHED_FROM_INSIDE.length).toBe(23);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

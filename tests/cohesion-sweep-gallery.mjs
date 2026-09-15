@@ -229,7 +229,7 @@ const ROUTES = [
   { path: '/transition/milestones' },
   { path: '/transition/roadmap' },
   { path: '/transition/tryouts' },
-  { path: '/transition/words' },
+  { path: '/settings/words', name: 'words-ignored' },
   { path: '/wrapped/year', name: 'wrapped' },
   { path: '/wrapped/year/share', name: 'wrapped-share' }
 ];
