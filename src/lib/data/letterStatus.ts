@@ -21,12 +21,41 @@ import type { Letter } from './types';
 
 const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
 const READ_LETTERS_STORAGE_KEY = 'engender-read-letter-ids';
+const GREETED_LETTERS_STORAGE_KEY = 'engender-greeted-letter-ids';
 const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;
   if (typeof localStorage !== 'undefined') return localStorage;
   return null;
+}
+
+/* Two sets of letter ids are kept out here now - the ones whose text has
+   been shown, and the ones whose arrival has been met (ticket 45) - and they
+   are the same shape, so the reading and the writing are written once. */
+function readIdSet(key: string, storage?: Storage): Set<string> {
+  const s = resolveStorage(storage);
+  if (!s) return new Set();
+  try {
+    const raw = s.getItem(key);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function addToIdSet(key: string, id: string, storage?: Storage): void {
+  const s = resolveStorage(storage);
+  if (!s) return;
+  const current = readIdSet(key, s);
+  current.add(id);
+  try {
+    s.setItem(key, JSON.stringify(Array.from(current)));
+  } catch {
+    // Storage quota or disabled storage is ignored gracefully.
+  }
 }
 
 export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpochDay: number): boolean {
@@ -36,28 +65,46 @@ export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpoc
 /* getReadLetterIds stays exported for its own test, and cross-checked in
    ready-letter-tile.test.ts (AU-09 test-only review). */
 export function getReadLetterIds(storage?: Storage): Set<string> {
-  const s = resolveStorage(storage);
-  if (!s) return new Set();
-  try {
-    const raw = s.getItem(READ_LETTERS_STORAGE_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
-  } catch {
-    return new Set();
-  }
+  return readIdSet(READ_LETTERS_STORAGE_KEY, storage);
 }
 
 export function markLetterRead(letterId: string, storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  const current = getReadLetterIds(s);
-  current.add(letterId);
-  try {
-    s.setItem(READ_LETTERS_STORAGE_KEY, JSON.stringify(Array.from(current)));
-  } catch {
-    // Storage quota or disabled storage is ignored gracefully.
-  }
+  addToIdSet(READ_LETTERS_STORAGE_KEY, letterId, storage);
+}
+
+/** The letters whose arrival has already been met (ticket 45).
+
+    A separate set from the read one, because the two facts differ: a person
+    can be shown a letter's arrival and choose to leave it closed, and that
+    letter is met but unread - the live tile on Today still has something to
+    say about it, and the arrival does not. */
+export function getGreetedLetterIds(storage?: Storage): Set<string> {
+  return readIdSet(GREETED_LETTERS_STORAGE_KEY, storage);
+}
+
+export function markLetterGreeted(letterId: string, storage?: Storage): void {
+  addToIdSet(GREETED_LETTERS_STORAGE_KEY, letterId, storage);
+}
+
+/** The letter whose arrival is owed right now, or null.
+
+    Exactly the letters unlocking **today** - a letter that unlocked
+    yesterday has had its day and gets no screen, and a sealed one is not
+    the app's to offer. `metIds` is the union of the greeted and the read,
+    since either is a person having already met the letter.
+
+    Oldest written first where a day carries two, so they are met one at a
+    time in the order they were written rather than in whatever order a
+    query returned. */
+export function letterToGreet<T extends LetterSeal>(
+  letters: readonly T[],
+  todayEpochDay: number,
+  metIds: ReadonlySet<string>
+): T | null {
+  const due = letters
+    .filter((letter) => letter.unlockEpochDay === todayEpochDay && !metIds.has(letter.id))
+    .sort((a, b) => a.epochDay - b.epochDay || a.id.localeCompare(b.id));
+  return due[0] ?? null;
 }
 
 export function isLetterSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {

@@ -62,6 +62,12 @@
   "video_not_a_video": "To nie jest plik wideo.",
   "video_too_long": "Notatka wideo trwa maksymalnie 30 sekund. Wybierz krótszą albo nagraj ją tutaj.",
   "video_too_large": "To wideo jest za duże, żeby je zapisać, i nie udało się go zmniejszyć.",
+  "mt_play": "Odtwórz",
+  "mt_pause": "Wstrzymaj",
+  "mt_position": "Pozycja",
+  "mt_position_read": "{at} z {of}",
+  "mt_full": "Pełny ekran",
+  "mt_leave_full": "Zamknij pełny ekran",
   "gender_label": "Płeć",
   "gender_hint": "Tak, jak czujesz to teraz. Nie ma złych odpowiedzi.",
   "quick_log_dims_title": "Dodać dzisiejsze skale?",
@@ -461,6 +467,57 @@
         "nPlural=few": "{n} dni",
         "nPlural=many": "{n} dni",
         "nPlural=other": "{n} dni"
+      }
+    }
+  ],
+  "unit_years": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "rok",
+        "nPlural=few": "lata",
+        "nPlural=many": "lat",
+        "nPlural=other": "lat"
+      }
+    }
+  ],
+  "unit_months": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "miesiąc",
+        "nPlural=few": "miesiące",
+        "nPlural=many": "miesięcy",
+        "nPlural=other": "miesięcy"
+      }
+    }
+  ],
+  "unit_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień",
+        "nPlural=few": "dni",
+        "nPlural=many": "dni",
+        "nPlural=other": "dni"
       }
     }
   ],
@@ -2319,13 +2376,18 @@
   "tryout_adopt_confirm_add": "Dodaj kamień milowy i przyjmij",
   "tryout_adopt_without_milestone": "Przyjmij bez kamienia milowego",
   "letters_title": "Listy w kapsule czasu",
-  "letters_intro": "Napisz do siebie z przyszłości i wybierz kamień milowy albo datę otwarcia. Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
+  "letters_intro": "Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
   "letters_compose_title": "Napisz list",
   "letters_compose_placeholder": "Do mnie z przyszłości...",
   "letters_unlock_label": "Odblokuj w dniu",
   "letters_save": "Zapieczętuj list",
-  "letters_yours_title": "Twoje listy",
+  "letters_waiting_title": "Czekają",
+  "letters_opened_title": "Otwarte",
   "letters_sealed_title": "Zapieczętowany",
+  "letters_ready_title": "Gotowy",
+  "letters_arrival_title": "Dziś otwiera się list",
+  "letters_arrival_open": "Otwórz go",
+  "letters_close": "Zamknij list",
   "letters_sealed_until": "Otwiera się {date}",
   "letters_empty_title": "Nie masz jeszcze żadnych listów",
   "letters_empty_body": "Napisz jeden powyżej, a poczeka tutaj do dnia odblokowania.",
@@ -3050,6 +3112,27 @@
   "vb_room": "Głos nad tłem",
   "vb_scale": "Skala formantów",
   "vb_not_measured": "Nie zmierzono",
+  "vb_history_run": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Twoje ostatnie podejście.",
+        "countPlural=few": "Twoje ostatnie {count} podejścia.",
+        "countPlural=many": "Twoje ostatnie {count} podejść.",
+        "countPlural=other": "Twoje ostatnie {count} podejść."
+      }
+    }
+  ],
+  "vb_history_first": "Twoje pierwsze podejście, więc nie ma jeszcze nic za nim.",
+  "vb_history_other_passage": "Pierwszy odczyt z tego tekstu.",
+  "vb_history_other_setup": "Pierwszy odczyt na tym sprzęcie.",
+  "vb_history_unread": "Brak wcześniejszego odczytu tej liczby.",
   "vb_hz": "{value} Hz",
   "vb_hz_range": "{low} do {high} Hz",
   "vb_semitones": "{value} półtonu",
@@ -3343,6 +3426,23 @@
   "area_suspend_confirm": "Wstrzymaj",
   "area_suspend_cancel": "Jeszcze nie",
   "vm_empty_title": "Jeszcze bez nagrań",
+  "vm_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} nagranie, łącznie {total}",
+        "countPlural=few": "{count} nagrania, łącznie {total}",
+        "countPlural=many": "{count} nagrań, łącznie {total}",
+        "countPlural=other": "{count} nagrań, łącznie {total}"
+      }
+    }
+  ],
   "vm_empty_body": "Nagrania głosowe dodane do wpisów zbierają się tutaj, w jednym miejscu - bez pamiętania, którego dnia je nagrano.",
   "vm_open_entry_aria": "Otwórz wpis z {date}",
   "saved_questions_open": "Zapisane pytania",

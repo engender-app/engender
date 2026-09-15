@@ -45,7 +45,7 @@
   } from '$lib/audio/quality';
   import type { Formants } from '$lib/audio/resonance';
   import { fitFormantScale, type VowelFormants, type VowelLabel } from '$lib/audio/vowelScale';
-  import { journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { builtInPassageKey, customPassageKey, wordCountOf } from '$lib/data/voice/passages';
@@ -186,6 +186,40 @@
      being read, not the app's (ADR-0059). A passage of somebody's own words
      carries no language, so the app's is a guess and the caption says so. */
   let bands = $derived(bandsFor(passageKey, getLocale()));
+
+  /* What this take's figures are read against (redesign ticket 42). Six of
+     the seven mean nothing except against the same person's earlier takes,
+     so the summary needs the history behind them - and it needs it before
+     the save, because the summary is where somebody reads their numbers for
+     the first time.
+
+     This take is appended rather than saved first: the row does not exist
+     yet, and which of the earlier ones it may be joined to is a question
+     about the passage and the capture chain, both of which are already in
+     hand. */
+  let benchmarksQuery = liveList((j) => j.voiceBenchmarks.getBenchmarks());
+
+  let series = $derived.by(() => {
+    const take = passageTake;
+    const figures = take?.figures;
+    if (!take || !figures) return benchmarksQuery.rows;
+    return [
+      ...benchmarksQuery.rows,
+      {
+        epochDay: todayEpochDay(),
+        passageKey,
+        captureChain: vowelTake?.captureChain ?? take.captureChain,
+        f0P10Hz: figures.f0P10Hz,
+        f0P90Hz: figures.f0P90Hz,
+        semitoneSd: figures.semitoneSd,
+        wordsPerMinute: figures.wordsPerMinute,
+        f1Hz: vowelTake?.formants?.f1Hz ?? null,
+        f2Hz: vowelTake?.formants?.f2Hz ?? null,
+        snrDb: vowelTake?.snrDb ?? null,
+        resonanceScale
+      }
+    ];
+  });
 
   /** The gate this step's take is judged by, and the same one the live
       readout is running - quality.ts's contract is that those cannot
@@ -460,6 +494,7 @@
       <VoiceFigures
         {role}
         {figures}
+        {series}
         formants={vowelTake?.formants ?? null}
         snrDb={vowelTake ? vowelTake.snrDb : null}
         {resonanceScale}
