@@ -304,6 +304,11 @@
     position: relative;
     container-type: inline-size;
     height: 18px;
+    /* A mark on the line hangs half its height below the plot's box, and
+       this row is the next sibling, so it paints over that half and took
+       the tap there - eleven of the mark's twenty-two pixels. Nothing in
+       here is a control, so it takes no pointer at all. */
+    pointer-events: none;
   }
 
   .na-month {
