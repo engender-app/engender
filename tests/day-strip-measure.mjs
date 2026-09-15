@@ -295,7 +295,7 @@ for (const r of rows) {
         ` against ${off.hairline}:1 on the day with none\n`
     );
   }
-  if (!expected) {
+  if (!expected && r.cells.length > 0) {
     /* Wear draws two states and never the middle one, because nothing
        schedules a wear session: a day with none is a day with none and not
        a day something was missed on. Said out loud, so the comparison above
