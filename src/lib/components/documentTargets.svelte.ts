@@ -19,6 +19,7 @@ import { liveList } from '$lib/data/live/journal.svelte';
 import { fmtDay } from '$lib/data/dates';
 import { POLISH_PACK } from '$lib/data/roadmap';
 import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
+import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
 import type { DocumentTarget } from '$lib/data/types';
 import { documentTargetHref, orderedSections, type TargetSection } from './documentTargets';
 
@@ -38,14 +39,14 @@ export function documentTargets() {
   const sections = $derived<TargetSection[]>([
     {
       kind: 'milestone',
-      heading: m.milestones(),
+      heading: DOCUMENT_TARGET_SECTION_HEADING.milestone(),
       rows: [...milestones.rows]
         .sort((a, b) => b.epochDay - a.epochDay)
         .map((milestone) => ({ id: milestone.id, title: milestone.name, subtitle: dayLabel(milestone.epochDay) }))
     },
     {
       kind: 'procedure',
-      heading: m.surgery_journey_title(),
+      heading: DOCUMENT_TARGET_SECTION_HEADING.procedure(),
       rows: [...procedures.rows]
         .sort((a, b) => (b.surgeryEpochDay ?? -Infinity) - (a.surgeryEpochDay ?? -Infinity))
         .map((procedure) => ({
@@ -56,7 +57,7 @@ export function documentTargets() {
     },
     {
       kind: 'episode',
-      heading: m.regimen(),
+      heading: DOCUMENT_TARGET_SECTION_HEADING.episode(),
       rows: [...episodes.rows]
         .sort((a, b) => b.startEpochDay - a.startEpochDay)
         .map((episode) => ({ id: episode.id, title: episode.drug, subtitle: dayLabel(episode.startEpochDay) }))
@@ -67,7 +68,7 @@ export function documentTargets() {
          the order the roadmap screen draws, and custom goals follow it
          newest first. */
       kind: 'goal',
-      heading: m.roadmap_title(),
+      heading: DOCUMENT_TARGET_SECTION_HEADING.goal(),
       rows: [
         ...POLISH_PACK.goals.map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
         ...[...customGoals.rows].reverse().map((goal) => ({ id: goal.id, title: goal.text }))

@@ -29,6 +29,18 @@ export const DOCUMENT_TARGET_ICON: Record<DocumentTargetKind, string> = {
   goal: 'globe'
 };
 
+/** The area's own screen title, one per kind - what a group of documents
+    filed under that kind is headed by (the documents index, ticket 58) and
+    what the target picker's own four sections are headed by
+    (documentTargets.svelte.ts). The one place this pairing is written, so a
+    fifth kind or a renamed area needs one edit rather than two. */
+export const DOCUMENT_TARGET_SECTION_HEADING: Record<DocumentTargetKind, () => string> = {
+  milestone: m.milestones,
+  procedure: m.surgery_journey_title,
+  episode: m.regimen,
+  goal: m.roadmap_title
+};
+
 export function documentTargetKindLabel(kind: DocumentTargetKind): string {
   return KIND_LABEL[kind]();
 }
