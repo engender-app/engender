@@ -47,8 +47,9 @@ describe('what the More hub is built from', () => {
     /* A door named Transition cannot hold a row about appearance and data:
        preferences are chrome, not part of anybody's transition (ADR-0036,
        ADR-0076). They are reached from the gear in Today's header and the
-       rail's fifth row, which ticket 09 owns. `/settings` as a *host* is
-       untouched - the entry-templates row is drawn there, by that screen. */
+       rail's fifth row, which ticket 09 owns. `/settings` stopped being a
+       *host* with redesign ticket 51 (ADR-0084): entry templates is a plain
+       row on that screen now, not one this file's registry still owns. */
     expect(more).not.toContain('/settings');
     expect(more).not.toContain('nav_settings');
   });
@@ -184,7 +185,12 @@ describe('every row the hub carries', () => {
      and seven rows moved off the hub entirely onto the screen that owns them
      - the fourth column names that screen instead of a group. Its reasons are
      in `hubRows.ts`; what this line-by-line list is for is noticing an
-     unintended change to any of it. */
+     unintended change to any of it.
+
+     Redesign ticket 51 (ADR-0084) took `presentations` and `entry-templates`
+     further still: both are reference areas, so both left this registry
+     entirely for a plain row on /settings, the same way tag groups and body
+     regions were never on it at all. Twenty-five rows now, not twenty-seven. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
     ['sizes', 'package', '/body/sizes', 'body', 'read'],
@@ -200,7 +206,6 @@ describe('every row the hub carries', () => {
     ['hair-removal', 'shuffle', '/body/hair-removal', 'transition', 'read'],
     ['roadmap', 'globe', '/transition/roadmap', 'transition', 'written'],
     ['letters', 'book', '/transition/letters', 'transition', 'written'],
-    ['presentations', 'palette', '/transition/presentations', 'transition', 'written'],
     ['doubt', 'heart', '/doubt', 'support', 'written'],
     ['resources', 'info', '/practice/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
@@ -211,8 +216,7 @@ describe('every row the hub carries', () => {
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
     ['cycle-events', 'calendar', '/health/cycle-events', 'side-effects', 'read'],
     ['dilation', 'flask', '/health/dilation', 'surgery', 'read'],
-    ['words', 'note', '/transition/words', 'stats', 'written'],
-    ['entry-templates', 'grid', '/practice/entry-templates', 'settings', 'written']
+    ['words', 'note', '/transition/words', 'stats', 'written']
   ];
 
   it('is exactly this list, in this order', () => {

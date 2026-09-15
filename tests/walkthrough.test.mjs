@@ -3819,13 +3819,13 @@ try {
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
-    '/settings/journaling-pause', '/media/photos',
+    '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
     '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
-    '/transition/roadmap', '/transition/letters', '/transition/tryouts', '/transition/presentations',
+    '/transition/roadmap', '/transition/letters', '/transition/tryouts',
     '/transition/eras',
     '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
   ];
@@ -4440,14 +4440,20 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Words moved to Stats, templates to Settings, and neither is on the hub.
+  // Words moved to Stats and is not on the hub either.
   await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="words"]').click();
   await page.waitForURL('**/transition/words');
 
+  // Modes and entry templates are Settings rows now (redesign ticket 51,
+  // ADR-0084), never on the hub at all.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="entry-templates"]').click();
-  await page.waitForURL('**/practice/entry-templates');
+  await page.waitForURL('**/settings/entry-templates');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="presentations"]').click();
+  await page.waitForURL('**/settings/presentations');
 
   /* Safe space and Support and resources are one group now, and the hub
      draws no Practice heading at all. Asserted on the section handle rather
