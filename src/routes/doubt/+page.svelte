@@ -44,16 +44,12 @@
      section headings the person already read on the screen this replaces -
      the same names, one tap further in. */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub: () => string }> = {
-    resources: { title: m.resources_title, sub: m.safe_space_resources_sub },
+    resources: { title: m.resources_title, sub: m.resources_row_sub },
     moments: { title: m.safe_space_moments_title, sub: m.safe_space_moments_sub },
     comfort: { title: m.comfort_list_title, sub: m.safe_space_comfort_sub },
     evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub },
     readings: { title: m.safe_space_stats_title, sub: m.safe_space_readings_sub }
   };
-
-  /* Capped where every stagger in the app is capped, so a sixth way would
-     arrive with the fifth rather than falling back to the first. */
-  const LAST_SLOT = 6;
 </script>
 
 <div class="screen screen-safe-space">
@@ -77,7 +73,7 @@
         href={way.href}
         title={WAY_COPY[way.key].title()}
         subtitle={WAY_COPY[way.key].sub()}
-        style="--row-index:{Math.min(i, LAST_SLOT)}"
+        style="--row-index:{i}"
       />
     {/each}
   </ListCard>

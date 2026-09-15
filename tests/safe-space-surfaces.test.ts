@@ -208,6 +208,9 @@ describe('the support directory panel', () => {
        ticket that gets to move. */
     expect(SAFE_SPACE_WAYS[0]).toMatchObject({ key: 'resources', href: '/practice/resources' });
     expect(doubt).toContain('title: m.resources_title');
+    /* The row's own key, shortened rather than duplicated: this screen was
+       always its only caller, and at its old length it ran to a third line
+       at 390px against rule 6's 60px for a two-line row. */
     expect(doubt).toContain('sub: m.resources_row_sub');
   });
 });
