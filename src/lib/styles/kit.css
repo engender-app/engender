@@ -1510,6 +1510,40 @@ a.kit-entry:active {
   gap: var(--space-2);
   justify-items: center;
   min-width: 0;
+  /* The column is a <button> where the caller passed onPick (ticket 44)
+     and a <div> where it did not, so the four declarations a button brings
+     of its own are unset here rather than in a second rule: same box
+     either way, and the only difference a reader has to hold is that one
+     of them can be tapped. */
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+/* Seven columns in a 340px phone column are 40.6px wide, which is under
+   --touch-target's 48px floor, and the cell cannot simply grow - the row
+   would stop being seven equal squares. So the button reaches half the gap
+   into each side instead: 40.6 + 4 + 4 is 48.6px, the targets meet without
+   overlapping, and at the two ends the reach is exactly the strip's own
+   4px padding. Nothing about where the cell is drawn changes. Height is
+   the cell, the gap and the letter together, well over the floor. */
+button.kit-strip-day {
+  margin-inline: calc(-1 * var(--space-1));
+  padding-inline: var(--space-1);
+}
+
+/* The cells of a strip that can be paged, which are the only ones whose
+   state changes under a reader without the strip itself being replaced.
+   This only works because BareStrip keys its each-block by the column
+   rather than by the day: keyed by day, a page replaces all seven nodes
+   and a new node paints its final colour on arrival with nothing to
+   travel from. */
+button.kit-strip-day .kit-strip-cell {
+  transition:
+    --level var(--dur-med) var(--ease-out),
+    border-color var(--dur-med) var(--ease-out);
 }
 
 .kit-strip-cell {
@@ -1520,6 +1554,40 @@ a.kit-entry:active {
   border: 1px solid var(--outline);
   display: block;
   background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
+  /* Paging the strip a week back (ticket 44) leaves all seven columns
+     where they are and changes only what is in them, so the change is a
+     fade between two paints rather than anything arriving: no cell is ever
+     painted at a state it did not travel to. `background` cannot be
+     transitioned between two color-mix() values without --level being a
+     registered property, so the property itself is what carries it.
+
+     Only where the strip can be paged, which is what the rule below
+     narrows it to. Left on `.kit-strip-cell` it also reached WeekStrip,
+     whose cells would have started fading from grey to their heat as
+     `dayAverages` lands rather than snapping - an improvement, and the
+     calendar is the one caller ticket 44's own out-of-scope list names, so
+     it is not this ticket's to make. */
+}
+
+/* A bare custom property animates as a string - it swaps at 50% and the
+   cell cuts from one paint to the other. Registered, it is a number the
+   browser can walk. */
+@property --level {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+/* A day the strip's schedule said nothing about (ticket 44). It keeps its
+   column so the week holds its shape, and it differs from an
+   expected-but-empty day by the hairline alone: same ground, no colour
+   between them, because a run of days with nothing logged is not a thing
+   this app shades (ADR-0012). Written as `transparent` rather than by
+   removing the border, so the cell's box is the same size as every other
+   one and the row cannot shift by a pixel as days change state. */
+.kit-strip-cell[data-blank] {
+  border-color: transparent;
+  background: none;
 }
 
 .kit-strip-day.is-today .kit-strip-cell {
