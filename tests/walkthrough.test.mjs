@@ -1039,7 +1039,12 @@ try {
   await card.locator('[data-chart-legend]').waitFor();
   const named = await card.locator('[data-chart-legend]').textContent();
   if (!named?.trim()) throw new Error('the legend names neither line');
-  if (await card.locator('[data-chart-scale]').count()) {
+  /* Kept mounted rather than removed for a second scale (see
+     AreaChart.svelte's own note on `.kit-area-scale` / ticket 99 item 25):
+     taking the column out of the DOM moved the plot and caused a yank, so
+     it stays and is hidden with `visibility` instead. The gutter's numbers
+     still have to be gone, which is a visibility question, not a DOM one. */
+  if (!(await card.locator('[data-chart-scale]').isHidden())) {
     throw new Error('two scales should print no value gutter');
   }
   /* And back off again, which is the picker's own first option: the
@@ -5694,11 +5699,35 @@ try {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
+  /* Back to the bare persona, which alone gives the "no regimen yet" this
+     flow needs (demo-persona-has-no-doses-or-procedures): by this point in
+     the suite "Fill every feature" has been running since around flow 100,
+     and its own estradiol episode started 500 days ago - long past every
+     literature onset window. isHrtOnsetWindowCurrent anchors on the
+     earliest episode in the whole journal, not the newest (see its own doc
+     comment and personalEffectWindow.test.ts's "goes quiet once the
+     anchoring episode has ended"), so an episode this flow adds afterward
+     can never become current while that one is still on record - correct,
+     tested app behavior this flow is not the place to relitigate. Nothing
+     later in this file reads regimen, dose, hormone-curve or injection-map
+     state, so resetting here does not cost any flow after it. */
+  await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
+  await page.click('[data-reset-demo]');
+  await page.waitForURL(BASE + '/');
+  await booted();
+
   await openQuickAdd();
   if ((await page.locator('[data-choose="effects"]').count()) > 0) {
     throw new Error('effects row was present with no regimen logged');
   }
-  await page.locator('[data-quick-add]').click();
+  /* The FAB itself, not the scrim behind the fan (`[data-quick-add]`): the
+     scrim covers the whole screen but the fan cards sit above it, so a
+     click at the scrim's own center - where Playwright aims by default -
+     lands on a card instead and never reaches the scrim. The FAB is the
+     control that opened the fan and closes it the same way (see its own
+     comment in AppNav.svelte), which is also the real dismiss gesture the
+     rest of this flow already uses below. */
+  await page.locator('[data-nav-fab]').click();
 
   // Add an active estradiol regimen episode starting today
   await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
@@ -5719,9 +5748,12 @@ try {
   await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
   await page.locator('[data-choose="effects"]').click();
   await page.waitForFunction(() => window.location.pathname === '/practice/personal-effects', null, { timeout: 8000 });
-  if ((await page.locator('[data-fan]').count()) > 0) {
+  /* Detached rather than an instant count (see flow 18's own note): the
+     fan's cards carry their own out:fanOut transition, so a plain count
+     right after the tap can still catch it mid-fade. */
+  await page.waitForSelector('[data-fan]', { state: 'detached', timeout: 2000 }).catch(() => {
     throw new Error('the fan remained open after tapping effects');
-  }
+  });
 
   // Move the anchor episode to 400 days ago (>12 months)
   await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
@@ -5738,7 +5770,7 @@ try {
   if ((await page.locator('[data-choose="effects"]').count()) > 0) {
     throw new Error('effects row was still present after onset window had passed');
   }
-  await page.locator('[data-quick-add]').click();
+  await page.locator('[data-nav-fab]').click();
 
   ok('quick add: personal effects nudge appears only during onset window and navigates to /practice/personal-effects');
 } catch (e) { fail('quick add effects nudge', e); }
