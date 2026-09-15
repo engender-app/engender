@@ -65,7 +65,7 @@
   import { calendarDuration, localDateFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { defaultSpan, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
+  import { defaultSpan, eraOfferDue, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import {
@@ -79,6 +79,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import HostedRows from '$lib/components/HostedRows.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -108,7 +109,7 @@
   import type { CorrelationCard } from '$lib/data/correlationCards';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Donut from '$lib/components/kit/Donut.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { highestMetricKey, rankHighestDays } from '$lib/data/highestDays';
   import type { Part } from '$lib/charts/parts';
@@ -174,6 +175,23 @@
   const pickSpan = (next: Span) => {
     span = next;
     live = next;
+    eraOfferSpan = eraOfferDue(next, handledEraOfferSpans) ? next : null;
+  };
+
+  /* The "name this stretch" offer (redesign ticket 48): once a span the
+     person dragged settles, one offer to turn it into an era, on this
+     surface and nowhere else - no Today notice, no tile, no notification.
+     `handledEraOfferSpans` is every span named or dismissed this session, so
+     nudging a handle by a day or narrowing inside a span just dismissed does
+     not raise a second offer for substantially the same stretch
+     (`eraOfferDue`, lookBackSpan.ts). Plain component state, gone on reload,
+     the same shape UpdateNotice's own dismiss keeps: nothing here is a
+     preference an app-wide "no" would have to remember forever. */
+  let eraOfferSpan = $state<Span | null>(null);
+  let handledEraOfferSpans = $state<Span[]>([]);
+  const settleEraOffer = (handled: Span) => {
+    handledEraOfferSpans = [...handledEraOfferSpans, handled];
+    eraOfferSpan = null;
   };
 
   /* Two epoch days to the journal, which never reads the clock for a
@@ -823,6 +841,42 @@
       </div>
     </div>
 
+    <!-- "Name this stretch" (redesign ticket 48): a person who has just
+         dragged out a span is offered the chance to name it, on this surface
+         and nowhere else - `eras.ts`'s two invariants aside, an era minted
+         here is indistinguishable from one made on /transition/eras, since
+         the link hands over the span's own dates and the editor's own save
+         is the only write (the same "mints nothing itself" shape
+         `offers.ts` documents for "start an era here"). `disclose` opens and
+         gives back its own height rather than shoving the tiles below in one
+         frame either way. -->
+    {#if eraOfferSpan}
+      {@const offerSpan = eraOfferSpan}
+      <div class="era-offer" data-era-offer role="group" aria-labelledby="era-offer-title" transition:disclose>
+        <div class="era-offer-said">
+          <span class="kit-row-ico"><Icon name="columns" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title" id="era-offer-title">{m.lookback_era_offer_title()}</span>
+            <span class="kit-row-sub">{m.lookback_era_offer_body()}</span>
+          </span>
+        </div>
+        <div class="era-offer-answers">
+          <a
+            class="era-offer-yes"
+            data-era-offer-confirm
+            data-span-keep
+            href={`/transition/eras?start=${offerSpan.start}&end=${offerSpan.end}`}
+            onclick={() => settleEraOffer(offerSpan)}
+          >
+            {m.lookback_era_offer_confirm()}
+          </a>
+          <button type="button" class="era-offer-no" data-era-offer-dismiss onclick={() => settleEraOffer(offerSpan)}>
+            {m.lookback_era_offer_dismiss()}
+          </button>
+        </div>
+      </div>
+    {/if}
+
     <!-- The two look-back offers, moved here from Home (spec: "the wrapped
          and on-this-day teasers live here"). Each gates itself on its own
          preference and its own floor, so the grid can be empty and then it
@@ -1372,6 +1426,61 @@
 
   .lookback-thin {
     min-width: 0;
+  }
+
+  /* The "name this stretch" offer (redesign ticket 48), drawn as rule 13's
+     offer row - the icon block, the title, one reason line, and the two
+     labelled answers under them (coming-back/+page.svelte's own
+     `.return-offer`, which this repeats rather than shares: that one sits
+     inside a flush list with its own hairlines, and this one is a single
+     block between the rail and the tile grid). Not a `Notice`: the ticket's
+     own decision is that this offer lives on the surface the person just
+     drove, not in the app's generic "the app is telling you something"
+     voice. */
+  .era-offer {
+    padding: var(--space-2) 0;
+  }
+
+  .era-offer-said {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+  }
+
+  /* Indented to the text column - 36 is the icon square and 12 is the
+     row's gap - so the two answers line up under what they are
+     answering. */
+  .era-offer-answers {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    padding-left: calc(36px + var(--space-3));
+  }
+
+  .era-offer-yes,
+  .era-offer-no {
+    min-height: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 2px;
+  }
+
+  .era-offer-yes {
+    color: var(--text);
+  }
+
+  .era-offer-no {
+    color: var(--text-2);
   }
 
   /* The constellation's two axis pickers (phase 5 deepening ticket 19). Under

@@ -50,7 +50,7 @@ export async function clearJournal(journal: Journal): Promise<void> {
 }
 
 export async function seedPersonaJournal(journal: Journal, today: number = todayEpochDay()): Promise<void> {
-  const { customTag, presentations, entries, milestones, reminders, appointments, documents, labResults, tallyEvents } =
+  const { customTag, presentations, entries, milestones, eras, reminders, appointments, documents, labResults, tallyEvents } =
     persona(today);
 
   /* What the journal held before this ran, so the check at the end reads a
@@ -86,6 +86,8 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
     const milestoneId = await journal.milestones.upsertMilestone(milestone);
     if (hasPhoto) await journal.photos.attach({ milestoneId }, await demoPhoto(milestone.epochDay));
   }
+
+  for (const era of eras) await journal.eras.upsertEra(era);
 
   for (const reminder of reminders) await journal.reminders.upsertReminder(reminder);
 
