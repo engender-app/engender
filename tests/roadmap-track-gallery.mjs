@@ -80,6 +80,14 @@ const toggle = async (track) => {
   await page.waitForTimeout(700);
 };
 
+/* Ticket 54: a track's dismiss control sits inside that track's own panel,
+   and only the current one starts in front. `data-track-toggle` is only
+   ever clickable once its track is the one shown. */
+const showTrack = async (track) => {
+  await page.locator(`[data-segment="${track}"]`).click();
+  await page.waitForTimeout(300);
+};
+
 try {
   for (const theme of THEMES) {
     /* Palette and theme are one compound selector, and a page.goto resets a
@@ -103,11 +111,14 @@ try {
     await toggle('social');
     await shoot(`roadmap-one-folded-${theme}`);
 
+    await showTrack('legal');
     await toggle('legal');
     await shoot(`roadmap-two-folded-${theme}`);
 
     // And back, so the shot proves the ticks were waiting underneath.
+    await showTrack('social');
     await toggle('social');
+    await showTrack('legal');
     await toggle('legal');
     await shoot(`roadmap-restored-${theme}`);
   }
