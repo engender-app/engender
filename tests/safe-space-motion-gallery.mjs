@@ -197,6 +197,19 @@ async function run({ reduce, themes }) {
     console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms, ${trace.length} samples`);
   }
 
+  /** A scene whose own control is not on this build is skipped rather than
+      failing the run: this script is pointed at a detached worktree of main
+      as its control, and three of the four things it records do not exist
+      there yet. */
+  const recordIfThere = async (selector, name, note, ms = SCENE_MS) => {
+    const control = page.locator(selector).first();
+    if (!(await control.count())) {
+      console.warn(`${name}: no ${selector} on this build - skipped`);
+      return;
+    }
+    await record(name, note, () => control.click(), ms);
+  };
+
   for (const theme of themes) {
     const tag = reduce ? `${theme}-reduce` : theme;
 
@@ -219,19 +232,19 @@ async function run({ reduce, themes }) {
 
     await settle('/doubt');
     await page.waitForTimeout(700);
-    await record(
+    await recordIfThere(
+      '[data-breathing-toggle]',
       `breath-${tag}`,
       'The halo pressed: the exercise starting, the ring filling and the first phase word landing.',
-      () => page.locator('[data-breathing-toggle]').first().click(),
       BREATH_MS
     );
 
     await settle('/doubt');
     await page.waitForTimeout(700);
-    await record(
+    await recordIfThere(
+      '[data-list-row="moments"]',
       `way-down-${tag}`,
-      'The first tap down: off the breath and into the letters and photos.',
-      () => page.locator('[data-list-row="moments"]').first().click()
+      'The first tap down: off the breath and into the letters and photos.'
     );
   }
 

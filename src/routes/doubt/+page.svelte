@@ -102,10 +102,12 @@
      squashing it.
 
      The breath arrives rather than being painted where it lands: it comes
-     up from 94% over --dur-authored on --ease-out, which is the one
-     movement on the screen and so earns the long duration (rule 10,
-     ADR-0078). Filled both ways, so the 1ms reduced-motion clamp ends it at
-     rest instead of leaving it at 94%.
+     up from 94% over --dur-authored on --ease-out (rule 10, ADR-0078).
+     --dur-authored is Home's cold-boot entrance and the longest arrival the
+     app has, read here rather than redefined: this is the one screen where
+     slow is the subject, and a calming tool that snaps into place is the
+     thing the ticket refused. Filled both ways, so the 1ms reduced-motion
+     clamp ends it at rest instead of leaving it at 94%.
 
      The animation is on this wrapper and not on the component's own root,
      because the halo inside it is a button and press.css puts the app's
@@ -130,14 +132,18 @@
      clips open from its own left edge over --dur-slow, one --stagger-step
      per row, the words beside it cutting (rule 10, ADR-0078; the agenda's
      day block and the return surface's rows are the same movement at the
-     same size). They start once the breath has landed, so the screen
-     resolves as one thing and then the ways under it, rather than as six
-     things at once.
+     same size). They start one --dur-fast behind the breath rather than
+     after it: the first cut of this waited the breath's whole 700ms before
+     the first row moved and the last row then landed 1305ms after the tap,
+     measured off the trace, which is a screen still assembling long after
+     it arrived. At 150ms the rows open under a breath that is still
+     growing and the last one settles at 730ms, a beat after the breath
+     itself - so the breath still leads and the screen is done in one.
 
      :global because the square is drawn inside ListRow and a scoped
      selector would never reach it. */
   .screen-safe-space :global(.kit-row-ico) {
     animation: kit-block-in var(--dur-slow) var(--ease-out) both;
-    animation-delay: calc(var(--dur-authored) + var(--row-index, 0) * var(--stagger-step));
+    animation-delay: calc(var(--dur-fast) + var(--row-index, 0) * var(--stagger-step));
   }
 </style>
