@@ -4662,7 +4662,12 @@ try {
    journal at all - the persona alone writes none, and the section is
    absent then on purpose. */
 try {
+  /* Through the row rather than straight to the route (redesign ticket 47):
+     the letters are one tap down from Safe space now, and the tap is the
+     half of this that could break without any unit test noticing. */
   await fresh('/doubt');
+  await page.locator('[data-list-row="moments"]').click();
+  await page.waitForURL('**/doubt/moments');
   const letterRows = page.locator('[data-list-row="letter-preview"]');
   const shown = await letterRows.count();
   if (shown === 0) {

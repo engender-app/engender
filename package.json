@@ -40,6 +40,7 @@
     "gallery:roadmap-goal": "VITE_DEMO=1 npm run build && node tests/roadmap-goal-gallery.mjs",
     "gallery:voice-coverage": "VITE_DEMO=1 npm run build && node tests/voice-coverage-gallery.mjs",
     "gallery:panel-motion": "VITE_DEMO=1 npm run build && node tests/panel-motion-gallery.mjs",
+    "gallery:safe-space-motion": "VITE_DEMO=1 npm run build && node tests/safe-space-motion-gallery.mjs",
     "gallery:nav-motion": "VITE_DEMO=1 npm run build && node tests/nav-motion-gallery.mjs",
     "gallery:blind-motion": "VITE_DEMO=1 npm run build && node tests/blind-motion-gallery.mjs",
     "gallery:permissions": "VITE_DEMO=1 npm run build && node tests/permissions-gallery.mjs",

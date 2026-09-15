@@ -200,9 +200,10 @@ for (const theme of THEMES) {
     errors.push(`checkin-off-${theme}: no switch inside ${CHECKIN}`);
   }
 
-  /* 3. The breathing exercise, idle: the ring on the page, and the section
-        heading /doubt draws above it in the same frame - the repeat the
-        card had been keeping apart. */
+  /* 3. The breathing exercise, idle: the ring on the page. It had a section
+        heading above it when this was written, which is the repeat the card
+        had been keeping apart; redesign ticket 47 took the heading off
+        entirely, so what is above the ring here now is the field. */
   await settle('/doubt');
   await crop(`breathing-${theme}`, BREATHING, 'the breathing exercise at rest - /doubt', 24);
 

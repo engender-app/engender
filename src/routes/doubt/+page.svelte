@@ -44,7 +44,7 @@
      section headings the person already read on the screen this replaces -
      the same names, one tap further in. */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub: () => string }> = {
-    resources: { title: m.resources_title, sub: m.resources_row_sub },
+    resources: { title: m.resources_title, sub: m.safe_space_resources_sub },
     moments: { title: m.safe_space_moments_title, sub: m.safe_space_moments_sub },
     comfort: { title: m.comfort_list_title, sub: m.safe_space_comfort_sub },
     evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub },

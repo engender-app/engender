@@ -133,8 +133,8 @@ for (const theme of ['light', 'dark']) {
   await page.waitForURL(`${base}/`);
   await page.waitForSelector('[data-home-hello]');
   await dress();
-  await settle('/doubt');
-  await page.waitForSelector('[data-safe-space-stats]');
+  await settle('/doubt/moments');
+  await page.waitForSelector('[data-list-row="letter-preview"], [data-notice="safe-space-moments-empty"], .kit-notice');
   await page.waitForTimeout(600);
   await shoot('01-no-letters');
 
@@ -144,7 +144,7 @@ for (const theme of ['light', 'dark']) {
   await page.locator('[data-fill-every-feature]').click();
   await page.waitForURL('**/more', { timeout: 60000 });
   await dress();
-  await settle('/doubt');
+  await settle('/doubt/moments');
   await page.waitForSelector('[data-list-row="letter-preview"]');
   await page.waitForTimeout(600);
   await shoot('02-two-letters');
@@ -161,7 +161,7 @@ for (const theme of ['light', 'dark']) {
     await page.waitForTimeout(400);
   }
 
-  await settle('/doubt');
+  await settle('/doubt/moments');
   await page.waitForSelector('[data-list-row="letter-preview"]');
   await page.waitForTimeout(600);
   await shoot('04-four-letters');
