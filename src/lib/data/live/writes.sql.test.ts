@@ -1045,6 +1045,7 @@ beforeAll(async () => {
   await driveRead('hairRemoval', 'getPhotos', () => journal.hairRemoval.getPhotos(hairRemovalId));
   await driveRead('procedures', 'getProcedures', () => journal.procedures.getProcedures());
   await driveRead('procedures', 'getPhotos', () => journal.procedures.getPhotos(procedureId));
+  await driveRead('procedures', 'photosByProcedure', () => journal.procedures.photosByProcedure());
   await driveRead('procedures', 'getDayRecords', () => journal.procedures.getDayRecords(19950));
   await driveRead('procedures', 'lastWriteEpochDay', () => journal.procedures.lastWriteEpochDay(20000));
   await driveRead('procedures', 'getChecklist', () => journal.procedures.getChecklist(procedureId));
