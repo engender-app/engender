@@ -279,6 +279,17 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // category switched on so its disclosure group has something in it too.
   await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter((_, i) => i % 3 === 0);
+  /* Written out rather than stepped, because the axis at the top of that
+     screen (ticket 57) has two shapes to show and an even 45-day step only
+     ever produced one of them: four of these land inside three weeks and
+     stack into lanes, and the rest stand alone with months between them.
+     Which days go to which effect is not arbitrary - only the effects in an
+     enabled category are drawn, and with the seed's own categories that is
+     entries 0, 1, 2, 3, 5, 10, 11 and 12, so the cluster is theirs and the
+     five under a category this seed leaves off take the days between. Past
+     the end of the list the old step takes over, so a catalogue that grows
+     still seeds a marker for everything it offers. */
+  const noticedDays = [18, 61, 143, 149, 152, 158, 200, 210, 220, 230, 165, 371, 470];
   for (const [i, type] of effectTypes.entries()) {
     /* Clamped to the seed's own last day. The unclamped progression runs
        past it - 30 + 45 * 11 is 495 days into a 500-day run, so the twelfth
@@ -290,7 +301,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
        seed exists to create. */
     await journal.personalEffects.upsertMarker({
       effect: type.key,
-      firstNoticedEpochDay: Math.min(today, estradiolStart + 30 + i * 45)
+      firstNoticedEpochDay: Math.min(today, estradiolStart + (noticedDays[i] ?? 30 + i * 45))
     });
   }
 

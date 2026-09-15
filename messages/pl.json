@@ -1625,11 +1625,33 @@
   "effects_source": "Zacieniowane pasy pochodzą z wytycznych klinicznych Endocrine Society z 2017 roku (Hembree i wsp.) oraz z tabel czasowych kuracji hormonalnej GenderGP, które powołują się na WPATH Standards of Care w wersji 7. Każdy pozostały efekt poniżej jest podpisany źródłem, z którego pochodzi, bez pasa: nazwanie zmiany przez poradnik to nie to samo, co podanie jej czasu przez wytyczne.",
   "effect_variability_notice": "Nic nie wskazuje, że wiek, budowa ciała, pochodzenie etniczne czy wygląd rodziny pozwalają wiarygodnie przewidzieć reakcję na kurację hormonalną. Prawdopodobnym wyjątkiem jest obniżenie głosu przy testosteronie. Pasy tutaj opisują literaturę. Nie są harmonogramem dla twojego ciała.",
   "effects_no_regimen_title": "Brak zapisanej kuracji",
-  "effects_no_regimen_body": "Ta oś czasu liczy się od dnia rozpoczęcia kuracji. Najpierw zapisz etap kuracji, a oś sama go uwzględni.",
+  "effects_no_regimen_body": "Bez niej oś powyżej liczy miesiące kalendarzowe. Zapisz etap kuracji, a zacznie liczyć miesiące od dnia rozpoczęcia.",
   "effects_no_regimen_action": "Przejdź do kuracji",
   "effects_direction_feminizing": "Feminizujące",
   "effects_direction_masculinizing": "Maskulinizujące",
   "effects_direction_other": "Bez przypisanego kierunku",
+  "effects_axis_onset": "Miesiące od początku kuracji, {date}.",
+  "effects_axis_calendar": "Według miesięcy kalendarzowych. Nie ma jeszcze zapisanej kuracji, więc nie ma od czego liczyć miesięcy.",
+  "effects_axis_empty": "Nic jeszcze nie zaznaczono. Zaznacz zmianę poniżej, a trafi na tę oś.",
+  "effects_axis_mark_aria": "{name}, pierwszy raz zauważone {date}",
+  "effects_axis_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input date",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zauważona zmiana, {date}.",
+        "countPlural=few": "Zauważone zmiany: {count}, ostatnia {date}.",
+        "countPlural=many": "Zauważone zmiany: {count}, ostatnia {date}.",
+        "countPlural=other": "Zauważone zmiany: {count}, ostatnia {date}."
+      }
+    }
+  ],
   "effect_group_count": [
     {
       "declarations": [
