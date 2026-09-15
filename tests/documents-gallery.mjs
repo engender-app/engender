@@ -292,6 +292,9 @@ for (const theme of ['light', 'dark']) {
   /* ---------- 09: the other end. The goal's own sheet lists what points at
      it; the goal itself stores nothing. ---------- */
   await settle('/transition/roadmap');
+  // Ticket 54: only the current track's panel starts in front; medical's
+  // own row needs its segment shown first.
+  await page.locator('[data-segment="medical"]').click();
   await page.locator(`[data-open-goal="${GOAL}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.waitForTimeout(600);
