@@ -94,7 +94,11 @@
   let reading = $derived.by<{ n: number | null; unit: string }>(() => {
     if (recDay.type === 'upcoming') return { n: recDay.days, unit: m.surgery_unit_to_go({ n: recDay.days }) };
     if (recDay.type === 'since') return { n: recDay.days, unit: m.surgery_unit_post_op({ n: recDay.days }) };
-    if (recDay.type === 'surgeryDay') return { n: null, unit: m.surgery_day_of() };
+    /* `Today` rather than `Surgery day`, which is what the pill beside it
+       already says: the pill names the phase and the block is the reading,
+       and a card that writes one fact twice in two type sizes is the
+       duplication this ticket is named for. */
+    if (recDay.type === 'surgeryDay') return { n: null, unit: m.today() };
     return { n: null, unit: m.surgery_reading_no_date() };
   });
 
@@ -107,7 +111,9 @@
      so it keeps the whole of the sentence it said before, `Permanent
      record` included. */
   let dateDetail = $derived.by(() => {
-    if (procedure.surgeryEpochDay === null) return m.surgery_date_none();
+    /* Nothing, rather than `no date set` under a block that has just said
+       `No date yet` in forty-point type. */
+    if (procedure.surgeryEpochDay === null) return open ? '' : m.surgery_date_none();
     const formatted = dayLabel(procedure.surgeryEpochDay);
     if (!open && recDay.type === 'since') {
       return `${formatted} · ${m.surgery_archived_summary({ days: String(recDay.days) })}`;
@@ -167,7 +173,7 @@
             {#if reading.n !== null}<span class="proc-n">{reading.n}</span>{/if}
             <span class="proc-unit" class:is-alone={reading.n === null}>{reading.unit}</span>
           </span>
-          <span class="proc-when">{dateDetail}</span>
+          {#if dateDetail}<span class="proc-when">{dateDetail}</span>{/if}
         </span>
       {:else}
         <span class="proc-when">{dateDetail}</span>
