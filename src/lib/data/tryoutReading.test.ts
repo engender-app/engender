@@ -105,6 +105,22 @@ test('a span one day wide puts its readings on the line rather than dividing by 
   assert.equal(reading.marks[0].position, 1, 'which is today, the only day there is');
 });
 
+test('a span one day wide still draws an earlier reading at the end it was pulled to', () => {
+  const reading = tryoutReading(
+    tryout({ startEpochDay: TODAY, endEpochDay: TODAY }),
+    [felt(TODAY - 4, 2), felt(TODAY, 4)],
+    TODAY
+  );
+  assert.deepEqual(
+    reading.marks.map((mark) => [mark.position, mark.beyondSpan]),
+    [
+      [0, true],
+      [1, false]
+    ],
+    'a reading written before the tryout began is not drawn as though it came after it'
+  );
+});
+
 test('nothing is averaged, scored or concluded', () => {
   const reading = tryoutReading(tryout(), [felt(TODAY - 8, 1), felt(TODAY - 3, 5)], TODAY);
   const keys = Object.keys(reading).sort();

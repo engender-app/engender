@@ -102,9 +102,17 @@ export function tryoutReading(
       id: entry.id,
       epochDay: entry.epochDay,
       mood: entry.mood,
-      /* A span one day wide is every reading on the same day, so there is
-         no distance to divide by and the line's one point is its end. */
-      position: span === 0 ? 1 : (Math.min(Math.max(entry.epochDay, fromEpochDay), toEpochDay) - fromEpochDay) / span,
+      /* A span one day wide has no distance to divide by, so a reading is
+         placed by which side of the day it fell on: one dated before the
+         start goes to the left end and everything else to the right, which
+         is the same "drawn at the end it was pulled in to" `beyondSpan`
+         below promises. Pinning every one of them to the right end drew a
+         reading written before the tryout began as though it came after
+         it. */
+      position:
+        span === 0
+          ? (entry.epochDay < fromEpochDay ? 0 : 1)
+          : (Math.min(Math.max(entry.epochDay, fromEpochDay), toEpochDay) - fromEpochDay) / span,
       level: (entry.mood - MOOD_LOW) / (MOOD_HIGH - MOOD_LOW),
       beyondSpan: entry.epochDay < fromEpochDay || entry.epochDay > toEpochDay
     }))
