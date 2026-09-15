@@ -48,19 +48,25 @@ mkdirSync(OUT, { recursive: true });
    baseline moves the pass line by 13px. Both are in
    .claude/day-strip-shots/measure-before.json.
 
-   A third of each is the budget.
+   The ticket asks for a third of each. Dilation clears it and wear does
+   not, on any reading of the figure: 1293px against a 931px third, and
+   still short with the untouched chart taken off both sides (898px against
+   800px). That is reported rather than engineered around - an earlier
+   version of this script scored the new height-minus-chart against the old
+   whole-screen third, which is two different measurements either side of
+   the comparison and turned a real miss into a PASS.
 
-   Measured against the screen minus its trend card, the controls over that
-   card and the chip row beside them, all three of which the ticket puts
-   out of scope ("the trend chart unchanged", "the chart against day since
-   surgery stays where it is"). On dilation it makes no difference - the
-   whole screen is inside the budget either way. On wear it does: the chart
-   block is 395px of a screen whose budget is 946px, and the only way to
-   hold the figure over the whole screen would be to take out the chart the
-   ticket says to leave alone. What this ticket owns, wear spends 898px on,
-   down from about 2400px. Named here rather than left as a number that
-   quietly moved. */
+   So there are two lines per screen. The ticket's own figure, printed as
+   MET or MISSED with the shortfall, which never fails the run because
+   whether to spend the remaining 362px by moving the trend chart is the
+   ticket owner's call and not this script's. And a ratchet at what the
+   branch actually achieved, which does fail, so the compression cannot
+   quietly come back. */
 const BEFORE = { '/health/dilation': 4505, '/practice/wear': 2794 };
+
+/* What each screen measured on this branch, pinned. A screen growing past
+   its own figure is a regression whoever caused it should see. */
+const RATCHET = { '/health/dilation': 1160, '/practice/wear': 1300 };
 
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
@@ -212,6 +218,15 @@ for (const theme of ['light', 'dark']) {
        week's taper stage may well expect a session on every day it draws.
        Only the cells are collected from the earlier pages; the height is
        the screen as it opens. */
+    /* Paging has to update the seven cells, not replace them: a node that
+       was just created has nothing to transition from, so it paints its
+       state on arrival in one frame and the fade kit.css declares never
+       runs. Keyed by day rather than by column, that is exactly what
+       happened, and nothing but the nodes themselves shows it. */
+    await page.evaluate(() => {
+      document.querySelectorAll('[data-week-cell]').forEach((el, i) => (el.dataset.nodeTag = String(i)));
+    });
+
     for (let page_ = 0; page_ < 4; page_++) {
       /* count() first: on a screen with no strip at all - a taper that has
          not started, a journal with no wear session - isEnabled() waits out
@@ -220,6 +235,11 @@ for (const theme of ['light', 'dark']) {
       if (!(await page.locator('[data-strip-earlier]').isEnabled())) break;
       await page.locator('[data-strip-earlier]').click();
       await page.waitForTimeout(500);
+      if (page_ === 0) {
+        row.kept = await page.evaluate(
+          () => [...document.querySelectorAll('[data-week-cell]')].filter((el) => el.dataset.nodeTag).length
+        );
+      }
       row.cells.push(...(await page.evaluate(MEASURE)).cells);
     }
     rows.push(row);
@@ -230,13 +250,34 @@ let failures = 0;
 for (const r of rows) {
   const budget = Math.round(BEFORE[r.path] / 3);
   const owned = r.height - r.untouched;
-  const ok = tag === 'before' || owned <= budget;
-  if (!ok) failures++;
-  process.stdout.write(
-    `\n${tag}  ${r.path}  ${r.theme}\n  ${ok ? 'PASS' : 'FAIL'}  ${owned}px` +
-      ` (${r.height}px of screen less ${r.untouched}px of chart this ticket leaves alone;` +
-      ` was ${BEFORE[r.path]}px, a third of it is ${budget}px)\n`
-  );
+  const ownedBudget = Math.round((BEFORE[r.path] - r.untouched) / 3);
+  process.stdout.write(`\n${tag}  ${r.path}  ${r.theme}\n`);
+
+  if (tag !== 'before') {
+    /* The ticket's figure, both ways round, neither of them failing the
+       run: what is left is a chart the ticket says to leave alone. */
+    const met = r.height <= budget;
+    process.stdout.write(
+      `  ${met ? 'MET' : 'MISSED'}  the ticket's third: ${r.height}px against ${budget}px` +
+        (met ? '' : `, over by ${r.height - budget}px`) +
+        ` (${owned}px against ${ownedBudget}px with the ${r.untouched}px chart off both sides)\n`
+    );
+    const ok = r.height <= RATCHET[r.path];
+    if (!ok) failures++;
+    process.stdout.write(
+      `  ${ok ? 'PASS' : 'FAIL'}  ${r.height}px against this branch's own ${RATCHET[r.path]}px\n`
+    );
+  } else {
+    process.stdout.write(`  note  ${r.height}px, ${r.untouched}px of it the chart block\n`);
+  }
+  if (r.kept !== undefined) {
+    const ok = r.kept === 7;
+    if (!ok) failures++;
+    process.stdout.write(
+      `  ${ok ? 'PASS' : 'FAIL'}  ${r.kept} of 7 cells kept their node across a page,` +
+        ` so the fill and hairline have something to travel from\n`
+    );
+  }
   const small = r.targets.filter((t) => t.w < 48 || t.h < 48);
   if (r.targets.length) {
     if (small.length) failures++;

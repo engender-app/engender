@@ -1534,6 +1534,18 @@ button.kit-strip-day {
   padding-inline: var(--space-1);
 }
 
+/* The cells of a strip that can be paged, which are the only ones whose
+   state changes under a reader without the strip itself being replaced.
+   This only works because BareStrip keys its each-block by the column
+   rather than by the day: keyed by day, a page replaces all seven nodes
+   and a new node paints its final colour on arrival with nothing to
+   travel from. */
+button.kit-strip-day .kit-strip-cell {
+  transition:
+    --level var(--dur-med) var(--ease-out),
+    border-color var(--dur-med) var(--ease-out);
+}
+
 .kit-strip-cell {
   width: 100%;
   aspect-ratio: 1;
@@ -1549,16 +1561,12 @@ button.kit-strip-day {
      transitioned between two color-mix() values without --level being a
      registered property, so the property itself is what carries it.
 
-     This reaches WeekStrip too, deliberately and worth saying out loud
-     since ticket 44 does not otherwise touch the calendar: its cells used
-     to snap from the grey they render at before `dayAverages` lands to
-     whatever heat the query answers with, and they fade now. That is the
-     standing motion clause (no appearance in one frame) applied to a
-     surface that was quietly breaking it, not a side effect - and one line
-     to take back out if the calendar wants its snap. */
-  transition:
-    --level var(--dur-med) var(--ease-out),
-    border-color var(--dur-med) var(--ease-out);
+     Only where the strip can be paged, which is what the rule below
+     narrows it to. Left on `.kit-strip-cell` it also reached WeekStrip,
+     whose cells would have started fading from grey to their heat as
+     `dayAverages` lands rather than snapping - an improvement, and the
+     calendar is the one caller ticket 44's own out-of-scope list names, so
+     it is not this ticket's to make. */
 }
 
 /* A bare custom property animates as a string - it swaps at 50% and the

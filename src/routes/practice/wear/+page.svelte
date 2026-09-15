@@ -190,11 +190,21 @@
   /** A tap on a day of the strip: its first session if it has one, or a
       backfill draft anchored to that day's local midnight if it has none -
       the same two ways in the add control already offers, pointed at one
-      day. */
+      day.
+
+      Today is the exception, and it is the row under the strip that
+      decides it: a blank draft, which opens live when nothing is running
+      and as a backfill when something is. Without this, tapping today's
+      cell and tapping the row directly below it - the same day, on the
+      same screen - opened the sheet in two different modes. */
   function openSessionFor(epochDay: number) {
     const existing = sessionsByDay.get(epochDay)?.[0];
     if (existing) {
       record.openEditor(existing);
+      return;
+    }
+    if (epochDay === today) {
+      record.openEditor(null);
       return;
     }
     record.editor = {
@@ -522,7 +532,7 @@
             icon="clock"
             title={m.today()}
             subtitle={fmtDayLong(today)}
-            onclick={() => record.openEditor(null)}
+            onclick={() => openSessionFor(today)}
           >
             {#snippet trailing()}
               {dayTotal(today) ?? m.adherence_nothing_logged()}
