@@ -676,6 +676,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getProcedures: ['procedure', 'appointment'],
       getPhotos: ['procedure'],
+      photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
       getMilestone: ['milestone'],

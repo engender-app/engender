@@ -2828,7 +2828,6 @@
   "surgery_phase_recovery": "Recovery",
   "surgery_phase_archived": "Archived",
   "surgery_post_op_day": "Post-Op Day {days}",
-  "surgery_countdown_badge": "{days} to go",
   "surgery_consult_questions_title": "Consult questions & notes",
   "surgery_prep_checklist_title": "Preparation & insurance",
   "surgery_clearance_checklist_title": "Clearance & packing list",
@@ -3610,5 +3609,52 @@
   "home_edit_reset": "Back to the default set",
   "home_edit_reset_question": "Go back to the default set?",
   "home_edit_reset_hint": "The order you arranged goes, and every agenda kind comes back on. What you pinned is not deleted anywhere else - the rows are still on their own screens.",
-  "tomorrow": "Tomorrow"
+  "tomorrow": "Tomorrow",
+  "surgery_unit_post_op": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day post-op",
+        "nPlural=other": "days post-op"
+      }
+    }
+  ],
+  "surgery_unit_to_go": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day to go",
+        "nPlural=other": "days to go"
+      }
+    }
+  ],
+  "surgery_reading_no_date": "No date yet",
+  "surgery_photo_day": "Day {days}",
+  "surgery_photo_more": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} more",
+        "nPlural=other": "{n} more"
+      }
+    }
+  ]
 }
