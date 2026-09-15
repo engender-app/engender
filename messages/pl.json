@@ -1631,6 +1631,28 @@
   "effects_direction_feminizing": "Feminizujące",
   "effects_direction_masculinizing": "Maskulinizujące",
   "effects_direction_other": "Bez przypisanego kierunku",
+  "effects_axis_onset": "Miesiące od początku kuracji, {date}.",
+  "effects_axis_calendar": "Według miesięcy kalendarzowych. Nie ma jeszcze zapisanej kuracji, więc nie ma od czego liczyć miesięcy.",
+  "effects_axis_empty": "Nic jeszcze nie zaznaczono. Zaznacz zmianę poniżej, a trafi na tę oś.",
+  "effects_axis_mark_aria": "{name}, pierwszy raz zauważone {date}",
+  "effects_axis_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input date",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zauważona zmiana, {date}.",
+        "countPlural=few": "Zauważone zmiany: {count}, ostatnia {date}.",
+        "countPlural=many": "Zauważone zmiany: {count}, ostatnia {date}.",
+        "countPlural=other": "Zauważone zmiany: {count}, ostatnia {date}."
+      }
+    }
+  ],
   "effect_group_count": [
     {
       "declarations": [

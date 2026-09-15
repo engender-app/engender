@@ -1591,6 +1591,26 @@
   "effects_direction_feminizing": "Feminizing",
   "effects_direction_masculinizing": "Masculinizing",
   "effects_direction_other": "Not tied to a direction",
+  "effects_axis_onset": "Months since your regimen began, {date}.",
+  "effects_axis_calendar": "By calendar month. There's no regimen logged yet, so there's nothing to count months from.",
+  "effects_axis_empty": "Nothing marked yet. Mark a change below and it lands on this line.",
+  "effects_axis_mark_aria": "{name}, first noticed {date}",
+  "effects_axis_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input date",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} change noticed, on {date}.",
+        "countPlural=other": "{count} changes noticed, the last on {date}."
+      }
+    }
+  ],
   "effect_group_count": [
     {
       "declarations": [

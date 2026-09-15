@@ -42,6 +42,8 @@
 
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
+  import NoticedAxis from '$lib/components/NoticedAxis.svelte';
+  import type { NoticedChange } from '$lib/data/noticedAxis';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
@@ -159,11 +161,42 @@
     return null;
   }
 
+  /* What the axis at the top of the screen draws: the changes that carry a
+     marker, joined to their catalogue entry (ticket 57). Only the visible
+     ones, the same catalogue the groups below and the chart inside them
+     read, so hiding an effect or turning its category off takes it off the
+     axis too. A marker for an effect that is no longer visible keeps its
+     record and stops being drawn, which is what "hiding keeps everything
+     already marked against it" already promises in the manage sheet. */
+  let noticedChanges = $derived<NoticedChange[]>(
+    visibleEffects.flatMap((effect) => {
+      const marker = markerFor(effect.key);
+      if (!marker) return [];
+      return [
+        {
+          key: effect.key,
+          label: effect.name,
+          direction: directionOf(effect),
+          firstNoticedEpochDay: marker.firstNoticedEpochDay
+        }
+      ];
+    })
+  );
+
   let editor = $state<{ effect: PersonalEffectCatalogEntry; date: string } | null>(null);
 
   function openEditor(effect: PersonalEffectCatalogEntry) {
     const existing = markerFor(effect.key);
     editor = { effect, date: dateInputValueFromEpochDay(existing?.firstNoticedEpochDay ?? today) };
+  }
+
+  /* A mark on the axis opens the same sheet its row in the list below
+     opens, which is the whole of how editing is reachable from the
+     drawing - the axis draws no marker the catalogue does not still carry,
+     so this always finds one. */
+  function openEditorByKey(key: string) {
+    const effect = visibleEffects.find((e) => e.key === key);
+    if (effect) openEditor(effect);
   }
 
   async function saveMarker() {
@@ -209,20 +242,40 @@
 
   {#if episodesQuery.loading || markersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if anchorEpochDay == null}
-    <div class="screen-part">
-      <Notice
-        icon="sparkle"
-        key="effects-no-regimen"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.effects_no_regimen_title()}
-        text={m.effects_no_regimen_body()}
-        action={{ label: m.effects_no_regimen_action(), primary: true, href: '/settings/regimen' }}
-      />
-    </div>
   {:else}
-    <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
-    <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
+    <!-- The notice used to replace the whole screen, so a journal with no
+         regimen in it saw nothing it had marked (ticket 57). It says what
+         setting a regimen would buy - months counted from a start day
+         instead of calendar months - and everything below it draws either
+         way: somebody can notice a change before they are on anything, and
+         somebody restoring a journal may not have typed a regimen back in
+         yet. -->
+    {#if anchorEpochDay == null}
+      <div class="screen-part">
+        <Notice
+          icon="sparkle"
+          key="effects-no-regimen"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.effects_no_regimen_title()}
+          text={m.effects_no_regimen_body()}
+          action={{ label: m.effects_no_regimen_action(), primary: true, href: '/settings/regimen' }}
+        />
+      </div>
+    {/if}
+
+    <!-- What is true now, before the records (DIRECTION.md rule 16): every
+         change already marked, at the month it was noticed, on one line. -->
+    <div class="screen-part">
+      <NoticedAxis changes={noticedChanges} {anchorEpochDay} todayEpochDay={today} onOpen={openEditorByKey} />
+    </div>
+
+    <!-- All three of these are about the literature's bands, so they keep
+         the company of the chart that draws them: with no regimen there is
+         no band on the screen for them to be describing. -->
+    {#if anchorEpochDay !== null}
+      <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
+    {/if}
 
     {#each DIRECTIONS as direction (direction)}
       {@const directionEffects = visibleEffects.filter((e) => directionOf(e) === direction)}
@@ -243,7 +296,9 @@
                 </ListRow>
                 {#if expanded}
                   <div class="effect-group-body" transition:disclose>
-                    <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {#if anchorEpochDay !== null}
+                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {/if}
                     {#each groupEffects as e (e.key)}
                       {@const marker = markerFor(e.key)}
                       <ListRow
@@ -283,7 +338,9 @@
               </ListRow>
               {#if expanded}
                 <div class="effect-group-body" transition:disclose>
-                  <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
+                  {#if anchorEpochDay !== null}
+                    <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
+                  {/if}
                   {#each uncategorized as e (e.key)}
                     {@const marker = markerFor(e.key)}
                     <ListRow
@@ -306,7 +363,9 @@
       {/if}
     {/each}
 
-    <p class="muted small">{m.effects_source()}</p>
+    {#if anchorEpochDay !== null}
+      <p class="muted small">{m.effects_source()}</p>
+    {/if}
   {/if}
 
   <!-- The two changes that keep their own screen (phase 9 carpet ticket 16).
