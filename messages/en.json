@@ -2502,6 +2502,22 @@
   "roadmap_intro": "Four tracks, and you tick each one off separately. The order inside a track is how the procedure usually runs rather than a rule, and nothing here blocks anything else.",
   "roadmap_not_advice": "This describes what the procedure involves. It is not legal advice and none of it is about your particular case.",
   "roadmap_reviewed_on": "Content checked against its sources: {date}.",
+  "roadmap_track_switch_label": "Track",
+  "roadmap_track_steps_left": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} step left",
+        "nPlural=other": "{n} steps left"
+      }
+    }
+  ],
   "roadmap_track_social": "Social",
   "roadmap_track_legal": "Legal",
   "roadmap_track_presentational": "Presentation",

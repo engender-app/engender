@@ -23,13 +23,34 @@
      title (ticket 16's own reason for hand-rolling these rows at all). The
      control shows on every row, ticked or not - ADR-0068: the Polish pack's
      "keep opinions" goal is exactly the case where paper arrives before a
-     tick ever could. */
+     tick ever could.
+
+     Ticket 54 (DIRECTION.md rule 16): the screen used to open on its own
+     provenance, with the first actual step below the fold at 6231px of
+     scroll. `whereYouAreInRoadmap` (roadmap.ts) answers the only question
+     somebody opens this for - which track, and how many of its steps are
+     still unchecked, in words rather than a percentage or a ring
+     (ADR-0012, and the ticket's own "no score, anywhere"). The screen now
+     shows one track's rows at a time, the current one to start, and a
+     Segmented switcher reaches the rest - `hidden` on the other three
+     panels rather than an `{#if}` that unmounts them, so `[data-goal]`
+     stays queryable and every row keeps its tick regardless of which
+     panel is in front (tests/walkthrough.test.mjs switches tracks before
+     it clicks one). The caveat and the marker note stay where they were,
+     since both change how the list below is read; the sources line and
+     the reviewed-on date carry no such warning and move to the foot. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
-  import { POLISH_PACK, roadmapSections, type RoadmapGoalKey, type RoadmapTrack } from '$lib/data/roadmap';
+  import {
+    POLISH_PACK,
+    roadmapSections,
+    whereYouAreInRoadmap,
+    type RoadmapGoalKey,
+    type RoadmapTrack
+  } from '$lib/data/roadmap';
   import { rankByLean } from '$lib/data/lean';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { RoadmapGoalStatus } from '$lib/data/types';
@@ -55,6 +76,7 @@
   } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
@@ -87,6 +109,20 @@
   let dismissedQuery = liveQuery((j) => j.roadmap.getDismissedTracks());
   let dismissedTracks = $derived(dismissedQuery.value ?? []);
   let sections = $derived(roadmapSections(pack, customGoals, dismissedTracks));
+
+  /* Ticket 54: where the header points, and which track's panel starts
+     open. `whereYouAre` stays live the whole time - it is what the header
+     says - but `activeTrack` is a separate choice a person can walk away
+     from: opening on the current track and then having it jump to a
+     different one under their hands, because a tick they just made
+     resolved it, would move the ground while they were still reading it. */
+  let whereYouAre = $derived(whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked'));
+  let activeTrack = $state<RoadmapTrack | null>(null);
+  let loaded = $derived(!statusQuery.loading && !customQuery.loading && !dismissedQuery.loading);
+  $effect(() => {
+    if (loaded && activeTrack === null && whereYouAre) activeTrack = whereYouAre.track;
+  });
+  let shownTrack = $derived(activeTrack ?? whereYouAre?.track ?? sections[0].track);
 
   /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset
      reorders each track's built-in goals, matching ones first. Custom
@@ -273,7 +309,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.roadmap_title()} back="/more" subtitle={m.roadmap_intro()} />
+  <ScreenHeader title={m.roadmap_title()} back="/more" />
 
   <Notice
     icon="globe"
@@ -284,14 +320,42 @@
   <div class="roadmap-provenance">
     <p class="small">{roadmapPackMarkerNote(pack.key)}</p>
     <p class="small">{m.roadmap_not_advice()}</p>
-    <p class="muted small">{roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}</p>
   </div>
 
-  {#if statusQuery.loading || customQuery.loading || dismissedQuery.loading}
+  {#if !loaded}
     <div out:crossfade><Skeleton variant="line" count={4} /></div>
   {:else}
+    <!-- Rule 16: the reading before the records. whereYouAre is null only
+         when every track is dismissed, which the switcher and the panels
+         below still draw fine with nothing current to name. -->
+    {#if whereYouAre}
+      <div class="roadmap-here" data-roadmap-here>
+        <p class="roadmap-here-track">{roadmapTrackName(whereYouAre.track)}</p>
+        <p class="roadmap-here-left">{m.roadmap_track_steps_left({ n: whereYouAre.stepsLeft })}</p>
+      </div>
+    {/if}
+
+    <p class="roadmap-track-intro muted small">{m.roadmap_intro()}</p>
+
+    <Segmented
+      name={m.roadmap_track_switch_label()}
+      key="roadmap-track"
+      compact
+      options={sections.map((section) => ({ value: section.track, label: roadmapTrackName(section.track) }))}
+      value={shownTrack}
+      onChange={(v) => (activeTrack = v as RoadmapTrack)}
+    />
+
     {#each sections as section, i (section.track)}
       {@const track = section.track}
+      <!-- Every track stays mounted - `[data-goal]` and its tick keep
+           answering regardless of which panel is in front, which is what
+           box 5 asks for ("the three-state tick still shows on every
+           row") and what tests/walkthrough.test.mjs's offline/reload
+           assertions read off, reload included. `hidden` rather than an
+           `{#if}` is what keeps a goal mounted while its track is not the
+           one shown. -->
+      <div class="roadmap-track-panel" data-track-panel={track} hidden={track !== shownTrack}>
       <SectionHeading text={roadmapTrackName(track)}>
         <!-- On the heading rather than in the card: it is a statement about
              the whole track, and a row inside the list would read as one
@@ -432,7 +496,15 @@
         </button>
       </ListCard>
       {/if}
+      </div>
     {/each}
+
+    <!-- The sources and the checked-on date carry no warning about how to
+         read the list above - unlike the caveat and the marker note, which
+         stayed at the top - so they close the screen rather than open it. -->
+    <p class="roadmap-sources muted small" data-roadmap-sources>
+      {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
+    </p>
   {/if}
 </div>
 
@@ -575,6 +647,34 @@
 
   .roadmap-provenance p {
     margin: 0 0 var(--space-2);
+  }
+
+  /* Rule 16's own shape: a display-face reading of what is true now, the
+     same weight Care's spine gives the drug it names (care/+page.svelte's
+     .care-regimen-drug/.care-regimen-detail). */
+  .roadmap-here {
+    margin: 0 0 var(--space-4);
+  }
+
+  .roadmap-here-track {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-display);
+  }
+
+  .roadmap-here-left {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  .roadmap-track-intro {
+    margin: 0 0 var(--space-3);
+  }
+
+  .roadmap-sources {
+    margin: var(--space-5) 0 0;
   }
 
   /* An empty square until it is ticked, so a row reads as a checkbox
