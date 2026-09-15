@@ -323,7 +323,22 @@ export function persona(today: number = todayEpochDay()): Persona {
        note or tag. The bounds are the same two days two of the milestones
        above already mark - coming out, then HRT - so the band on the rail
        and the marks on it agree about where one chapter ended. */
-    eras: [{ name: 'Before HRT', startEpochDay: today - 940, endEpochDay: today - 745 }],
+    /* Three eras, and two of them cover entries on purpose (redesign
+       ticket 62). "Before HRT" alone was the fixture ticket 48 added, and
+       it sits where the persona's own arc says it belongs - before the
+       first lab draw at today-700 - which is also before the first entry,
+       so every reading that partitions the journal by era drew nothing on
+       it. That was invisible while the era screens only listed eras; the
+       words reading weighs one era's words against the journal's, so an
+       era with no notes in it is the whole of what it can show. The other
+       two are dated over the two stretches the generator actually writes:
+       the previous calendar year's sparse days, and the recent run. Both
+       bounds dated on all three, for the reason `PersonaEra` gives. */
+    eras: [
+      { name: 'Before HRT', startEpochDay: today - 940, endEpochDay: today - 745 },
+      { name: 'First year on HRT', startEpochDay: today - 622, endEpochDay: today - 259 },
+      { name: 'Full time', startEpochDay: today - 150, endEpochDay: today }
+    ],
     reminders: [
       { title: 'Estradiol patch', type: 'med', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
       { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },

@@ -48,7 +48,7 @@
 
    Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
    `home` is one of the hub's groups or one of the screens in `HUB_ROW_HOSTS`,
-   and six of the twenty-five now name a screen. This file stays the
+   and five of the twenty-two now name a screen. This file stays the
    registry for all of them either way, which is the point of holding the
    field here rather than deleting the rows that left: `finishes` still has to
    be claimed by exactly one row and the last-write registry still has to be
@@ -110,16 +110,20 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     wrote. A hub that lists all of them at the top level is a hub that has
     stopped ranking anything.
 
-    Redesign ticket 51 took entry templates further still: a reference area
-    (ADR-0084) is managed in Settings rather than hosted by it, so its row
+    Two of those seven have since stopped being rows at all, and by two
+    different routes. Redesign ticket 51 took entry templates to Settings: a
+    reference area (ADR-0084) is managed there rather than hosted, so its row
     left this map the way modes left the Transition group outright, onto a
-    plain row Settings writes out itself. Five hosts for six rows now, keyed
-    by the row key of the screen that hosts them where there is one and by
-    the tab otherwise. What this map is for is naming the one screen that
+    plain row Settings writes out itself. Redesign ticket 62 took the words
+    row off outright - the reading draws on the Look back door itself now
+    (`WordsReading.svelte`), so there is no second screen for a row to open,
+    and `stats` stopped being a host with it. Four hosts for five rows now,
+    keyed by the row key of the screen that hosts them where there is one and
+    by the tab otherwise. What this map is for is naming the one screen that
     owes each row its link, which is what `more-surfaces.test.ts` holds them
     to - a hosted row whose host forgot it is a screen nothing reaches.
 
-    Five of the six are drawn by `HostedRows.svelte`, which reads
+    Four of the five are drawn by `HostedRows.svelte`, which reads
     `rowsHostedBy` below. `cycle-events` is the exception and stays written by
     hand on /health/side-effects: it sits inside a block that screen already
     gates on `cycleTrackingVisible`, its way-in row carries copy about the
@@ -130,8 +134,7 @@ export const HUB_ROW_HOSTS = {
   care: '/care',
   effects: '/practice/personal-effects',
   'side-effects': '/health/side-effects',
-  surgery: '/health/surgery',
-  stats: '/stats'
+  surgery: '/health/surgery'
 } as const;
 
 export type HubRowHostKey = keyof typeof HUB_ROW_HOSTS;
@@ -509,18 +512,6 @@ const ROWS = [
     areas: ['taperSessions'],
     finishes: 'dilation',
     line: 'read'
-  },
-  {
-    /* On the stats tab, which is where a reading of what you wrote belongs:
-       this screen groups note text by era and by mode and does not store a
-       word of its own. */
-    key: 'words',
-    icon: 'note',
-    href: '/transition/words',
-    home: 'stats',
-    areas: [],
-    finishes: null,
-    line: 'written'
   }
 ] as const satisfies readonly HubRowSpec[];
 
@@ -759,14 +750,15 @@ export function hubSections(reading: HubReading): HubSection[] {
     the order its groups draw them, then the rows drawn on a screen of their
     own (phase 10 redesign ticket 15).
 
-    All twenty-four of them - twenty-seven until redesign ticket 51 moved
+    All twenty-two of them - twenty-five until redesign ticket 51 moved
     modes and entry templates off the registry entirely and into Settings
-    (ADR-0084), and twenty-six until ticket 59 deleted the clinician-summary
-    row outright rather than hosting it, since it fronts no area. The six
-    hosted rows still here are not on this screen and are still areas of this
-    app: somebody looking for dilation or words looks for them here, and
-    leaving them out would make the one index with a search box the one
-    place they cannot be found. A match draws the row the registry declares -
+    (ADR-0084), twenty-four until ticket 59 deleted the clinician-summary
+    row outright rather than hosting it, since it fronts no area, and
+    twenty-three until ticket 62 took the words row off with the screen it
+    opened. The five hosted rows still here are not on this screen and are
+    still areas of this app: somebody looking for dilation or hair progress
+    looks for them here, and leaving them out would make the one index with
+    a search box the one place they cannot be found. A match draws the row the registry declares -
     the same row its host screen draws - and following it lands on the
     area's own screen rather than on the host.
 
@@ -809,8 +801,7 @@ export function hubSections(reading: HubReading): HubSection[] {
 
     Named here rather than left to fall out of a rule, because every rule
     that would exclude it also excludes something that should be found: the
-    row fronts one area, that area is not hideable, and a row fronting no
-    area at all is a screen somebody may well look for by name (words). */
+    row fronts one area, and that area is not hideable. */
 const NOT_SEARCHABLE: readonly HubRowKey[] = ['cycle-events'];
 
 export function hubRowsMatching(
