@@ -112,13 +112,18 @@
 
   <TryoutFeltSenseArc {reading} />
 
-  <p class="tc-felt" data-tryout-felt>{feltLabel}</p>
-
-  {#if onfeel}
-    <button type="button" class="btn btn-soft btn-block tc-feel" data-feel-today={tryout.id} onclick={onfeel}>
-      <span>{m.tryout_feeling_today()}</span>
-    </button>
-  {/if}
+  <!-- What the drawing holds and the way to add to it, on one line: the
+       sentence is the reading written down and the control is what answers
+       it, and a full-width button under every card in a list is a second
+       primary action per row. -->
+  <div class="tc-foot">
+    <p class="tc-felt" data-tryout-felt>{feltLabel}</p>
+    {#if onfeel}
+      <button type="button" class="btn btn-ghost tc-feel" data-feel-today={tryout.id} onclick={onfeel}>
+        <span>{m.tryout_feeling_today()}</span>
+      </button>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -202,6 +207,12 @@
     flex-direction: column;
     align-items: center;
     min-width: 92px;
+    /* A ceiling rather than a width: the block sizes to its own unit, which
+       keeps "days trying" on one line at 121px on a 390px screen and leaves
+       the date its own line beside it. The unit was "days of trying" and at
+       any width narrow enough to matter it broke as "days of / trying" - a
+       line ending on a preposition in forty-point type. It is the same
+       reading two words shorter. */
     max-width: 150px;
     text-align: center;
     padding: var(--space-1) var(--space-3) var(--space-2);
@@ -256,6 +267,15 @@
     cursor: pointer;
   }
 
+  .tc-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
   /* What the drawing says, in words. */
   .tc-felt {
     margin: 0;
@@ -265,11 +285,12 @@
   }
 
   /* Above the stretched hit area, like the delete: this writes today's
-     reading and does not open the tryout. */
+     reading and does not open the tryout. Pushed to the row's end when the
+     sentence wraps to a line of its own. */
   .tc-feel {
     position: relative;
     z-index: 2;
-    margin-top: var(--space-3);
+    margin-inline-start: auto;
   }
 
   /* The wash a full-width row answers a press with, which is the control's

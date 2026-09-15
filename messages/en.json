@@ -2346,8 +2346,8 @@
         "nPlural"
       ],
       "match": {
-        "nPlural=one": "day of trying",
-        "nPlural=other": "days of trying"
+        "nPlural=one": "day trying",
+        "nPlural=other": "days trying"
       }
     }
   ],
