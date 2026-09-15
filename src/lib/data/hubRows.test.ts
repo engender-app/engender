@@ -562,7 +562,6 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
    the catalogue. */
 const TITLES: Record<string, string> = {
   measurements: 'Body measurements',
-  sizes: 'Size log',
   'hair-removal': 'Usuwanie włosów',
   wear: 'Wear log',
   photos: 'Progress photos',

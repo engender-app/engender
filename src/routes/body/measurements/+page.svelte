@@ -61,7 +61,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { garmentCategoryName } from '$lib/data/vocabulary/labels';
   import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '$lib/data/garmentCategories';
-  import { sizeChanges } from '$lib/data/sizeChanges';
+  import { sizeChanges, sizeLabelKey } from '$lib/data/sizeChanges';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Measurement, SizeRecord } from '$lib/data/types';
@@ -109,6 +109,13 @@
       2025, M since July 2026*: what a person remembers about a size is the
       season it started, not the afternoon they bought it, and the exact day
       is on the record in the log below either way. */
+  /* Each catalogue writes its own frame around these two dates rather than
+     sharing one shape. English says "L in November 2025, M since July
+     2026"; Polish cannot, because `Intl` hands back a nominative month for
+     a month-and-year and both `w` and `od` want a case it is not in, so
+     Polish carries the same before-and-now grain with two adverbs instead
+     (docs/ui-copy.md: split the message per case rather than interpolating
+     a bare noun). */
   const monthLabel = (epochDay: number) => fmtDay(epochDay, { month: 'long', year: 'numeric' });
 
   // Falls back off 'waist' when it has been hidden - the picker below only
@@ -419,7 +426,7 @@
       <div class="screen-part">
         {#if changes.length}
           <div class="changes" data-size-changes transition:disclose>
-            {#each changes as change (JSON.stringify([change.category, change.brand]))}
+            {#each changes as change (sizeLabelKey(change.category, change.brand))}
               <p class="change">
                 <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
                 <span class="change-says">
