@@ -529,6 +529,18 @@
     gap: var(--space-5);
   }
 
+  /* The earlier/later row under a take. It lived in screens.css while the
+     progress-photo comparison read it too; redesign ticket 55 put that
+     comparison on one draggable divider (PhotoWipe.svelte), which left this
+     screen as the only consumer and check-screens-classes.mjs asking for
+     the rule here. Its buttons were sized 36px until SH-106 and take
+     `.icon-btn`'s own 44px since; the rule carries no size of its own. */
+  .compare-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
   .vc-take {
     display: flex;
     flex-direction: column;

@@ -1149,17 +1149,36 @@ try {
   // The mode control is a segmented Browse/Compare now (ticket 11), matching
   // the voice screen's own tabs - not the primary button this used to be.
   await page.locator('[data-segment="compare"]').click();
-  const sides = page.locator('[data-compare-side]');
+  /* One frame with a draggable divider, not two thumbnails side by side
+     (redesign ticket 55). Both dates are pinned to the frame's own corners,
+     and the four earlier/later controls move each side through the
+     journey. The demo persona's photos have stored files, so this is the
+     wipe rather than its side-by-side fallback. */
+  await page.waitForSelector('[data-photo-wipe]');
   const gap = await page.locator('[data-compare-gap]').textContent();
-  if ((await sides.count()) !== 2 || !gap?.includes('apart')) throw new Error('compare dates or gap missing');
-  const leftDate = page.locator('[data-compare-side="left"] [data-compare-date]');
-  const rightDate = page.locator('[data-compare-side="right"] [data-compare-date]');
+  if ((await page.locator('[data-wipe-date]').count()) !== 2 || !gap?.includes('apart')) {
+    throw new Error('compare dates or gap missing');
+  }
+  if (await page.locator('[data-wipe-fallback]').count()) {
+    throw new Error('the wipe fell back to side by side with two stored photographs');
+  }
+  const leftDate = page.locator('[data-wipe-date="left"]');
+  const rightDate = page.locator('[data-wipe-date="right"]');
   const leftBefore = await leftDate.textContent();
-  await page.locator('[data-compare-side="left"]').getByRole('button', { name: 'Later photo' }).click();
+  await page.locator('[data-wipe-forward="left"]').click();
   if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
   const rightBefore = await rightDate.textContent();
-  await page.locator('[data-compare-side="right"]').getByRole('button', { name: 'Later photo' }).click();
+  await page.locator('[data-wipe-forward="right"]').click();
   if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
+
+  // The divider is a slider a keyboard can drive, and End takes it to the
+  // far edge without a pointer anywhere near it.
+  const handle = page.locator('[data-wipe-handle]');
+  const startedAt = await handle.getAttribute('aria-valuenow');
+  await handle.press('End');
+  if ((await handle.getAttribute('aria-valuenow')) === startedAt) {
+    throw new Error('the divider did not move on a key press');
+  }
 
   /* The on-demand recap this flow used to step through is gone (ticket 23,
      spec 07): its period picker is a wrapped, and what used to be a
