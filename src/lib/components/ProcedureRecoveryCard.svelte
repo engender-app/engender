@@ -159,12 +159,19 @@
         <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
       </span>
       {#if open}
-        <span class="proc-block" data-procedure-reading={phase}>
-          {#if reading.n !== null}<span class="proc-n">{reading.n}</span>{/if}
-          <span class="proc-unit" class:is-alone={reading.n === null}>{reading.unit}</span>
+        <!-- The number and the date it counts from, side by side: the block
+             is what the card reports and the date is what it is measured
+             against, which is the pairing every figure in the app keeps. -->
+        <span class="proc-reading">
+          <span class="proc-block" data-procedure-reading={phase}>
+            {#if reading.n !== null}<span class="proc-n">{reading.n}</span>{/if}
+            <span class="proc-unit" class:is-alone={reading.n === null}>{reading.unit}</span>
+          </span>
+          <span class="proc-when">{dateDetail}</span>
         </span>
+      {:else}
+        <span class="proc-when">{dateDetail}</span>
       {/if}
-      <span class="proc-when">{dateDetail}</span>
     </button>
     {#if onedit}
       <button
@@ -281,10 +288,21 @@
      words on it take the ink proven against that stripe rather than the
      role's small-text ink, which is below 4.5:1 on most bands and absent on
      one (role.ts). */
+  .proc-reading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
   .proc-block {
     display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    min-width: 92px;
+    max-width: 150px;
+    text-align: center;
     padding: var(--space-1) var(--space-3) var(--space-2);
     background: var(--role-draw, var(--accent));
     border: 1px solid var(--outline);

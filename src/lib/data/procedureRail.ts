@@ -88,33 +88,37 @@ export interface ProcedureRailFacts {
   consults: readonly { id: string; epochDay: number }[];
 }
 
-/** Where a day sits along the rail, 0 at its left end and 1 at its right,
-    with the anchor - the surgery date, or today while there is none -
-    always at 0.5.
+/** A day as a signed distance from the anchor under a square root.
 
-    Square root of the distance from the anchor rather than the distance
-    itself, careSpine's scale and for careSpine's reason: a procedure
-    consulted twice in the fortnight before the operation and now four days
-    out from it is the ordinary arrangement, and under a linear scale
-    against a first consult a year back those three marks share the last
-    four percent of the left half. Under a root scale the near days get the
-    room and the far ones compress towards the ends, which is the shape of
-    the question.
+    Square root of the distance rather than the distance itself, careSpine's
+    scale and for careSpine's reason: a procedure consulted twice in the
+    fortnight before the operation and now four days out from it is the
+    ordinary arrangement, and under a linear scale against a first consult a
+    year back those three marks share four percent of the line. Under a root
+    scale the near days get the room and the far ones compress towards the
+    ends, which is the shape of the question.
 
-    What it costs is that a length along this rail is not a number of days,
-    so nothing here may be read off as a measurement. That is why the card
-    writes its own dates and its own day count beside the rail, and why the
-    rail carries no axis, no ticks between the marks and no scale. The
-    transform is monotonic, so two marks are never drawn out of order. */
+    Signed and monotonic across zero, so the two sides are one scale rather
+    than two halves stretched to fit. That matters here in a way it does not
+    on the care rail: the date is what this line is about, so where it falls
+    along the line has to be a fact about the journey. Half of a rail either
+    side would pin the date to the middle and today to whichever end, and
+    every procedure past its date would then draw the same right half. */
+const scaled = (epochDay: number, anchor: number): number =>
+  Math.sign(epochDay - anchor) * Math.sqrt(Math.abs(epochDay - anchor));
+
+/** Where a day sits along the rail, 0 at its left end and 1 at its right.
+
+    A length along this rail is not a number of days, so nothing here may be
+    read off as a measurement. That is why the card writes its own dates and
+    its own day count beside the rail, and why the rail carries no axis, no
+    ticks between the marks and no scale: it says order and rough nearness,
+    and the days are written down beside it. */
 function positionOf(epochDay: number, anchor: number, fromEpochDay: number, toEpochDay: number): number {
   const day = Math.min(Math.max(epochDay, fromEpochDay), toEpochDay);
-  if (day === anchor) return 0.5;
-  if (day < anchor) {
-    const back = anchor - fromEpochDay;
-    return back === 0 ? 0.5 : 0.5 - 0.5 * Math.sqrt((anchor - day) / back);
-  }
-  const forward = toEpochDay - anchor;
-  return forward === 0 ? 0.5 : 0.5 + 0.5 * Math.sqrt((day - anchor) / forward);
+  const left = scaled(fromEpochDay, anchor);
+  const span = scaled(toEpochDay, anchor) - left;
+  return span === 0 ? 0 : (scaled(day, anchor) - left) / span;
 }
 
 /** The rail. Always one: unlike the care rail, which can have nothing but
@@ -168,10 +172,12 @@ export function procedureRail(facts: ProcedureRailFacts, todayEpochDay: number):
   );
 
   const todayPosition = positionOf(todayEpochDay, anchor, fromEpochDay, toEpochDay);
+  const pivot =
+    facts.surgeryEpochDay === null ? null : positionOf(facts.surgeryEpochDay, anchor, fromEpochDay, toEpochDay);
   const gap =
-    facts.surgeryEpochDay === null
+    pivot === null
       ? null
-      : { from: Math.min(0.5, todayPosition), to: Math.max(0.5, todayPosition) };
+      : { from: Math.min(pivot, todayPosition), to: Math.max(pivot, todayPosition) };
 
-  return { fromEpochDay, toEpochDay, pivot: facts.surgeryEpochDay === null ? null : 0.5, gap, marks };
+  return { fromEpochDay, toEpochDay, pivot, gap, marks };
 }

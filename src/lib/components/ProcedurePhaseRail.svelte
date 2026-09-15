@@ -120,7 +120,7 @@
     border-radius: 50%;
     translate: calc(var(--at) * 100cqw) 0;
     background: var(--bg);
-    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--role-draw, var(--accent)) 70%, var(--bg));
+    box-shadow: inset 0 0 0 2px var(--role-draw, var(--accent));
     transition: translate var(--dur-med) var(--ease-out);
     animation: proc-mark-in var(--dur-slow) var(--ease-out) both;
   }
