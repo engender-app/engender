@@ -65,7 +65,7 @@
   import { calendarDuration, localDateFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { defaultSpan, eraOfferDue, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
+  import { defaultSpan, eraBands, eraOfferDue, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import {
@@ -172,10 +172,25 @@
     span = defaultSpan(start, today);
     live = span;
   });
+  /* Picking an existing era counts as handled too (redesign ticket 48
+     review): tapping an era band on the rail (SpanTimeline's own `pickEra`)
+     settles the span on that era's exact dates through this same
+     `pickSpan`, and a stretch already named is not the "just dragged this
+     out" moment the offer is for - naming it again would only fail
+     `eras.ts`'s own overlap invariant. Exact-match only, not "overlaps
+     one": a drag that reaches past or across an existing era is still a new
+     stretch worth offering, and saving it is exactly what the sheet's
+     conflict answer (the "eras" flow above) is for. Resolved with
+     `eraBands`, the same clamp `SpanTimeline` draws the bands with, so an
+     open-ended era is matched at the day it draws as its edge. */
+  let existingEraSpans = $derived(
+    railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
+  );
   const pickSpan = (next: Span) => {
     span = next;
     live = next;
-    eraOfferSpan = eraOfferDue(next, handledEraOfferSpans) ? next : null;
+    const isExistingEra = existingEraSpans.some((era) => era.start === next.start && era.end === next.end);
+    eraOfferSpan = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
   };
 
   /* The "name this stretch" offer (redesign ticket 48): once a span the
