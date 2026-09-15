@@ -99,6 +99,7 @@ try {
     await page.evaluate(() => {
       for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
       document.body.classList.remove('has-demo-bar');
+      for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
     });
     await page.waitForTimeout(150);
 
