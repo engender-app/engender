@@ -23,9 +23,11 @@
     /** No hairline and no fill: the day is not one this strip's schedule
         had anything to say about (phase 10 redesign ticket 44). It still
         holds its column, so a week keeps its shape and today keeps its
-        place in it. A blank cell and an empty-but-expected one differ by
-        the outline alone and never by colour - nothing here grades a day
-        (ADR-0012). */
+        place in it, and it carries a small neutral-ink dot (kit.css,
+        marked on review 2026-09-15) rather than sitting empty - a blank
+        cell and an empty-but-expected one differ by the outline alone and
+        never by colour, nothing here grades a day (ADR-0012), but neither
+        one is bare space. */
     blank?: boolean;
     /** What a screen reader says for the cell - it is the only thing here
         that carries the day's meaning. */

@@ -1578,16 +1578,21 @@ button.kit-strip-day .kit-strip-cell {
   initial-value: 0;
 }
 
-/* A day the strip's schedule said nothing about (ticket 44). It keeps its
-   column so the week holds its shape, and it differs from an
-   expected-but-empty day by the hairline alone: same ground, no colour
-   between them, because a run of days with nothing logged is not a thing
-   this app shades (ADR-0012). Written as `transparent` rather than by
-   removing the border, so the cell's box is the same size as every other
-   one and the row cannot shift by a pixel as days change state. */
+/* A day the strip's schedule said nothing about (ticket 44, marked on
+   review 2026-09-15: bare emptiness read as a hole in the row rather than
+   a day with nothing to say). It keeps its column so the week holds its
+   shape, and it differs from an expected-but-empty day by the hairline
+   alone - same ground, no colour between them, because a run of days with
+   nothing logged is not a thing this app shades (ADR-0012). The mark is a
+   small dot in the same neutral ink the hairline itself is drawn in
+   (`--outline`), never the flag's colour, so a blank day is still legible
+   as a day without becoming a third thing the strip scores. Written as a
+   `radial-gradient` on `background` rather than a border or an extra
+   element, so the cell's box stays the same size as every other one and
+   the row cannot shift by a pixel as days change state. */
 .kit-strip-cell[data-blank] {
   border-color: transparent;
-  background: none;
+  background: radial-gradient(circle at center, var(--outline) 1.5px, transparent 1.6px);
 }
 
 .kit-strip-day.is-today .kit-strip-cell {
