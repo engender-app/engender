@@ -3986,7 +3986,9 @@ try {
 
   const NOT_EMPTY_ROUTES = [
     ['/body/measurements', 'measurements-empty'],
-    ['/body/sizes', 'sizes-empty'],
+    // Both halves of the merged screen (redesign ticket 61) - the size log
+    // keeps its own empty-state marker under the same roof.
+    ['/body/measurements', 'sizes-empty'],
     ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
     ['/settings/labs', 'labs-empty'],

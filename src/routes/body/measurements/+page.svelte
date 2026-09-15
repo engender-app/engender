@@ -410,7 +410,7 @@
       <div class="screen-part">
         {#if changes.length}
           <div class="changes" data-size-changes transition:disclose>
-            {#each changes as change (`${change.category} ${change.brand}`)}
+            {#each changes as change (JSON.stringify([change.category, change.brand]))}
               <p class="change">
                 <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
                 <span class="change-says">
