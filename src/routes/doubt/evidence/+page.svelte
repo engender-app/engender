@@ -24,6 +24,7 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
+  import { COUNTEREVIDENCE_LIMIT } from '$lib/data/counterevidence';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import Icon from '$lib/components/Icon.svelte';
@@ -37,7 +38,6 @@
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
 
-  const COUNTEREVIDENCE_LIMIT = 20;
   const HISTORY_LIMIT = 50;
 
   let today = $derived(todayEpochDay());

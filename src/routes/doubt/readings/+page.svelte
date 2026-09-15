@@ -20,6 +20,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
+  import { COUNTEREVIDENCE_LIMIT } from '$lib/data/counterevidence';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { atGrain } from '$lib/charts/grain';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -36,7 +37,6 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
 
-  const COUNTEREVIDENCE_LIMIT = 20;
   const TIMELINE_DAYS = 30;
 
   let today = $derived(todayEpochDay());
