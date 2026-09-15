@@ -58,6 +58,20 @@ interface PersonaMilestone extends MilestoneInput {
   hasPhoto: boolean;
 }
 
+/** One named stretch of the persona's own timeline (redesign ticket 48).
+    Eras are read by seven screens and made on only one, so a fixture with
+    none left every one of those readings silently blank - including in the
+    audit that found it. Both bounds are dated rather than one left open:
+    an era with an open end would collide with `assertEraFits`'s own
+    invariant against a hand-authored one the walkthrough adds ("all of
+    it", both bounds open) the moment either of them tried to have an open
+    end too. */
+interface PersonaEra {
+  name: string;
+  startEpochDay: number;
+  endEpochDay: number;
+}
+
 /** An appointment plus the entry that debriefs it, for the one appointment
     that carries one (phase 8 features ticket 64). Linked by the
     appointment's own id since ticket 58 (checklists.ts's
@@ -73,6 +87,7 @@ interface Persona {
   presentations: PersonaPresentation[];
   entries: PersonaEntry[];
   milestones: PersonaMilestone[];
+  eras: PersonaEra[];
   reminders: ReminderInput[];
   appointments: PersonaAppointment[];
   documents: DocumentInput[];
@@ -302,6 +317,13 @@ export function persona(today: number = todayEpochDay()): Persona {
       { name: 'Name-change hearing', epochDay: today + 16, templateKey: 'name_change', hasPhoto: false },
       { name: 'Voice workshop weekend', epochDay: today + 42, templateKey: null, hasPhoto: false },
     ],
+    /* Derived from `today` alone, the same rule the milestones above and
+       the presentation and body-region draws earlier in this file follow:
+       nothing here calls `r()`, so adding it moves no existing entry's mood,
+       note or tag. The bounds are the same two days two of the milestones
+       above already mark - coming out, then HRT - so the band on the rail
+       and the marks on it agree about where one chapter ended. */
+    eras: [{ name: 'Before HRT', startEpochDay: today - 940, endEpochDay: today - 745 }],
     reminders: [
       { title: 'Estradiol patch', type: 'med', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
       { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },

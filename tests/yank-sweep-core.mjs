@@ -102,6 +102,7 @@ const SCENES = [
   { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, is: 'a deep screen back to its door' },
   { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the sheet rising' },
   { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
+  { name: 'span-offer-appear', at: '/stats', act: '[data-span-milestone]', when: 'persona', is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
 
