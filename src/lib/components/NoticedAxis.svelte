@@ -68,7 +68,15 @@
       marks standing on it need under the first lane. Both are read by the
       style block through `--lane-h`; the height is computed here because a
       drawing that knows how many lanes it has should not ask CSS to work
-      out its own box. */
+      out its own box.
+
+      This height steps rather than travels when a marker added in the
+      deepest month takes the stack one lane further, and the paragraphs
+      under the axis step down with it. It stays a step because animating it
+      is animating `height`, which the performance contract admits only with
+      an entry in motion-system.test.ts's LAYOUT_EXEMPT and a benchmark
+      behind it (materials.css) - 18px once, under the sheet that is closing
+      over it, is not what that budget is for. */
   const LANE_H = 18;
   const PLOT_BASE = 22;
   let plotHeight = $derived(PLOT_BASE + Math.max(axis.lanes - 1, 0) * LANE_H);
@@ -128,7 +136,7 @@
 </script>
 
 <div class="noticed-axis" data-noticed-axis>
-  <p class="na-summary" data-noticed-summary>{summary}</p>
+  <p class="na-summary">{summary}</p>
 
   <!-- One uncovering for the whole drawing, left to right, so the line and
        every mark on it arrive in the order they happened and no dot is
@@ -137,9 +145,6 @@
        the one thing this wipe cannot cover. -->
   <div class="na-plot" style:--lane-h="{LANE_H}px" style:height="{plotHeight}px" in:wipe={{ authored: true }}>
     <span class="na-line"></span>
-    {#each axis.ticks as tick (tick.epochDay)}
-      <span class="na-month" style:--at={tick.position}></span>
-    {/each}
     <span class="na-today" style:--at={axis.todayPosition}></span>
     {#each axis.marks as mark (mark.key)}
       <button
@@ -155,8 +160,19 @@
     {/each}
   </div>
 
-  <div class="na-months">
+  <!-- The months are ticked under the line rather than ruled through the
+       drawing. Full-height gridlines put a second vertical stroke beside
+       every stem in a stack, which read as taller stems; a mark high in a
+       stack is placed by its own stem reaching the line, so the grid was
+       carrying nothing the drawing did not already say.
+
+       Decoration, the way ProcedurePhaseRail's whole rail is: a reader
+       announced "0 3 6 9 12 15" has been read the axis furniture and not
+       the axis. The sentence is above, and every mark carries its own name
+       and date. -->
+  <div class="na-months" aria-hidden="true">
     {#each axis.ticks as tick (tick.epochDay)}
+      <span class="na-month" style:--at={tick.position}></span>
       <span class="na-month-label" style:--at={tick.position}>{tickLabel(tick.monthsSinceOnset, tick.epochDay)}</span>
     {/each}
   </div>
@@ -164,13 +180,13 @@
   <p class="na-caption muted small">{axisCaption}</p>
 
   {#if directionsPresent.length > 1}
-    <p class="na-legend muted small">
+    <div class="na-legend muted small">
       {#each directionsPresent as direction (direction)}
         <span class="na-legend-item">
           <span class="na-legend-swatch" {...roleAttrs(roleFor(direction))}></span>{directionLabel(direction)}
         </span>
       {/each}
-    </p>
+    </div>
   {/if}
 </div>
 
@@ -205,16 +221,6 @@
     background: var(--text-2);
   }
 
-  .na-month {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 1px;
-    background: var(--outline);
-    translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset))) 0;
-  }
-
   .na-today {
     position: absolute;
     top: 0;
@@ -225,13 +231,17 @@
     translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset))) 0;
   }
 
-  /* A mark is a control and carries its own tap target, which is narrower
+  /* A mark is a control and carries its own tap target, which is smaller
      than the app's 48px floor for the reason CurveMarkers' own targets are:
-     at 48px two changes noticed a fortnight apart steal each other's taps.
-     22px is wider than the dot and narrower than the gap the lanes
-     guarantee (noticedAxis.ts's MARK_MIN_GAP, five per cent of the line, or
-     about 26px at the narrowest width the app supports), so no two targets
-     ever overlap however crowded the months are. */
+     at 48px two changes noticed a fortnight apart steal each other's taps,
+     and the row for this record is on the same screen at full size.
+
+     22 by 18, and both halves are the same rule - a target reaches halfway
+     to its neighbour and no further. Across, the lanes guarantee
+     MARK_MIN_GAP of the line between two marks in one lane, which is 24px
+     at 320px, the narrowest width the app supports; up and down, a lane is
+     18px, so half of it each way is the whole box. Measured at 320 and 390:
+     no two targets overlap on the demo's own crowded month. */
   .na-mark {
     position: absolute;
     left: 0;
@@ -272,10 +282,17 @@
     top: 50%;
     width: 1px;
     margin-left: -0.5px;
-    height: max(0px, calc(var(--lane) * var(--lane-h) - var(--lane-h) / 2));
+    height: calc(var(--lane) * var(--lane-h));
     background: var(--text-2);
   }
 
+  /* Both spellings, the pair every other surface here keeps: the media query
+     for the device setting and the attribute for the app's own. The mark's
+     own arrival needs neither - `wipe` reads the same two settings itself
+     and cuts instead. */
+  @media (prefers-reduced-motion: reduce) {
+    .na-mark { transition: none; }
+  }
   :global(html[data-a11y-motion='reduce']) .na-mark {
     transition: none;
   }
@@ -286,14 +303,23 @@
   .na-months {
     position: relative;
     container-type: inline-size;
-    height: 14px;
-    margin-top: var(--space-1);
+    height: 18px;
+  }
+
+  .na-month {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 4px;
+    background: var(--text-2);
+    translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset))) 0;
   }
 
   .na-month-label {
     position: absolute;
     left: 0;
-    top: 0;
+    top: 6px;
     width: 32px;
     margin-left: -16px;
     text-align: center;

@@ -39,10 +39,16 @@ export const AXIS_MIN_SPAN_DAYS = 31;
 
     A share of the line rather than a number of days, because what collides
     is dots and not dates: a month is a fifth of a six-month line and a
-    fortieth of a three-year one. Five per cent is 15px of a 300px line, or
-    about seven clear pixels between two 8px dots at the narrowest width the
-    app supports. */
-export const MARK_MIN_GAP = 0.05;
+    fortieth of a three-year one.
+
+    Nine per cent, from a measurement rather than a taste. A mark is a
+    control and its tap target is 22px wide (NoticedAxis.svelte says why it
+    is that and not 48), and at 320px - the narrowest width the app supports
+    - the line is 270px, so two targets stop overlapping at 22/270, or
+    0.081. Anything under that puts two marks in one lane whose targets
+    steal each other's taps, which is exactly what the lanes exist to
+    prevent. */
+export const MARK_MIN_GAP = 0.09;
 
 /** The most months the axis will name. Eight labels is what fits across a
     320px screen at the axis's own type size without the months touching. */

@@ -11,7 +11,16 @@
      instant cut, and the chevron has already turned to say what happened.
 
      The group is a list card rather than a `.card` holding a `.list-group`,
-     which was two containers deep for one list. */
+     which was two containers deep for one list.
+
+     The screen opens on the axis now (phase 10 redesign ticket 57,
+     DIRECTION.md rule 16): every change already marked, at the month it was
+     noticed, before any group is opened. The groups are the log under that
+     reading and are otherwise untouched - they are still where a change is
+     marked for the first time, and still where the literature's bands are
+     drawn against the one change each belongs to. Two drawings on one
+     screen answering two questions: when did I notice this, and what do the
+     tables say about when people usually do. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -243,13 +252,19 @@
   {#if episodesQuery.loading || markersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else}
-    <!-- The notice used to replace the whole screen, so a journal with no
-         regimen in it saw nothing it had marked (ticket 57). It says what
-         setting a regimen would buy - months counted from a start day
-         instead of calendar months - and everything below it draws either
-         way: somebody can notice a change before they are on anything, and
-         somebody restoring a journal may not have typed a regimen back in
-         yet. -->
+    <!-- What is true now, before the records (DIRECTION.md rule 16): every
+         change already marked, at the month it was noticed, on one line. -->
+    <div class="screen-part">
+      <NoticedAxis changes={noticedChanges} {anchorEpochDay} todayEpochDay={today} onOpen={openEditorByKey} />
+    </div>
+
+    <!-- Under the axis rather than over it, and no longer instead of it.
+         This notice used to replace the whole screen, so a journal with no
+         regimen in it saw nothing it had marked (ticket 57) - and a person
+         can notice a change before they are on anything, or restore a
+         journal and not have typed a regimen back in yet. It reads as what
+         a regimen would buy the line above it: months counted from a start
+         day instead of calendar months. -->
     {#if anchorEpochDay == null}
       <div class="screen-part">
         <Notice
@@ -262,12 +277,6 @@
         />
       </div>
     {/if}
-
-    <!-- What is true now, before the records (DIRECTION.md rule 16): every
-         change already marked, at the month it was noticed, on one line. -->
-    <div class="screen-part">
-      <NoticedAxis changes={noticedChanges} {anchorEpochDay} todayEpochDay={today} onOpen={openEditorByKey} />
-    </div>
 
     <!-- All three of these are about the literature's bands, so they keep
          the company of the chart that draws them: with no regimen there is
