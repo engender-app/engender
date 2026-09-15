@@ -3,6 +3,7 @@ import {
   DEFAULT_SPAN_DAYS,
   defaultSpan,
   eraBands,
+  eraOfferDue,
   historyStart,
   moveHandle,
   nearestHandle,
@@ -204,5 +205,28 @@ describe('yearTicks: one mark per new year inside the rail', () => {
 
   it('has no tick on a rail that crosses no new year', () => {
     expect(yearTicks(19730, 19800)).toEqual([]);
+  });
+});
+
+describe('eraOfferDue: the "name this stretch" offer raises once per span', () => {
+  it('is due for a span nothing has handled yet', () => {
+    expect(eraOfferDue({ start: 20600, end: 20630 }, [])).toBe(true);
+  });
+
+  it('is not due for the exact span already handled', () => {
+    const span = { start: 20600, end: 20630 };
+    expect(eraOfferDue(span, [span])).toBe(false);
+  });
+
+  it('is not due for a span that only overlaps a handled one, nudged a day', () => {
+    expect(eraOfferDue({ start: 20601, end: 20630 }, [{ start: 20600, end: 20630 }])).toBe(false);
+  });
+
+  it('is not due for a span narrowed inside one already handled', () => {
+    expect(eraOfferDue({ start: 20610, end: 20620 }, [{ start: 20600, end: 20630 }])).toBe(false);
+  });
+
+  it('is due again for a span that shares no day with anything handled', () => {
+    expect(eraOfferDue({ start: 20700, end: 20730 }, [{ start: 20600, end: 20630 }])).toBe(true);
   });
 });

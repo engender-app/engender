@@ -74,13 +74,16 @@
   let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
   let mutedEraUuids = $derived(mutedQuery.value ?? new Set<string>());
 
-  /** The start a "start an era here" arrival brought with it, read by
-      `blank` on the one openEditor call below. A plain let and not `$state`:
-      it is an argument in flight for one call, and nothing renders it. */
+  /** The bounds an arrival brought with it, read by `blank` on the one
+      openEditor call below. Plain lets and not `$state`: each is an argument
+      in flight for one call, and nothing renders them. `arrivingEnd` is set
+      only by the span offer (redesign ticket 48) - "start an era here"
+      hands over a day with no end in mind. */
   let arrivingStart = '';
+  let arrivingEnd = '';
 
   const record = recordEditor<Era, EraDraft>({
-    blank: () => ({ name: '', start: arrivingStart, end: '' }),
+    blank: () => ({ name: '', start: arrivingStart, end: arrivingEnd }),
     fromRecord: (era) => ({
       id: era.id,
       name: era.name,
@@ -151,17 +154,24 @@
     return m.era_span_open_both();
   }
 
-  /* "Start an era here" hands the day over as a query parameter and this
-     opens the editor on it. The parameter is dropped again on the way in, so
-     the sheet does not reopen when someone comes back to this screen from
-     the era they just wrote. */
+  /* "Start an era here" hands one day over as a query parameter and this
+     opens the editor on it. The span offer (redesign ticket 48) hands over
+     two - the span's own start and end - so `end` is read the same way and
+     left absent when there is no second day, which is `start` alone's
+     existing case. Both parameters are dropped again on the way in, so the
+     sheet does not reopen when someone comes back to this screen from the
+     era they just wrote. */
   let requestedStart = $derived(page.url.searchParams.get('start'));
+  let requestedEnd = $derived(page.url.searchParams.get('end'));
   $effect(() => {
     const day = Number(requestedStart);
     if (requestedStart === null || !Number.isInteger(day)) return;
     arrivingStart = dateInputValueFromEpochDay(day);
+    const endDay = Number(requestedEnd);
+    arrivingEnd = requestedEnd !== null && Number.isInteger(endDay) ? dateInputValueFromEpochDay(endDay) : '';
     record.openEditor(null);
     arrivingStart = '';
+    arrivingEnd = '';
     void replaceRoute('/transition/eras', { noScroll: true, keepFocus: true });
   });
 </script>

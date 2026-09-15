@@ -5068,14 +5068,25 @@ try {
    After "Fill every feature" rather than on a first-run journal, because the
    line saying what an open bound comes to is computed against the journal's
    own first and last entry: on an empty journal there is nothing to clamp to
-   and the line is correctly absent. The demo seeds no era of its own, so
-   this flow still starts from the empty state and authors both of them. */
+   and the line is correctly absent. The persona now seeds one era of its own
+   (redesign ticket 48, "Before HRT", both bounds dated) - checked for, then
+   cleared, so the rest of this flow keeps testing "all of it" and "earlier
+   still" against the empty slate they were written against: "all of it" is
+   both bounds left open, which is the one era that would collide with
+   *any* other era on the overlap check (`eras.ts`'s `spansOverlap` returns
+   true whenever neither side can prove non-overlap, and an era with both
+   bounds null can never prove either side). */
 try {
   await page.goto(BASE + '/transition/eras', { waitUntil: 'networkidle' });
   await booted();
-  if ((await page.locator('[data-notice="eras-empty"]').count()) === 0) {
-    throw new Error('a journal with no eras should show its empty state');
+  const startingRows = await page.locator('[data-era]').innerText();
+  if (!startingRows.includes('Before HRT')) {
+    throw new Error(`the persona's own era should already be here, got: ${startingRows}`);
   }
+  await page.click('[data-era]');
+  await page.click('[data-delete-era]');
+  await page.click('[data-confirm-delete-era]');
+  await page.waitForSelector('[data-notice="eras-empty"]');
 
   // Both bounds left alone. An era with neither is the case that has to save
   // without a date being entered anywhere.
@@ -5138,6 +5149,69 @@ try {
   ok('eras: an open bound is a choice, a collision is answered in the sheet, and deleting is not blocked');
 } catch (e) {
   fail('eras', e);
+}
+
+/* The span offer (redesign ticket 48): dragging or tapping a span on Look
+   back's rail offers to name it, once, on the rail itself - never a Today
+   notice or a tile. Two things worth walking that a unit test cannot reach
+   from here: the offer really does stop coming back once dismissed for a
+   span the person keeps returning to, and the link it opens really does
+   carry the settled span's own two days into the era editor rather than a
+   default. `eraOfferDue`'s own overlap arithmetic (lookBackSpan.test.ts) is
+   what decides *whether* a span counts as handled; this only proves the
+   screen wires that decision to the DOM. */
+try {
+  const { dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
+
+  // Dismissing the offer stops it coming back for the same span.
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  const mark = page.locator('[data-span-milestone]').first();
+  await mark.waitFor();
+  await mark.click();
+  await page.waitForSelector('[data-era-offer]');
+  if (!(await page.locator('[data-era-offer-confirm]').count())) {
+    throw new Error('the era offer has no way to name it');
+  }
+  await page.locator('[data-era-offer-dismiss]').click();
+  await page.waitForSelector('[data-era-offer]', { state: 'detached' });
+  await mark.click();
+  await page.waitForTimeout(600);
+  if (await page.locator('[data-era-offer]').count()) {
+    throw new Error('a span already dismissed raised the offer again');
+  }
+
+  // Naming it opens the era editor with the settled span's own two dates,
+  // read off the rail rather than assumed, since which milestone this demo
+  // build happens to draw first is not this flow's concern.
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  await mark.waitFor();
+  await mark.click();
+  await page.waitForSelector('[data-era-offer]');
+  const settled = await page.locator('[data-span-timeline]').evaluate((el) => ({
+    start: Number(el.dataset.spanStart),
+    end: Number(el.dataset.spanEnd)
+  }));
+  await page.locator('[data-era-offer-confirm]').click();
+  await page.waitForURL('**/transition/eras');
+  await page.waitForSelector('#era-name');
+  const gotStart = await page.locator('input[name="era-start"]').inputValue();
+  const gotEnd = await page.locator('input[name="era-end"]').inputValue();
+  const wantStart = dateInputValueFromEpochDay(settled.start);
+  const wantEnd = dateInputValueFromEpochDay(settled.end);
+  if (gotStart !== wantStart || gotEnd !== wantEnd) {
+    throw new Error(`the era editor opened with the wrong dates: got ${gotStart}..${gotEnd}, wanted ${wantStart}..${wantEnd}`);
+  }
+  if (new URL(page.url()).search) throw new Error('the query parameters that opened the era editor were never stripped');
+
+  // Cancelled rather than saved, so this leaves no era behind for later flows.
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
+  ok('span offer: dismissing stops it, and naming a span opens the editor with its own two dates');
+} catch (e) {
+  fail('span offer', e);
 }
 
 /* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
