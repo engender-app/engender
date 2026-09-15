@@ -22,6 +22,7 @@
 
 import { dateInputValueFromEpochDay, localDateFromEpochDay, epochDayFromLocalDate } from './epochDay';
 import type { EraSpan, JournalBounds } from './eras';
+import { spanOverlapsRange } from './span';
 import { wrappedRangeQuery } from './wrappedRange';
 
 /** Both ends inclusive, the way `recap(from, to)` takes a range. */
@@ -189,6 +190,16 @@ export function spanRangeQuery(span: Span): string {
     start: dateInputValueFromEpochDay(span.start),
     end: dateInputValueFromEpochDay(span.end)
   });
+}
+
+/** Whether a settled span (redesign ticket 48) is due the "name this
+    stretch" offer, given the spans already handled - named or dismissed -
+    this session. Never for a span overlapping one already handled, which is
+    what keeps a handle nudged by a day, or a span narrowed inside the one
+    just dismissed, from raising the offer again for what is substantially
+    the same stretch. */
+export function eraOfferDue(span: Span, handled: readonly Span[]): boolean {
+  return !handled.some((h) => spanOverlapsRange({ startEpochDay: h.start, endEpochDay: h.end }, span.start, span.end));
 }
 
 /** Each 1 January strictly after the rail's start and no later than today:
