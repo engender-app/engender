@@ -11,9 +11,10 @@
    The order is the ticket's own: the saved good moments, the comfort items,
    the counterevidence check, the readings. The directory sits above them
    because that is where it already sat on the screen this replaces - a
-   panel directly under the breath - and ticket 63, which binds the
-   directory to Safe space properly, is where its placement is actually
-   decided.
+   panel directly under the breath. Ticket 63 confirmed this placement and
+   decided, against its own original scope, to leave the `resources` row on
+   the More hub too (`hubRows.ts`, `support` group) rather than remove it -
+   the directory is reachable from both.
 
    Held here rather than written into the screen for the reason `hubRows.ts`
    holds the hub's own: an order somebody argued for is a fact about the
