@@ -338,7 +338,6 @@
   "hub_sub_voice_benchmark": "Przeczytany fragment i liczby z niego",
   "hub_sub_wear": "Czas noszenia, na żywo albo później",
   "hub_sub_effects": "Dzień, w którym pojawiła się każda zmiana",
-  "hub_sub_clinician_summary": "Jedna strona do przekazania",
   "hub_sub_roadmap": "Kroki, które planujesz",
   "hub_sub_letters": "Pisane teraz, do otwarcia w wybranym dniu",
   "hub_sub_presentations": "Sposoby, w jakich się pokazujesz",
@@ -3673,6 +3672,25 @@
   "documents_empty_title": "Jeszcze nic tu nie ma",
   "documents_empty_body": "Zrób zdjęcie kartki, napisz, co to jest i z jakiego jest dnia. Leży zaszyfrowane, tak jak reszta.",
   "documents_empty_action": "Dodaj dokument",
+  "documents_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} dokument · {size}",
+        "countPlural=few": "{count} dokumenty · {size}",
+        "countPlural=many": "{count} dokumentów · {size}",
+        "countPlural=other": "{count} dokumentów · {size}"
+      }
+    }
+  ],
+  "document_kind_pdf": "PDF",
+  "document_kind_image": "Zdjęcie",
   "document_new_sheet": "Nazwij ten dokument",
   "document_title_label": "Co to jest",
   "document_title_placeholder": "Opinia psychiatryczna",

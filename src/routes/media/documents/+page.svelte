@@ -1,21 +1,44 @@
 <script lang="ts">
-  /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065).
+  /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065; phase
+     10 redesign ticket 58).
 
-     A row is the paper icon, the title and the date, and never the page
-     itself. That is ADR-0065's decision and it is about the room the phone
-     is held in rather than about the schema: a grid of thumbnails of
-     scanned diagnoses would be the most glanceable screen in the app.
-     Disguise is branding only and a per-document hide flag is out
-     (ADR-0063), so layout is what carries it - the page image lives one
-     deliberate tap away, on the document's own screen.
+     A row never draws the page itself - that is ADR-0065's decision and it
+     is about the room the phone is held in rather than about the schema: a
+     grid of thumbnails of scanned diagnoses would be the most glanceable
+     screen in the app. Disguise is branding only and a per-document hide
+     flag is out (ADR-0063), so layout is what carries it - the page image
+     lives one deliberate tap away, on the document's own screen. What
+     changed under ticket 58: a row now also carries the kind (a PDF and a
+     photograph wear different marks, `documents`/`image` from the existing
+     icon set - no new glyph, ADR-0065's ban is on the page, not on saying
+     which file format it is) and, where the paper is filed under
+     something, that thing's own name rather than just its kind - the
+     picker's own four live reads (documentTargets.svelte.ts), reused here
+     rather than re-wired, since resolving one target and forty are the
+     same four queries.
 
-     Importing is two steps and the order matters: the file is chosen first,
-     and the sheet that asks for a title and a date only opens once there is
-     something to file. Backing out of the picker leaves no half-filled
-     sheet behind. The title is required because a document has no other
-     handle - search matches it and nothing else - and there is no honest
-     default: a scan is called `scan_0142.jpg` and "Document 3" is worse
-     than asking. */
+     Grouped by kind rather than by the specific record: the picker's own
+     four sections (Milestones / Surgery journey / Regimen / Roadmap) are
+     already the vocabulary a person filing a document sees, reusing them
+     here needs no new copy, and it keeps the group count bounded at five
+     however many milestones or goals somebody has - a "which one" question
+     the row's own attachment line already answers. Unfiled papers get
+     their own group, last.
+
+     DIRECTION.md rule 16 ("an area screen opens by saying what is true
+     now"): a plain present-reading row - how many documents there are and
+     how much room they take - opens the screen, above the groups. Its
+     total is a live file-size query (photoFiles.ts's `totalSize`, summing
+     the stored file only, not its incidental thumbnail cache) rather than
+     anything stored on the row, so it needs its own async read.
+
+     Importing is two steps and the order matters: the file is chosen
+     first, and the sheet that asks for a title and a date only opens once
+     there is something to file. Backing out of the picker leaves no
+     half-filled sheet behind. The title is required because a document has
+     no other handle - search matches it and nothing else - and there is no
+     honest default: a scan is called `scan_0142.jpg` and "Document 3" is
+     worse than asking. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -26,12 +49,18 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { documentTargets } from '$lib/components/documentTargets.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
+  import { isPdfDocument } from '$lib/data/journal/documents';
+  import { groupDocumentsByTarget, type DocumentGroupKind } from '$lib/data/journal/documentGroups';
   import type { DocumentFile } from '$lib/data/documents/accept';
+  import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
   import type { JournalDocument } from '$lib/data/types';
-  import { documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
+  import { documentsSummaryText } from '$lib/data/vocabulary/documentsSummary';
+  import { totalSize } from '$lib/stores/photoFiles';
   import { pickDocument } from '$lib/stores/documentPicking';
   import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -81,13 +110,58 @@
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* ADR-0065: "a row is a paper icon, the title, the date and the link."
-     Generic per-kind wording rather than the target's own name - resolving
-     that would mean this list fetching all four kinds' full lists just to
-     label one line each, where the target's own name is already one tap
-     away on the document's own screen. */
-  const linkLabel = (document: { targetKind: JournalDocument['targetKind'] }): string | false =>
-    document.targetKind !== null && documentTargetKindLabel(document.targetKind);
+  /* The file's own kind - the two the app can hold, read off the name the
+     way the document's own screen already does (documents.ts's
+     `isPdfDocument`), never off what the picker claimed. One read of the
+     file name per row rather than one per fact drawn from it. */
+  const documentKind = (fileName: string) =>
+    isPdfDocument(fileName)
+      ? { icon: 'documents', word: m.document_kind_pdf() }
+      : { icon: 'image', word: m.document_kind_image() };
+  const dayAndKind = (document: JournalDocument, word: string) => `${dayLabel(document.epochDay)} · ${word}`;
+
+  const targets = documentTargets();
+
+  /** The specific thing a document is filed under, resolved through the
+      same four live reads the picker and the document's own screen use -
+      not the generic per-kind wording the flat list used before ticket 58,
+      which existed only to avoid this exact cost. `false` while the reads
+      are still landing or there is nothing to say, matching `ListRow`'s
+      own "no line" convention (`subtitle`'s `RowLine`). */
+  const attachmentLine = (document: JournalDocument): string | false => {
+    if (document.targetKind === null || document.targetId === null) return false;
+    const resolved = targets.resolve({ kind: document.targetKind, id: document.targetId });
+    if (resolved.state === 'found') return resolved.text;
+    if (resolved.state === 'gone') return m.document_target_gone();
+    return false;
+  };
+
+  /* The group headings: the picker's own four section titles
+     (`DOCUMENT_TARGET_SECTION_HEADING`, shared with documentTargets.svelte.ts
+     rather than re-declared), and `document_link_none` ("Not linked to
+     anything") for the leftover bucket - the same fact the document's own
+     screen already states about one paper, said here about a whole group
+     of them. */
+  const groupHeading = (kind: DocumentGroupKind): string =>
+    kind === 'unattached' ? m.document_link_none() : DOCUMENT_TARGET_SECTION_HEADING[kind]();
+
+  let groups = $derived(groupDocumentsByTarget(documentsQuery.rows));
+
+  /* The present reading (DIRECTION.md rule 16): a live size query rather
+     than a stored figure, since nothing else in the row's own data carries
+     it. Re-run whenever the document list changes rather than on a timer -
+     an import or a delete is the only thing that can move this number. */
+  let totalBytes = $state<number | null>(null);
+  $effect(() => {
+    const names = documentsQuery.rows.map((document) => document.fileName);
+    let stale = false;
+    totalSize(names).then((bytes) => {
+      if (!stale) totalBytes = bytes;
+    });
+    return () => {
+      stale = true;
+    };
+  });
 </script>
 
 <div class="screen">
@@ -106,19 +180,31 @@
 
   <ReadGate read={documentsQuery} count={3}>
     {#snippet rows(documents)}
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each documents as document (document.id)}
-            <ListRow
-              key={document.id}
-              icon="documents"
-              title={document.title}
-              subtitle={[dayLabel(document.epochDay), linkLabel(document)]}
-              href={`/media/documents/${document.id}`}
-            />
-          {/each}
-        </ListCard>
-      </div>
+      {#if totalBytes !== null}
+        <div class="screen-part" data-documents-present-reading>
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            <ListRow static data-documents-summary icon="documents" title={documentsSummaryText(documents.length, totalBytes)} />
+          </ListCard>
+        </div>
+      {/if}
+
+      {#each groups as group (group.kind)}
+        <div class="screen-part" data-documents-group={group.kind}>
+          <SectionHeading text={groupHeading(group.kind)} />
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each group.documents as document (document.id)}
+              {@const kind = documentKind(document.fileName)}
+              <ListRow
+                key={document.id}
+                icon={kind.icon}
+                title={document.title}
+                subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
+                href={`/media/documents/${document.id}`}
+              />
+            {/each}
+          </ListCard>
+        </div>
+      {/each}
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">

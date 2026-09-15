@@ -206,23 +206,42 @@
     </div>
   {/if}
 
-  {#if range}
-    <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
-      <h1>{m.clinician_summary_title()}</h1>
-      <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
-      <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
-    </div>
-  {/if}
-
-  <!-- Generated Dossier -->
+  <!-- Generated dossier, shown as the page it will become rather than as
+       more screen (ticket 59): flush, between two hairlines marking where
+       it begins and ends - DIRECTION.md rule 4's own idiom for "a list
+       needs to begin and end", read at the scale of one document instead
+       of one row. Not `.card` (components.css): that is the box rule 4 is
+       carpeting out screen by screen, and a document freshly redesigned is
+       not the place to add its fourteenth instance. The export action sits
+       under it, not inside it: the sheet is the thing being handed over,
+       the button is the act of handing it. -->
   {#if range === null}
     <!-- Nothing to assemble until boundaries are picked -->
-  {:else if dossierQuery.loading || !dossier}
-    <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
-    <div class="dossier-output">
-      <ClinicianSummaryDossier {dossier} />
+    <!-- The heading stays in the sheet whether or not the dossier under it
+         has loaded yet: the page is the frame plus what's on it, and a
+         heading that only appeared once loading finished would read as the
+         page arriving twice. -->
+    <div class="summary-page" data-summary-page>
+      <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
+        <h1>{m.clinician_summary_title()}</h1>
+        <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
+        <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
+      </div>
+      {#if dossierQuery.loading || !dossier}
+        <div out:crossfade><Skeleton variant="block" count={4} /></div>
+      {:else}
+        <div class="dossier-output">
+          <ClinicianSummaryDossier {dossier} />
+        </div>
+      {/if}
     </div>
+    {#if dossier}
+      <button class="btn btn-primary btn-block summary-print no-print" data-summary-print onclick={printSummary}>
+        <Icon name="share" size={18} />
+        <span>{m.clinician_summary_print()}</span>
+      </button>
+    {/if}
   {/if}
 </div>
 
@@ -247,6 +266,24 @@
     margin-top: var(--space-2);
   }
 
+  /* Flush, between two hairlines (DIRECTION.md rule 4): where a list needs
+     to begin and end it gets a hairline, never a box - the same idiom this
+     draws at document scale rather than row scale. No `--surface` ground
+     and no `--r-block` corner: those are `.card`'s (components.css), the
+     box rule 4 spends its own carpet tickets retiring screen by screen. */
+  .summary-page {
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+    padding-block: var(--space-4);
+  }
+
+  /* Under the sheet, not inside it and not floating over it (Mobbin's own
+     pattern for a document about to be handed over): the sheet is the
+     thing being sent, the button is the act of sending it. */
+  .summary-print {
+    margin-top: var(--space-4);
+  }
+
   @media print {
     .dossier-output {
       margin-top: 0;
@@ -254,6 +291,16 @@
 
     .print-heading.has-demographics {
       display: none;
+    }
+
+    /* The hairlines are a screen affordance for a document not yet handed
+       over; on paper it is the paper, and printing them would draw two
+       rules the reader never asked for across a page @page already
+       bounds. */
+    .summary-page {
+      border-top: none;
+      border-bottom: none;
+      padding-block: 0;
     }
   }
 </style>
