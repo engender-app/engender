@@ -4138,40 +4138,48 @@ try {
   fail('fill every feature', e);
 }
 
-/* Ticket 66, ADR-0069: a long log renders a batch at a time and grows as it
-   is scrolled, so the scroll bar on the web build stays a size somebody can
-   use. Here rather than in the browser tier, which already covers the
-   component against a synthetic list: what this adds is that the wear log's
-   own rows are the ones being batched, over the journal "Fill every feature"
-   leaves, which holds more than one batch of completed sessions.
+/* Phase 10 redesign ticket 44: the wear log is a week at a time, drawn as
+   a strip with the running session under it, so it can never be long
+   enough to need batching and the BatchedList check that used to live here
+   has moved to the dose log alone (below, which is the other screen ticket
+   67 adopted it onto and still a full log).
 
-   The control is what is pressed rather than the scroll, deliberately - a
-   scroll far enough to bring the next batch is a geometry this file has no
-   way to assert went far enough, and the control is on the screen either
-   way (it is what a keyboard reaches). */
+   What this asserts instead is the compression itself, over the journal
+   "Fill every feature" leaves - which holds a year of wear sessions, well
+   over a page of them: that the strip is there, that it holds one week,
+   and that no row on the screen falls outside the week the strip is
+   drawing. */
 try {
   await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
-  const wearRows = () => page.locator('[data-wear-session]').count();
-  const onArrival = await wearRows();
-  if (onArrival !== 30) throw new Error(`the wear log rendered ${onArrival} rows on arrival, not one batch of 30`);
+  await page.waitForSelector('[data-week-cell]', { timeout: 8000 });
+  const cells = await page.locator('[data-week-cell]').count();
+  if (cells !== 7) throw new Error(`the wear strip drew ${cells} days, not a week`);
 
-  await page.waitForSelector('[data-batched-more="wear-sessions"]', { timeout: 8000 });
-  await page.locator('[data-batched-more="wear-sessions"]').click();
+  const days = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-week-cell]')].map((el) => Number(el.dataset.weekCell))
+  );
+  const rows = await page.locator('[data-wear-session]').count();
+  if (rows > 7 * 4) throw new Error(`the wear log rendered ${rows} rows for one week`);
+
+  /* Paging back moves the strip and the rows under it together, which is
+     the whole reason the page is bound out of the component. */
+  await page.locator('[data-strip-earlier]').click();
   await page.waitForFunction(
-    () => document.querySelectorAll('[data-wear-session]').length > 30,
-    null,
+    (first) => Number(document.querySelector('[data-week-cell]').dataset.weekCell) < first,
+    days[0],
     { timeout: 8000 }
   );
-  ok('the wear log arrives as one batch of thirty, and the control at the end of it brings more');
+  ok('the wear log opens on one week as a strip, and paging back moves the week under it');
 } catch (e) {
-  fail('wear log renders in batches', e);
+  fail('wear log is a week at a time', e);
 }
 
 /* Ticket 67 acceptance: the dose log and the regimen screen each arrive
-   with one batch rendered, not the whole log - the wear log's own check
-   above, for the other two screens ticket 67 adopts BatchedList onto.
+   with one batch rendered, not the whole log. This was the wear log's own
+   check until ticket 44 made that screen a week at a time; the dose log is
+   the full log BatchedList is proved against now.
    The regimen screen's demo data never exceeds thirty episodes, so a row
    count there cannot tell "batched, under one batch" from "never
    batched" apart - `[data-batched-list]` is BatchedList's own wrapper, so
@@ -4185,7 +4193,7 @@ try {
   if ((await page.locator('[data-batched-list="doses"]').count()) !== 1) {
     throw new Error('the dose log is not wrapped in BatchedList');
   }
-  ok('the dose log arrives with one batch of thirty, same as the wear log');
+  ok('the dose log arrives with one batch of thirty');
 } catch (e) {
   fail('dose log arrives batched', e);
 }
