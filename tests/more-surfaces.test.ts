@@ -197,7 +197,6 @@ describe('every row the hub carries', () => {
     ['care', 'timeline', '/care', 'health', 'written'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['appointments', 'check', '/health/appointments', 'health', 'read'],
-    ['clinician-summary', 'share', '/health/clinician-summary', 'health', 'written'],
     ['eras', 'columns', '/transition/eras', 'transition', 'written'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
     ['tryouts', 'tag', '/transition/tryouts', 'transition', 'read'],

@@ -115,7 +115,13 @@ const REACHED_FROM_INSIDE = [
      the hub. Still built on the kit, so they stay on this list for the
      reason the note above it gives. */
   'settings/presentations',
-  'settings/entry-templates'
+  'settings/entry-templates',
+  /* Ticket 59: the summary is an export rather than an area, so it left
+     `hubRows.ts` entirely rather than moving to a hosted row - reached from
+     a plain row on Care and from appointment prep, never from the hub.
+     Still built on the kit, so it stays on this list for the reason the
+     note above it gives. */
+  'health/clinician-summary'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -163,7 +169,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(21);
+    expect(REACHED_FROM_INSIDE.length).toBe(22);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
