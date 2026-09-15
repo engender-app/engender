@@ -47,6 +47,7 @@
     "gallery:surgery-rail": "VITE_DEMO=1 npm run build && node tests/surgery-rail-gallery.mjs --tag after",
     "gallery:tryout-card": "node tests/tryout-card-gallery.mjs after",
     "gallery:noticed-axis": "node tests/noticed-axis-gallery.mjs before && node tests/noticed-axis-gallery.mjs after",
+    "gallery:noticed-axis-motion": "VITE_DEMO=1 npm run build && node tests/noticed-axis-motion.mjs",
     "measure:safe-space": "VITE_DEMO=1 npm run build && node tests/safe-space-height.mjs",
     "measure:surgery-rail": "VITE_DEMO=1 npm run build && node tests/surgery-rail-measure.mjs",
     "measure:day-strip": "VITE_DEMO=1 npm run build && node tests/day-strip-measure.mjs --tag after",
