@@ -143,8 +143,10 @@ if (args.includes('--app')) {
     await crop('fan', '[data-fan]');
 
     /* The entry card's dot, which is one step of the ramp and no drawing at
-       all. The doubt journal is where a card renders with the demo's data. */
-    await settle('/doubt');
+       all. Safe space's counterevidence check is where a card renders with
+       the demo's data - one tap down from /doubt since redesign ticket
+       47. */
+    await settle('/doubt/evidence');
     await page.waitForTimeout(1200);
     await crop('entry-card', '.entry-card');
 

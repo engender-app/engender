@@ -105,6 +105,10 @@ const SCENES = [
   { name: 'span-offer-appear', at: '/stats', act: '[data-span-milestone]', when: 'persona', is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
+  /* Redesign ticket 47: Safe space opens on the breath and everything else
+     is one tap down, so the tap off that screen is the gesture the ticket
+     added and the one place a person mid-crisis meets a navigation. */
+  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, is: 'a way down from the breath' },
 
   /* Transition screens (ticket 108): buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
@@ -868,7 +872,11 @@ const HYDRATION_SCENES = [
   { name: 'home', at: '/', is: 'the whole of Home landing cold' },
   { name: 'home-celebrate', at: '/?celebrate=1', when: 'persona', is: 'the celebration card variant of Home' },
   { name: 'coming-back', at: '/coming-back', is: 'the return surface, reached by hand' },
-  { name: 'doubt', at: '/doubt', is: 'the counterevidence check' },
+  { name: 'doubt', at: '/doubt', is: 'Safe space, opening on the breath (redesign ticket 47)' },
+  { name: 'doubt-moments', at: '/doubt/moments', is: "Safe space's letters and photos" },
+  { name: 'doubt-comfort', at: '/doubt/comfort', is: "Safe space's comfort list" },
+  { name: 'doubt-evidence', at: '/doubt/evidence', is: 'the counterevidence check and its snapshots' },
+  { name: 'doubt-readings', at: '/doubt/readings', is: "Safe space's tiles and charts" },
   { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
   /* Calendar tab */
   { name: 'calendar', at: '/calendar', is: 'the heat map month' },
