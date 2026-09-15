@@ -77,7 +77,6 @@
      nobody was writing in. */
   let eraOptions = $derived(erasQuery.rows.map((e) => ({ value: e.id, label: e.name })));
   let modeOptions = $derived(vocabulary.visiblePresentations.map((p) => ({ value: p.id, label: p.name })));
-  let opensOn = $derived(dimension === 'era' ? eraOptions[eraOptions.length - 1] : modeOptions[0]);
 
   /* Era first where there is one: this is the door that leads with the
      person's own history, and a named stretch of it is the reading this
@@ -90,6 +89,7 @@
   let dimension = $state<Dimension>('era');
   let selectedId = $state<string | null>(null);
   let options = $derived(dimension === 'era' ? eraOptions : modeOptions);
+  let opensOn = $derived(dimension === 'era' ? eraOptions[eraOptions.length - 1] : modeOptions[0]);
 
   /* One settling effect for both, because they settle together: an era
      deleted or a mode hidden mid-session leaves the picker pointing at
