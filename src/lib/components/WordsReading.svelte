@@ -67,8 +67,17 @@
   let ignoredQuery = liveQuery((j) => j.wordIgnore.getIgnoredWords());
   let ignoredWords = $derived(ignoredQuery.value ?? new Set<string>());
 
+  /* Eras arrive oldest first (eras.ts orders by start day), and the card
+     opens on the last of them rather than the first. Look back opens on now
+     and works backwards - the rail's own default span is the last thirty
+     days - so the stretch somebody is in is the one to answer with. It also
+     keeps the card from opening empty on a journal whose earliest era
+     predates its earliest note, which is the demo persona's own shape and
+     is not unusual: an era named "before I knew" is exactly the stretch
+     nobody was writing in. */
   let eraOptions = $derived(erasQuery.rows.map((e) => ({ value: e.id, label: e.name })));
   let modeOptions = $derived(vocabulary.visiblePresentations.map((p) => ({ value: p.id, label: p.name })));
+  let opensOn = $derived(dimension === 'era' ? eraOptions[eraOptions.length - 1] : modeOptions[0]);
 
   /* Era first where there is one: this is the door that leads with the
      person's own history, and a named stretch of it is the reading this
@@ -85,11 +94,19 @@
   /* One settling effect for both, because they settle together: an era
      deleted or a mode hidden mid-session leaves the picker pointing at
      nothing, which is the stale-reference rule /compare's era side already
-     takes, and the dimension it was on can empty out from under it too. */
+     takes, and the dimension it was on can empty out from under it too.
+
+     Gated on the eras read, and that gate is the whole of whether the card
+     opens on an era or on a mode: modes are reference data and answer
+     synchronously, eras are a query, so for the first frames of a journal
+     that has both, `dimensions` is modes alone. Settling against that would
+     move the card off eras before the eras arrived, and then leave it there
+     - the correction only ever runs when what is on screen has stopped
+     existing. */
   $effect(() => {
-    if (dimensions.length === 0) return;
+    if (erasQuery.loading || dimensions.length === 0) return;
     if (!dimensions.includes(dimension)) dimension = dimensions[0];
-    else if (!options.some((o) => o.value === selectedId)) selectedId = options[0]?.value ?? null;
+    else if (!options.some((o) => o.value === selectedId)) selectedId = opensOn?.value ?? null;
   });
 
   let analysed = $derived(analyseNotes(entriesQuery.rows));
@@ -104,6 +121,13 @@
      it, so a change of dimension and a change of value are one swap rather
      than two. */
   let selection = $derived(`${dimension}:${selectedId ?? ''}`);
+
+  /** What the picker is naming, for the sheet's own line: a count means
+      nothing without the stretch it was counted over, which is the rule
+      every figure in this app keeps (docs/ui-copy.md). Joined with a middot
+      rather than interpolated into a sentence, because a Polish name
+      injected into one needs a case the English never asks for. */
+  let selectionLabel = $derived(options.find((o) => o.value === selectedId)?.label ?? '');
 
   let picked = $state<WordWeight | null>(null);
 </script>
@@ -152,15 +176,23 @@
         <!-- One slot, one object across every change of selection: the
              cloud that is leaving fades off its own footprint while the one
              arriving opens from the middle it is built around, and the slot
-             travels between the two heights rather than snapping. -->
+             travels between the two heights rather than snapping.
+
+             Both transitions are `|global`, and that is not decoration. A
+             local transition plays only when its own block is created or
+             destroyed, and what is destroyed here is the `{#key}` around
+             it - a parent - so a local `out:` never runs at all. Measured
+             before it was written: the outgoing cloud was gone in the frame
+             after the tap, which is a yank by the only definition that
+             matters. -->
         <div class="words-slot" use:resize>
           {#key selection}
             {#if weighted.length === 0}
-              <div in:spread|global out:crossfade>
+              <div in:spread|global out:crossfade|global>
                 <ChartEmpty>{m.words_reading_empty()}</ChartEmpty>
               </div>
             {:else}
-              <div in:spread|global out:crossfade>
+              <div in:spread|global out:crossfade|global>
                 <WordCloud words={weighted} onPick={(word) => (picked = word)} />
               </div>
             {/if}
@@ -180,7 +212,9 @@
 <Sheet open={picked !== null} title={picked?.word ?? ''} onClose={() => (picked = null)}>
   {#if picked}
     <h3>{picked.word}</h3>
-    <p class="words-sheet-count" data-word-sheet-count>{m.words_times({ n: picked.count })}</p>
+    <p class="words-sheet-count" data-word-sheet-count>
+      {selectionLabel} &middot; {m.words_times({ n: picked.count })}
+    </p>
     <button
       class="btn btn-ghost"
       data-ignore-word={picked.word}
