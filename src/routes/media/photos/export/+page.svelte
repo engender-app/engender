@@ -41,6 +41,7 @@
   import { readPhoto } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -268,8 +269,11 @@
             {#if output === 'collage'}
               <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
             {:else}
-              <!-- svelte-ignore a11y_media_has_caption -->
-              <video src={previewUrl} controls playsinline muted style:background={JOURNEY_SURROUND}></video>
+              <!-- The app's own video player (ticket 46), not the browser's
+                   transport: a timelapse this app just rendered is played
+                   with the same control, scrub and materials as a video note
+                   and a recording. The URL stays this screen's to revoke. -->
+              <VideoNotePlayer src={previewUrl} />
             {/if}
             <p class="muted small">{m.pj_stays_here()}</p>
             <div class="journey-actions">
@@ -321,8 +325,9 @@
     margin-top: var(--space-4);
   }
 
-  .journey-preview img,
-  .journey-preview video {
+  /* The collage only: a timelapse is VideoNotePlayer now (ticket 46), which
+     brings its own frame and its own corner. */
+  .journey-preview img {
     display: block;
     width: 100%;
     height: auto;

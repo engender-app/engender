@@ -56,6 +56,24 @@ const FIGURES = {
   wordsPerMinute: 148
 };
 
+/** The takes behind it, so the blocks draw the history they are read
+    against (redesign ticket 42). Two earlier ones on the same chain, then
+    this take, which is what the ring sits on. */
+const CHAIN = 'Pixel|Microphone|ec=off ns=off agc=off';
+const SERIES = [0, 1, 2].map((at) => ({
+  epochDay: 20000 + at * 30,
+  passageKey: 'builtin-en',
+  captureChain: CHAIN,
+  f0P10Hz: 120 + at * 4,
+  f0P90Hz: 196 + at * 4,
+  semitoneSd: 2.1 + at * 0.1,
+  wordsPerMinute: 140 + at * 4,
+  f1Hz: 600 + at * 10,
+  f2Hz: 1160 + at * 10,
+  snrDb: 22 + at,
+  resonanceScale: 0.94 + at * 0.01
+}));
+
 try {
   /* The figure list wears the stripe of whichever area it sits in, so it
      is handed one here too: the underlines under its seven sentences are
@@ -69,6 +87,7 @@ try {
       formants: { f1Hz: 620, f2Hz: 1180 },
       snrDb: 24,
       resonanceScale: 0.96,
+      series: SERIES,
       role: roleAt(readFlagRoles(), 0)
     }
   });
@@ -79,7 +98,12 @@ try {
     key: row.getAttribute('data-figure'),
     /* The figure itself, so a bare list is still asserted to be a list of
        figures rather than of empty rows. */
-    stated: (row.querySelector('dd')?.textContent ?? '').trim()
+    stated: (row.querySelector('.vf-value, .vf-pitch-value')?.textContent ?? '').trim(),
+    /* Whether this figure drew the history it is read against, and whether
+       the ring landed on this take (redesign ticket 42). */
+    history: row.querySelectorAll('.vf-run').length,
+    ring: row.querySelectorAll('.vf-ring').length,
+    against: (row.querySelector('.vf-against')?.textContent ?? '').trim()
   }));
 
   const listLink = document.querySelector<HTMLAnchorElement>('#figures .vf-more a');
