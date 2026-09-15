@@ -247,17 +247,6 @@
     translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset))) 0;
   }
 
-  /* A mark is a control and carries its own tap target, which is smaller
-     than the app's 48px floor for the reason CurveMarkers' own targets are:
-     at 48px two changes noticed a fortnight apart steal each other's taps,
-     and the row for this record is on the same screen at full size.
-
-     22 by 18, and both halves are the same rule - a target reaches halfway
-     to its neighbour and no further. Across, the lanes guarantee
-     MARK_MIN_GAP of the line between two marks in one lane, which is 24px
-     at 320px, the narrowest width the app supports; up and down, a lane is
-     18px, so half of it each way is the whole box. Measured at 320 and 390:
-     no two targets overlap on the demo's own crowded month. */
   /* A bare custom property animates as a string - it swaps at the halfway
      point and the mark cuts from the old month to the new one. Registered,
      both are numbers the browser can walk (kit.css's `--level` is the same
@@ -275,6 +264,17 @@
     initial-value: 0;
   }
 
+  /* A mark is a control and carries its own tap target, which is smaller
+     than the app's 48px floor for the reason CurveMarkers' own targets are:
+     at 48px two changes noticed a fortnight apart steal each other's taps,
+     and the row for this record is on the same screen at full size.
+
+     22 by 18, and both halves are the same rule - a target reaches halfway
+     to its neighbour and no further. Across, the lanes guarantee
+     MARK_MIN_GAP of the line between two marks in one lane, which is 24px
+     at 320px, the narrowest width the app supports; up and down, a lane is
+     18px, so half of it each way is the whole box. Measured at 320 and 390:
+     no two targets overlap on the demo's own crowded month. */
   .na-mark {
     position: absolute;
     left: 0;
