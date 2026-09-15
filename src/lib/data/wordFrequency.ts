@@ -1,8 +1,15 @@
 /* Word frequency over note text, grouped by presentation and by era (phase
    8 features ticket 14, ADR-0048, ADR-0049). Pure over already-fetched
    rows, the same shape statsCharts.ts and eras.ts hold to: nothing here
-   reads the driver, nothing scores or ranks a word by anything but its own
-   count, and nothing says what a word means.
+   reads the driver and nothing says what a word means.
+
+   Two readings over the same counts. `countWords` is the raw count, which
+   is what the ignore list and the grouping folds are written against.
+   `distinctiveWords` (phase 10 redesign ticket 62) weighs a stretch's words
+   against the journal's own average, which is the reading Look back draws;
+   its own comment carries why the counts alone were not it. Neither scores
+   a word against anything outside this journal, and no drawing ever places
+   two stretches side by side.
 
    Counting is two steps, not one (phase 8 audit ticket 17). `analyseNotes`
    reads each note once and hands back the words it is made of and the
@@ -204,6 +211,74 @@ export function countWords(
   return [...counts.entries()].sort(([wordA, countA], [wordB, countB]) => {
     if (countA !== countB) return countB - countA;
     return wordA < wordB ? -1 : wordA > wordB ? 1 : 0;
+  });
+}
+
+/** A word, what it weighs in the stretch it was read over, and how many
+    times that stretch actually holds it. Heaviest first, ties alphabetical,
+    the same stability rule `countWords` keeps. */
+export interface WordWeight {
+  readonly word: string;
+  readonly weight: number;
+  readonly count: number;
+}
+
+/** What is distinctive about one era or one mode, weighted against the
+    journal's own baseline (phase 10 redesign ticket 62).
+
+    The screen used to draw `countWords` straight, and on a real journal the
+    top of that list is `long`, `whole`, `day`, `name`, `call` - four of the
+    first five carrying nothing. That is not a missing stopword. The
+    stopword lists above are closed classes on purpose, and the words
+    crowding the top are open-class: extending to them means an unbounded
+    hand-written list in an inflected language, which is the thing the
+    refusal in this file's header exists to prevent.
+
+    So the question changes rather than the list. A word weighs
+
+        count_here x ln( rate_here / rate_in_the_journal )
+
+    which is its own contribution to how far the stretch's vocabulary sits
+    from the journal's. Two things fall out of it and neither needs a word
+    list. A word written at the same rate everywhere has a ratio of 1, a
+    logarithm of 0, and no weight at all, however often it appears - `long`
+    and `day` leave on their own. And a word written once carries one count,
+    so a single mention of something rare cannot outweigh a word the stretch
+    returned to, however lopsided its ratio.
+
+    `baseline` is the whole journal's analysed notes, `selected` a subset of
+    them, so every word in the stretch is in the baseline too and the ratio
+    has nothing to divide by zero. A word written *less* here than elsewhere
+    scores below zero and is dropped: this reading says what a stretch was
+    about, and an absence is not that.
+
+    No corpus, no bundled frequency table, no network, and nothing here
+    compares one stretch to another - the baseline is the journal's own
+    average, which is a rule for what to show rather than a verdict on what
+    was found (/compare's own rule, ADR-0012). */
+export function distinctiveWords(
+  selected: readonly Pick<AnalysedNote, 'words'>[],
+  baseline: readonly Pick<AnalysedNote, 'words'>[],
+  ignored?: ReadonlySet<string>
+): WordWeight[] {
+  const here = countWords(selected, ignored);
+  const journal = new Map(countWords(baseline, ignored));
+  const totalHere = here.reduce((sum, [, count]) => sum + count, 0);
+  let totalJournal = 0;
+  for (const count of journal.values()) totalJournal += count;
+  if (totalHere === 0 || totalJournal === 0) return [];
+
+  const weighted: WordWeight[] = [];
+  for (const [word, count] of here) {
+    const elsewhere = journal.get(word);
+    if (!elsewhere) continue;
+    const weight = count * Math.log((count / totalHere) / (elsewhere / totalJournal));
+    if (weight <= 0) continue;
+    weighted.push({ word, weight, count });
+  }
+  return weighted.sort((a, b) => {
+    if (a.weight !== b.weight) return b.weight - a.weight;
+    return a.word < b.word ? -1 : a.word > b.word ? 1 : 0;
   });
 }
 
