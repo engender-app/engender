@@ -59,7 +59,13 @@
   {...roleAttrs(role)}
   style:--strip-count={days.length}
 >
-  {#each days as day (day.key)}
+  <!-- Keyed by the column and not by the day. Paging a week (ticket 44)
+       moves every day in the array at once, so keying on the day makes the
+       whole row seven removals and seven insertions - and a cell that was
+       just created has no state to transition from, which killed the fade
+       kit.css declares for exactly this moment. The column is what stays
+       put; `data-week-cell` still carries the day for anything reading it. -->
+  {#each days as day, column (column)}
     {#if onPick}
       <button class="kit-strip-day" class:is-today={day.isToday} type="button" aria-label={day.label} onclick={() => onPick(day.key)}>
         {@render cell(day)}

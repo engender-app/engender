@@ -344,7 +344,12 @@
             onclick={() => openSessionFor(today)}
           >
             {#snippet trailing()}
-              {stateWords(todayMark)}
+              <!-- Suppressed once the note is already saying it, the same
+                   rule the week's rows below follow: "Logged" beside a note
+                   about the session is the row saying it twice. -->
+              {#if !sessionsByDay.get(today)?.note}
+                {stateWords(todayMark)}
+              {/if}
             {/snippet}
           </ListRow>
         </ListCard>

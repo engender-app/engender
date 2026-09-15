@@ -106,6 +106,7 @@ const strip = async () => {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
     document.activeElement?.blur?.();
   });
+  await page.mouse.move(0, 0);
   await page.waitForTimeout(150);
 };
 
@@ -145,24 +146,30 @@ try {
       await strip();
       await shoot(`${name}-lead-${tag}-${theme}`, await leadBox());
 
-      if (tag !== 'after') continue;
-
-      /* The strip and the present reading on their own, which is the one
-         new surface on either screen. */
+      /* The block that leads the screen, cropped to its own height rather
+         than to a fixed band: after, that is the strip and the present
+         reading; before, it is whatever stood in that place. Shot on both
+         runs, so the one surface this ticket adds has a before to be read
+         against and not only the 520px context band above. */
       const readingBox = await page.evaluate(() => {
         const head = document.querySelector('.day-strip');
-        const card = head?.parentElement?.querySelector('[data-kit-surface].kit-list, .kit-list');
-        if (!head) return null;
-        const top = head.getBoundingClientRect().top;
-        const bottom = (card ?? head).getBoundingClientRect().bottom;
+        const lead = head ?? document.querySelector('.screen .screen-part');
+        if (!lead) return null;
+        const card = head
+          ? head.parentElement?.querySelector('.kit-list')
+          : lead.querySelector('.kit-list, .kit-notice');
+        const top = lead.getBoundingClientRect().top;
+        const bottom = (card ?? lead).getBoundingClientRect().bottom;
         return {
           x: 0,
           y: Math.max(0, Math.round(top) - 12),
           width: 390,
-          height: Math.round(bottom - top) + 24
+          height: Math.min(700, Math.round(bottom - top) + 24)
         };
       });
-      await shoot(`${name}-reading-after-${theme}`, readingBox);
+      await shoot(`${name}-reading-${tag}-${theme}`, readingBox);
+
+      if (tag !== 'after') continue;
 
       /* And a page back, which is where the third cell state lives on
          dilation: a day the taper expected and nothing was logged on. */
