@@ -47,10 +47,11 @@
     today: number;
     /** What the screen has to say about one day. */
     markOf: (epochDay: number) => DayMark;
-    /** What a screen reader hears for that day. The two screens disagree
-        about one of the three marks - a day wear logged nothing is a day
-        with nothing on it, while the same day on a taper is a day the
-        schedule asked for - so the words stay with the screen. */
+    /** What a screen reader hears for that day, before this component
+        says which one is today. The two screens disagree about one of the
+        three marks - a day wear logged nothing is a day with nothing on
+        it, while the same day on a taper is a day the schedule asked for -
+        so the words stay with the screen. */
     labelOf: (epochDay: number, mark: DayMark) => string;
     /** The first day this screen has any record of, or null for a journal
         with nothing in it yet. Where paging back stops. */
@@ -63,18 +64,44 @@
   } = $props();
 
   let shown = $derived(stripWindow(today, weeksBack));
+  /* Which cell is today is drawn as a ring (kit.css) and said in the
+     label, because the ring is the one thing on this strip a screen reader
+     cannot reach - and the row under the strip says "Today" out loud, so
+     without this the two surfaces disagree about the same day. */
   let days = $derived(
-    stripSlots(shown, today, markOf).map((slot) => ({
-      key: slot.epochDay,
-      name: fmtDay(slot.epochDay, { weekday: 'narrow' }),
-      isToday: slot.isToday,
-      label: labelOf(slot.epochDay, slot.mark),
-      ...stripCellOf(slot.mark)
-    }))
+    stripSlots(shown, today, markOf).map((slot) => {
+      const state = labelOf(slot.epochDay, slot.mark);
+      return {
+        key: slot.epochDay,
+        name: fmtDay(slot.epochDay, { weekday: 'narrow' }),
+        isToday: slot.isToday,
+        label: slot.isToday ? m.strip_day_today_state({ state }) : state,
+        ...stripCellOf(slot.mark)
+      };
+    })
   );
 
   const short = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   let weekLabel = $derived(m.strip_week_range({ from: short(shown.first), to: short(shown.last) }));
+
+  /* Paging onto the last week the screen has anything for disables the
+     control that was just pressed, and a browser answers a focused element
+     going disabled by dropping focus on <body> - so a keyboard or screen
+     reader lands nowhere at exactly the moment it reaches the end of the
+     record. The other control is always live on that step, because a page
+     back always leaves a page forward. */
+  let earlierButton = $state<HTMLButtonElement | null>(null);
+  let laterButton = $state<HTMLButtonElement | null>(null);
+
+  function page(by: number) {
+    weeksBack += by;
+    const leaving = by > 0 ? earlierButton : laterButton;
+    const landing = by > 0 ? laterButton : earlierButton;
+    if (document.activeElement !== leaving) return;
+    queueMicrotask(() => {
+      if (leaving?.disabled) landing?.focus();
+    });
+  }
 </script>
 
 <div class="day-strip">
@@ -82,9 +109,10 @@
     <button
       class="icon-btn"
       data-strip-earlier
+      bind:this={earlierButton}
       aria-label={m.strip_week_earlier()}
       disabled={!canPageBack(shown, earliest)}
-      onclick={() => (weeksBack += 1)}
+      onclick={() => page(1)}
     >
       <Icon name="chevronLeft" size={20} />
     </button>
@@ -96,9 +124,10 @@
     <button
       class="icon-btn"
       data-strip-later
+      bind:this={laterButton}
       aria-label={m.strip_week_later()}
       disabled={weeksBack === 0}
-      onclick={() => (weeksBack -= 1)}
+      onclick={() => page(-1)}
     >
       <Icon name="chevronRight" size={20} />
     </button>

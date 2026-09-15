@@ -61,6 +61,19 @@ describe('stripCellOf', () => {
   it('gives a logged day its outline too, so a fill never arrives with an edge change as well', () => {
     expect(stripCellOf('logged').blank).toBe(false);
   });
+
+  it('never fills a day nothing was logged on, whatever else the mark means', () => {
+    /* The one line a colour ramp would have to come back through: two
+       marks at two nonzero levels is a scale, and a scale over days is the
+       grading ADR-0012 refuses. A third mark added later fails here until
+       somebody decides which of the two it is. */
+    const marks = ['logged', 'expected', 'off'] as const;
+    for (const mark of marks) {
+      if (mark === 'logged') continue;
+      expect(stripCellOf(mark).level, mark).toBe(0);
+    }
+    expect(new Set(marks.map((mark) => stripCellOf(mark).level)).size).toBe(2);
+  });
 });
 
 describe('canPageBack', () => {

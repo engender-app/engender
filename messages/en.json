@@ -3678,5 +3678,7 @@
   "strip_week_earlier": "The week before",
   "strip_week_later": "The week after",
   "strip_day_state": "{day}: {state}",
-  "dilation_nothing_expected": "Nothing expected"
+  "dilation_nothing_expected": "Nothing expected",
+  "strip_day_today_state": "Today, {state}",
+  "strip_week_nothing": "Nothing this week"
 }

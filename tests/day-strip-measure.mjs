@@ -8,17 +8,32 @@
    `[data-app-scroll-region]` rather than the document, so
    `document.scrollingElement` answers one viewport and nothing else.
 
-   It also reads the strip: the three states have to be told apart by
-   outline alone (no colour difference between expected-and-empty and
-   not-expected), every cell has to be a 44px-or-larger target, and the
-   contrast of the hairline against the page is the thing a palette could
-   quietly lose. Colours are painted into a 1x1 canvas and read back rather
+   It also reads the strip: the three states have to be told apart without
+   colour (no hue between expected-and-empty and not-expected), every day
+   has to be a 48px-or-larger target, and the hairline that edges an
+   expected day has to still be there, measured against the cell it edges
+   rather than against the page.
+
+   Colours are read by painting each one twice, on black and on white, and
+   solving for its alpha - every line token in this app is ink mixed into
+   `transparent`, and a single pass over black hands back the colour
+   already multiplied by its alpha, which reads as a nearly-black opaque
+   line. That mistake is what first reported this hairline at 17.59:1; it
+   is 1.35:1. Colours are painted into a 1x1 canvas and read back rather
    than parsed out of `getComputedStyle`, which hands `color-mix()` back as
    an unresolved `oklab(...)` - every tinted surface in this app computes to
    one (tests/surgery-rail-measure.mjs hit the same wall).
 
    Run: VITE_DEMO=1 npm run build, then
-   node tests/day-strip-measure.mjs [--tag before|after] */
+   node tests/day-strip-measure.mjs [--tag before|after]
+
+   For `before`, build from the ticket's base commit first - which
+   `node tests/day-strip-gallery.mjs before` already does, and it leaves that
+   build in build/ when it restores the sources, so the two run back to back
+   and produce a before and an after measured by the same script:
+
+     node tests/day-strip-gallery.mjs before && node tests/day-strip-measure.mjs --tag before
+     node tests/day-strip-gallery.mjs after  && node tests/day-strip-measure.mjs --tag after */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { preview } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
@@ -27,8 +42,13 @@ const tag = process.argv.includes('--tag') ? process.argv[process.argv.indexOf('
 const OUT = '.claude/day-strip-shots';
 mkdirSync(OUT, { recursive: true });
 
-/* The ticket's own before-figures, measured for the door audit at tip
-   01006745. A third of each is the budget.
+/* The before-figures this run is scored against: not the door audit's 4545
+   and 2839 at tip 01006745, but what this script itself reads on the base
+   commit, since the budget divides by three and a 40px drift in the
+   baseline moves the pass line by 13px. Both are in
+   .claude/day-strip-shots/measure-before.json.
+
+   A third of each is the budget.
 
    Measured against the screen minus its trend card, the controls over that
    card and the chip row beside them, all three of which the ticket puts
@@ -40,7 +60,7 @@ mkdirSync(OUT, { recursive: true });
    ticket says to leave alone. What this ticket owns, wear spends 898px on,
    down from about 2400px. Named here rather than left as a number that
    quietly moved. */
-const BEFORE = { '/health/dilation': 4545, '/practice/wear': 2839 };
+const BEFORE = { '/health/dilation': 4505, '/practice/wear': 2794 };
 
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
@@ -68,20 +88,36 @@ await page.locator('[data-segment="light"]').click();
 await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
 
 const MEASURE = () => {
-  const paint = (() => {
+  /* Any CSS colour resolved to opaque rgb plus its alpha, by painting it
+     twice - once on black, once on white. A colour C at alpha a reads
+     C*a on black and C*a + 255*(1-a) on white, so the difference is
+     255*(1-a) and the two together give both numbers back. One pass over
+     black is not enough: it returns the colour already multiplied by its
+     alpha, which is indistinguishable from an opaque dark colour, and
+     every line token in this app is a `color-mix(..., transparent)`. */
+  const probe = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 1;
     const ctx = c.getContext('2d', { willReadFrequently: true });
-    return (css) => {
+    const on = (ground, css) => {
       ctx.clearRect(0, 0, 1, 1);
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = ground;
       ctx.fillRect(0, 0, 1, 1);
       ctx.fillStyle = css;
       ctx.fillRect(0, 0, 1, 1);
       const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
       return [r, g, b];
     };
+    return (css) => {
+      const black = on('#000', css);
+      const white = on('#fff', css);
+      const alpha = Math.min(1, Math.max(0, 1 - (white[1] - black[1]) / 255));
+      const rgb = alpha === 0 ? [0, 0, 0] : black.map((v) => Math.min(255, Math.round(v / alpha)));
+      return { rgb, alpha };
+    };
   })();
+  /* An opaque read, for a ground: alpha is 1 for every surface token. */
+  const paint = (css) => probe(css).rgb;
   const lum = ([r, g, b]) => {
     const f = (v) => {
       v /= 255;
@@ -93,18 +129,12 @@ const MEASURE = () => {
     const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
     return (x + 0.05) / (y + 0.05);
   };
-  /* A colour over a ground, alpha respected: `paint` alone fills black
-     first, so a transparent background reads as black rather than as what
-     is behind it. */
+  /** What a colour actually looks like once it is painted on a ground.
+      Every line token here is ink at 14 to 19 per cent over whatever is
+      behind it, so its painted value is the only one worth comparing. */
   const over = (css, ground) => {
-    const probe = document.createElement('span');
-    probe.style.color = css;
-    document.body.appendChild(probe);
-    const parsed = getComputedStyle(probe).color;
-    probe.remove();
-    const alpha = Number(/rgba?\([^)]*,\s*([\d.]+)\)/.exec(parsed)?.[1] ?? 1);
-    const front = paint(css);
-    return front.map((v, i) => Math.round(v * alpha + ground[i] * (1 - alpha)));
+    const { rgb, alpha } = probe(css);
+    return rgb.map((v, i) => Math.round(v * alpha + ground[i] * (1 - alpha)));
   };
   const groundOf = (el) => {
     for (let n = el.parentElement; n; n = n.parentElement) {
@@ -183,6 +213,10 @@ for (const theme of ['light', 'dark']) {
        Only the cells are collected from the earlier pages; the height is
        the screen as it opens. */
     for (let page_ = 0; page_ < 4; page_++) {
+      /* count() first: on a screen with no strip at all - a taper that has
+         not started, a journal with no wear session - isEnabled() waits out
+         its whole timeout rather than answering false. */
+      if ((await page.locator('[data-strip-earlier]').count()) === 0) break;
       if (!(await page.locator('[data-strip-earlier]').isEnabled())) break;
       await page.locator('[data-strip-earlier]').click();
       await page.waitForTimeout(500);
@@ -242,10 +276,16 @@ for (const r of rows) {
        expected on, it is a step in the page's own ground and not a step
        towards the flag's colour. */
     const neutral = gap(expected.fill, off.fill) * 4 < gap(expected.fill, logged.fill);
-    /* And it is a step you can see - the hairline where the theme gives it
-       one, the ground under it where the hairline is too faint to carry it
-       alone (dark, where --outline is 1.06:1 against an empty cell). */
-    const visible = expected.hairline > 1.05 || gap(expected.fill, off.fill) >= 8;
+    /* And it is a step you can see. Two cues, and the honest figure for
+       both: the hairline is `--outline`, the app's own line strength, and
+       it lands at about 1.35:1 against the cell it edges in light and
+       1.33:1 in dark - a card's edge, not a 3:1 mark, because rule 4
+       leaves the app two line strengths and this ticket is not the place
+       to mint a third. Under it the cell's own ground is 14 steps from the
+       page in light and 38 in dark. What carries the day's meaning where
+       neither is enough is the label on the button and the row in the log
+       below, which both say it in words. */
+    const visible = expected.hairline > 1.2 && gap(expected.fill, off.fill) >= 8;
     const hairlineGone = off.hairline < 1.02;
     if (!neutral || !visible || !hairlineGone) failures++;
     process.stdout.write(
@@ -253,6 +293,16 @@ for (const r of rows) {
         ` ${Math.round(gap(expected.fill, off.fill))} apart where the logged day is` +
         ` ${Math.round(gap(expected.fill, logged.fill))}, hairline ${expected.hairline}:1` +
         ` against ${off.hairline}:1 on the day with none\n`
+    );
+  }
+  if (!expected) {
+    /* Wear draws two states and never the middle one, because nothing
+       schedules a wear session: a day with none is a day with none and not
+       a day something was missed on. Said out loud, so the comparison above
+       being skipped reads as the design rather than as a gap. */
+    process.stdout.write(
+      `  PASS  no expected-but-empty day here, which is the design:` +
+        ` nothing schedules a session on this screen\n`
     );
   }
   if (logged && off) {
