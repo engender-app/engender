@@ -258,9 +258,15 @@
     initial-value: 0;
   }
 
+  /* Inherited, unlike `--at`, because the stem is a pseudo element of the
+     mark and a pseudo reads its originating element's properties by
+     inheritance. Registered `inherits: false`, `var(--lane)` in
+     `.na-mark::after` resolves to the initial 0 instead of the mark's own
+     lane and every stem draws at no height - which is how this was found,
+     in the sign-off crop, with three marks floating over the line. */
   @property --lane {
     syntax: '<number>';
-    inherits: false;
+    inherits: true;
     initial-value: 0;
   }
 
