@@ -5731,9 +5731,13 @@ try {
   }
 
   // The direct URL still answers, records intact - hiding a row never
-  // closes a screen (ADR-0043).
+  // closes a screen (ADR-0043). `data-cycle-event` only names a row inside
+  // the strip's current week now (phase 10 redesign ticket 56), and the
+  // fixture's events land roughly monthly, so a week can hold none by
+  // chance; `data-cycle-events-today` is the row the non-empty branch
+  // always draws regardless of which week that is.
   await page.goto(BASE + '/health/cycle-events', { waitUntil: 'networkidle' });
-  if ((await page.locator('[data-cycle-event]').count()) === 0) {
+  if ((await page.locator('[data-cycle-events-today]').count()) === 0) {
     throw new Error('the cycle log lost its records behind the hidden row');
   }
 
