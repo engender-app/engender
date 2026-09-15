@@ -45,7 +45,6 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   letters: m.letters_title,
   tryouts: m.tryout_title,
   eras: m.eras_title,
-  words: m.words_title,
   doubt: m.safe_space_title,
   'voice-benchmark': m.vb_title,
   wear: m.wear_log,
@@ -61,7 +60,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
 
     Total over the row keys, so a row added here without one does not compile.
     Each is earned by a title that does not say what the screen is
-    (DIRECTION.md 3b) - "Eras", "Words", "Modes", "Care", "Safe space" name
+    (DIRECTION.md 3b) - "Eras", "Care", "Safe space" name
     something the app invented - and, on the reading rows, by a fresh journal
     otherwise leaving thirteen rows mute. Each is a short form of that
     screen's own intro rather than new copy, so the row and the screen behind
@@ -81,7 +80,6 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   letters: m.hub_sub_letters,
   tryouts: m.hub_sub_tryouts,
   eras: m.hub_sub_eras,
-  words: m.hub_sub_words,
   doubt: m.hub_sub_doubt,
   'voice-benchmark': m.hub_sub_voice_benchmark,
   wear: m.hub_sub_wear,

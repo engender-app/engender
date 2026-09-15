@@ -194,7 +194,12 @@ describe('every row the hub carries', () => {
 
      Redesign ticket 61 folded `sizes` into `measurements` rather than moving
      it: one row fronting two archive sections, which is `hair-progress`'s
-     own shape. Twenty-three rows now. */
+     own shape. Twenty-three rows then.
+
+     Redesign ticket 62 took `words` off outright, and it is the first row to
+     go without its screen going anywhere else: the reading it opened draws
+     on the Look back door itself now, so there is nothing left for a row to
+     point at. `stats` stopped being a host with it. Twenty-two rows now. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
@@ -217,8 +222,7 @@ describe('every row the hub carries', () => {
     ['side-effects', 'zap', '/health/side-effects', 'effects', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
     ['cycle-events', 'calendar', '/health/cycle-events', 'side-effects', 'read'],
-    ['dilation', 'flask', '/health/dilation', 'surgery', 'read'],
-    ['words', 'note', '/transition/words', 'stats', 'written']
+    ['dilation', 'flask', '/health/dilation', 'surgery', 'read']
   ];
 
   it('is exactly this list, in this order', () => {
