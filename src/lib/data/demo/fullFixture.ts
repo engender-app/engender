@@ -172,12 +172,28 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 200, value: 31, unit: 'in' });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 40, value: 30, unit: 'in' });
 
+  /* One scale per category rather than one pool for all eight. A shuffle
+     across every size in the app puts "34" and "XS" in the same pair of
+     trousers, which the size log wore quietly and the change line
+     (redesign ticket 61) states out loud - so a demo of a screen whose
+     point is that it makes a statement was making a nonsense one. */
+  const SIZE_SCALE: Record<(typeof GARMENT_CATEGORIES)[number], string[]> = {
+    shirts: ['XS', 'S', 'M', 'L'],
+    pants: ['28', '30', '32', '34'],
+    dresses: ['6', '8', '10', '12'],
+    skirts: ['XS', 'S', 'M', 'L'],
+    bras: ['32A', '34A', '34B', '36B'],
+    underwear: ['XS', 'S', 'M', 'L'],
+    shoes: ['38', '39', '40', '41'],
+    outerwear: ['S', 'M', 'L', 'XL']
+  };
   for (let day = trackingStart; day <= today; day++) {
     if (r() < 0.97) continue;
+    const category = pick(GARMENT_CATEGORIES);
     await journal.sizeRecords.upsertRecord({
       epochDay: day,
-      category: pick(GARMENT_CATEGORIES),
-      size: pick(['XS', 'S', 'M', 'L', '32', '34', '36', '8', '10']),
+      category,
+      size: pick(SIZE_SCALE[category]),
       brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
       fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
     });

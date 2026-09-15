@@ -209,21 +209,19 @@ export interface HubRowSpec {
 const ROWS = [
   // --- Body ----------------------------------------------------------------
   {
+    /* Two areas behind one row since phase 10 redesign ticket 61, the
+       shape `hair-progress` has always had. Sizes were a row of their own
+       pointing at a purchase log with no reading on it, next door to the
+       one screen in Body that had a chart, a scrub and a protocol card -
+       two halves of one question about the same body, split. The row
+       reports whichever half was written last, and reads finished only
+       when both are. */
     key: 'measurements',
     icon: 'ruler',
     href: '/body/measurements',
     home: 'body',
-    areas: ['measurements'],
+    areas: ['measurements', 'sizeRecords'],
     finishes: 'measurements',
-    line: 'read'
-  },
-  {
-    key: 'sizes',
-    icon: 'package',
-    href: '/body/sizes',
-    home: 'body',
-    areas: ['sizeRecords'],
-    finishes: 'sizes',
     line: 'read'
   },
 
@@ -565,7 +563,7 @@ export function rowScreen(row: HubRowSpec): string {
 /* Every finishable group has to be fronted by a row, or it is one a person
    can declare finished on its own screen and which then moves nowhere on the
    hub, silently. This makes that a compile error - demonstrated by deleting
-   `finishes: 'sizes'` above and watching `Unfronted` stop being `never`. The
+   `finishes: 'wear'` above and watching `Unfronted` stop being `never`. The
    other direction is the `finishes: AreaGroupKey | null` field itself, which
    refuses a row claiming a group `AREA_GROUPS` does not hold. */
 type Fronted = (typeof ROWS)[number]['finishes'];

@@ -28,19 +28,20 @@ test('every finishable area is grouped, and none of them twice', () => {
   assert.equal(new Set(grouped).size, grouped.length);
 });
 
-test('hair progress and voice are the two groups that front two areas', () => {
+test('measurements, hair progress and voice are the three groups that front two areas', () => {
   const several = AREA_GROUP_KEYS.filter((key) => AREA_GROUPS[key].length > 1);
 
-  assert.deepEqual(several, ['hair-progress', 'voice']);
+  assert.deepEqual(several, ['measurements', 'hair-progress', 'voice']);
+  assert.deepEqual([...AREA_GROUPS['measurements']], ['measurements', 'sizeRecords']);
   assert.deepEqual([...AREA_GROUPS['hair-progress']], ['hairStages', 'hairPhotos']);
   assert.deepEqual([...AREA_GROUPS['voice']], ['voiceBenchmarks', 'voicePracticeTakes']);
 });
 
 test('a group of one is finished on the day its area is', () => {
-  const states: AreaStates = { measurements: finished(19800) };
+  const states: AreaStates = { wearSessions: finished(19800) };
 
-  assert.equal(groupFinishedOn('measurements', states), 19800);
-  assert.equal(groupFinishedOn('sizes', states), null);
+  assert.equal(groupFinishedOn('wear', states), 19800);
+  assert.equal(groupFinishedOn('dilation', states), null);
 });
 
 test('a group fronting two areas is not finished until both are', () => {
@@ -67,6 +68,7 @@ test('the finished groups come back oldest first, each named once', () => {
   const states: AreaStates = {
     wearSessions: finished(19900),
     measurements: finished(19700),
+    sizeRecords: finished(19700),
     hairStages: finished(19800),
     hairPhotos: finished(19800)
   };
@@ -163,18 +165,18 @@ test('a no is taken permanently', () => {
 });
 
 test('a no is stored against sections, so a row key alone declines nothing', () => {
-  /* The row key and the section name happen to be the same string for six of
-     the eight groups, so this uses one of the two where they differ. A build
-     that stored rows would pass on 'sizes' and this is what catches it. */
-  assert.deepEqual([...AREA_GROUPS.sizes], ['sizeRecords']);
+  /* The row key and the section name happen to be the same string for most
+     of the groups, so this uses one where they differ. A build that stored
+     rows would pass on 'wear' and this is what catches it. */
+  assert.deepEqual([...AREA_GROUPS.wear], ['wearSessions']);
 
-  assert.equal(groupDeclined('sizes', ['sizeRecords']), true);
-  assert.equal(groupDeclined('sizes', ['sizes']), false);
+  assert.equal(groupDeclined('wear', ['wearSessions']), true);
+  assert.equal(groupDeclined('wear', ['wear']), false);
   assert.equal(
-    shouldOfferFinish('sizes', {
+    shouldOfferFinish('wear', {
       states: {},
-      lastWrites: { sizeRecords: 19000 },
-      declined: ['sizes'],
+      lastWrites: { wearSessions: 19000 },
+      declined: ['wear'],
       todayEpochDay: TODAY
     }),
     true,

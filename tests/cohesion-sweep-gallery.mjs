@@ -132,7 +132,6 @@ const ROUTES = [
   { path: '/body/hair-removal' },
   { path: '/body-map' },
   { path: '/body/measurements' },
-  { path: '/body/sizes' },
   { path: '/care' },
   { path: '/coming-back', exception: 'chromeless by decision (redesign ticket 35, ADR-0080)' },
   {
