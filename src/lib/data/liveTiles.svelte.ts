@@ -213,7 +213,7 @@ export function homeTiles(
       return tiles;
     },
     get dosePanelCoversEveryRegimen() {
-      return dosePanelCoversEveryRegimen(tiles, episodes.rows, nowTick);
+      return dosePanelCoversEveryRegimen(tiles, episodes.rows, schedules.rows, nowTick);
     },
     snooze
   };
