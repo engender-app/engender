@@ -126,13 +126,20 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toContain('surgeryMarks(railAnnotationsQuery.rows)');
   });
 
-  it('names only the kinds present, and gives no two of them one stripe', () => {
+  /* Colour on the rail means an era and nothing else: the history rows are
+     ink, one solid and one hollow, so they cannot collide with a flag stripe
+     on any palette or under disguise (Alicja, on the first renders: "they
+     use the same colors, it looks bad"). */
+  it('names only the kinds present, and asks the flag for nothing but the eras', () => {
     expect(timeline).toContain('railLegendKinds(history, surgeries, bands.length > 0)');
-    // The two coloured lanes, by kind rather than by position.
-    expect(timeline).toMatch(/kind === 'regimen' \? roleAt\(railRoles, 0\)/);
-    expect(timeline).toMatch(/kind === 'tryout' \? roleAt\(railRoles, 1\)/);
-    // A break is an absence, so it takes no stripe at all.
-    expect(timeline).toMatch(/\.span-tl-hband\.is-break \{\s*background: var\(--text-2\);/);
+    expect(timeline).toMatch(
+      /\.span-tl-hband\[data-span-band='regimen'\] \{[^}]*background: var\(--text-2\);/
+    );
+    expect(timeline).toMatch(
+      /\.span-tl-hband\[data-span-band='tryout'\] \{[^}]*background: var\(--bg\);\s*border-color: var\(--text-2\);/
+    );
+    // No role reaches a history row: `roleAttrs` is spent on the eras alone.
+    expect(timeline).not.toMatch(/span-tl-hband[\s\S]{0,400}--role-draw/);
   });
 
   it('shows the drag hint once per journal and lets the first move answer it', () => {

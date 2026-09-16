@@ -46,30 +46,41 @@
      Three things the rail had not been saying, and none of them is a
      decoration.
 
-     **It draws every dated history now, not two of five.** Under the eras
-     lie one lane per kind of stretch the journal holds - a regimen episode,
-     a tryout, a break from journaling - and a procedure's surgery day is a
-     mark on the axis like a milestone's. Each of those is tap-to-select the
-     way an era already was, so "my moods over the HRT episode" is a stretch
-     somebody can point at rather than one they have to reconstruct with two
-     handles. The lanes sit below the lifted layer rather than behind it: a
-     band drawn behind the span would be covered by it exactly where the
-     person is looking.
+     **It draws the stretches it never drew.** Under the eras lie one lane
+     per kind of stretch the journal holds - a regimen episode, a tryout -
+     and a procedure's surgery day is a mark on the axis like a milestone's.
+     Each of those is tap-to-select the way an era already was, so "my moods
+     over the HRT episode" is a stretch somebody can point at rather than
+     one they have to reconstruct with two handles. The lanes sit below the
+     lifted layer rather than behind it: a band drawn behind the span would
+     be covered by it exactly where the person is looking.
 
-     **Two kinds never share a stripe.** The two coloured lanes take the
-     first two of `bandRoles`, which is never shorter than two on any of the
-     eight flags (tests/palette-contrast.test.ts holds that floor); a break
-     takes no stripe at all but `--text-2`, because a break is the absence
-     of journal rather than a category of it, which is the same call
-     GenderConstellationChart makes for a point with no presentation; and a
-     surgery mark is ink, like every other mark here. The eras are the one
-     kind whose colour is plural - they run the flag - so their cycle starts
-     past the coloured lanes and their legend chip is the flag itself. On a
-     two-colour flag (trans, nonbinary, pansexual) the cycle wraps and an
-     era can land on a lane's stripe; they are told apart by register, a
-     named band at full height against a 6px lane at the foot, which is the
-     same answer the rail already gives under disguise, where every role
-     resolves to the accent and the 1px edges do the work.
+     **Colour on this rail means an era, and nothing else.** The first build
+     gave the lanes flag stripes of their own and drew a third lane for the
+     journaling pauses, and the renders were unreadable (Alicja, 2026-09-16:
+     "they're crowded, they use the same colors, it looks bad"): trans,
+     nonbinary and pansexual yield two band colours, so the regimen lane
+     came out the same blue as the first era and the tryout lane the same
+     pink as the second, three lanes deep at 6px each.
+
+     So the eras keep the flag, which is theirs - one colour per era, the
+     way ticket 11 settled - and the two rows are drawn in ink: the regimen
+     solid, the tryout hollow, both in the secondary weight. That is the
+     call the milestone mark on this same rail already made, and its own
+     note says why - a stripe sitting under the eras' colours vanishes into
+     the band of its own hue, and DIRECTION rule 4 gives ink to the smallest
+     things. It cannot collide on any palette or under disguise, because it
+     never asks the flag for anything.
+
+     Three weights, and each says what it is: the flag is an era, full ink
+     is the two things that are now - the span's own frame and the marks -
+     and the secondary ink is the context under them. Drawn at full ink
+     first, and the render put the heaviest object on the rail under the one
+     the rail exists to set.
+
+     And the breaks came off the rail entirely: a break is the absence of a
+     journal rather than a stretch of a life, and the chart's annotation
+     band still draws them where they explain a flat stretch.
 
      **It says it can be dragged, and what it is showing.** The span, its
      length and the legend sit directly under the rail against the handles
@@ -107,7 +118,7 @@
   import { countUp } from '$lib/motion/countUp';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import type { Era, Milestone } from '$lib/data/types';
-  import { bandRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { chromaticRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
 
   let {
@@ -210,11 +221,12 @@
     today
   ]);
 
-  /* The history lanes, bottom-up: one per kind this journal has anything
-     of, and none for a kind it has none of. */
-  let lanes = $derived(historyKindsPresent(history));
+  /* Which history rows this journal earns. A kind with nothing in it takes
+     no row and no height, so a journal with only tryouts gets one row
+     rather than one row and an empty one. */
+  let rows = $derived(historyKindsPresent(history));
   let legend = $derived(railLegendKinds(history, surgeries, bands.length > 0));
-  const laneOf = (kind: RailHistoryKind) => lanes.indexOf(kind);
+  const hasRow = (kind: RailHistoryKind) => (rows.includes(kind) ? 1 : 0);
 
   /* One band of the flag per era, in order, wrapping over the flag's
      colours - and, on a flag with a single colour (agender), over its
@@ -223,33 +235,26 @@
      eras in the same colour"). A black or white block is a block here
      because every band wears the 1px edge rule 4 gives it; a flag with two
      or more colours never needs one. Nothing is skipped, since the marks
-     are ink and take no band.
-
-     The cycle starts past the coloured lanes, so on a flag with three or
-     more colours the first era is not the same stripe as the regimen lane
-     under it. On a two-colour flag it wraps back onto them, which the
-     header above says is the case register rather than colour separates. */
+     are ink and take no band, and neither does a history lane. */
   let markRole = $derived(roleAt(roles, 0));
-  let railRoles = $derived(bandRoles(roles));
-  let colouredLanes = $derived(lanes.filter((kind) => kind !== 'journalingPause').length);
+  let bandRoles = $derived.by(() => {
+    const colours = chromaticRoles(roles);
+    if (colours.length >= 2) return colours;
+    return [...colours, ...roles.filter((role) => !colours.includes(role))];
+  });
   const bandRole = (index: number): Role | undefined =>
-    railRoles.length ? railRoles[(index + colouredLanes) % railRoles.length] : undefined;
-  /* A lane's stripe, by kind rather than by position, so adding a kind
-     never repaints the ones already on the rail. A break takes none. */
-  const laneRole = (kind: RailHistoryKind): Role | undefined =>
-    kind === 'regimen' ? roleAt(railRoles, 0) : kind === 'tryout' ? roleAt(railRoles, 1) : undefined;
+    bandRoles.length ? bandRoles[index % bandRoles.length] : undefined;
 
   const LEGEND_WORD: Record<RailLegendKind, () => string> = {
     era: () => m.lookback_legend_eras(),
     regimen: () => m.lookback_legend_regimen(),
     tryout: () => m.lookback_legend_tryouts(),
-    journalingPause: () => m.lookback_legend_breaks(),
     surgery: () => m.lookback_legend_surgery()
   };
-  /* A journaling pause is the one record with no name of its own
-     (types.ts), so the kind's word stands in where a band's label would
-     otherwise be empty. */
-  const bandName = (band: RailBand) => band.name ?? m.lookback_break_name();
+  /* The query types a band's name nullable because a journaling pause has
+     none, and neither kind drawn here is that one - so the fallback is the
+     kind's own word rather than a band with no label at all. */
+  const bandName = (band: RailBand) => band.name ?? LEGEND_WORD[band.kind]();
 
   /* The span as the finger has it, which is the settled span whenever no
      finger holds a handle. */
@@ -400,7 +405,10 @@
     const day = dayAtClientX(event.clientX);
     commit(moveHandle(live, nearestHandle(live, day), day));
   }
-  const pickEra = (band: { start: number; end: number }) => commit({ start: band.start, end: band.end });
+  /* A stretch on the rail - an era, an episode, a tryout - sets the span to
+     its own two days. One helper for all three, since what a band is made
+     of stops mattering the moment somebody points at it. */
+  const pickStretch = (band: { start: number; end: number }) => commit({ start: band.start, end: band.end });
   /* A mark is one day, and one day is not a reading: it sets the span to
      the door's own default window ending on it, the stretch a person means
      when they point at the day something happened. Bands set the span to
@@ -464,8 +472,8 @@
   style:--tl-end="{endX}px"
   style:--tl-hint-x="{hintX}px"
   style:--tl-clip-right="{clipRight}px"
-  style:--tl-lanes={lanes.length}
-  style:--tl-gutter={lanes.length ? '7px' : '0px'}
+  style:--tl-has-regimen={hasRow('regimen')}
+  style:--tl-has-tryout={hasRow('tryout')}
   style:--tl-flag={flagFill && flagFill !== 'none' ? flagFill : null}
 >
   <!-- The years, as a ruler above the rail: the one label a rail of years
@@ -554,7 +562,7 @@
           data-span-era={band.id}
           data-no-press
           aria-label={m.lookback_era_aria({ name: band.name })}
-          onclick={() => pickEra(band)}
+          onclick={() => pickStretch(band)}
         ></button>
       {/each}
     </div>
@@ -568,10 +576,8 @@
         class="span-tl-hband"
         class:is-open-start={band.openStart}
         class:is-open-end={band.openEnd}
-        class:is-break={band.kind === 'journalingPause'}
         style:left="{railPosition(band.start, railStart, today) * 100}%"
         style:width="{(railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)) * 100}%"
-        style:--tl-lane={laneOf(band.kind)}
         data-span-band={band.kind}
         data-no-press
         aria-label={m.lookback_band_aria({
@@ -579,8 +585,7 @@
           from: valueText(band.start),
           to: valueText(band.end)
         })}
-        onclick={() => commit({ start: band.start, end: band.end })}
-        {...roleAttrs(laneRole(band.kind))}
+        onclick={() => pickStretch(band)}
       ></button>
     {/each}
 
@@ -668,15 +673,7 @@
     <ul class="span-tl-legend" data-span-legend aria-label={m.lookback_legend_group()}>
       {#each legend as kind (kind)}
         <li class="span-tl-key" data-span-key={kind}>
-          {#if kind === 'era'}
-            <span class="span-tl-chip is-flag" aria-hidden="true"></span>
-          {:else if kind === 'surgery'}
-            <span class="span-tl-chip is-mark" aria-hidden="true"></span>
-          {:else if kind === 'journalingPause'}
-            <span class="span-tl-chip is-break" aria-hidden="true"></span>
-          {:else}
-            <span class="span-tl-chip" aria-hidden="true" {...roleAttrs(laneRole(kind))}></span>
-          {/if}
+          <span class="span-tl-chip" data-span-chip={kind} aria-hidden="true"></span>
           {LEGEND_WORD[kind]()}
         </li>
       {/each}
@@ -698,13 +695,26 @@
        before the history layer existed.
 
        The gutter is the marks' own room: a milestone or a surgery day is a
-       12px block standing on the axis, so the first lane starts above where
-       those blocks reach and no lane is drawn under one. It is switched on
-       by the component rather than written here, because CSS cannot make a
-       constant conditional on a count and a rail with no lanes owes no
-       gutter. */
-    --lane-h: 6px;
-    --hist-h: calc(var(--tl-lanes, 0) * var(--lane-h) + var(--tl-gutter, 0px));
+       12px block standing on the axis, so the rows start above where those
+       blocks reach and no row is ever drawn under one. The rule keeps the
+       eras' strip off the rows, so the two registers read as two.
+
+       Two heights rather than one repeated: four bands of the same weight
+       was what made the first build unreadable, and a solid bar and an
+       outlined one do not need the same room to be told apart. Each row's
+       presence is a 0 or a 1 from the component, since CSS cannot make a
+       height conditional on what a journal holds - and with both at 0 every
+       measurement below lands exactly where it did before the rows
+       existed. */
+    --row-regimen: 8px;
+    --row-tryout: 6px;
+    --mark-gutter: 7px;
+    --row-rule: 2px;
+    --tl-rows: max(var(--tl-has-regimen, 0), var(--tl-has-tryout, 0));
+    --hist-h: calc(
+      var(--tl-rows) * (var(--mark-gutter) + var(--row-rule)) +
+        var(--tl-has-regimen, 0) * var(--row-regimen) + var(--tl-has-tryout, 0) * var(--row-tryout)
+    );
     /* What is left for the span to stand up in. */
     --span-h: calc(var(--rail-h) - var(--hist-h));
     /* How much of the lifted layer and of a grip shows at rest. A share of
@@ -876,41 +886,56 @@
 
   /* A history band: a lane's worth of stripe, drawn and tapped by the same
      element. The 1px edge every block on this rail wears is what keeps two
-     episodes that meet on consecutive days from reading as one, and what
-     keeps a break's grey band from dissolving into the page.
+     episodes that meet on consecutive days from reading as one. It is the
+     page rather than `--outline` here, because the band is ink: an outline
+     on ink is a darker line on a dark bar, and a gap of page is a gap.
 
-     The target is taller than the lane by 3px each way, the way a
-     milestone's is wider than its mark: the rail's height is fixed and
-     three lanes plus the eras' own strip have to live inside it, so the hit
-     box is what gives rather than the drawing. A band still carries a name
-     and a tab stop, which is the path that does not depend on aim. */
+     The target grows 3px every way, the way a milestone's grows around its
+     mark: the rail's height is fixed, so the hit box is what gives rather
+     than the drawing. A band still carries a name and a tab stop, which is
+     the path that does not depend on aim. */
   .span-tl-hband {
     position: absolute;
-    bottom: calc(var(--tl-gutter, 0px) + var(--tl-lane, 0) * var(--lane-h));
-    height: var(--lane-h);
-    min-width: 3px;
     box-sizing: border-box;
+    min-width: 6px;
     padding: 0;
     margin: 0;
-    background: var(--role-draw);
-    border: 1px solid var(--outline);
+    border: 1px solid var(--bg);
     border-radius: 0;
     cursor: pointer;
     z-index: 1;
   }
-  /* A break is the absence of journal rather than a kind of it, so it takes
-     no stripe - the same call GenderConstellationChart makes for a point
-     with no presentation, and for the same reason: on several palettes the
-     roleless fallback is one of the flag's own colours. */
-  .span-tl-hband.is-break {
+  /* Both rows are the secondary ink, not the primary. Three weights on the
+     rail and each says what it is: the flag is an era, full ink is the two
+     things that are now - the span's own frame and the marks - and this
+     grey is the context under them. Drawn in full ink first, and the render
+     put the heaviest object on the rail under the one the rail exists to
+     set. `--text-2` measures 4.90:1 on the page, well past the 3:1 a
+     graphic owes.
+
+     The regimen sits on the gutter and is solid: it is the stretch that
+     runs, usually under everything else here, and a filled bar is what
+     "this was true the whole time" looks like. */
+  .span-tl-hband[data-span-band='regimen'] {
+    bottom: var(--mark-gutter);
+    height: var(--row-regimen);
     background: var(--text-2);
+  }
+  /* A tryout sits above it and is hollow: something held up against a life
+     for a while rather than a fact of it, and an outline is the shape that
+     says so without asking the flag for a second colour. */
+  .span-tl-hband[data-span-band='tryout'] {
+    bottom: calc(var(--mark-gutter) + var(--tl-has-regimen, 0) * var(--row-regimen));
+    height: var(--row-tryout);
+    background: var(--bg);
+    border-color: var(--text-2);
   }
   .span-tl-hband.is-open-start { border-left: 0; }
   .span-tl-hband.is-open-end { border-right: 0; }
   .span-tl-hband::before {
     content: '';
     position: absolute;
-    inset: -3px 0;
+    inset: -3px;
   }
   .span-tl-hband:focus-visible {
     outline: 2px solid var(--focus-ring);
@@ -1090,29 +1115,37 @@
     align-items: center;
     gap: 5px;
   }
+  /* Each key is its own mark at its own size, not one swatch recoloured
+     four ways: what tells the kinds apart on the rail is shape, so a legend
+     of identical chips would be a legend of a different rail. */
   .span-tl-chip {
     display: block;
     box-sizing: border-box;
     width: 14px;
-    height: var(--lane-h);
-    background: var(--role-draw);
-    border: 1px solid var(--outline);
+    border: 1px solid var(--text-2);
   }
-  .span-tl-chip.is-break {
-    background: var(--text-2);
-  }
-  /* The eras are the one kind whose colour is plural, so their key is the
-     flag itself rather than any one stripe - which is also what keeps it
-     from colliding with the two coloured lanes on a two-colour flag. Under
-     disguise roles.ts hands out no gradient at all (ADR-0035), the variable
-     is unset, and the key falls back to the outline every block here wears
-     over nothing, which is what "no colour" looks like on that theme. */
-  .span-tl-chip.is-flag {
+  /* The eras are the one kind whose colour is plural - they run the flag,
+     one colour per era - so their key is the flag itself rather than any
+     one stripe, which is also what keeps it clear of everything else here.
+     Under disguise roles.ts hands out no gradient at all (ADR-0035), the
+     variable is unset, and the key falls back to the outline over nothing,
+     which is what "no colour" looks like on that theme. */
+  .span-tl-chip[data-span-chip='era'] {
+    height: var(--low-h);
     background: var(--tl-flag, transparent);
-    border-color: var(--text);
+  }
+  .span-tl-chip[data-span-chip='regimen'] {
+    height: var(--row-regimen);
+    background: var(--text-2);
+    border-color: var(--bg);
+  }
+  .span-tl-chip[data-span-chip='tryout'] {
+    height: var(--row-tryout);
+    background: var(--bg);
+    border-color: var(--text-2);
   }
   /* A mark, drawn as one: the milestone block's own size and radius. */
-  .span-tl-chip.is-mark {
+  .span-tl-chip[data-span-chip='surgery'] {
     width: 8px;
     height: 8px;
     background: var(--text);

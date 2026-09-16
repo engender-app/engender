@@ -314,28 +314,6 @@ export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefin
   );
 }
 
-/** The stripes the Look back rail hands out to its bands, in order.
-
-    The flag's colours where it has two or more, so an era next to an era is
-    a different colour and not a different shade of one (Alicja, on redesign
-    ticket 11's first renders: "we can't have all eras in the same colour").
-    On a flag with a single colour - agender - the shades come in behind it,
-    so its second and third era are black and grey rather than green three
-    times. A black or white band is a block here because every band on that
-    rail wears the 1px edge rule 4 gives it.
-
-    Never shorter than two entries, which is what lets the rail give its HRT
-    lane and its tryout lane different stripes on every palette: the
-    shortest lists here are the two-colour flags (trans, nonbinary, pan),
-    and a one-colour flag falls through to its shades. `tests/
-    palette-contrast.test.ts` holds that floor, because the rail's own
-    "no two kinds share a stripe" rests on it. */
-export function bandRoles(roles: Role[]): Role[] {
-  const colours = chromaticRoles(roles);
-  if (colours.length >= 2) return colours;
-  return [...colours, ...roles.filter((role) => !colours.includes(role))];
-}
-
 /** Which stripe each area of Home takes, named rather than written as a
     number at the call site - one of them is not in reading order and the
     reason is the ordering above.
