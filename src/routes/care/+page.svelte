@@ -445,7 +445,11 @@
           {m.care_regimen_dose_total({
             total: String(total.total),
             unit: total.doseUnit,
-            route: routeLabel(total.route),
+            /* routeLabel() is capitalised everywhere else it's used - a
+               standalone label or table cell - but this is the one place
+               it sits mid-sentence (ticket 09's own spec gives the line in
+               lowercase: "48 mg intramuscular in the last 90 days"). */
+            route: routeLabel(total.route).charAt(0).toLowerCase() + routeLabel(total.route).slice(1),
             days: String(DOSE_TOTAL_WINDOW_DAYS)
           })}
         </p>
