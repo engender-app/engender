@@ -36,7 +36,8 @@
    (the leading '--' stands where a script path would, since the flags are
    read from argv[2] on). */
 import { preview } from 'vite';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
@@ -60,11 +61,16 @@ const shots = [];
 const heights = {};
 const errors = [];
 
-let page = await browser.newPage({ viewport: { width: 390, height: 900 }, deviceScaleFactor: 2 });
+/** The width every shot is taken at. `reopen` moves it; `grow`/`shrink`
+    read it, so a crop taken at 320 or 1280 shrinks back to its own width
+    rather than to the phone's. */
+let viewportWidth = 390;
+let page = await browser.newPage({ viewport: { width: viewportWidth, height: 900 }, deviceScaleFactor: 2 });
 const watch = (p) => p.on('pageerror', (err) => errors.push(String(err)));
 watch(page);
 
 const reopen = async (width, scale) => {
+  viewportWidth = width;
   await page.close();
   page = await browser.newPage({ viewport: { width, height: width > 800 ? 1000 : 900 }, deviceScaleFactor: scale });
   watch(page);
@@ -97,11 +103,32 @@ const strip = async () => {
   });
 };
 
+/** The viewport grown to the whole screen's height, so a crop below the
+    fold is not clamped to what happens to be visible. Returns the height
+    it grew to, for the caller to shrink back from. Without this a band
+    near the foot of a long screen comes back as a sliver of the last
+    viewport with the nav bar across it - which is how the log strip's own
+    crop shipped byte-identical to the notices' crop once the strip got
+    short enough to sit at the bottom edge. */
+const grow = async () => {
+  const tall = await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    return Math.min(window.innerHeight + (region.scrollHeight - region.clientHeight) + 40, 8000);
+  });
+  await page.setViewportSize({ width: viewportWidth, height: tall });
+  await page.waitForTimeout(400);
+};
+const shrink = async () => {
+  await page.setViewportSize({ width: viewportWidth, height: viewportWidth > 800 ? 1000 : 900 });
+  await page.waitForTimeout(200);
+};
+
 /** From the app frame's top edge to `extra` px under the first of `until`'s
     selectors that matches, in document order of the list. */
 const cropTop = async (name, until, extra = 20, note = '') => {
   await strip();
   await page.waitForTimeout(700);
+  await grow();
   const box = await page.evaluate(
     ([selectors, pad]) => {
       const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
@@ -113,10 +140,12 @@ const cropTop = async (name, until, extra = 20, note = '') => {
     [until, extra]
   );
   if (!box) {
+    await shrink();
     errors.push(`${name}: nothing matched ${[].concat(until).join(' / ')}`);
     return;
   }
   await page.screenshot({ path: `${outDir}/${name}.png`, clip: box });
+  await shrink();
   shots.push({ name, note });
 };
 
@@ -126,6 +155,7 @@ const cropBand = async (name, from, to, note = '', last = false) => {
   await strip();
   await page.locator(from)[last ? 'last' : 'first']().scrollIntoViewIfNeeded();
   await page.waitForTimeout(700);
+  await grow();
   const box = await page.evaluate(
     ([a, b, useLast]) => {
       const pick = (sel, wantLast) => {
@@ -142,10 +172,12 @@ const cropBand = async (name, from, to, note = '', last = false) => {
     [from, to, last]
   );
   if (!box) {
+    await shrink();
     errors.push(`${name}: nothing matched ${from} / ${to}`);
     return;
   }
   await page.screenshot({ path: `${outDir}/${name}.png`, clip: box });
+  await shrink();
   shots.push({ name, note });
 };
 
@@ -204,20 +236,17 @@ const whole = async (name, note) => {
   await page.waitForTimeout(700);
   /* The document does not scroll and `[data-app-root]` is not the scroller
      either - `[data-app-scroll-region]` is, and an element shot of a
-     scroller is clipped to what is visible in it. So the viewport grows to
-     the content and shrinks back, which leaves the 390px layout alone and
-     makes only the height unreal. */
-  const grown = await page.evaluate(() => {
-    const region = document.querySelector('[data-app-scroll-region]');
-    const height = region.scrollHeight;
-    return { height, viewport: Math.min(window.innerHeight + (height - region.clientHeight) + 40, 8000) };
-  });
-  await page.setViewportSize({ width: 390, height: grown.viewport });
-  await page.waitForTimeout(400);
+     scroller is clipped to what is visible in it. `grow` is what makes the
+     whole screen visible at once; the 390px layout is untouched and only
+     the height is unreal. */
+  const height = await page.evaluate(() =>
+    Math.round(document.querySelector('[data-app-scroll-region]').scrollHeight)
+  );
+  await grow();
   await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
-  await page.setViewportSize({ width: 390, height: 900 });
-  heights[name] = Math.round(grown.height);
-  shots.push({ name, note: `${note} ${Math.round(grown.height)}px tall.` });
+  await shrink();
+  heights[name] = height;
+  shots.push({ name, note: `${note} ${height}px tall.` });
 };
 
 try {
@@ -342,6 +371,18 @@ try {
   } else {
     errors.push(String(err));
   }
+}
+
+/* Two crops that came out byte-identical are two crops of the same thing,
+   and a sign-off page full of them says nothing - which is how six shots of
+   the top of /doubt once shipped as three states of it. Cheap to check, and
+   it fails the run rather than the reviewer. */
+const seen = new Map();
+for (const { name } of shots) {
+  const digest = createHash('sha256').update(await readFile(`${outDir}/${name}.png`)).digest('hex');
+  const twin = seen.get(digest);
+  if (twin) errors.push(`${name} is byte-identical to ${twin}: two crops of the same box`);
+  else seen.set(digest, name);
 }
 
 await writeFile(`${outDir}/manifest.json`, JSON.stringify({ tag, shots, heights, errors }, null, 2));
