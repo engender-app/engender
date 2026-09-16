@@ -199,9 +199,9 @@
   /* The prep item's own editor, for the one thing a prep row asks
      confirmation for. Separate from the appointment's above because they
      delete different records and carry different confirmations. */
-  const item = recordEditor<ChecklistItem>({
+  const prepRecord = recordEditor<ChecklistItem>({
     remove: (id) => journal.checklists.deleteItem(id),
-    findById: (id) => items.find((each) => each.id === id)
+    findById: (id) => items.find((item) => item.id === id)
   });
 
   let addSheet = $state(false);
@@ -223,12 +223,12 @@
     addSheet = false;
   }
 
-  function toggleChecked(each: ChecklistItem) {
-    journal.checklists.setItemChecked(each.id, !each.checked);
+  function toggleChecked(item: ChecklistItem) {
+    journal.checklists.setItemChecked(item.id, !item.checked);
   }
 
-  function toggleCarriedForward(each: ChecklistItem) {
-    journal.checklists.setItemCarriedForward(each.id, !each.carriedForward);
+  function toggleCarriedForward(item: ChecklistItem) {
+    journal.checklists.setItemCarriedForward(item.id, !item.carriedForward);
   }
 </script>
 
@@ -338,14 +338,14 @@
                Each row opens and closes its own height (ADR-0078), so an
                item added from the sheet arrives by moving rather than
                appearing where it lands. -->
-          {#each items as each (each.id)}
-            <div class="kit-row is-split" data-appointment-item={each.id} transition:collapse>
+          {#each items as item (item.id)}
+            <div class="kit-row is-split" data-appointment-item={item.id} transition:collapse>
               <button
                 class="kit-row-main"
                 role="checkbox"
-                aria-checked={each.checked}
-                aria-label={each.checked ? m.appointment_prep_uncheck_aria({ content: each.content }) : m.appointment_prep_check_aria({ content: each.content })}
-                onclick={() => toggleChecked(each)}
+                aria-checked={item.checked}
+                aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
+                onclick={() => toggleChecked(item)}
               >
                 <!-- The tick is always in the markup and crosses in and out
                      on opacity and a scale rather than being added and
@@ -354,28 +354,28 @@
                      `aria-checked` rather than on whether this element
                      exists. Under reduced motion `--dur-fast` clamps to 1ms
                      and the tick simply cuts, which keeps the feedback. -->
-                <span class="ap-box" class:ap-ticked={each.checked}>
+                <span class="ap-box" class:ap-ticked={item.checked}>
                   <span class="ap-tick" aria-hidden="true"><Icon name="check" size={20} /></span>
                 </span>
                 <span class="kit-row-text">
-                  <span class="kit-row-title" class:ap-done={each.checked}>{each.content}</span>
+                  <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
                 </span>
               </button>
               <button
                 class="kit-row-act"
-                class:ap-flagged={each.carriedForward}
-                data-carry-forward={each.id}
-                aria-pressed={each.carriedForward}
-                aria-label={each.carriedForward ? m.appointment_prep_uncarry_aria({ content: each.content }) : m.appointment_prep_carry_aria({ content: each.content })}
-                onclick={() => toggleCarriedForward(each)}
+                class:ap-flagged={item.carriedForward}
+                data-carry-forward={item.id}
+                aria-pressed={item.carriedForward}
+                aria-label={item.carriedForward ? m.appointment_prep_uncarry_aria({ content: item.content }) : m.appointment_prep_carry_aria({ content: item.content })}
+                onclick={() => toggleCarriedForward(item)}
               >
                 <Icon name="flag" size={18} />
               </button>
               <button
                 class="kit-row-act"
-                data-delete-appointment-item={each.id}
-                aria-label={m.appointment_prep_delete_aria({ content: each.content })}
-                onclick={() => item.askToDelete(each)}
+                data-delete-appointment-item={item.id}
+                aria-label={m.appointment_prep_delete_aria({ content: item.content })}
+                onclick={() => prepRecord.askToDelete(item)}
               >
                 <Icon name="trash" size={18} />
               </button>
@@ -512,12 +512,12 @@
   </Sheet>
 
   <RecordSheet
-    record={item}
+    record={prepRecord}
     handle="appointment-item"
     confirm={{
       title: m.appointment_prep_delete_sheet(),
       question: () => m.appointment_prep_delete_q(),
-      hint: (each) => each.content,
+      hint: (item) => item.content,
       confirmLabel: m.appointment_prep_delete(),
       cancelLabel: m.keep_it()
     }}
