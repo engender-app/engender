@@ -272,6 +272,24 @@ test('an empty half does not drag a row backwards', () => {
   assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
 });
 
+test('the merged effects row reports whichever half was written last, as hair-progress does (ticket 13)', () => {
+  const line = rowLine(
+    spec('effects'),
+    reading({ lastWrites: { personalEffects: TODAY - 40, sideEffects: TODAY - 4 } })
+  );
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 4, daysAgo: 4 });
+});
+
+test('a side effect logged alone does not drag the effects row backwards', () => {
+  const line = rowLine(
+    spec('effects'),
+    reading({ lastWrites: { personalEffects: null, sideEffects: TODAY - 2 } })
+  );
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
+});
+
 test('a row only reads the areas it fronts, and asks for nothing else', () => {
   /* The ticket's "renders its quiet state without issuing a wasted read", at
      the level this module decides it: the assembled read answers for every

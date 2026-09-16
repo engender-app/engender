@@ -4076,7 +4076,9 @@ try {
     ['/care/curve', 'curve-empty'],
     ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
-    ['/health/side-effects', 'side-effects-empty'],
+    // The merged screen (ticket 13) - side effects keep their own
+    // empty-state marker under the same roof as the changes axis.
+    ['/practice/personal-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
     ['/health/dilation', 'dilation-schedule-empty'],
     ['/health/appointment-prep', 'appointment-prep-empty'],
@@ -4626,17 +4628,13 @@ try {
    Handles, not headings: every step is a `data-list-row` click and a URL
    wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
 try {
-  // Health > Care > Changes you've noticed > Side effects.
+  // Health > Care > Changes you've noticed, which carries side effects on
+  // the same axis and the same list now (ticket 13) - there is no row left
+  // to tap for them, and no second screen to back out of.
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
   await page.locator('[data-list-row="effects"]').click();
-  await page.waitForURL('**/practice/personal-effects');
-  await page.locator('[data-list-row="side-effects"]').click();
-  await page.waitForURL('**/health/side-effects');
-
-  // Back out the way in, which is what the host's own `back` names.
-  await page.locator('[data-screen-back]').click();
   await page.waitForURL('**/practice/personal-effects');
 
   // ... and the other change hanging off the same screen.
@@ -5910,15 +5908,17 @@ try {
      explicit opt-in switch in Settings, and an active testosterone
      episode, which surfaces it with the switch back off. */
   /* No step on /more any more: phase 9 carpet ticket 16 took the cycle row
-     off the hub entirely and hosted it under the side effects screen, so
-     "the hub does not name it" is now structural and an absence check there
-     would pass whatever this gate did. What is left to walk is the surface
-     that does name it behind the gate, and `all-cycle-events` is a handle
-     this flow goes on to wait for - so its absence here means something
-     (ADR-0029, and a deleted handle cannot assert it is gone). */
-  await fresh('/health/side-effects');
+     off the hub entirely and hosted it under the side effects screen -
+     ticket 13 moved it again, onto the merged changes screen, with the rest
+     of what that screen drew - so "the hub does not name it" is now
+     structural and an absence check there would pass whatever this gate
+     did. What is left to walk is the surface that does name it behind the
+     gate, and `all-cycle-events` is a handle this flow goes on to wait for -
+     so its absence here means something (ADR-0029, and a deleted handle
+     cannot assert it is gone). */
+  await fresh('/practice/personal-effects');
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
-    throw new Error('side effects named the cycle log with no testosterone and no opt-in');
+    throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
   }
   if (await page.locator('[data-cycle-events-link]').count()) {
     throw new Error('regimen linked the cycle log without a testosterone episode');
@@ -5943,7 +5943,7 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // Back off, so the next flow starts from the default and the testosterone
@@ -5975,7 +5975,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
 
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
@@ -5992,7 +5992,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
   ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
 } catch (e) { fail('cycle tracking testosterone', e); }

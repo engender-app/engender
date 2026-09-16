@@ -479,40 +479,45 @@
          reader classify their own symptom before they could write it down.
          Its own heading, list, editor sheet and empty state - moved here
          whole from /health/side-effects, which is a redirect stub now. -->
-    <SectionHeading text={m.side_effects()} />
-    <ReadGate read={effectsQuery} variant="line" count={3}>
-      {#snippet rows()}
-        <div class="screen-part">
-          <ListCard role={roleAt(activeFlag.roles, 1)}>
-            {#each [...effects].reverse() as effect (effect.id)}
-              {@const severity = severityName(effect.severity)}
-              {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-              <ListRow
-                key={effect.id}
-                data-side-effect={effect.id}
-                icon="zap"
-                title={effect.name}
-                subtitle={severity ? `${day} · ${severity}` : day}
-                chevron={false}
-                onclick={() => record.openEditor(effect)}
-              />
-            {/each}
-          </ListCard>
-        </div>
-      {/snippet}
-      {#snippet empty()}
-        <div class="screen-part">
-          <Notice
-            icon="zap"
-            key="side-effects-empty"
-            role={roleAt(activeFlag.roles, 1)}
-            title={m.side_effect_empty_title()}
-            text={m.side_effect_empty_body()}
-            action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-          />
-        </div>
-      {/snippet}
-    </ReadGate>
+    <!-- The wrapper names nothing but the crop: a sign-off render needs one
+         stable box around the heading and the list, the way `data-noticed-axis`
+         already gives the axis one. -->
+    <div data-side-effects-section>
+      <SectionHeading text={m.side_effects()} />
+      <ReadGate read={effectsQuery} variant="line" count={3}>
+        {#snippet rows()}
+          <div class="screen-part">
+            <ListCard role={roleAt(activeFlag.roles, 1)}>
+              {#each [...effects].reverse() as effect (effect.id)}
+                {@const severity = severityName(effect.severity)}
+                {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                <ListRow
+                  key={effect.id}
+                  data-side-effect={effect.id}
+                  icon="zap"
+                  title={effect.name}
+                  subtitle={severity ? `${day} · ${severity}` : day}
+                  chevron={false}
+                  onclick={() => record.openEditor(effect)}
+                />
+              {/each}
+            </ListCard>
+          </div>
+        {/snippet}
+        {#snippet empty()}
+          <div class="screen-part">
+            <Notice
+              icon="zap"
+              key="side-effects-empty"
+              role={roleAt(activeFlag.roles, 1)}
+              title={m.side_effect_empty_title()}
+              text={m.side_effect_empty_body()}
+              action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+            />
+          </div>
+        {/snippet}
+      </ReadGate>
+    </div>
 
     <!-- The cycle log, gated exactly as it was on /health/side-effects
          (ADR-0043, ticket 13 moved the block rather than weakening the
