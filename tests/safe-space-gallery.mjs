@@ -99,6 +99,58 @@ async function shoot(name, note, sel, pad = 16) {
   console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
 }
 
+/** A screen taller than the phone. `fullPage` catches the viewport and an
+    element shot of the scroller is clipped to what is visible in it, so the
+    viewport is grown to the content and shrunk back afterwards: the layout
+    stays the 390px one and only the height is unreal. */
+async function shootWhole(name, note) {
+  const tall = await page.evaluate(() => {
+    const scroller = document.querySelector('[data-app-scroll-region]');
+    return Math.min(window.innerHeight + (scroller.scrollHeight - scroller.clientHeight) + 40, 8000);
+  });
+  await page.setViewportSize({ width: VIEWPORT.width, height: tall });
+  await page.waitForTimeout(500);
+  await page.locator('[data-app-root]').screenshot({ path: resolve(outDir, `${name}.png`) });
+  shots.push({ name, note });
+  console.log(`${name}: ${VIEWPORT.width}x${tall} (whole screen)`);
+  await page.setViewportSize(VIEWPORT);
+  await page.waitForTimeout(300);
+}
+
+/** A section that runs past the fold: the same grown viewport, then a crop
+    from the top of one element to the bottom of another, since a section
+    here is a heading and the run of cards under it rather than one box. */
+async function shootSection(name, note, fromSel, toSel, pad = 16) {
+  const tall = await page.evaluate(() => {
+    const scroller = document.querySelector('[data-app-scroll-region]');
+    return Math.min(window.innerHeight + (scroller.scrollHeight - scroller.clientHeight) + 40, 8000);
+  });
+  await page.setViewportSize({ width: VIEWPORT.width, height: tall });
+  await page.waitForTimeout(500);
+  const clip = await page.evaluate(
+    ([fromSel, toSel, pad]) => {
+      const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
+      const from = document.querySelector(fromSel);
+      const tails = document.querySelectorAll(toSel);
+      const to = tails[tails.length - 1] ?? from;
+      if (!from) return null;
+      const top = from.getBoundingClientRect().top - pad;
+      const bottom = to.getBoundingClientRect().bottom + pad;
+      return { x: frame.x, y: Math.max(frame.y, top), width: frame.width, height: bottom - top };
+    },
+    [fromSel, toSel, pad]
+  );
+  if (clip && clip.height >= 4) {
+    await page.screenshot({ path: resolve(outDir, `${name}.png`), clip });
+    shots.push({ name, note });
+    console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
+  } else {
+    console.warn(`${name}: nothing to shoot`);
+  }
+  await page.setViewportSize(VIEWPORT);
+  await page.waitForTimeout(300);
+}
+
 try {
   await settle('/', { keepDemoBar: true });
   await page.locator('[data-fill-every-feature]').click();
@@ -116,6 +168,35 @@ try {
       if (!(await page.locator('[data-screen-header]').count())) continue;
       const name = way.split('/').pop();
       await shoot(`${name}-${theme}`, `The top of ${way}, so that what moved can be seen to be intact.`);
+    }
+
+    /* The two things phase 11 ticket 15 changed, whole rather than cropped
+       to the fold, because both are arguments about length: the good
+       moments end at a control instead of at a twentieth card, and the
+       letters screen's Open section holds the photographs the folded screen
+       used to hold. */
+    await settle('/doubt/evidence');
+    await shootWhole(
+      `evidence-whole-${theme}`,
+      'The whole of the good moments: six cards, the save under them, then the way to the rest.'
+    );
+
+    await settle('/transition/letters');
+    await shootSection(
+      `letters-opened-${theme}`,
+      'The letters screen\'s Open section: the unlocked letters and, beside them, the starred photographs.',
+      '#opened',
+      '[data-safe-space-photos], [data-letter-open]'
+    );
+
+    /* Only on a build that still has it: the screen this ticket folded
+       away, so the before column can show what was on it. On a build that
+       folded it the address redirects, and a redirect draws a header of its
+       own - the letters screen's - so the address is what says whether the
+       screen is there, not the header. */
+    await settle('/doubt/moments');
+    if (page.url().includes('/doubt/moments')) {
+      await shootWhole(`moments-whole-${theme}`, 'The screen that was: Safe space\'s own letters and photos.');
     }
   }
 } finally {
