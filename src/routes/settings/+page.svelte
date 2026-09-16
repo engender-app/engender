@@ -228,11 +228,15 @@
   </ListCard>
 
   <SectionHeading text={m.settings_tracking()} />
-  <!-- Tracking is several cards, not one: the navigable rows, tag groups,
-       the four related toggles, and the metric picker each want a
-       different shape (DIRECTION.md 2b), but sitting flush against each
+  <!-- Tracking is several cards, not one: the navigable rows, cycle
+       tracking, the unit picker, tag groups and the metric picker each want
+       a different shape (DIRECTION.md 2b), but sitting flush against each
        other with no heading between them read as one accidental slab
-       rather than four deliberate ones (Alicja, on the live build).
+       rather than several deliberate ones (Alicja, on the live build).
+       The four unprompted-prompt toggles that used to sit here, under no
+       heading of their own, are on /settings/notifications since phase 11
+       ticket 04: all four are the app speaking up without being asked,
+       which is what that screen is about.
        .stack-3 (components.css) already gives a run of siblings a gap
        between each - reused rather than a one-off margin per card. -->
   <div class="stack-3" data-settings-list>
@@ -358,80 +362,6 @@
         {/each}
         <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
       </div>
-    </ListCard>
-
-    <!-- Two related toggles as one card with a hairline between, rather
-         than two boxes stacked with a margin apart - DIRECTION.md's
-         decision 3: "tighter, not airier", and the shape One rounded card
-         repeated is the thing 2b calls generic; a run of the same-shaped
-         row is not that, it is one surface with several related facts on
-         it. Each stays a plain div rather than a ListRow: the row itself
-         does nothing when tapped, the switch inside it does, and a row
-         that acted too would make the switch a button inside a button. -->
-    <ListCard>
-      <div class="kit-row" data-entry-nudges>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.entry_nudges()}</span>
-          <span class="kit-row-sub">{m.entry_nudges_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.entryNudges}
-            label={m.entry_nudges()}
-            onChange={(v) => {
-              prefs.entryNudges = v;
-            }}
-          />
-        </span>
-      </div>
-      <div class="kit-row" data-guided-prompts>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.guided_prompts()}</span>
-          <span class="kit-row-sub">{m.guided_prompts_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.guidedPromptsEnabled}
-            label={m.guided_prompts()}
-            onChange={(v) => {
-              prefs.guidedPromptsEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-      <div class="kit-row" data-wear-duration-cue-toggle>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.wear_duration_cue_toggle()}</span>
-          <span class="kit-row-sub">{m.wear_duration_cue_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.wearDurationCueEnabled}
-            label={m.wear_duration_cue_toggle()}
-            onChange={(v) => {
-              prefs.wearDurationCueEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-      <div class="kit-row" data-roadmap-milestone-sync>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.roadmap_milestone_sync_title()}</span>
-          <span class="kit-row-sub">{m.roadmap_milestone_sync_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.roadmapMilestoneSyncEnabled}
-            label={m.roadmap_milestone_sync_title()}
-            onChange={(v) => {
-              prefs.roadmapMilestoneSyncEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-      <!-- Wrapped's and on-this-day's toggles were here too until ticket 51
-           moved them, with their notification sub-toggles and the permission
-           notice, behind the Live tiles and notices row above. -->
     </ListCard>
 
     <ListCard>

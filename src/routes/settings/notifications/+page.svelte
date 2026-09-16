@@ -1,23 +1,44 @@
 <script lang="ts">
   /* The one screen over the unprompted registry (phase 6 tickets 02 and 04,
-     merged from two screens onto one by deepening ticket 09). "Stop putting
-     things on my home screen" and "stop buzzing my phone" are two questions
-     about the same list, so this is one `{#each}` with two toggle columns
-     rather than two screens each running their own - ADR-0039's amendment
-     argues for exactly this consolidation. `/settings/live-tiles` used to be
-     the first question's own screen; it now redirects here.
+     merged from two screens onto one by deepening ticket 09). "Stop showing
+     me this" and "stop buzzing my phone" are two questions about the same
+     list, so this is one `{#each}` with two toggle columns rather than two
+     screens each running their own - ADR-0039's amendment argues for
+     exactly this consolidation. `/settings/live-tiles` used to be the first
+     question's own screen; it now redirects here.
+
+     **Minus Today's own thirteen** (phase 11 ticket 04). A live tile is
+     arranged where it draws, in Today's editor, so this screen is every
+     other registered kind: the stock notice, the two look-back cards, and
+     the four that fire. `isLiveTileKind` is the filter rather than a second
+     list, so the editor and this screen cannot each think they own a kind.
+     That also takes the last of the Home column's untruth with it - two of
+     the three rows left draw on Look back, never on Home - which is why the
+     column head asks whether the app may show the thing at all rather than
+     naming a screen.
 
      The rows are not written here: $lib/unprompted/registry.ts is what a
      later ticket extends, and RegistryRow draws one, so this page is the
      {#each} and nothing else.
 
+     **The four prompts below the list** came off Settings' Tracking section
+     with the same ticket, where they floated under no heading of their own.
+     Each is the app speaking up without being asked - after a mood-only
+     save, while writing, eight hours into a binder session, over a ticked
+     roadmap goal - which is the question this whole screen is about. They
+     are not registry rows: none of them is a kind of its own with a surface
+     and a channel, each is one boolean a single feature reads, so they sit
+     under a heading of their own rather than being forced into a list whose
+     shape promises two columns.
+
      Absent on web rather than shown and inert, for the notify column only
      (user story 18): a browser cannot fire a scheduled notification while
      the app is closed, so a switch there would be a promise the platform
-     does not keep. The Home column carries no such limit - a live tile is
-     in-app UI, not an OS notification - so it stays live on web the way its
-     own screen always was, and only the notify slot on each row, the permission
-     notice and the two notification-only cards below the list drop out. */
+     does not keep. The show column carries no such limit - a notice or a
+     card is in-app UI, not an OS notification - so it stays live on web,
+     and so do the four prompts; only the notify slot on each row, the
+     permission notice and the two notification-only cards below the list
+     drop out. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -33,7 +54,12 @@
     type AndroidRetrospectiveNotificationStatus
   } from '$lib/retrospective/android-bridge';
   import { disclose } from '$lib/motion/reveal';
-  import { UNPROMPTED_ROWS, type UnpromptedRow } from '$lib/unprompted/registry';
+  import { UNPROMPTED_ROWS, type BooleanPrefKey, type UnpromptedRow } from '$lib/unprompted/registry';
+  import { isLiveTileKind } from '$lib/data/liveTiles';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+
+  /** Every kind Today's editor does not arrange. */
+  const ROWS = UNPROMPTED_ROWS.filter((row) => !isLiveTileKind(row.key));
 
   let isWeb = $derived(!isAndroid());
 
@@ -80,7 +106,27 @@
     if (v && row.surface) prefs[row.surface.prefKey] = true;
   }
 
-  let anyNotifyOn = $derived(UNPROMPTED_ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
+  let anyNotifyOn = $derived(ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
+
+  /* The four prompts, in the order Settings drew them. A list rather than
+     four copies of the same eight lines of markup: they differ only in
+     which boolean they write and what they are called. */
+  const PROMPTS: { key: string; prefKey: BooleanPrefKey; title: () => string; subtitle: () => string }[] = [
+    { key: 'entry-nudges', prefKey: 'entryNudges', title: () => m.entry_nudges(), subtitle: () => m.entry_nudges_sub() },
+    { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() },
+    {
+      key: 'wear-duration-cue',
+      prefKey: 'wearDurationCueEnabled',
+      title: () => m.wear_duration_cue_toggle(),
+      subtitle: () => m.wear_duration_cue_sub()
+    },
+    {
+      key: 'roadmap-milestone-sync',
+      prefKey: 'roadmapMilestoneSyncEnabled',
+      title: () => m.roadmap_milestone_sync_title(),
+      subtitle: () => m.roadmap_milestone_sync_sub()
+    }
+  ];
 </script>
 
 <div class="screen" data-screen>
@@ -88,20 +134,20 @@
 
   {#if !isWeb}
     <div class="registry-heads" aria-hidden="true">
-      <span class="registry-head">{m.notif_col_home()}</span>
+      <span class="registry-head">{m.notif_col_show()}</span>
       <span class="registry-head">{m.notif_col_notify()}</span>
     </div>
   {/if}
 
   <ListCard>
-    {#each UNPROMPTED_ROWS as row (row.key)}
+    {#each ROWS as row (row.key)}
       <RegistryRow
         key={row.key}
         title={row.title()}
         subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
         surface={row.surface
           ? {
-              label: m.notif_home_toggle_aria({ name: row.title() }),
+              label: m.notif_show_toggle_aria({ name: row.title() }),
               checked: prefs[row.surface.prefKey],
               onChange: (v) => setKind(row, v)
             }
@@ -114,6 +160,31 @@
             }
           : undefined}
       />
+    {/each}
+  </ListCard>
+
+  <SectionHeading text={m.notif_prompts_heading()} />
+  <!-- Each stays a plain div rather than a ListRow, the rule Settings kept
+       for them: the row itself does nothing when tapped, the switch inside
+       it does, and a row that acted too would make the switch a button
+       inside a button. -->
+  <ListCard>
+    {#each PROMPTS as prompt (prompt.key)}
+      <div class="kit-row" data-prompt={prompt.key}>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{prompt.title()}</span>
+          <span class="kit-row-sub">{prompt.subtitle()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs[prompt.prefKey]}
+            label={prompt.title()}
+            onChange={(v) => {
+              prefs[prompt.prefKey] = v;
+            }}
+          />
+        </span>
+      </div>
     {/each}
   </ListCard>
 

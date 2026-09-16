@@ -390,6 +390,26 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
    cross-checks against it (AU-09 test-only review). */
 export const HOME_TILE_CAP = 3;
 
+/** The order Home actually draws them in: the bands outside, `LIVE_TILE_ORDER`
+    inside each one.
+
+    Derived rather than written out a second time, and read by both the grid
+    and Today's editor (phase 11 ticket 04). The editor lists one switch per
+    kind in draw order, so a hand-kept second list there would be the order
+    stated twice with nothing holding the two together - and `composeHomeTiles`
+    below walks this rather than nesting the same two loops it is made of. */
+export const LIVE_TILE_DRAW_ORDER: readonly LiveTileKind[] = HOME_TILE_TIERS.flatMap((tier) =>
+  LIVE_TILE_ORDER.filter((kind) => LIVE_TILE_TIER[kind] === tier)
+);
+
+/** Whether a registered kind is one of the grid's, which is how a screen
+    tells a tile the editor arranges from a notice or a notification it does
+    not (phase 11 ticket 04). Over the registry's own union rather than over
+    `string`, so a caller cannot ask it about a kind that does not exist. */
+export function isLiveTileKind(kind: UnpromptedKind): kind is LiveTileKind {
+  return (LIVE_TILE_ORDER as readonly UnpromptedKind[]).includes(kind);
+}
+
 type Unordered = Exclude<LiveTileKind, (typeof LIVE_TILE_ORDER)[number]>;
 type AssertNoneUnordered<Missing extends never> = Missing;
 type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
@@ -1002,10 +1022,11 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
 /** The grid, in tier order, with every qualifying tile in it.
 
-    Two loops rather than a sort: the tier bands are the outer order and
-    `LIVE_TILE_ORDER` is the order inside a band, which is exactly what
-    nesting the two lists says. Nothing is dropped here - the cap is
-    `splitHomeTiles` below, so the fold has the tiles it is folding.
+    `LIVE_TILE_DRAW_ORDER` rather than a sort or a nested pair of loops: the
+    tier bands outside and `LIVE_TILE_ORDER` inside is one order, and since
+    ticket 04 the editor lists its switches in it too. Nothing is dropped
+    here - the cap is `splitHomeTiles` below, so the fold has the tiles it is
+    folding.
 
     A tile whose area is hidden or finished never reaches its builder (phase 8
     features ticket 04). Folded into `enabled` rather than added as a third
@@ -1015,13 +1036,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const builders = buildersFor(input);
   const tiles: HomeTile[] = [];
-  for (const tier of HOME_TILE_TIERS) {
-    for (const kind of LIVE_TILE_ORDER) {
-      if (LIVE_TILE_TIER[kind] !== tier) continue;
-      const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
-      const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
-      if (tile) tiles.push({ ...tile, tier });
-    }
+  for (const kind of LIVE_TILE_DRAW_ORDER) {
+    const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
+    const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
+    if (tile) tiles.push({ ...tile, tier: LIVE_TILE_TIER[kind] });
   }
   return tiles;
 }
