@@ -71,6 +71,7 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
   import VoicePracticeTakes from '$lib/components/VoicePracticeTakes.svelte';
+  import VoiceRecordings from '$lib/components/VoiceRecordings.svelte';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { hzLabel } from '$lib/components/pitchBandCopy';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
@@ -86,8 +87,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  type Tab = 'record' | 'practise' | 'compare';
-  const TABS: Tab[] = ['record', 'practise', 'compare'];
+  type Tab = 'record' | 'practise' | 'compare' | 'recordings';
+  const TABS: Tab[] = ['record', 'practise', 'compare', 'recordings'];
 
   /* The trend takes role 0, the picker's stripe after it - the same split
      the labs screen makes between its chart and its results.
@@ -348,7 +349,8 @@
         options={[
           { value: 'record', label: m.vb_tab_record() },
           { value: 'practise', label: m.vb_tab_practise() },
-          { value: 'compare', label: m.vb_tab_compare() }
+          { value: 'compare', label: m.vb_tab_compare() },
+          { value: 'recordings', label: m.recordings_label() }
         ]}
         value={tab}
         onChange={changeTab}
@@ -373,6 +375,8 @@
            the comfort band is what a live figure is read against, and a
            past take's own record is what happened once already. -->
       <VoicePracticeTakes role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
+    {:else if tab === 'recordings'}
+      <VoiceRecordings />
     {:else}
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
         {#snippet rows()}
