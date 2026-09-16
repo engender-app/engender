@@ -424,7 +424,7 @@
                   subtitle={item.startEpochDay === null
                     ? m.coming_back_era_sub_no_start()
                     : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
-                  href="/transition/eras"
+                  href="/settings/eras"
                 />
               {:else if item.kind === 'wear-session'}
                 {@render offer({

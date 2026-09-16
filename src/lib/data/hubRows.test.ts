@@ -184,7 +184,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('fourteen rows can report a reading and eight never can', () => {
+test('fourteen rows can report a reading and seven never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -194,9 +194,10 @@ test('fourteen rows can report a reading and eight never can', () => {
   // clinician-summary row outright rather than hosting it, and fourteen
   // since redesign ticket 61 folded the size log into the measurements row.
   // The written eight are nine less `words`, which redesign ticket 62 took
-  // off with the screen it opened.
+  // off with the screen it opened, and seven since redesign ticket 16 took
+  // `eras` - also 'written' - off the same way.
   assert.equal(reads.length, 14);
-  assert.equal(HUB_ROWS.length - reads.length, 8);
+  assert.equal(HUB_ROWS.length - reads.length, 7);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -387,8 +388,8 @@ test('finished and suspended still win over a forward fact', () => {
   });
 });
 
-/* Nothing forward to say is the common case - eight rows of twenty-two can
-   carry a forward fact at all, and the other fourteen read exactly as they
+/* Nothing forward to say is the common case - eight rows of twenty-one can
+   carry a forward fact at all, and the other thirteen read exactly as they
    did before this ticket. */
 test('with nothing forward, every row falls through to the reading it had', () => {
   const empty = reading({ lastWrites: { measurements: TODAY - 3 } });
@@ -651,7 +652,6 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
   assert.deepEqual(group('body'), ['measurements']);
   assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
   assert.deepEqual(group('transition'), [
-    'eras',
     'milestones',
     'tryouts',
     'voice-benchmark',

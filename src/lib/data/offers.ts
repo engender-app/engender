@@ -64,7 +64,7 @@
    write for a "not now" to close out - and its "yes" is the same
    goto-and-let-the-editor-save shape as "start an era here" above, just
    with two dates handed over instead of one (`/stats`'s `era-offer`,
-   `/transition/eras`'s `end` query parameter). What is registered here is
+   `/settings/eras`'s `end` query parameter). What is registered here is
    never an offer whose only action is a link.
 
    ## Differences between them, documented rather than flattened

@@ -48,7 +48,7 @@
 
    Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
    `home` is one of the hub's groups or one of the screens in `HUB_ROW_HOSTS`,
-   and five of the twenty-two now name a screen. This file stays the
+   and five of the twenty-one now name a screen. This file stays the
    registry for all of them either way, which is the point of holding the
    field here rather than deleting the rows that left: `finishes` still has to
    be claimed by exactly one row and the last-write registry still has to be
@@ -132,7 +132,13 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     gates on `cycleTrackingVisible`, its way-in row carries copy about the
     chart behind it rather than the standing line, and `cycleEvents` is the
     one area no `hidden` flag can reach (ADR-0043), so the rule the component
-    exists to apply has nothing to do there. */
+    exists to apply has nothing to do there.
+
+    Eras never was one of the seven - it kept a plain row in the Transition
+    group until redesign ticket 16 (ADR-0084) found it a reference area too,
+    spent on seven other screens and created on exactly one. It left `ROWS`
+    entirely, the way words did: the milestone rail is the one place under
+    Transition an era is still drawn, as a band rather than a row. */
 export const HUB_ROW_HOSTS = {
   care: '/care',
   effects: '/practice/personal-effects',
@@ -272,15 +278,6 @@ const ROWS = [
     line: 'read'
   },
   // --- Transition ----------------------------------------------------------
-  {
-    key: 'eras',
-    icon: 'columns',
-    href: '/transition/eras',
-    home: 'transition',
-    areas: ['eras'],
-    finishes: null,
-    line: 'written'
-  },
   {
     /* `sparkle` rather than the `flag` it shared with the surgery journey. A
        flag is planted on a map, which is what a surgery journey has: one
@@ -811,12 +808,13 @@ export function hubSections(reading: HubReading): HubSection[] {
     the order its groups draw them, then the rows drawn on a screen of their
     own (phase 10 redesign ticket 15).
 
-    All twenty-two of them - twenty-five until redesign ticket 51 moved
+    All twenty-one of them - twenty-five until redesign ticket 51 moved
     modes and entry templates off the registry entirely and into Settings
     (ADR-0084), twenty-four until ticket 59 deleted the clinician-summary
-    row outright rather than hosting it, since it fronts no area, and
+    row outright rather than hosting it, since it fronts no area,
     twenty-three until ticket 62 took the words row off with the screen it
-    opened. The five hosted rows still here are not on this screen and are
+    opened, and twenty-two until ticket 16 took eras off the same way. The
+    five hosted rows still here are not on this screen and are
     still areas of this app: somebody looking for dilation or hair progress
     looks for them here, and leaving them out would make the one index with
     a search box the one place they cannot be found. A match draws the row the registry declares -
