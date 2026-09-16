@@ -94,6 +94,10 @@
      below assumes there is one. */
   const pack = POLISH_PACK;
 
+  /* Closed by default (redesign ticket 16): the pack's own provenance used
+     to be the first thing the screen said. */
+  let packDetailsOpen = $state(false);
+
   let statusQuery = liveQuery((j) => j.roadmap.getGoalStatuses(pack.key));
   let statuses = $derived(statusQuery.value ?? {});
 
@@ -311,16 +315,40 @@
 <div class="screen">
   <ScreenHeader title={m.roadmap_title()} back="/more" />
 
-  <Notice
-    icon="globe"
-    key="roadmap-pack"
-    title={roadmapPackName(pack.key)}
-    text={roadmapPackCaveat(pack.key)}
-  />
-  <div class="roadmap-provenance">
-    <p class="small">{roadmapPackMarkerNote(pack.key)}</p>
-    <p class="small">{m.roadmap_not_advice()}</p>
-  </div>
+  <!-- The pack's provenance, collapsed to this one row (redesign ticket
+       16): what the pack is and what it is not still changes how the list
+       below reads, so it stays first, but the screen used to give it the
+       whole first viewport before a single step of the roadmap. Closed by
+       default; the reading below - whereYouAre, the track, the steps left
+       - is what the screen opens on now. -->
+  <ListCard role={roleAt(activeFlag.roles, 0)}>
+    <ListRow
+      data-roadmap-pack-toggle
+      onclick={() => (packDetailsOpen = !packDetailsOpen)}
+      aria-expanded={packDetailsOpen}
+      chevron={false}
+      icon="globe"
+      title={m.roadmap_pack_details_toggle()}
+    >
+      {#snippet trailing()}
+        <Icon name={packDetailsOpen ? 'chevronDown' : 'chevronRight'} size={20} />
+      {/snippet}
+    </ListRow>
+  </ListCard>
+  {#if packDetailsOpen}
+    <div data-roadmap-pack-details transition:disclose>
+      <Notice
+        icon="globe"
+        key="roadmap-pack"
+        title={roadmapPackName(pack.key)}
+        text={roadmapPackCaveat(pack.key)}
+      />
+      <div class="roadmap-provenance">
+        <p class="small">{roadmapPackMarkerNote(pack.key)}</p>
+        <p class="small">{m.roadmap_not_advice()}</p>
+      </div>
+    </div>
+  {/if}
 
   {#if !loaded}
     <div out:crossfade><Skeleton variant="line" count={4} /></div>
