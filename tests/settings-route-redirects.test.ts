@@ -94,10 +94,20 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
+  /* Phase 11 all-four-doors ticket 12 (ADR-0066): the prep list is a section
+     of the visit screen now rather than a screen beside it, so its own
+     address is a stub. `settings/appointment-prep` is repointed at the visit
+     screen directly rather than at that stub, the same one-hop rule ticket 61
+     set for `body/sizes`. */
   [
     'settings/appointment-prep',
     () => import('../src/routes/settings/appointment-prep/+page.ts'),
-    '/health/appointment-prep'
+    '/health/appointments'
+  ],
+  [
+    'health/appointment-prep',
+    () => import('../src/routes/health/appointment-prep/+page.ts'),
+    '/health/appointments'
   ],
   [
     'settings/clinician-summary',

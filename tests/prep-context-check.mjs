@@ -70,7 +70,7 @@ try {
   await page.waitForSelector('[data-appointment]');
 
   /* ---------- with a list ---------- */
-  await settle('/health/appointment-prep');
+  await settle('/health/appointments');
   await page.waitForSelector('[data-appointment-item]');
   const withList = await sections();
   console.log('sections with a list:', withList.join(' / '));
