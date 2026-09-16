@@ -433,6 +433,31 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // it hangs off.
     reads: { inJournal: ['photo', 'entry', 'milestone'], starredPhotos: ['photo', 'entry', 'milestone'] }
   }),
+  /* The library across all six photo-carrying tables (phase 11 ticket 14),
+     and reads only - every one of those tables is written through the area
+     that owns it, which announces its own name. So the names here are the
+     ones whose rows the union reads: the six tables plus `entry` and
+     `milestone`, which date and name what hangs off them and whose trash
+     state decides whether an entry's photographs and notes are in the list
+     at all. */
+  photoLibrary: classify<Journal['photoLibrary']>()({
+    writes: {},
+    reads: {
+      inJournal: [
+        'photo',
+        'entry',
+        'milestone',
+        'hairProgress',
+        'hairRemoval',
+        'tryout',
+        'procedure',
+        'videoNote'
+      ],
+      // The `photo` table's own arm, which is the only one with a starred
+      // column (photoLibrary.ts says why).
+      starred: ['photo', 'entry', 'milestone']
+    }
+  }),
   /* One table and one owner - itself - so unlike `photos` above there is no
      second name to announce (phase 8 features ticket 52). The day view and
      search reach these rows through their own registries, whose tables are
