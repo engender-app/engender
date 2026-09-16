@@ -350,7 +350,7 @@
           { value: 'record', label: m.vb_tab_record() },
           { value: 'practise', label: m.vb_tab_practise() },
           { value: 'compare', label: m.vb_tab_compare() },
-          { value: 'recordings', label: m.recordings_label() }
+          { value: 'recordings', label: m.vb_tab_recordings() }
         ]}
         value={tab}
         onChange={changeTab}
@@ -361,6 +361,13 @@
 
     {#if tab === 'record'}
       <VoiceBenchmarkFlow onSaved={() => (tab = 'compare')} />
+      <!-- Saying you are done with this area (phase 8 features ticket 04),
+           at the Record tab's own foot now rather than at screen level
+           (phase 11 ticket 17): the passage and the Record control open the
+           tab, and "Mark this as finished"/"Pause this for now" are the
+           last thing on it - a decision about the whole practice belongs
+           after the thing the tab is for, not ahead of it. -->
+      <AreaFinish group="voice" />
     {:else if tab === 'practise'}
       <VoicePractice />
       <div class="screen-part">
@@ -496,13 +503,6 @@
       </ReadGate>
     {/if}
   {/if}
-
-  <!-- Saying you are done with this area (phase 8 features ticket 04).
-       Kept at screen level, where that ticket put it, rather than moved on
-       to one of the three tabs this ticket added: which tab a screen-level
-       control belongs on is a question about ticket 04's control and not
-       about this merge. Worth revisiting now that the screen has tabs. -->
-  <AreaFinish group="voice" />
 
   <ConfirmDeleteSheet
     open={deleteTarget !== null}
