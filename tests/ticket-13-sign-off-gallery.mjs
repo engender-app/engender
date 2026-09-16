@@ -81,30 +81,22 @@ async function strip() {
   });
 }
 
-async function shootBox(name, box, extra = 16) {
+/* Playwright's own element screenshot rather than a manual
+   getBoundingClientRect + clip: the side effects section runs taller than
+   the 390x900 viewport once "fill every feature" seeds six-plus rows, and a
+   manual clip clamped to a negative (off-the-top) y while keeping the full
+   height drags in whatever sits below the element instead - caught on this
+   ticket's own first render, where the crop swept in the hair-progress row
+   and the finish control beneath the side effects list. The built-in
+   element screenshot scrolls and stitches correctly regardless of height. */
+async function shootEl(name, selector) {
   await strip();
+  const el = page.locator(selector).first();
+  await el.scrollIntoViewIfNeeded();
   await page.waitForTimeout(300);
-  const padded = {
-    x: Math.max(box.x - extra, 0),
-    y: Math.max(box.y - extra, 0),
-    width: box.width + extra * 2,
-    height: box.height + extra * 2
-  };
-  await page.screenshot({ path: `${outDir}/${name}.png`, clip: padded });
+  await el.screenshot({ path: `${outDir}/${name}.png` });
   shots.push(name);
   process.stdout.write(`  ${name}\n`);
-}
-
-async function shootEl(name, selector, extra = 16) {
-  const box = await page.evaluate((sel) => {
-    const el = document.querySelector(sel);
-    if (!el) return null;
-    el.scrollIntoView({ block: 'center' });
-    const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, width: r.width, height: r.height };
-  }, selector);
-  if (!box) throw new Error(`selector not found: ${selector}`);
-  await shootBox(name, box, extra);
 }
 
 async function shootViewport(name) {
@@ -136,11 +128,6 @@ for (const theme of ['light', 'dark']) {
 
   await settle('/practice/personal-effects');
   await page.waitForSelector('[data-noticed-axis]', { timeout: 10000 });
-  /* Once, here, before any rect gets measured: the demo bar sits in normal
-     document flow, so removing it later (shootBox's own strip() call)
-     shifts everything below it upward and strands any box already computed
-     against the pre-strip layout (ticket-09's own note). */
-  await strip();
   await shootEl(`axis-${theme}`, '[data-noticed-axis]');
 
   if (tag === 'before') {
