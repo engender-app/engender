@@ -162,7 +162,6 @@ const ROUTES = [
   { path: '/care/curve' },
   { path: '/doubt' },
   { path: '/day/today', name: 'day' },
-  { path: '/health/appointment-prep' },
   { path: '/health/appointments' },
   { path: '/health/appointments/in-the-room' },
   { path: '/health/clinician-summary' },

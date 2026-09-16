@@ -48,12 +48,16 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   letters: m.letters_title,
   tryouts: m.tryout_title,
   doubt: m.safe_space_title,
-  'voice-benchmark': m.vb_title,
+  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"):
+     ticket 17 folded the memos row's screen into this one as a fourth tab,
+     so the row and the screen it opens say the same name now. `vb_title`
+     stays what it was for the two callers still specifically about the
+     benchmark - the search hit and the area label. */
+  'voice-benchmark': m.vb_screen_title,
   wear: m.wear_log,
   effects: m.effects_timeline,
   resources: m.resources_title,
   photos: m.progress_photos,
-  voice: m.recordings_label,
   documents: m.documents_title
 };
 
@@ -86,7 +90,6 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   effects: m.hub_sub_effects,
   resources: m.hub_sub_resources,
   photos: m.hub_sub_photos,
-  voice: m.hub_sub_voice,
   documents: m.hub_sub_documents
 };
 
@@ -115,8 +118,14 @@ export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
     backwards lines on this same row already use ("Last logged 1 year 4
     months ago"). A forward line in a different unit beside them would read
     as a different kind of measurement, and it degrades better: a letter
-    sealed for three years says "1 year 4 months", not "487 days". */
-function gapTo(epochDay: number, todayEpochDay: number): string {
+    sealed for three years says "1 year 4 months", not "487 days".
+
+    Exported because a gap is no longer only a row's to state: ADR-0067's
+    amendment (phase 11 all-four-doors ticket 12) lets an area's own screen
+    say one too, and the visit screen saying "in 12 days" under a hub row
+    saying "Endocrinologist in 12 days" has to be the same arithmetic in the
+    same words. One function rather than two that agree today. */
+export function gapTo(epochDay: number, todayEpochDay: number): string {
   return fmtDuration(calendarDuration(todayEpochDay, epochDay));
 }
 

@@ -4184,7 +4184,7 @@ try {
     ['/practice/personal-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
     ['/health/dilation', 'dilation-schedule-empty'],
-    ['/health/appointment-prep', 'appointment-prep-empty'],
+    ['/health/appointments', 'appointment-prep-empty'],
     ['/transition/milestones', 'milestones-empty'],
     ['/transition/letters', 'letters-empty'],
     ['/transition/tryouts', 'tryouts-empty'],
@@ -4325,16 +4325,19 @@ try {
   }
   await page.locator('[data-benchmark-delta]').waitFor();
 
-  /* The metric reference (phase 8 features ticket 27). Reached from a
-     figure in the app, and there is no figure to press here: a benchmark
-     needs a microphone this browser does not have, so the link itself is
-     asserted in the browser tier against a mounted list
-     (tests/browser-tier/voice-metrics-probe.ts). What only a built app can
-     say is that the route boots at all - `/doses` sticks at "booting" in a
-     production build while every test in the node tier passes - so this
-     walks to it by URL and reads what it drew. */
+  /* The metric reference (phase 8 features ticket 27), a sheet over the
+     voice screen since phase 11 ticket 17 rather than a screen of its own.
+     Reached from a figure in the app, and there is no figure to press
+     here: a benchmark needs a microphone this browser does not have, so
+     the link itself is asserted in the browser tier against a mounted
+     list (tests/browser-tier/voice-metrics-probe.ts). What only a built
+     app can say is that the route boots at all - `/doses` sticks at
+     "booting" in a production build while every test in the node tier
+     passes - so this walks to the old address by URL, which redirects to
+     `/practice/voice?metric=pitch` and opens the sheet there, and reads
+     what it drew. */
   await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-metric="pitch"]');
+  await page.waitForSelector('[data-sheet] [data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
   if (explained !== 7) {
     throw new Error(`the metric reference explains ${explained} figures, not seven`);
@@ -4698,15 +4701,14 @@ try {
   if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
     throw new Error('a row with only a last write stopped reporting it');
   }
-  // Photos, voice memos and documents live together now, and Body keeps the
-  // rest. Documents joined in phase 8 features ticket 52.
+  // Photos and documents live together now, and Body keeps the rest.
+  // Documents joined in phase 8 features ticket 52; voice memos left in
+  // phase 11 ticket 17, folded into the voice screen's own Recordings tab.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,voice,documents') {
-    throw new Error(
-      `the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, voice memos and documents`
-    );
+  if (mediaRows.join(',') !== 'photos,documents') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and documents`);
   }
 
   /* An area declared finished leaves its group for the finished set, keeps
@@ -5758,11 +5760,17 @@ try {
   const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
-  /* The room's field and back control (carpet 27): a visit today puts the
-     room's row on this screen. Opened from here, back's fallback and its
-     actual destination are the same URL, which proves the field and the
-     control exist but nothing about smartBack - a plain link to the
-     fallback would pass this identically. */
+  /* The room's field and back control (carpet 27): the verb row opens it and
+     its own back returns here.
+
+     Phase 11 all-four-doors ticket 12 took the second way in with it. The
+     room used to be offered by the prep list as well, and pressing back from
+     there was what told smartBack apart from a hardcoded link to
+     /health/appointments; the prep list is a section of this screen now, so
+     the room has exactly one entry point and that distinction is no longer
+     observable from the app at all. What is left to walk is what the room
+     owes its reader either way - a field, one back control, and a return to
+     the screen it was opened from. */
   await page.locator('[data-list-row="in-the-room"]').click();
   await page.waitForSelector('[data-in-the-room]');
   if ((await page.locator('[data-screen-back]').count()) !== 1) {
@@ -5778,29 +5786,11 @@ try {
   await page.waitForURL('**/health/appointments');
   await page.waitForSelector('[data-appointment]');
 
-  /* The appointment-prep list also opens the room, on any day (its own
-     comment), and it is not the fallback - so pressing back from there is
-     what actually tells smartBack apart from a bare link to
-     /health/appointments. This is the shape the ticket's own motivating
-     bug was: a hardcoded destination that is not where the screen was
-     opened from. */
+  /* The stale address still lands on the visit, one hop (ADR-0036). */
   await page.goto(BASE + '/health/appointment-prep', { waitUntil: 'networkidle' });
+  await page.waitForURL('**/health/appointments');
   await booted();
-  if (!(await page.locator('[data-list-row="in-the-room"]').count())) {
-    await page.click('[data-add]');
-    await page.waitForSelector('#appointment-prep-input');
-    await page.fill('#appointment-prep-input', 'ask about the referral');
-    await page.click('[data-save-appointment-item]');
-    await page.waitForSelector('[data-list-row="in-the-room"]');
-  }
-  await page.click('[data-list-row="in-the-room"]');
-  await page.waitForSelector('[data-in-the-room]');
-  await page.click('[data-screen-back]');
-  await page.waitForURL('**/health/appointment-prep');
-  await page.waitForSelector('[data-list-row="in-the-room"]');
-
-  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
-  await booted();
+  await page.waitForSelector('[data-appointment-item]');
 
   /* Editing opens on what is stored, and the kind just used is offered as a
      chip - the only suggestion the app is entitled to make, since nothing
@@ -5890,13 +5880,16 @@ try {
      first of them rather than assuming a position: the standing list is
      whatever the demo jump and the flows above have left on it, and this
      one appends to the end of it. */
-  await fresh('/health/appointment-prep');
+  await fresh('/health/appointments');
 
   const ASKED = 'ask about the dose';
   const REFERRAL = 'ask about the referral';
   let questionCount = await page.locator('[data-appointment-item]').count();
   for (const question of [ASKED, REFERRAL]) {
-    await page.click('[data-add]');
+    /* The prep list's own add, beside its heading - `[data-add]` in the
+       screen header books an appointment (ticket 12 put both on one
+       screen). */
+    await page.click('[data-add-prep]');
     await page.waitForSelector('#appointment-prep-input');
     await page.fill('#appointment-prep-input', question);
     await page.click('[data-save-appointment-item]');
@@ -5911,19 +5904,17 @@ try {
     );
   }
 
-  /* The way in from the list, on any day. Also the control case for the
-     chromeless check below: the bar has to be here first, or its absence
-     in the room proves nothing. */
+  /* The way in, offered once there is a question to read. Also the control
+     case for the chromeless check below: the bar has to be here first, or
+     its absence in the room proves nothing. */
   if (!(await page.locator('[data-app-nav]').count())) {
-    throw new Error('the prep list has no tab bar, so losing one in the room would say nothing');
+    throw new Error('the visit screen has no tab bar, so losing one in the room would say nothing');
   }
   await page.waitForSelector('[data-list-row="in-the-room"]');
 
   /* A visit today, so the room has an appointment to attribute answers to.
      The date field opens on today already, so saving without touching it is
      what books one for this morning. */
-  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
-  await booted();
   const appointmentsBefore = await page.locator('[data-appointment]').count();
   await page.click('[data-add]');
   await page.waitForSelector('#appointment-kind');
@@ -5935,7 +5926,6 @@ try {
     { timeout: 8000 }
   );
 
-  // The second way in: from the appointment, on its day.
   await page.waitForSelector('[data-list-row="in-the-room"]', { timeout: 8000 });
   await page.click('[data-list-row="in-the-room"]');
   await page.waitForSelector('[data-in-the-room]', { timeout: 8000 });

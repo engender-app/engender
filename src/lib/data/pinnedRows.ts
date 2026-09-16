@@ -160,7 +160,8 @@ export function fallbackReading(todayEpochDay: number): HubReading {
     todayEpochDay,
     lastWrites: {},
     states: {},
-    forward: {}
+    forward: {},
+    voiceMemoLastWriteEpochDay: null
   };
 }
 

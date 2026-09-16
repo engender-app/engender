@@ -321,13 +321,22 @@
      the milestones pin said "Nothing logged for 1 year 4 months" over the
      same journal the agenda below it was already drawing a hearing from. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
+  /* voice-benchmark's own second read (ticket 17): the pinned row draws the
+     same line its hub row does, so it asks the same fold - a memo has no
+     last write in the registry the other three reads above already answer
+     (ADR-0036). */
+  let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
   let reading = $derived(
-    lastWritesQuery.value !== undefined && areaStatesQuery.value !== undefined && forwardQuery.value !== undefined
+    lastWritesQuery.value !== undefined &&
+      areaStatesQuery.value !== undefined &&
+      forwardQuery.value !== undefined &&
+      voiceMemoLastWriteQuery.value !== undefined
       ? {
           todayEpochDay: today,
           lastWrites: lastWritesQuery.value,
           states: areaStatesQuery.value,
-          forward: forwardQuery.value
+          forward: forwardQuery.value,
+          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value
         }
       : fallbackReading(today)
   );
