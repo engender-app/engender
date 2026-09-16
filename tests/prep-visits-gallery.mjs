@@ -157,7 +157,9 @@ for (const lang of ['en', 'pl']) {
 
     // 3. And the everyday state, with the list back.
     await goto(page, '/health/appointments');
-    await page.locator('[data-add]').click();
+    /* The prep list's own add (ticket 12): `[data-add]` in the header books
+       an appointment, which is what `bookAhead` above uses it for. */
+    await page.locator('[data-add-prep]').click();
     await page.waitForSelector('#appointment-prep-input');
     await page.fill('#appointment-prep-input', lang === 'pl' ? 'Zapytać o dawkę' : 'Ask about the dose');
     await page.locator('[data-save-appointment-item]').click();

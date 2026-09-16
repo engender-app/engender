@@ -64,7 +64,10 @@ async function setLook(page, palette, theme) {
 
 async function addQuestion(page, text) {
   await goto(page, '/health/appointments');
-  await page.locator('[data-add]').click();
+  /* The prep list's own add, beside its heading. `[data-add]` in the screen
+     header books an appointment: phase 11 all-four-doors ticket 12 put the
+     list and the record on one screen, so the screen has two adds. */
+  await page.locator('[data-add-prep]').click();
   await page.waitForSelector('#appointment-prep-input');
   await page.fill('#appointment-prep-input', text);
   await page.locator('[data-save-appointment-item]').click();

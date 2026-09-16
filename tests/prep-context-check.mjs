@@ -1,13 +1,16 @@
-/* End-to-end check of what the prep screen shows when the list is empty
-   (phase 8 features ticket 71), driving the real demo build rather than
+/* End-to-end check of what the visit screen shows when the prep list is
+   empty (phase 8 features ticket 71, rewritten onto one screen by phase 11
+   all-four-doors ticket 12), driving the real demo build rather than
    trusting the markup's shape.
 
-   Two claims, and the first is the one a unit test cannot reach: a journal
-   with an appointment on record, labs drawn since the last visit and stock
-   running down showed none of it to somebody who had not yet typed a
-   question. So the fixture here is a full journal whose prep list is then
-   emptied one row at a time through the screen's own delete control - the
-   state a person is in the day they tick the last thing off.
+   The claim a unit test cannot reach: a journal with an appointment on
+   record showed none of it to somebody who had not yet typed a question.
+   Ticket 12 answers it structurally rather than by a gate - the next visit
+   is the screen's opening and the verbs are their own section, so neither
+   can be hidden behind the list - and this is what holds that. The fixture
+   is a full journal whose prep list is then emptied one row at a time
+   through the screen's own delete control: the state a person is in the day
+   they tick the last thing off.
 
    Not wired into any npm script. Expects a VITE_DEMO=1 build in build/.
    Run: node tests/prep-context-check.mjs */
@@ -75,14 +78,17 @@ try {
   const withList = await sections();
   console.log('sections with a list:', withList.join(' / '));
   check('a list shows the way into the room', (await page.locator('[data-list-row="in-the-room"]').count()) === 1);
-  /* The class, not the one string this ticket replaced: a check that greps
+  /* The class, not the one string ticket 71 replaced: a check that greps
      for wording no catalogue carries can only pass. A heading naming one
-     visit is what the ticket forbade, in either language. */
-  check('a heading is drawn over the card', withList.length > 0);
+     visit is what that ticket forbade, in either language. */
+  check('a heading is drawn over each area', withList.length > 0);
   check(
     'no heading claims a single visit',
     !withList.some((h) => /this visit|t[e\u0119] wizyt|tej wizyt/i.test(h))
   );
+  check('the opening states the next visit', (await page.locator('[data-visit-lead]').count()) === 1);
+  const gap = (await page.locator('[data-visit-gap]').innerText()).trim();
+  check(`and states how far off it is (${JSON.stringify(gap)})`, gap.length > 0);
 
   /* ---------- the list emptied, through the screen's own control ---------- */
   await clearPrepList(page);
@@ -92,23 +98,30 @@ try {
 
   check(
     'an empty list still shows when the next appointment is',
-    (await page.locator('[data-list-row="next-appointment"]').count()) === 1
+    (await page.locator('[data-visit-lead]').count()) === 1
   );
-  /* Positive: the subtitle has to *be* a day. Negating the unset wording
-     passes for free the moment that wording changes, which is exactly the
-     trap the heading check above was in. */
-  const subtitle = (await page.locator('[data-list-row="next-appointment"]').innerText()).split('\n').pop() ?? '';
-  check(`and the subtitle names a day (${JSON.stringify(subtitle)})`, /\d{1,2}\s+\p{L}+/u.test(subtitle));
+  /* Positive: the line has to *be* a day. Negating the unset wording passes
+     for free the moment that wording changes, which is exactly the trap the
+     heading check above was in. */
+  const where = (await page.locator('[data-visit-lead]').innerText()).split('\n').pop() ?? '';
+  check(`and the opening names a day (${JSON.stringify(where)})`, /\d{1,2}\s+\p{L}+/u.test(where));
   check(
-    'an empty list keeps every reference section it had',
+    'an empty list keeps every section the screen had',
     withList.every((heading) => emptied.includes(heading))
   );
-  /* One card, one heading, whichever way its rows point: the shape this
-     ticket chose over splitting the card stands or falls on that. */
-  check('the heading over the card does not move with the rows', withList[0] === emptied[0]);
+  /* The headings are the screen's areas, and emptying one area's list must
+     not reorder or rename the others. */
+  check('the first heading does not move with the rows', withList[0] === emptied[0]);
   check(
     'an empty list does not offer the room, which would have nothing in it',
     (await page.locator('[data-list-row="in-the-room"]').count()) === 0
+  );
+  /* And the verb that is not about the list stays, which is the half ticket
+     12 moved out from behind the gate: a clinician summary is worth reaching
+     whether or not anything has been typed. */
+  check(
+    'an empty list keeps the summary row, which the list has nothing to do with',
+    (await page.locator('[data-list-row="clinician-summary"]').count()) === 1
   );
 } catch (error) {
   failures += 1;
