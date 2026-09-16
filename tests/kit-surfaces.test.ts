@@ -129,13 +129,9 @@ describe('the surfaces', () => {
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
-      /* Two marks phase 5 UX ticket 23 added, both because an existing one
-         was answering the wrong question. MoodYear is a year of days at a
-         face each - twelve bars said where a year's shape went and a
-         retrospective wanted what the year was. PairedDots is two readings
-         of one scale with the gap between them, which is what a correlation
-         card is: bars measured every row against the longest one and made
-         six of them read as a third copy of the chart above. */
+      /* Phase 5 UX ticket 23: a year of days at a face each, because twelve
+         bars said where a year's shape went and a retrospective wanted what
+         the year was. */
       'MoodYear.svelte',
       /* MoodFace is deliberately not here. Ticket 31 folded the kit's face
          and the picker's into one component at src/lib/components, because
@@ -151,7 +147,6 @@ describe('the surfaces', () => {
          mostly-the-middle-two, and neither can five columns without the
          reader measuring them against each other. */
       'OrderedStrip.svelte',
-      'PairedDots.svelte',
       /* Not a surface: a Sheet with a fixed arrangement inside it, the same
          shape ConfirmDeleteSheet is (ticket 47) - except this one owns its
          own copy rather than taking it as props, because both callers (the
