@@ -726,12 +726,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           : next.epochDay === today
             ? m.tile_dose_next_today()
             : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) }),
-        href: '/doses',
+        href: '/care/doses',
         action: {
           icon: 'plus',
           text: m.doses_add_aria(),
           label: m.doses_add_aria(),
-          href: '/doses?add=1',
+          href: '/care/doses?add=1',
           attrs: { 'data-dose-add': '' }
         }
       };
@@ -877,12 +877,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_patch_schedule_title(),
         value: qualifying.episode.drug,
         note: `${qualifying.doseAmount} · ${qualifying.route}`,
-        href: '/doses',
+        href: '/care/doses',
         action: {
           icon: 'plus',
           text: m.tile_dose_log_action(),
           label: m.tile_dose_log_action(),
-          href: '/doses?add=1'
+          href: '/care/doses?add=1'
         },
         dismiss: dismissSnooze('patch-schedule-tile')
       };

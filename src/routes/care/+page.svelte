@@ -20,6 +20,7 @@
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -27,9 +28,12 @@
   import HostedRows from '$lib/components/HostedRows.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import {
     careSpine,
     chooseRailEpisode,
@@ -38,12 +42,20 @@
     type SpineMark,
     type SpineMarkKind
   } from '$lib/data/careSpine';
-  import { startOfDayTimestamp, todayEpochDay } from '$lib/data/epochDay';
+  import {
+    dateInputValueFromEpochDay,
+    epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
+    startOfDayTimestamp,
+    todayEpochDay
+  } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import type { RegimenEpisode } from '$lib/data/types';
   import { depletingStocks } from '$lib/data/stockProjection';
-  import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
+  import { routeLabel } from '$lib/data/vocabulary/doseLabels';
+  import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
+  import type { StockProjectionRow } from '$lib/data/journal/stock';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -111,6 +123,140 @@
      16), so the rail and Home's notice always name the same day. */
   let runOut = $derived(depletingStocks(stockQuery.rows, today, SPINE_FORWARD_DAYS)[0] ?? null);
 
+  /* Ticket 09: what used to be the whole of /settings/exposure - a range
+     picker over three counters - is one fact now, for the drug the rail is
+     already naming, over a window that just states itself rather than
+     inviting a pick (ADR-0084, "a fact with its unit and window, no
+     comparison"). Fixed at exposureCounters.ts's own default range rather
+     than reusing DOSES_WINDOW_DAYS below, which answers a different
+     question (how far back the dose log looks, not how wide this one
+     sentence's window is). */
+  const DOSE_TOTAL_WINDOW_DAYS = 90;
+  let doseTotalQuery = liveQuery((j) => j.exposure.getCounters(today - DOSE_TOTAL_WINDOW_DAYS + 1, today));
+  let doseTotalsForActiveDrug = $derived(
+    activeEpisode ? (doseTotalQuery.value?.doseTotals ?? []).filter((t) => t.drug === activeEpisode!.drug) : []
+  );
+
+  /* Carried over from /settings/stock's own note (ADR-0046): about every
+     projection the sheet's list below shows, not any one drug's. */
+  let stockExcludedDoses = $derived(stockQuery.rows.reduce((total, row) => total + row.projection.excludedDoses, 0));
+
+  /* The stock editor (Recorded, Opened, window), off Care rather than its
+     own screen (ADR-0084) - the same shape the dose panel's own Log sheet
+     has: one sheet, opened from a line that already states the fact it
+     edits. Two ways in, both landing here: the regimen block's own stock
+     line (below) seeds the editor with the drug it is already naming, and
+     the Hormones card's row (unchanged in scope, only re-pointed) opens on
+     the plain list so stock can still be tracked and added to with no
+     regimen naming it. */
+  let stockSheetOpen = $state(false);
+  let stockEditor = $state<{
+    id?: string;
+    drug: string;
+    quantity: string;
+    unit: string;
+    leadTimeDays: string;
+    recordedDate: string;
+    openedDate: string;
+    windowMode: 'days' | 'end';
+    windowDays: string;
+    windowEndDate: string;
+  } | null>(null);
+
+  const STOCK_WINDOW_MODES = [
+    { value: 'days', label: m.stock_window_mode_days() },
+    { value: 'end', label: m.stock_window_mode_end() }
+  ];
+
+  /* Structural rather than `StockProjectionRow` itself: `runOut` below is a
+     `depletingStocks` row, which carries the same `entry` but not that
+     type's own `reorderByEpochDay` - and nothing here reads that field
+     anyway, only the entry it is editing. */
+  function stockEditorFromRow(row: { entry: StockProjectionRow['entry'] }): typeof stockEditor {
+    return {
+      id: row.entry.id,
+      drug: row.entry.drug,
+      quantity: String(row.entry.quantity),
+      unit: row.entry.unit,
+      leadTimeDays: row.entry.leadTimeDays === null ? '' : String(row.entry.leadTimeDays),
+      recordedDate: dateInputValueFromEpochDay(row.entry.recordedEpochDay),
+      openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
+      windowMode: row.entry.inUseEndEpochDay !== null ? 'end' : 'days',
+      windowDays: row.entry.inUseWindowDays === null ? '' : String(row.entry.inUseWindowDays),
+      windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay)
+    };
+  }
+
+  function newStockEditor(drug = ''): typeof stockEditor {
+    return {
+      drug,
+      quantity: '',
+      unit: '',
+      leadTimeDays: '',
+      recordedDate: dateInputValueFromEpochDay(today),
+      openedDate: '',
+      windowMode: 'days',
+      windowDays: '',
+      windowEndDate: ''
+    };
+  }
+
+  /** Opened from the regimen block's own stock line: goes straight to that
+      drug's entry, or to a blank one seeded with its name, rather than
+      through the list - the line already named the one thing to edit. */
+  function openStockLine() {
+    stockEditor = runOut ? stockEditorFromRow(runOut) : newStockEditor(activeEpisode?.drug ?? '');
+    stockSheetOpen = true;
+  }
+
+  /** Opened from the Hormones card's row: the plain list, since that entry
+      point names no drug of its own to jump straight to. */
+  function openStockList() {
+    stockEditor = null;
+    stockSheetOpen = true;
+  }
+
+  function closeStockSheet() {
+    stockSheetOpen = false;
+    stockEditor = null;
+  }
+
+  async function saveStockEntry() {
+    if (!stockEditor) return;
+    const quantity = parseFloat(stockEditor.quantity);
+    const drug = stockEditor.drug.trim();
+    const unit = stockEditor.unit.trim();
+    if (isNaN(quantity) || !drug || !unit) return;
+
+    const leadTime = parseInt(stockEditor.leadTimeDays, 10);
+    const leadTimeDays = isNaN(leadTime) ? null : leadTime;
+    const openedEpochDay = stockEditor.openedDate ? epochDayFromDateInputValue(stockEditor.openedDate) : null;
+    const days = parseInt(stockEditor.windowDays, 10);
+    const inUseWindowDays = openedEpochDay !== null && stockEditor.windowMode === 'days' && !isNaN(days) ? days : null;
+    const inUseEndEpochDay =
+      openedEpochDay !== null && stockEditor.windowMode === 'end' && stockEditor.windowEndDate
+        ? epochDayFromDateInputValue(stockEditor.windowEndDate)
+        : null;
+
+    await journal.stock.upsertEntry({
+      drug,
+      quantity,
+      unit,
+      recordedEpochDay: epochDayFromDateInputValueOrToday(stockEditor.recordedDate),
+      leadTimeDays,
+      openedEpochDay,
+      inUseWindowDays,
+      inUseEndEpochDay
+    });
+    stockEditor = null;
+  }
+
+  async function deleteStockEntry() {
+    if (!stockEditor?.id) return;
+    await journal.stock.deleteEntry(stockEditor.id);
+    stockEditor = null;
+  }
+
   const scheduleForEpisode = (episode: RegimenEpisode) =>
     schedulesQuery.rows.find((schedule) => schedule.episodeId === episode.id) ?? null;
   const pausesForEpisode = (episode: RegimenEpisode) =>
@@ -159,12 +305,16 @@
      mark that is not a link - it is where the reader is, not somewhere to
      go - and it renders as plain text rather than as a link that does
      nothing. */
+  /* runOut has no href of its own any more: /settings/stock stopped being a
+     screen (ADR-0084), and the mark opens the same sheet the regimen
+     block's own stock line does (openStockLine below) rather than linking
+     anywhere. */
   const MARK_HREF: Record<SpineMarkKind, string | null> = {
-    labDraw: '/settings/labs',
-    lastDose: '/doses',
+    labDraw: '/care/labs',
+    lastDose: '/care/doses',
     today: null,
-    nextDose: '/doses',
-    runOut: '/settings/stock'
+    nextDose: '/care/doses',
+    runOut: null
   };
 
   const markAria = (mark: SpineMark): string =>
@@ -272,25 +422,58 @@
        comment above is about: a regimen with nothing to draw yet is named
        either way. -->
   {#if !loading && activeEpisode}
-    <a class="care-regimen" href="/settings/regimen" data-care-regimen>
-      <span class="care-regimen-lines">
-        <span class="care-regimen-drug">{activeEpisode.drug}</span>
-        <span class="care-regimen-detail"
-          >{m.care_regimen_sub({
-            dose: String(activeEpisode.dose),
-            unit: activeEpisode.doseUnit,
-            interval: activeEpisode.interval
-          })}</span
-        >
-      </span>
-      <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-    </a>
+    <div class="care-regimen-block">
+      <a class="care-regimen" href="/care/regimen" data-care-regimen>
+        <span class="care-regimen-lines">
+          <span class="care-regimen-drug">{activeEpisode.drug}</span>
+          <span class="care-regimen-detail"
+            >{m.care_regimen_sub({
+              dose: String(activeEpisode.dose),
+              unit: activeEpisode.doseUnit,
+              interval: activeEpisode.interval
+            })}</span
+          >
+        </span>
+        <Icon name="chevronRight" size={22} cls="care-regimen-go" />
+      </a>
+      <!-- The whole of /settings/exposure's one useful row, ticket 09
+           (ADR-0084): a fact with its unit and window, no comparison,
+           no picker. Every matching total the window found for this drug -
+           ordinarily one, since a route change mid-window is rare. -->
+      {#each doseTotalsForActiveDrug as total (`${total.drug}-${total.route}-${total.doseUnit}`)}
+        {@const label = routeLabel(total.route)}
+        <p class="care-regimen-total" data-care-regimen-total>
+          {m.care_regimen_dose_total({
+            total: String(total.total),
+            unit: total.doseUnit,
+            /* routeLabel() is capitalised everywhere else it's used - a
+               standalone label or table cell - but this is the one place
+               it sits mid-sentence (ticket 09's own spec gives the line in
+               lowercase: "48 mg intramuscular in the last 90 days"). */
+            route: label.charAt(0).toLowerCase() + label.slice(1),
+            days: String(DOSE_TOTAL_WINDOW_DAYS)
+          })}
+        </p>
+      {/each}
+      {#if runOut}
+        {@const runOutReading = stockRunOutLabel(runOut.projection, today)}
+        <!-- The stock editor's whole screen, folded into a sheet off this
+             line (ADR-0084) - the same fact the spine's own runOut mark
+             states as a date on the axis, stated here as a sentence. -->
+        <button type="button" class="care-regimen-stock" data-care-regimen-stock onclick={openStockLine}>
+          <span class="care-regimen-stock-text">
+            {stockRemainingLabel(runOut.projection.remaining, runOut.entry.unit)} · {runOutReading.text}
+          </span>
+          <Icon name="chevronRight" size={20} cls="care-regimen-go" />
+        </button>
+      {/if}
+    </div>
   {:else if !loading && severalRegimens}
     <!-- No single regimen to name, so nothing is named. This is a note about
          why the rail has no next-dose mark, at the size a note is: the
          display line above belongs to a drug's name, and a sentence set in
          it reads as the screen shouting. -->
-    <a class="care-regimen" href="/settings/regimen" data-care-regimen>
+    <a class="care-regimen" href="/care/regimen" data-care-regimen>
       <span class="care-regimen-lines">
         <span class="care-regimen-detail">{m.care_regimen_several()}</span>
       </span>
@@ -323,7 +506,21 @@
               style={`--care-at: ${mark.position}; --care-depth: ${laneDepth(mark.lane)}; --care-settle: ${Math.abs(mark.position - 0.5).toFixed(3)}`}
             >
               <span class="care-tick" aria-hidden="true"></span>
-              {#if MARK_HREF[mark.kind]}
+              {#if mark.kind === 'runOut'}
+                <!-- Opens the same sheet the regimen block's own stock line
+                     does (ADR-0084): the mark and the line are one fact in
+                     two grammars, so they open the one editor between them. -->
+                <button
+                  type="button"
+                  class="care-mark care-mark-btn"
+                  data-care-mark={mark.kind}
+                  aria-label={markAria(mark)}
+                  onclick={openStockLine}
+                >
+                  <span class="care-what">{MARK_LABEL[mark.kind]()}</span>
+                  <span class="care-when">{dayLabel(mark.epochDay)}</span>
+                </button>
+              {:else if MARK_HREF[mark.kind]}
                 <a class="care-mark" data-care-mark={mark.kind} href={MARK_HREF[mark.kind]} aria-label={markAria(mark)}>
                   <span class="care-what">{MARK_LABEL[mark.kind]()}</span>
                   <span class="care-when">{dayLabel(mark.epochDay)}</span>
@@ -446,7 +643,7 @@
             row.lastDoseEpochDay !== null && m.care_other_last_dose({ when: dayLabel(row.lastDoseEpochDay) }),
             row.nextDoseEpochDay !== null && m.care_other_next_dose({ when: dayLabel(row.nextDoseEpochDay) })
           ]}
-          href="/doses"
+          href="/care/doses"
         />
       {/each}
     </ListCard>
@@ -458,26 +655,29 @@
          reading under it (DIRECTION.md 3b): the analyte and the result in
          its own unit, never converted (ADR-0026). The rail above carries
          the day it was drawn, and where that draw fell against dosing stays
-         on /settings/labs, which owns it. -->
+         on /care/labs, which owns it. -->
     <ListRow
       key="labs"
       icon="flask"
       title={m.lab_results()}
       subtitle={latestLab && `${latestLab.analyte} ${latestLab.value} ${latestLab.unit}`.trim()}
-      href="/settings/labs"
+      href="/care/labs"
     />
-    <ListRow key="hormone-curve" icon="curve" title={m.curve_title()} href="/settings/hormone-curve" />
-    <ListRow key="doses" icon="clock" title={m.doses()} href="/doses" />
-    <ListRow key="exposure" icon="stats" title={m.regimen_exposure_link()} href="/settings/exposure" />
-    <!-- The rail marks the run-out day; what it cannot show is how much is
-         left, so the row carries that half through stockLabel.ts, the same
-         wording /settings/stock, /doses and the quick-log chip all use. -->
+    <ListRow key="hormone-curve" icon="curve" title={m.curve_title()} href="/care/curve" />
+    <!-- Ticket 09 (ADR-0084): the dose log and the exposure counters no
+         longer get a row of their own here - the dose log is reached
+         through the regimen block above (which links to /care/regimen,
+         and /care/regimen's own list still names it), and the exposure
+         counters' one useful figure is that block's own dose-total line
+         now. Stock stays, because this is the one entry point to it that
+         asks for no regimen to be running first - the block above only
+         shows its own stock line while a single regimen is active. -->
     <ListRow
       key="stock"
       icon="package"
       title={m.regimen_stock_link()}
       subtitle={runOut && stockRemainingLabel(runOut.projection.remaining, runOut.entry.unit)}
-      href="/settings/stock"
+      onclick={openStockList}
     />
     <!-- Ticket 59: the summary is an export over these five readings, not
          a sixth one of its own, so it joins the card that already reads
@@ -502,6 +702,166 @@
        hormones card is the --space-6 `.screen > *` gives two unrelated
        blocks. -->
   <HostedRows host="care" card />
+
+  <!-- The stock editor, off Care rather than its own screen (ADR-0084): one
+       sheet, two shapes inside it depending on how it was opened. Landing
+       on `stockEditor` (the regimen block's own line, or a row tapped
+       below) goes straight to that drug's fields, the dose panel's own Log
+       sheet's shape; landing on the plain list (the Hormones card's row)
+       is what /settings/stock's whole screen used to be, moved in whole
+       rather than thinned out, since deleting a screen cannot also delete
+       the only way to track a second drug's stock or add a first one. -->
+  <Sheet
+    open={stockSheetOpen}
+    title={stockEditor ? (stockEditor.id ? m.stock_edit_sheet() : m.stock_new_sheet()) : m.stock_title()}
+    onClose={closeStockSheet}
+  >
+    {#if stockEditor}
+      <Field label={m.stock_drug_label()} id="care-stock-drug">
+        {#snippet children(id)}
+          <input class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
+        {/snippet}
+      </Field>
+      <div class="cd-endpoints">
+        <Field label={m.stock_quantity_label()} id="care-stock-quantity">
+          {#snippet children(id)}
+            <input
+              class="input"
+              type="number"
+              {id}
+              name="stock-quantity"
+              placeholder={m.stock_quantity_placeholder()}
+              inputmode="decimal"
+              bind:value={stockEditor!.quantity}
+            />
+          {/snippet}
+        </Field>
+        <Field label={m.stock_unit_label()} id="care-stock-unit">
+          {#snippet children(id)}
+            <input class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={stockEditor!.unit} />
+          {/snippet}
+        </Field>
+      </div>
+      <Field label={m.stock_lead_time_label()} id="care-stock-lead-time">
+        {#snippet children(id)}
+          <input
+            class="input"
+            type="number"
+            {id}
+            name="stock-lead-time"
+            placeholder={m.stock_lead_time_placeholder()}
+            inputmode="numeric"
+            bind:value={stockEditor!.leadTimeDays}
+          />
+        {/snippet}
+      </Field>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_lead_time_hint()}</p>
+      <Field label={m.stock_date_label()} id="care-stock-date">
+        {#snippet children(id)}
+          <DatePicker name="stock-date" bind:value={stockEditor!.recordedDate} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.stock_opened_label()} id="care-stock-opened">
+        {#snippet children(id)}
+          <DatePicker name="stock-opened" bind:value={stockEditor!.openedDate} {id} />
+        {/snippet}
+      </Field>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_opened_hint()}</p>
+      {#if stockEditor.openedDate}
+        <Field label={m.stock_window_legend()} legend>
+          {#snippet children()}
+            <Segmented
+              name={m.stock_window_legend()}
+              options={STOCK_WINDOW_MODES}
+              value={stockEditor!.windowMode}
+              onChange={(v) => (stockEditor!.windowMode = v as 'days' | 'end')}
+            />
+          {/snippet}
+        </Field>
+        {#if stockEditor.windowMode === 'days'}
+          <Field label={m.stock_window_days_label()} id="care-stock-window-days">
+            {#snippet children(id)}
+              <input
+                class="input"
+                type="number"
+                {id}
+                name="stock-window-days"
+                placeholder={m.stock_window_days_placeholder()}
+                inputmode="numeric"
+                bind:value={stockEditor!.windowDays}
+              />
+            {/snippet}
+          </Field>
+        {:else}
+          <Field label={m.stock_window_end_label()} id="care-stock-window-end">
+            {#snippet children(id)}
+              <DatePicker name="stock-window-end" bind:value={stockEditor!.windowEndDate} {id} />
+            {/snippet}
+          </Field>
+        {/if}
+      {/if}
+
+      <div class="stack-3">
+        <button class="btn btn-primary" data-save-stock onclick={saveStockEntry}><span>{m.stock_save()}</span></button>
+        {#if stockEditor.id}
+          <button class="btn btn-ghost" data-delete-stock onclick={deleteStockEntry}>
+            <span>{m.stock_delete_action({ drug: stockEditor.drug })}</span>
+          </button>
+        {/if}
+      </div>
+    {:else}
+      {#if stockQuery.rows.length}
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
+          {#each stockQuery.rows as row (row.entry.id)}
+            {@const rowRunOut = stockRunOutLabel(row.projection, today)}
+            <ListRow
+              key={row.entry.id}
+              data-stock={row.entry.id}
+              title={row.entry.drug}
+              subtitle={[
+                stockRemainingLabel(row.projection.remaining, row.entry.unit),
+                m.stock_recorded({
+                  date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+                }),
+                rowRunOut.text,
+                stockOpenedWindowLine(row.entry, today)
+              ]}
+              onclick={() => (stockEditor = stockEditorFromRow(row))}
+            >
+              {#snippet leading()}
+                <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
+                  <Icon name="package" size={22} />
+                </span>
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+        {#if stockExcludedDoses > 0}
+          <p class="muted small" style="margin-top:var(--space-3)">
+            {m.stock_excluded_note({ count: String(stockExcludedDoses) })}
+          </p>
+        {/if}
+        <button
+          type="button"
+          class="btn btn-soft btn-block press"
+          data-add-stock
+          style="margin-top:var(--space-3)"
+          onclick={() => (stockEditor = newStockEditor())}
+        >
+          <Icon name="plus" size={18} /> <span>{m.stock_add_aria()}</span>
+        </button>
+      {:else}
+        <Notice
+          icon="package"
+          key="care-stock-empty"
+          role={roleAt(activeFlag.roles, AREA_ROLE.readings)}
+          title={m.stock_empty_title()}
+          text={m.stock_empty_body()}
+          action={{ label: m.stock_empty_action(), primary: true, onclick: () => (stockEditor = newStockEditor()) }}
+        />
+      {/if}
+    {/if}
+  </Sheet>
 </div>
 
 <style>
@@ -518,6 +878,15 @@
     margin-bottom: var(--space-3);
     text-decoration: none;
     color: inherit;
+  }
+  /* Ticket 09: the block gained a stock line and a dose-total line under
+     the name, so the gap before the rail moves to the block as a whole and
+     the link inside it stops adding its own. */
+  .care-regimen-block .care-regimen {
+    margin-bottom: 0;
+  }
+  .care-regimen-block {
+    margin-bottom: var(--space-3);
   }
   .care-regimen-lines {
     display: flex;
@@ -542,6 +911,56 @@
   .care-regimen-detail {
     font-size: var(--text-sm);
     color: var(--text-2);
+  }
+
+  /* The dose total (ADR-0084's "a fact with its unit and window, no
+     comparison"): plain text, since there is nothing here to tap through
+     to any more. */
+  .care-regimen-total {
+    margin: 0;
+    padding: var(--space-2) 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* The stock line: a row's own touch target and press, same as the
+     regimen link above it, but a button rather than an anchor - it opens
+     the sheet in place instead of navigating (ADR-0084). */
+  .care-regimen-stock {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: var(--touch-target);
+    padding: var(--space-2) 0;
+    border: 0;
+    border-top: 1px solid var(--hairline);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  /* Full-strength text and a bit more weight than the total line above it
+     (--text-2 there): a design review flagged the two as indistinguishable
+     plain text with only the chevron - easy to miss - to tell "a fact" from
+     "a control" apart. */
+  .care-regimen-stock-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+
+  /* The runOut mark, a button now rather than a link (ADR-0084) - reset to
+     the plain `.care-mark` it already was everywhere but the box model a
+     button starts with. */
+  .care-mark-btn {
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
   }
 
   .care-rail {
@@ -747,6 +1166,16 @@
       var(--role-mark) 0 2px,
       transparent 2px 4px
     );
+  }
+
+  /* The warn signal on the stock sheet's list, the same disc every other
+     stock reading in the app uses (ADR-0046) - copied per page rather than
+     shared, the same way doses/+page.svelte and the old /settings/stock
+     each carried their own copy of it. */
+  .kit-row-ico.is-warn {
+    background: var(--warn-soft);
+    color: var(--on-warn-soft);
+    border-color: transparent;
   }
 
   /* The words either side of the interval-length field ("fold by", "days" -
