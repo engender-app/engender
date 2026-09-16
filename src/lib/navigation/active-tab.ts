@@ -44,21 +44,30 @@ const TAB_ROUTES: TabRoute[] = [
      Appearance/Tracking/Privacy sections all remain there. */
   {
     key: 'settings',
-    prefixes: [
-      '/settings',
-      '/more',
-      '/doses',
-      '/care',
-      '/body',
-      '/health',
-      '/transition',
-      '/practice',
-      '/media'
-    ]
+    prefixes: ['/more', '/doses', '/care', '/body', '/health', '/transition', '/practice', '/media']
   }
 ];
 
-export function activeTabKey(path: string): string {
+/* Audit item 4: `/settings` used to sit in the table above, in the fourth
+   door's own group, so opening it from Today's gear (ADR-0076 - settings
+   is chrome, reached from a persistent control, not a tab) lit the fourth
+   tab and read as having left Today. Settings has no tab of its own: it
+   borrows whichever one was lit before the gear was pressed, which the
+   caller carries in `chromeOrigin` (chrome-tab-origin.ts) since this
+   function stays pure for its own tests. A fresh deep link, with nothing
+   to borrow, lights none. */
+const CHROME_PREFIX = '/settings';
+
+/* The word ignore list kept its old address (`/settings/words` redirects
+   here, ADR-0036) but never belonged to the fourth door: it configures
+   Look back's own reading (ticket 62), and its own back arrow already
+   said so before the tab bar did. Checked ahead of the general table,
+   which would otherwise catch it under `/transition`. */
+const WORDS_PREFIX = '/transition/words';
+
+export function activeTabKey(path: string, chromeOrigin = ''): string {
   if (path === '/') return 'home';
+  if (path.startsWith(WORDS_PREFIX)) return 'stats';
+  if (path.startsWith(CHROME_PREFIX)) return chromeOrigin;
   return TAB_ROUTES.find((route) => route.prefixes.some((prefix) => path.startsWith(prefix)))?.key ?? '';
 }
