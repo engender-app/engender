@@ -2774,7 +2774,7 @@
   "roadmap_milestone_prompt_title": "Dodać „{goal}” jako kamień milowy na osi czasu?",
   "roadmap_milestone_prompt_add": "Dodaj kamień milowy",
   "roadmap_milestone_sync_title": "Podpowiedzi kamieni milowych z mapy",
-  "roadmap_milestone_sync_sub": "Pytaj o dodanie odhaczonych kroków z mapy jako kamieni milowych",
+  "roadmap_milestone_sync_sub": "Pytaj o dodanie odhaczonych kroków z mapy jako kamieni milowych.",
   "pj_open": "Zrób kolaż albo film poklatkowy",
   "pj_title": "Kolaż i film poklatkowy",
   "pj_range_title": "Które zdjęcia",
