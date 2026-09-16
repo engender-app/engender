@@ -4301,9 +4301,25 @@ try {
 /* Ticket 67 acceptance: "the same link to a record inside the first batch
    behaves as it does today". The dossier's dosage log reads oldest first,
    so its last row is the most recent dose - always within the log's own
-   newest-first first batch - and following it must not expand anything. */
+   newest-first first batch - and following it must not expand anything.
+
+   Ticket 08 truncates the preview to twelve rows a table, and the demo
+   persona's default 90-day range logs doses daily on two drugs, well past
+   that floor - so the range's own last row is now `.dossier-row-overflow`,
+   invisible on screen. Narrowed to the last four days from the controls
+   sheet, both daily drugs keep the row count under the floor and the
+   demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
+   one dose in the window as close to certain as a seeded draw gets - so
+   every link stays visible, and the last one is still today's or
+   yesterday's, nowhere near needing a batch past /doses' first thirty. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
+  const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
+  await page.click('[data-settings-row]');
+  await page.waitForSelector('[data-sheet]');
+  await fillDate(page, '#clinician-summary-start', dateInputValueFromEpochDay(todayEpochDay() - 3));
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached', timeout: 8000 });
   await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
 
   const lastDoseLink = page.locator('a[href^="/doses#"]').last();
