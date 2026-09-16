@@ -624,7 +624,7 @@
                  schedule has nothing definite to write, the same way the
                  whole block is absent on an unsaved episode. -->
             {#if autoLogOffered}
-              <div class="disclosed" transition:disclose>
+              <div class="disclosed" data-auto-log-switch transition:disclose>
                 <Field label={m.regimen_auto_log_label()} legend spread>
                   {#snippet children()}
                     <Switch
