@@ -3659,6 +3659,10 @@ try {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }
 
+  // Redesign ticket 16 collapsed the pack's own caveat behind this toggle,
+  // closed by default - the two checks below read what it discloses.
+  await page.locator('[data-roadmap-pack-toggle]').click();
+  await page.waitForSelector('[data-roadmap-pack-details]');
   if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown'); // text-under-test: the caveat itself
   if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown'); // text-under-test: the review note itself
 
@@ -3949,7 +3953,7 @@ try {
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
     '/transition/roadmap', '/transition/letters', '/transition/tryouts',
-    '/transition/eras',
+    '/settings/eras',
     '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
@@ -4145,13 +4149,22 @@ try {
   }
 
   /* The other two of the audit's five gaps aren't caught by an empty-state
-     marker: /doubt/moments already had unlocked letters to show before this
-     ticket, so its own Notice was never the empty one - the gap was the
-     photo half specifically. And /health/surgery already showed its one
-     archived procedure - the gap was a second, running one beside it. */
-  await page.goto(BASE + '/doubt/moments', { waitUntil: 'networkidle' });
+     marker: the letters-and-photos surface already had unlocked letters to
+     show before this ticket, so its own Notice was never the empty one -
+     the gap was the photo half specifically. And /health/surgery already
+     showed its one archived procedure - the gap was a second, running one
+     beside it.
+
+     The photo half reads on /transition/letters since phase 11 ticket 15,
+     which absorbed the screen that used to draw it. */
+  await page.goto(BASE + '/transition/letters', { waitUntil: 'networkidle' });
+  await page
+    .locator('[data-safe-space-photos] > *')
+    .first()
+    .waitFor({ timeout: 10000 })
+    .catch(() => {});
   if ((await page.locator('[data-safe-space-photos] > *').count()) === 0) {
-    throw new Error('Safe space moments shows no starred photo after filling every feature');
+    throw new Error('the letters screen shows no starred photo after filling every feature');
   }
 
   await page.goto(BASE + '/media/documents', { waitUntil: 'networkidle' });
@@ -4899,49 +4912,58 @@ try {
   fail('coming back', e);
 }
 
-/* Phase 8 features ticket 21: Safe Space lists the unlocked letters, and
-   the row is a preview that hands over to the whole letter rather than the
-   letter itself. Both halves are the decision the ticket asked to be
-   written down, so both are walked - a row that reads back nothing, or a
-   tap that lands anywhere but the letter's own text, is the failure this
-   catches and no unit test can.
+/* Phase 8 features ticket 21, rewalked for phase 11 ticket 15: Safe Space's
+   way down to what a person put aside for themselves lands on the letters
+   screen's Open section, and that section holds the open letters and the
+   starred photographs both. The two halves that matter are the tap - a way
+   down that lands anywhere but the Open section is the failure this catches
+   and no unit test can - and the photographs actually being drawn there,
+   which is the half that moved.
 
-   After "fill every feature", which is what puts unlocked letters in the
-   journal at all - the persona alone writes none, and the section is
-   absent then on purpose. */
+   After "fill every feature", which is what puts unlocked letters and
+   starred photos in the journal at all - the persona alone writes no
+   letters, and the section is absent then on purpose. */
 try {
-  /* Through the row rather than straight to the route (redesign ticket 47):
-     the letters are one tap down from Safe space now, and the tap is the
-     half of this that could break without any unit test noticing. */
+  /* Through the row rather than straight to the route (redesign ticket 47,
+     repointed by ticket 15): the tap is the half of this that could break
+     without any unit test noticing. */
   await fresh('/doubt');
   await page.locator('[data-list-row="moments"]').click();
-  await page.waitForURL('**/doubt/moments');
-  const letterRows = page.locator('[data-list-row="letter-preview"]');
-  /* The screen arrives holding a skeleton over two reads, so counting rows
-     on the frame the URL changed counts the placeholder's. Waited for rather
-     than asserted here, so the count below still reports "showed no unlocked
-     letters" rather than a selector timeout. */
-  await letterRows.first().waitFor({ timeout: 10000 }).catch(() => {});
-  const shown = await letterRows.count();
-  if (shown === 0) {
-    throw new Error('Safe Space showed no unlocked letters with a journal that has two');
-  }
-  const preview = (await letterRows.first().innerText()).trim();
-  if (preview === '') {
-    throw new Error('a letter row on Safe Space carried no text at all');
+  await page.waitForURL('**/transition/letters**');
+  if (!page.url().includes('#opened')) {
+    throw new Error(`Safe Space's way down landed on ${page.url()}, not the Open section`);
   }
 
-  await letterRows.first().click();
+  const openSection = page.locator('#opened');
+  await openSection.waitFor({ timeout: 10000 });
+
+  const openLetters = page.locator('[data-letter-open]');
+  await openLetters.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const shown = await openLetters.count();
+  if (shown === 0) {
+    throw new Error('the Open section showed no unlocked letters with a journal that has two');
+  }
+
+  /* The photo half specifically, which is what ticket 15 moved here. The
+     grid resolves after the letters do, so it is waited for rather than
+     counted on the frame the section appeared. */
+  const photos = page.locator('[data-safe-space-photos] > *');
+  await photos.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const photoCount = await photos.count();
+  if (photoCount === 0) {
+    throw new Error('the Open section drew no starred photograph after filling every feature');
+  }
+
+  await openLetters.first().click();
   await page.waitForSelector('[data-letter-text]');
   const whole = (await page.locator('[data-letter-text]').innerText()).trim();
   if (whole === '') {
-    throw new Error('the letter opened from Safe Space had no text on it');
-  }
-  if (!page.url().includes('/transition/letters/')) {
-    throw new Error(`a letter row on Safe Space went to ${page.url()} instead of the letter`);
+    throw new Error('the letter opened from the Open section had no text on it');
   }
 
-  ok(`Safe Space lists ${shown} unlocked letter(s), and a row opens the whole letter`);
+  ok(
+    `Safe Space's way down lands on the Open section, which holds ${shown} unlocked letter(s) and ${photoCount} starred photo(s), and a card opens the whole letter`
+  );
 } catch (e) {
   fail('safe space letters', e);
 }
@@ -5337,7 +5359,7 @@ try {
    `spansOverlap` returns true whenever neither side can prove non-overlap,
    and an era with both bounds null can never prove either side). */
 try {
-  await page.goto(BASE + '/transition/eras', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
   await booted();
   const startingRows = await page.locator('[data-era]').innerText();
   if (!startingRows.includes('Before HRT')) {
@@ -5456,7 +5478,7 @@ try {
     end: Number(el.dataset.spanEnd)
   }));
   await page.locator('[data-era-offer-confirm]').click();
-  await page.waitForURL('**/transition/eras');
+  await page.waitForURL('**/settings/eras?**');
   await page.waitForSelector('#era-name');
   const gotStart = await page.locator('input[name="era-start"]').inputValue();
   const gotEnd = await page.locator('input[name="era-end"]').inputValue();

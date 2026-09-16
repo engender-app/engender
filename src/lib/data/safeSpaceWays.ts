@@ -16,6 +16,17 @@
    the More hub too (`hubRows.ts`, `support` group) rather than remove it -
    the directory is reachable from both.
 
+   Two of the five stopped being screens of their own in phase 11 ticket 15,
+   and the ways survive the screens. "Letters and photos" was showing the
+   same unlocked letters `/transition/letters` shows in its Open section,
+   one door apart, so it points at that section directly; the readings were
+   a Look back page sitting on this door, so they point at Look back. Both
+   old addresses redirect, but a way down is a row somebody taps rather than
+   a bookmark, and a row that lands on a redirect is a row that costs a hop
+   on the screen least able to afford one. The rows keep their own words -
+   `moments` still says "Letters and photos", and `readings` is worded as
+   Look back words it rather than as the deleted screen did.
+
    Held here rather than written into the screen for the reason `hubRows.ts`
    holds the hub's own: an order somebody argued for is a fact about the
    product, and a test can hold a list where it cannot hold markup. Words
@@ -35,8 +46,8 @@ export type SafeSpaceWay = {
 
 export const SAFE_SPACE_WAYS: readonly SafeSpaceWay[] = [
   { key: 'resources', icon: 'info', href: '/practice/resources' },
-  { key: 'moments', icon: 'bookmark', href: '/doubt/moments' },
+  { key: 'moments', icon: 'bookmark', href: '/transition/letters#opened' },
   { key: 'comfort', icon: 'heart', href: '/doubt/comfort' },
   { key: 'evidence', icon: 'sparkle', href: '/doubt/evidence' },
-  { key: 'readings', icon: 'timeline', href: '/doubt/readings' }
+  { key: 'readings', icon: 'timeline', href: '/stats' }
 ];

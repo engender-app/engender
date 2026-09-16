@@ -29,6 +29,10 @@
    /stats. Its ignore list stayed behind as a reference area, which is the
    real screen at /settings/words now, so that stub is gone too.
 
+   Phase 11 ticket 15 adds two more that never lived under /settings either:
+   /doubt/moments and /doubt/readings, folded into /transition/letters and
+   /stats. Same rule, same shape of stub.
+
    Phase 11 ticket 04 brings in the last one that was doing this by hand.
    Deepening ticket 09 had merged the live-tiles screen into
    /settings/notifications and left a client-side `replaceRoute` in a
@@ -48,6 +52,11 @@
    so the old screen's address is a stub now, and `settings/side-effects`
    is repointed at the merged screen directly rather than at that stub -
    one hop, not two.
+
+   Phase 11 ticket 16 (ADR-0084) runs the same reversal as ticket 51's two:
+   eras is a reference area, so it moves onto Settings rather than off it.
+   The `settings/eras` entry above is gone - that is the real screen now -
+   and `transition/eras` carries the stub instead, pointing back in.
 
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
@@ -99,7 +108,6 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/roadmap', () => import('../src/routes/settings/roadmap/+page.ts'), '/transition/roadmap'],
   ['settings/letters', () => import('../src/routes/settings/letters/+page.ts'), '/transition/letters'],
   ['settings/tryouts', () => import('../src/routes/settings/tryouts/+page.ts'), '/transition/tryouts'],
-  ['settings/eras', () => import('../src/routes/settings/eras/+page.ts'), '/transition/eras'],
   ['settings/voice', () => import('../src/routes/settings/voice/+page.ts'), '/practice/voice?tab=record'],
   ['settings/wear', () => import('../src/routes/settings/wear/+page.ts'), '/practice/wear'],
   [
@@ -123,7 +131,18 @@ const REDIRECTS: [string, () => unknown, string][] = [
     '/settings/entry-templates'
   ],
   ['transition/words', () => import('../src/routes/transition/words/+page.ts'), '/stats'],
-  ['settings/live-tiles', () => import('../src/routes/settings/live-tiles/+page.ts'), '/settings/notifications']
+  ['transition/eras', () => import('../src/routes/transition/eras/+page.ts'), '/settings/eras'],
+  ['settings/live-tiles', () => import('../src/routes/settings/live-tiles/+page.ts'), '/settings/notifications'],
+  /* Phase 11 ticket 15: two of Safe space's ways down stopped being screens
+     of their own. "Letters and photos" was showing the same unlocked letters
+     the letters screen shows in its Open section, one door apart, and the
+     readings were a Look back page sitting on the Safe space door. Same rule
+     as every stub above - a bookmark, a shared link or a person who typed
+     the address lands one call away from what they were reaching for. The
+     rows on `/doubt` itself do not come through here: they point straight at
+     the destination (safeSpaceWays.test.ts holds that). */
+  ['doubt/moments', () => import('../src/routes/doubt/moments/+page.ts'), '/transition/letters'],
+  ['doubt/readings', () => import('../src/routes/doubt/readings/+page.ts'), '/stats']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {

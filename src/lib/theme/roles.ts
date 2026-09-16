@@ -278,6 +278,20 @@ export function chromaticRoles(roles: Role[]): Role[] {
   return colours.length > 0 ? colours : roles;
 }
 
+/** One band of the flag per era, in order, wrapping over the flag's
+    colours - and, on a flag with a single colour (agender), over its
+    shades too, so a second and third era are drawn in black and grey
+    rather than the same green three times (Alicja, on the first Look back
+    render: "we can't have all eras in the same colour"). Shared by every
+    rail that bands eras (SpanTimeline, MilestoneRail) so the two agree on
+    which stripe a given era gets, with `roleAt` doing the wrap-around
+    indexing over whatever this returns. */
+export function eraBandRoles(roles: Role[]): Role[] {
+  const colours = chromaticRoles(roles);
+  if (colours.length >= 2) return colours;
+  return [...colours, ...roles.filter((role) => !colours.includes(role))];
+}
+
 /** The role for the nth area of a screen where that area is drawn as a
     tile: `roleAt` over the colours alone, so the wrap happens inside them
     and an area whose index lands on a shade takes the next colour round

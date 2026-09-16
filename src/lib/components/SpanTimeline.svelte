@@ -118,7 +118,7 @@
   import { countUp } from '$lib/motion/countUp';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import type { Era, Milestone } from '$lib/data/types';
-  import { chromaticRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
 
   let {
@@ -228,20 +228,14 @@
   let legend = $derived(railLegendKinds(history, surgeries, bands.length > 0));
   const hasRow = (kind: RailHistoryKind) => (rows.includes(kind) ? 1 : 0);
 
-  /* One band of the flag per era, in order, wrapping over the flag's
-     colours - and, on a flag with a single colour (agender), over its
-     shades too, so its second and third era are black and grey rather than
-     green three times (Alicja, on the first renders: "we can't have all
-     eras in the same colour"). A black or white block is a block here
-     because every band wears the 1px edge rule 4 gives it; a flag with two
-     or more colours never needs one. Nothing is skipped, since the marks
-     are ink and take no band, and neither does a history lane. */
+  /* Which stripe each era takes (theme/roles.ts's `eraBandRoles`, shared
+     with MilestoneRail's own bands so the two rails agree). A black or
+     white block is a block here because every band wears the 1px edge rule
+     4 gives it; a flag with two or more colours never needs one. Nothing
+     is skipped, since the marks are ink and take no band, and neither does
+     a history lane. */
   let markRole = $derived(roleAt(roles, 0));
-  let bandRoles = $derived.by(() => {
-    const colours = chromaticRoles(roles);
-    if (colours.length >= 2) return colours;
-    return [...colours, ...roles.filter((role) => !colours.includes(role))];
-  });
+  let bandRoles = $derived(eraBandRoles(roles));
   const bandRole = (index: number): Role | undefined =>
     bandRoles.length ? bandRoles[index % bandRoles.length] : undefined;
 

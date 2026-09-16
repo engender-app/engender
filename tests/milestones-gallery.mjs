@@ -140,9 +140,10 @@ for (const theme of ['light', 'dark']) {
         Before it was the whole of the other screen; after it is what runs
         under the rail, with a heading over it. */
   await open(before ? '/transition/milestones' : SCREEN);
+  if (!before) await page.locator('[data-ms-log-toggle]').click();
   await crop(
     `list-${theme}`,
-    before ? '[data-list-card]' : '[data-section-heading]',
+    before ? '[data-list-card]' : '[data-ms-log-toggle]',
     '[data-milestone]@2'
   );
 }
@@ -156,6 +157,7 @@ if (!before) {
         shows that deleting from the merged screen still works. */
   await wear('light');
   await open('/transition/milestones');
+  await page.locator('[data-ms-log-toggle]').click();
   for (let guard = 0; guard < 12; guard += 1) {
     const past = page.locator('[data-tl-item]:not(.is-future)').first();
     if (!(await past.count())) break;

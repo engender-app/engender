@@ -1123,6 +1123,18 @@
   "quick_exit_no_lock": "bez PIN-u albo hasła tylko gasi ekran",
   "ms_intro": "Dni, które coś znaczą. Przeszłe wracają jako rocznice, przyszłe odliczają czas na ekranie startowym.",
   "ms_log_heading": "Wszystkie kamienie milowe",
+  "ms_log_heading_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} kamień milowy",
+        "countPlural=few": "Kamienie milowe: {count}",
+        "countPlural=many": "Kamienie milowe: {count}",
+        "countPlural=other": "Kamienie milowe: {count}"
+      }
+    }
+  ],
   "ms_add_heading": "Dodaj kamień milowy",
   "ms_shuffle": "Przetasuj podpowiedzi",
   "ms_own_title": "Stwórz własny",
@@ -2338,60 +2350,20 @@
   "safe_space_title": "Bezpieczna przestrzeń",
   "safe_space_moments_title": "Listy i zdjęcia",
   "safe_space_moments_sub": "Otwarte listy, zdjęcia z gwiazdką",
-  "safe_space_moments_empty_title": "Nic tu jeszcze nie czeka",
-  "safe_space_moments_empty_body": "List do otwarcia później albo zdjęcie z gwiazdką poczeka tutaj.",
   "safe_space_comfort_sub": "Do kogo napisać, jaki spacer",
-  "safe_space_evidence_sub": "Oznaczone wpisy i to, co zapisane",
-  "safe_space_readings_sub": "Ile napisane i ostatnie 30 dni",
-  "safe_space_readings_empty_title": "Dziennik jest jeszcze pusty",
-  "safe_space_readings_empty_body": "Kiedy pojawią się wpisy, znajdziesz tu ich liczbę i ostatnie 30 dni.",
+  "safe_space_evidence_sub": "Dni nazwane po swojemu",
+  "safe_space_readings_sub": "W Przeglądzie, razem z resztą odczytów",
+  "safe_space_readings_row_title": "Jak układały się dobre dni",
   "safe_space_breathing_desc": "Spokojny oddech pudełkowy, aby odzyskać równowagę.",
   "safe_space_breathing_start": "Rozpocznij oddychanie",
   "safe_space_breathing_pause": "Pauza",
   "safe_space_breathing_inhale": "Wdech",
   "safe_space_breathing_hold": "Zatrzymaj",
   "safe_space_breathing_exhale": "Wydech",
-  "safe_space_stats_title": "Z twojego dziennika",
-  "safe_space_stat_evidence_title": "Dobre chwile",
-  "safe_space_stat_evidence_note": "W twojej historii",
-  "safe_space_counterevidence_title": "Z twojej historii",
-  "safe_space_counterevidence_sub": "Wpisy oznaczone jako euforia, z wysoką euforią ciała lub z gwiazdką.",
-  "safe_space_letters_intro": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "List zapieczętowany dla siebie, teraz odblokowany.",
-        "countPlural=few": "Listy zapieczętowane dla siebie, teraz odblokowane.",
-        "countPlural=many": "Listy zapieczętowane dla siebie, teraz odblokowane.",
-        "countPlural=other": "Listy zapieczętowane dla siebie, teraz odblokowane."
-      }
-    }
-  ],
-  "safe_space_letters_all": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "Zobacz pozostały list",
-        "countPlural=few": "Zobacz pozostałe {count} listy",
-        "countPlural=many": "Zobacz pozostałe {count} listów",
-        "countPlural=other": "Zobacz pozostałe {count} listów"
-      }
-    }
-  ],
+  "safe_space_counterevidence_title": "Dobre chwile",
+  "safe_space_counterevidence_sub": "Dni oznaczone jako dobre i dni z gwiazdką.",
+  "safe_space_evidence_see_all": "Zobacz wszystkie {count}",
   "safe_space_photos_intro": "Zdjęcia oznaczone gwiazdką.",
-  "safe_space_chart_timeline_title": "Ostatnie 30 dni",
   "safe_space_chart_themes_title": "Motywy dające spokój",
   "safe_space_no_themes": "Brak oznaczonych chwil w puli.",
   "comfort_list_title": "Co pomaga",
@@ -2696,6 +2668,7 @@
   "resources_int_wpath_soc8": "Międzynarodowy standard opieki nad osobami trans i niebinarnymi, obejmujący terapię hormonalną w niskich dawkach i dla osób niebinarnych. Dostępny bezpłatnie, oparty na obszernej bibliografii.",
   "resources_pl_zaimki": "Zaimki, neutratywy i inne formy neutralne płciowo w polszczyźnie, plus karta, na której można pokazać swoje.",
   "roadmap_title": "Mapa tranzycji",
+  "roadmap_pack_details_toggle": "Czym jest ten pakiet, a czym nie jest",
   "roadmap_intro": "Cztery ścieżki, każdą odhaczasz osobno. Kolejność w ścieżce pokazuje, jak to zwykle idzie, i nic tu nie blokuje niczego innego.",
   "roadmap_not_advice": "To opis procedury, nie porada prawna. Nic tu nie odnosi się do twojej konkretnej sprawy.",
   "roadmap_reviewed_on": "Treść sprawdzona ze źródłami: {date}.",
@@ -3486,6 +3459,7 @@
   "era_delete_sheet": "Usuń erę",
   "era_delete_q": "Usunąć „{name}”? Dni zostają, nazwa znika.",
   "era_start_here": "Zacznij tu erę",
+  "era_band_open_aria": "Otwórz {name}",
   "words_group_by_label": "Grupuj według",
   "words_mode_presentation": "Tryb",
   "words_mode_era": "Era",
@@ -3765,8 +3739,6 @@
   "home_count_since": "{entries} od {date}",
   "home_tiles_more": "{names} i jeszcze {count}",
   "home_tiles_fewer": "Pokaż mniej",
-  "safe_space_stat_written_title": "Zapisane wpisy",
-  "safe_space_stat_written_note": "W całym dzienniku",
   "tile_pause_value": "Nie ma czego nadrabiać",
   "home_start_title": "Na początek",
   "home_start_intro": "Kilka rzeczy, które warto ustawić wcześnie. Wszystkie poczekają, jeśli wolisz po prostu pisać.",
