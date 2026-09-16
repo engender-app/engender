@@ -51,8 +51,19 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import WordCloud from '$lib/components/kit/WordCloud.svelte';
+  import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
 
-  let { role }: { role?: Role } = $props();
+  /* Two views since phase 11 ticket 07: the card, on the reading's own
+     screen, and the tile on the Look back door - the top word as the
+     figure, the next two under it, no drawing. The tile opens the screen
+     at the door's span through `href` even though this reading is not
+     read over the span (see above): the screen it opens is on the door's
+     stack and comes back to the door's span. */
+  let {
+    role,
+    view = 'screen',
+    href = ''
+  }: { role?: Role; view?: 'tile' | 'screen'; href?: string } = $props();
 
   /** How many words the cloud draws. A render limit, not a narrower fold -
       `distinctiveWords` returns every word that carries weight. Past a
@@ -132,6 +143,17 @@
   let picked = $state<WordWeight | null>(null);
 </script>
 
+{#if view === 'tile'}
+  {#if !entriesQuery.loading && !erasQuery.loading && weighted.length}
+    <ReadingTile
+      key="words"
+      name={m.words_reading_title()}
+      {href}
+      headline={weighted[0].word}
+      note={weighted.slice(1, 3).map((w) => w.word).join(', ')}
+    />
+  {/if}
+{:else}
 <ChartCard heading={m.words_reading_title()} kind="words" {role}>
   {#if dimensions.length === 0}
     <ChartEmpty>{m.words_reading_needs_stretch()}</ChartEmpty>
@@ -236,6 +258,7 @@
     <a class="words-sheet-link" href="/settings/words">{m.words_ignored_title()}</a>
   {/if}
 </Sheet>
+{/if}
 
 <style>
   /* The slot the cloud swaps inside. `position: relative` is what the

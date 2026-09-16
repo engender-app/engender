@@ -129,10 +129,6 @@ describe('the surfaces', () => {
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
-      /* Phase 5 UX ticket 23: a year of days at a face each, because twelve
-         bars said where a year's shape went and a retrospective wanted what
-         the year was. */
-      'MoodYear.svelte',
       /* MoodFace is deliberately not here. Ticket 31 folded the kit's face
          and the picker's into one component at src/lib/components, because
          the two were one drawing with two sets of markup and the eyes could
@@ -181,6 +177,14 @@ describe('the surfaces', () => {
          have for a read that failed - and renders the screen's snippet for
          it. The rule it renders is readGate.ts, node-tested beside it. */
       'ReadGate.svelte',
+      /* The Look back door's readings as tiles (phase 11 ticket 07): a
+         flush tile stating one figure for the span with a chevron into its
+         own screen, and the two-column hairlined grid they sit in. In the
+         kit because the tile is a surface with a rule of its own - name in
+         the secondary ink, figure in the page's, colour only in the drawing
+         - and because nine call sites draw it. */
+      'ReadingGrid.svelte',
+      'ReadingTile.svelte',
       /* The other half of what a record-logging screen used to hand-write
          (phase 5 audit ticket 09): the editor sheet around ConfirmDeleteSheet
          above, with its new-or-edit title, its save-and-delete pair and the
@@ -197,7 +201,12 @@ describe('the surfaces', () => {
          the one reading that draws it because the drawing is a mark with a
          rule of its own - five steps of the type scale, heaviest in the
          middle - and that rule is the kind of thing this directory holds. */
-      'WordCloud.svelte'
+      'WordCloud.svelte',
+      /* Phase 5 UX ticket 23: a year of days, because twelve bars said
+         where a year's shape went and a retrospective wanted what the year
+         was. Phase 11 ticket 07 made the days shaded cells in twelve rows
+         rather than a face each. */
+      'YearRows.svelte'
     ]);
   });
 

@@ -705,6 +705,19 @@ test('counterevidencePool unions the tag and starred entries, newest first, with
   assert.deepEqual(pool.map((e) => e.id), [both, starredOnly, tagOnly]);
 });
 
+test('counterevidencePool can be read over a span, both ends inclusive (phase 11 ticket 07)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [100, 101, 102, 103]) {
+    const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4 });
+    await journal.entries.setEntryStarred(id, true);
+  }
+
+  const pool = await journal.entries.counterevidencePool(['e-happy'], 10, { from: 101, to: 102 });
+  assert.deepEqual(pool.map((e) => e.epochDay), [102, 101]);
+  // No span reads the whole journal, as every caller before the span did.
+  assert.equal((await journal.entries.counterevidencePool(['e-happy'], 10)).length, 4);
+});
+
 test('counterevidencePool stops at the limit it is given, keeping the newest', async () => {
   const { journal } = await journalWithBuiltIns();
   for (const day of [100, 101, 102]) {
