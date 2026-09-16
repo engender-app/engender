@@ -22,7 +22,7 @@ import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
 import { demoPhoto } from './journal-seed';
 import { demoNow } from './demoClock';
-import { demoAudioBytes } from '../demoAudioBytes';
+import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
@@ -495,6 +495,37 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     bodyRegions: {},
     attachRecordings: [demoAudioBytes(r)]
   });
+
+  /* Two video notes, which ticket 01 left for this ticket to decide about
+     and ticket 14 decided in favour of: a note is in the photo library
+     now, so "Fill every feature" has to put one there or the Video chip
+     is a control nobody can review.
+
+     Arbitrary bytes rather than a recorded clip, the trade demoAudioBytes
+     already makes for a voice recording and for the same reason: nothing
+     decodes a note to draw its tile (the library draws a glyph, not a
+     still frame), and encoding real WebM here would mean running
+     MediaRecorder for the length of the clip on every reset. A reviewer
+     who taps play gets a player with nothing to play, exactly as they do
+     for the persona's recordings.
+
+     Its own stream rather than the fixture's `r`, because 4000 draws per
+     note would shift every roll made after this point: nothing is rolled
+     below here today, and a fixture whose contents depend on that staying
+     true is a trap for whoever adds the next block. */
+  const videoRandom = rng(4242);
+  for (const back of [11, 95]) {
+    await journal.entries.upsertEntry({
+      epochDay: today - back,
+      timestamp: now - back * 86_400_000,
+      mood: 4,
+      note: '',
+      dims: {},
+      tags: [],
+      bodyRegions: {},
+      attachVideos: [demoVideoBytes(videoRandom)]
+    });
+  }
 
   // Comfort list: who to text, which walk, which song - the editor's own
   // register (comfort_list_item_placeholder).

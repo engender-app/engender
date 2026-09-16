@@ -1295,7 +1295,7 @@ try {
 
 /* 6c. lab result CRUD and per-analyte chart */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
      charted feature screens onto the chart kit, and the handle moved with
      the component the way ticket 24's list-row handles did. */
@@ -1333,7 +1333,7 @@ try {
    this step is about the pg/mL/pmol/L merge, not about which analyte opens
    the screen. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-segment="estradiol"]').click();
   /* The "+" sheet now prefills from whichever analyte is on screen (ticket
      37), so the add below has to happen after the switch has actually
@@ -1382,7 +1382,7 @@ try {
    mocked recognizer would prove the wiring works without proving the sheet
    that wiring lives in ever opens. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -1441,7 +1441,7 @@ try {
    engine to read, so unlike 6e this does not depend on what Tesseract makes
    of rendered text. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -3837,7 +3837,7 @@ try {
    - the disambiguation this ticket exists to force before a dose can be
    drawn into the wrong drug's curve. */
 try {
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
 
   const addOwnEpisode = async (drug, dose, unit) => {
     await page.click('[data-add]');
@@ -3866,7 +3866,7 @@ try {
     throw new Error('both concurrently active episodes should read Current, not just the latest one');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 2) {
     throw new Error('logging a dose with two active episodes should prompt for which drug it was');
@@ -3892,7 +3892,7 @@ try {
 
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   const localDateInput = (daysAgo = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -3922,7 +3922,7 @@ try {
     throw new Error('ending the estradiol episode should not touch spironolactone, which is still active');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 0) {
     throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
@@ -3944,7 +3944,7 @@ try {
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
-    '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
+    '/body/hair-removal', '/care/labs', '/care/regimen', '/care/curve',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
@@ -4101,10 +4101,10 @@ try {
     ['/body/measurements', 'sizes-empty'],
     ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
-    ['/settings/labs', 'labs-empty'],
-    ['/settings/regimen', 'regimen-empty'],
-    ['/settings/hormone-curve', 'curve-empty'],
-    ['/doses', 'doses-empty'],
+    ['/care/labs', 'labs-empty'],
+    ['/care/regimen', 'regimen-empty'],
+    ['/care/curve', 'curve-empty'],
+    ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
     ['/health/side-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
@@ -4120,7 +4120,11 @@ try {
        about. The voice screen's own walk is below and asks the compare tab
        directly. */
     ['/practice/wear', 'wear-empty'],
-    ['/settings/stock', 'stock-empty'],
+    /* `/settings/stock` is not on this list any more (ticket 09, ADR-0084):
+       the stock editor is a sheet off Care's own regimen block now, closed
+       by default, so a bare page load of `/care` never renders its
+       `care-stock-empty` marker either way - the check above would pass
+       without the sheet ever having been opened. */
     ['/settings/reminders', 'reminders-empty'],
     // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
     // starred entries, saved questions, an attached document, a second
@@ -4332,7 +4336,7 @@ try {
    its presence is what actually proves the adoption on a screen a count
    can't. */
 try {
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   const onArrival = await page.locator('[data-dose]').count();
   if (onArrival !== 30) throw new Error(`the dose log rendered ${onArrival} rows on arrival, not one batch of 30`);
@@ -4345,7 +4349,7 @@ try {
 }
 
 try {
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   if ((await page.locator('[data-batched-list="episodes"]').count()) !== 1) {
     throw new Error('the regimen episode list is not wrapped in BatchedList');
@@ -4364,15 +4368,15 @@ try {
    is guaranteed to sit past the dose log's own newest-first first batch. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const firstDoseLink = page.locator('a[href^="/care/doses#"]').first();
   const href = await firstDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await firstDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 }); // the hash is stripped once honoured
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -4402,7 +4406,8 @@ try {
    demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
    one dose in the window as close to certain as a seeded draw gets - so
    every link stays visible, and the last one is still today's or
-   yesterday's, nowhere near needing a batch past /doses' first thirty. */
+   yesterday's, nowhere near needing a batch past /care/doses' first
+   thirty. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
   const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
@@ -4411,15 +4416,15 @@ try {
   await fillDate(page, '#clinician-summary-start', dateInputValueFromEpochDay(todayEpochDay() - 3));
   await page.keyboard.press('Escape');
   await page.waitForSelector('[data-sheet]', { state: 'detached', timeout: 8000 });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const lastDoseLink = page.locator('a[href^="/doses#"]').last();
+  const lastDoseLink = page.locator('a[href^="/care/doses#"]').last();
   const href = await lastDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await lastDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 });
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -5155,7 +5160,7 @@ try {
    every other flow in this file reads a 440px screen. */
 try {
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
@@ -5988,7 +5993,7 @@ try {
      is for, asking nothing of preferences. The regimen screen links the
      log while the episode runs, and stops again once it is ended - cycle
      cessation belongs to the timeline that caused it. */
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -6010,7 +6015,7 @@ try {
     d.setDate(d.getDate() - n);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().click(); // text-under-test: the drug I just typed
   await page.waitForSelector('#regimen-end');
   await fillDate(page, '#regimen-end', daysAgoIso(1));
@@ -6067,7 +6072,7 @@ try {
   await page.locator('[data-nav-fab]').click();
 
   // Add an active estradiol regimen episode starting today
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -6093,7 +6098,7 @@ try {
   });
 
   // Move the anchor episode to 400 days ago (>12 months)
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]').first().click();
   await page.waitForSelector('#regimen-start');
   await fillDate(page, '#regimen-start', localIso(400));
@@ -6868,6 +6873,121 @@ try {
 finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }
+
+/* The photo library (phase 11 ticket 14): one grid over all six tables that
+   hold a photograph, and the wipe over any two of them.
+
+   On the full fixture, which is the only journal that has all six - the
+   persona writes entry and milestone photographs only, which is why the
+   flow near the top of this file sees no chip row and should not.
+
+   Gripped by `data-photo-source` rather than by the words on the tiles
+   (ADR-0029). One assertion does read a label, because the label carrying
+   the source is the thing the ticket asks for and a handle cannot say
+   whether it says anything. */
+try {
+  /* Seeded here rather than relying on the "Fill every feature" run near the
+     top of this file: everything between the two - an archive round trip, a
+     Daylio import, the discard flows - replaces the journal, so by this
+     point it holds the persona's entry and milestone photographs alone. */
+  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  await booted();
+  await page.click('[data-fill-every-feature]');
+  await page.waitForURL('**/more');
+  await booted();
+
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-key]');
+
+  const sourcesOn = async () =>
+    page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
+  const everySource = await sourcesOn();
+  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']) {
+    if (!everySource.includes(source)) {
+      throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
+    }
+  }
+
+  /* "Every photo in your journal" as a number the screen can be held to:
+     what it counts above the grid is what the grid draws. */
+  const stated = (await page.locator('[data-photo-count]').textContent()).match(/\d+/);
+  if (!stated || Number(stated[0]) !== everySource.length) {
+    throw new Error(`the count says ${stated?.[0]} over a grid of ${everySource.length}`);
+  }
+
+  const removalLabel = await page
+    .locator('[data-photo-source="hairRemoval"] [data-photo-cell]')
+    .first()
+    .getAttribute('aria-label');
+  if (!removalLabel?.includes('Hair removal')) {
+    throw new Error(`a tile does not say where its photograph came from: ${removalLabel}`);
+  }
+
+  // The chip row, and what one chip leaves on screen.
+  const drawnChips = await page
+    .locator('[data-photo-chip]')
+    .evaluateAll((chips) => chips.map((chip) => chip.dataset.photoChip));
+  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'])) {
+    throw new Error(`the chip row is not the six this journal has: ${JSON.stringify(drawnChips)}`);
+  }
+  await page.locator('[data-photo-chip="hair"]').click();
+  /* Waited out rather than counted down: a narrowed-away tile is pinned out
+     of the flow and fades, so it is still in the DOM for the length of its
+     own outro (motion/narrow.ts) and a count taken too early catches it. */
+  await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
+  const narrowed = await sourcesOn();
+  if (narrowed.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+    throw new Error(`Hair left something else on screen: ${JSON.stringify([...new Set(narrowed)])}`);
+  }
+  if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
+
+  // Two photographs from two different tables, which is the comparison
+  // neither the hair screen nor the surgery screen can offer.
+  await page.locator('[data-photo-source="hair"] [data-photo-cell]').first().click();
+  await page.locator('[data-photo-chip="everything"]').click();
+  await page.waitForSelector('[data-photo-source="procedure"]');
+  await page.locator('[data-photo-source="procedure"] [data-photo-cell]').first().click();
+  await page.locator('[data-segment="compare"]').click();
+  await page.waitForSelector('[data-photo-wipe]');
+  if ((await page.locator('[data-wipe-date]').count()) !== 2) {
+    throw new Error('the wipe inside the library did not open on two photographs');
+  }
+  /* Out of the wipe by its own control rather than by the segmented pair,
+     which the compare view does not draw - it is a screen with a back arrow
+     and this button, not a tab. */
+  await page.locator('[data-photos-back-to-all]').click();
+  await page.waitForSelector('[data-photo-key]');
+
+  // A video note plays rather than being picked.
+  await page.locator('[data-photo-video]').first().click();
+  await page.waitForSelector('[data-sheet] video');
+
+  ok('the photo library holds all six sources, says where each came from, narrows by chip and wipes across tables');
+} catch (e) { fail('the photo library', e); }
+
+/* The same chips over the export grid, so "Hair" alone can be made into a
+   collage. Video notes are never in it: a collage decodes every frame as a
+   photograph (journey-render.ts). */
+try {
+  await page.goto(BASE + '/media/photos/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-key]');
+  if (await page.locator('[data-photo-source="video"]').count()) {
+    throw new Error('a video note reached the export grid');
+  }
+  await page.locator('[data-photo-chip="hair"]').click();
+  await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
+  const exportSources = await page
+    .locator('[data-photo-source]')
+    .evaluateAll((cells) => [...new Set(cells.map((cell) => cell.dataset.photoSource))]);
+  if (exportSources.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+    throw new Error(`the export grid did not narrow: ${JSON.stringify(exportSources)}`);
+  }
+  if (!(await page.locator('[data-generate]').count())) throw new Error('the narrowed export cannot be made');
+
+  ok('the journey export reads the library, narrows by the same chips and leaves video notes out');
+} catch (e) { fail('the export grid narrowed by source', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).

@@ -2,7 +2,7 @@
    Verifies:
    - Projection trigger criteria (<= 7 days remaining, 0 units / exhausted).
    - Depleting stocks multi-drug urgency sorting.
-   - Home notice presentation, action link to /settings/stock, and dismiss controls.
+   - Home notice presentation, action link to /care, and dismiss controls.
    - 24-hour reminder snooze behavior and restoration past 24 hours.
    - "Don't show again" setting preference toggle.
    - Stock restocking reconciliation / reactive dismissal.
@@ -195,11 +195,11 @@ describe('Home stock notice rendering and interaction', () => {
     expect(home).toContain('depletingStocks(stockProjectionsQuery.rows, today)[0]');
   });
 
-  it('renders Notice on Home with alert icon, action to /settings/stock, and dismiss control', () => {
+  it('renders Notice on Home with alert icon, action to /care, and dismiss control', () => {
     expect(homeMarkup).toContain('data-stock-notice');
     expect(homeMarkup).toContain('key="stock-low"');
     expect(homeMarkup).toContain('icon="alert"');
-    expect(home).toContain("href: '/settings/stock'");
+    expect(home).toContain("href: '/care'");
     expect(home).toContain('stockDismissSheetOpen = true');
   });
 
@@ -266,9 +266,11 @@ describe('The reorder-by day, on screen (ticket 16)', () => {
   });
 
   it('the stock surface carries a lead-time field, typed as an optional day count', () => {
-    const stockScreen = read('src/routes/settings/stock/+page.svelte');
-    expect(stockScreen).toContain('m.stock_lead_time_label()');
-    expect(stockScreen).toContain('m.stock_lead_time_hint()');
-    expect(stockScreen).toContain('leadTimeDays');
+    // Ticket 09 (ADR-0084): the stock editor is a sheet off Care now, not
+    // its own screen at /settings/stock.
+    const stockSheet = read('src/routes/care/+page.svelte');
+    expect(stockSheet).toContain('m.stock_lead_time_label()');
+    expect(stockSheet).toContain('m.stock_lead_time_hint()');
+    expect(stockSheet).toContain('leadTimeDays');
   });
 });
