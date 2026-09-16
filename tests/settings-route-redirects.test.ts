@@ -29,6 +29,13 @@
    /stats. Its ignore list stayed behind as a reference area, which is the
    real screen at /settings/words now, so that stub is gone too.
 
+   Phase 11 ticket 04 brings in the last one that was doing this by hand.
+   Deepening ticket 09 had merged the live-tiles screen into
+   /settings/notifications and left a client-side `replaceRoute` in a
+   `+page.svelte` behind it, which is a redirect no assertion here could
+   see. It is an ordinary stub now, so the address is held to the same rule
+   as the other twenty-seven.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -84,7 +91,8 @@ const REDIRECTS: [string, () => unknown, string][] = [
     () => import('../src/routes/practice/entry-templates/+page.ts'),
     '/settings/entry-templates'
   ],
-  ['transition/words', () => import('../src/routes/transition/words/+page.ts'), '/stats']
+  ['transition/words', () => import('../src/routes/transition/words/+page.ts'), '/stats'],
+  ['settings/live-tiles', () => import('../src/routes/settings/live-tiles/+page.ts'), '/settings/notifications']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {

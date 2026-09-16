@@ -199,16 +199,30 @@ try {
    leaves alone. */
 try {
   await fresh('/');
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
-  const nudgeSwitch = page.locator('[data-entry-nudges] [role="switch"]');
+  /* The switch is on /settings/notifications since phase 11 ticket 04, with
+     the three other prompts that used to float under no heading in
+     Settings' Tracking section. Reached through the row rather than by a
+     deep link, which is also what proves Settings still reaches it, and
+     opened inside `setNudges` rather than once before it: the flow goes to
+     the editor and back between the two calls, so a locator bound to a
+     screen it has since left is what the old shape left behind. */
+  const openPrompts = async () => {
+    await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+    await booted();
+    await page.locator('[data-list-row="notifications"]').click();
+    await page.waitForFunction(() => location.pathname === '/settings/notifications');
+    await page.waitForSelector('[data-prompt="entry-nudges"]');
+  };
+  const nudgeSwitch = page.locator('[data-prompt="entry-nudges"] [role="switch"]');
   const setNudges = async (enabled) => {
     const expected = enabled ? 'true' : 'false';
+    await openPrompts();
     await nudgeSwitch.scrollIntoViewIfNeeded();
     if ((await nudgeSwitch.getAttribute('aria-checked')) !== expected) {
       await nudgeSwitch.click();
       await page.waitForFunction(
-        (want) => document.querySelector('[data-entry-nudges] [role="switch"]')?.getAttribute('aria-checked') === want,
+        (want) =>
+          document.querySelector('[data-prompt="entry-nudges"] [role="switch"]')?.getAttribute('aria-checked') === want,
         expected
       );
     }
@@ -240,8 +254,6 @@ try {
     throw new Error('nudge action missing while nudges are enabled');
   }
 
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
   await setNudges(false);
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
@@ -618,6 +630,7 @@ try {
 try {
   await fresh('/');
   await page.waitForSelector('[data-edit-today]');
+  const tileOnToday = await page.locator('[data-live-tile]').first().getAttribute('data-live-tile');
   await page.locator('[data-edit-today]').click();
   await page.waitForSelector('[data-today-editor]');
 
@@ -655,6 +668,28 @@ try {
   await page.locator('[data-edit-kind="doseSlot"] [role="switch"]').click();
   await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
 
+  /* The tiles, here since phase 11 ticket 04 rather than two taps away
+     under Settings. Whichever tile the persona is actually being shown,
+     rather than a named one: which of the thirteen qualifies is the
+     persona's business and changes with the fixture, and what this flow is
+     about is that the switch beside the pins takes it off the page it is
+     on. In place, with the editor still open - that is the acceptance. */
+  if (!tileOnToday) throw new Error('Today drew no live tile to switch off');
+  const tileSwitch = page.locator(`[data-edit-tile="${tileOnToday}"] [role="switch"]`);
+  await tileSwitch.scrollIntoViewIfNeeded();
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { state: 'detached', timeout: 8000 });
+
+  /* And back on by the same switch, which is the other half of the
+     acceptance and not the same path as the reset below: one is a write to
+     one preference, the other is thirteen written from the catalogue. */
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { timeout: 8000 });
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
+
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row="doubt"]');
 
@@ -681,6 +716,8 @@ try {
   /* The switch is still off after the reload, which is the difference
      between a switch and a dismissal. */
   await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
+  /* And so is the tile, for the same reason. */
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
   await page.locator('[data-edit-unpin="doubt"]').click();
   await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
   await page.locator('[data-edit-reset]').click();
@@ -689,12 +726,15 @@ try {
   await page.waitForSelector('[data-confirm-edit-reset]');
   await page.locator('[data-confirm-edit-reset]').click();
   await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="true"]');
+  /* One reset, every switch: the tile comes back with the agenda kind. */
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row]');
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`);
   if (await page.locator('[data-pinned-row="doubt"]').count()) {
     throw new Error('the reset left a row the default set does not hold');
   }
-  ok('editing Today: the last row opens the edit mode, a row is added, moved with the keyboard and kept across a reload, and the reset restores the default set and the switches');
+  ok('editing Today: the last row opens the edit mode, a row is added, moved with the keyboard and kept across a reload, a tile is switched off and leaves the page in place, and the reset restores the default set and every switch');
 } catch (e) { fail('editing Today', e); }
 
 /* 4c. day detail keeps entries separate and shows no day average */
@@ -6316,14 +6356,27 @@ try {
      walkthrough edit. registry.test.ts owns the list; what this holds is
      that the screen drew the registry rather than nothing. */
   const tiles = await page.locator('[data-live-tile]').count();
-  if (tiles < 3) throw new Error('the Home column drew ' + tiles + ' rows');
+  if (tiles < 3) throw new Error('the show column drew ' + tiles + ' rows');
   for (const key of ['wrapped', 'on-this-day', 'stock-notice']) {
     if (!(await page.locator(`[data-live-tile="${key}"]`).count())) {
-      throw new Error(key + ' is missing from the Home column');
+      throw new Error(key + ' is missing from the show column');
+    }
+  }
+  /* And Today's own thirteen are not here any more (phase 11 ticket 04):
+     a live tile is arranged in the editor on the page it draws on. */
+  for (const key of ['dose-panel', 'wear-timer']) {
+    if (await page.locator(`[data-live-tile="${key}"]`).count()) {
+      throw new Error(key + ' is still switched here as well as in Today\'s editor');
+    }
+  }
+  /* The four prompts that came off Settings' Tracking section. */
+  for (const key of ['entry-nudges', 'guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+    if (!(await page.locator(`[data-prompt="${key}"]`).count())) {
+      throw new Error('the ' + key + ' prompt did not arrive with the rest');
     }
   }
 
-  ok('one screen over one registry: notify column absent on web, Home column still whole');
+  ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the four prompts are under their heading');
 } catch (e) { fail('the unprompted registry view', e); }
 
 /* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
