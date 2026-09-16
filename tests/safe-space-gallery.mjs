@@ -99,56 +99,67 @@ async function shoot(name, note, sel, pad = 16) {
   console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
 }
 
-/** A screen taller than the phone. `fullPage` catches the viewport and an
-    element shot of the scroller is clipped to what is visible in it, so the
-    viewport is grown to the content and shrunk back afterwards: the layout
-    stays the 390px one and only the height is unreal. */
-async function shootWhole(name, note) {
+/** Runs `take` with the viewport grown to everything the scroll region
+    holds, then shrinks it back. `fullPage` catches the viewport and an
+    element shot of the scroller is clipped to what is visible inside it, so
+    this is the only way to photograph past the fold: the layout stays the
+    390px one throughout and only the height is unreal. */
+async function grown(take) {
   const tall = await page.evaluate(() => {
     const scroller = document.querySelector('[data-app-scroll-region]');
     return Math.min(window.innerHeight + (scroller.scrollHeight - scroller.clientHeight) + 40, 8000);
   });
   await page.setViewportSize({ width: VIEWPORT.width, height: tall });
   await page.waitForTimeout(500);
-  await page.locator('[data-app-root]').screenshot({ path: resolve(outDir, `${name}.png`) });
-  shots.push({ name, note });
-  console.log(`${name}: ${VIEWPORT.width}x${tall} (whole screen)`);
-  await page.setViewportSize(VIEWPORT);
-  await page.waitForTimeout(300);
+  try {
+    return await take(tall);
+  } finally {
+    await page.setViewportSize(VIEWPORT);
+    await page.waitForTimeout(300);
+  }
 }
 
-/** A section that runs past the fold: the same grown viewport, then a crop
-    from the top of one element to the bottom of another, since a section
-    here is a heading and the run of cards under it rather than one box. */
-async function shootSection(name, note, fromSel, toSel, pad = 16) {
-  const tall = await page.evaluate(() => {
-    const scroller = document.querySelector('[data-app-scroll-region]');
-    return Math.min(window.innerHeight + (scroller.scrollHeight - scroller.clientHeight) + 40, 8000);
+/** A screen end to end, however far past the fold it runs. */
+async function shootWhole(name, note) {
+  const tall = await grown(async (tall) => {
+    await page.locator('[data-app-root]').screenshot({ path: resolve(outDir, `${name}.png`) });
+    return tall;
   });
-  await page.setViewportSize({ width: VIEWPORT.width, height: tall });
-  await page.waitForTimeout(500);
-  const clip = await page.evaluate(
-    ([fromSel, toSel, pad]) => {
-      const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
-      const from = document.querySelector(fromSel);
-      const tails = document.querySelectorAll(toSel);
-      const to = tails[tails.length - 1] ?? from;
-      if (!from) return null;
-      const top = from.getBoundingClientRect().top - pad;
-      const bottom = to.getBoundingClientRect().bottom + pad;
-      return { x: frame.x, y: Math.max(frame.y, top), width: frame.width, height: bottom - top };
-    },
-    [fromSel, toSel, pad]
-  );
-  if (clip && clip.height >= 4) {
-    await page.screenshot({ path: resolve(outDir, `${name}.png`), clip });
-    shots.push({ name, note });
-    console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
-  } else {
+  shots.push({ name, note });
+  console.log(`${name}: ${VIEWPORT.width}x${tall} (whole screen)`);
+}
+
+/** One section of a screen, which is a heading and the run of things under
+    it rather than one box - so the crop runs from the top of `fromSel` to
+    the bottom of the last `toSel`. Measured and shot inside the same grown
+    viewport, since a clip is in page coordinates and those move when the
+    viewport does. */
+async function shootSection(name, note, fromSel, toSel, pad = 16) {
+  const clip = await grown(async () => {
+    const box = await page.evaluate(
+      ([fromSel, toSel, pad]) => {
+        const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
+        const from = document.querySelector(fromSel);
+        if (!from) return null;
+        const tails = document.querySelectorAll(toSel);
+        const to = tails[tails.length - 1] ?? from;
+        const top = from.getBoundingClientRect().top - pad;
+        const bottom = to.getBoundingClientRect().bottom + pad;
+        return { x: frame.x, y: Math.max(frame.y, top), width: frame.width, height: bottom - top };
+      },
+      [fromSel, toSel, pad]
+    );
+    if (box && box.height >= 4) {
+      await page.screenshot({ path: resolve(outDir, `${name}.png`), clip: box });
+    }
+    return box;
+  });
+  if (!clip || clip.height < 4) {
     console.warn(`${name}: nothing to shoot`);
+    return;
   }
-  await page.setViewportSize(VIEWPORT);
-  await page.waitForTimeout(300);
+  shots.push({ name, note });
+  console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
 }
 
 try {
