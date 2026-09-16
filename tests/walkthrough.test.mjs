@@ -199,20 +199,24 @@ try {
    leaves alone. */
 try {
   await fresh('/');
-  /* On /settings/notifications since phase 11 ticket 04, with the three
-     other prompts that used to float under no heading in Settings'
-     Tracking section. Reached by the row rather than by a deep goto: this
-     is the first flow after a `fresh`, and the demo bar's first-run jump
-     is still in flight - it lands on Home a moment later and would take a
-     deep link with it (`heldOnHome`'s own note). */
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
-  await page.locator('[data-list-row="notifications"]').click();
-  await page.waitForFunction(() => location.pathname === '/settings/notifications');
-  await page.waitForSelector('[data-prompt="entry-nudges"]');
+  /* The switch is on /settings/notifications since phase 11 ticket 04, with
+     the three other prompts that used to float under no heading in
+     Settings' Tracking section. Reached through the row rather than by a
+     deep link, which is also what proves Settings still reaches it, and
+     opened inside `setNudges` rather than once before it: the flow goes to
+     the editor and back between the two calls, so a locator bound to a
+     screen it has since left is what the old shape left behind. */
+  const openPrompts = async () => {
+    await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+    await booted();
+    await page.locator('[data-list-row="notifications"]').click();
+    await page.waitForFunction(() => location.pathname === '/settings/notifications');
+    await page.waitForSelector('[data-prompt="entry-nudges"]');
+  };
   const nudgeSwitch = page.locator('[data-prompt="entry-nudges"] [role="switch"]');
   const setNudges = async (enabled) => {
     const expected = enabled ? 'true' : 'false';
+    await openPrompts();
     await nudgeSwitch.scrollIntoViewIfNeeded();
     if ((await nudgeSwitch.getAttribute('aria-checked')) !== expected) {
       await nudgeSwitch.click();
@@ -250,8 +254,6 @@ try {
     throw new Error('nudge action missing while nudges are enabled');
   }
 
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
   await setNudges(false);
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
