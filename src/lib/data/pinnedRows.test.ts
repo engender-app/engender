@@ -21,6 +21,7 @@ const TODAY = 20000;
 
 const reading = (over: Partial<HubReading> = {}): HubReading => ({
   todayEpochDay: TODAY,
+  forward: {},
   lastWrites: {},
   states: {},
   ...over
@@ -372,7 +373,8 @@ test('fallbackReading supplies an empty reading for synchronous initial render',
   assert.deepEqual(fallbackReading(TODAY), {
     todayEpochDay: TODAY,
     lastWrites: {},
-    states: {}
+    states: {},
+    forward: {}
   });
 });
 

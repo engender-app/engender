@@ -5,6 +5,7 @@ import { AREA_GROUPS, AREA_GROUP_KEYS, FINISH_SUGGESTION_QUIET_DAYS } from './ar
 import type { AreaStates } from './areaState.ts';
 import { PATHS } from '../components/icons.ts';
 import { LAST_WRITE_ENTRIES } from './journal/lastWrite.ts';
+import { ROW_FORWARD_KEYS } from './rowForward.ts';
 import {
   AREA_GROUP_ROW_KEYS,
   HUB_GROUP_KEYS,
@@ -38,6 +39,7 @@ const reading = (over: Partial<HubReading> = {}): HubReading => ({
   todayEpochDay: TODAY,
   lastWrites: {},
   states: {},
+  forward: {},
   ...over
 });
 
@@ -300,6 +302,112 @@ test('a row that can never read states what is behind it whatever the journal ho
   assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'no-stream' });
 });
 
+// --- what is next ----------------------------------------------------------
+
+/* The choice rule this ticket exists for (phase 11 all-four-doors ticket 02,
+   DIRECTION.md rule 16). What the fact itself is and where it is read from is
+   `rowForward.test.ts`'s question; these are about which of two facts a row
+   prints when it holds both. */
+
+test('a forward fact beats a last write', () => {
+  const line = rowLine(
+    spec('milestones'),
+    reading({
+      lastWrites: { milestones: TODAY - 487 },
+      forward: { milestones: { kind: 'next', epochDay: TODAY + 16, what: { area: 'milestone', name: 'Name-change hearing' } } }
+    })
+  );
+
+  assert.deepEqual(line, {
+    kind: 'next',
+    epochDay: TODAY + 16,
+    what: { area: 'milestone', name: 'Name-change hearing' }
+  });
+});
+
+/* Care and letters report no reading at all - Care fronts no archive section
+   and a letter is sealed until its day - so a standing sentence about what is
+   behind the row is what a dated future replaces. */
+test('a forward fact beats the standing line of a row that never reads', () => {
+  const care = rowLine(
+    spec('care'),
+    reading({ forward: { care: { kind: 'next', epochDay: TODAY + 2, what: { area: 'dose', runOutEpochDay: TODAY + 19 } } } })
+  );
+  const letters = rowLine(
+    spec('letters'),
+    reading({ forward: { letters: { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: false } } } })
+  );
+
+  assert.equal(care.kind, 'next');
+  assert.equal(letters.kind, 'next');
+});
+
+test('a running span is drawn as it arrives, whatever was last written', () => {
+  const line = rowLine(
+    spec('wear'),
+    reading({
+      lastWrites: { wearSessions: TODAY - 400 },
+      forward: { wear: { kind: 'running', what: { area: 'wear', wearKind: 'binder', startTimestamp: 1_700_000_000_000 } } }
+    })
+  );
+
+  assert.deepEqual(line, {
+    kind: 'running',
+    what: { area: 'wear', wearKind: 'binder', startTimestamp: 1_700_000_000_000 }
+  });
+});
+
+test('the measurements row states its last value rather than the age of it', () => {
+  const line = rowLine(
+    spec('measurements'),
+    reading({
+      lastWrites: { measurements: TODAY - 8 },
+      forward: { measurements: { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' } }
+    })
+  );
+
+  assert.deepEqual(line, { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' });
+});
+
+/* A row the person has said is over does not announce what is next in it:
+   the statement they made about the practice outranks anything still dated
+   inside it. */
+test('finished and suspended still win over a forward fact', () => {
+  const forward = {
+    wear: { kind: 'running', what: { area: 'wear', wearKind: 'binder', startTimestamp: 1_700_000_000_000 } }
+  } as const;
+
+  assert.deepEqual(rowLine(spec('wear'), reading({ forward, states: { wearSessions: finished(TODAY - 90) } })), {
+    kind: 'finished',
+    epochDay: TODAY - 90
+  });
+  assert.deepEqual(rowLine(spec('wear'), reading({ forward, states: { wearSessions: suspended(TODAY - 90) } })), {
+    kind: 'suspended',
+    epochDay: TODAY - 90
+  });
+});
+
+/* Nothing forward to say is the common case - eight rows of twenty-two can
+   carry a forward fact at all, and the other fourteen read exactly as they
+   did before this ticket. */
+test('with nothing forward, every row falls through to the reading it had', () => {
+  const empty = reading({ lastWrites: { measurements: TODAY - 3 } });
+
+  assert.deepEqual(rowLine(spec('measurements'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
+  assert.deepEqual(rowLine(spec('care'), empty), { kind: 'no-stream' });
+  assert.deepEqual(rowLine(spec('milestones'), empty), { kind: 'not-yet' });
+});
+
+/* The forward registry names its own rows (`rowForward.ts`), so a key it
+   answers for that is not a row here would assemble a fact nothing draws.
+   `EveryForwardKeyIsARow` proves it at compile time; this proves the set is
+   not silently empty, which a vacuous type assertion would also satisfy. */
+test('every row the forward registry answers for is a row on the hub', () => {
+  const rows = new Set(HUB_ROWS.map((row) => row.key as string));
+  assert.equal(ROW_FORWARD_KEYS.length, 8);
+  for (const key of ROW_FORWARD_KEYS) assert.equal(rows.has(key), true, `${key} is not a hub row`);
+});
+
 // --- finished ---------------------------------------------------------------
 
 test('a finished row says the day it ended', () => {
@@ -439,7 +547,7 @@ test('a hosted row states the day its area ended, since the hub no longer can', 
      reading is consulted, so a hosted row shows an ending and otherwise its
      standing line. A reading would cost every host screen the hub's own
      assembled last-write call for a date the next screen opens on. */
-  const noReads = { todayEpochDay: TODAY, lastWrites: {}, states: {} };
+  const noReads = { todayEpochDay: TODAY, lastWrites: {}, states: {}, forward: {} };
 
   assert.deepEqual(rowLine(spec('effects'), { ...noReads, states: { personalEffects: finished(TODAY - 90) } }), {
     kind: 'finished',
