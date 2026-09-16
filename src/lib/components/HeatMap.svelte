@@ -37,7 +37,7 @@
 
      **On mood, the cell is the face a person chose.** Mood already owns
      five drawn faces and a colour ramp of its own (ADR-0025, MoodFace),
-     and kit/MoodYear.svelte already draws a year of days as those faces -
+     and kit/YearRows.svelte drew a year of days as those faces -
      with the size they stay legible at settled by tests/mood-faces.test.ts
      and by Alicja twice on 2026-08-25. A calendar cell is bigger than any
      of those, so this is that same drawing on a bigger grid, and the fill
@@ -50,7 +50,7 @@
      So a dimension keeps the flag-hued square and its legend, and mood is
      round, faced, and has no legend at all - the faces are the picker's
      own five, and naming them under the grid is the app explaining itself
-     to its reader (MoodYear's own note, Alicja, 2026-08-25).
+     to its reader (the year grid's own note, Alicja, 2026-08-25).
 
      The form is Daylio's, which Alicja asked for by name on 2026-09-02
      against a screenshot of its month. Its calendar is the reason the date
@@ -138,7 +138,7 @@
      it is the role's computed ramp, falling back to the stylesheet's
      hand-tuned tokens where there is no flag to shade with. Step 0 is the
      empty end of both systems: a day nobody logged is not a day at the
-     bottom of a scale (kit/MoodYear.svelte's own rule). */
+     bottom of a scale (kit/YearRows.svelte's own rule). */
   const fillAt = (step: number) =>
     step === 0 || !isMood
       ? (role?.heat[step].fill ?? `var(--heat-${step})`)
@@ -387,7 +387,7 @@
 
        Mood has none. Its five faces are the same five a person picks a mood
        from every day, so a legend under them is the app explaining itself to
-       its reader - which is the call kit/MoodYear.svelte already made, and
+       its reader - which is the call the year grid already made, and
        Alicja's on 2026-08-25. -->
   {#if !isMood}
     <div
