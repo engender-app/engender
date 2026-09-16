@@ -3659,6 +3659,10 @@ try {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }
 
+  // Redesign ticket 16 collapsed the pack's own caveat behind this toggle,
+  // closed by default - the two checks below read what it discloses.
+  await page.locator('[data-roadmap-pack-toggle]').click();
+  await page.waitForSelector('[data-roadmap-pack-details]');
   if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown'); // text-under-test: the caveat itself
   if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown'); // text-under-test: the review note itself
 
@@ -3949,7 +3953,7 @@ try {
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
     '/transition/roadmap', '/transition/letters', '/transition/tryouts',
-    '/transition/eras',
+    '/settings/eras',
     '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
@@ -5355,7 +5359,7 @@ try {
    `spansOverlap` returns true whenever neither side can prove non-overlap,
    and an era with both bounds null can never prove either side). */
 try {
-  await page.goto(BASE + '/transition/eras', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
   await booted();
   const startingRows = await page.locator('[data-era]').innerText();
   if (!startingRows.includes('Before HRT')) {
@@ -5474,7 +5478,7 @@ try {
     end: Number(el.dataset.spanEnd)
   }));
   await page.locator('[data-era-offer-confirm]').click();
-  await page.waitForURL('**/transition/eras');
+  await page.waitForURL('**/settings/eras?**');
   await page.waitForSelector('#era-name');
   const gotStart = await page.locator('input[name="era-start"]').inputValue();
   const gotEnd = await page.locator('input[name="era-end"]').inputValue();

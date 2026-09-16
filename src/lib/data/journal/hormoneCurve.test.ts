@@ -973,3 +973,59 @@ test('a result whose unit converts for neither hormone is counted once, not once
   assert.equal(view.labPointsOffAxis, 1);
   assert.deepEqual(view.injectable.labPoints, []);
 });
+
+/* Which way the drawn curve is going (phase 11 ticket 10) */
+
+test('a week after an injection the band is falling; the day after one it is not', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+  const lastInjection = FROM + 11 * 7;
+
+  assert.equal(await journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: lastInjection + 6 }), 'falling');
+  assert.notEqual(
+    await journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: lastInjection }),
+    'falling',
+    'the day of the injection is where the curve climbs'
+  );
+});
+
+test('a patch worn through the day reads level', async () => {
+  /* estradiol:patch is a 24h rise, a 72h plateau and a 24h fall
+     (hormoneCurveQualitative.ts), so a day in the middle of a patch's
+     plateau is flat by construction - the case the level threshold exists
+     to be able to say at all. */
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30, { drug: 'estradiol', ester: null, route: 'patch', interval: 'twice weekly' });
+  await journal.doses.upsertDose({ timestamp: at(FROM), route: 'patch', dose: 2, doseUnit: 'mg', applicationSite: 'abdomen' });
+
+  assert.equal(await journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: FROM + 2 }), 'level');
+});
+
+test('a hormone with nothing drawn for it has no direction to state', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+
+  assert.equal(await journal.hormoneCurve.getCurveDirection({ drug: 'testosterone', epochDay: FROM + 40 }), null);
+  const empty = (await journalWithBuiltIns()).journal;
+  assert.equal(await empty.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: FROM }), null);
+});
+
+test('the direction needs no fit, so it reads the same with one as without', async () => {
+  /* A scale factor multiplies the whole curve, so it can move every height
+     and no slope's sign. Stated as a test because it is why this read never
+     asks for the fit, and so never needs the lab results at all. */
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, FROM - 30);
+  await injectWeekly(journal, 12);
+  await journal.labs.upsertResult({ epochDay: FROM + 20, analyte: 'estradiol', value: 40, unit: 'pg/mL', drawTime: '09:00' });
+
+  const labs = vi.spyOn(journal.labs, 'getResults');
+  try {
+    assert.equal(await journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: FROM + 11 * 7 + 6 }), 'falling');
+    assert.equal(labs.mock.calls.length, 0, 'a direction is read off the model, never off the results');
+  } finally {
+    labs.mockRestore();
+  }
+});

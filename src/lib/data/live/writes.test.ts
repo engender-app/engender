@@ -358,6 +358,16 @@ const COMPOSING_READS: readonly ComposingRead[] = [
     ]
   },
   {
+    // The same two models over one day, for the one word Care's curve row
+    // states (phase 11 ticket 10). No lab read at all: a direction needs no
+    // fit, and a scale factor cannot turn a rise into a fall.
+    read: ['hormoneCurve', 'getCurveDirection'],
+    composes: [
+      ['doses', 'getDoses'],
+      ['regimen', 'getEpisodes']
+    ]
+  },
+  {
     read: ['chartAnnotations', 'getAnnotations'],
     composes: [
       ['milestones', 'getMilestones'],
