@@ -205,6 +205,49 @@
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
+  /** How long an auto-logged dose keeps its one-tap correction (ticket 11).
+      A month is long enough to cover a person opening the app after a
+      fortnight away and reading back what was written for them, and short
+      enough that a two-year log is not a wall of buttons. Past it the row is
+      an ordinary row and the flip is still there in the editor. */
+  const SKIP_CONTROL_DAYS = 30;
+
+  /** What an auto-logged dose says about itself on its second line, or null
+      for one the person logged (ticket 11, ADR-0086). A skipped one says
+      both things at once rather than wearing the status chip beside the
+      marker: "skipped" and "was logged from your schedule" are one sentence
+      about the same row. */
+  const sourceNoteOf = (dose: DoseEvent): string | null => {
+    if (dose.source !== 'schedule') return null;
+    return dose.status === 'skipped' ? m.dose_from_schedule_skipped() : m.dose_from_schedule();
+  };
+
+  /** Whether this row offers the one-tap correction: an auto-logged dose
+      that has not already been corrected, inside its window. */
+  const offersSkip = (dose: DoseEvent): boolean =>
+    dose.source === 'schedule' &&
+    dose.status !== 'skipped' &&
+    epochDayFromTimestamp(dose.timestamp) >= today - SKIP_CONTROL_DAYS;
+
+  /* The correction, in one tap: the status flips and the source stays, so
+     the row still says the schedule wrote it and now also says the person
+     did not take it. Nothing else about the dose moves - the amount and the
+     time are what the schedule said, and what is being corrected is whether
+     it happened. */
+  async function skipAutoLoggedDose(dose: DoseEvent) {
+    await journal.doses.upsertDose({
+      id: dose.id,
+      timestamp: dose.timestamp,
+      route: dose.route,
+      dose: dose.dose,
+      doseUnit: dose.doseUnit,
+      status: 'skipped',
+      scheduled: dose.scheduled,
+      drug: dose.drug,
+      source: 'schedule'
+    });
+  }
+
   /** `<input type="time">` value for a timestamp, and back again. Local
       wall-clock both ways: the field shows the time of day the user took the
       dose at, which is the thing being recorded. */
@@ -610,6 +653,24 @@
           {#snippet rows(shownRows)}
             {#each shownRows as { dose, attribution } (dose.id)}
               {@const site = siteOf(dose)}
+              {@const sourceNote = sourceNoteOf(dose)}
+              <!-- Keyed on what the row says about itself, so correcting an
+                   auto-logged dose crossfades its words instead of cutting
+                   them (ADR-0078, and this ticket's standing motion clause).
+
+                   `out` only, which is what this primitive is: the replacing
+                   row is simply there, in flow, at the same height, and the
+                   one it replaced fades off underneath it from its own
+                   static position. An `in:crossfade` as well would take the
+                   arriving row out of flow for the length of the fade and
+                   every row below it would jump up and back - a yank, for a
+                   change of four words.
+
+                   `rows-divide` because the wrapper is now what the card
+                   sees between two rows, and the hairline rule matches
+                   adjacent siblings (kit.css). -->
+              {#key sourceNote}
+                <div class="rows-divide" out:crossfade>
               <ListRow
                 key={dose.id}
                 data-dose={dose.id}
@@ -617,23 +678,35 @@
                 icon="clock"
                 title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
                 subtitle={[
-                  whenOf(dose),
-                  site,
-                  isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : ''
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
+                  [whenOf(dose), site, isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '']
+                    .filter(Boolean)
+                    .join(' · '),
+                  sourceNote
+                ]}
                 chevron={false}
                 onclick={() => openEditor(dose)}
+                action={offersSkip(dose)
+                  ? {
+                      text: m.dose_from_schedule_skip_action(),
+                      label: m.dose_from_schedule_skip_action(),
+                      attrs: { 'data-dose-skip': dose.id },
+                      onclick: () => skipAutoLoggedDose(dose)
+                    }
+                  : undefined}
               >
                 {#snippet trailing()}
                   <!-- The bookkeeping, at the end of the row rather than as
                        two more lines under the dose: which episode the app
                        attributed it to, whether it was taken as logged, and
                        what a schedule had asked for. All three are about the
-                       record rather than about the dose. -->
+                       record rather than about the dose.
+
+                       An auto-logged dose the person has marked skipped says
+                       so on its second line instead, in one sentence with
+                       where it came from - so the chip would be the same
+                       word twice. -->
                   <span class="dose-trail">
-                    {#if dose.status !== 'taken'}
+                    {#if dose.status !== 'taken' && !sourceNote}
                       <span class="dose-status">{statusLabel(dose.status)}</span>
                     {/if}
                     <span>
@@ -654,6 +727,8 @@
                   </span>
                 {/snippet}
               </ListRow>
+                </div>
+              {/key}
             {/each}
           {/snippet}
         </BatchedList>

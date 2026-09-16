@@ -722,7 +722,7 @@ test('an auto-logged dose is taken, carries the schedule as its source, and take
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098 });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 2);
 
   const doses = await journal.doses.getDoses(19000, 19100);
   assert.deepEqual(
@@ -738,8 +738,8 @@ test('the auto-log pass writes nothing twice: the doses it wrote fill the slots 
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098 });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 0);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 2);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 0);
   assert.equal((await journal.doses.getDoses(19000, 19100)).length, 2);
 });
 
@@ -747,7 +747,7 @@ test('the auto-log pass leaves a schedule with the switch off alone', async () =
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: null });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 0);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 0);
   assert.deepEqual(await journal.doses.getDoses(19000, 19100), []);
 });
 
@@ -755,36 +755,28 @@ test('the auto-log pass stops at the day the episode ended', async () => {
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19090, endEpochDay: 19092 });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 3);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 3);
   const doses = await journal.doses.getDoses(19000, 19100);
   assert.deepEqual(doses.map((dose) => epochDayFromTimestamp(dose.timestamp)), [19090, 19091, 19092]);
 });
 
-test('the auto-log pass writes nothing for an episode whose route it cannot record', async () => {
+test('the auto-log pass writes nothing for an episode whose route it cannot read', async () => {
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098, route: 'domięśniowo' });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 0);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 0);
 });
 
-test('the auto-log pass follows the route the episode\'s own doses already use', async () => {
+test('an auto-logged injection carries no site: where it went is the person\'s own to say', async () => {
   const { journal } = await journalWithBuiltIns();
-  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098, route: 'domięśniowo', everyNDays: 7 });
-  await journal.doses.upsertDose({
-    timestamp: at(19091, 9),
-    route: 'im',
-    dose: 3,
-    doseUnit: 'mg',
-    injectionSite: 'thigh-left',
-    vehicle: 'oil'
-  });
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19099, route: 'domięśniowo' });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 1);
-  const [, written] = await journal.doses.getDoses(19000, 19100);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, [{ value: 'im', label: 'Domięśniowo' }]), 1);
+  const [written] = await journal.doses.getDoses(19000, 19100);
   assert.equal(written.route, 'im');
   assert.equal(written.source, 'schedule');
-  // Where the injection went is the person's own to say; nothing is invented.
   assert.equal('injectionSite' in written ? written.injectionSite : 'missing', null);
+  assert.equal('vehicle' in written ? written.vehicle : 'missing', null);
 });
 
 test('a dose the person logged by hand keeps its slot, and the pass fills the rest', async () => {
@@ -792,7 +784,7 @@ test('a dose the person logged by hand keeps its slot, and the pass fills the re
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19097 });
   await journal.doses.upsertDose({ timestamp: at(19098, 7), route: 'oral', dose: 9, doseUnit: 'mg' });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 2);
   const doses = await journal.doses.getDoses(19000, 19100);
   assert.deepEqual(
     doses.map((dose) => [epochDayFromTimestamp(dose.timestamp), dose.source, dose.dose]),
@@ -809,7 +801,7 @@ test('a paused day is not auto-logged: a break somebody declared is not a dose t
   const episodeId = await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19097 });
   await journal.doses.upsertPause({ episodeId, startEpochDay: 19098, endEpochDay: 19098, reason: 'planned' });
 
-  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 2);
   const doses = await journal.doses.getDoses(19000, 19100);
   assert.deepEqual(doses.map((dose) => epochDayFromTimestamp(dose.timestamp)), [19097, 19099]);
 });
@@ -817,7 +809,7 @@ test('a paused day is not auto-logged: a break somebody declared is not a dose t
 test('marking an auto-logged dose skipped keeps it saying where it came from', async () => {
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19099 });
-  await journal.doses.autoLogDueDoses(19100);
+  await journal.doses.autoLogDueDoses(19100, []);
 
   const [written] = await journal.doses.getDoses(19000, 19100);
   await journal.doses.upsertDose({

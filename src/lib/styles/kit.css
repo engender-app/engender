@@ -460,6 +460,22 @@
   cursor: pointer;
 }
 
+/* A row action whose meaning no glyph carries says it in words instead
+   (ListRow's own `text`). The square becomes a pill wide enough for them,
+   still at the row's full height, so the target only ever grows. */
+.kit-row-act.has-text {
+  width: auto;
+  min-width: var(--touch-target);
+  grid-auto-flow: column;
+  gap: var(--space-1);
+  padding-inline: var(--space-3);
+}
+
+.kit-row-act-text {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
 /* ---------- the filter line ----------
 
    A label and one control, sitting on the page rather than in a card:

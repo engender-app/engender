@@ -170,6 +170,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       schedules: [schedule],
       dosePauses: [],
       todayDoses: [],
+      yesterdayDoses: [],
       latestBenchmarkEpochDay: TODAY - 20,
       journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
       latestHairRemovalSession: hairRemovalSession,
@@ -455,6 +456,25 @@ describe('what each tile says', () => {
     const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['todayDoses'];
     const tile = tileNamed('dose-panel', { reads: { todayDoses: logged } })!;
     expect(tile.note).toBe(m.tile_dose_next({ date: `weekday:${TODAY + 3}` }));
+  });
+
+  it('the dose panel says yesterday\'s dose was logged for you, ahead of the next day', () => {
+    /* Phase 11 ticket 11: on the morning after an auto-logged slot the fact
+       worth reading is the row written without the person, not a date they
+       can work out from their own schedule. */
+    const written = [
+      { id: 1, timestamp: NOW - 86_400_000, source: 'schedule', status: 'taken' }
+    ] as unknown as HomeTileReads['yesterdayDoses'];
+    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: written } })!.note).toBe(
+      m.tile_dose_auto_logged_yesterday()
+    );
+  });
+
+  it('a dose the person logged yesterday themselves leaves the panel\'s forward line alone', () => {
+    const byHand = [
+      { id: 1, timestamp: NOW - 86_400_000, source: 'person', status: 'taken' }
+    ] as unknown as HomeTileReads['yesterdayDoses'];
+    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: byHand } })!.note).toBe(m.tile_dose_next_today());
   });
 
   it('a regimen with no schedule gets a panel with no forward line', () => {

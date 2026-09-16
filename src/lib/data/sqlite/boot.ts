@@ -7,10 +7,12 @@
      2. Open the database and run migrations (ticket 02) - this ticket's
         own job, fully implemented below.
      3. Load mirrored reference data into reactive state (ticket 08).
-     4. Purge trash past its 30-day window, then run the photo orphan sweep
-        (ticket 11; phase 5 ticket 19) - off the critical path since phase 5
-        audit ticket 02: scheduled as boot reports ready rather than waited
-        for, because no screen reads what either of them produces.
+     4. Purge trash past its 30-day window, run the photo orphan sweep
+        (ticket 11; phase 5 ticket 19), then auto-log the doses any schedule
+        the person switched on still owes (phase 11 ticket 11) - off the
+        critical path since phase 5 audit ticket 02: scheduled as boot
+        reports ready rather than waited for, because no screen reads what
+        any of them produces.
 
    Steps 1, 3 and 4 are dependency-injected no-ops until their tickets land
    - boot() still calls them in order so the shape doesn't change later,
@@ -33,7 +35,14 @@ interface BootDeps {
   loadReferenceData?: (driver: SqliteDriver) => Promise<void>;
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
-  /** When to run the two housekeeping passes, given the work to run. The app
+  /** The auto-log pass (phase 11 ticket 11, ADR-0086): each schedule the
+      person switched on gets a `taken` dose per slot it still owes, up to
+      yesterday. Last of the three, and here rather than on a clock of its
+      own, because a standing instruction has to be carried out on a device
+      that was closed for a week just as much as on one opened every day, and
+      boot is when the app finds out how long that was. */
+  autoLogDueDoses?: (driver: SqliteDriver) => Promise<void>;
+  /** When to run the housekeeping passes, given the work to run. The app
       passes an idle callback (whenIdle, ../../idle.ts); leave it out and they
       start as soon as ready is reported, which is what the probes want - the
       point is only that nothing waits for them. */
@@ -59,10 +68,10 @@ type BootResult =
       phase: 'ready';
       driver: SqliteDriver;
       persistDenied: boolean;
-      /** Resolves when both housekeeping passes have finished, and never
-          rejects - a failure in either is warned about and left for the next
-          boot. Nothing in the app awaits it; the benchmarks and the tests
-          that prove the passes ran do. */
+      /** Resolves when the housekeeping passes have finished, and never
+          rejects - a failure in any of them is warned about and left for the
+          next boot. Nothing in the app awaits it; the benchmarks and the
+          tests that prove the passes ran do. */
       housekeeping: Promise<void>;
     }
   | { phase: 'error'; error: unknown };
@@ -153,9 +162,9 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
   return { phase: 'ready', driver, persistDenied, housekeeping };
 }
 
-/** Both passes, in order, each one's failure its own. A failure is a warning
-    and nothing more: the app is not withheld for either of these, since what
-    they did not finish is still there for the next boot to retry. */
+/** All three passes, in order, each one's failure its own. A failure is a
+    warning and nothing more: the app is not withheld for any of these, since
+    what they did not finish is still there for the next boot to retry. */
 async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
   try {
     await deps.purgeExpiredTrash?.(driver);
@@ -167,5 +176,11 @@ async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
     await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {
     console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
+  }
+
+  try {
+    await deps.autoLogDueDoses?.(driver);
+  } catch (error) {
+    console.warn('auto-logging doses failed; the slots stay open until the next boot', error);
   }
 }

@@ -32,14 +32,15 @@ import type {
 } from '../types';
 import {
   adherence,
-  autoLogRoute,
   autoLogSlots,
+  matchDoseRoute,
   expectedSlots,
   isInjectionDose,
   isTopicalDose,
   type Adherence,
   type ApplicationSiteKey,
-  type InjectionSiteKey
+  type InjectionSiteKey,
+  type RouteOption
 } from '../doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { activeEpisodesAt, attributeDose } from '../regimenEpisode';
@@ -194,8 +195,14 @@ export interface DosesArea {
 
       Idempotent and safe to call whenever: boot runs it, and it is cheap on
       a journal with no auto-logging schedule at all, which is every journal
-      until somebody asks for one. */
-  autoLogDueDoses(todayEpochDay: number): Promise<number>;
+      until somebody asks for one.
+
+      `routeWords` is `ROUTE_OPTIONS` (doseLabels.ts), because a regimen
+      episode's route is free text and a dose's is one of six keys - the same
+      list the schedule editor gates its switch on, so this never declines to
+      read a route the switch was offered for (ADR-0016 is why it is handed
+      in rather than imported). */
+  autoLogDueDoses(todayEpochDay: number, routeWords: readonly RouteOption[]): Promise<number>;
   /** The day of the most recent dose at or before `todayEpochDay`, or null
       if there is none (phase 8 features ticket 03, lastWrite.ts). The table
       stores a `timestamp`, not an `epoch_day`, so the bound is the start of
@@ -483,7 +490,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       await driver.run('DELETE FROM dose_event WHERE uuid = ?', [id]);
     },
 
-    async autoLogDueDoses(todayEpochDay) {
+    async autoLogDueDoses(todayEpochDay, routeWords) {
       const schedules = (await area.getSchedules()).filter((schedule) => schedule.autoLogFromEpochDay !== null);
       if (schedules.length === 0) return 0;
 
@@ -504,21 +511,20 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         const until = Math.min(todayEpochDay - 1, episode.endEpochDay ?? todayEpochDay - 1);
         if (until < from) continue;
 
-        /* The episode's whole dose history, not just the walk's own range:
-           the route an auto-logged dose is written with comes from the doses
-           the person already logged (autoLogRoute), and those are mostly
-           from before the day they switched the schedule on. The extra rows
-           cost a read the slot walk then ignores - anything outside its
-           range has no slot to sit in.
+        /* What the dose log can record this episode's route as, read from
+           the episode's own free text. Null only where the switch should
+           never have been offered (canAutoLog gates on the same read), so
+           this is a guard rather than a fallback: nothing is written with a
+           guessed route. */
+        const route = matchDoseRoute(episode.route, routeWords);
+        if (!route) continue;
 
-           Only this episode's own, attributed the way getComparison
+        /* Only this episode's own doses, attributed the way getComparison
            attributes them: a concurrent episode's dose must not fill this
            one's slot, and a dose logged under an episode that has since been
            backdated away is not this one's either. */
-        const logged = await area.getDoses(episode.startEpochDay, until);
+        const logged = await area.getDoses(from, until);
         const ownDoses = logged.filter((dose) => attributeDose(episodes, dose).episode?.id === episode.id);
-        const route = autoLogRoute(episode.route, ownDoses);
-        if (!route) continue;
 
         const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
         const slots = autoLogSlots(schedule, episode.startEpochDay, ownDoses, ownPauses, until + 1);

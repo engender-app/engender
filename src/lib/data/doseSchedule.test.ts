@@ -8,7 +8,6 @@ import {
   APPLICATION_SITES,
   INJECTION_SITES,
   adherence,
-  autoLogRoute,
   autoLogSlots,
   canAutoLog,
   expectedAmountOn,
@@ -635,26 +634,18 @@ test('autoLogSlots writes nothing when the switch went on today', () => {
   assert.deepEqual(autoLogSlots(autoLogging(1, 1, 100), 90, [], [], 100), []);
 });
 
-test('autoLogRoute reads the route this episode\'s own doses already use', () => {
-  const injection: DoseEvent = { ...dose(98, 9), route: 'im', injectionSite: null, vehicle: 'oil' } as DoseEvent;
-  assert.equal(autoLogRoute('anything at all', [injection]), 'im');
-});
-
-test('autoLogRoute takes the most recent dose, not the first one, when the route changed', () => {
-  const older: DoseEvent = { ...dose(90, 9), route: 'im', injectionSite: null, vehicle: 'oil' } as DoseEvent;
-  assert.equal(autoLogRoute('', [older, dose(99, 9)]), 'oral');
-});
-
-test('autoLogRoute falls back to the episode\'s own words when nothing is logged yet', () => {
-  assert.equal(autoLogRoute('IM, ventrogluteal', []), 'im');
-  assert.equal(autoLogRoute('domięśniowo', []), null);
-});
-
 test('canAutoLog refuses a schedule with no amount, no rhythm, or no route to write', () => {
   const amounts = [{ dose: 2, doseUnit: 'mg' }];
-  assert.equal(canAutoLog(schedule(1, 1, amounts), 'oral', []), true);
+  assert.equal(canAutoLog(schedule(1, 1, amounts), 'IM, ventrogluteal', []), true);
   assert.equal(canAutoLog(schedule(1, 1, null), 'oral', []), false);
   assert.equal(canAutoLog(schedule(1, 0, amounts), 'oral', []), false);
   assert.equal(canAutoLog(weekdaySchedule([], 1, amounts), 'oral', []), false);
   assert.equal(canAutoLog(schedule(1, 1, amounts), 'whatever the pharmacist said', []), false);
+});
+
+test('canAutoLog reads a route written in the app\'s own words, whichever language is running', () => {
+  const amounts = [{ dose: 2, doseUnit: 'mg' }];
+  const polish: RouteOption[] = [{ value: 'im', label: 'Domięśniowo' }];
+  assert.equal(canAutoLog(schedule(1, 1, amounts), 'domięśniowo', []), false);
+  assert.equal(canAutoLog(schedule(1, 1, amounts), 'domięśniowo', polish), true);
 });

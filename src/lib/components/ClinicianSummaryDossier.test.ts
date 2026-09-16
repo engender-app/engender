@@ -47,6 +47,24 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('class="dossier-row-link"');
   });
 
+  /* Phase 11 ticket 11: a dose a schedule wrote on the person's behalf is
+     marked where it leaves the device, and the mark is explained in words
+     rather than left as a symbol a reader has to guess at. */
+  it('marks an auto-logged dose in the dose table and explains the mark in a legend', () => {
+    expect(dossierComponent).toContain("dose.source === 'schedule'");
+    expect(dossierComponent).toContain('data-dose-auto-logged');
+    expect(dossierComponent).toContain('data-dossier-auto-logged-legend');
+    expect(dossierComponent).toContain('m.clinician_summary_auto_logged_legend()');
+  });
+
+  it('prints the auto-logged legend rather than hiding it with the screen-only notes', () => {
+    // `.dossier-truncate-note` is `.no-print` in the markup; this one is a
+    // fact about the rows a clinician is reading and has no such class.
+    expect(printCss).toContain('.dossier-footnote {');
+    expect(dossierComponent).toContain('class="dossier-footnote"');
+    expect(dossierComponent).not.toContain('class="dossier-footnote no-print"');
+  });
+
   it('renders cumulative exposure section', () => {
     expect(dossierComponent).toContain('{#if dossier.exposure}');
     expect(dossierComponent).toContain('data-dossier-section="exposure"');
