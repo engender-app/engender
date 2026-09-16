@@ -238,7 +238,8 @@ const daily = (episodeId: string): DoseSchedule => ({
   episodeId,
   recurrence: { kind: 'everyNDays', everyNDays: 1 },
   dosesPerDay: 1,
-  doseAmounts: null
+  doseAmounts: null,
+  autoLogFromEpochDay: null
 });
 
 const doseFor = (drug: string, epochDay: number): DoseEvent =>

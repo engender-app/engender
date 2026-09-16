@@ -567,6 +567,12 @@ CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day);
 --
 -- \`drug\` is nullable and starts null: a dose needs its own drug only once
 -- more than one episode can be active on the day it was logged.
+--
+-- \`source\` (added by v82) says who wrote the row - 'person' for a dose
+-- logged by hand, 'schedule' for one an auto-logging schedule wrote on the
+-- person's behalf (ADR-0086). It is a column of its own rather than a fourth
+-- \`status\` because it answers a different question, and a schedule-written
+-- dose the person then marks skipped has to say both things at once.
 CREATE TABLE dose_event (
   id                  INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid                TEXT NOT NULL UNIQUE,
@@ -604,6 +610,11 @@ CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id);
 -- \`every_n_days\` present for exactly the arm that uses it - the same
 -- discriminated union DoseScheduleRecurrence gives in code, enforced again here
 -- so a row cannot claim one shape while carrying the other's data.
+--
+-- \`auto_log_from_epoch_day\` (added by v82) is the standing instruction
+-- "assume I took it unless I say otherwise" (ADR-0086): the day the person
+-- switched it on, or null for off. One column rather than a flag beside a
+-- day, because a flag set with no day has nothing to walk from.
 --
 -- Weekdays and dose amounts are child tables, not columns: a schedule has zero
 -- or more of each, and both are empty for a schedule that does not use the

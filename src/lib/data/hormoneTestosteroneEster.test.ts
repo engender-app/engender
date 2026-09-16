@@ -19,6 +19,7 @@ function injectionWindow(ester: string) {
     dose: 100,
     doseUnit: 'mg',
     status: 'taken',
+    source: 'person',
     scheduled: null,
     drug: null,
     route: 'im',
