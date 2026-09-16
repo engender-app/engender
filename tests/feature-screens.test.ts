@@ -393,11 +393,15 @@ describe('the two print surfaces', () => {
     // Its own print rule: the disclaimer that only appears on paper.
     expect(source).toMatch(/@media print/);
     /* And what print hides is the app around the page, not the page. The
-       header, the range picker and the on-screen copy of the disclaimer
-       all carry `no-print`, which app.css's print block hides; the print
-       heading that replaces the header carries the range in words. */
+       header and the settings row that opens the range picker carry
+       `no-print` themselves; the range picker now lives in the controls
+       sheet (ticket 08), screen-only under the sheet's own `no-print`
+       wrap rather than its own - print-parity.test.ts holds that one.
+       The print heading that replaces the header carries the range in
+       words. */
     expect(source).toMatch(/<ScreenHeader[^>]*class="no-print"/);
-    expect(source).toMatch(/class="kit-filter cd-endpoints no-print"/);
+    expect(source).toMatch(/class="no-print settings-row-wrap"/);
+    expect(source).toMatch(/class="kit-filter cd-endpoints"/);
     expect(source).toContain('print-heading');
   });
 
