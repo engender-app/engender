@@ -55,8 +55,10 @@
   import { bandsFor, comfortBand, pitchAxis } from '$lib/audio/bands';
   import { decodePitchTrack } from '$lib/audio/track';
   import { pitchDensity } from '$lib/audio/density';
-  import { metricHref } from '$lib/data/voice/metrics';
+  import { epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import { metricHref, VOICE_METRICS, VOICE_METRICS_REVIEWED_ON, type VoiceMetricKey } from '$lib/data/voice/metrics';
   import { metricName } from '$lib/data/voice/metricLabels';
+  import { voiceMetricFigure } from '$lib/data/voice/metricFigures';
   import { acousticDelta } from '$lib/audio/benchmarkDelta';
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -65,8 +67,10 @@
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import VoiceBenchmarkFlow from '$lib/components/VoiceBenchmarkFlow.svelte';
   import VoiceComfortBand from '$lib/components/VoiceComfortBand.svelte';
+  import VoiceMetricSection from '$lib/components/VoiceMetricSection.svelte';
   import VoiceOwnSeries from '$lib/components/VoiceOwnSeries.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
@@ -82,6 +86,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -104,6 +109,56 @@
 
   let requested = page.url.searchParams.get('tab');
   let tab = $state<Tab>(TABS.includes(requested as Tab) ? (requested as Tab) : 'record');
+
+  /* The metric reference, as a sheet over whichever tab is open rather than
+     a screen of its own (phase 11 ticket 17, ADR-0060).
+
+     Kept in sync with `?metric=` rather than read once the way `tab` is:
+     a figure's own link (`metricHref`) is a real navigation to this same
+     route with a new query, which is what actually changes `page.url` -
+     shallow routing would not (`replaceState` writes the address bar and
+     `page.state`, never `page.url`, see the memo on that trap). Closing
+     the sheet only clears the local flag and never writes the query back,
+     the same asymmetry a sheet opened from a query is supposed to have:
+     it is state the query can open but the back gesture and this close
+     both just forget locally. */
+  let metricSheetKey = $state<VoiceMetricKey | null>(null);
+  $effect(() => {
+    const requested = page.url.searchParams.get('metric');
+    if (VOICE_METRICS.some((metric) => metric.key === requested)) metricSheetKey = requested as VoiceMetricKey;
+  });
+
+  /* Scrolled to the section a figure's own link named, once the sheet has
+     actually settled - a plain `scrollIntoView` rather than a new
+     mechanism, the way every other landing-on-an-anchor in this app
+     already works (OnThisDayBlock.svelte, media/photos/+page.svelte). Not
+     on mount: the sheet's own entrance (`sheetRise`) is still animating
+     its height then, and a `scrollIntoView` read against a box that has
+     not reached its own resting size lands short of the mark - measured on
+     a built preview, off by exactly the sheet's still-growing height.
+     `introend` is Sheet.svelte's own settle signal (its `focusInitial`
+     listens for the same event on the same node, for the same reason);
+     not smooth, since the sheet's own motion is the one somebody is
+     watching and a second, independent scroll racing it would be a second
+     thing moving at once. */
+  $effect(() => {
+    const key = metricSheetKey;
+    if (!key) return;
+    const sheetEl = document.querySelector('[data-sheet]');
+    const scrollToSection = () => document.getElementById(key)?.scrollIntoView({ block: 'start' });
+    if (!sheetEl) {
+      requestAnimationFrame(scrollToSection);
+      return;
+    }
+    sheetEl.addEventListener('introend', scrollToSection, { once: true });
+    return () => sheetEl.removeEventListener('introend', scrollToSection);
+  });
+
+  const metricsReviewedEpochDay = epochDayFromDateInputValue(VOICE_METRICS_REVIEWED_ON);
+  const metricsReviewedOn =
+    metricsReviewedEpochDay === null
+      ? VOICE_METRICS_REVIEWED_ON
+      : fmtDay(metricsReviewedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
   let benchmarksQuery = liveList((j) => j.voiceBenchmarks.getBenchmarks());
   let anchors = $derived(benchmarksQuery.rows);
@@ -504,6 +559,29 @@
     {/if}
   {/if}
 
+  <!-- The metric reference (phase 8 features ticket 27, ADR-0060; a sheet
+       rather than its own screen since ticket 17). Reference data like
+       `/practice/resources`: the table is compiled in, so there is nothing
+       to wait for and nothing that can be empty - only the figure each
+       section opens with reads the journal, through `anchors`, already
+       fetched for the compare tab above. -->
+  <Sheet
+    open={metricSheetKey !== null}
+    title={m.vm_title()}
+    onClose={() => (metricSheetKey = null)}
+  >
+    <h3>{m.vm_title()}</h3>
+    <p class="muted small">{m.vm_intro()}</p>
+    <p class="muted small" data-metrics-distance>{m.vm_distance()}</p>
+    {#each VOICE_METRICS as metric, i (metric.key)}
+      <section id={metric.key} class="vm-metric" {...roleAttrs(roleAt(activeFlag.roles, i))}>
+        <SectionHeading text={metricName(metric.key)} />
+        <VoiceMetricSection {metric} figure={voiceMetricFigure(anchors, metric.key, getLocale())} />
+      </section>
+    {/each}
+    <p class="muted small" data-metrics-reviewed>{m.roadmap_reviewed_on({ date: metricsReviewedOn })}</p>
+  </Sheet>
+
   <ConfirmDeleteSheet
     open={deleteTarget !== null}
     title={m.vc_benchmark_delete_sheet()}
@@ -518,6 +596,17 @@
 </div>
 
 <style>
+  /* The section owns the gap between its heading and its panel; the sheet
+     owns the gap between sections (`.sheet`'s own, kit.css). */
+  .vm-metric {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    /* So landing on `#spread` puts the heading below the sheet's own
+       handle rather than under it. */
+    scroll-margin-top: var(--space-5);
+  }
+
   /* The two takes stack rather than sitting side by side (Alicja,
      2026-09-04: "in the compare module, it shouldn't be side-by-side - not
      enough space for that"). Two pitch figures in half of 390px is 160px

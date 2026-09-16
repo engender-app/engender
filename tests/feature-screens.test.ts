@@ -54,12 +54,12 @@ const REACHED_FROM_INSIDE = [
   'care/curve',
   'care/doses',
   'transition/tryouts/[id]',
-  /* The metric reference (phase 8 features ticket 27): reached only from a
-     figure on the voice screen, never from the hub, which is ADR-0060's
-     own rule and what keeps it out of the UX spec's navigation rules. On
-     this list all the same, because what the list is for is holding a
-     screen to the kit. */
-  'practice/voice/metrics',
+  /* The metric reference (phase 8 features ticket 27) held this place
+     until phase 11 ticket 17 folded it into a sheet over the voice screen
+     itself - its markup is `VoiceMetricSection.svelte` and
+     `practice/voice/+page.svelte` now, both already reached the ordinary
+     way, and `practice/voice/metrics` is a redirect stub with nothing on
+     it to hold to the kit. */
   /* Two views over the unprompted registry (phase 6 ticket 04). The
      notifications view joins the list because its own milestone spec says so
      ("feature-screens.test.ts covers /transition/eras and the notifications
@@ -184,8 +184,10 @@ describe('every feature screen', () => {
 
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
-       a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(20);
+       a screen quietly dropped from the redesign look identical. Nineteen
+       since phase 11 ticket 17 took the metric reference off this list -
+       its markup moved to screens the hub already reaches. */
+    expect(REACHED_FROM_INSIDE.length).toBe(19);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -256,11 +258,6 @@ describe('what a first-run journal sees', () => {
         'practice/resources',
         'settings/entry-templates',
         'health/clinician-summary',
-        /* The metric reference explains a fixed table of seven figures
-           compiled into the bundle (data/voice/metrics.ts), so it has no
-           empty state for the same reason the bundled directory has
-           none. */
-        'practice/voice/metrics',
         /* The return moment is a step rather than a screen (DIRECTION.md
            rule 15, redesign ticket 35), and rule 12 forbids a notice on
            one: a step carries a title on the field and one line under it,
@@ -324,9 +321,6 @@ describe('what the worker is still fetching', () => {
         'settings/notifications',
         'settings/presentations',
         'settings/entry-templates',
-        // Reads no journal at all: seven figures explained, and not one of
-        // the person's own numbers anywhere on it (ADR-0060).
-        'practice/voice/metrics',
         /* Reads the OS rather than the journal: what the four grantable rows
            show comes from two Capacitor plugins and, on the web, from
            navigator.permissions. There is no query to wait on, and a

@@ -133,12 +133,18 @@ export function bandsOf(metric: VoiceMetric, language: BandLanguage): readonly P
   return referenceBands(language);
 }
 
-/** Where the explanations live. */
-export const VOICE_METRICS_ROUTE = '/practice/voice/metrics';
+/** Where the explanations live: a sheet over the voice screen rather than
+    a screen of its own since ticket 17 - `/practice/voice/metrics` is a
+    redirect stub now, kept for a bookmark rather than built from here. */
+export const VOICE_METRICS_ROUTE = '/practice/voice';
 
 /** Where one figure's own explanation lives. Here rather than written out
-    at each call site so that a link and the section it lands on cannot
-    drift: the reference screen builds its section anchors from the same
-    keys (ticket 27's own rule that renaming and explaining are one edit
-    applies to the anchor too). */
-export const metricHref = (key: VoiceMetricKey): string => `${VOICE_METRICS_ROUTE}#${key}`;
+    at each call site so that a link and the section it opens cannot
+    drift: the sheet reads the same key out of the query
+    (`practice/voice/+page.svelte`) that names which section to land on
+    (ticket 27's own rule that renaming and explaining are one edit
+    applies to the query key too). A query rather than the `#anchor`
+    ticket 27 shipped, because a fragment is never sent to the server and
+    the old address's own redirect stub could not read one to carry it
+    forward - `?metric=` can. */
+export const metricHref = (key: VoiceMetricKey): string => `${VOICE_METRICS_ROUTE}?metric=${key}`;

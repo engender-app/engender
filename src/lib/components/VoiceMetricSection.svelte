@@ -28,13 +28,31 @@
      anchor a figure links to, and the stripe this inherits, are the
      route's too. */
   import { m } from '$lib/paraglide/messages';
-  import { bandsOf, type VoiceMetric } from '$lib/data/voice/metrics';
+  import { bandsOf, type VoiceMetric, type VoiceMetricKey } from '$lib/data/voice/metrics';
   import { bandSource, metricFields, passageLanguageName } from '$lib/data/voice/metricLabels';
-  import { bandLabel, hzRangeLabel } from '$lib/components/pitchBandCopy';
+  import { bandLabel, hzLabel, hzRangeLabel } from '$lib/components/pitchBandCopy';
+  import MetricFigure from '$lib/components/MetricFigure.svelte';
+  import type { MetricFigureData } from '$lib/data/voice/metricFigures';
 
-  let { metric }: { metric: VoiceMetric } = $props();
+  let { metric, figure = null }: { metric: VoiceMetric; figure?: MetricFigureData | null } = $props();
 
   let fields = $derived(metricFields(metric.key));
+
+  /** How this figure's own axis writes a number - the same places
+      VoiceOwnSeries.svelte's trend card writes them in, so a tick here and
+      a scrub readout there never disagree about how many decimals a figure
+      gets. Pitch reuses PitchFigure's own `hzLabel` rather than repeating
+      the rounding rule a third place. */
+  const TICK_LABEL: Record<VoiceMetricKey, (value: number) => string> = {
+    pitch: hzLabel,
+    span: (value) => m.vb_hz({ value: value.toFixed(0) }),
+    spread: (value) => m.vb_semitones({ value: value.toFixed(1) }),
+    rate: (value) => m.vb_wpm({ value: value.toFixed(0) }),
+    resonance: (value) => m.vb_hz({ value: value.toFixed(0) }),
+    room: (value) => m.vb_db({ value: value.toFixed(0) }),
+    scale: (value) => m.vb_scale_value({ value: value.toFixed(2) })
+  };
+  let tickLabel = $derived(TICK_LABEL[metric.key]);
 
   /** The languages this figure has published ranges for, each with the
       ranges themselves. Empty for every Own-series figure, which is what
@@ -52,6 +70,9 @@
      paints with into custom properties, so a surface inside one needs no
      role of its own (kit/role.ts). -->
 <div class="vms kit-panel" data-metric={metric.key} data-metric-tier={metric.tier}>
+  {#if figure}
+    <MetricFigure low={figure.low} high={figure.high} value={figure.value} {tickLabel} bands={figure.bands} />
+  {/if}
   {#each fields as field (field.field)}
     <section class="vms-field" data-metric-field={field.field}>
       <h3>{field.heading}</h3>
