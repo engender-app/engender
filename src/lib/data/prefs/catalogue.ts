@@ -301,6 +301,14 @@ export interface PreferenceValues {
       this was already a single flag. Guidance is opt-in, never required to
       take a photo, so this only ever hides a card - it blocks nothing. */
   hairPhotoProtocolDismissed: boolean;
+  /** Whether the Look back rail's "drag the ends" hint has been answered by
+      a drag (phase 11 ticket 06). One flag rather than a count: the hint is
+      there to say the rail can be dragged, and one drag is the whole
+      answer. Device-local, with the two protocol flags above: what it
+      records is that somebody has worked out a gesture on this
+      installation, which does not travel with the journal - a restore on a
+      new device is a screen somebody has not used before. */
+  spanRailHintDismissed: boolean;
   /** The day the hair-progress timeline counts from, as an epoch day, or
       null when the person has not set one (phase 5 ticket 33). Null is a
       resting state, not unfinished setup: with no date set the screen falls
@@ -526,6 +534,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   measurementUnit: 'cm',
   measurementProtocolDismissed: false,
   hairPhotoProtocolDismissed: false,
+  spanRailHintDismissed: false,
   hairAnchorEpochDay: null,
   hormoneCurveFitToOwnLabs: false,
   journeyAnchorMilestoneId: null,
@@ -637,6 +646,7 @@ export const DEVICE_LOCAL_KEYS = [
   'roadmapMilestoneSyncEnabled',
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
+  'spanRailHintDismissed',
   'hormoneCurveFitToOwnLabs',
   'comingBackSeenSince',
   'clinicianSummaryDrugExcluded',

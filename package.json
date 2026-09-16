@@ -74,6 +74,7 @@
     "gallery:journal-motion": "VITE_DEMO=1 npm run build && node tests/journal-motion-gallery.mjs",
     "gallery:photo-day": "VITE_DEMO=1 npm run build && node tests/photo-day-sheet-gallery.mjs",
     "gallery:lookback": "VITE_DEMO=1 npm run build && node tests/lookback-gallery.mjs --tag after",
+    "gallery:lookback-06": "VITE_DEMO=1 npm run build && node tests/lookback-06-gallery.mjs --tag after",
     "gallery:lookback-motion": "VITE_DEMO=1 npm run build && node tests/lookback-motion-gallery.mjs",
     "gallery:today": "VITE_DEMO=1 npm run build && node tests/today-gallery.mjs --tag after",
     "gallery:today-editor": "VITE_DEMO=1 npm run build && node tests/today-editor-gallery.mjs",
