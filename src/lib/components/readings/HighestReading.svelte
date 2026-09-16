@@ -21,6 +21,7 @@
   import { highestMetricKey, rankHighestDays } from '$lib/data/highestDays';
   import { nativeAmount, nativeValue } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
+  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { BarRow } from '$lib/components/kit/barRow';
@@ -45,12 +46,9 @@
   let to = $derived(span.end);
   const CHART_ROLE = 0;
 
-  let metrics = $derived([
-    { key: 'mood', name: m.mood(), min: 1, max: 5 },
-    ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max }))
-  ]);
+  let metrics = $derived(metricChoices());
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
+  let shown = $derived(shownMetric(metrics));
 
   let highestKey = $state<string | null>(null);
   let highestRanks = $derived(highestMetricKey(highestKey, metrics.map((each) => each.key), shown.key));

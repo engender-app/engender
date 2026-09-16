@@ -86,6 +86,7 @@
   import { disclose } from '$lib/motion/reveal';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
+  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -180,11 +181,7 @@
     { value: 'year', href: '/wrapped/year', label: () => m.wrapped_cadence_year() }
   ];
 
-  let metrics = $derived([
-    { key: 'mood', name: m.mood(), min: 1, max: 5 },
-    ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max }))
-  ]);
-  let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
+  let shown = $derived(shownMetric(metricChoices()));
 
   /* ---------------------------------------------------------------------
      The recap, for three things at once (ADR-0056). `entryCount` is the

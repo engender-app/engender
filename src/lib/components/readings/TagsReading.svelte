@@ -15,6 +15,7 @@
   import { selectMetric } from '$lib/data/prefs/store.svelte';
   import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
+  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { CorrelationCard } from '$lib/data/correlationCards';
@@ -48,12 +49,9 @@
   /** How many entries the sheet behind a tag row lists. */
   const INSIGHT_ENTRIES = 20;
 
-  let metrics = $derived([
-    { key: 'mood', name: m.mood() },
-    ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name }))
-  ]);
+  let metrics = $derived(metricChoices());
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
+  let shown = $derived(shownMetric(metrics));
 
   let correlationCardsQuery = liveList((j) => j.correlationCards.getCards(from, to));
   let correlationCards = $derived(correlationCardsQuery.rows);
