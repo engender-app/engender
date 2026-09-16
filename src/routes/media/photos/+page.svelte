@@ -492,6 +492,7 @@
      .starred-photo-unstar in screens.css): an edge and a fill, never a
      shadow and never a tint of the picture underneath. */
   .photo-year {
+    position: relative;
     min-height: 28px; min-width: 40px;
     padding: 0 var(--space-2);
     border: 1px solid var(--outline); border-radius: var(--radius-pill);
@@ -501,10 +502,10 @@
   }
   /* The pill is 28px, which is under the 48px floor, so the target is
      extended past it by a transparent overlay - the trick `.tag-chip::after`
-     plays for the same reason (components.css). The rail's own 4px gap keeps
-     two stacked targets from meeting. */
+     plays for the same reason (components.css), which is also why the pill
+     above carries `position: relative` as its first line. The rail's own 4px
+     gap keeps two stacked targets from meeting. */
   .photo-year::after { content: ''; position: absolute; inset: -10px 0; }
-  .photo-year { position: relative; }
   .photo-year:hover { color: var(--text-1); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
