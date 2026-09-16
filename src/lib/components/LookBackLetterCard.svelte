@@ -8,17 +8,15 @@
      why it surfaced, and owns nothing else: the tap goes to the letter
      itself, the one place its full text is read.
 
-     `lead` says which of the two lines the row leads with, and it is the
-     one thing the three surfaces genuinely disagree about. A retrospective
-     leads with the date because the date is why the letter is there at all
-     ("this day, last year"). Safe Space has no candidate day and no reason
-     to lead with one: it is reaching for what a person's past self said,
-     and a date is the least identifying fact about a letter - so the words
-     lead there and the date drops to the line under them. Same rule the
-     search hit row already follows for the same reason (kit.css,
-     `[data-search-hit] .kit-row-title`).
+     The row leads with the date, because on both surfaces left the date is
+     why the letter is there at all ("this day, last year"). It carried a
+     `lead` prop for Safe Space's third surface, which led with the words
+     instead - Safe Space had no candidate day and no reason to lead with
+     one. Phase 11 ticket 15 folded that surface into the letters screen,
+     which draws its own `LetterCard`, so the choice has no caller and the
+     prop is gone rather than left as an option nobody takes.
 
-     Either way the text is `letterOpening`'s, not the letter's: the row's
+     The text is `letterOpening`'s, not the letter's: the row's
      two-line clamp is CSS and cuts the paint rather than the text, so the
      whole letter would otherwise be the link's accessible name.
 
@@ -37,14 +35,10 @@
 
   let {
     letter,
-    kind,
-    lead = 'date'
+    kind
   }: {
     letter: Letter;
     kind: RetrospectiveLetter['kind'];
-    /** Which line the row leads with. `date` is the retrospectives';
-        `text` is Safe Space's. */
-    lead?: 'date' | 'text';
   } = $props();
 
   let label = $derived(
@@ -58,10 +52,9 @@
 <ListRow
   key={letter.id}
   data-list-row="letter-preview"
-  data-lead={lead}
   data-letter={letter.id}
   icon="book"
-  title={lead === 'text' ? opening : label}
-  subtitle={lead === 'text' ? label : opening}
+  title={label}
+  subtitle={opening}
   href={`/transition/letters/${letter.id}`}
 />
