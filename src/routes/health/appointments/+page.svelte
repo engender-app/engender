@@ -646,15 +646,13 @@
     text-align: left;
     cursor: pointer;
     /* A block arrives by clipping open from its own left edge (rule 10,
-       ADR-0078), the same movement `kit-block-in` gives a tile. Filled both
-       ways so the reduced-motion clamp ends it where it rests, and outset by
-       6px for the focus ring's sake. */
-    animation: visit-lead-in var(--dur-slow) var(--ease-out) both;
-  }
-
-  @keyframes visit-lead-in {
-    from { clip-path: inset(-6px 100% -6px -6px round var(--r-block)); }
-    to { clip-path: inset(-6px round var(--r-block)); }
+       ADR-0078). `kit-block-in` by name rather than a keyframe of this
+       screen's own: it is the kit's movement for a block and this is a
+       block, and a second copy of those two frames would be two things to
+       keep in step. Svelte only rewrites the names it declares itself, so a
+       reference to kit.css's reaches it. Filled both ways so the
+       reduced-motion clamp ends it where it rests. */
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
   }
 
   .visit-lead-kind {
