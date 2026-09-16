@@ -2,16 +2,14 @@
   /* What you are taking, and since when, on the surface kit (phase 5 UX
      ticket 25).
 
-     The three links out - the dose log, the stock projection, the exposure
-     counters - sat above the regimen itself as a list-group indistinguishable
-     from the one holding the episodes, so the first three rows of the screen
-     were somewhere else and the fourth was the thing you came for. They are
-     an area of their own with a heading over them, and the episodes are the
-     first thing under the header.
-
-     Stock and exposure are still only reachable from here, which SCREENS.md
-     flags as a decision rather than an oversight, and no ticket in this
-     phase gives either an inbound link from the hub. Unchanged here. */
+     The dose log used to sit above the regimen alongside two other links -
+     the stock projection and the exposure counters - as a list-group
+     indistinguishable from the one holding the episodes. Ticket 09
+     (ADR-0084) moved medication records off Settings and onto Care: the
+     stock editor is a sheet off Care's own regimen block now, and the
+     exposure counters' one useful figure is that block's own dose-total
+     line, so this screen keeps only the one link still worth naming
+     here. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -362,28 +360,16 @@
     </div>
   {/if}
 
-  <!-- No heading over these three. The catalogue's only wording for the
-       area is the name of the first row in it, which would be the row
-       repeated at heading size; a name for it is a copy ticket's to write.
-       The gap and the second stripe are what separate them from the
-       regimen above. -->
+  <!-- No heading over this one. The catalogue's only wording for the area
+       was the name of its first row, which would be the row repeated at
+       heading size; a name for it is a copy ticket's to write. The gap and
+       the second stripe are what separate it from the regimen above -
+       ticket 09 (ADR-0084) took the other two rows this card used to hold:
+       stock is a sheet off Care's own regimen block now, and exposure's
+       one useful figure is that block's own dose-total line. -->
   <div class="regimen-elsewhere">
     <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
-    <ListRow key="doses" icon="timeline" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/doses" />
-    <ListRow
-      key="stock"
-      icon="package"
-      title={m.regimen_stock_link()}
-      subtitle={m.regimen_stock_link_sub()}
-      href="/settings/stock"
-    />
-    <ListRow
-      key="exposure"
-      icon="stats"
-      title={m.regimen_exposure_link()}
-      subtitle={m.regimen_exposure_link_sub()}
-      href="/settings/exposure"
-    />
+      <ListRow key="doses" icon="timeline" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/care/doses" />
     </ListCard>
   </div>
 

@@ -1239,7 +1239,7 @@ try {
 
 /* 6c. lab result CRUD and per-analyte chart */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
      charted feature screens onto the chart kit, and the handle moved with
      the component the way ticket 24's list-row handles did. */
@@ -1277,7 +1277,7 @@ try {
    this step is about the pg/mL/pmol/L merge, not about which analyte opens
    the screen. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-segment="estradiol"]').click();
   /* The "+" sheet now prefills from whichever analyte is on screen (ticket
      37), so the add below has to happen after the switch has actually
@@ -1326,7 +1326,7 @@ try {
    mocked recognizer would prove the wiring works without proving the sheet
    that wiring lives in ever opens. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -1385,7 +1385,7 @@ try {
    engine to read, so unlike 6e this does not depend on what Tesseract makes
    of rendered text. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -3767,7 +3767,7 @@ try {
    - the disambiguation this ticket exists to force before a dose can be
    drawn into the wrong drug's curve. */
 try {
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
 
   const addOwnEpisode = async (drug, dose, unit) => {
     await page.click('[data-add]');
@@ -3796,7 +3796,7 @@ try {
     throw new Error('both concurrently active episodes should read Current, not just the latest one');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 2) {
     throw new Error('logging a dose with two active episodes should prompt for which drug it was');
@@ -3822,7 +3822,7 @@ try {
 
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   const localDateInput = (daysAgo = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -3852,7 +3852,7 @@ try {
     throw new Error('ending the estradiol episode should not touch spironolactone, which is still active');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 0) {
     throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
@@ -3874,7 +3874,7 @@ try {
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
-    '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
+    '/body/hair-removal', '/care/labs', '/care/regimen', '/care/curve',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
@@ -4031,10 +4031,10 @@ try {
     ['/body/measurements', 'sizes-empty'],
     ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
-    ['/settings/labs', 'labs-empty'],
-    ['/settings/regimen', 'regimen-empty'],
-    ['/settings/hormone-curve', 'curve-empty'],
-    ['/doses', 'doses-empty'],
+    ['/care/labs', 'labs-empty'],
+    ['/care/regimen', 'regimen-empty'],
+    ['/care/curve', 'curve-empty'],
+    ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
     ['/health/side-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
@@ -4050,7 +4050,11 @@ try {
        about. The voice screen's own walk is below and asks the compare tab
        directly. */
     ['/practice/wear', 'wear-empty'],
-    ['/settings/stock', 'stock-empty'],
+    /* `/settings/stock` is not on this list any more (ticket 09, ADR-0084):
+       the stock editor is a sheet off Care's own regimen block now, closed
+       by default, so a bare page load of `/care` never renders its
+       `care-stock-empty` marker either way - the check above would pass
+       without the sheet ever having been opened. */
     ['/settings/reminders', 'reminders-empty'],
     // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
     // starred entries, saved questions, an attached document, a second
@@ -4262,7 +4266,7 @@ try {
    its presence is what actually proves the adoption on a screen a count
    can't. */
 try {
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   const onArrival = await page.locator('[data-dose]').count();
   if (onArrival !== 30) throw new Error(`the dose log rendered ${onArrival} rows on arrival, not one batch of 30`);
@@ -4275,7 +4279,7 @@ try {
 }
 
 try {
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   if ((await page.locator('[data-batched-list="episodes"]').count()) !== 1) {
     throw new Error('the regimen episode list is not wrapped in BatchedList');
@@ -4294,15 +4298,15 @@ try {
    is guaranteed to sit past the dose log's own newest-first first batch. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const firstDoseLink = page.locator('a[href^="/care/doses#"]').first();
   const href = await firstDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await firstDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 }); // the hash is stripped once honoured
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -4332,7 +4336,8 @@ try {
    demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
    one dose in the window as close to certain as a seeded draw gets - so
    every link stays visible, and the last one is still today's or
-   yesterday's, nowhere near needing a batch past /doses' first thirty. */
+   yesterday's, nowhere near needing a batch past /care/doses' first
+   thirty. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
   const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
@@ -4341,15 +4346,15 @@ try {
   await fillDate(page, '#clinician-summary-start', dateInputValueFromEpochDay(todayEpochDay() - 3));
   await page.keyboard.press('Escape');
   await page.waitForSelector('[data-sheet]', { state: 'detached', timeout: 8000 });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const lastDoseLink = page.locator('a[href^="/doses#"]').last();
+  const lastDoseLink = page.locator('a[href^="/care/doses#"]').last();
   const href = await lastDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await lastDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 });
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -5085,7 +5090,7 @@ try {
    every other flow in this file reads a 440px screen. */
 try {
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
@@ -5918,7 +5923,7 @@ try {
      is for, asking nothing of preferences. The regimen screen links the
      log while the episode runs, and stops again once it is ended - cycle
      cessation belongs to the timeline that caused it. */
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -5940,7 +5945,7 @@ try {
     d.setDate(d.getDate() - n);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().click(); // text-under-test: the drug I just typed
   await page.waitForSelector('#regimen-end');
   await fillDate(page, '#regimen-end', daysAgoIso(1));
@@ -5997,7 +6002,7 @@ try {
   await page.locator('[data-nav-fab]').click();
 
   // Add an active estradiol regimen episode starting today
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -6023,7 +6028,7 @@ try {
   });
 
   // Move the anchor episode to 400 days ago (>12 months)
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]').first().click();
   await page.waitForSelector('#regimen-start');
   await fillDate(page, '#regimen-start', localIso(400));

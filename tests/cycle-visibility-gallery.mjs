@@ -86,7 +86,7 @@ async function addCycleEvent(page, kind) {
 }
 
 async function addEpisode(page, { drug, dose, unit, route, interval }) {
-  await goto(page, '/settings/regimen');
+  await goto(page, '/care/regimen');
   await page.locator('[data-add]').click();
   await page.locator('[data-own]').click();
   await page.fill('#regimen-drug', drug);

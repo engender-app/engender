@@ -42,8 +42,8 @@ describe('ClinicianSummaryDossier component contract', () => {
   /* Ticket 67: restores the record-linking ticket 09's rewrite dropped when
      the flat, static rows became a printed table. */
   it('links every regimen and dose row back to its own record', () => {
-    expect(dossierComponent).toContain('href={`/settings/regimen#${ep.id}`}');
-    expect(dossierComponent).toContain('href={`/doses#${dose.id}`}');
+    expect(dossierComponent).toContain('href={`/care/regimen#${ep.id}`}');
+    expect(dossierComponent).toContain('href={`/care/doses#${dose.id}`}');
     expect(dossierComponent).toContain('class="dossier-row-link"');
   });
 
