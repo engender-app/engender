@@ -192,6 +192,11 @@ interface HormoneCurveView {
   dosesNoCurveAnywhere: number;
 }
 
+/** Which way the curve this app draws is going across one day. A word about
+    the drawing and about nothing else: it is not a level, not a target, and
+    says nothing about whether where the curve has got to is right. */
+export type CurveDirection = 'rising' | 'level' | 'falling';
+
 export interface HormoneCurveArea {
   /** Every curve over `[fromEpochDay, toEpochDay]` with the user's own
       results placed against it. `fitToOwnLabs` asks for the scale factor to
@@ -202,6 +207,37 @@ export interface HormoneCurveArea {
     toEpochDay: number;
     fitToOwnLabs: boolean;
   }): Promise<HormoneCurveView>;
+  /** Which way this hormone's curve is going across `epochDay`, or null
+      where this app draws it no curve at all (phase 11 ticket 10: Care's
+      curve row states a reading rather than a title and a chevron).
+
+      Here rather than on the screen for the reason the screen's own header
+      gives: Care holds no second implementation of anything, and which of
+      the two models draws a hormone is this area's question already. A
+      direction needs no fit - a scale factor multiplies the whole curve, so
+      it cannot turn a rise into a fall - so this never asks for one. */
+  getCurveDirection(params: { drug: CurveDrug; epochDay: number }): Promise<CurveDirection | null>;
+}
+
+/** How much of the day's own height a change has to be worth before it is a
+    direction rather than a flat stretch.
+
+    A trapezoid's plateau is exactly flat and a band's peak never is, so
+    "level" needs a width or it would only ever be said of a shape. Two per
+    cent of the larger of the day's two ends is about a tenth of what a
+    weekly injection loses in a day at its steepest - wide enough to call a
+    peak level, narrow enough that an ordinary day between doses still reads
+    as falling. A threshold about the drawing, like every other number in
+    this file, and not a claim about anybody's blood. */
+const LEVEL_FRACTION = 0.02;
+
+/** `rising`, `falling` or `level` from the curve's two ends, or null where
+    there was no curve to read. */
+function directionBetween(start: number, end: number): CurveDirection {
+  const change = end - start;
+  const height = Math.max(Math.abs(start), Math.abs(end));
+  if (height === 0 || Math.abs(change) < height * LEVEL_FRACTION) return 'level';
+  return change > 0 ? 'rising' : 'falling';
 }
 
 /** How far back the dose log has to be read for both classes at once - the
@@ -442,6 +478,50 @@ export function makeHormoneCurveArea(
         labPointsOffAxis: CURVE_DRUGS.reduce((sum, drug) => sum + placed[drug].offAxis, 0),
         dosesNoCurveAnywhere: dosesWithNoCurve({ doses: doseEvents, episodes, fromEpochDay, toEpochDay })
       };
+    },
+
+    async getCurveDirection({ drug, epochDay }) {
+      const [doseEvents, episodes] = await Promise.all([
+        doses.getDoses(epochDay - LOOKBACK_DAYS, epochDay),
+        regimen.getEpisodes()
+      ]);
+
+      /* One day's window, which is all a direction needs, and keyed into the
+         same two caches `getCurves` uses: a screen asking both questions
+         over the same window runs each model once between them. */
+      const window = `${epochDay}:${epochDay}`;
+      const band =
+        drug === 'estradiol'
+          ? bandCache.remember(window, [doseEvents, episodes], () =>
+              esterCurves({ doses: doseEvents, episodes, fromEpochDay: epochDay, toEpochDay: epochDay })
+            )
+          : null;
+      const shapeDoses = doseEvents.filter(
+        (dose) => dose.timestamp >= startOfDayTimestamp(epochDay - QUALITATIVE_LOOKBACK_DAYS)
+      );
+      const shapes = shapeCache.remember(`${drug}:${window}`, [shapeDoses, episodes], () =>
+        qualitativeCurves({ drug, doses: shapeDoses, episodes, fromEpochDay: epochDay, toEpochDay: epochDay })
+      );
+
+      /* The band where this hormone has one, and the shapes only where it
+         does not. Never the two added together: a band is in the unit its
+         parameters were published in and a shape is an invented height per
+         milligram, so their sum is a number with no unit at all - the same
+         reason `getCurves` keeps them on separate axes and fits them
+         separately. Within one hormone's shapes the sum is the established
+         reading (the fit above sums across the routes drawn, because one
+         bloodstream carries all of them). */
+      const curves: readonly { valueAt: (day: number) => number }[] =
+        band && band.curves.length > 0
+          ? band.curves.map((curve) => ({ valueAt: (day: number) => bandMidpointAt(curve, day) ?? 0 }))
+          : shapes.curves.map((curve) => ({ valueAt: (day: number) => qualitativeValueAt(curve, day) ?? 0 }));
+      if (curves.length === 0) return null;
+
+      const sumAt = (day: number) => curves.reduce((sum, curve) => sum + curve.valueAt(day), 0);
+      /* Across the day rather than at an instant: nothing above the journal
+         seam reads a clock (ADR-0001's own division of the day), and a whole
+         day is the smallest span this app's other readings are stated over. */
+      return directionBetween(sumAt(epochDay), sumAt(epochDay + 1));
     }
   };
 }

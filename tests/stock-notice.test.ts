@@ -261,8 +261,11 @@ describe('The reorder-by day, on screen (ticket 16)', () => {
   });
 
   it('the care spine reads the same actionableEpochDay and relabels its mark', () => {
-    expect(care).toContain('runOut?.actionableEpochDay ?? null');
-    expect(care).toContain('runOut.entry.leadTimeDays !== null ? m.care_mark_reorder_by() : m.care_mark_run_out()');
+    // One lane per running drug (phase 11 ticket 10), so both halves are
+    // now per lane: the mark's day is that lane's own stock row, and the
+    // label reads that row's own lead time.
+    expect(care).toContain('runOutEpochDay: lane.runOut?.actionableEpochDay ?? null');
+    expect(care).toContain('leadTimeDays !== null ? m.care_mark_reorder_by() : m.care_mark_run_out()');
   });
 
   it('the stock surface carries a lead-time field, typed as an optional day count', () => {

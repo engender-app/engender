@@ -27,9 +27,9 @@
      is a redirect to here now. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
-  import { replaceState } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
@@ -58,8 +58,8 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -68,6 +68,10 @@
 
   let shown = $state(vocabulary.randomTemplates(3));
   let picking = $state(false);
+  /* Closed by default (redesign ticket 16): the rail already says what is
+     true now, and the record beneath it - where a milestone is edited or
+     deleted - is a delete affordance most visits never need open. */
+  let milestoneListOpen = $state(false);
 
   function openPicker() {
     shown = vocabulary.randomTemplates(3);
@@ -99,6 +103,12 @@
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let sorted = $derived(vocabulary.milestones);
+
+  /* Eras aren't mirrored the way milestones are, so the rail's bands read
+     a live query - `erasQuery.rows` is `[]` before it resolves, which
+     draws a rail with no bands rather than one waiting on a loading
+     state that never shows (redesign ticket 16). */
+  let erasQuery = liveList((j) => j.eras.getEras());
 
   /* What a blank draft is seeded from, set by whichever row of the picker
      was tapped just before it opens. Held beside the editor rather than
@@ -291,43 +301,63 @@
          16). The rail carries today's place among the milestones and the
          hollow marks ahead of it; the list under it is the same set as
          rows, which is where a milestone is opened, edited or deleted. -->
-    <MilestoneRail milestones={sorted} onOpen={(mi) => openEditor(mi, null)} />
-    <SectionHeading text={m.ms_log_heading()} />
+    <MilestoneRail
+      milestones={sorted}
+      eras={erasQuery.rows}
+      onOpen={(mi) => openEditor(mi, null)}
+      onOpenEra={(id) => goto(`/settings/eras?edit=${id}`)}
+    />
     <ListCard role={roleAt(activeFlag.roles, 0)}>
-      {#each sorted as mi (mi.id)}
-        {@const origin = resolveMilestoneOrigin(mi)}
-        <ListRow
-          key={mi.id}
-          data-milestone={mi.id}
-          icon="flag"
-          title={mi.name}
-          subtitle={[
-            `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
-            origin?.text,
-            mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
-          ]}
-          chevron={false}
-          onclick={() => openEditor(mi, null)}
-          action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
-        >
-          {#snippet leading()}
-            <!-- A milestone that has a photograph of itself shows it. The
-                 disc with a flag in it is what a milestone without one
-                 gets, rather than the picture being a fourth thing on the
-                 row beside the glyph standing in for it.
+      <ListRow
+        data-ms-log-toggle
+        onclick={() => (milestoneListOpen = !milestoneListOpen)}
+        aria-expanded={milestoneListOpen}
+        chevron={false}
+        title={m.ms_log_heading()}
+      >
+        {#snippet trailing()}
+          {m.ms_log_heading_count({ count: sorted.length })}
+          <Icon name={milestoneListOpen ? 'chevronDown' : 'chevronRight'} size={20} />
+        {/snippet}
+      </ListRow>
+      {#if milestoneListOpen}
+        <div data-ms-log transition:disclose>
+          {#each sorted as mi (mi.id)}
+            {@const origin = resolveMilestoneOrigin(mi)}
+            <ListRow
+              key={mi.id}
+              data-milestone={mi.id}
+              icon="flag"
+              title={mi.name}
+              subtitle={[
+                `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
+                origin?.text,
+                mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
+              ]}
+              chevron={false}
+              onclick={() => openEditor(mi, null)}
+              action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
+            >
+              {#snippet leading()}
+                <!-- A milestone that has a photograph of itself shows it. The
+                     disc with a flag in it is what a milestone without one
+                     gets, rather than the picture being a fourth thing on the
+                     row beside the glyph standing in for it.
 
-                 Round, and at the disc's own size: a list where some rows
-                 lead with a circle and others with a rounded square reads
-                 as two lists interleaved, which is what the rendered screen
-                 showed (2026-08-26). -->
-            {#if mi.photo}
-              <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
-            {:else}
-              <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
-            {/if}
-          {/snippet}
-        </ListRow>
-      {/each}
+                     Round, and at the disc's own size: a list where some rows
+                     lead with a circle and others with a rounded square reads
+                     as two lists interleaved, which is what the rendered screen
+                     showed (2026-08-26). -->
+                {#if mi.photo}
+                  <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
+                {:else}
+                  <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+                {/if}
+              {/snippet}
+            </ListRow>
+          {/each}
+        </div>
+      {/if}
     </ListCard>
   {:else}
     <Notice
