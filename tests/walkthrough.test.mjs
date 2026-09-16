@@ -511,9 +511,26 @@ try {
   if (!(order.agenda < order.log && order.log <= order.moods)) {
     throw new Error('the agenda does not lead the log strip: ' + JSON.stringify(order));
   }
-  if ((await page.locator('[data-home-log-shape]').count()) !== 4) {
-    throw new Error('the log strip does not carry the four write shapes beside the mood pick');
+  /* Phase 11 ticket 03: the strip is the five faces and nothing else. The
+     four squares it used to carry - a dose, both tallies and a wear session
+     - were a strict subset of the quick-add fan forty pixels below them, so
+     the count of controls in the strip is the assertion, not the absence of
+     a handle that no longer exists anywhere to be greped for. */
+  const strip = await page.evaluate(() => ({
+    faces: document.querySelectorAll('[data-home-log] [data-mood]').length,
+    controls: document.querySelectorAll('[data-home-log] a, [data-home-log] button').length
+  }));
+  if (strip.faces !== 5 || strip.controls !== 5) {
+    throw new Error('the log strip is not the five faces alone: ' + JSON.stringify(strip));
   }
+  /* And the notices are below the faces, so nothing but agenda rows sits
+     between "Coming up" and the strip (rule 1). */
+  const noticeBelow = await page.evaluate(() => {
+    const backup = document.querySelector('[data-backup-notice]');
+    if (!backup) return true;
+    return backup.getBoundingClientRect().top > document.querySelector('[data-home-log]').getBoundingClientRect().top;
+  });
+  if (!noticeBelow) throw new Error('a notice still draws inside "Coming up"');
   await page.locator('[data-agenda-item="appointment"]').first().click();
   await page.waitForURL('**/health/appointments');
 
@@ -525,11 +542,13 @@ try {
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
 
-  /* A tally from the strip resolves in place: the save toast is what says
-     the write came back, and Home is still Home. */
-  await page.locator('[data-home-log-shape="tally-misgendered"]').click();
+  /* A tally is the fan's now, and it still resolves in place: the save
+     toast is what says the write came back, and Home is still Home. */
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan-target="mood-3"]');
+  await page.locator('[data-choose="tally-misgendered"]').click();
   await page.waitForSelector('[data-toast]');
-  if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the strip left Home: ' + page.url());
+  if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the fan left Home: ' + page.url());
 
   /* The pinned rows: the default set resolves for a journal that never
      answered onboarding's question, each row opens its own screen, and the
@@ -568,8 +587,10 @@ try {
   await page.waitForSelector('[data-pinned-row]');
   if (await page.locator('[data-home-agenda]').count()) throw new Error('the agenda drew under disguise');
   if (await page.locator('[data-flag-sun]').count()) throw new Error('the sun drew under disguise');
-  await page.locator('[data-home-log-shape="dose"]').click();
-  await page.waitForURL('**/doses**');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-home-log]');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
   await page.getByRole('button', { name: /Disguise/i }).click();
@@ -584,7 +605,7 @@ try {
   await page.click('[data-delete-appointment]');
   await page.click('[data-confirm-delete-appointment]');
   await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { state: 'detached', timeout: 8000 }); // text-under-test
-  ok('today faces forward: the agenda leads, a row opens its screen, the strip logs a mood and a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
+  ok('today faces forward: the agenda leads with the notices below it, a row opens its screen, the strip logs a mood and the fan a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
 } catch (e) { fail('today faces forward', e); }
 
 /* Editing Today (phase 10 redesign ticket 14; ADR-0073, ADR-0067,

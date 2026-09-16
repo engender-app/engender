@@ -23,6 +23,7 @@ import {
   LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
+  dosePanelCoversEveryRegimen,
   liveTilePrefKeys,
   splitHomeTiles,
   type HomeTileActions,
@@ -186,6 +187,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
          string would hide behind a locale. */
       fullDay: (epochDay) => `full:${epochDay}`,
       shortDay: (epochDay) => `short:${epochDay}`,
+      weekdayDay: (epochDay) => `weekday:${epochDay}`,
       time: (timestamp) => `time:${timestamp}`,
       hairRemovalArea: (area) => `area:${area}`
     }
@@ -414,9 +416,69 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('dose-panel');
     expect(tile.attrs).toEqual({ 'data-dose-panel-tile': true });
     expect(tile.value).toBe('Estradiol patch');
-    expect(tile.note).toBeUndefined();
     expect(tile.href).toBe('/doses');
     expect(tile.action?.href).toBe('/doses?add=1');
+  });
+
+  /* Phase 11 ticket 03: the panel is the dose's one home on Today, so it
+     has to say when the next one falls - the agenda's doseSlot row is
+     withheld while the panel is up (agendaReads.ts) and there is nowhere
+     else on the screen the day is stated. The fixture's schedule falls
+     every three days from fifteen days ago, which lands on today. */
+  it('the dose panel says a dose the day expects is today', () => {
+    expect(tileNamed('dose-panel')!.note).toBe(m.tile_dose_next_today());
+  });
+
+  it('the dose panel names the next day once today has been logged', () => {
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['todayDoses'];
+    const tile = tileNamed('dose-panel', { reads: { todayDoses: logged } })!;
+    expect(tile.note).toBe(m.tile_dose_next({ date: `weekday:${TODAY + 3}` }));
+  });
+
+  it('a regimen with no schedule gets a panel with no forward line', () => {
+    expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
+  });
+
+  /* What Today reads to decide whether to withhold the agenda's `doseSlot`
+     rows (agendaReads.ts). The panel names one drug - `activeEpisodesAt`'s
+     first - so it only accounts for the whole kind while that is the only
+     regimen running. With two, a row the panel does not stand for would be
+     stated nowhere at all, which is the thing the withholding exists to
+     prevent rather than to cause. */
+  describe('what the dose panel accounts for', () => {
+    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', startEpochDay: TODAY - 8 };
+    const dailyFor = (episodeId: string): DoseSchedule => ({
+      id: `sched-${episodeId}`,
+      episodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      dosesPerDay: 1,
+      doseAmounts: null
+    });
+    const weeklyFor = (episodeId: string): DoseSchedule => ({ ...dailyFor(episodeId), recurrence: { kind: 'everyNDays', everyNDays: 4 } });
+    const covers = (over?: Overrides) => {
+      const grid = input(over);
+      return dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, grid.reads.schedules, NOW);
+    };
+
+    it('covers the whole kind while one regimen is running', () => {
+      expect(covers()).toBe(true);
+    });
+
+    /* A daily schedule earns no forward mark (ADR-0067), so a second
+       regimen taken every day puts no row on the band for the panel to be
+       standing in front of. This is the demo journal's own shape: an
+       injection on a rhythm beside an everyday pill. */
+    it('still covers it while a second regimen is taken daily', () => {
+      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, dailyFor('ep-2')] } })).toBe(true);
+    });
+
+    it('covers nothing while a second regimen earns marks of its own', () => {
+      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, weeklyFor('ep-2')] } })).toBe(false);
+    });
+
+    it('covers nothing when the panel is switched off', () => {
+      expect(covers({ enabled: { ...allOn(true), 'dose-panel': false } })).toBe(false);
+    });
   });
 
   it('the surgery countdown reads the nearest procedure and carries no control', () => {

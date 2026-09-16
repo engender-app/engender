@@ -10,7 +10,9 @@ import { test } from 'vitest';
 import {
   AGENDA_CAP,
   AGENDA_DAYS,
+  AGENDA_PASSED_DAYS,
   agenda,
+  agendaPassedWindow,
   agendaWindow,
   passedSlotSentence,
   type AgendaInput
@@ -64,11 +66,40 @@ function input(over: Partial<AgendaInput> = {}): AgendaInput {
   };
 }
 
-test('the window is seven days, today counted as one of them', () => {
-  assert.equal(AGENDA_DAYS, 7);
+test('the window is thirty days, today counted as one of them', () => {
+  assert.equal(AGENDA_DAYS, 30);
   const { fromEpochDay, toEpochDay } = agendaWindow(TODAY);
   assert.equal(fromEpochDay, TODAY);
   assert.equal(toEpochDay - fromEpochDay + 1, AGENDA_DAYS);
+});
+
+/* Phase 11 ticket 03 widened the forward window and left this one alone.
+   The passed slot is the most recent one that went by, and a slot that went
+   by a month ago is not news the way last Tuesday's is - so the two windows
+   are two constants, and this test is what stops the forward one from
+   dragging the backward one along behind it. */
+test('the window behind is seven days, ending yesterday', () => {
+  assert.equal(AGENDA_PASSED_DAYS, 7);
+  const { fromEpochDay, toEpochDay } = agendaPassedWindow(TODAY);
+  assert.equal(toEpochDay, TODAY - 1);
+  assert.equal(toEpochDay - fromEpochDay + 1, AGENDA_PASSED_DAYS);
+});
+
+/* The month the window now covers, drawn the way ADR-0074 says a month has
+   to be drawn: the cap and the fold are what keep it a glance, and the
+   amendment changed neither. Five dated things spread over the thirty days
+   come back as three rows and two folded, in date order, none dropped. */
+test('a month of marks is three rows and the rest folded, in date order', () => {
+  const days = [TODAY + 1, TODAY + 6, TODAY + 12, TODAY + 20, TODAY + AGENDA_DAYS - 1];
+  const projection = agenda(input({ marks: days.map((day) => mark('appointment', day)) }));
+  assert.deepEqual(
+    projection!.shown.map((item) => item.epochDay),
+    days.slice(0, AGENDA_CAP)
+  );
+  assert.deepEqual(
+    projection!.folded.map((item) => item.epochDay),
+    days.slice(AGENDA_CAP)
+  );
 });
 
 test('marks come back in date order, whatever order they arrived in', () => {

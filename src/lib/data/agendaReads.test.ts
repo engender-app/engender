@@ -5,8 +5,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readAgenda, type AgendaAreas } from './agendaReads.ts';
-import { AGENDA_DAYS } from './agenda.ts';
-import type { DayAheadMark } from './journal/dayAhead.ts';
+import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
+import { DAY_AHEAD_MARK_KINDS, type DayAheadMark } from './journal/dayAhead.ts';
 
 const TODAY = 20000;
 
@@ -37,7 +37,7 @@ function recordingAreas(marks: DayAheadMark[] = []) {
   return { areas, asked, dayAheadCalls, doseWindows };
 }
 
-test('the forward read is dayAhead, asked for the seven days from today', async () => {
+test('the forward read is dayAhead, asked for the thirty days from today', async () => {
   const { areas, asked, dayAheadCalls } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
 
   const projection = await readAgenda(areas, TODAY, false);
@@ -69,12 +69,45 @@ test('a kind switched off never reaches the projection, and the cap counts only 
   assert.equal(none, null);
 });
 
+/* Phase 11 ticket 03. Today draws a dose panel whenever a regimen is
+   running, and that panel now carries the next slot's own day - so a
+   doseSlot row in the band beside it is the same medication stated twice,
+   which is the defect the ticket is named after. The flag the caller passes
+   is not "a panel is drawn" but "the panel accounts for every dose slot the
+   band could draw" (`dosePanelCoversEveryRegimen`, liveTiles.ts): with the
+   tile switched off, snoozed, or standing for one of two running regimens,
+   the band keeps the kind, because otherwise a day some schedule expects
+   would be on the screen nowhere at all. */
+test('the dose kind is withheld while the panel accounts for every dose', async () => {
+  const marks: DayAheadMark[] = [
+    { kind: 'doseSlot', epochDay: TODAY + 6 },
+    { kind: 'appointment', epochDay: TODAY + 12 }
+  ];
+
+  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true);
+  assert.deepEqual(
+    withPanel?.shown.map((item) => item.kind),
+    ['appointment']
+  );
+
+  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, false);
+  assert.deepEqual(
+    withoutPanel?.shown.map((item) => item.kind),
+    ['doseSlot', 'appointment']
+  );
+});
+
+test('a month whose only mark is a dose the panel states is absent, not empty', async () => {
+  const marks: DayAheadMark[] = [{ kind: 'doseSlot', epochDay: TODAY + 6 }];
+  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true), null);
+});
+
 test('the schedule is asked about the week behind, ending yesterday', async () => {
   const { areas, doseWindows } = recordingAreas();
 
   await readAgenda(areas, TODAY, false);
 
-  assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_DAYS, toEpochDay: TODAY - 1 }]);
+  assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_PASSED_DAYS, toEpochDay: TODAY - 1 }]);
 });
 
 test('a disguised screen reads nothing at all', async () => {

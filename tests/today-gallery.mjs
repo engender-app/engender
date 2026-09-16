@@ -1,11 +1,15 @@
-/* Renders for Today (phase 10 redesign ticket 13), for sign-off.
+/* Renders for Today (phase 10 redesign ticket 13; rewritten for phase 11
+   ticket 03), for sign-off.
 
-   Only what the ticket changed, in crops rather than whole screens (Alicja,
-   on ticket 07's sign-off). What changed is everything under the field and
-   its foot: the agenda where the mood pick used to be, the notices under
-   it, the log strip with the faces and the four write shapes, and the
-   pinned rows where the milestones, the week and the recent entries were.
-   The field, the foot and the tiles are shot only where they frame a band.
+   Ticket 03 changes the whole screen rather than a band of it - the strip
+   loses four of its five controls, the notices move out from under "Coming
+   up", the band widens to a month and the dose panel gains a line - so the
+   first scene is Today whole, before and after, and it is the scene the
+   before build shares. The crops after it are the bands that changed.
+
+   The default palette only, light and dark (Alicja, 2026-09-14: a sign-off
+   page is the default palette crossed with the two themes and nothing
+   else). The full palette cross product is `palette-contrast.test.ts`'s.
 
    The demo persona's dated things all fall past the agenda's week, so the
    script writes what the week needs through the app's own editors first:
@@ -14,10 +18,11 @@
    whose fourth letter does not, so the band carries three kinds and,
    with a third appointment, folds.
 
-   Scenes: the top of Today per palette and theme (field through the log
-   strip); the agenda band alone, folded and opened; the log strip alone
-   with a wear session running; the pinned rows; the notices under the
-   agenda; day one; disguise; 320, 195 (200% zoom) and the 1280 shell.
+   Scenes: Today whole in trans light and trans dark, with its pixel height
+   reported (ticket 03 holds the dark one to 1700px, from 1996); the agenda
+   band alone, folded and opened; the log strip; the dose panel's forward
+   line; the notices below the strip; the pinned rows; day one; disguise;
+   320, 195 (200% zoom) and the 1280 shell.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
@@ -31,7 +36,8 @@
    (the leading '--' stands where a script path would, since the flags are
    read from argv[2] on). */
 import { preview } from 'vite';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
@@ -44,7 +50,7 @@ const flag = (name, fallback) => {
 };
 const tag = flag('tag', 'after');
 const outDir = resolve(flag('out', resolve(here, '../.claude/today-shots')), tag);
-const PALETTES = flag('palettes', 'trans,nonbinary,rainbow,agender').split(',');
+const PALETTES = flag('palettes', 'trans').split(',');
 const THEMES = ['light', 'dark'];
 
 await mkdir(outDir, { recursive: true });
@@ -52,13 +58,19 @@ const browser = await launchChromium();
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const shots = [];
+const heights = {};
 const errors = [];
 
-let page = await browser.newPage({ viewport: { width: 390, height: 900 }, deviceScaleFactor: 2 });
+/** The width every shot is taken at. `reopen` moves it; `grow`/`shrink`
+    read it, so a crop taken at 320 or 1280 shrinks back to its own width
+    rather than to the phone's. */
+let viewportWidth = 390;
+let page = await browser.newPage({ viewport: { width: viewportWidth, height: 900 }, deviceScaleFactor: 2 });
 const watch = (p) => p.on('pageerror', (err) => errors.push(String(err)));
 watch(page);
 
 const reopen = async (width, scale) => {
+  viewportWidth = width;
   await page.close();
   page = await browser.newPage({ viewport: { width, height: width > 800 ? 1000 : 900 }, deviceScaleFactor: scale });
   watch(page);
@@ -91,11 +103,32 @@ const strip = async () => {
   });
 };
 
+/** The viewport grown to the whole screen's height, so a crop below the
+    fold is not clamped to what happens to be visible. Returns the height
+    it grew to, for the caller to shrink back from. Without this a band
+    near the foot of a long screen comes back as a sliver of the last
+    viewport with the nav bar across it - which is how the log strip's own
+    crop shipped byte-identical to the notices' crop once the strip got
+    short enough to sit at the bottom edge. */
+const grow = async () => {
+  const tall = await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    return Math.min(window.innerHeight + (region.scrollHeight - region.clientHeight) + 40, 8000);
+  });
+  await page.setViewportSize({ width: viewportWidth, height: tall });
+  await page.waitForTimeout(400);
+};
+const shrink = async () => {
+  await page.setViewportSize({ width: viewportWidth, height: viewportWidth > 800 ? 1000 : 900 });
+  await page.waitForTimeout(200);
+};
+
 /** From the app frame's top edge to `extra` px under the first of `until`'s
     selectors that matches, in document order of the list. */
 const cropTop = async (name, until, extra = 20, note = '') => {
   await strip();
   await page.waitForTimeout(700);
+  await grow();
   const box = await page.evaluate(
     ([selectors, pad]) => {
       const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
@@ -107,10 +140,12 @@ const cropTop = async (name, until, extra = 20, note = '') => {
     [until, extra]
   );
   if (!box) {
+    await shrink();
     errors.push(`${name}: nothing matched ${[].concat(until).join(' / ')}`);
     return;
   }
   await page.screenshot({ path: `${outDir}/${name}.png`, clip: box });
+  await shrink();
   shots.push({ name, note });
 };
 
@@ -120,6 +155,7 @@ const cropBand = async (name, from, to, note = '', last = false) => {
   await strip();
   await page.locator(from)[last ? 'last' : 'first']().scrollIntoViewIfNeeded();
   await page.waitForTimeout(700);
+  await grow();
   const box = await page.evaluate(
     ([a, b, useLast]) => {
       const pick = (sel, wantLast) => {
@@ -136,10 +172,12 @@ const cropBand = async (name, from, to, note = '', last = false) => {
     [from, to, last]
   );
   if (!box) {
+    await shrink();
     errors.push(`${name}: nothing matched ${from} / ${to}`);
     return;
   }
   await page.screenshot({ path: `${outDir}/${name}.png`, clip: box });
+  await shrink();
   shots.push({ name, note });
 };
 
@@ -185,85 +223,124 @@ const home = async () => {
   await page.waitForSelector('[data-home-hello]');
 };
 
-/** The top of Today: field, foot, the agenda, the notice, the log strip.
-    A before build has no strip; its mood row stands where the strip ends. */
+/** The top of Today: field, foot, the agenda, the log strip. A before
+    build has the strip's four squares under the faces; an after build the
+    faces alone. */
 const top = (name, note) => cropTop(name, ['[data-home-log]', '[data-mood-chips]'], 20, note);
+
+/** Today whole, and how tall it came out. The height is the reading ticket
+    03 is held to - the audit measured the dark screen at 1996px with the
+    medication on it four times - so it is reported rather than eyeballed. */
+const whole = async (name, note) => {
+  await strip();
+  await page.waitForTimeout(700);
+  /* The document does not scroll and `[data-app-root]` is not the scroller
+     either - `[data-app-scroll-region]` is, and an element shot of a
+     scroller is clipped to what is visible in it. `grow` is what makes the
+     whole screen visible at once; the 390px layout is untouched and only
+     the height is unreal. */
+  const height = await page.evaluate(() =>
+    Math.round(document.querySelector('[data-app-scroll-region]').scrollHeight)
+  );
+  await grow();
+  await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
+  await shrink();
+  heights[name] = height;
+  shots.push({ name, note: `${note} ${height}px tall.` });
+};
 
 try {
   await seed();
-  await addAppointment(3, 'Endocrinologist');
-  await addAppointment(6, 'Voice therapist');
-  const isAfter = (await (await home(), page.locator('[data-home-agenda]').count())) > 0;
+  /* A before build draws the strip's four squares; an after build draws the
+     five faces alone. */
+  await home();
+  const isAfter = (await page.locator('[data-home-log-shape]').count()) === 0;
 
-  /* 1. The top of Today, per palette and theme. */
-  for (const palette of PALETTES) {
-    for (const theme of THEMES) {
-      await dress(palette, theme);
-      await home();
-      await top(`top-${palette}-${theme}`, `${palette}, ${theme}: the field and its foot, then what is coming, then the strip.`);
-    }
+  /* 1. Today whole, in both themes, on the full fixture and nothing else -
+        the appointments the band's own scenes need are written after this,
+        because the height under this scene is the reading the ticket is
+        held to and an appointment added for a crop would inflate it. */
+  for (const theme of THEMES) {
+    await dress('trans', theme);
+    await home();
+    await whole(`whole-trans-${theme}`, `Today top to bottom on trans, ${theme}, on the full fixture.`);
+    await top(`top-trans-${theme}`, `trans, ${theme}: the field and its foot, then what is coming, then the faces.`);
   }
   if (!isAfter) throw new Error('before set done');
 
-  /* 2. The agenda band, folded and opened, and a row pressed. */
+  /* 2. The agenda band, folded and opened. The window is a month now, so
+        the fold names the stretch it holds rather than only the count. The
+        demo persona's own dated things fall past the band, so the rows it
+        needs are written here through the app's own editor. */
+  await addAppointment(3, 'Endocrinologist');
+  await addAppointment(6, 'Voice therapist');
   await addAppointment(5, 'Blood draw');
+  await addAppointment(12, 'Endocrinologist');
   await dress('trans', 'light');
   await home();
-  await cropBand('agenda-folded-trans-light', '[data-home-agenda]', '[data-home-agenda-fold]', 'Three rows at the cap and the fold naming the rest.');
+  await cropBand('agenda-folded-trans-light', '[data-home-agenda]', '[data-home-agenda-fold]', 'Three rows at the cap and the fold naming the rest of the month. The appointment twelve days out is in the window now; before this ticket the band stopped at seven days and never reached it.');
   await page.locator('[data-home-agenda-fold]').click();
   await page.waitForTimeout(600);
-  await cropBand('agenda-open-trans-light', '[data-home-agenda]', '[data-home-agenda-fold]', 'Opened: every dated thing in the week, in day order, and the fold reading fewer.');
-  await dress('nonbinary', 'dark');
+  await cropBand('agenda-open-trans-light', '[data-home-agenda]', '[data-home-agenda-fold]', 'Opened: every dated thing in the month, in day order, and the fold reading fewer.');
+  await dress('trans', 'dark');
   await home();
-  await cropBand('agenda-folded-nonbinary-dark', '[data-home-agenda]', '[data-home-agenda-fold]', 'The same band on nonbinary, dark.');
+  await cropBand('agenda-folded-trans-dark', '[data-home-agenda]', '[data-home-agenda-fold]', 'The same band, dark.');
 
-  /* 3. The log strip, at rest and with a session running. */
+  /* 3. The log strip: five faces, and nothing else. */
   await dress('trans', 'light');
   await home();
-  await cropBand('log-trans-light', '[data-home-log]', '[data-home-log]', 'The log strip: the five faces, then a dose, both tallies and a wear session, as squares of the strip\'s stripe.');
-  await page.locator('[data-home-log-shape="wear"]').click();
-  await page.waitForSelector('[data-live-tile="wear-timer"]');
-  await page.waitForTimeout(800);
-  await cropTop('log-running-trans-light', ['[data-home-log]'], 20, 'A wear session started from the strip: the timer leads the screen and the strip\'s shape reads Stop.');
-  await page.locator('[data-home-log-shape="wear"]').click();
-  await page.waitForSelector('[data-live-tile="wear-timer"]', { state: 'detached' });
-  await dress('agender', 'dark');
+  await cropBand('log-trans-light', '[data-home-log]', '[data-home-log]', 'The log strip: the five faces under "How is today?". The four squares it used to carry - a dose, both tallies, start/stop wear - are rows of the quick-add fan, which is forty pixels below this band.');
+  await dress('trans', 'dark');
   await home();
-  await cropBand('log-agender-dark', '[data-home-log]', '[data-home-log]', 'The strip on agender, dark: the squares are the flag\'s green.');
+  await cropBand('log-trans-dark', '[data-home-log]', '[data-home-log]', 'The same strip, dark.');
 
-  /* 4. The pinned rows. */
+  /* 4. The dose panel, which is now the only place medication is stated. */
   await dress('trans', 'light');
   await home();
-  await cropBand('pinned-trans-light', '[data-home-pinned]', '[data-home-pinned]', 'The pinned rows: the default set, each with its reading, in registry order until ticket 14 lets it be moved.');
-  await dress('rainbow', 'dark');
-  await home();
-  await cropBand('pinned-rainbow-dark', '[data-home-pinned]', '[data-home-pinned]', 'On rainbow, dark.');
+  if (await page.locator('[data-dose-panel-tile]').count()) {
+    await cropBand('dose-panel-trans-light', '[data-dose-panel-tile]', '[data-dose-panel-tile]', 'The dose panel with the next slot on its own line. The agenda row for the same schedule is withheld while this is up, so the drug is named once on the screen instead of four times.');
+    await dress('trans', 'dark');
+    await home();
+    await cropBand('dose-panel-trans-dark', '[data-dose-panel-tile]', '[data-dose-panel-tile]', 'The same panel, dark.');
+  }
 
-  /* 5. The notices under the agenda: the stale backup is what the demo
+  /* 5. The notices, below the strip: the stale backup is what the demo
         journal carries. */
   await dress('trans', 'light');
   await home();
   if (await page.locator('[data-backup-notice]').count()) {
-    await cropBand('notices-trans-light', '[data-home-agenda]', '[data-backup-notice]', 'The stale-backup notice sits under the agenda, its date in its own words, and takes no stripe.');
+    await cropBand('notices-trans-light', '[data-home-log]', '[data-backup-notice]', 'The stale-backup notice below the faces rather than between the band and them. Under "Coming up" it read as part of the week; here it is the app talking about itself, under no heading and with no stripe.');
   }
 
-  /* 6. The whole screen once, so the order can be read top to bottom. */
-  await reopen(390, 2);
+  /* 6. The pinned rows. */
   await dress('trans', 'light');
   await home();
-  await strip();
-  await page.waitForTimeout(700);
-  await page.locator('[data-app-scroll-region]').screenshot({ path: `${outDir}/whole-trans-light.png` });
-  shots.push({ name: 'whole-trans-light', note: 'The first screenful, top to bottom.' });
+  await cropBand('pinned-trans-light', '[data-home-pinned]', '[data-home-pinned]', 'The pinned rows: the default set, each with its reading.');
+  await dress('trans', 'dark');
+  await home();
+  await cropBand('pinned-trans-dark', '[data-home-pinned]', '[data-home-pinned]', 'The same rows, dark.');
 
   /* 7. Day one. */
+  await dress('trans', 'light');
   await settle('/');
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-leave-setup]');
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
   await home();
-  await cropTop('day-one-trans-light', ['[data-getting-started]'], 20, 'Day one: the field, the strip, the default pinned set and getting started. No empty agenda, no placeholder.');
+  /* Getting started is gated on a journal under five entries, so its
+     presence is how this scene knows the jump actually landed on one. It
+     stopped landing at some point before this ticket, and the crop was
+     coming back as the seeded journal under a day-one caption - a shot
+     that says the opposite of what it claims. Reported rather than
+     mislabelled: the scene is a real gap in the sign-off set until the
+     jump is fixed, and the run says so. */
+  if (await page.locator('[data-getting-started]').count()) {
+    await cropTop('day-one-trans-light', ['[data-getting-started]'], 20, 'Day one: the field, the faces, the default pinned set and getting started. No empty agenda, no placeholder.');
+  } else {
+    const entries = await page.locator('[data-home-hello]').textContent();
+    errors.push(`day-one-trans-light: the first-run jump did not land on a fresh journal (${(entries ?? '').trim()}), so day one was not shot`);
+  }
 
   /* 8. Disguise. */
   await seed();
@@ -274,7 +351,7 @@ try {
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
   await home();
-  await cropTop('disguise', ['[data-home-pinned]'], 20, 'Under disguise: a grey field, no sun, no agenda; the strip and the pins stay, every block the one accent.');
+  await cropTop('disguise', ['[data-home-pinned]'], 20, 'Under disguise: a grey field, no sun, no agenda; the faces and the pins stay, every block the one accent.');
   await settle('/settings');
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
@@ -284,14 +361,11 @@ try {
   await reopen(320, 2);
   await dress('trans', 'light');
   await home();
-  await top('w320-trans-light', '320px: the date blocks keep their width, the four shapes stay in one row.');
-  await dress('nonbinary', 'dark');
-  await home();
-  await top('w320-nonbinary-dark', '320px on nonbinary, dark.');
+  await top('w320-trans-light', '320px: the date blocks keep their width and the five faces stay in one row.');
   await reopen(195, 2);
   await dress('trans', 'light');
   await home();
-  await top('w195-trans-light', '195px, which is 200% zoom on a 390px phone: the shapes go two by two and the rows wrap.');
+  await top('w195-trans-light', '195px, which is 200% zoom on a 390px phone: the rows wrap and the faces hold their targets.');
   await reopen(1280, 1);
   await dress('trans', 'light');
   await home();
@@ -304,10 +378,23 @@ try {
   }
 }
 
-await writeFile(`${outDir}/manifest.json`, JSON.stringify({ tag, shots, errors }, null, 2));
+/* Two crops that came out byte-identical are two crops of the same thing,
+   and a sign-off page full of them says nothing - which is how six shots of
+   the top of /doubt once shipped as three states of it. Cheap to check, and
+   it fails the run rather than the reviewer. */
+const seen = new Map();
+for (const { name } of shots) {
+  const digest = createHash('sha256').update(await readFile(`${outDir}/${name}.png`)).digest('hex');
+  const twin = seen.get(digest);
+  if (twin) errors.push(`${name} is byte-identical to ${twin}: two crops of the same box`);
+  else seen.set(digest, name);
+}
+
+await writeFile(`${outDir}/manifest.json`, JSON.stringify({ tag, shots, heights, errors }, null, 2));
 await browser.close();
 await app.close();
 console.log(`${shots.length} shots in ${outDir}`);
+for (const [name, px] of Object.entries(heights)) console.log(`  ${name}: ${px}px`);
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exitCode = 1;

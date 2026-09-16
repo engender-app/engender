@@ -37,6 +37,7 @@ import {
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
   composeHomeTiles,
+  dosePanelCoversEveryRegimen,
   type HomeTile,
   type LiveTileKind
 } from './liveTiles';
@@ -47,6 +48,11 @@ interface HomeTileGrid {
   /** The grid's own second hand, so a surface next to it that also counts
       up reads the same tick rather than starting a loop of its own. */
   readonly nowMs: number;
+  /** Whether the dose panel accounts for every dose slot the agenda could
+      draw, which is what Today withholds the `doseSlot` kind on (phase 11
+      ticket 03). The rule itself is `liveTiles.ts`'s, so it has a Node test;
+      this is the grid's own reads applied to it. */
+  readonly dosePanelCoversEveryRegimen: boolean;
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose
       dismiss opens a sheet on the route rather than acting in place; the
       other ten dismiss themselves. */
@@ -195,6 +201,10 @@ export function homeTiles(
       format: {
         fullDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
         shortDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short' }),
+        /* The agenda band's own day format, so the dose panel's next slot
+           and the rows under "Coming up" write a day the same way on the
+           one screen that draws both. */
+        weekdayDay: (epochDay) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' }),
         time: (timestamp) => fmtTime(timestamp),
         hairRemovalArea: hairRemovalAreaName
       }
@@ -212,6 +222,9 @@ export function homeTiles(
        02). */
     get nowMs() {
       return nowTick;
+    },
+    get dosePanelCoversEveryRegimen() {
+      return dosePanelCoversEveryRegimen(tiles, episodes.rows, schedules.rows, nowTick);
     },
     snooze
   };
