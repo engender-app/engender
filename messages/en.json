@@ -556,6 +556,7 @@
   "entry_template_note_scaffold_placeholder": "A line to write over, or leave blank",
   "entry_template_hide_aria": "Hide {name}",
   "entry_template_show_aria": "Show {name}",
+  "entry_template_summary_more": "{names}, and {count} more",
   "tpl_regimen_estradiol_valerate_im": "Estradiol valerate, injectable",
   "tpl_regimen_estradiol_oral": "Estradiol, oral",
   "tpl_regimen_estradiol_gel": "Estradiol gel",
