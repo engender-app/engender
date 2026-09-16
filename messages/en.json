@@ -3006,7 +3006,6 @@
   "stats_compare_label": "Second scale",
   "stats_compare_none": "No second scale",
   "stats_compare_empty": "Nothing logged on that scale in this range.",
-  "lookback_compare_sub": "Your span against the stretch before it.",
   "lookback_read_span": "Wrapped for this span",
   "lookback_facts_average": "Average {name}",
   "lookback_handle_start": "Span start",

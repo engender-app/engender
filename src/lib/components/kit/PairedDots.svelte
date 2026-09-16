@@ -49,7 +49,7 @@
     <span class="kit-paired-dot is-without" style={`--at: ${without}%`}></span>
     <span class="kit-paired-dot is-with" style={`--at: ${with_}%`}></span>
   </div>
-  <span class="kit-paired-note">{row.note}</span>
+  <span class="kit-paired-note" data-paired-note>{row.note}</span>
 {/snippet}
 
 <div class="kit-paired" data-chart="paired">

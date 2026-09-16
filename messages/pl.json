@@ -3070,7 +3070,6 @@
   "stats_compare_label": "Druga skala",
   "stats_compare_none": "Bez drugiej skali",
   "stats_compare_empty": "Nic nie zapisano na tej skali w tym zakresie.",
-  "lookback_compare_sub": "Twój zakres na tle poprzedzającego go odcinka.",
   "lookback_read_span": "Bilans tego okresu",
   "lookback_facts_average": "{name}: średnia",
   "lookback_handle_start": "Początek okresu",

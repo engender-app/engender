@@ -1002,49 +1002,59 @@ try {
 try {
   await fresh('/stats');
   await page.waitForSelector('[data-span-handle="start"]');
-  const spanBefore = await page.locator('[data-screen-subtitle]').textContent();
+  /* The line naming the span sits under the rail since ticket 06, and
+     counts as the handles move. */
+  const spanBefore = await page.locator('[data-span-state-line]').textContent();
   await page.locator('[data-span-handle="start"]').focus();
   await page.keyboard.press('Shift+ArrowLeft');
   await page.waitForFunction(
-    (was) => document.querySelector('[data-screen-subtitle]')?.textContent !== was,
+    (was) => document.querySelector('[data-span-state-line]')?.textContent !== was,
     spanBefore
   );
-  const period = await page.locator('[data-screen-subtitle]').textContent();
-  /* The subtitle carries the span's two dates and its length in days. */
-  if (!/\d/.test(period ?? '')) throw new Error('the subtitle carries no span: ' + period);
+  const period = await page.locator('[data-span-state-line]').textContent();
+  if (!/\d/.test(period ?? '')) throw new Error('the state line carries no span: ' + period);
   const spanStart = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-start'));
   const spanEnd = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-end'));
   if (!(spanEnd > spanStart)) throw new Error(`the span is not a span: ${spanStart}..${spanEnd}`);
-  /* The charts re-read on the settled span a beat after the last key. */
+  /* The tiles re-read on the settled span a beat after the last key. */
   await page.waitForTimeout(600);
-  /* The values are a visually hidden list on the screen itself since ticket
-     99 item 26 removed the "All values" link and its sheet - no control to
-     press, and the numbers still there in text for anything that reads the
-     page rather than looks at it. Counted rather than clicked, since a
-     hidden node cannot be interacted with. */
+  /* The door is a grid of readings now (phase 11 ticket 07): every tile
+     states a figure and opens a screen carrying the span it was read at,
+     so the address on each tile names the two days the rail shows. */
+  const tiles = page.locator('[data-reading-grid] [data-reading]');
+  if (!(await tiles.count())) throw new Error('the door draws no reading tiles');
+  const hrefs = await tiles.evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+  const startIso = await page.evaluate((day) => new Date(day * 86400000).toISOString().slice(0, 10), spanStart);
+  for (const href of hrefs) {
+    if (!/[?&]from=\d{4}-\d{2}-\d{2}|[?&]aStart=\d{4}-\d{2}-\d{2}/.test(href ?? '')) {
+      throw new Error('a tile opens without the span: ' + href);
+    }
+  }
+  if (!hrefs.some((h) => h?.includes(startIso))) throw new Error(`no tile carries the span's start ${startIso}: ${hrefs.join(' ')}`);
+  /* Day by day opens at the span: the chart with its picker, the scales
+     card under it, and the series still readable as text - a visually
+     hidden list since ticket 99 item 26 removed the "All values" link. */
+  await page.locator('[data-reading="day-by-day"]').click();
+  await page.waitForURL('**/stats/day-by-day?**');
+  await page.waitForSelector('[data-chart-card="day-by-day"]');
   if (!(await page.locator('[data-values-list] li').count())) {
     throw new Error('the stats series is no longer readable as text');
   }
-  /* Tag insights name a built-in tag, so a blank label means the key never
-     got resolved. */
-  const insight = await page
-    .locator('[data-chart-card="tag-insights"] [data-bar-name]')
-    .first()
-    .textContent();
-  if (!insight?.trim()) throw new Error('tag insight has no label');
   /* Every scale gets a bar, including one nothing was logged against. */
   if (!(await page.locator('[data-chart-card="scales"] [data-bar-row]').count())) {
     throw new Error('no scale bars drawn');
   }
-  /* Five mood steps, always. The columns this used to count became one
-     ordered strip (phase 8 UX ticket 04, ADR-0058) and the rule survived
-     the change of form intact: the sequence is what is being read, so a
-     step nothing landed on holds its place at zero width rather than
-     sliding the rest under the wrong part of the scale. */
+  /* How the days fell: five mood steps, always - a step nothing landed on
+     holds its place at zero width rather than sliding the rest under the
+     wrong part of the scale. */
+  await fresh('/stats');
+  await page.locator('[data-reading="days"]').click();
+  await page.waitForURL('**/stats/days?**');
+  await page.waitForSelector('[data-strip-step]');
   if ((await page.locator('[data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
-  ok('stats range, value list, named tag insights and the scale bars');
+  ok('stats: the span drives every tile, day by day and the days open at the span');
 } catch (e) { fail('stats', e); }
 
 /* 6a. a tag insight's sheet holds the same set the row's own count named
@@ -1053,12 +1063,15 @@ try {
    against the number of entry cards the sheet actually opened, so the two
    cannot drift apart again without failing here. */
 try {
-  await fresh('/stats');
-  const bar = page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first();
+  /* The merged tag card is a reading of its own since phase 11 ticket 07,
+     and draws as paired dots (redesign ticket 05): the row's note names
+     its scale first and then its count. */
+  await fresh('/stats/tags');
+  const bar = page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first();
   await bar.waitFor();
-  const note = await bar.locator('[data-bar-note]').textContent();
-  const claimed = Number((note ?? '').match(/\d+/)?.[0]);
-  if (!claimed) throw new Error('tag insight row has no entry count: ' + note);
+  const note = await bar.locator('[data-paired-note]').textContent();
+  const claimed = Number((note ?? '').match(/(\d+) /)?.[1]);
+  if (!claimed) throw new Error('tag row has no entry count: ' + note);
 
   await bar.click();
   await page.waitForSelector('[data-sheet]');
@@ -1085,8 +1098,9 @@ try {
    for it to be the ends of. Both are asserted on the resting state after the
    pick rather than on anything mid-tween. */
 try {
-  await fresh('/stats');
+  await fresh('/stats/day-by-day');
   const card = page.locator('[data-chart-card="day-by-day"]');
+  await card.waitFor();
   if (!(await card.locator('[data-chart-scale]').count())) {
     throw new Error('one scale should print its value gutter');
   }
@@ -1129,8 +1143,8 @@ try {
    pure function; what this proves is that the tap still arrives, which is
    the half a table cannot answer. */
 try {
-  await fresh('/stats');
-  await page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first().click();
+  await fresh('/stats/tags');
+  await page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first().click();
   /* The sheet, and then the entries in it: the read behind them is its own
      query, so the card can arrive a frame after the sheet does. */
   await page.waitForSelector('[data-sheet] [data-entry-card]');
@@ -1163,8 +1177,10 @@ try {
    rather than assumed, since a length past the persona's span draws nothing
    to wait for. */
 try {
-  await fresh('/stats');
-  const card = page.locator('[data-chart-card="custom-interval"]');
+  /* On Care since redesign ticket 05, as the merged interval card's own
+     control. */
+  await fresh('/care');
+  const card = page.locator('[data-chart-card="interval-mood"]');
   const field = page.locator('#custom-interval-length');
 
   await field.fill('');
@@ -3177,11 +3193,19 @@ try {
   if ((await june.locator('[data-year-cell]').count()) !== 30) {
     throw new Error('June should be thirty cells, one per day');
   }
-  /* The five entries this flow wrote landed in June, and a day that carried a
-     mood draws the picker's own face rather than an empty outline. */
-  if ((await june.locator('[data-year-cell] svg').count()) < 5) {
-    throw new Error('the month the entries went into drew no moods');
+  /* The five entries this flow wrote landed in June, and a day that carried
+     a value is a shaded cell rather than an empty one (phase 11 ticket 07:
+     a shaded row per month on the active scale's ramp, no face per day). */
+  if ((await june.locator('[data-year-cell]:not([data-year-step="0"])').count()) < 5) {
+    throw new Error('the month the entries went into shaded no days');
   }
+  /* No svg per day: the whole months card draws at most a handful. */
+  const monthSvgs = await page.locator('[data-chart-card="wrapped-months"] svg').count();
+  if (monthSvgs > 13) throw new Error(`the year draws ${monthSvgs} svgs; a face per day is back`);
+  /* The year's figures come before the months (finding 7 of the audit). */
+  const figuresTop = await page.locator('[data-wrapped-figure]').first().evaluate((el) => el.getBoundingClientRect().top);
+  const monthsTop = await page.locator('[data-chart-card="wrapped-months"]').evaluate((el) => el.getBoundingClientRect().top);
+  if (!(figuresTop < monthsTop)) throw new Error('the year still draws its grid before its figures');
   const yearCells = page.locator('[data-chart-card="wrapped-months"] [data-year-cell]');
   const dayCount = await page.evaluate(() => {
     const year = new Date().getFullYear() - 1;
@@ -3401,7 +3425,13 @@ try {
   const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
   const card = page.locator('[data-on-this-day-card]');
   if ((await card.count()) !== 1) throw new Error('Look back should offer the on-this-day card now, found ' + (await card.count()));
+  /* The tile opens the day in place under the pair (phase 11 ticket 07):
+     the block discloses on the door, and the URL stays. */
   await card.click();
+  await page.waitForSelector('[data-lookback-day] [data-lookback]');
+  if (!page.url().endsWith('/stats')) throw new Error('opening on-this-day left the door for ' + page.url());
+  /* And the route still answers, for the notification deep link. */
+  await fresh('/on-this-day');
   await page.waitForSelector('[data-lookback]');
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
