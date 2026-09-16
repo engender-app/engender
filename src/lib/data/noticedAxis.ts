@@ -61,6 +61,13 @@ const TICK_STRIDES = [1, 2, 3, 6, 12];
 
 export type { EffectDirection } from './effectDirections';
 
+/** The two things that land on this axis (phase 11 all-four-doors ticket 13):
+    a personal effect's own catalogue entry, marked at the day it was first
+    noticed, and a side effect logged free-form at its own day. Telling them
+    apart is `NoticedAxis.svelte`'s job - a mark shape, never a colour alone
+    (ADR-0012) - and this is the one field it reads to do it. */
+export type NoticedChangeKind = 'personal-effect' | 'side-effect';
+
 /** A change somebody has marked, narrowed to what the drawing needs. The
     catalogue entry and the marker are two records on the screen; they arrive
     here already joined, so a test needs no fixture of either. */
@@ -69,6 +76,12 @@ export interface NoticedChange {
   label: string;
   direction: EffectDirection;
   firstNoticedEpochDay: number;
+  kind: NoticedChangeKind;
+  /** The severity word, for a side effect that carries one - drawn into the
+      mark's own label rather than as a size or a hue (ticket 13, ADR-0012).
+      Null where none was given; undefined on a personal effect, which has
+      no severity to carry. */
+  severity?: string | null;
 }
 
 export interface NoticedMark extends NoticedChange {

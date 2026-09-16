@@ -918,7 +918,6 @@ const HYDRATION_SCENES = [
   { name: 'clinician-summary', at: '/health/clinician-summary', is: 'the printable summary' },
   { name: 'cycle-events', at: '/health/cycle-events', is: 'cycle events' },
   { name: 'dilation', at: '/health/dilation', is: 'the dilation taper' },
-  { name: 'side-effects', at: '/health/side-effects', is: 'side effects logged plainly' },
   { name: 'surgery', at: '/health/surgery', is: 'the surgery journal' },
   { name: 'hormone-curve', at: '/care/curve', is: 'the hormone curve' },
   { name: 'doses', at: '/care/doses', is: 'the dose log' },
@@ -936,7 +935,7 @@ const HYDRATION_SCENES = [
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
   { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
   /* Practice group */
-  { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline' },
+  { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline, side effects and the cycle block' },
   { name: 'resources', at: '/practice/resources', is: 'organisations and helplines' },
   { name: 'voice', at: '/practice/voice', is: 'the voice benchmark' },
   { name: 'voice-record', at: '/practice/voice?tab=record', is: 'the benchmark record tab' },

@@ -28,12 +28,13 @@ test('every finishable area is grouped, and none of them twice', () => {
   assert.equal(new Set(grouped).size, grouped.length);
 });
 
-test('measurements, hair progress and voice are the three groups that front two areas', () => {
+test('measurements, hair progress, effects and voice are the four groups that front two areas', () => {
   const several = AREA_GROUP_KEYS.filter((key) => AREA_GROUPS[key].length > 1);
 
-  assert.deepEqual(several, ['measurements', 'hair-progress', 'voice']);
+  assert.deepEqual(several, ['measurements', 'hair-progress', 'effects', 'voice']);
   assert.deepEqual([...AREA_GROUPS['measurements']], ['measurements', 'sizeRecords']);
   assert.deepEqual([...AREA_GROUPS['hair-progress']], ['hairStages', 'hairPhotos']);
+  assert.deepEqual([...AREA_GROUPS['effects']], ['personalEffects', 'sideEffects']);
   assert.deepEqual([...AREA_GROUPS['voice']], ['voiceBenchmarks', 'voicePracticeTakes']);
 });
 
