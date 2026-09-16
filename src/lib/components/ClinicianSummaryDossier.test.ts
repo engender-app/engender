@@ -109,3 +109,42 @@ describe('clinician-print.css contract', () => {
     expect(printBlock).toMatch(/\.dossier-row-link\s*{[^}]*text-decoration:\s*none/);
   });
 });
+
+/* Ticket 08: every section's table shows its first rows on screen and every
+   row in print. The floor is 12 (the ticket's own proposal, kept - see the
+   component's own comment on PREVIEW_ROW_FLOOR for why). */
+describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
+  it('sets the row floor to twelve', () => {
+    expect(dossierComponent).toContain('const PREVIEW_ROW_FLOOR = 12;');
+  });
+
+  /* One `dossier-row-overflow` mark per table this dossier draws - current
+     regimen, past regimen, dose log, the three exposure tables, labs, side
+     effects, cycle events, appointment prep, procedures and finished areas.
+     A count rather than one assertion per table so a table added later that
+     forgets the mark fails loudly instead of silently passing everything
+     else. */
+  it('marks every table row past the floor as an overflow row, on all twelve of the dossier\'s tables', () => {
+    const marks = dossierComponent.match(/class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}/g) ?? [];
+    expect(marks.length).toBe(12);
+  });
+
+  it('reports a table\'s overflow through the same helper everywhere, one call per table', () => {
+    const calls = dossierComponent.match(/overflowCount\(/g) ?? [];
+    // Once per table to compute the count, once more to render the note.
+    expect(calls.length).toBe(24);
+  });
+
+  it('renders the truncation note through one shared snippet, screen-only', () => {
+    expect(dossierComponent).toContain('{#snippet truncateNote(hidden: number)}');
+    expect(dossierComponent).toContain('m.clinician_summary_section_truncated({ count: hidden })');
+    expect(dossierComponent).toContain('class="dossier-truncate-note no-print"');
+  });
+
+  it('hides an overflow row until print, where it becomes a real table row', () => {
+    expect(printCss).toContain('.dossier-row-overflow');
+    expect(printCss).toMatch(/\.dossier-row-overflow\s*{\s*display:\s*none;\s*}/);
+    const printBlock = printCss.slice(printCss.indexOf('@media print'));
+    expect(printBlock).toMatch(/\.dossier-row-overflow\s*{[^}]*display:\s*table-row/);
+  });
+});

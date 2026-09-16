@@ -3474,6 +3474,41 @@
   "clinician_summary_section_finished_areas": "Tracking that ended",
   "clinician_summary_finished_areas_empty": "Nothing is marked as finished.",
   "clinician_summary_part_finished_areas": "Tracking that ended",
+  "clinician_summary_settings_range": "{start} to {end}",
+  "clinician_summary_settings_sections": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} section",
+        "nPlural=other": "{n} sections"
+      }
+    }
+  ],
+  "clinician_summary_settings_drugs": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} drug",
+        "nPlural=other": "{n} drugs"
+      }
+    }
+  ],
+  "clinician_summary_settings_row": "{range}, {sections}, {drugs}. Change",
+  "clinician_summary_settings_row_no_drugs": "{range}, {sections}. Change",
+  "clinician_summary_settings_title": "Settings",
+  "clinician_summary_section_truncated": "and {count} more, all in the printed copy",
   "area_finish_table_area": "Tracking",
   "area_finish_table_ended": "Ended",
   "area_finish_offer_dismiss_sub": "The app won't ask about this again.",

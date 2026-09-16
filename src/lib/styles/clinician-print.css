@@ -152,6 +152,29 @@
   margin: var(--space-2) 0;
 }
 
+/* Ticket 08: a table's rows past the preview floor are paper only - present
+   for print (the whole point of hiding them on screen is a page that reads
+   short there, not a page that reads short everywhere) and hidden until
+   then, the same "display: none until @media print" shape `.print-heading`
+   above already carries for the same reason. `.dossier-truncate-note`
+   below is the opposite of this: a screen-only line, so it takes app.css's
+   own `.no-print` instead of a second rule saying the same thing backwards. */
+.dossier-row-overflow {
+  display: none;
+}
+
+@media print {
+  .dossier-row-overflow {
+    display: table-row;
+  }
+}
+
+.dossier-truncate-note {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: var(--space-2) 0 0;
+}
+
 .dossier-disclaimer {
   font-size: var(--text-xs);
   color: var(--text-2);
