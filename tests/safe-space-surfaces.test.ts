@@ -9,7 +9,18 @@
    whichever file now holds the answer - which is the point of keeping them
    rather than rewriting them. What this file is for is that nothing was cut
    in the move, and a test that only knew where things used to be could not
-   tell a section that moved from a section that went. */
+   tell a section that moved from a section that went.
+
+   Phase 11 ticket 15 moves two of them again, and one of them out of Safe
+   space entirely. The letters and the starred photographs are the letters
+   screen's now - `/doubt/moments` was showing the same unlocked letters
+   `/transition/letters` already showed in its Open section - so the
+   assertions about them read that file. The readings were a Look back page
+   on this door and ticket 07 gives them a reading of their own, so the
+   assertions about a tile grid and two charts are gone rather than
+   repointed: that is a section that went from here, and this file's job is
+   to say which. Both addresses still answer, as redirect stubs, and
+   tests/settings-route-redirects.test.ts is what holds them. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -18,26 +29,25 @@ import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles.ts';
 import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
 import { HUB_ROWS } from '../src/lib/data/hubRows.ts';
 import { SAFE_SPACE_WAYS } from '../src/lib/data/safeSpaceWays.ts';
+import { COUNTEREVIDENCE_LIMIT, COUNTEREVIDENCE_PREVIEW } from '../src/lib/data/counterevidence.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const doubt = read('src/routes/doubt/+page.svelte');
-const moments = read('src/routes/doubt/moments/+page.svelte');
 const comfort = read('src/routes/doubt/comfort/+page.svelte');
 const evidence = read('src/routes/doubt/evidence/+page.svelte');
-const readings = read('src/routes/doubt/readings/+page.svelte');
+const letters = read('src/routes/transition/letters/+page.svelte');
 const more = read('src/routes/more/+page.svelte');
 
 const strip = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
 const markup = strip(doubt);
-const momentsMarkup = strip(moments);
 const evidenceMarkup = strip(evidence);
-const readingsMarkup = strip(readings);
+const lettersMarkup = strip(letters);
 
 /** Safe space as one thing, for the assertions that only care that the app
     still holds a surface somewhere behind that row. */
-const safeSpace = [doubt, moments, comfort, evidence, readings].join('\n');
+const safeSpace = [doubt, comfort, evidence].join('\n');
 
 describe('what Safe Space is built from', () => {
   it('takes its surfaces from the kit and does not reach for pre-kit SectionTitle or EmptyState', () => {
@@ -46,8 +56,6 @@ describe('what Safe Space is built from', () => {
     expect(safeSpace).not.toMatch(/<SectionTitle/);
     expect(safeSpace).not.toMatch(/<EmptyState/);
     expect(evidence).toContain("from '$lib/components/kit/SectionHeading.svelte'");
-    expect(readings).toContain("from '$lib/components/kit/TileGrid.svelte'");
-    expect(readings).toContain("from '$lib/components/kit/Tile.svelte'");
     expect(safeSpace).toContain("from '$lib/components/kit/Notice.svelte'");
     expect(evidence).toContain("from '$lib/components/kit/ReadGate.svelte'");
     expect(evidence).toContain("from '$lib/components/kit/ConfirmDeleteSheet.svelte'");
@@ -89,21 +97,6 @@ describe('what Safe Space is built from', () => {
     expect(markup).toContain('<BreathingExercise');
   });
 
-  it('renders a statistics TileGrid with what is written and good moments, opted into the tight two-up variant', () => {
-    expect(readingsMarkup).toContain('<TileGrid');
-    /* Phase 8 UX ticket 01: this said "days in a row" until the streak went.
-       A run is the one figure on this screen that could go down, and
-       somebody arriving here after a fortnight away would have been told
-       their evidence was zero. */
-    expect(readingsMarkup).toContain('key="written"');
-    expect(readingsMarkup).toContain('key="evidence"');
-    expect(readings).toContain('j.entries.countAll()');
-    expect(readings, 'no run of consecutive days').not.toContain('j.stats.streak');
-    // Alicja's review: these two tiles' notes are short enough that the
-    // 390px floor's default single-column stack is overcautious for them.
-    expect(readingsMarkup).toMatch(/<TileGrid[^>]*data-tight[^>]*>/);
-  });
-
   it('preserves the counterevidence pool and snapshot save/delete actions', () => {
     expect(evidence).toContain('j.entries.counterevidencePool');
     expect(evidence).toContain('j.doubtJournal.getSnapshots');
@@ -113,73 +106,108 @@ describe('what Safe Space is built from', () => {
   });
 
   it('reads section colors from activeFlag shell roles', () => {
-    for (const source of [doubt, moments, comfort, evidence, readings]) {
+    for (const source of [doubt, comfort, evidence]) {
       expect(source).toContain("from '$lib/theme/activeFlag.svelte'");
       expect(source).toContain("from '$lib/theme/roles'");
     }
   });
 
-  it('renders visual charts for 30-day timeline and affirming themes', () => {
-    expect(readings).toContain("from '$lib/components/kit/ChartCard.svelte'");
-    expect(readings).toContain("from '$lib/components/kit/AreaChart.svelte'");
-    expect(readings).toContain("from '$lib/components/kit/BarRows.svelte'");
-    expect(readingsMarkup).toContain('kind="timeline"');
-    expect(readingsMarkup).toContain('kind="affirming-themes"');
+  /* Ticket 15's bound. Twenty entry cards ran this screen to 3990px and
+     put the save control at the bottom of it, so the one thing a person
+     came here to do was twenty cards away. Six is what fits above it. */
+  it('opens on six of the pool with the save under them, and holds the rest behind one control', () => {
+    expect(evidence).toContain('COUNTEREVIDENCE_PREVIEW');
+    expect(evidence).toContain('counterevidence.slice(0, COUNTEREVIDENCE_PREVIEW)');
+    expect(evidence).toContain('counterevidence.slice(COUNTEREVIDENCE_PREVIEW)');
+    expect(COUNTEREVIDENCE_PREVIEW).toBeLessThan(COUNTEREVIDENCE_LIMIT);
+    // The save sits between the six and the control, which is the whole
+    // point of the bound - not under all twenty, as it was.
+    expect(evidenceMarkup).toMatch(
+      /{#each shown[\s\S]*?onclick={saveSnapshot}[\s\S]*?data-evidence-see-all/
+    );
+    // And it still saves the whole pool, not the six that are showing.
+    expect(evidence).toContain('counterevidence.map((e) => ({');
+  });
+
+  it('discloses the rest in place rather than sending anyone to a second screen', () => {
+    expect(evidenceMarkup).toContain('data-evidence-see-all');
+    expect(evidenceMarkup).not.toMatch(/data-evidence-see-all[^>]*href=/);
+    expect(evidence).toContain('m.safe_space_evidence_see_all({ count: counterevidence.length })');
+    /* ADR-0078: the control discloses by moving. The rows it reveals clip
+       open from their own left edge and the control itself collapses,
+       rather than either cutting into place. */
+    expect(evidence).toContain('out:disclose');
+    expect(evidence).toContain('animation: kit-block-in');
+  });
+
+  /* Ticket 15 again: the subtitle is the qualification rule in the
+     person's own words, and entries.ts is what keeps it. The two moved
+     together and a screen promising more than the query delivers is the
+     defect the ticket was written for. */
+  it('says what qualifies in terms the query actually holds to', () => {
+    expect(evidence).toContain('m.safe_space_counterevidence_sub()');
+    const entries = read('src/lib/data/journal/entries.ts');
+    expect(entries).toContain('DYSPHORIA_TAG_KEYS.map(() => \'?\').join');
+    expect(entries).toContain('BODY_REGION_MIDPOINT');
   });
 });
 
-describe('the letters, photos and voice sources (ticket 14, widened by ticket 21)', () => {
-  /* Ticket 14 showed one letter here; phase 8 features ticket 21 widened
-     that to every unlocked one, capped, with the rest a tap away. What is
-     pinned is the seal rule staying in letterRetrospective.ts, the cap
-     existing at all, and the letters keeping their own card rather than
-     being folded into the flat counterevidence list. */
-  it('lists the unlocked letters through safeSpaceLetters, capped, with an overflow row to the letters screen', () => {
-    expect(moments).toContain("from '$lib/data/letterRetrospective'");
-    expect(moments).toContain('safeSpaceLetters(');
-    expect(moments).toContain("from '$lib/components/LookBackLetterCard.svelte'");
-    expect(moments).toMatch(/LETTER_LIMIT\s*=\s*\d+/);
-    expect(moments).toContain('unlockedLetters.length > LETTER_LIMIT');
-    expect(momentsMarkup).toContain('<LookBackLetterCard');
-    // Under the card, not a last row in it: a row there wore the letters'
-    // own disc and chevron and read as a fourth letter.
-    expect(momentsMarkup).toMatch(/<\/ListCard>[\s\S]*?<a[^>]*data-all-letters[^>]*href="\/transition\/letters"/);
-    expect(momentsMarkup).toMatch(/m\.safe_space_letters_all\(\{\s*count:\s*unlockedLetters\.length - LETTER_LIMIT\s*\}\)/);
-    // Its own card, not one more row inside the counterevidence list.
-    expect(momentsMarkup).toMatch(/<ListCard[\s\S]*?<LookBackLetterCard/);
+describe('the letters and photos, folded onto the letters screen (ticket 14, widened by 21, moved by 15)', () => {
+  /* Ticket 14 showed one letter under Safe space; ticket 21 widened that to
+     every unlocked one, capped, with the rest a tap away. Ticket 15 noticed
+     that the tap went to `/transition/letters`, which was already showing
+     the same two letters in its Open section - so the capped list and its
+     overflow row are gone, and the screen they handed over to is the one
+     surface. What is pinned now is that the seal rule is still the only
+     thing deciding which letters are readable, and that the starred
+     photographs came across with their bound. */
+  it('decides which letters are open by the seal rule and nothing else', () => {
+    expect(letters).toContain("from '$lib/data/letterStatus'");
+    expect(letters).toContain('isLetterSealed(letter, today)');
+    /* No second, looser idea of "open" anywhere on the screen: a letter is
+       readable when its unlock day has passed, and that answer is
+       letterStatus.ts's - the rule letterRetrospective.ts takes for every
+       retrospective surface. */
+    expect(letters).not.toMatch(/unlockEpochDay\s*[<>]=?\s*today/);
   });
 
-  it('leads a Safe Space letter row with the letter, not with its date', () => {
-    expect(momentsMarkup).toMatch(/<LookBackLetterCard[^>]*lead="text"/);
-
-    // The other two surfaces keep the retrospective's own framing, where the
-    // date is why the letter is there at all.
-    expect(read('src/routes/on-this-day/+page.svelte')).not.toMatch(/<LookBackLetterCard[^>]*lead=/);
-    expect(read('src/lib/components/WrappedYear.svelte')).not.toMatch(/<LookBackLetterCard[^>]*lead=/);
-
-    const kit = read('src/lib/styles/kit.css');
-    expect(kit).toContain("[data-list-row='letter-preview'][data-lead='text'] .kit-row-title");
-    expect(kit).toContain("[data-list-row='letter-preview'][data-lead='date'] .kit-row-sub");
+  it('shows the starred photos in the Open section, capped, beside the letters', () => {
+    expect(letters).toContain('j.photos.starredPhotos');
+    expect(letters).toContain("from '$lib/components/PhotoThumb.svelte'");
+    expect(letters).toMatch(/PHOTO_LIMIT\s*=\s*\d+/);
+    expect(lettersMarkup).toContain('<PhotoThumb');
+    // Inside the section the heading names, not a third area under it.
+    expect(lettersMarkup).toMatch(/letters_opened_title\(\)[\s\S]*?data-safe-space-photos/);
+    // Absent, never empty.
+    expect(lettersMarkup).toContain('{#if starredPhotos.length}');
   });
 
-  it('shows a letter as a preview that links to the whole thing, and cuts that preview in code as well as in CSS', () => {
-    // The tap target is the letter's own screen, and the screen itself does
-    // no cutting: the card asks letterOpening for it, so what a row
-    // announces is what a row draws rather than the whole letter.
-    const letterBlock = momentsMarkup.match(/{#each letters[\s\S]*?{\/each}/)?.[0] ?? '';
-    expect(letterBlock).toContain('<LookBackLetterCard');
+  it('names the Open section so Safe space can land on it', () => {
+    /* The way down from `/doubt` points at `#opened` (safeSpaceWays.ts):
+       somebody arriving from their worst day meets what is open rather than
+       what is still sealed. safeSpaceWays.test.ts holds the other half. */
+    expect(lettersMarkup).toMatch(/<SectionHeading[^>]*id="opened"/);
+  });
 
+  it('brings the photo grid in rather than cutting it into place', () => {
+    /* The two reads resolve about 350ms apart on the demo, letters first,
+       so without this the grid appears on a screen that has already
+       settled (ticket 113's finding, the phase 11 no-yank clause). */
+    expect(letters).toContain('animation: kit-block-in');
+  });
+
+  it('keeps the letter preview a preview, cut in code as well as in CSS', () => {
+    // The retrospective surfaces still draw the shared row, and the row
+    // still asks letterOpening for its text rather than carrying the whole
+    // letter into a link's accessible name.
     const card = read('src/lib/components/LookBackLetterCard.svelte');
     expect(card).toContain('href={`/transition/letters/${letter.id}`}');
     expect(card).toContain('letterOpening(letter.text, LETTER_OPENING_LIMIT)');
     expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
-  });
-
-  it('reads starred photos and caps how many it shows', () => {
-    expect(moments).toContain('j.photos.starredPhotos');
-    expect(moments).toContain("from '$lib/components/PhotoThumb.svelte'");
-    expect(momentsMarkup).toContain('<PhotoThumb');
-    expect(moments).toMatch(/PHOTO_LIMIT\s*=\s*\d+/);
+    /* Ticket 15 removed the row's `lead`: Safe Space's list was its only
+       caller, and a prop with one arrangement left is not a choice. */
+    expect(card).not.toContain('data-lead');
+    expect(read('src/lib/styles/kit.css')).not.toContain("[data-lead='text']");
   });
 
   it('runs no query against voice_benchmark - ticket 15/16 have not shipped that table to read', () => {
@@ -190,10 +218,8 @@ describe('the letters, photos and voice sources (ticket 14, widened by ticket 21
     expect(safeSpace).not.toContain('voiceBenchmarkQuery');
   });
 
-  it('adds no click handler to the letter or photo evidence - the screen stays read-only', () => {
-    const letterBlock = momentsMarkup.match(/<LookBackLetterCard[\s\S]*?\/>/)?.[0] ?? '';
-    const photoBlock = momentsMarkup.match(/<div class="photo-grid"[\s\S]*?<\/div>/)?.[0] ?? '';
-    expect(letterBlock).not.toContain('onclick');
+  it('adds no click handler to the photo evidence - the grid stays a glance', () => {
+    const photoBlock = lettersMarkup.match(/<div class="photo-grid"[\s\S]*?<\/div>/)?.[0] ?? '';
     expect(photoBlock).not.toContain('onclick');
   });
 });
