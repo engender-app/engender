@@ -519,6 +519,13 @@ export interface HomeTileReads {
   schedules: readonly DoseSchedule[];
   dosePauses: readonly DosePause[];
   todayDoses: readonly DoseEvent[];
+  /** Yesterday's, read separately rather than by widening `todayDoses`
+      (phase 11 ticket 11): every other reader of that list means today by
+      it, and a yesterday row in it would answer "already logged today" for
+      the patch tile and the dose panel alike. What this is for is the one
+      sentence the panel owes on a day the app wrote a dose on the person's
+      behalf. */
+  yesterdayDoses: readonly DoseEvent[];
   latestBenchmarkEpochDay: number | null;
   journalingPauses: readonly JournalingPause[];
   latestHairRemovalSession: HairRemovalSession | null;
@@ -715,17 +722,29 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       const next = schedule
         ? nextExpectedSlot(schedule, episode.startEpochDay, ownDoses, ownPauses, today)
         : null;
+      /* What the app did on the person's behalf yesterday, which the panel
+         states ahead of the next day it expects (phase 11 ticket 11,
+         ADR-0086). Ahead, not beside: the line holds one sentence, and on
+         the morning after an auto-logged slot the fact worth reading is the
+         row that was written without them, not a date they can work out
+         from the schedule they wrote. */
+      const autoLoggedYesterday = reads.yesterdayDoses.some(
+        (dose) =>
+          dose.source === 'schedule' && attributeDose(reads.episodes, dose).episode?.id === episode.id
+      );
       return {
         key: 'dose-panel',
         tileKey: 'dose-panel',
         attrs: { 'data-dose-panel-tile': true },
         title: m.tile_dose_title(),
         value: episode.drug,
-        note: !next
-          ? undefined
-          : next.epochDay === today
-            ? m.tile_dose_next_today()
-            : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) }),
+        note: autoLoggedYesterday
+          ? m.tile_dose_auto_logged_yesterday()
+          : !next
+            ? undefined
+            : next.epochDay === today
+              ? m.tile_dose_next_today()
+              : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) }),
         href: '/care/doses',
         action: {
           icon: 'plus',

@@ -428,3 +428,28 @@ test('opens at most one driver per clean boot attempt', async () => {
   assert.equal(driverCreations, 1);
 });
 
+
+test('the auto-log pass runs last of the three, and a failure in it is the next boot\'s problem', async () => {
+  /* Last because it writes rows the other two only ever remove, and a
+     warning rather than an error because a slot it did not fill is still
+     open tomorrow (phase 11 ticket 11). */
+  const order: string[] = [];
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    purgeExpiredTrash: async () => {
+      order.push('trashPurge');
+    },
+    sweepOrphanPhotos: async () => {
+      order.push('photoSweep');
+    },
+    autoLogDueDoses: async () => {
+      order.push('autoLog');
+      throw new Error('no');
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+  if (result.phase === 'ready') await result.housekeeping;
+  assert.deepEqual(order, ['trashPurge', 'photoSweep', 'autoLog']);
+});

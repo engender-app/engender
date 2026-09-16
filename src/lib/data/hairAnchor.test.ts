@@ -10,6 +10,7 @@ const dose = (id: string, epochDay: number, status: DoseEvent['status'] = 'taken
   dose: 1,
   doseUnit: 'mg',
   status,
+  source: 'person',
   scheduled: null,
   drug: null,
   route: 'oral'

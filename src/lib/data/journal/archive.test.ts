@@ -111,7 +111,7 @@ async function populated() {
     status: 'changed',
     scheduled: { dose: 2, route: 'oral', timestamp: 1_700_090_000_000 }
   });
-  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
     startEpochDay: 19100,
@@ -443,7 +443,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledDose: null,
       scheduledRoute: null,
       scheduledTimestamp: null,
-      drug: null
+      drug: null,
+      source: 'person'
     },
     {
       id: changedDose,
@@ -458,7 +459,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledDose: 2,
       scheduledRoute: 'oral',
       scheduledTimestamp: 1_700_090_000_000,
-      drug: null
+      drug: null,
+      source: 'person'
     }
   ]);
 });
@@ -489,7 +491,8 @@ test('schedules and pauses name their episode by its travelling uuid, not this d
       everyNDays: 14,
       weekdays: null,
       dosesPerDay: 1,
-      doseAmounts: null
+      doseAmounts: null,
+      autoLogFromEpochDay: null
     }
   ]);
   assert.deepEqual(snapshot.journal.dosePauses, [
@@ -834,7 +837,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // rowids travel as keys (ADR-0002). Its own rowid is resolved against
   // regimenEpisodes, and dose_schedule_weekday/dose_schedule_dose_amount
   // below are its own children.
-  dose_schedule: ['uuid', 'episode_id', 'recurrence_kind', 'every_n_days', 'doses_per_day'],
+  dose_schedule: ['uuid', 'episode_id', 'recurrence_kind', 'every_n_days', 'doses_per_day', 'auto_log_from_epoch_day'],
   // Rowid resolved against regimenEpisodes, the same reason dose_schedule
   // above is hand-written.
   dose_pause: ['uuid', 'episode_id', 'start_epoch_day', 'end_epoch_day', 'reason'],

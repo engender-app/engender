@@ -42,6 +42,7 @@ function dose(epochDay: number, overrides: Partial<DoseEvent> = {}): DoseEvent {
     dose: 4,
     doseUnit: 'mg',
     status: 'taken',
+    source: 'person',
     scheduled: null,
     route: 'im',
     injectionSite: null,
@@ -66,6 +67,25 @@ test('a skipped dose consumes nothing', () => {
   const projection = projectStock(stock, doses, [episode()], DAY_0 + 5);
 
   assert.equal(projection.remaining, 9);
+});
+
+test('an auto-logged dose consumes exactly as a hand-logged one does, and a corrected one consumes nothing', () => {
+  /* Phase 11 ticket 11: the projection asks what happened, and a dose a
+     schedule wrote on the person's standing instruction happened. Marking
+     one skipped takes it back out, the same way any skipped dose is out. */
+  const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
+  const written = [dose(DAY_0 + 1, { source: 'schedule' }), dose(DAY_0 + 3, { source: 'schedule' })];
+
+  assert.equal(projectStock(stock, written, [episode()], DAY_0 + 5).remaining, 8);
+  assert.equal(
+    projectStock(
+      stock,
+      [written[0], dose(DAY_0 + 3, { source: 'schedule', status: 'skipped' })],
+      [episode()],
+      DAY_0 + 5
+    ).remaining,
+    9
+  );
 });
 
 test('a changed dose still consumes: it was taken, just not as scheduled', () => {
