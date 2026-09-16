@@ -28,7 +28,7 @@
      not a frame. Its tile plays it instead of picking it. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -186,9 +186,13 @@
     const url = new URL(page.url);
     if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
     else url.searchParams.set(SOURCE_PARAM, next);
-    // Shallow: the library is already in hand and the screen is not being
-    // navigated to, so this changes the address and nothing else.
-    replaceState(url, page.state);
+    /* `goto` and not `replaceState`: shallow routing updates `history` and
+       `page.state` and never `page.url` (kit's own client.js), so a chip
+       read out of the query would never see its own write. A same-route
+       navigation keeps this component and its selection, replaces the
+       history entry rather than stacking one per chip, and leaves the
+       scroll and the focus where the finger left them. */
+    await goto(url, { replaceState: true, noScroll: true, keepFocus: true });
     await tick();
     travelCells(before, gridEl, 'data-photo-key');
   }
@@ -370,17 +374,19 @@
             {/each}
           </div>
           {#if gridTall && marks.length}
-            <div class="photo-years" role="group" aria-label={m.ph_years_label()} data-photo-years>
-              {#each marks as mark (mark.year)}
-                <button
-                  class="photo-year"
-                  data-photo-year={mark.year}
-                  aria-label={m.ph_year_jump({ year: mark.year })}
-                  onclick={() => jumpToYear(mark.id)}
-                >
-                  {mark.year}
-                </button>
-              {/each}
+            <div class="photo-years" data-photo-years>
+              <div class="photo-years-inner" role="group" aria-label={m.ph_years_label()}>
+                {#each marks as mark (mark.year)}
+                  <button
+                    class="photo-year"
+                    data-photo-year={mark.year}
+                    aria-label={m.ph_year_jump({ year: mark.year })}
+                    onclick={() => jumpToYear(mark.id)}
+                  >
+                    {mark.year}
+                  </button>
+                {/each}
+              </div>
             </div>
           {/if}
         </div>
@@ -459,23 +465,47 @@
     background: var(--surface); border: 1px solid var(--outline);
   }
 
-  /* The grid and the year rail beside it. The rail sticks while the grid
-     scrolls past it, which is the whole of what a scrubber is. */
-  .photo-library { display: flex; align-items: flex-start; gap: var(--space-2); }
-  .photo-library .photo-grid { flex: 1; min-width: 0; }
+  /* The year rail, over the grid rather than beside it. Beside it was the
+     first shape and it cost a column: the rail plus its gap is about 48px,
+     which at 390px takes `repeat(auto-fill, minmax(104px, 1fr))` from three
+     tracks to two. So the rail is taken out of the flow and hangs into the
+     screen's own side padding, which leaves about 20px of it over the last
+     column - the scrubber's usual place in a photo grid, and the reference
+     this came from (corner, Mobbin).
+
+     Sticky inside an absolutely positioned full-height box: the box gives
+     the rail the grid's own top and bottom to stick between, so it arrives
+     with the grid and leaves with it rather than riding the whole screen. */
+  .photo-library { position: relative; }
   .photo-years {
-    position: sticky; top: var(--space-4);
-    display: flex; flex-direction: column;
-    flex: none;
+    position: absolute;
+    top: 0; bottom: 0; right: 0;
+    pointer-events: none;
   }
+  .photo-years-inner {
+    position: sticky; top: var(--space-4);
+    display: flex; flex-direction: column; gap: var(--space-1);
+    pointer-events: auto;
+  }
+  /* A year stands on a photograph, so it carries its own surface the way
+     every other control that does already has to (.photo-edit-day above,
+     .starred-photo-unstar in screens.css): an edge and a fill, never a
+     shadow and never a tint of the picture underneath. */
   .photo-year {
-    min-height: var(--touch-target);
+    min-height: 28px; min-width: 40px;
     padding: 0 var(--space-2);
-    border: none; background: none; cursor: pointer;
+    border: 1px solid var(--outline); border-radius: var(--radius-pill);
+    background: var(--surface); cursor: pointer;
     font: inherit; font-size: var(--text-xs); font-variant-numeric: tabular-nums;
     color: var(--text-2);
   }
-  .photo-year:hover { color: var(--text-1); }
+  /* The pill is 28px, which is under the 48px floor, so the target is
+     extended past it by a transparent overlay - the trick `.tag-chip::after`
+     plays for the same reason (components.css). The rail's own 4px gap keeps
+     two stacked targets from meeting. */
+  .photo-year::after { content: ''; position: absolute; inset: -10px 0; }
+  .photo-year { position: relative; }
+  .photo-year:hover { color: var(--text-1); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
      placeholder takes (PhotoThumb.svelte), because this one is not a
@@ -485,19 +515,6 @@
     color: var(--text-2);
     width: 100%;
     aspect-ratio: 1;
-  }
-
-  /* The source label over the thumbnail. Always there on a touch screen,
-     where there is no hover to reveal it and the app is an Android app
-     first; on a pointer it stays out of the photograph until the tile is
-     under the cursor or the keyboard's focus. */
-  @media (hover: hover) {
-    .photo-cell :global(.photo-label) {
-      opacity: 0;
-      transition: opacity var(--dur-fast) var(--ease-out);
-    }
-    .photo-cell:hover :global(.photo-label),
-    .photo-cell:focus-visible :global(.photo-label) { opacity: 1; }
   }
 
   .photo-count {

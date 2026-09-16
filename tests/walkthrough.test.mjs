@@ -6851,6 +6851,16 @@ finally {
    the source is the thing the ticket asks for and a handle cannot say
    whether it says anything. */
 try {
+  /* Seeded here rather than relying on the "Fill every feature" run near the
+     top of this file: everything between the two - an archive round trip, a
+     Daylio import, the discard flows - replaces the journal, so by this
+     point it holds the persona's entry and milestone photographs alone. */
+  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  await booted();
+  await page.click('[data-fill-every-feature]');
+  await page.waitForURL('**/more');
+  await booted();
+
   await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-photo-key]');

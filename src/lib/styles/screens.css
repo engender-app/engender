@@ -840,10 +840,19 @@
    frame the chip drops it, so the grid rewraps once rather than after
    every fade has finished. */
 .photo-grid { display: grid; position: relative; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
+/* `width: 100%` because a button sizes to its content and a grid cell should
+   not: the thumbnail inside is `width: 100% !important` just below, which
+   against an indefinite button resolves to auto and leaves the cell as wide
+   as whatever it happens to hold. A loaded photograph hid that - its own
+   320px intrinsic width filled the track - but a tile with no pixels in it
+   yet, and a video note's tile, which holds a 26px glyph and nothing else
+   (phase 11 ticket 14), both collapsed to about 36px. It also takes the jump
+   out of an ordinary photo tile, which used to grow from the glyph's width
+   to the track's in the frame its thumbnail arrived. */
 .photo-cell {
   position: relative; border: none; background: none; padding: 0; cursor: pointer;
   display: flex; flex-direction: column; gap: 4px; align-items: center;
-  border-radius: var(--r-block);
+  border-radius: var(--r-block); width: 100%;
 }
 .photo-cell .photo-thumb { width: 100% !important; aspect-ratio: 1; height: auto !important; }
 .photo-cell.is-selected .photo-thumb { outline: 3px solid var(--accent); outline-offset: 2px; }
