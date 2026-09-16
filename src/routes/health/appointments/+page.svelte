@@ -142,13 +142,20 @@
 
   /** What the opening block says under the kind: where it is and when, with
       the journey named where the kind has not already said it. The gap is a
-      line of its own above this, so it is not repeated here. */
+      line of its own above this, so it is not repeated here.
+
+      The weekday, and no year. The weekday is what somebody checks a booking
+      against ("is that the Saturday I am away?") and the year is the one part
+      of the date this block does not need, because the line above it already
+      says how far off the day is. The rows in the lists below keep the full
+      date: nothing there states a gap, so nothing there can leave the year
+      out. */
   function leadWhere(appointment: Appointment): string {
     const journey = appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined;
     return [
       appointment.place ?? undefined,
       appointment.kind && journey ? journey : undefined,
-      dayLabel(appointment.epochDay)
+      fmtDay(appointment.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })
     ]
       .filter((part): part is string => part !== undefined)
       .join(' · ');
@@ -225,26 +232,22 @@
   }
 </script>
 
-{#snippet list(rows: Appointment[])}
-  <ListCard role={roleAt(activeFlag.roles, 0)}>
-    {#each rows as appointment (appointment.id)}
-      <!-- `calendar` rather than the `check` the hub row wears. The hub's
-           icon is fixed - it is the prep list's, kept through the rename
-           (ADR-0066), and `calendar` is already spoken for there by cycle
-           events - but a lit tick beside a visit three weeks out says that
-           visit already happened. `calendar` is the app's own glyph for an
-           appointment date. -->
-      <ListRow
-        key={appointment.id}
-        data-appointment={appointment.id}
-        icon="calendar"
-        title={titleOf(appointment)}
-        subtitle={subtitleOf(appointment)}
-        chevron={false}
-        onclick={() => record.openEditor(appointment)}
-      />
-    {/each}
-  </ListCard>
+<!-- One visit as a row of a list. `calendar` rather than the `check` the hub
+     row wears: the hub's icon is fixed - it is the prep list's, kept through
+     the rename (ADR-0066), and `calendar` is already spoken for there by
+     cycle events - but a lit tick beside a visit three weeks out says that
+     visit already happened. `calendar` is the app's own glyph for an
+     appointment date. -->
+{#snippet visitRow(appointment: Appointment)}
+  <ListRow
+    key={appointment.id}
+    data-appointment={appointment.id}
+    icon="calendar"
+    title={titleOf(appointment)}
+    subtitle={subtitleOf(appointment)}
+    chevron={false}
+    onclick={() => record.openEditor(appointment)}
+  />
 {/snippet}
 
 <div class="screen">
@@ -269,11 +272,18 @@
     {#snippet rows()}
       <div class="screen-part">
         {#if nextVisit}
+          <!-- `collapse` as well as the clip in the stylesheet, which is
+               the pair `Tile` already runs: the clip is the block arriving
+               as an object, and the height is what stops the sections under
+               it being teleported down the screen when the block replaces
+               the "Nothing booked" line (which collapses on its own, inside
+               `Notice`). -->
           <button
             class="visit-lead"
             data-visit-lead
             data-appointment={nextVisit.id}
             onclick={() => record.openEditor(nextVisit!)}
+            transition:collapse
             {...roleAttrs(roleAt(activeFlag.roles, 0))}
           >
             <span class="visit-lead-kind">{titleOf(nextVisit)}</span>
@@ -337,8 +347,15 @@
                 aria-label={each.checked ? m.appointment_prep_uncheck_aria({ content: each.content }) : m.appointment_prep_check_aria({ content: each.content })}
                 onclick={() => toggleChecked(each)}
               >
+                <!-- The tick is always in the markup and crosses in and out
+                     on opacity and a scale rather than being added and
+                     removed: a glyph that appears in one frame is a yank in
+                     both directions, and the row's state is on the row's own
+                     `aria-checked` rather than on whether this element
+                     exists. Under reduced motion `--dur-fast` clamps to 1ms
+                     and the tick simply cuts, which keeps the feedback. -->
                 <span class="ap-box" class:ap-ticked={each.checked}>
-                  {#if each.checked}<Icon name="check" size={20} />{/if}
+                  <span class="ap-tick" aria-hidden="true"><Icon name="check" size={20} /></span>
                 </span>
                 <span class="kit-row-text">
                   <span class="kit-row-title" class:ap-done={each.checked}>{each.content}</span>
@@ -394,13 +411,17 @@
   <div class="screen-part">
     <ListCard role={roleAt(activeFlag.roles, 2)}>
       {#if hasQuestions}
-        <ListRow
-          key="in-the-room"
-          icon="bookmark"
-          title={m.in_the_room_title()}
-          subtitle={m.in_the_room_row_sub()}
-          href="/health/appointments/in-the-room"
-        />
+        <!-- Opens its own height when the first question lands, rather than
+             shoving the row under it down a line (ADR-0078). -->
+        <div transition:collapse>
+          <ListRow
+            key="in-the-room"
+            icon="bookmark"
+            title={m.in_the_room_title()}
+            subtitle={m.in_the_room_row_sub()}
+            href="/health/appointments/in-the-room"
+          />
+        </div>
       {/if}
       <ListRow
         key="clinician-summary"
@@ -414,7 +435,11 @@
 
   {#if later.length}
     <SectionHeading text={m.appointments_later_heading()} />
-    <div class="screen-part" data-later>{@render list(later)}</div>
+    <div class="screen-part" data-later>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each later as appointment (appointment.id)}{@render visitRow(appointment)}{/each}
+      </ListCard>
+    </div>
   {/if}
 
   {#if past.length}
@@ -422,30 +447,29 @@
     <div class="screen-part" data-past>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each past as appointment (appointment.id)}
-          <ListRow
-            key={appointment.id}
-            data-appointment={appointment.id}
-            icon="calendar"
-            title={titleOf(appointment)}
-            subtitle={subtitleOf(appointment)}
-            chevron={false}
-            onclick={() => record.openEditor(appointment)}
-          />
+          {@render visitRow(appointment)}
           <!-- The debrief belongs to the most recent visit and to no other:
                one entry is linked at a time (checklists.ts), and back-filling
                history is entering a record rather than living through a
-               visit. It sits under that visit's own row rather than in a
-               notice of its own, so it cannot read as the debrief of the row
-               above or below it - and it opens and closes its height, so the
-               offer arrives by moving (ADR-0078). -->
+               visit. Under that visit's own row rather than in a notice of
+               its own, and carrying its day either way - adjacency alone
+               would read as the debrief of whichever visit the eye lands on
+               next, which is the reading ticket 58 already fixed once on the
+               completed row. It opens and closes its height, so the offer
+               arrives by moving (ADR-0078).
+
+               Its own handle rather than Home's `data-debrief-offer`: Home
+               draws the same offer as a Notice with a Notice's controls, and
+               one selector over two shapes is a check that passes on the
+               wrong surface. -->
           {#if appointment.id === lastVisit?.id && showDebriefOffer}
             <div transition:collapse>
               <ListRow
                 key="debrief-offer"
-                data-debrief-offer=""
+                data-visit-debrief-offer=""
                 icon="book"
                 title={m.debrief_offer_title()}
-                subtitle={m.debrief_offer_write()}
+                subtitle={[m.debrief_offer_write(), dayShort(appointment.epochDay)]}
                 href={`/entry/new/today?debriefFor=${appointment.id}`}
                 action={{
                   icon: 'x',
@@ -684,6 +708,24 @@
   .ap-ticked {
     border-color: var(--role-mark);
     color: var(--role-mark);
+  }
+
+  /* Transform and opacity, the two properties the performance contract
+     admits without a named material. It grows from the box's own centre
+     rather than travelling, because the tick has nowhere to come from - it
+     is the box filling in, not a thing arriving from off screen. */
+  .ap-tick {
+    display: flex;
+    opacity: 0;
+    transform: scale(0.4);
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+
+  .ap-ticked .ap-tick {
+    opacity: 1;
+    transform: scale(1);
   }
 
   .ap-done {
