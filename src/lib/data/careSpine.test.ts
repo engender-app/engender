@@ -379,8 +379,8 @@ test('one episode yields one lane, over the same span and positions as three wou
     alone.lanes[0].marks.map((mark) => [mark.kind, mark.labelRow]),
     [
       ['lastDose', 0],
-      ['nextDose', 0],
-      ['runOut', 1]
+      ['nextDose', 1],
+      ['runOut', 0]
     ],
     'a lone lane resolves its own crowding exactly as one of three does'
   );

@@ -62,28 +62,34 @@ export const SPINE_MIN_FORWARD_DAYS = 14;
 /** How close two labels may sit in the same label row, as a fraction of the
     rail.
 
-    0.17 was sized against "a date label is around 48px wide", which is the
-    date line and not the label above it. Measured at the 330px of rail a
-    390px screen leaves: "Next dose" is 54.8px and "Runs out" 48.3px, so two
-    marks the old rule called far enough apart printed into each other -
-    next dose and runs out overlapped by a third of a pixel on the demo
-    journal, and last dose sat 23px from next dose (Alicja, ticket 99 item
-    42: "the last dose and next dose texts are too close to each other").
+    Sized against Polish rather than English, because Polish is what sets
+    it: "Następna dawka" is the widest caption either catalogue holds. The
+    number has been measured twice.
 
-    Polish is what sets the number rather than English: "Następna dawka" is
-    91.2px in the same place, and the labels are `white-space: nowrap` on a
-    lane of fixed height, so a wide one cannot wrap its way out of the
-    collision. 0.30 is that 91.2px plus a little air over 330px, which holds
-    for both catalogues at the narrowest screen the app supports.
+    0.30 was the one-lane rail's, sized against a 330px rail and a 91.2px
+    label. Phase 11 ticket 10 measured the drawing again, on three lanes at
+    390px with the full fixture (tests/care-lane-labels.mjs): the rail is
+    292px, not 330 - the card's own padding and the track's margin take the
+    rest - and at 292px the widest Polish captions are "Następna dawka"
+    90.8px, "Ostatnia dawka" 84.8px and "Koniec zapasu" 76.7px, against
+    "Next dose" 54.8px, "Last dose" 51.9px and "Runs out" 48.3px in English.
+    Two of the widest in one row need 90.8px between their centres before
+    they touch at all, which is 0.311 of 292 - so the old 0.30 was already
+    3.2px short of its own rule, and only the days the demo journal happened
+    to hold kept it from showing.
+
+    0.34 is 90.8px plus 8px of air over 292px. The labels are
+    `white-space: nowrap` on a row of fixed height, so a wide one cannot
+    wrap its way out of a collision; the only other answer is a row.
 
     The cost is paid by the narrow labels: "Today" is 32.6px and now claims
     room it does not need, so a crowded lane opens a second label row sooner
     than it strictly must. A label row is what this algorithm has for
     crowding - it hangs the caption one row further from the line and keeps a
-    stem back to it - so the trade is a taller card against two captions
+    stem back to it - so the trade is a taller lane against two captions
     printed on top of each other. */
 /* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
-export const MIN_LABEL_GAP = 0.3;
+export const MIN_LABEL_GAP = 0.34;
 
 export type SpineMarkKind = 'labDraw' | 'lastDose' | 'today' | 'nextDose' | 'runOut';
 

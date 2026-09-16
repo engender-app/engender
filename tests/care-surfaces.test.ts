@@ -97,7 +97,8 @@ describe('the spine draws one lane per running regimen', () => {
   });
 
   it('gives each lane its own stripe and its own name', () => {
-    expect(care).toContain('{...roleAttrs(roleAt(activeFlag.roles, index))}');
+    expect(care).toContain('{...laneAttrs(index, labelRows(lane.marks))}');
+    expect(care).toContain('roleAttrs(roleAt(activeFlag.roles, index))');
     expect(care).toContain('<span class="care-lane-name">{lane.drug}</span>');
   });
 

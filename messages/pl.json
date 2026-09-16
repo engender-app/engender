@@ -392,7 +392,6 @@
   "care_curve_level": "Utrzymuje się",
   "care_curve_falling": "Opada",
   "care_row_curve_reading": "{direction}, dzień {day} z {span}",
-  "care_row_curve_none": "Nie ma krzywej dla tego, co zapisujesz",
   "care_row_summary": "Od {start} do dzisiaj, {sections}",
   "care_row_stock": "{drug}, {left}",
   "care_row_stock_none": "Nic jeszcze nie policzone",

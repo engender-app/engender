@@ -366,11 +366,33 @@
   const labelRows = (marks: readonly SpineMark[]) =>
     Math.max(...marks.map((mark) => mark.labelRow + 1), 1);
 
+  /** A lane's attributes: its stripe, and how many caption rows it is tall.
+      Merged into one `style` rather than written beside `{...roleAttrs()}`,
+      because a spread carrying its own `style` replaces the attribute
+      instead of adding to it - which left every lane at zero rows and its
+      captions hanging over the lane below (caught in the render, not by a
+      test: both attributes were individually correct). */
+  const laneAttrs = (index: number, rows: number) => {
+    const role = roleAttrs(roleAt(activeFlag.roles, index));
+    return { ...role, style: `${role.style ?? ''}; --care-rows: ${rows}` };
+  };
+
   /** Where to log this lane's next dose: the same sheet the dose panel on
       Today opens (`/care/doses?add=1`), seeded with the drug whose block the
       button sits in, so a person on three regimens does not land in a picker
       to say what the button already knew. */
   const logHref = (drug: string) => `/care/doses?add=1&drug=${encodeURIComponent(drug)}`;
+
+  /** The drug and its ester, unless the drug's own name already carries it -
+      "Estradiol valerate · valerate" is what naming both unconditionally
+      produces, and the fixture's own drug names are written that way. Both
+      fields are free text, so this is a comparison of what the person wrote
+      rather than of two vocabularies. */
+  const blockName = (episode: RegimenEpisode) => {
+    const ester = episode.ester?.trim();
+    if (!ester || episode.drug.toLowerCase().includes(ester.toLowerCase())) return episode.drug;
+    return `${episode.drug} · ${ester}`;
+  };
 
   /* The route as one of the six keys, off the episode's own free-text words
      (doseSchedule.ts's matchDoseRoute, the same read the dose editor makes
@@ -410,7 +432,10 @@
      curve is on /care/curve, with everything that qualifies it. */
   let curveReading = $derived.by(() => {
     const direction = curveDirectionQuery.value ?? null;
-    if (!direction) return curveDrug === null ? m.care_row_curve_none() : null;
+    /* The curve screen's own words for the same silence, rather than a
+       second sentence about it: nothing logged that this app draws a curve
+       for. */
+    if (!direction) return curveDrug === null ? m.curve_empty_title() : null;
     const word = { rising: m.care_curve_rising(), level: m.care_curve_level(), falling: m.care_curve_falling() }[
       direction
     ];
@@ -564,14 +589,23 @@
               aria-hidden="true"
             ></span>
           {/each}
+          {#if spine.lanes.length === 0}
+            <!-- A journal with a draw or a stock count but no regimen
+                 running: the two guides have nothing to cross, and a pair of
+                 bare verticals is not a rail. One line in the rail's own
+                 colour gives them something to land on, and the captions
+                 above it still say what the days are - which is the whole of
+                 what this journal has to draw. -->
+            <div class="care-lane care-lane-bare" style="--care-rows: 0">
+              <div class="care-lane-track">
+                <span class="care-line care-line-back" aria-hidden="true"></span>
+                <span class="care-line care-line-on" aria-hidden="true"></span>
+              </div>
+            </div>
+          {/if}
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
-            <div
-              class="care-lane"
-              style="--care-rows: {labelRows(lane.marks)}"
-              data-care-lane={lane.drug}
-              {...roleAttrs(roleAt(activeFlag.roles, index))}
-            >
+            <div class="care-lane" data-care-lane={lane.drug} {...laneAttrs(index, labelRows(lane.marks))}>
               <!-- The name labels its own line from the left, above it
                    rather than beside it: a name column would take around a
                    hundred of the three hundred and thirty pixels a 390px
@@ -657,7 +691,7 @@
       <div class="care-regimen-block" data-care-regimen-block={lane.episode.drug}>
         <a class="care-regimen" href="/care/regimen" data-care-regimen>
           <span class="care-regimen-lines">
-            <span class="care-regimen-drug">{lane.episode.drug}{lane.episode.ester ? ` · ${lane.episode.ester}` : ''}</span>
+            <span class="care-regimen-drug">{blockName(lane.episode)}</span>
             <span class="care-regimen-detail"
               >{route === null
                 ? m.care_regimen_dose({ dose: String(lane.episode.dose), unit: lane.episode.doseUnit })
@@ -1154,9 +1188,11 @@
 
   .care-rail {
     /* One caption is a label over a date; one lane is its name, its line and
-       however many caption rows its own marks need. */
+       however many caption rows its own marks need. --care-stem is how far
+       the first caption row hangs below its line, which is also how long the
+       stem from the line down to it is. */
     --care-label-h: 34px;
-    --care-name-h: 20px;
+    --care-stem: var(--space-4);
     display: flex;
     flex-direction: column;
     /* A rail otherwise starts against the card's heading, which reads as the
@@ -1227,7 +1263,12 @@
   }
   .care-lane-track {
     position: relative;
-    height: calc(var(--care-name-h) + var(--care-rows) * var(--care-label-h));
+    height: calc(var(--care-stem) + var(--care-rows) * var(--care-label-h));
+  }
+  /* The lane-less case: the line alone, with no name over it and no
+     captions under it, so the guides have a rail to cross. */
+  .care-lane-bare .care-lane-track {
+    height: var(--care-stem);
   }
 
   .care-line {
@@ -1287,7 +1328,10 @@
   .care-at-inner {
     position: absolute;
     left: 0;
-    top: calc(var(--care-row) * var(--care-label-h));
+    /* How far this caption hangs from whatever it belongs to: the top of the
+       head for a shared one, its own lane's line for a lane's. */
+    --care-drop: calc(var(--care-row) * var(--care-label-h));
+    top: var(--care-drop);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1319,13 +1363,10 @@
       transform: translateX(-50%) translateY(0);
     }
   }
-  /* The head's captions hang from the top of their own row rather than from
-     a line, so they need the row's own top padding and no stem. */
-  .care-head .care-at-inner {
-    padding-top: 0;
-  }
+  /* A lane's captions hang below its line by the stem's length; the head's
+     hang from the top of the card and have no stem at all. */
   .care-lane-track .care-at-inner {
-    top: calc(var(--care-name-h) + var(--care-row) * var(--care-label-h));
+    --care-drop: calc(var(--care-stem) + var(--care-row) * var(--care-label-h));
   }
 
   .care-mark {
@@ -1348,9 +1389,9 @@
      lane. */
   .care-tick {
     position: absolute;
-    top: calc(-1 * (var(--care-name-h) + var(--care-row) * var(--care-label-h)) + 1px);
+    top: calc(-1 * var(--care-drop));
     width: 2px;
-    height: calc(var(--care-name-h) + var(--care-row) * var(--care-label-h));
+    height: var(--care-drop);
     background: var(--role-mark);
   }
 
