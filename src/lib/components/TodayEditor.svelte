@@ -72,6 +72,7 @@
   let {
     pinned,
     reading,
+    nowMs,
     role,
     onDone
   }: {
@@ -81,6 +82,10 @@
     pinned: PinnedRow[];
     /** The hub's one assembled read, for the add list's own lines. */
     reading: HubReading;
+    /** Today's own second hand, handed down rather than started again here
+        (ADR-0051): a wear session running while somebody is arranging their
+        front page counts up in the list they are arranging. */
+    nowMs: number;
     /** The stripe the pinned area of Today takes. The whole edit mode is
         that one area (DIRECTION.md 3), so its three lists share it. */
     role?: Role;
@@ -394,7 +399,7 @@
             key={row.spec.key}
             icon={row.spec.icon}
             title={hubRowTitle(row.spec.key)}
-            subtitle={hubRowLine(row.spec.key, row.line, reading.todayEpochDay)}
+            subtitle={hubRowLine(row.spec.key, row.line, reading.todayEpochDay, nowMs)}
             chevron={false}
             onclick={() => pin(row.spec.key)}
             data-edit-add={row.spec.key}

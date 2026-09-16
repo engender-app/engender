@@ -154,7 +154,7 @@
   const TRACKABLE_GROUPS = new Set<HubSection['key']>(['body', 'health', 'transition']);
   const today = todayEpochDay();
   let sections = $derived(
-    hubSections({ todayEpochDay: today, lastWrites: {}, states: {} }).filter((section) =>
+    hubSections({ todayEpochDay: today, lastWrites: {}, states: {}, forward: {} }).filter((section) =>
       TRACKABLE_GROUPS.has(section.key)
     )
   );
@@ -823,7 +823,7 @@
                           key={`area-${row.spec.key}`}
                           icon={row.spec.icon}
                           title={hubRowTitle(row.spec.key)}
-                          subtitle={hubRowLine(row.spec.key, row.line, today)}
+                          subtitle={hubRowLine(row.spec.key, row.line, today, Date.now())}
                           checked={tickedAreas.includes(row.spec.key)}
                           chevron={false}
                           onclick={() => toggleArea(row.spec.key)}

@@ -77,7 +77,7 @@
       key={row.key}
       icon={row.icon}
       title={hubRowTitle(row.key)}
-      subtitle={hubRowLine(row.key, line, today)}
+      subtitle={hubRowLine(row.key, line, today, Date.now())}
       href={row.href}
       data-hub-host={host}
       data-hub-line={line.kind}
