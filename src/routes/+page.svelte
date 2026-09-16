@@ -282,6 +282,10 @@
   );
   let tilesFoldLabel = $derived(tilesExpanded ? m.home_tiles_fewer() : foldLabel);
   let agendaRows = $derived(agenda ? (agendaExpanded ? [...agenda.shown, ...agenda.folded] : agenda.shown) : []);
+  /** A day written out with its weekday, which is also what the dose panel
+      puts inside "Next ..." - `liveTiles.svelte.ts` hands the grid the same
+      format so the two bands on this screen write a day the same way. */
+  const weekdayDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
   /** When a row falls: today, tomorrow, or the day written out. The mark is
       a day and a kind and nothing else, so the day is the whole of the
       second line. */
@@ -290,10 +294,6 @@
     if (epochDay === today + 1) return m.tomorrow();
     return weekdayDay(epochDay);
   }
-  /** The same day without the two near-day words, which is what the dose
-      panel puts inside "Next ..." (liveTiles.svelte.ts hands it the same
-      format for that reason). */
-  const weekdayDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
   const shortWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'short' });
   const dayNumber = (epochDay: number) => fmtDay(epochDay, { day: 'numeric' });
   const fullDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
