@@ -44,6 +44,9 @@ import {
 interface HomeTileGrid {
   /** Ordered, preference-gated, snooze-checked, uncapped. */
   readonly tiles: readonly HomeTile[];
+  /** The grid's own second hand, so a surface next to it that also counts
+      up reads the same tick rather than starting a loop of its own. */
+  readonly nowMs: number;
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose
       dismiss opens a sheet on the route rather than acting in place; the
       other ten dismiss themselves. */
@@ -201,6 +204,14 @@ export function homeTiles(
   return {
     get tiles() {
       return tiles;
+    },
+    /* The grid's own clock, handed out so Home's pinned rows ride it rather
+       than opening a second one (ADR-0051). The wear row counts up beside
+       the wear tile and the two may not disagree by a second, which is only
+       true while both read the same tick (phase 11 all-four-doors ticket
+       02). */
+    get nowMs() {
+      return nowTick;
     },
     snooze
   };

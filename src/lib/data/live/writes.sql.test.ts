@@ -945,6 +945,7 @@ beforeAll(async () => {
   );
   await driveRead('measurements', 'getMeasurementTypes', () => journal.measurements.getMeasurementTypes());
   await driveRead('measurements', 'lastWriteEpochDay', () => journal.measurements.lastWriteEpochDay(20000));
+  await driveRead('measurements', 'latestMeasurement', () => journal.measurements.latestMeasurement(20000));
   await driveRead('measurements', 'countAll', () => journal.measurements.countAll());
   await driveRead('sizeRecords', 'getRecords', () => journal.sizeRecords.getRecords());
   await driveRead('sizeRecords', 'getRecordsByCategory', () => journal.sizeRecords.getRecordsByCategory('pants'));

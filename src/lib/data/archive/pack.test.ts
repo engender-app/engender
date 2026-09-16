@@ -203,7 +203,7 @@ test('the front page somebody arranged survives an archive, in their order', asy
 
   const { payload } = await unpack(await pack(contents));
   const restored = payload.preferences;
-  const reading = { todayEpochDay: 20_000, lastWrites: {}, states: {} };
+  const reading = { todayEpochDay: 20_000, lastWrites: {}, states: {}, forward: {} };
 
   assert.deepEqual(
     pinnedRows(restored, reading).map((row) => row.spec.key),

@@ -60,6 +60,7 @@
   import { passedSlotSentence } from '$lib/data/agenda';
   import { fallbackReading, pinnedRows, shownAgendaKinds } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
+  import { readRowForward } from '$lib/data/rowForwardReads';
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -288,9 +289,19 @@
      ~300px and snap content below downward on hydration. */
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
+     the same line its hub row does, so it asks the same assembled question -
+     the milestones pin said "Nothing logged for 1 year 4 months" over the
+     same journal the agenda below it was already drawing a hearing from. */
+  let forwardQuery = liveQuery((j) => readRowForward(j, today));
   let reading = $derived(
-    lastWritesQuery.value !== undefined && areaStatesQuery.value !== undefined
-      ? { todayEpochDay: today, lastWrites: lastWritesQuery.value, states: areaStatesQuery.value }
+    lastWritesQuery.value !== undefined && areaStatesQuery.value !== undefined && forwardQuery.value !== undefined
+      ? {
+          todayEpochDay: today,
+          lastWrites: lastWritesQuery.value,
+          states: areaStatesQuery.value,
+          forward: forwardQuery.value
+        }
       : fallbackReading(today)
   );
   let pinned = $derived(pinnedRows(prefs, reading));
@@ -999,6 +1010,7 @@
         <TodayEditor
           {pinned}
           {reading}
+          nowMs={liveTiles.nowMs}
           role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
           onDone={() => (editing = false)}
         />
@@ -1013,7 +1025,7 @@
                 key={row.spec.key}
                 icon={row.spec.icon}
                 title={hubRowTitle(row.spec.key)}
-                subtitle={hubRowLine(row.spec.key, row.line, today)}
+                subtitle={hubRowLine(row.spec.key, row.line, today, liveTiles.nowMs)}
                 href={row.spec.href}
                 data-pinned-row={row.spec.key}
                 data-hub-line={row.line.kind}

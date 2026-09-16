@@ -74,6 +74,7 @@ import { areasHidden, type AreaStates } from './areaState';
 import { foldText } from './fold';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
+import { ROW_FORWARD_KEYS, type RowForward, type RowForwardKey, type RowForwardMap } from './rowForward';
 
 /** The hub's groups, in the order they are drawn.
 
@@ -632,7 +633,13 @@ export type HubLine =
       Unlike a finished row, a suspended one stays under its own group's
       heading rather than moving to the finished set - it is not done, and
       grouping it with what is would say so. */
-  | { kind: 'suspended'; epochDay: number };
+  | { kind: 'suspended'; epochDay: number }
+  /** What is running, what is next, or a last value - `rowForward.ts`'s
+      three kinds, taken whole rather than restated (phase 11 all-four-doors
+      ticket 02, DIRECTION.md rule 16). Six shapes became nine, and the four
+      past-tense ones above now speak only where a row has nothing forward to
+      say. */
+  | RowForward;
 
 /** Everything the hub reads, so nothing below asks for itself.
 
@@ -652,6 +659,13 @@ export interface HubReading {
       Partial so a caller with nothing read yet can pass `{}`. */
   lastWrites: Partial<Record<LastWriteKey, number | null>>;
   states: AreaStates;
+  /** What each row has to say facing forwards, out of the one assembled
+      call `rowForwardReads.ts` answers with - sparse the same way
+      `lastWrites` is, and `{}` while nothing has landed. Required rather
+      than optional so a surface drawing rows without asking the forward
+      question is a compile error rather than a door that quietly goes back
+      to reporting gaps. */
+  forward: RowForwardMap;
 }
 
 /** The day a row's group ended, or null while it has not. A row fronting two
@@ -677,12 +691,57 @@ function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: num
   return day !== null && day <= todayEpochDay ? day : null;
 }
 
-/** What one row says under its title. */
+/* Every key `rowForward.ts` answers for has to be a row here, or its fact
+   would be assembled and never drawn. Declared as an assertion rather than
+   by importing this module's keys over there, which would be a cycle: the
+   forward registry names its own rows and this is where the two are proved
+   to agree. */
+type UnknownForwardKey = Exclude<RowForwardKey, HubRowKey>;
+type AssertEveryForwardKeyIsARow<Unknown extends never> = Unknown;
+export type EveryForwardKeyIsARow = AssertEveryForwardKeyIsARow<UnknownForwardKey>;
+
+/** Which rows the forward registry answers for, written as a predicate for
+    the reason `hasLastWrite` above is one: it is what lets the map stay
+    keyed by the registry instead of by `string`, so `rowLine` reads it with
+    no cast and a key that is not a forward row cannot be looked up at all. */
+const FORWARD_KEYS: ReadonlySet<string> = new Set(ROW_FORWARD_KEYS);
+const hasForward = (key: string): key is RowForwardKey => FORWARD_KEYS.has(key);
+
+/** What one row says under its title.
+
+    Four questions in order, and the order is the whole of the rule (phase
+    11 all-four-doors ticket 02, DIRECTION.md rule 16).
+
+    **Finished and suspended come first**, unchanged. A row the person has
+    said is over does not announce what is next in it: the statement they
+    made about the practice outranks anything still dated inside it, and a
+    finished area with a stale appointment in it would otherwise read as
+    though it were still running.
+
+    **Then a forward fact beats a last write.** This is the ticket's own
+    choice rule, and it is what the rows on the Transition door were getting
+    wrong: "Nothing logged for 1 year 4 months" printed over a name-change
+    hearing sixteen days out. Which of a running span and a dated future
+    wins is settled one layer down, per row, by `rowForward.ts` - it hands
+    back one fact, so nothing here has to rank two.
+
+    The forward fact also beats `no-stream`, which is why this sits above
+    the `written` check rather than below it. Two of the eight rows that
+    face forwards report no reading at all - Care fronts no archive section,
+    and a letter is sealed until its day - and a standing sentence about
+    what is behind the row is exactly what a dated future should replace.
+
+    **Then the reading it always had**, unchanged: what was last written,
+    worded as an observation once a whole quiet window has passed. */
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
   const suspendedOn = rowSuspendedOn(spec, reading.states, reading.todayEpochDay);
   if (suspendedOn !== null) return { kind: 'suspended', epochDay: suspendedOn };
+
+  const forward = hasForward(spec.key) ? reading.forward[spec.key] : undefined;
+  if (forward) return forward;
+
   if (spec.line === 'written') return { kind: 'no-stream' };
 
   const epochDay = latestWrite(rowReads(spec), reading.lastWrites);
