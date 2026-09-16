@@ -74,21 +74,16 @@ const REACHED_FROM_INSIDE = [
      not here escapes every assertion in it. */
   'coming-back',
   'media/photos/export',
-  /* The appointment prep list stopped being a hub row in phase 8 features
-     ticket 57: the row it had is the appointments row now, and prep is
-     reached from that screen. The list itself is untouched - it is a
-     standing list of what to ask, which outlives any one appointment
-     (ADR-0066). */
-  'health/appointment-prep',
   /* One document (phase 8 features ticket 52). Reached from a row on
      /media/documents, from a day's context list and from a search hit,
      never from the hub - the hub row is the list. */
   'media/documents/[id]',
   /* The prep list read one question at a time (phase 8 features ticket 60).
-     Chromeless, reached from the appointments screen on the day and from
-     the prep list any time, never from the hub. On this list for the reason
-     the note above it gives: chromeless is about the shell around a screen,
-     and says nothing about whether the screen itself is built on the kit. */
+     Chromeless, reached from the visit screen's own verb row and nowhere
+     else since phase 11 all-four-doors ticket 12, never from the hub. On
+     this list for the reason the note above it gives: chromeless is about
+     the shell around a screen, and says nothing about whether the screen
+     itself is built on the kit. */
   'health/appointments/in-the-room',
   /* Everything the app can ask this device for, listed in one place (phase
      10 redesign ticket 31). Reached from a row beside security in Settings,
@@ -185,7 +180,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(20);
+    expect(REACHED_FROM_INSIDE.length).toBe(19);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

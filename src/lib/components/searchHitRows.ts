@@ -78,13 +78,14 @@ const AREA_ROWS: Record<
   procedures: { icon: 'flag', label: () => m.surgery_journey_title(), href: () => SURGERY },
   appointments: { icon: 'calendar', label: () => m.appointments_title(), href: () => '/health/appointments' },
   /* One area, two screens. A question written for an appointment belongs to
-     the prep list; a line of a procedure's recovery checklist belongs to
-     that journey, and the owner kind on the row is what tells them apart
-     (procedures.ts). */
+     the prep list, which is a section of the visit screen since phase 11
+     all-four-doors ticket 12; a line of a procedure's recovery checklist
+     belongs to that journey, and the owner kind on the row is what tells
+     them apart (procedures.ts). */
   checklistItems: {
     icon: 'check',
     label: () => m.appointment_prep_title(),
-    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointment-prep')
+    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointments')
   },
   sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/practice/personal-effects' },
   /* A felt sense hangs off a tryout or off a milestone, and the tryout's id

@@ -38,7 +38,7 @@ const settle = async (path) => {
 const check = (label, ok) => console.log(`${ok ? 'PASS' : 'FAIL'} ${label}`);
 
 try {
-  await settle('/health/appointment-prep');
+  await settle('/health/appointments');
   await page.locator('[data-add]').click();
   await page.locator('#appointment-prep-input').fill('ask about labs');
   await page.locator('[data-save-appointment-item]').click();
@@ -106,7 +106,7 @@ try {
 
   check('offer is gone once the debrief is written', (await page.locator('[data-debrief-offer]').count()) === 0);
 
-  await settle('/health/appointment-prep');
+  await settle('/health/appointments');
   const debriefRow = page.locator('[data-list-row="debrief"]');
   check('appointment prep shows the "your debrief" row', (await debriefRow.count()) > 0);
 } catch (error) {

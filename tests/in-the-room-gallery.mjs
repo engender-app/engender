@@ -63,7 +63,7 @@ async function setLook(page, palette, theme) {
 }
 
 async function addQuestion(page, text) {
-  await goto(page, '/health/appointment-prep');
+  await goto(page, '/health/appointments');
   await page.locator('[data-add]').click();
   await page.waitForSelector('#appointment-prep-input');
   await page.fill('#appointment-prep-input', text);
@@ -141,7 +141,7 @@ for (const [palette, theme] of LOOKS) {
   await shoot(page, `room-row-appointments-${palette}-${theme}`);
 
   // And the way in from the list, any day.
-  await goto(page, '/health/appointment-prep');
+  await goto(page, '/health/appointments');
   await shoot(page, `room-row-prep-${palette}-${theme}`);
 
   // First question: short, and Previous has nowhere to go.
