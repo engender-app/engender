@@ -87,9 +87,30 @@ DROP TABLE entry_body_region_v80;
 CREATE INDEX idx_ebr_region ON entry_body_region(region);
 `;
 
+/* v82 (phase 11 ticket 11, ADR-0086): who wrote a dose row, and whether a
+   schedule has standing permission to write them.
+
+   `source` is defaulted rather than left nullable, and the default is the
+   truth about every row that already exists: each one was logged by a person
+   by hand, because until this migration there was nothing else that could
+   have. Nothing reads a null source as a third state.
+
+   No CHECK, for the reason SCHEMA_V80 gives: doses.ts is the one writer, and
+   a CHECK would refuse to read back an archive a newer build wrote with a
+   source this one has not heard of.
+
+   `auto_log_from_epoch_day` is the switch and the day it went on in one
+   column - null is off (types.ts on DoseSchedule). The walk never writes
+   before it, so a schedule switched on today reaches back over nothing. */
+const SCHEMA_V82 = `
+ALTER TABLE dose_event ADD COLUMN source TEXT NOT NULL DEFAULT 'person';
+ALTER TABLE dose_schedule ADD COLUMN auto_log_from_epoch_day INTEGER;
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA },
   { version: 79, sql: SCHEMA_V79 },
   { version: 80, sql: SCHEMA_V80 },
-  { version: 81, sql: SCHEMA_V81 }
+  { version: 81, sql: SCHEMA_V81 },
+  { version: 82, sql: SCHEMA_V82 }
 ];

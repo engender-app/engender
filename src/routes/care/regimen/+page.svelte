@@ -17,13 +17,15 @@
   import { testosteroneActive } from '$lib/data/cycleTracking';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { episodeEndReasonLabel, pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
+  import { episodeEndReasonLabel, pauseReasonLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
+  import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
@@ -166,6 +168,11 @@
     weekdays: number[];
     dosesPerDay: string;
     doseAmounts: { dose: string; doseUnit: string }[];
+    /** The day auto-logging went on, or null for off (ticket 11). Held as
+        the stored day rather than a boolean, so saving an already-on
+        schedule keeps the day it started from instead of restarting it and
+        reaching over the days in between. */
+    autoLogFromEpochDay: number | null;
   } | null>(null);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
   /** The reason chip picked before pressing "End episode" (ticket 43) - not
@@ -200,7 +207,8 @@
       doseAmounts: (editorSchedule?.doseAmounts ?? []).map((amount) => ({
         dose: String(amount.dose),
         doseUnit: amount.doseUnit
-      }))
+      })),
+      autoLogFromEpochDay: editorSchedule?.autoLogFromEpochDay ?? null
     };
     newPause = null;
     pendingEndReason = null;
@@ -241,8 +249,9 @@
       schedule.doseAmounts.length > 0
         ? schedule.doseAmounts.map((amount) => ({ dose: parseFloat(amount.dose), doseUnit: amount.doseUnit.trim() }))
         : null;
-    return { recurrence, dosesPerDay, doseAmounts };
+    return { recurrence, dosesPerDay, doseAmounts, autoLogFromEpochDay: schedule.autoLogFromEpochDay };
   });
+
   let scheduleCanSave = $derived.by(() => {
     if (!scheduleValues) return false;
     const { recurrence, dosesPerDay, doseAmounts } = scheduleValues;
@@ -252,6 +261,35 @@
     if (doseAmounts && doseAmounts.some((amount) => isNaN(amount.dose) || !amount.doseUnit)) return false;
     return true;
   });
+
+  /* Whether the auto-log switch is offered at all (ticket 11, ADR-0086):
+     only where the fields in front of the person add up to something
+     definite to write - a rhythm, an amount, and a route the dose log can
+     record. Read off the draft rather than off the saved schedule, so the
+     switch appears as soon as an amount is typed rather than one save later,
+     and so it goes away again the moment the last amount is deleted. */
+  let autoLogOffered = $derived(
+    scheduleValues !== null && scheduleCanSave && canAutoLog(scheduleValues, editor?.route ?? '', ROUTE_OPTIONS)
+  );
+
+  /* Turning it on dates the instruction today, so nothing is written for the
+     days before the person asked for it. Turning it off clears the day and
+     leaves every row already written exactly where it is: the switch is
+     about what happens next, never a retraction of what was recorded.
+
+     Saved on the spot rather than waiting for the schedule's own save
+     button, because a standing instruction is a decision rather than a
+     draft - and it carries the rest of the draft with it, so flipping the
+     switch cannot save a day against a rhythm the person has since edited
+     away from what is on screen. */
+  async function toggleAutoLog(on: boolean) {
+    if (!schedule || !editor?.id || !scheduleValues) return;
+    schedule.autoLogFromEpochDay = on ? todayEpochDay() : null;
+    /* `scheduleValues` is derived off the draft, so reading it after the
+       line above carries the new day along with the rest of what is on
+       screen - stating the day again here would be the same fact twice. */
+    await journal.doses.upsertSchedule({ episodeId: editor.id, ...scheduleValues });
+  }
 
   async function saveSchedule() {
     if (!editor?.id || !scheduleValues || !scheduleCanSave) return;
@@ -573,6 +611,30 @@
             >
               <span>{m.regimen_schedule_save()}</span>
             </button>
+
+            <!-- The standing instruction (ticket 11, ADR-0086). Under the
+                 save button rather than among the fields above it: those
+                 describe the rhythm and are saved together, this one is a
+                 decision about what the app does with that rhythm and takes
+                 effect the moment it is flipped. Absent entirely where the
+                 schedule has nothing definite to write, the same way the
+                 whole block is absent on an unsaved episode. -->
+            {#if autoLogOffered}
+              <div class="disclosed" data-auto-log-switch transition:disclose>
+                <Field label={m.regimen_auto_log_label()} legend spread>
+                  {#snippet children()}
+                    <Switch
+                      checked={schedule!.autoLogFromEpochDay !== null}
+                      label={m.regimen_auto_log_label()}
+                      onChange={toggleAutoLog}
+                    />
+                  {/snippet}
+                </Field>
+                <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
+                  {m.regimen_auto_log_hint()}
+                </p>
+              </div>
+            {/if}
           </div>
         {/if}
 

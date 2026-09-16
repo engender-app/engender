@@ -188,10 +188,10 @@ describe('assembleClinicianDossier', () => {
     expect(dossier.regimen!.current).toHaveLength(1);
   });
 
-  /* Ticket 08: the row shape reserves a slot for ticket 11's auto-logged
-     marker without this ticket populating it - a real dose row already
-     satisfies the wider type, and nothing here sets the field. */
-  it('leaves autoLogged unset on a dose row (ticket 11 populates it later)', async () => {
+  /* Ticket 08 reserved an `autoLogged` field here for ticket 11 to fill;
+     ticket 11 put `source` on the dose itself instead, so what the row
+     carries is the journal's own answer and the dossier adds nothing. */
+  it('carries each dose\'s source, so the print can mark the ones a schedule wrote', async () => {
     const dossier = await assembleClinicianDossier(journal, {
       fromEpochDay: 19000,
       toEpochDay: 19010
@@ -199,7 +199,7 @@ describe('assembleClinicianDossier', () => {
 
     expect(dossier.regimen!.doses.length).toBeGreaterThan(0);
     for (const dose of dossier.regimen!.doses) {
-      expect(dose.autoLogged).toBeUndefined();
+      expect(dose.source).toBe('person');
     }
   });
 });

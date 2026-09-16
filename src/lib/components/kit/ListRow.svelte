@@ -22,7 +22,15 @@
   type RowLine = string | false | null | undefined;
 
   type RowAction = {
-    icon: string;
+    /** Optional where `text` carries the control instead: an icon beside
+        words says the same thing twice. */
+    icon?: string;
+    /** Words in the button rather than a glyph, for a control whose meaning
+        no icon carries - "I skipped this" on an auto-logged dose (phase 11
+        ticket 11). The square target widens to fit them; `label` stays the
+        accessible name either way, so the two can differ where the visible
+        words only make sense next to the row they sit on. */
+    text?: string;
     label: string;
     onclick: () => void;
     /** The control's own walkthrough handle, where the row's `key` is not
@@ -137,12 +145,14 @@
   <button
     type="button"
     class="kit-row-act press"
+    class:has-text={a.text}
     data-row-action={key}
     aria-label={a.label}
     onclick={a.onclick}
     {...a.attrs}
   >
-    <Icon name={a.icon} size={18} />
+    {#if a.icon}<Icon name={a.icon} size={18} />{/if}
+    {#if a.text}<span class="kit-row-act-text">{a.text}</span>{/if}
   </button>
 {/snippet}
 
