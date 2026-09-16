@@ -48,12 +48,16 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   letters: m.letters_title,
   tryouts: m.tryout_title,
   doubt: m.safe_space_title,
-  'voice-benchmark': m.vb_title,
+  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"):
+     ticket 17 folded the memos row's screen into this one as a fourth tab,
+     so the row and the screen it opens say the same name now. `vb_title`
+     stays what it was for the two callers still specifically about the
+     benchmark - the search hit and the area label. */
+  'voice-benchmark': m.vb_screen_title,
   wear: m.wear_log,
   effects: m.effects_timeline,
   resources: m.resources_title,
   photos: m.progress_photos,
-  voice: m.recordings_label,
   documents: m.documents_title
 };
 
@@ -86,7 +90,6 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   effects: m.hub_sub_effects,
   resources: m.hub_sub_resources,
   photos: m.hub_sub_photos,
-  voice: m.hub_sub_voice,
   documents: m.hub_sub_documents
 };
 

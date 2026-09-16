@@ -76,8 +76,12 @@
      assembled call, `rowForwardReads.ts`, the shape the last-write read next
      to it already has. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
+  /* voice-benchmark's own second read (ticket 17): a memo has no last write
+     in the registry the other three rows draw on (ADR-0036), so this joins
+     the other three reads rather than being folded into one of them. */
+  let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
 
-  /* All three reads or none, which is a correctness rule and not only a
+  /* All four reads or none, which is a correctness rule and not only a
      tidier transition. Rendering whichever landed first would put a finished
      row in its old group with a reading under it, and then move it into the
      finished set once the area record arrived - a wrong state on screen, not
@@ -91,9 +95,17 @@
      Until then the written rows already say their line, because a line about
      what is behind a row needs no read at all. */
   let landed = $derived(
-    lastWritesQuery.value !== undefined && statesQuery.value !== undefined && forwardQuery.value !== undefined
-      ? { lastWrites: lastWritesQuery.value, states: statesQuery.value, forward: forwardQuery.value }
-      : { lastWrites: {}, states: {}, forward: {} as RowForwardMap }
+    lastWritesQuery.value !== undefined &&
+      statesQuery.value !== undefined &&
+      forwardQuery.value !== undefined &&
+      voiceMemoLastWriteQuery.value !== undefined
+      ? {
+          lastWrites: lastWritesQuery.value,
+          states: statesQuery.value,
+          forward: forwardQuery.value,
+          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value
+        }
+      : { lastWrites: {}, states: {}, forward: {} as RowForwardMap, voiceMemoLastWriteEpochDay: null }
   );
 
   let reading = $derived({ todayEpochDay: today, ...landed });

@@ -925,6 +925,7 @@ beforeAll(async () => {
   await driveRead('photoLibrary', 'inJournal', () => journal.photoLibrary.inJournal());
   await driveRead('photoLibrary', 'starred', () => journal.photoLibrary.starred());
   await driveRead('voice', 'inJournal', () => journal.voice.inJournal());
+  await driveRead('voice', 'lastWriteEpochDay', () => journal.voice.lastWriteEpochDay(20100));
   await driveRead('voiceBenchmarks', 'getBenchmarks', () => journal.voiceBenchmarks.getBenchmarks());
   await driveRead('voiceBenchmarks', 'getBenchmarksOnDay', () => journal.voiceBenchmarks.getBenchmarksOnDay(20060));
   await driveRead('voiceBenchmarks', 'lastWriteEpochDay', () => journal.voiceBenchmarks.lastWriteEpochDay(20060));
