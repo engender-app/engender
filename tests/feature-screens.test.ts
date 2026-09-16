@@ -97,17 +97,22 @@ const REACHED_FROM_INSIDE = [
      in every way this file asks about, and a screen that is not here escapes
      every assertion in it. */
   'settings/permissions',
-  /* The four ways down from Safe space (phase 10 redesign ticket 47).
+  /* The ways down from Safe space that are still screens of their own
+     (phase 10 redesign ticket 47, narrowed by phase 11 ticket 15).
      `/doubt` opens on the breathing exercise and nothing else; everything
-     that screen used to hold below it lives on one of these, reached by one
-     tap from a row and from nowhere in the hub. On this list for the reason
-     the note above it gives - the sections moved wholesale, so a screen
-     left off would take a third of Safe space out from under every
-     assertion here at once. */
-  'doubt/moments',
+     that screen used to hold below it lives one tap from a row and nowhere
+     in the hub. On this list for the reason the note above it gives - the
+     sections moved wholesale, so a screen left off would take a third of
+     Safe space out from under every assertion here at once.
+
+     `doubt/moments` and `doubt/readings` were on this list until ticket 15
+     folded them into `/transition/letters` and the Look back door. Both
+     addresses are redirect stubs now, and the screens that absorbed them
+     are already held here (the letters screen through the hub's own
+     `letters` row) - so this is two screens fewer, not two screens
+     unwatched. */
   'doubt/comfort',
   'doubt/evidence',
-  'doubt/readings',
   /* Redesign ticket 51 (ADR-0084): modes and entry templates are reference
      areas, so both left `hubRows.ts` entirely for a plain row on Settings -
      reached from there and from the entry editor's chip picker, never from
@@ -180,7 +185,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(22);
+    expect(REACHED_FROM_INSIDE.length).toBe(20);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

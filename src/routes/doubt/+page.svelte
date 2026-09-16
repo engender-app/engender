@@ -19,6 +19,13 @@
      /doubt/moments, /doubt/comfort, /doubt/evidence and /doubt/readings
      with their bounds, their handovers and their reasons intact.
 
+     Phase 11 ticket 15 folds two of those four away again, and the rows
+     stay: "Letters and photos" was a second copy of what /transition/letters
+     already showed in its Open section, and the readings were a Look back
+     page on this door. Both rows now point where the thing actually lives.
+     The five ways and their order do not move - what a person taps here is
+     what they tapped before.
+
      **Always the breath, never chosen by how you arrived.** A surface that
      opens differently depending on whether you came from the tile, the hub
      or a launch intent is one you cannot learn, and learning it is the
@@ -42,13 +49,18 @@
      a fact about the product and lives in the module (ADR-0016 keeps
      paraglide out of the node tier), and four of these five titles are the
      section headings the person already read on the screen this replaces -
-     the same names, one tap further in. */
+     the same names, one tap further in.
+
+     The readings row is the one that no longer matches its destination's
+     own title, and deliberately: it lands on the Look back door, where the
+     good days are one reading among nine, so the row names the reading
+     rather than the door (ticket 15). */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub: () => string }> = {
     resources: { title: m.resources_title, sub: m.resources_row_sub },
     moments: { title: m.safe_space_moments_title, sub: m.safe_space_moments_sub },
     comfort: { title: m.comfort_list_title, sub: m.safe_space_comfort_sub },
     evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub },
-    readings: { title: m.safe_space_stats_title, sub: m.safe_space_readings_sub }
+    readings: { title: m.safe_space_readings_row_title, sub: m.safe_space_readings_sub }
   };
 </script>
 

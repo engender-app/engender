@@ -2276,56 +2276,20 @@
   "safe_space_title": "Safe space",
   "safe_space_moments_title": "Letters and photos",
   "safe_space_moments_sub": "Unlocked letters, starred photos",
-  "safe_space_moments_empty_title": "Nothing put aside yet",
-  "safe_space_moments_empty_body": "A letter to open later, or a photo you star, will be waiting here.",
   "safe_space_comfort_sub": "Who to text, which walk, which song",
-  "safe_space_evidence_sub": "Tagged entries, and what you saved",
-  "safe_space_readings_sub": "Written so far, and the past 30 days",
-  "safe_space_readings_empty_title": "Nothing written yet",
-  "safe_space_readings_empty_body": "Once there are entries, this is where the count and the past 30 days go.",
+  "safe_space_evidence_sub": "The days you named yourself",
+  "safe_space_readings_sub": "On Look back, with the rest of your readings",
+  "safe_space_readings_row_title": "How the good days fell",
   "safe_space_breathing_desc": "Box breathing to help ground yourself.",
   "safe_space_breathing_start": "Begin breathing",
   "safe_space_breathing_pause": "Pause",
   "safe_space_breathing_inhale": "Inhale",
   "safe_space_breathing_hold": "Hold",
   "safe_space_breathing_exhale": "Exhale",
-  "safe_space_stats_title": "From your journal",
-  "safe_space_stat_evidence_title": "Good moments",
-  "safe_space_stat_evidence_note": "In your history",
-  "safe_space_counterevidence_title": "From your own history",
-  "safe_space_counterevidence_sub": "Entries you tagged as euphoria, with high-euphoria body regions, or starred.",
-  "safe_space_letters_intro": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "A letter you sealed for yourself, now open.",
-        "countPlural=other": "Letters you sealed for yourself, now open."
-      }
-    }
-  ],
-  "safe_space_letters_all": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "See the other letter",
-        "countPlural=other": "See the other {count} letters"
-      }
-    }
-  ],
+  "safe_space_counterevidence_title": "Good moments",
+  "safe_space_counterevidence_sub": "Days you tagged as good, and days you starred.",
+  "safe_space_evidence_see_all": "See all {count}",
   "safe_space_photos_intro": "Photos you starred.",
-  "safe_space_chart_timeline_title": "Past 30 days",
   "safe_space_chart_themes_title": "Affirming themes",
   "safe_space_no_themes": "No tagged moments in the pool yet.",
   "comfort_list_title": "Things that help",
@@ -3655,8 +3619,6 @@
   "home_count_since": "{entries} since {date}",
   "home_tiles_more": "{names} and {count} more",
   "home_tiles_fewer": "Show fewer",
-  "safe_space_stat_written_title": "Entries written",
-  "safe_space_stat_written_note": "In your whole journal",
   "tile_pause_value": "Nothing to catch up on",
   "home_start_title": "Getting started",
   "home_start_intro": "A few things worth setting up early. They all wait if you would rather just write.",
