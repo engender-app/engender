@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* Dilation: a taper typed in, its session log, and the chart against day
-     since surgery (phase 8 features ticket 12, CONTEXT: "Taper").
+  /* Dilation: a taper typed in and its session log (phase 8 features
+     ticket 12, CONTEXT: "Taper").
 
      Two records, one screen, the same split doses.ts draws between a
      schedule and what was actually logged against it. The schedule is
@@ -28,7 +28,12 @@
      size (DIRECTION.md rule 16), and the gap rows run under that for the
      week the strip is showing, today excepted because it is already drawn
      above them. Tapping a cell opens the same sheet tapping a gap row
-     opens, so the write path is the one that was already here. */
+     opens, so the write path is the one that was already here.
+
+     The chart ("Sessions since surgery") is gone (audit item 7): sessions
+     since surgery is a count on nearly every day, a flat line at 1 for
+     months, and the strip plus today's own row already say everything it
+     said. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -36,9 +41,6 @@
   import AreaFinish from '$lib/components/AreaFinish.svelte';
   import DayStrip from '$lib/components/DayStrip.svelte';
   import { stripWindow, type DayMark } from '$lib/components/dayStrip';
-  import AreaChart from '$lib/components/kit/AreaChart.svelte';
-  import ChartCard from '$lib/components/kit/ChartCard.svelte';
-  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -49,8 +51,6 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { plotDaySeriesGroup } from '$lib/charts/dayAxis';
-  import { dayAxisEnds, dayAxisScrubLabel } from '$lib/components/kit/dayAxisLabel';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import { expectedSessionDays } from '$lib/data/taperSchedule';
@@ -59,16 +59,12 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* `chart` takes 0, the only index guaranteed to be a colour on every
-     palette (roles.ts) - the data line must never land on trans' achromatic
-     middle stripe the way index 2 would. */
-  const SECTION_ROLE = { chart: 0, strip: 0, schedule: 1, sessions: 2 };
-
-  /* The strip's fill is a colour carrying a value, so it takes role 0 with
-     the chart rather than the sessions' own stripe (ticket 44). Index 2 is
+  /* The strip's fill is a colour carrying a value, so it takes role 0
+     (roles.ts) rather than the sessions' own stripe (ticket 44). Index 2 is
      trans' achromatic middle band, and a logged day filled in white on a
      near-white page is a day drawn as nothing - the same rule the calendar
      states for its own three readings of a day. */
+  const SECTION_ROLE = { strip: 0, schedule: 1, sessions: 2 };
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const today = todayEpochDay();
@@ -81,33 +77,6 @@
 
   let sessionsByDay = $derived(new Map(sessions.map((s) => [s.epochDay, s])));
   let expectedDays = $derived(taper ? expectedSessionDays(taper, today) : []);
-
-  /** One point per day a session was logged, value the count that day - so
-      a rare double session shows rather than collapsing into the same "a
-      session happened" as a single one. Days with none are absent rather
-      than zero: an average over a folded range should read from the days
-      that did have a session, not be pulled down by the empty ones
-      `expectedDays` already renders as gaps elsewhere on this screen. */
-  let sessionSeries = $derived.by(() => {
-    const perDay = new Map<number, number>();
-    for (const s of sessions) perDay.set(s.epochDay, (perDay.get(s.epochDay) ?? 0) + 1);
-    return [...perDay].map(([day, value]) => ({ day, value, count: 1 }));
-  });
-
-  /* Folded through the same mechanism the other re-keyed charts use
-     (dayAxis.ts, ticket 16), rather than one raw point per day: a taper
-     runs for months, and a card sized for thirty marks should not be asked
-     to draw two hundred. */
-  let plot = $derived(
-    taper
-      ? plotDaySeriesGroup(
-          [sessionSeries],
-          { type: 'anchored', anchorEpochDay: taper.surgeryEpochDay, todayEpochDay: today },
-          Math.max(1, today - taper.surgeryEpochDay + 1)
-        )[0]
-      : undefined
-  );
-  let chartMax = $derived(Math.max(1, ...(plot?.points.map((p) => p.y) ?? [])));
 
   /* The schedule editor. Inline rather than a RecordSheet: there is one
      taper, never a list, so there is nothing here for a sheet's own
@@ -404,26 +373,6 @@
         />
       </ListCard>
     </div>
-
-    <ChartCard
-      heading={m.dilation_chart_title()}
-      kind="dilation-sessions"
-      role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
-    >
-      {#if plot && plot.points.length > 0}
-        <AreaChart
-          points={plot.points}
-          min={0}
-          max={chartMax}
-          {...dayAxisEnds(plot, plot.points[0].x, plot.points[plot.points.length - 1].x)}
-          formatValue={(v) => String(Math.round(v))}
-          scrubLabel={dayAxisScrubLabel(plot)}
-          ariaLabel={m.dilation_chart_aria()}
-        />
-      {:else}
-        <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
-      {/if}
-    </ChartCard>
 
     <!-- Saying you are done dilating (phase 8 features ticket 04, ADR-0052) -
          the finish control lives on `taperSessions`, never on the schedule:
