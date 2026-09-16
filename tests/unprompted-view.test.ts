@@ -10,7 +10,12 @@
    a row carrying a switch is a plain div rather than a control nested in a
    control, that a kind with no notify leaves that slot empty rather than
    drawing a dead switch, and that the notify column - not the whole screen
-   - is absent on web rather than shown and inert. */
+   - is absent on web rather than shown and inert.
+
+   Phase 11 ticket 04 took Today's thirteen live tiles off this screen and
+   onto Today's own editor, and moved the four prompt toggles here off
+   Settings' Tracking section. So two more rules: the registry is filtered
+   rather than copied, and the prompts are here rather than there. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -23,15 +28,36 @@ const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script
 const screen = read('src/routes/settings/notifications/+page.svelte');
 const screenMarkup = stripScript(screen);
 const row = read('src/lib/unprompted/RegistryRow.svelte');
-const redirect = read('src/routes/settings/live-tiles/+page.svelte');
+const redirect = read('src/routes/settings/live-tiles/+page.ts');
+const editor = read('src/lib/components/TodayEditor.svelte');
 
 describe('what the merged screen is built from', () => {
   it('draws one row per kind from the registry, not from hand-written markup', () => {
     expect(screen).toContain("from '$lib/unprompted/registry'");
-    expect(screenMarkup).toContain('{#each UNPROMPTED_ROWS as row (row.key)}');
-    // One {#each}, not the two screens used to run - a kind gets one row now.
-    expect(screenMarkup.match(/\{#each\b/g)?.length).toBe(1);
+    expect(screen).toMatch(/const ROWS = UNPROMPTED_ROWS\.filter\(\(row\) => !isLiveTileKind\(row\.key\)\)/);
+    expect(screenMarkup).toContain('{#each ROWS as row (row.key)}');
+    // One {#each} over the registry, and one over the four prompts.
+    expect(screenMarkup.match(/\{#each\b/g)?.length).toBe(2);
     expect(screenMarkup.match(/<RegistryRow/g)?.length).toBe(1);
+  });
+
+  it('leaves the live tiles to the editor that arranges them, by filtering rather than by a second list', () => {
+    /* The kinds are named in one place (`LIVE_TILE_ORDER`) and this screen
+       asks that place, so a fourteenth tile cannot arrive switchable in two
+       surfaces at once. */
+    expect(screen).toContain("import { isLiveTileKind } from '$lib/data/liveTiles'");
+    expect(editor).toContain("from '$lib/data/liveTiles'");
+    expect(editor).toContain('{#each LIVE_TILE_DRAW_ORDER as kind (kind)}');
+    expect(editor).toContain('data-edit-tile={kind}');
+  });
+
+  it('carries the four prompts that came off Settings, under a heading', () => {
+    expect(screenMarkup).toContain('m.notif_prompts_heading()');
+    for (const key of ['entry-nudges', 'guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+      expect(screen).toContain(`key: '${key}'`);
+    }
+    // A plain div for the same reason every other switch row here is one.
+    expect(screenMarkup).toMatch(/<div class="kit-row" data-prompt=\{prompt\.key\}>/);
   });
 
   it('draws the row through the component the screen owns alone now', () => {
@@ -62,7 +88,7 @@ describe('what the merged screen is built from', () => {
     const gate = screenMarkup.indexOf('{#if !isWeb}');
     expect(gate).toBeGreaterThanOrEqual(0);
     const heads = screenMarkup.slice(gate, screenMarkup.indexOf('</ListCard>'));
-    expect(heads).toContain('m.notif_col_home()');
+    expect(heads).toContain('m.notif_col_show()');
     expect(heads).toContain('m.notif_col_notify()');
   });
 
@@ -98,8 +124,9 @@ describe('the notify column on web', () => {
   it('is absent rather than shown and inert (user story 18)', () => {
     /* A browser cannot fire a scheduled notification while the app is
        closed, so a switch there would be a promise the platform does not
-       keep - the screen says so instead of drawing dead switches. The Home
-       column is unaffected: a live tile is in-app UI, not a notification. */
+       keep - the screen says so instead of drawing dead switches. The show
+       column and the four prompts are unaffected: a notice, a card and a
+       nudge are in-app UI, not notifications. */
     expect(screenMarkup).toContain('{#if isWeb}');
     const web = screenMarkup.slice(screenMarkup.indexOf('{#if isWeb}'), screenMarkup.indexOf('{:else}'));
     expect(web).toContain('notif_web_title');
@@ -126,7 +153,10 @@ describe('the notify column on web', () => {
 
 describe('the old address', () => {
   it('redirects rather than 404s (ADR-0043\'s bookmark precedent)', () => {
-    expect(redirect).toContain("replaceRoute('/settings/notifications')");
+    /* An ordinary `+page.ts` stub since ticket 04, so where it points is
+       settings-route-redirects.test.ts's to assert with the other
+       twenty-seven. What is left here is that the screen itself is gone. */
+    expect(redirect).toContain("redirect(307, '/settings/notifications')");
     expect(redirect).not.toContain('UNPROMPTED_ROWS');
     expect(redirect).not.toContain('RegistryRow');
   });

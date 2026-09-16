@@ -17,7 +17,7 @@
    delete - purgeExpiredTrash is what eventually takes them and their files
    with it, via the injected store. */
 
-import { bodyRegionIsLogged } from '../bodyMap';
+import { BODY_REGION_MIDPOINT } from '../bodyMap';
 import type { WordFrequencySource } from '../wordFrequency';
 import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats';
 import {
@@ -29,7 +29,7 @@ import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryCont
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { BodyRegionFeeling, Entry, Photo, VideoNote, VoiceRecording } from '../types';
+import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import {
   insertStagedPhoto,
@@ -113,7 +113,7 @@ export interface EntryInput {
   tags?: string[];
   /** By body-region domain id (bodyRegions.ts). Arrives as the whole set the picker
       showed, and replaces - same rule as `tags`, not `dims`. */
-  bodyRegions?: Record<string, BodyRegionFeeling>;
+  bodyRegions?: Record<string, number>;
   /** Photos picked in this edit, normalized and ready to store (ADR-0008).
       They arrive with the save rather than in a call after it, for two
       reasons: an entry is committed as one action (PRD F1), and a photo on
@@ -201,7 +201,14 @@ export interface EntriesArea {
       just the general one). Not folded into entriesWithTag itself: that
       one is also the stats screen's tag-insight query, for an arbitrary
       tag, and starred entries have no business surfacing there. */
-  counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
+  counterevidencePool(
+    tagIds: readonly string[],
+    limit: number,
+    /** Both ends inclusive. Look back's affirming-themes reading asks
+        over the door's span (phase 11 ticket 07); Safe space's own
+        surfaces still ask over the whole journal and pass nothing. */
+    span?: { from: number; to: number }
+  ): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
       body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
@@ -360,7 +367,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
   // domain id (key for a built-in, uuid for a custom) - checked against the
   // body_region table the same way resolveTagIds checks tag ids, rather
   // than the closed BODY_REGION_KEYS list this used to hold in code.
-  const assertKnownBodyRegions = async (bodyRegions: Record<string, BodyRegionFeeling>): Promise<void> => {
+  const assertKnownBodyRegions = async (bodyRegions: Record<string, number>): Promise<void> => {
     const keys = Object.keys(bodyRegions);
     if (keys.length === 0) return;
 
@@ -389,23 +396,20 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     if (rows.length === 0) throw new Error(`unknown presentation: ${id}`);
   };
 
-  const countLoggedRegions = (bodyRegions: Record<string, BodyRegionFeeling>): number =>
-    Object.values(bodyRegions).filter(bodyRegionIsLogged).length;
+  const countLoggedRegions = (bodyRegions: Record<string, number>): number =>
+    Object.values(bodyRegions).filter((value) => value !== BODY_REGION_MIDPOINT).length;
 
-  // A region whose two axes are both null says nothing its absence does not
-  // already say, so it never reaches the table - the v33 CHECK would reject
-  // it anyway. The editor keeps such a region on screen while it is being
+  // A region left at the midpoint says nothing its absence does not already
+  // say, so it never reaches the table - the v81 CHECK would reject it
+  // anyway. The editor keeps such a region on screen while it is being
   // filled in; dropping it here is what stops a picked-then-ignored region
   // from being saved as a blank row.
-  const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, BodyRegionFeeling>): Promise<void> => {
-    const entries = Object.entries(bodyRegions).filter(([, f]) => bodyRegionIsLogged(f));
+  const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, number>): Promise<void> => {
+    const entries = Object.entries(bodyRegions).filter(([, value]) => value !== BODY_REGION_MIDPOINT);
     if (entries.length === 0) return;
-    const values = entries.map(() => '(?, ?, ?, ?)').join(', ');
-    const params = entries.flatMap(([region, f]) => [entryId, region, f.dysphoria, f.euphoria]);
-    await driver.run(
-      `INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES ${values}`,
-      params
-    );
+    const values = entries.map(() => '(?, ?, ?)').join(', ');
+    const params = entries.flatMap(([region, value]) => [entryId, region, value]);
+    await driver.run(`INSERT INTO entry_body_region (entry_id, region, value) VALUES ${values}`, params);
   };
 
   const dimsOf = async (entryId: number): Promise<Record<string, number>> => {
@@ -425,12 +429,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     return rows.map((r) => domainIdOf(r, 'tag'));
   };
 
-  const bodyRegionsOf = async (entryId: number): Promise<Record<string, BodyRegionFeeling>> => {
-    const rows = await driver.query<{ region: string; dysphoria: number | null; euphoria: number | null }>(
-      'SELECT region, dysphoria, euphoria FROM entry_body_region WHERE entry_id = ?',
+  const bodyRegionsOf = async (entryId: number): Promise<Record<string, number>> => {
+    const rows = await driver.query<{ region: string; value: number }>(
+      'SELECT region, value FROM entry_body_region WHERE entry_id = ?',
       [entryId]
     );
-    return Object.fromEntries(rows.map((r) => [r.region, { dysphoria: r.dysphoria, euphoria: r.euphoria }]));
+    return Object.fromEntries(rows.map((r) => [r.region, r.value]));
   };
 
   const photoCountOf = async (entryId: number): Promise<number> => {
@@ -515,7 +519,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     const photos = new Map<number, Photo[]>();
     const recordings = new Map<number, VoiceRecording[]>();
     const videos = new Map<number, VideoNote[]>();
-    const bodyRegions = new Map<number, Record<string, BodyRegionFeeling>>();
+    const bodyRegions = new Map<number, Record<string, number>>();
 
     for (let from = 0; from < rows.length; from += ID_CHUNK) {
       const ids = rows.slice(from, from + ID_CHUNK).map((row) => row.id);
@@ -550,18 +554,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       for (const [entryId, forEntry] of await recordingsByEntry(driver, ids)) recordings.set(entryId, forEntry);
       for (const [entryId, forEntry] of await videosByEntry(driver, ids)) videos.set(entryId, forEntry);
 
-      const bodyRegionRows = await driver.query<{
-        entry_id: number;
-        region: string;
-        dysphoria: number | null;
-        euphoria: number | null;
-      }>(
-        `SELECT entry_id, region, dysphoria, euphoria FROM entry_body_region WHERE entry_id IN (${placeholders})`,
+      const bodyRegionRows = await driver.query<{ entry_id: number; region: string; value: number }>(
+        `SELECT entry_id, region, value FROM entry_body_region WHERE entry_id IN (${placeholders})`,
         ids
       );
       for (const row of bodyRegionRows) {
         const forEntry = bodyRegions.get(row.entry_id) ?? {};
-        forEntry[row.region] = { dysphoria: row.dysphoria, euphoria: row.euphoria };
+        forEntry[row.region] = row.value;
         bodyRegions.set(row.entry_id, forEntry);
       }
     }
@@ -868,7 +867,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
            ${tagClause}
            OR EXISTS (
              SELECT 1 FROM entry_body_region ebr
-             WHERE ebr.entry_id = e.id AND ebr.dysphoria >= ?
+             WHERE ebr.entry_id = e.id AND ebr.value <= 50 - ? / 2
            )
          )
        ORDER BY e.id DESC
@@ -939,7 +938,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return hydrate(rows);
     },
 
-    async counterevidencePool(tagIds, limit) {
+    async counterevidencePool(tagIds, limit, span) {
       // EXISTS rather than a JOIN: a starred entry carrying several other
       // tags would otherwise arrive once per tag row, since the tag match
       // itself has to live in the WHERE clause (an entry need not carry
@@ -953,24 +952,55 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // check, so any one of an entry's logged regions clearing the floor
       // is enough, the same inclusive floor and the same constant isGoodDay
       // reads.
+      //
+      // Phase 11 ticket 15 makes that arm the weakest of the three rather
+      // than an equal of them. A region is a magnitude somebody can mark on
+      // a day that went badly in every other way, and on the demo journal
+      // one high chest reading was admitting "Tired. Work ran long and I
+      // skipped voice practice again." as evidence the bad day was not the
+      // whole story - which is the one thing this screen must never do. So
+      // a region admits an entry only when nothing else on the entry
+      // contradicts it: no dysphoria tag, and no second region marked below
+      // the midpoint. The other two arms are untouched. Starring is a
+      // person choosing the day themselves, and a good tag is them naming
+      // it, so both still qualify whatever else the entry carries.
       const placeholders = tagIds.map(() => '?').join(', ');
+      const dysphoriaPlaceholders = DYSPHORIA_TAG_KEYS.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL
+           ${span ? 'AND e.epoch_day BETWEEN ? AND ?' : ''}
            AND (
              e.starred = 1
              OR EXISTS (
                SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
                WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
              )
-             OR EXISTS (
-               SELECT 1 FROM entry_body_region ebr
-               WHERE ebr.entry_id = e.id AND ebr.euphoria >= ?
+             OR (
+               EXISTS (
+                 SELECT 1 FROM entry_body_region ebr
+                 WHERE ebr.entry_id = e.id AND ebr.value >= 50 + ? / 2
+               )
+               AND NOT EXISTS (
+                 SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+                 WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${dysphoriaPlaceholders})
+               )
+               AND NOT EXISTS (
+                 SELECT 1 FROM entry_body_region ebr
+                 WHERE ebr.entry_id = e.id AND ebr.value < ?
+               )
              )
            )
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [...tagIds, GOOD_DAY_REGION_EUPHORIA_FLOOR, limit]
+        [
+          ...(span ? [span.from, span.to] : []),
+          ...tagIds,
+          GOOD_DAY_REGION_EUPHORIA_FLOOR,
+          ...DYSPHORIA_TAG_KEYS,
+          BODY_REGION_MIDPOINT,
+          limit
+        ]
       );
       return hydrate(rows);
     },

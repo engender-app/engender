@@ -15,14 +15,13 @@
      be a press-state change on tap - out of this ticket's reach). */
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
-  import { DECOY_NAME } from '$lib/disguise/identity';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
-  import HostedRows from '$lib/components/HostedRows.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -104,12 +103,19 @@
 </script>
 
 <div class="screen">
-  <!-- Hidden on the live build (Alicja, 2026-08-25): a visible "Settings"
-       sitting directly above "Appearance" is the same two-headers-stacked
-       problem DIRECTION.md 3d names for the More hub, even though this
-       screen isn't itself a tab - the title stays in the document for a
-       screen reader and the outline, same as there. -->
-  <ScreenHeader title={m.nav_settings()} titleHidden />
+  <!-- Rule 7's third case, chrome (carpet 25). The title was hidden here
+       from ticket 24 until the field existed: a visible "Settings" sitting
+       on the page directly above "Appearance" was two headers stacked
+       (Alicja, 2026-08-25), which a title on a block of the flag's colour
+       is not - it is the shape every deep screen in the app already draws,
+       and this screen was the one arriving with no top at all.
+
+       Back to Today, since the phone's gear is in Today's foot (ADR-0076),
+       and through smartBack for the rail and for every deep link that
+       reaches here. On the 1024px shell the control is dropped by
+       components.css: from a fifth row at the rail's foot there is nothing
+       for it to point at. -->
+  <ScreenHeader title={m.nav_settings()} back="/" chrome />
 
   <SectionHeading text={m.settings_appearance()} />
   <ListCard>
@@ -222,11 +228,15 @@
   </ListCard>
 
   <SectionHeading text={m.settings_tracking()} />
-  <!-- Tracking is several cards, not one: the navigable rows, tag groups,
-       the four related toggles, and the metric picker each want a
-       different shape (DIRECTION.md 2b), but sitting flush against each
+  <!-- Tracking is several cards, not one: the navigable rows, cycle
+       tracking, the unit picker, tag groups and the metric picker each want
+       a different shape (DIRECTION.md 2b), but sitting flush against each
        other with no heading between them read as one accidental slab
-       rather than four deliberate ones (Alicja, on the live build).
+       rather than several deliberate ones (Alicja, on the live build).
+       The four unprompted-prompt toggles that used to sit here, under no
+       heading of their own, are on /settings/notifications since phase 11
+       ticket 04: all four are the app speaking up without being asked,
+       which is what that screen is about.
        .stack-3 (components.css) already gives a run of siblings a gap
        between each - reused rather than a one-off margin per card. -->
   <div class="stack-3" data-settings-list>
@@ -271,15 +281,24 @@
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
-      <!-- Moved off the More hub by phase 9 carpet ticket 16. Every other row
-           in this card is a decision about how journaling works for you, and
-           a ready-made shape for an entry is one of those - it was on the hub
-           beside logs of things that happened, which is not what it is.
-
-           Joins this card rather than making one of its own, so `card` is
-           off: hiding the templates area takes the row out and leaves the
-           card it sits in alone. -->
-      <HostedRows host="settings" />
+      <!-- Modes and entry templates, beside body regions and affirmations
+           rather than hosted off the hub (redesign ticket 51, ADR-0084):
+           both are reference areas, spent on the entry editor's chips and
+           never read on their own screen for their own sake, which is the
+           same kind of thing this card is already full of. -->
+      <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/settings/entry-templates" />
+      <ListRow key="presentations" icon="palette" title={m.presentations_title()} subtitle={m.hub_sub_presentations()} href="/settings/presentations" />
+      <!-- The words the Look back reading skips (redesign ticket 62,
+           ADR-0084). The third reference area on this card and the one that
+           made the ADR's open question a decision: a skipped word is spent
+           on that reading and never read here for its own sake, so it is
+           managed here and takes no hub row. -->
+      <ListRow key="words" icon="note" title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} href="/settings/words" />
+      <!-- Eras (redesign ticket 16, ADR-0084): spent on seven other screens
+           and created on exactly one, which is this card's own test. The
+           milestone rail is the one place left under Transition that draws
+           one, as a band rather than a row. -->
+      <ListRow key="eras" icon="columns" title={m.eras_title()} subtitle={m.hub_sub_eras()} href="/settings/eras" />
     </ListCard>
 
     <!-- ADR-0043: the manual way into cycle tracking, for someone no
@@ -350,80 +369,6 @@
       </div>
     </ListCard>
 
-    <!-- Two related toggles as one card with a hairline between, rather
-         than two boxes stacked with a margin apart - DIRECTION.md's
-         decision 3: "tighter, not airier", and the shape One rounded card
-         repeated is the thing 2b calls generic; a run of the same-shaped
-         row is not that, it is one surface with several related facts on
-         it. Each stays a plain div rather than a ListRow: the row itself
-         does nothing when tapped, the switch inside it does, and a row
-         that acted too would make the switch a button inside a button. -->
-    <ListCard>
-      <div class="kit-row" data-entry-nudges>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.entry_nudges()}</span>
-          <span class="kit-row-sub">{m.entry_nudges_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.entryNudges}
-            label={m.entry_nudges()}
-            onChange={(v) => {
-              prefs.entryNudges = v;
-            }}
-          />
-        </span>
-      </div>
-      <div class="kit-row" data-guided-prompts>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.guided_prompts()}</span>
-          <span class="kit-row-sub">{m.guided_prompts_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.guidedPromptsEnabled}
-            label={m.guided_prompts()}
-            onChange={(v) => {
-              prefs.guidedPromptsEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-      <div class="kit-row" data-wear-duration-cue-toggle>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.wear_duration_cue_toggle()}</span>
-          <span class="kit-row-sub">{m.wear_duration_cue_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.wearDurationCueEnabled}
-            label={m.wear_duration_cue_toggle()}
-            onChange={(v) => {
-              prefs.wearDurationCueEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-      <div class="kit-row" data-roadmap-milestone-sync>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.roadmap_milestone_sync_title()}</span>
-          <span class="kit-row-sub">{m.roadmap_milestone_sync_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.roadmapMilestoneSyncEnabled}
-            label={m.roadmap_milestone_sync_title()}
-            onChange={(v) => {
-              prefs.roadmapMilestoneSyncEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-      <!-- Wrapped's and on-this-day's toggles were here too until ticket 51
-           moved them, with their notification sub-toggles and the permission
-           notice, behind the Live tiles and notices row above. -->
-    </ListCard>
-
     <ListCard>
       <ListRow
         key="metric"
@@ -441,6 +386,16 @@
   <SectionHeading text={m.settings_privacy()} />
   <ListCard>
     <ListRow key="security" icon="shield" title={m.settings_security_row()} subtitle={m.settings_security_sub()} href="/settings/security" />
+    <!-- Beside security rather than under notifications (phase 10 redesign
+         ticket 31): the list is the no-network claim made concrete, which is
+         a privacy question, and setup's step promises this row is here. -->
+    <ListRow
+      key="permissions"
+      icon="key"
+      title={m.settings_permissions_row()}
+      subtitle={m.settings_permissions_sub()}
+      href="/settings/permissions"
+    />
     <ListRow
       key="disguise"
       icon="shield"
@@ -532,7 +487,7 @@
   <Sheet bind:open={disguiseSheet} title={m.disguise_row()}>
     <h3>{m.disguise_row()}</h3>
     <div class="stack-3">
-      <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.disguise_app_title()}</span>
           <span class="kit-row-sub">
@@ -547,25 +502,9 @@
           }}
         />
       </div>
-      <div class="disguise-preview" class:is-on={prefs.disguise}>
-        <span class="disguise-icon"><Icon name="book" size={22} /></span>
-        <span>
-          <!-- The disguise's own name, from the module every surface that
-               names the app reads (disguise/identity.ts). An expression
-               rather than a text node for the reason DecoyNotes gives:
-               check-copy counts bare text as untranslated, and this word
-               is the same in every language. -->
-          <strong>{DECOY_NAME}</strong><br />
-          <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
-        </span>
-      </div>
-      <!-- On Android the launcher alias switches at once, so there is nothing
-           to warn about there - but Settings, the app-info screen and the
-           widget picker never get a disguised variant, so that gap is named
-           instead. On web the manifest is the browser's to refresh, and a
-           promise the app cannot keep is worse than none. -->
-      <p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : m.disguise_installed_note()}</p>
-      <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
+      <!-- The same block setup's last question draws (ticket 32). -->
+      <DisguisePreview on={prefs.disguise} />
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.lock_on_leave_title()}</span>
           <span class="kit-row-sub">
@@ -580,7 +519,7 @@
           }}
         />
       </div>
-      <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.quick_exit_title()}</span>
           <span class="kit-row-sub">

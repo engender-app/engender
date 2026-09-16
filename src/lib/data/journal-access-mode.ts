@@ -13,32 +13,38 @@ import type { JournalSecretSource } from '../crypto/keystore.ts';
    the web's WebAuthn PRF mode only (ticket 55, data/journal-biometric.ts).
    It is offered on a device that turns out to have it and nowhere else, so
    nothing may assume a build that compiles this arm can reach it. */
-export type JournalAccessMode = 'passphrase' | 'pin' | 'biometric' | 'device-bound' | null;
+export type JournalAccessMode = 'passphrase' | 'pin' | 'biometric' | 'device-bound' | 'unlocked' | null;
 
 /** Whether this mode has a secret to ask for again mid-session. Device-bound
     on Android does: the Keystore prompt is one. Device-bound on the web does
     not - there is nothing to ask - which is the one combination where
     lock-on-leave can only blank the screen, and the settings copy says so.
+    Unlocked mode on Android also has no secret.
     Biometric mode does: the prompt is the secret, the same way Android's
     Keystore one is. */
 export function accessModeHasSecret(mode: JournalAccessMode, android: boolean): boolean {
   if (mode === 'passphrase' || mode === 'pin' || mode === 'biometric') return true;
-  return mode === 'device-bound' && android;
+  if (mode === 'device-bound' && android) return true;
+  return false;
 }
 
 export function chooseJournalAccessMode({
   keystoreSecretSource,
-  deviceBoundKeystoreExists
+  deviceBoundKeystoreExists,
+  nativeDeviceKeyAuthRequired = true
 }: {
   keystoreSecretSource: JournalSecretSource | null;
   deviceBoundKeystoreExists: boolean;
+  nativeDeviceKeyAuthRequired?: boolean;
 }): JournalAccessMode {
   /* A secret keystore wins over leftover device-bound material, the rule
      passphrase mode has always had: changing mode writes the new keystore
      before clearing the old key, so a crash in between must not downgrade
      the journal to the weaker of the two. */
   if (keystoreSecretSource !== null) return keystoreSecretSource;
-  if (deviceBoundKeystoreExists) return 'device-bound';
+  if (deviceBoundKeystoreExists) {
+    return nativeDeviceKeyAuthRequired ? 'device-bound' : 'unlocked';
+  }
   return null;
 }
 
@@ -68,19 +74,28 @@ export function describeWebBootPlan({
     : 'needs-unlock';
 }
 
-type AndroidBootPlan = 'needs-setup' | 'needs-unlock' | 'needs-authentication' | 'plaintext-error';
+type AndroidBootPlan =
+  | 'needs-setup'
+  | 'needs-unlock'
+  | 'needs-authentication'
+  | 'auto-unlock'
+  | 'plaintext-error';
 
 export function describeAndroidBootPlan({
   keystoreSecretSource,
   nativeDeviceKeyExists,
+  nativeDeviceKeyAuthRequired = true,
   plaintextJournalPresent
 }: {
   keystoreSecretSource: JournalSecretSource | null;
   nativeDeviceKeyExists: boolean;
+  nativeDeviceKeyAuthRequired?: boolean;
   plaintextJournalPresent: boolean;
 }): AndroidBootPlan {
   if (keystoreSecretSource !== null) return 'needs-unlock';
-  if (nativeDeviceKeyExists) return 'needs-authentication';
+  if (nativeDeviceKeyExists) {
+    return nativeDeviceKeyAuthRequired ? 'needs-authentication' : 'auto-unlock';
+  }
   if (plaintextJournalPresent) return 'plaintext-error';
   return 'needs-setup';
 }

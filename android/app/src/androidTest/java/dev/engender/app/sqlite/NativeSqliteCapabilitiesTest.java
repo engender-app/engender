@@ -169,6 +169,20 @@ public class NativeSqliteCapabilitiesTest {
         }
     }
 
+    @Test
+    public void busyTimeoutIsConfiguredOnConnectionOpen() throws Exception {
+        SqliteConnection conn = new SqliteConnection();
+        try {
+            conn.open(context(), "busy_timeout_test.db", "");
+            org.json.JSONArray rows = conn.query("PRAGMA busy_timeout", new org.json.JSONArray());
+            assertEquals(1, rows.length());
+            assertEquals(5000L, rows.getJSONObject(0).getLong("timeout"));
+        } finally {
+            conn.close();
+            context().getDatabasePath("busy_timeout_test.db").delete();
+        }
+    }
+
     private SQLiteDatabase open(String hexKey) {
         String password = hexKey == null ? "" : "x'" + hexKey + "'";
         return SQLiteDatabase.openOrCreateDatabase(dbFile, password, null, null, null);

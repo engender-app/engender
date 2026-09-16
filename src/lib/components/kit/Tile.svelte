@@ -7,22 +7,27 @@
      the slop audit removed from Home. Here the number sits under the title
      it belongs to and a tile with nothing to report is a title and a note.
 
-     Under the number is the flag itself, as a bar the width of the number:
-     the real stripes at their real hex values, in stripe order and in the
-     flag's own proportions, nudged for nothing. It is the one place in the
-     kit where the flag is shown as itself rather than used as a screen's
-     colour, and it is drawn from --flag-fill, which the grid above sets
-     from $lib/theme/roles.
+     The tile is a block of its area's stripe (phase 10 rule 3): the exact
+     hex, with the title and the value written on it, and the note in a foot
+     of page colour along the bottom edge, because small text is what no
+     band can carry. A grid marked `data-tight` - the two look-back tiles,
+     Safe space's two stats - has no foot and wears the flag itself instead,
+     a bar of the real stripes at their real hex values in stripe order and
+     the flag's own proportions, nudged for nothing. That bar is the one
+     place in the kit where the flag is shown as itself rather than used as
+     a screen's colour, and it is drawn from --flag-fill, which the grid
+     above sets from $lib/theme/roles.
 
      `.press` is tier 1, from $lib/motion/press.css: the whole tile answers
      a press by scaling, which a full-width list row cannot do without
      moving the card around it.
 
-     Two weights. A card is the two-up default: title, value under it at
-     display size, note under that. A row takes the whole width and reads
-     along one line instead - title and value together, note beneath - so a
-     screen ordering its tiles by urgency can draw the difference rather
-     than only sorting by it.
+     Two weights. A card is the two-up default: title at the top of the
+     block, value at display size on its bottom edge, foot under that. A row
+     takes the whole width and is half the height, so its title and value
+     stack tight against whatever control it carries - so a screen ordering
+     its tiles by urgency can draw the difference rather than only sorting
+     by it.
 
      Anything else the caller puts on it lands on the anchor. That is how a
      screen stamps its own walkthrough handle without the kit learning what
@@ -31,9 +36,11 @@
      walkthrough has been gripping since phase 4 (ADR-0029). A tile whose
      only name were its slot would have cost that suite a rename for a
      capability that never went anywhere. */
+  import { untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { collapse } from '$lib/motion/reveal';
+  import { asCount, countUp } from '$lib/motion/countUp';
 
   export type TileAction = {
     icon?: string;
@@ -69,9 +76,10 @@
     href: string;
     key?: string;
     /** How much of the screen the tile is worth. A card is the two-up
-        default. A row takes the grid's whole width, puts its value beside
-        its title rather than under it and drops the flag bar, which is what
-        a thing bound to today gets on Home (phase 8 UX ticket 01) - the
+        default. A row takes the grid's whole width and is shorter, stacking
+        its title and value tight rather than spending a card's height on
+        them, which is what a thing bound to today gets on Home (phase 8 UX
+        ticket 01) - the
         weight is the tile's own layout, so it belongs here rather than as
         an override reaching in from a screen. */
     weight?: 'card' | 'row';
@@ -112,13 +120,39 @@
      The entrance's counterpart is inside `collapse` - a tile that appears
      while the screen is still arriving is simply there. */
   let panel = $derived({ skip: navigating.to !== null });
+
+  /* The value on the block counts up where it is a count (phase 10 rule 10,
+     redesign ticket 25): from nothing on arrival, from the last number on a
+     change, over --dur-slow so it lands on the frame the block's own clip
+     does (kit.css, kit-block-in). A name, a duration or a date is not a
+     count and is written straight; `asCount` is what decides, so a tile
+     never guesses from its own key. The runner reads the token layer and
+     substitutes the final number under reduced motion, and the effect's
+     cleanup cancels a travel the next change or an unmount interrupts. */
+  /* Seeded synchronously so no frame draws an empty value: a count starts
+     at "0" in the frame the tile mounts, everything else at itself. The
+     effect below takes over from there; untrack, because this is the one
+     read of the prop that is meant to capture the initial value only. */
+  let shown = $state<string | undefined>(untrack(() => (asCount(value) === null ? value : '0')));
+  let landed: number | null = null;
+  $effect(() => {
+    const target = asCount(value);
+    if (target === null) {
+      shown = value;
+      landed = null;
+      return;
+    }
+    const from = landed ?? 0;
+    landed = target;
+    return countUp(from, target, (n) => (shown = String(n)));
+  });
 </script>
 
 {#if action}
   <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
-      {#if value}<span class="kit-tile-value">{value}</span>{/if}
+      {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
     <!-- Its own row rather than inside .kit-tile-main (ticket 99 item 9): the
          note used to make .kit-tile-main a two-line block, which is-split's
@@ -126,7 +160,7 @@
          actually reads on the first of those two lines, sat visibly above
          the action button's true centre. Out here, the title/value line and
          the action button share one row and centre against each other. -->
-    {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     {#if action.href}
       <a
         class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
@@ -170,9 +204,16 @@
   <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse|global={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
-      {#if value}<span class="kit-tile-value">{value}</span>{/if}
-      {#if note}<span class="kit-tile-note">{note}</span>{/if}
+      {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
+    <!-- Outside the link, as on the action shape above and for the reason
+         phase 10's rule 3 gives: the note is a foot of page colour along the
+         bottom edge of the block, and a foot spans the block's full width
+         whatever controls the tile carries. Inside the link it was one cell
+         of the tile's grid, so the foot stopped short of both edges and left
+         a sliver of stripe down each side. The whole tile still taps
+         through - the block above the foot is the link. -->
+    {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     <button
       type="button"
       class="kit-tile-dismiss press"
@@ -191,7 +232,7 @@
 {:else}
   <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse|global={panel} {...rest}>
     <span class="kit-tile-title">{title}</span>
-    {#if value}<span class="kit-tile-value">{value}</span>{/if}
-    {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    {#if value}<span class="kit-tile-value">{shown}</span>{/if}
+    {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
   </a>
 {/if}

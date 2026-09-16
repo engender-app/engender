@@ -1,0 +1,129 @@
+/* The agenda's reads (phase 10 redesign ticket 04, ADR-0074): which windows
+   reach which area, that the forward read is `dayAhead` and nothing else,
+   and that a disguised screen asks the journal nothing at all. */
+
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import { readAgenda, type AgendaAreas } from './agendaReads.ts';
+import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
+import { DAY_AHEAD_MARK_KINDS, type DayAheadMark } from './journal/dayAhead.ts';
+
+const TODAY = 20000;
+
+type Window = { fromEpochDay: number; toEpochDay: number };
+
+/** Areas that record what was asked of them. Anything the reader reaches
+    that is not here is a TypeError and a failing test. */
+function recordingAreas(marks: DayAheadMark[] = []) {
+  const asked: string[] = [];
+  const dayAheadCalls: (Window & { todayEpochDay: number })[] = [];
+  const doseWindows: Window[] = [];
+  const areas = {
+    dayAhead: {
+      getDayAhead: async (fromEpochDay: number, toEpochDay: number, todayEpochDay: number) => {
+        asked.push('dayAhead');
+        dayAheadCalls.push({ fromEpochDay, toEpochDay, todayEpochDay });
+        return marks;
+      }
+    },
+    doses: {
+      getComparison: async (window: Window) => {
+        asked.push('doses');
+        doseWindows.push(window);
+        return { reason: 'noEpisode' as const };
+      }
+    }
+  } as unknown as AgendaAreas;
+  return { areas, asked, dayAheadCalls, doseWindows };
+}
+
+test('the forward read is dayAhead, asked for the thirty days from today', async () => {
+  const { areas, asked, dayAheadCalls } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
+
+  const projection = await readAgenda(areas, TODAY, false);
+
+  assert.equal(projection?.shown.length, 1);
+  assert.equal(asked.filter((call) => call === 'dayAhead').length, 1);
+  assert.deepEqual(dayAheadCalls, [
+    { fromEpochDay: TODAY, toEpochDay: TODAY + AGENDA_DAYS - 1, todayEpochDay: TODAY }
+  ]);
+});
+
+test('a kind switched off never reaches the projection, and the cap counts only what is on', async () => {
+  /* Four marks; with appointments switched off three are left, which is
+     exactly the cap, so nothing folds - a switched-off kind must not be
+     what pushes a shown row into the fold (ticket 13 over ADR-0073). */
+  const { areas } = recordingAreas([
+    { kind: 'appointment', epochDay: TODAY + 1 },
+    { kind: 'milestone', epochDay: TODAY + 2 },
+    { kind: 'letterUnlock', epochDay: TODAY + 3 },
+    { kind: 'surgery', epochDay: TODAY + 4 }
+  ]);
+  const projection = await readAgenda(areas, TODAY, false, ['surgery', 'milestone', 'letterUnlock', 'doseSlot']);
+  assert.deepEqual(
+    projection?.shown.map((item) => item.kind),
+    ['milestone', 'letterUnlock', 'surgery']
+  );
+  assert.deepEqual(projection?.folded, []);
+  const none = await readAgenda(areas, TODAY, false, []);
+  assert.equal(none, null);
+});
+
+/* Phase 11 ticket 03. Today draws a dose panel whenever a regimen is
+   running, and that panel now carries the next slot's own day - so a
+   doseSlot row in the band beside it is the same medication stated twice,
+   which is the defect the ticket is named after. The flag the caller passes
+   is not "a panel is drawn" but "the panel accounts for every dose slot the
+   band could draw" (`dosePanelCoversEveryRegimen`, liveTiles.ts): with the
+   tile switched off, snoozed, or standing for one of two running regimens,
+   the band keeps the kind, because otherwise a day some schedule expects
+   would be on the screen nowhere at all. */
+test('the dose kind is withheld while the panel accounts for every dose', async () => {
+  const marks: DayAheadMark[] = [
+    { kind: 'doseSlot', epochDay: TODAY + 6 },
+    { kind: 'appointment', epochDay: TODAY + 12 }
+  ];
+
+  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true);
+  assert.deepEqual(
+    withPanel?.shown.map((item) => item.kind),
+    ['appointment']
+  );
+
+  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, false);
+  assert.deepEqual(
+    withoutPanel?.shown.map((item) => item.kind),
+    ['doseSlot', 'appointment']
+  );
+});
+
+test('a month whose only mark is a dose the panel states is absent, not empty', async () => {
+  const marks: DayAheadMark[] = [{ kind: 'doseSlot', epochDay: TODAY + 6 }];
+  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true), null);
+});
+
+test('the schedule is asked about the week behind, ending yesterday', async () => {
+  const { areas, doseWindows } = recordingAreas();
+
+  await readAgenda(areas, TODAY, false);
+
+  assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_PASSED_DAYS, toEpochDay: TODAY - 1 }]);
+});
+
+test('a disguised screen reads nothing at all', async () => {
+  const { areas, asked } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
+
+  assert.equal(await readAgenda(areas, TODAY, true), null);
+  assert.deepEqual(asked, []);
+});
+
+test('both reads are issued before the first await, so a live query sees both', async () => {
+  // What lets ticket 13 mount this in an unseeded `liveQuery`: dependencies
+  // are discovered from the operations a closure calls, and a read sitting
+  // past an earlier `await` is discovered a re-run late (WAITING_TABLES's
+  // own reason for existing). Both of these are in flight in the same tick.
+  const { areas, asked } = recordingAreas();
+  const pending = readAgenda(areas, TODAY, false);
+  assert.deepEqual(asked, ['dayAhead', 'doses']);
+  await pending;
+});

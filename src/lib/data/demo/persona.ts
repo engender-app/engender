@@ -16,7 +16,6 @@ import type { PreferenceValues } from '../prefs/catalogue';
 import type { LabResultInput } from '../journal/labs';
 import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
-import type { BodyRegionFeeling } from '../types';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
 import type { AppointmentInput } from '../journal/appointments';
@@ -59,6 +58,20 @@ interface PersonaMilestone extends MilestoneInput {
   hasPhoto: boolean;
 }
 
+/** One named stretch of the persona's own timeline (redesign ticket 48).
+    Eras are read by seven screens and made on only one, so a fixture with
+    none left every one of those readings silently blank - including in the
+    audit that found it. Both bounds are dated rather than one left open:
+    an era with an open end would collide with `assertEraFits`'s own
+    invariant against a hand-authored one the walkthrough adds ("all of
+    it", both bounds open) the moment either of them tried to have an open
+    end too. */
+interface PersonaEra {
+  name: string;
+  startEpochDay: number;
+  endEpochDay: number;
+}
+
 /** An appointment plus the entry that debriefs it, for the one appointment
     that carries one (phase 8 features ticket 64). Linked by the
     appointment's own id since ticket 58 (checklists.ts's
@@ -74,6 +87,7 @@ interface Persona {
   presentations: PersonaPresentation[];
   entries: PersonaEntry[];
   milestones: PersonaMilestone[];
+  eras: PersonaEra[];
   reminders: ReminderInput[];
   appointments: PersonaAppointment[];
   documents: DocumentInput[];
@@ -146,15 +160,17 @@ function buildEntries(today: number): PersonaEntry[] {
   const wobble = (day: number, spread: number) => ((day * 37) % (spread * 2 + 1)) - spread;
   const regionArc = (day: number) =>
     Math.max(0, Math.min(1, (day - (today - REGION_ARC_DAYS)) / REGION_ARC_DAYS));
-  const bodyRegionsOn = (day: number): Record<string, BodyRegionFeeling> => {
+  const bodyRegionsOn = (day: number): Record<string, number> => {
     const progress = regionArc(day);
-    const logged: Record<string, BodyRegionFeeling> = {};
+    const logged: Record<string, number> = {};
     for (const [region, offset] of Object.entries(REGION_OFFSETS)) {
       if ((day + offset) % 3 === 0) continue;
-      logged[region] = {
-        dysphoria: clampIntensity(86 - progress * 50 + wobble(day + offset, 9)),
-        euphoria: clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9))
-      };
+      const dysphoria = clampIntensity(86 - progress * 50 + wobble(day + offset, 9));
+      const euphoria = clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9));
+      // One slider position per region now (ticket 39, ADR-0081): whichever
+      // intensity is larger sets the side, the same rule the v79 migration
+      // applies to an old both-axes row.
+      logged[region] = Math.round(dysphoria >= euphoria ? 50 - dysphoria / 2 : 50 + euphoria / 2);
     }
     return logged;
   };
@@ -300,6 +316,28 @@ export function persona(today: number = todayEpochDay()): Persona {
       { name: 'First time presenting publicly', epochDay: today - 512, templateKey: 'first_public', hasPhoto: true },
       { name: 'Name-change hearing', epochDay: today + 16, templateKey: 'name_change', hasPhoto: false },
       { name: 'Voice workshop weekend', epochDay: today + 42, templateKey: null, hasPhoto: false },
+    ],
+    /* Derived from `today` alone, the same rule the milestones above and
+       the presentation and body-region draws earlier in this file follow:
+       nothing here calls `r()`, so adding it moves no existing entry's mood,
+       note or tag. The bounds are the same two days two of the milestones
+       above already mark - coming out, then HRT - so the band on the rail
+       and the marks on it agree about where one chapter ended. */
+    /* Three eras, and two of them cover entries on purpose (redesign
+       ticket 62). "Before HRT" alone was the fixture ticket 48 added, and
+       it sits where the persona's own arc says it belongs - before the
+       first lab draw at today-700 - which is also before the first entry,
+       so every reading that partitions the journal by era drew nothing on
+       it. That was invisible while the era screens only listed eras; the
+       words reading weighs one era's words against the journal's, so an
+       era with no notes in it is the whole of what it can show. The other
+       two are dated over the two stretches the generator actually writes:
+       the previous calendar year's sparse days, and the recent run. Both
+       bounds dated on all three, for the reason `PersonaEra` gives. */
+    eras: [
+      { name: 'Before HRT', startEpochDay: today - 940, endEpochDay: today - 745 },
+      { name: 'First year on HRT', startEpochDay: today - 622, endEpochDay: today - 259 },
+      { name: 'Full time', startEpochDay: today - 150, endEpochDay: today }
     ],
     reminders: [
       { title: 'Estradiol patch', type: 'med', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },

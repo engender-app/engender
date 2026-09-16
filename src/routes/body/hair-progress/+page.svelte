@@ -20,6 +20,8 @@
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { HairStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
+  import type { ComparePair } from '$lib/data/photos/compare-state';
+  import { openingPair, toComparePair } from '$lib/data/photos/compare-state';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -30,6 +32,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import PhotoSection from '$lib/components/kit/PhotoSection.svelte';
+  import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
@@ -171,6 +174,20 @@
   function dismissProtocol() {
     prefs.hairPhotoProtocolDismissed = true;
   }
+
+  /* Which two photographs the wipe is comparing, held as ids rather than as
+     positions: the list under it is where photos are deleted, and a pair
+     held by position would quietly re-aim itself at two other photographs
+     when one earlier in the list goes. A pair whose photographs are gone
+     falls back to the opening one, which is the oldest and the newest -
+     the widest comparison the list holds, and the reading an area owes
+     when it opens (DIRECTION.md rule 16). */
+  let comparing = $state<string[]>([]);
+  let wipePair = $derived(toComparePair(comparing, photos) ?? openingPair(photos.length));
+
+  function setWipePair(next: ComparePair) {
+    comparing = [photos[next.left].id, photos[next.right].id];
+  }
 </script>
 
 <div class="screen">
@@ -266,6 +283,23 @@
           title={m.hair_photo_protocol_title()}
           text={m.hair_photo_protocol_body()}
           dismiss={{ label: m.hair_photo_protocol_dismiss_aria(), onclick: dismissProtocol }}
+        />
+      </div>
+    {/if}
+
+    {#if wipePair}
+      <!-- The reading before the records: what changed between two of these
+           photographs, then the list of all of them (DIRECTION.md rule 16).
+           `disclose` because the pair only exists once the query answers,
+           and a frame this size arriving in one frame is a yank. -->
+      <div class="disclosed" transition:disclose>
+        <PhotoWipe
+          {photos}
+          pair={wipePair}
+          onPair={setWipePair}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
+          date={(photo) => dayLabel(photo.epochDay)}
+          note={(photo) => sinceStart(photo.epochDay)}
         />
       </div>
     {/if}

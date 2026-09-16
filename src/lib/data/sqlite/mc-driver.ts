@@ -18,11 +18,15 @@
    Transactions are manual BEGIN/COMMIT/ROLLBACK for the same reason as in
    sqlocal-driver.ts: the migration runner's callback calls back into the
    driver's own exec, and the worker serializes every statement, so the
-   composition holds. */
+   composition holds. What the worker's ordering does not give is one
+   transaction at a time - a transaction spans several messages with the
+   caller's own awaits between them - so that comes from
+   oneTransactionAtATime() (ticket 134). */
 
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './sqlocal-driver.ts';
+import { oneTransactionAtATime } from './transactor.ts';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -130,17 +134,11 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
       await post('exec', { sql: `PRAGMA user_version = ${version}` });
     },
 
-    async transaction<T>(fn: () => T | Promise<T>): Promise<T> {
-      await post('exec', { sql: 'BEGIN' });
-      try {
-        const result = await fn();
-        await post('exec', { sql: 'COMMIT' });
-        return result;
-      } catch (err) {
-        await post('exec', { sql: 'ROLLBACK' });
-        throw err;
-      }
-    },
+    transaction: oneTransactionAtATime({
+      begin: () => post('exec', { sql: 'BEGIN' }),
+      commit: () => post('exec', { sql: 'COMMIT' }),
+      rollback: () => post('exec', { sql: 'ROLLBACK' })
+    }),
 
     async close() {
       await post('close');

@@ -17,6 +17,10 @@
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import { PALETTES } from '../palettes.mjs';
+  // PROTOTYPE demo only, not shipped: publishes --field the same way
+  // +layout.svelte does, so the swipe prototype's var(--field) resolves
+  // to the real flag hex in this fixture instead of the initial value.
+  import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte.ts';
 
   let palette = $state('trans');
   let theme = $state('dark');
@@ -28,6 +32,7 @@
     html.dataset.theme = theme;
     if (motion === 'reduce') html.dataset.a11yMotion = 'reduce';
     else delete html.dataset.a11yMotion;
+    refreshActiveFlag(document, false);
   });
 
   const TEN = { name: 'Femininity', low: 'Not at all', high: 'Completely', min: 0, max: 10 };
@@ -49,6 +54,15 @@
 
   let note = $state('');
   let mood = $state<number | null>(4);
+
+  // PROTOTYPE demo trigger only, not part of ticket 37.
+  function swipe(e: PointerEvent) {
+    const el = e.currentTarget as HTMLElement;
+    el.classList.remove('is-swiping');
+    void el.offsetWidth;
+    el.classList.add('is-swiping');
+    el.addEventListener('transitionend', () => el.classList.remove('is-swiping'), { once: true });
+  }
 </script>
 
 <div class="gallery-controls">
@@ -142,7 +156,7 @@
   <h2 class="gallery-head">Buttons</h2>
   <div class="card" data-case="buttons">
     <div class="btn-stack">
-      <button class="btn btn-primary"><Icon name="check" size={20} /><span>Save the entry</span></button>
+      <button class="btn btn-primary" onpointerdown={swipe}><Icon name="check" size={20} /><span>Save the entry</span></button>
       <button class="btn btn-soft"><Icon name="camera" size={18} /><span>Retake</span></button>
       <button class="btn btn-ghost"><span>Not now</span></button>
       <button class="btn btn-danger"><span>Delete this entry</span></button>
@@ -347,7 +361,7 @@
     height: 56px;
     border: none;
     border-radius: 50%;
-    background: var(--grad-accent);
+    background: var(--accent);
     color: var(--on-accent);
     display: grid;
     place-items: center;

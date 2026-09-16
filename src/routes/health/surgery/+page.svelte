@@ -9,20 +9,24 @@
      5. Archived Phase (>90 days post-op): Permanent surgical history record. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
-  import type { ChecklistItem, Procedure, ProcedureConsult } from '$lib/data/types';
+  import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
+  import { disclose } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
+  import ProcedureKindPicker from '$lib/components/ProcedureKindPicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -34,6 +38,7 @@
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -86,8 +91,15 @@
     action: m.surgery_compare_action
   };
 
-  let photosQuery = liveList((j) =>
-    selectedId ? j.procedures.getPhotos(selectedId) : Promise.resolve([])
+  /* Every procedure's recovery photos, in one read (ticket 52). The index
+     draws each card's own strip from them, and the open procedure's album
+     is the same answer seen through `liveListIn` rather than a second
+     query - one read of `procedure_photo` per screen, and the strip and
+     the album can never disagree about what is in it. */
+  let allPhotosQuery = liveQuery((j) => j.procedures.photosByProcedure());
+  let photosByProcedure = $derived(allPhotosQuery.value ?? new Map<string, ProcedurePhoto[]>());
+  let photosQuery = liveListIn(allPhotosQuery, (byProcedure) =>
+    selectedId ? (byProcedure.get(selectedId) ?? []) : []
   );
   let photos = $derived(photosQuery.rows);
 
@@ -111,12 +123,17 @@
     return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
   }
 
-  const record = recordEditor<Procedure, { id?: string; name: string; date: string }>({
-    blank: () => ({ name: '', date: '' }),
+  const record = recordEditor<
+    Procedure,
+    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean }
+  >({
+    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false }),
     fromRecord: (procedure) => ({
       id: procedure.id,
       name: procedure.name,
-      date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay)
+      date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay),
+      kind: procedure.kind,
+      dilationOptIn: procedure.dilationOptIn
     }),
     async upsert(draft) {
       const name = draft.name.trim();
@@ -126,7 +143,9 @@
         name,
         // An empty date field clears the date rather than defaulting to today:
         // a procedure without one yet is an ordinary state here.
-        surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null
+        surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null,
+        kind: draft.kind,
+        dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn
       });
       selectedId = id;
       notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
@@ -138,10 +157,16 @@
     findById: (id) => procedures.find((p) => p.id === id)
   });
 
+  // Ticket 18: only once there is a date to hand off - a procedure still
+  // in planning has none yet (Scope: three surfaces, not a fourth for an
+  // empty date).
+  let calendarSheet = $state(false);
+
   let consultSheet = $state(false);
   let consultDate = $state('');
   let notesDraft = $state('');
   let photoSheet = $state(false);
+  let pickingKind = $state(false);
   let photoDate = $state('');
 
   async function storePhoto(photo: NormalizedPhoto): Promise<void> {
@@ -250,7 +275,7 @@
               selected={selectedId === procedure.id}
               {today}
               linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
-              photoCount={selectedId === procedure.id ? photos.length : 0}
+              photos={photosByProcedure.get(procedure.id) ?? []}
               checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
               onclick={() => select(procedure)}
               onedit={() => record.openEditor(procedure)}
@@ -274,7 +299,10 @@
   </ReadGate>
 
   {#if selected && selectedPhase}
-    <div class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
+    <!-- The id is what the card's own `aria-expanded` button points at
+         with `aria-controls` (ticket 52): the log is a sibling of the
+         whole list rather than a child of the card that opens it. -->
+    <div id="procedure-log-{selected.id}" class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
       {#snippet checklistBlock(title: string, readonly = false)}
         <SectionHeading text={title} />
         {#if checklistItems.length}
@@ -593,16 +621,12 @@
        Health row, which put a dilation log in front of everyone who opened
        More whatever their surgery was or was not.
 
-       The gate is wrong and is meant to be. Ticket 16 asked for the row
-       "only for vaginal reconstruction surgery" and nothing in the record can
-       answer that: a Procedure is a free-text name, a date, its consults and
-       its notes (CONTEXT.md, Surgery - "the app ships no list of procedures
-       and never matches two spellings of one"). So this is the loosest honest
-       gate available, which is that the person has a surgery journey at all,
-       and phase 9 carpet ticket 17 replaces it with a kind on the procedure.
-       Matching the typed name against a word list would be a worse answer
-       wearing the right one's clothes, in two languages. -->
-  {#if procedures.length > 0}
+       Ticket 16 shipped the loosest honest gate available at the time - any
+       procedure at all - and recorded that it was wrong on purpose. Ticket
+       17 replaces it with the real one: a vaginoplasty, or a custom
+       procedure whose own dilation toggle is on. Vulvoplasty is deliberately
+       not in this OR - there is no canal to keep (ticket 17's own list). -->
+  {#if procedures.some((p) => p.kind === 'vaginoplasty' || (p.kind === 'custom' && p.dilationOptIn))}
     <HostedRows host="surgery" card />
   {/if}
 
@@ -638,8 +662,62 @@
           <DatePicker name="surgery-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
+      <Field label={m.surgery_kind_label()} legend>
+        {#snippet children()}
+          <ListCard>
+            <ListRow
+              key="procedure-kind"
+              data-procedure-kind
+              icon="tag"
+              title={procedureKindName(editor.kind)}
+              static
+              action={{
+                icon: 'pencil',
+                label: m.surgery_kind_change(),
+                onclick: () => (pickingKind = true),
+                attrs: { 'data-pick-procedure-kind': 'true' }
+              }}
+            />
+          </ListCard>
+        {/snippet}
+      </Field>
+      {#if editor.kind === 'custom'}
+        <div class="disclosed" transition:disclose>
+          <Field label={m.surgery_kind_dilation_toggle_label()} legend spread>
+            {#snippet children()}
+              <Switch
+                checked={editor.dilationOptIn}
+                label={m.surgery_kind_dilation_toggle_label()}
+                onChange={(v) => (editor.dilationOptIn = v)}
+              />
+            {/snippet}
+          </Field>
+        </div>
+      {/if}
+      <ProcedureKindPicker
+        open={pickingKind}
+        current={editor.kind}
+        onPick={(kind) => (editor.kind = kind)}
+        onClose={() => (pickingKind = false)}
+      />
+    {/snippet}
+    {#snippet extraActions(editor)}
+      {#if editor.date}
+        <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarSheet = true)}>
+          <span>{m.calendar_handoff_button()}</span>
+        </button>
+      {/if}
     {/snippet}
   </RecordSheet>
+
+  {#if record.editor?.date}
+    <CalendarHandoffSheet
+      open={calendarSheet}
+      kind="surgery"
+      epochDay={epochDayFromDateInputValue(record.editor.date) ?? today}
+      onClose={() => (calendarSheet = false)}
+    />
+  {/if}
 
   <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
@@ -727,8 +805,8 @@
   }
 
   .sj-box {
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
+    border: 2px solid var(--outline);
+    border-radius: var(--r-block);
     width: 28px;
     height: 28px;
     display: flex;

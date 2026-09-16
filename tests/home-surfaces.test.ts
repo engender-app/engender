@@ -61,18 +61,27 @@ describe('what Home is built from', () => {
     expect(home).not.toContain('readFlagRoles(');
   });
 
-  it('gives the week strip the one role that is always a colour', () => {
+  it('hands each area its own named stripe, and the log strip the one that is always a colour', () => {
     /* Roles run colours-before-shades, so index 0 is the only one guaranteed
-       chromatic across all 8 palettes, and the strip is the one area here
-       where the stripe is a value rather than a decoration. On trans, whose
-       flag yields three roles for four areas, reading order handed the strip
-       the white band. */
-    expect(HOME_AREA_ROLE.week).toBe(0);
-    /* The rest is a grep because it is about wiring: that the strip is
-       handed that area's role rather than another's. */
-    const strip = markup.match(/<WeekStrip[^>]*>/s)?.[0];
-    expect(strip).toBeDefined();
-    expect(strip).toContain('AREA_ROLE.week');
+       chromatic across all 8 palettes, and the mood row is drawn in the
+       stripe it lands on - trans's white band on a white page is not a
+       control (redesign ticket 13). The rest is wiring: each area is handed
+       its own entry rather than a number. */
+    expect(HOME_AREA_ROLE.log).toBe(0);
+    const log = markup.match(/<div data-home-log[^>]*>/s)?.[0];
+    expect(log).toBeDefined();
+    expect(log).toContain('AREA_ROLE.log');
+    // A day block is a block, so the agenda resolves through the chromatic
+    // roles like a tile (ticket 24): on trans its slot is the white band.
+    expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)');
+    /* And so is a row's icon square, which is why the pinned block resolves
+       the same way since redesign ticket 14: on agender the stripe its index
+       landed on was the near-white band, so four icon blocks on the light
+       theme were white squares on a white page with a hairline round them -
+       the exact defect rule 3's revision named for tiles. */
+    expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)');
+    expect(markup).not.toContain('HOME_AREA_ROLE.week');
+    expect(markup).not.toContain('HOME_AREA_ROLE.days');
   });
 
   it('publishes no flag at all under disguise', () => {
@@ -97,7 +106,12 @@ describe('what Home is built from', () => {
 });
 
 describe('what spec 08 took off Home', () => {
-  it('draws no tally buttons, which quick add carries', () => {
+  it('draws the tally nowhere on Home, and quick add carries it', () => {
+    /* Spec 08 took the two tally buttons off Home; phase 10 put them back as
+       two of the log strip's write shapes; phase 11 ticket 03 took them off
+       again, because the strip's four squares were a strict subset of the
+       fan sitting forty pixels below them. The fan keeps its own pair, and
+       it is the only place on this screen a tally is offered now. */
     expect(markup).not.toContain('tally_misgendered');
     expect(markup).not.toContain('tally_correctly_gendered');
     expect(read('src/lib/components/QuickAdd.svelte')).toContain('tally-misgendered');
@@ -184,7 +198,9 @@ describe('what spec 08 took off Home', () => {
     expect(home).not.toContain("from 'svelte/transition'");
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
     const rules = markup.match(/transition:collapse=\{panel\}/g) ?? [];
-    expect(rules.length, 'the screen animates its own blocks and nothing else').toBe(3);
+    // The today tier, the agenda, the waiting tiles, the pinned rows, the
+    // edit mode that replaces them (redesign ticket 14) and getting started.
+    expect(rules.length, 'the screen animates its own blocks and nothing else').toBe(6);
     expect(home).toContain('let panel = $derived({ skip: navigating.to !== null })');
   });
 
@@ -246,17 +262,138 @@ describe('what spec 08 took off Home', () => {
     expect(markup).not.toMatch(/data-getting-started[\s\S]{0,400}dismiss/);
   });
 
-  it('makes day one wait for the first entry, on a count rather than on a guess', () => {
-    /* The week strip's seven grey cells, the milestones empty row and the
-       zero-height look-back grid were three of the four unfinished things a
-       first-run Home used to show. `hasEntries` is null until the count
-       answers, so not-yet-known never paints as none. */
-    expect(home).toMatch(/hasEntries = \$derived\(entryCount == null \? null : entryCount > 0\)/);
-    expect(markup).toMatch(/\{#if hasEntries\}\s*<TileGrid[\s\S]*?HOME_AREA_ROLE\.lookBack/);
-    expect(markup).toMatch(/\{#if hasEntries \|\| upcoming\.length\}/);
-    expect(markup).toMatch(/\{#if hasEntries\}\s*<SectionHeading text=\{m\.recent_days\(\)\}/);
-    // The one thing day one keeps besides the header and the chips.
-    expect(markup).toContain('key="no-entries"');
+  it('renders the day-one shape with no empty card, no placeholder grid and no skeleton', () => {
+    /* Redesign ticket 13: a brand-new journal meets the field, the log
+       strip, the default pinned set and getting started. Everything else on
+       the screen is gated on data it does not have - the agenda on the
+       projection being non-null (absent, never empty: ADR-0074) and the
+       tiles on a kind qualifying - so nothing here needs an entry count to
+       decide what to hide, and nothing draws a skeleton while it waits.
+
+       The pinned block is the one thing that is always drawn, since redesign
+       ticket 14: its last row is the way into the edit mode, and a block
+       that disappeared once somebody unpinned everything would take the way
+       back with it. What it says changes instead - the edit row asks for the
+       first pin where there is nothing to arrange. */
+    expect(markup).toMatch(/\{#if agenda\}/);
+    expect(markup).toMatch(/data-edit-today/);
+    expect(markup).toMatch(/pinned\.length > 0 \? m\.home_pinned_edit\(\) : m\.home_pinned_edit_empty\(\)/);
+    expect(home).not.toContain('hasEntries');
+    expect(markup).not.toContain('<ReadGate');
+    expect(markup).not.toContain('key="no-entries"');
+    /* The look-back grid itself left for the Look back door with redesign
+       ticket 11 (tests/stats-surfaces.test.ts holds its two gates there). */
+    expect(markup).not.toContain('HOME_AREA_ROLE.lookBack');
+  });
+
+  it('leads with what is running and what is coming, and asks how you feel after', () => {
+    /* The order the ticket exists for: the today tier, the agenda, then the
+       log strip with the mood pick in it - never the mood pick first.
+
+       The three notices moved below the strip in phase 11 ticket 03. They
+       used to sit between the agenda and the strip, which put them under
+       "Coming up" to the eye: rule 1 makes a heading name everything down
+       to the next rule, so a person read their month as a dose and a nag
+       about backups. */
+    const at = (needle: string) => {
+      const i = markup.indexOf(needle);
+      expect(i, needle).toBeGreaterThan(-1);
+      return i;
+    };
+    const today = at('@render tileRow(todayTiles');
+    const agenda = at('data-home-agenda');
+    const backup = at('data-backup-notice');
+    const stock = at('data-stock-notice');
+    const debrief = at('data-debrief-offer');
+    const log = at('data-home-log');
+    const moods = at('<MoodChips');
+    const waiting = at('class="home-tiles"');
+    const pinned = at('data-home-pinned');
+    const start = at('data-getting-started');
+    expect(today).toBeLessThan(agenda);
+    expect(agenda).toBeLessThan(log);
+    expect(log).toBeLessThan(moods);
+    expect(moods).toBeLessThan(backup);
+    expect(backup).toBeLessThan(stock);
+    expect(stock).toBeLessThan(debrief);
+    expect(debrief).toBeLessThan(waiting);
+    expect(waiting).toBeLessThan(pinned);
+    expect(pinned).toBeLessThan(start);
+    // Nothing draws between "Coming up"'s heading and the strip's but agenda
+    // rows: the notices are below the faces now, under no heading of their own.
+    const band = markup.slice(agenda, log);
+    for (const stray of ['data-backup-notice', 'data-stock-notice', 'data-debrief-offer'])
+      expect(band, stray).not.toContain(stray);
+    // And the mood row is what the log strip holds, on its own.
+    expect(markup).toMatch(/<div data-home-log[\s\S]*?<MoodChips/);
+  });
+
+  it('draws the agenda from the one projection and adds no mark, route or word of its own', () => {
+    /* ADR-0074: the read is `readAgenda`, the switches sit above it
+       (ticket 05), the fold comes back from the projection, and a mark's
+       icon and title are the day view's. Disguise is answered inside the
+       read, before either fetch runs. */
+    expect(home).toContain("from '$lib/data/agendaReads'");
+    expect(home).toMatch(
+      /readAgenda\(\s*\{ dayAhead: j\.dayAhead, doses: j\.doses \},\s*today,\s*prefs\.disguise,\s*shownAgendaKinds\(prefs\),\s*dosePanelCoversEveryDose\s*\)/
+    );
+    expect(home).toContain('dayAheadMarkLabel(item.kind)');
+    expect(home).toContain('passedSlotSentence(');
+    expect(home).not.toContain('DAY_AHEAD_ROUTES');
+    expect(home).not.toContain('getDayAhead(');
+    expect(home).not.toContain('.sort(');
+    const fold = markup.match(/<button[^>]*data-home-agenda-fold[\s\S]*?<\/button>/)?.[0];
+    expect(fold, 'the agenda fold is one control').toBeDefined();
+    expect(fold).toContain('aria-expanded={agendaExpanded}');
+    expect(fold).not.toContain('href');
+  });
+
+  it('draws the pinned rows resolved, in the order they were put, and never reorders them', () => {
+    /* ADR-0073: one pure resolution over the person's pins, the registry and
+       area state, off the same two reads the Transition door makes; the
+       words are the hub's own, so a pinned row and its hub row agree. */
+    expect(home).toContain("from '$lib/data/pinnedRows'");
+    expect(home).toContain('lastWrites: lastWritesQuery.value');
+    expect(home).toContain('states: areaStatesQuery.value');
+    expect(home).toContain('pinnedRows(prefs, reading)');
+    expect(home).toContain('j.lastWrite.getLastWrites(today)');
+    expect(home).toContain('j.areaStates.getAreaStates()');
+    /* The third read, phase 11 all-four-doors ticket 02: a pinned row draws
+       the same line its hub row does, so it asks the same forward question
+       rather than a second one of its own. */
+    expect(home).toContain('forward: forwardQuery.value');
+    expect(home).toContain('readRowForward(j, today)');
+    /* The wear row counts up off the tile grid's own clock rather than a
+       second interval (ADR-0051). */
+    expect(markup).toMatch(/<ListRow[\s\S]*?title=\{hubRowTitle\(row\.spec\.key\)\}[\s\S]*?subtitle=\{hubRowLine\(row\.spec\.key, row\.line, today, liveTiles\.nowMs\)\}[\s\S]*?data-pinned-row=\{row\.spec\.key\}/);
+    expect(home).not.toMatch(/pinned[\s\S]{0,200}\.sort\(/);
+  });
+
+  it('ticket 106: prevents hydration layout shift by rendering fallback rows immediately and disclosing transitions', () => {
+    /* Pinned rows must not fall back to an empty array while queries resolve,
+       which would collapse the card and snap content down 300px on resolution.
+       Rows animate changes with disclose. */
+    expect(home).not.toMatch(/\?\s*pinnedRows\([^)]+\)\s*:\s*\[\]/);
+    expect(home).toContain('fallbackReading(today)');
+    expect(markup).toContain('class="rows-divide" transition:disclose={panel}');
+  });
+
+  it('leaves every write shape to the centre fan, and touches the fan itself not at all', () => {
+    /* Phase 11 ticket 03. The strip drew a dose, both tallies and a wear
+       session as icon squares, and every one of them was a row of the fan
+       forty pixels below it - the strip's own comment said so. So the
+       squares went, the fan is untouched, and the five faces are all the
+       strip has left. */
+    expect(markup).not.toContain('data-home-log-shape');
+    const fan = read('src/lib/components/QuickAdd.svelte');
+    for (const shape of ['dose', 'tally-misgendered', 'tally-correctly_gendered', 'wear'])
+      expect(fan).toContain(`data-choose="${shape}"`);
+    for (const key of ['doses_empty_action', 'tally_misgendered', 'tally_correctly_gendered', 'wear_session_start_action', 'wear_session_stop_action']) {
+      expect(home).not.toContain(`m.${key}()`);
+      expect(fan).toContain(`m.${key}()`);
+    }
+    // And the wear timer is nobody's business here but the tile's own.
+    expect(home).not.toContain("tile.key === 'wear-timer'");
   });
 
   it('gives the live tiles grid its own role', () => {
@@ -264,24 +401,34 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toContain('HOME_AREA_ROLE.liveTiles');
   });
 
-  it('gates the two look-back halves separately', () => {
-    /* The acceptance box: turning wrapped off silences its own half and only
-       its own. Two conditions on two preferences, each unmounting its own
-       component - and therefore its own query - rather than one condition
-       over a merged card. */
-    expect(markup).toMatch(/\{#if prefs\.wrappedEnabled\}\s*<WrappedHomeCard \/>/);
-    expect(markup).toMatch(/\{#if prefs\.onThisDayEnabled\}\s*<OnThisDayHomeCard \/>/);
+  it('carries neither look-back teaser any more (redesign ticket 11)', () => {
+    /* Both offers draw on the Look back door now, each still behind its own
+       preference gate; tests/stats-surfaces.test.ts holds the two gates. */
+    expect(markup).not.toContain('<WrappedHomeCard');
+    expect(markup).not.toContain('<OnThisDayHomeCard');
   });
 
-  it('draws every entry of a shown day, with no render-time cap of its own (ux-carpet ticket 13)', () => {
-    /* A cap that trimmed a busy day's entries left it a bare count and one
-       row - exactly the bare-count regression the ticket was filed over.
-       `entryDayGroups` groups by day and nothing here slices a group down
-       further; the query itself still bounds by day (RECENT_DAYS). */
-    expect(home).toContain('entryDayGroups(recent.rows)');
-    expect(home).toContain('recentDays(RECENT_DAYS)');
-    expect(home).not.toContain('RECENT_ENTRY_CAP');
-    expect(markup).toContain('href="/calendar"');
+  it('draws no entries, no week strip and no milestones list, and each is on its own door (redesign ticket 13)', () => {
+    /* The four departures, proven route by route rather than by absence
+       alone: the week strip and the recent entries on the Journal door, the
+       two teasers on the Look back door (the test above), and the
+       milestones - list and rail both - on the Transition door.
+
+       The rail was a row on the Look back door between ticket 13 and
+       redesign ticket 43, which merged it into the milestones screen. So
+       the route it used to be linked at is gone from both screens, and
+       what carries it is the registered Transition row. */
+    expect(markup).not.toContain('<WeekStrip');
+    expect(markup).not.toContain('<DayCard');
+    expect(markup).not.toContain('<MilestoneCard');
+    expect(home).not.toContain('recentDays(');
+    expect(markup).not.toContain('href="/timeline"');
+    const calendar = read('src/routes/calendar/+page.svelte');
+    expect(calendar).toContain('<WeekStrip');
+    expect(calendar).toContain('recentDays(');
+    expect(read('src/routes/stats/+page.svelte')).not.toContain('href="/timeline"');
+    expect(read('src/routes/transition/milestones/+page.svelte')).toContain('<MilestoneRail');
+    expect(HUB_ROWS.map((row) => row.href)).toContain('/transition/milestones');
   });
 
   it('computes no run of consecutive days, and names none', () => {
@@ -317,6 +464,12 @@ describe('the handles the walkthrough grips', () => {
     'data-home-header',
     'data-home-hero',
     'data-home-hello',
+    'data-home-agenda',
+    'data-agenda-item',
+    'data-home-agenda-fold',
+    'data-home-log',
+    'data-home-pinned',
+    'data-pinned-row',
     'data-backup-notice',
     'data-quick-log-dims',
     'data-qld-input',

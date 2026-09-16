@@ -14,7 +14,6 @@
 
 import { copyBodyRegions } from './bodyMap';
 import type { EntryDraft } from './entryDraft';
-import type { BodyRegionFeeling } from './types';
 import type {
   EntryCycleEventInput,
   EntryDoseLogInput,
@@ -30,7 +29,7 @@ export interface PersistedEntryDraft {
   note: string;
   dims: Record<string, number>;
   tags: string[];
-  bodyRegions: Record<string, BodyRegionFeeling>;
+  bodyRegions: Record<string, number>;
   removedPhotoIds: string[];
   removedRecordingIds: string[];
   removedVideoIds: string[];

@@ -31,20 +31,21 @@ const draft = (bodyRegions: unknown) => ({
   removedVideoIds: []
 });
 
-test('a region carrying both axes, one axis, or neither is accepted', () => {
-  assert.equal(isPersistedEntryDraft(draft({ chest: { dysphoria: 40, euphoria: 65 } })), true);
-  assert.equal(isPersistedEntryDraft(draft({ chest: { dysphoria: null, euphoria: 65 } })), true);
+test('a region anywhere on the scale, including its midpoint, is accepted', () => {
+  assert.equal(isPersistedEntryDraft(draft({ chest: 70 })), true);
+  assert.equal(isPersistedEntryDraft(draft({ chest: 30 })), true);
   // The shape a picked-but-untouched region has while the editor is open.
-  assert.equal(isPersistedEntryDraft(draft({ chest: { dysphoria: null, euphoria: null } })), true);
+  assert.equal(isPersistedEntryDraft(draft({ chest: 50 })), true);
   assert.equal(isPersistedEntryDraft(draft({})), true);
 });
 
-test('a draft saved before a region carried two axes is rejected, not half-read', () => {
-  // The pre-ticket-31 shape stored a bare number per region. Accepting it
-  // would index an axis off a number and send undefined down to the insert.
-  assert.equal(isPersistedEntryDraft(draft({ chest: 70 })), false);
+test('a draft saved before ticket 39 collapsed a region to one number is rejected, not half-read', () => {
+  // The pre-ticket-39 shape stored a {dysphoria, euphoria} pair per region.
+  // Accepting it would send an object down to the INSERT where a number
+  // belongs.
+  assert.equal(isPersistedEntryDraft(draft({ chest: { dysphoria: 40, euphoria: null } })), false);
   assert.equal(isPersistedEntryDraft(draft({ chest: null })), false);
-  assert.equal(isPersistedEntryDraft(draft({ chest: { dysphoria: 'a lot', euphoria: null } })), false);
+  assert.equal(isPersistedEntryDraft(draft({ chest: 'a lot' })), false);
 });
 
 /* Node has no localStorage (ADR: ticket 03's node tier), so the mirror gets
@@ -72,7 +73,7 @@ const persisted = (note: string): PersistedEntryDraft => ({
   note,
   dims: { comfort: 3 },
   tags: ['tag-voice'],
-  bodyRegions: { chest: { dysphoria: 40, euphoria: null } },
+  bodyRegions: { chest: 30 },
   removedPhotoIds: [],
   removedRecordingIds: [],
   removedVideoIds: []

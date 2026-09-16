@@ -2,7 +2,6 @@ package dev.engender.app;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.WindowManager;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -11,6 +10,7 @@ import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
 import dev.engender.app.quickexit.QuickExitPlugin;
 import dev.engender.app.reminders.ReminderScheduler;
+import dev.engender.app.screencapture.ScreenCapturePlugin;
 
 /**
  * The whole Android application. Everything above the driver seam is the same
@@ -29,8 +29,18 @@ public class MainActivity extends BridgeActivity {
         // of the Journal is the leak this guards against, and a flag
         // flipped at lock time is a race against whatever the system
         // snapshots the moment this app backgrounds.
-        // Before super.onCreate, so the window never has a frame without it.
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        // Before super.onCreate, so the window never has a frame without it -
+        // reading SharedPreferences needs only a Context, which this Activity
+        // already is at this point, no bridge or WebView required.
+        //
+        // Gated on prefs.allowScreenCapture (screen-capture-guard/01), mirrored
+        // by ScreenCapturePlugin, rather than on isDebuggable() as it used to
+        // be: that stopgap (ticket 99 item 7 round 2, for a screencap/screen-
+        // record that came back black while capturing a nav glitch report)
+        // handed the same ability to any debug build on any device. The real
+        // fix stays off by default on every build, debug included, until
+        // someone who can already unlock the app turns it on in Settings.
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
         // Before super.onCreate: the bridge is built there, and a plugin
         // registered afterwards is not in the bridge the WebView gets.
         AndroidPluginRegistry.assertRequiredPluginClassesExposeExpectedIds();

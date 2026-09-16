@@ -1,13 +1,13 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_name": "enGender",
-  "nav_home": "Start",
   "nav_calendar": "Kalendarz",
-  "nav_stats": "Statystyki",
   "nav_settings": "Ustawienia",
   "nav_more": "Więcej",
+  "nav_journal": "Dziennik",
+  "nav_lookback": "Przegląd",
+  "nav_transition": "Tranzycja",
   "hello": "Cześć",
-  "how_feeling": "Jak się dziś czujesz?",
   "new_entry": "Nowy wpis",
   "new_entry_when": "Z jakiego dnia jest ten wpis? Jeden dzień może mieć kilka wpisów.",
   "quick_add_title": "Szybki zapis",
@@ -16,7 +16,6 @@
   "add_details": "Dodaj szczegóły",
   "recent_entries": "Ostatnie wpisy",
   "milestones": "Kamienie milowe",
-  "timeline": "Oś czasu",
   "recent_days": "Ostatnie dni",
   "coloured_by": "kolor według",
   "mood": "Nastrój",
@@ -63,6 +62,12 @@
   "video_not_a_video": "To nie jest plik wideo.",
   "video_too_long": "Notatka wideo trwa maksymalnie 30 sekund. Wybierz krótszą albo nagraj ją tutaj.",
   "video_too_large": "To wideo jest za duże, żeby je zapisać, i nie udało się go zmniejszyć.",
+  "mt_play": "Odtwórz",
+  "mt_pause": "Wstrzymaj",
+  "mt_position": "Pozycja",
+  "mt_position_read": "{at} z {of}",
+  "mt_full": "Pełny ekran",
+  "mt_leave_full": "Zamknij pełny ekran",
   "gender_label": "Płeć",
   "gender_hint": "Tak, jak czujesz to teraz. Nie ma złych odpowiedzi.",
   "quick_log_dims_title": "Dodać dzisiejsze skale?",
@@ -86,8 +91,6 @@
   "body_region_track_hair_staging": "Ocena linii włosów",
   "body_region_empty_title": "Brak wpisów dla tego obszaru",
   "body_region_empty_body": "Zapisz wpis w dzienniku, pomiar lub zabieg dla tego miejsca, aby śledzić zmiany w ciele.",
-  "body_region_inspect_button": "Szczegóły obszaru",
-  "body_region_inspect_aria": "Otwórz zestawienie dla obszaru: {region}",
   "body_region_avg_dysphoria": "Śr. dysforia: {value}",
   "body_region_avg_euphoria": "Śr. euforia: {value}",
   "body_region_session_item": "{method} • ból {pain}/5",
@@ -132,13 +135,13 @@
   "dismiss": "Zamknij",
   "empty_home_title": "Twoja historia zaczyna się od jednego wpisu",
   "empty_home_body": "Zapisz, jaki był dzisiejszy dzień. Sam nastrój wystarczy, resztę możesz dodać później.",
-  "home_milestones_empty_title": "Brak kamieni milowych",
-  "home_milestones_empty_body": "Dodaj datę coming outu, początku terapii albo coś innego, co warto zapamiętać.",
   "colour_days_by": "Koloruj dni według",
   "metric_note": "Ten sam wybór koloruje mapę w kalendarzu.",
   "prev_month": "Poprzedni miesiąc",
   "prev_year": "Poprzedni rok",
   "cal_jump_month": "Przejdź do miesiąca",
+  "cal_open_month": "Otwórz cały miesiąc",
+  "cal_close_month": "Zamknij miesiąc",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
   "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy. Dzień z niewielkim oznaczeniem ma coś nadchodzącego; dotknij go, żeby zobaczyć co.",
@@ -265,20 +268,19 @@
   "chart_annotation_regimen_end_reason": "{span}, {reason}",
   "chart_annotations_more": "{names} i jeszcze {count}",
   "chart_annotations_and_more": "i jeszcze {count}",
-  "tag_insights": "Tagi w liczbach",
   "tag_insights_of": "Tagi a {metric}",
+  "stats_tags_moved": "Tagi i to, jak poruszyła się skala",
   "insights_note": "Obserwacje, nie wnioski. Tagi z mniej niż 3 wpisami w zakresie są ukryte.",
-  "insights_empty": "Za mało otagowanych wpisów w tym zakresie.",
-  "correlation_cards_title": "Co pojawia się razem",
   "correlation_cards_empty": "Na razie zbyt mało wpisów, żeby pokazać wzorzec.",
   "correlation_card_dose_day": "dzień z dawką",
   "interval_mood_title": "Nastrój między zastrzykami",
   "interval_mood_explainer": "Każda przerwa między dwoma zastrzykami nałożona na pozostałe, więc dzień 1 to dzień zastrzyku, a ostatni to dzień przed kolejnym. Gdzie w tym cyklu wypadały nastroje, a nie gdzie miałyby wypadać.",
   "interval_mood_empty": "Na razie zbyt mało wpisów, żeby pokazać wzorzec.",
+  "care_interval_all_history": "Czyta cały dziennik, nie tylko to, co widać na osi wyżej.",
+  "care_interval_fold_prefix": "Podziel na odcinki po",
+  "care_interval_fold_unit": "dni",
+  "care_interval_fold_label": "Długość odstępu w dniach",
   "interval_mood_chart_aria": "Nastrój między zastrzykami, punkty: {count}, od dnia {from} do dnia {to}.",
-  "custom_interval_title": "Nastrój według własnego odstępu",
-  "custom_interval_length_label": "Długość odstępu (dni)",
-  "custom_interval_empty": "Na razie zbyt mało wpisów, żeby pokazać wzorzec.",
   "custom_interval_chart_aria": "Nastrój podzielony na odstępy {days}-dniowe, punkty: {count}, od dnia {from} do dnia {to}.",
   "chart_axis_label": "Czytaj według",
   "chart_axis_calendar": "Data",
@@ -296,8 +298,14 @@
   "avg_of": "śr. z {count}",
   "day_spread": "od {low} do {high}",
   "body_map_title": "Mapa ciała",
-  "body_map_sub": "przebieg dysforii i euforii w jednym miejscu na ciele",
+  "body_map_sub": "Przebieg dysforii i euforii w jednym miejscu na ciele.",
   "body_map_mode_filter_all": "Wszystkie",
+  "body_region_reading_aria": "{region}: {axis} {value} na 100",
+  "body_region_reading_mixed_aria": "{region}: {axis} {value} na 100, i zapisy w drugą stronę",
+  "body_region_reading_none_aria": "{region}: nic w tym zakresie",
+  "body_map_elsewhere": "Gdzie indziej",
+  "body_map_reading_heading": "{region}, w tym zakresie",
+  "body_map_inspect_row": "Wszystko zapisane dla tego obszaru",
   "back": "Wstecz",
   "done": "Gotowe",
   "settings_appearance": "Wygląd",
@@ -305,21 +313,42 @@
   "settings_privacy": "Prywatność i dane",
   "hub_group_body": "Ciało",
   "hub_group_health": "Zdrowie",
-  "hub_group_transition": "Tranzycja",
+  "hub_group_transition": "Kroki",
   "hub_group_support": "Wsparcie",
   "hub_group_media": "Media",
   "hub_group_finished": "Co zostało zakończone",
-  "hub_settings_row_sub": "Wygląd, śledzenie, prywatność i dane",
+  "hub_screen_title": "Ciało, zdrowie, kroki, wsparcie i media",
+  "hub_search_placeholder": "Szukaj w tym, co śledzisz",
+  "hub_search_clear": "Wyczyść wyszukiwanie",
   "hub_line_today": "Zapisane dzisiaj",
   "hub_line_last": "Ostatnio zapisane {gap} temu",
   "hub_line_quiet": "{gap} bez zapisu",
+  "hub_line_next_milestone": "{name} za {gap}",
+  "hub_line_next_milestone_today": "{name} dzisiaj",
+  "hub_line_next_letter": "Otwiera się za {gap}",
+  "hub_line_next_letter_several": "Najbliższy otwiera się za {gap}",
+  "hub_line_next_letter_today": "Otwiera się dzisiaj",
+  "hub_line_next_letter_today_several": "Jeden otwiera się dzisiaj",
+  "hub_line_next_appointment": "{kind} za {gap}",
+  "hub_line_next_appointment_today": "{kind} dzisiaj",
+  "hub_line_next_visit": "Wizyta za {gap}",
+  "hub_line_next_visit_today": "Wizyta dzisiaj",
+  "hub_line_next_consult": "Konsultacja za {gap}",
+  "hub_line_next_consult_today": "Konsultacja dzisiaj",
+  "hub_line_next_surgery": "Operacja za {gap}",
+  "hub_line_next_surgery_today": "Operacja dzisiaj",
+  "hub_line_post_op": "Dzień {days} po operacji",
+  "hub_line_running_wear": "{what}, {duration}",
+  "hub_line_running_tryout": "Próbujesz {label}, dzień {day}",
+  "hub_line_care_dose_and_stock": "Następna dawka {when}, koniec zapasu {date}",
+  "hub_line_run_out": "Koniec zapasu {date}",
+  "hub_line_value": "{what}, {gap} temu",
+  "hub_line_value_today": "{what}, dzisiaj",
   "hub_sub_care": "Dawki, badania, krzywa i stan zapasu",
-  "hub_sub_measurements": "Twoje liczby, w twoich jednostkach",
-  "hub_sub_sizes": "Twoje zakupy i to, jak leżały",
+  "hub_sub_measurements": "Twoje liczby i rozmiary, które nosisz",
   "hub_sub_hair_progress": "Opublikowana skala i zdjęcia z tego samego miejsca",
   "hub_sub_hair_removal": "Sesje elektrolizy i lasera",
   "hub_sub_cycle_events": "Dni cyklu na tle historii kuracji",
-  "hub_sub_side_effects": "To, co zauważasz, i jak mocno",
   "hub_sub_surgery": "Konsultacje, termin i gojenie",
   "hub_sub_dilation": "Twój harmonogram i zapisane sesje",
   "hub_sub_milestones": "Dni, które miały znaczenie, z datami",
@@ -327,12 +356,10 @@
   "hub_sub_voice_benchmark": "Przeczytany fragment i liczby z niego",
   "hub_sub_wear": "Czas noszenia, na żywo albo później",
   "hub_sub_effects": "Dzień, w którym pojawiła się każda zmiana",
-  "hub_sub_clinician_summary": "Jedna strona do przekazania",
   "hub_sub_roadmap": "Kroki, które planujesz",
   "hub_sub_letters": "Pisane teraz, do otwarcia w wybranym dniu",
   "hub_sub_presentations": "Sposoby, w jakich się pokazujesz",
   "hub_sub_eras": "Nazwane odcinki czasu",
-  "hub_sub_words": "Słowa, które wracają w notatkach",
   "hub_sub_doubt": "Na dni, kiedy brakuje pewności",
   "hub_sub_entry_templates": "Gotowe szablony wpisu",
   "hub_sub_resources": "Miejsca poza tą aplikacją",
@@ -343,17 +370,31 @@
   "care_rail_empty": "Nie ma jeszcze czego nanieść na linię. Pierwszy znacznik narysuje dawka, wynik badania albo zapisany zapas.",
   "care_regimen_sub": "{dose} {unit}, {interval}",
   "care_regimen_several": "Trwa więcej niż jedna kuracja",
+  "care_regimen_dose_total": "{total} {unit} {route} w ciągu ostatnich {days} dni",
   "care_mark_last_dose": "Ostatnia dawka",
   "care_mark_today": "Dzisiaj",
   "care_mark_next_dose": "Następna dawka",
   "care_mark_lab_draw": "Pobranie",
   "care_mark_run_out": "Koniec zapasu",
+  "care_mark_reorder_by": "Dzień zamówienia",
   "care_mark_aria": "{what}, {when}",
   "care_mark_off_rail_aria": "{what}, {when}, poza zakresem tej linii",
   "care_group_hormones": "Hormony",
-  "care_group_other_regimens": "Inne kuracje",
-  "care_other_last_dose": "Ostatnia dawka {when}",
-  "care_other_next_dose": "Następna dawka {when}",
+  "care_regimen_dose": "{dose} {unit}",
+  "care_regimen_dose_route": "{dose} {unit}, {route}",
+  "care_last_dose": "Ostatnia dawka {when}",
+  "care_next_dose": "Następna dawka {when}",
+  "care_log_dose": "Zapisz dawkę",
+  "care_lane_mark_aria": "{what}, {when}, {drug}",
+  "care_lane_mark_off_rail_aria": "{what}, {when}, {drug}, poza zakresem tej linii",
+  "care_row_labs": "{analyte} {value} {unit}, {when}",
+  "care_curve_rising": "Rośnie",
+  "care_curve_level": "Utrzymuje się",
+  "care_curve_falling": "Opada",
+  "care_row_curve_reading": "{direction}, dzień {day} z {span}",
+  "care_row_summary": "Od {start} do dzisiaj, {sections}",
+  "care_row_stock": "{drug}, {left}",
+  "care_row_stock_none": "Nic jeszcze nie policzone",
   "colour_palette": "Paleta kolorów",
   "theme": "Motyw",
   "theme_system": "Systemowy",
@@ -379,7 +420,11 @@
   "reminders_web_sub": "przypomnienia wymagają aplikacji na Androida",
   "progress_photos": "Zdjęcia postępów",
   "lab_results": "Wyniki badań",
-  "body_measurements": "Pomiary ciała",
+  "measurements_and_sizes": "Pomiary i rozmiary",
+  "measurement_span_start": "Początek",
+  "measurement_span_current": "Teraz",
+  "measurement_span_change": "Zmiana",
+  "size_change_line": "wcześniej {from} ({fromDate}), teraz {to} ({toDate})",
   "settings_measurement_unit_title": "Jednostki pomiarów",
   "settings_measurement_unit_sub": "na jaką jednostkę przeliczane są wykresy pomiarów ciała",
   "size_log": "Rozmiary i dopasowanie",
@@ -455,6 +500,57 @@
         "nPlural=few": "{n} dni",
         "nPlural=many": "{n} dni",
         "nPlural=other": "{n} dni"
+      }
+    }
+  ],
+  "unit_years": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "rok",
+        "nPlural=few": "lata",
+        "nPlural=many": "lat",
+        "nPlural=other": "lat"
+      }
+    }
+  ],
+  "unit_months": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "miesiąc",
+        "nPlural=few": "miesiące",
+        "nPlural=many": "miesięcy",
+        "nPlural=other": "miesięcy"
+      }
+    }
+  ],
+  "unit_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień",
+        "nPlural=few": "dni",
+        "nPlural=many": "dni",
+        "nPlural=other": "dni"
       }
     }
   ],
@@ -578,6 +674,7 @@
   "tpl_entry_proud_moment": "Moment dumy",
   "tpl_entry_appointment_debrief": "Podsumowanie wizyty",
   "entry_templates_title": "Szablony",
+  "entry_templates_manage": "zarządzaj",
   "entry_templates_intro": "Uzupełnij własne, żeby ominąć pustą stronę. Wbudowane też można edytować albo ukryć.",
   "entry_templates_add": "Dodaj szablon",
   "entry_template_new_sheet": "Nowy szablon",
@@ -632,23 +729,73 @@
   "ob_welcome_def": "en·gen·der /ɪnˈdʒendə(r)/ czas.: powołać do istnienia.",
   "ob_welcome_body": "Dziennik nastrojów, poczucia płci, tagów i zdjęć. Zły dzień potrafi sprawić, że wszystko wygląda gorzej, niż jest. Wpisy pamiętają, jak było naprawdę. Wszystko zostaje na tym urządzeniu. Bez konta, bez chmury, bez śledzenia.",
   "ob_start_setup": "Zaczynajmy",
+  "ob_have_backup": "Mam już kopię",
+  "ob_restore_title": "Gdzie jest twoja kopia?",
+  "ob_restore_body": "Dziennik wraca wyłącznie z pliku kopii, który został wcześniej wyeksportowany.",
+  "ob_restore_check": "Sprawdź tę kopię",
+  "ob_restore_new_instead": "Zamiast tego zacznij od zera",
+  "ob_restore_done_title": "Kopia jest gotowa",
+  "ob_restore_done_body": "Dziennik wejdzie na miejsce po dotknięciu przycisku. Na tym urządzeniu nic jeszcze nie zostało zapisane.",
+  "ob_restore_finish": "Przywróć dziennik",
+  "ob_restore_running": "Przywracanie dziennika…",
+  "ob_restore_start_again": "Zacznij od zera",
   "ob_name_title": "Jak masz na imię?",
   "ob_name_body": "Służy tylko do powitania. Nie opuszcza tego urządzenia i możesz to pominąć.",
   "ob_name_placeholder": "Imię",
   "ob_flag_title": "Która flaga?",
-  "ob_flag_body": "Koloruje całą aplikację, a słońce w rogu rysują jej własne pasy. Możesz to zmienić w Ustawieniach, kiedy chcesz.",
+  "ob_flag_body": "Koloruje całą aplikację. Możesz to zmienić w Ustawieniach, kiedy chcesz.",
   "ob_track_title": "Jak chcesz zapisywać płeć?",
   "ob_track_body": "Zaznacz skale, które mają się pojawiać przy zapisie. Możesz to zmienić w ustawieniach, kiedy chcesz.",
+  "ob_areas_title": "Co chcesz mieć na oku?",
+  "ob_areas_body": "Zaznacz, co ma się pojawiać na stronie głównej po otwarciu aplikacji.",
   "ob_lock_title": "Blokować przy wyjściu?",
-  "ob_lock_body": "Aplikacja może zablokować się w chwili, gdy schodzi w tło, więc rzut oka na telefon w kieszeni albo na biurku nic nie pokaże. Powrót wymaga tego, co otwiera dziennik, czyli wyboru z poprzedniego kroku. Można go zmienić w Ustawieniach.",
-  "ob_checkin_title": "Przypomnienie co dzień?",
-  "ob_checkin_body": "Jedno powiadomienie z pytaniem, jak minął dzień, pomijane w dni, w których jest już wpis. Bez niego też jest dobrze, a ten sam przełącznik jest w Ustawieniach.",
+  "ob_lock_body": "Rzut oka na telefon w kieszeni albo na biurku nic wtedy nie pokaże.",
+  "ob_perms_title": "O co aplikacja może poprosić",
+  "ob_perms_body": "Nic z tej listy nie jest potrzebne, żeby zapisać wpis, a wszystko można włączyć później w Ustawieniach.",
+  "ob_disguise_title": "Wyglądać jak coś innego?",
+  "ob_disguise_body": "Poza aplikacją może nosić inną nazwę i inną ikonę. Przełącznik zostaje w Ustawieniach.",
+  "perms_screen_title": "Uprawnienia",
+  "settings_permissions_row": "Uprawnienia",
+  "settings_permissions_sub": "O co aplikacja może poprosić to urządzenie",
+  "perms_group_ask": "Uprawnienia, które może mieć",
+  "perms_group_no_ask": "Bez uprawnień",
+  "perms_no_internet": "Aplikacja nie ma w ogóle uprawnienia do internetu, więc nic, co trzyma, nie wyjdzie z tego urządzenia przez sieć.",
+  "perms_allow": "Zezwól",
+  "perms_allowed": "Zezwolono",
+  "perms_open_settings": "Otwórz ustawienia",
+  "perms_android_only": "Tylko na Androidzie",
+  "perms_browser_blocked": "Blokada przeglądarki",
+  "perms_note_browser_holds": "Zmień to w ustawieniach witryny w przeglądarce.",
+  "perms_allow_aria": "Zezwól: {thing}",
+  "perms_settings_aria": "Otwórz ustawienia systemowe: {thing}",
+  "perm_notifications": "Powiadomienia",
+  "perm_notifications_why": "Tak dociera przypomnienie i codzienne pytanie.",
+  "perm_exact_alarms": "Dokładna godzina",
+  "perm_exact_alarms_why": "Przypomnienie dzwoni o ustawionej minucie.",
+  "perm_microphone": "Mikrofon",
+  "perm_microphone_why": "Notatki głosowe i odczyt wysokości głosu.",
+  "perm_camera": "Kamera",
+  "perm_camera_why": "Notatki wideo.",
+  "perm_take_photo": "Zrobienie zdjęcia",
+  "perm_take_photo_why": "Systemowy aparat oddaje to jedno zdjęcie.",
+  "perm_pick_file": "Wybranie zdjęcia albo pliku",
+  "perm_pick_file_why": "Wybór plików oddaje jeden plik. Reszty aplikacja nie widzi.",
+  "perm_backup_folder": "Folder kopii zapasowych",
+  "perm_backup_folder_why": "Wybierany raz, a kopie trafiają tylko tam.",
+  "perm_print": "Drukowanie",
+  "perm_print_why": "Systemowe okno drukowania decyduje, gdzie trafi strona.",
+  "perm_clipboard": "Schowek",
+  "perm_clipboard_why": "Klucz odzyskiwania, oznaczony jako wrażliwy, więc Android czyści go po minucie.",
+  "perm_clipboard_why_web": "Klucz odzyskiwania. Przeglądarka nie potrafi go potem wyczyścić.",
+  "perm_battery": "Optymalizacja baterii",
+  "perm_battery_why": "Odnośnik na ekranie przypomnień, żeby przypomnienie zadziałało, gdy telefon śpi.",
+  "perm_biometric": "Odcisk palca albo twarz",
+  "perm_biometric_why": "Sprawdza to system, nie aplikacja. Aplikacja dowiaduje się tylko, czy się zgadza.",
   "ob_done_title": "Wszystko gotowe",
   "ob_done_title_named": "Wszystko gotowe, {name}",
   "ob_done_body": "Jeden krótki wpis dziennie w zupełności wystarczy. Wszystko, co zapiszesz, zostaje tutaj, przy tobie.",
   "pin_choose_title": "Wybierz PIN",
   "pin_again_title": "Wpisz go jeszcze raz",
-  "pin_greeting": "Cześć",
   "pin_greeting_named": "Cześć, {name}",
   "pin_confirm_body": "Te same cztery cyfry jeszcze raz, żeby jedna pomyłka nie zamknęła ci drzwi.",
   "pin_progress": "Wpisany PIN: {typed} z {total} cyfr",
@@ -664,7 +811,6 @@
   "reset_failed": "Nie udało się zresetować aplikacji. Spróbuj ponownie albo najpierw ją zamknij i otwórz.",
   "lock_auto_note": "Blokuje się sama, kiedy aplikacja schodzi w tło.",
   "lock_quick_exit_note": "Przesunięcie dwoma palcami w dół blokuje natychmiast.",
-  "pp_unlock_title": "Dobrze cię widzieć",
   "pp_unlock_body": "Wpisz hasło do dziennika, żeby go odszyfrować.",
   "pp_label_setup": "Hasło",
   "pp_label_unlock": "Hasło do dziennika",
@@ -709,7 +855,6 @@
   "pp_change_mismatch": "Nowe hasło i jego powtórzenie się różnią.",
   "pp_change_wrong_current": "Obecne hasło jest nieprawidłowe.",
   "pp_changed_toast": "Hasło zmienione. Zmień je też w menedżerze haseł.",
-  "ak_unlock_title": "Odblokuj dziennik",
   "ak_unlock_body": "Dziennik jest zaszyfrowany. Klucz trzyma Android i wyda go, kiedy upewni się, że to ty.",
   "ak_unlock_action": "Odblokuj",
   "ak_unlocking": "Czekam na Androida…",
@@ -744,6 +889,7 @@
   "boot_restore_action": "Przywróć poprzedni dziennik",
   "boot_restore_running": "Przywracanie…",
   "boot_restore_failed": "Nie udało się. Kopia nadal jest na urządzeniu.",
+  "boot_retry_action": "Spróbuj otworzyć ponownie",
   "quick_exit_back": "Powrót do aplikacji",
   "nav_main": "Główna",
   "skip_to_content": "Przejdź do treści",
@@ -941,6 +1087,8 @@
   "bio_ask_boot_body": "Blokada telefonu, jaka akurat jest ustawiona, otwiera dziennik przy każdym starcie aplikacji. Zgoda: otwiera się od razu. Odmowa: to samo, ale najpierw trzeba nacisnąć przycisk.",
   "bio_ask_boot_yes": "Otwieraj automatycznie",
   "bio_ask_boot_no": "Pytaj za każdym razem",
+  "screen_capture_title": "Przechwytywanie ekranu",
+  "screen_capture_sub": "pozwala temu urządzeniu robić zrzuty ekranu i nagrywać aplikację",
   "settings_disguise_on": "przebrana za „Notes”",
   "settings_backup_age": "ostatnia kopia {days} temu",
   "settings_backup_none": "jeszcze bez kopii",
@@ -959,7 +1107,7 @@
   "disguise_app_sub_web": "karta przeglądarki pokazuje neutralny tytuł i ikonę „Notes”, a zainstalowana aplikacja nazywa się tak samo",
   "disguise_preview_android": "tak aplikacja wygląda w launcherze",
   "disguise_preview_web": "tak wygląda karta przeglądarki",
-  "disguise_installed_note": "Jeśli aplikacja jest już zainstalowana, nazwa i ikona na ekranie głównym zmienią się, gdy przeglądarka je odświeży. Robi to w swoim tempie, więc może to chwilę potrwać.",
+  "disguise_installed_note": "Ikona, która jest już na ekranie głównym, zmieni się, kiedy przeglądarka ją odświeży, a robi to w swoim tempie.",
   "disguise_android_gap_note": "Android nadal pokazuje prawdziwą nazwę aplikacji w Ustawieniach, na ekranie informacji o aplikacji i w wyborze widżetów.",
   "decoy_search": "Szukaj w notatkach",
   "decoy_note_groceries_title": "Zakupy",
@@ -977,6 +1125,19 @@
   "quick_exit_sub_web": "przesunięcie dwoma palcami w dół gasi kartę i blokuje natychmiast",
   "quick_exit_no_lock": "bez PIN-u albo hasła tylko gasi ekran",
   "ms_intro": "Dni, które coś znaczą. Przeszłe wracają jako rocznice, przyszłe odliczają czas na ekranie startowym.",
+  "ms_log_heading": "Wszystkie kamienie milowe",
+  "ms_log_heading_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} kamień milowy",
+        "countPlural=few": "Kamienie milowe: {count}",
+        "countPlural=many": "Kamienie milowe: {count}",
+        "countPlural=other": "Kamienie milowe: {count}"
+      }
+    }
+  ],
   "ms_add_heading": "Dodaj kamień milowy",
   "ms_shuffle": "Przetasuj podpowiedzi",
   "ms_own_title": "Stwórz własny",
@@ -1149,7 +1310,7 @@
   "labs_preferred_units_title": "Preferowane jednostki",
   "labs_preferred_units_intro": "Wybierz jedną domyślną jednostkę dla każdego badania. Istniejące wyniki zostają bez zmian.",
   "labs_preferred_units_source_default": "Użyj jednostki źródłowej",
-  "measurements_intro": "Twoje liczby, w jednostce, w jakiej mierzysz. Bez BMI, bez zgadywania składu ciała.",
+  "measurements_intro": "Twoje liczby w jednostce, w jakiej mierzysz, i rozmiary, które nosisz. Bez BMI, bez zgadywania składu ciała.",
   "measurement_type_label": "Rodzaj",
   "measurement_type_waist": "Talia",
   "measurement_type_hips": "Biodra",
@@ -1188,7 +1349,6 @@
   "measurement_type_new_label": "Nazwa",
   "measurement_type_new_placeholder": "np. ramiona",
   "measurement_type_add": "Dodaj typ",
-  "size_log_intro": "Twoje zakupy i to, jak leżały.",
   "size_log_add_aria": "Zapisz rozmiar",
   "size_log_empty_title": "Jeszcze nic nie zapisano",
   "size_log_empty_body": "Zapisz rozmiar przy każdym zakupie: kategoria, rozmiar, marka i to, jak leżało.",
@@ -1301,6 +1461,7 @@
   "doses": "Dawki",
   "doses_row_sub": "Każda dawka i to, jak wypada na tle planu",
   "doses_intro": "Każda dawka trafia do tego etapu kuracji, który obowiązywał w chwili jej przyjęcia. Popraw datę dawki i przejdzie do etapu, który faktycznie ją obejmował.",
+  "doses_attribution_disclosure": "Jak dawki są przypisywane do kuracji",
   "doses_add_aria": "Zapisz",
   "doses_empty_title": "Brak zapisanych dawek",
   "doses_empty_body": "Zapisz dawkę i pojawi się tutaj, przy etapie kuracji z tego dnia.",
@@ -1390,6 +1551,13 @@
   "pause_reason_accidental": "Przypadkowa",
   "regimen_schedule_legend": "Plan",
   "regimen_schedule_hint": "Jak często ten etap oczekuje dawki. Terminy liczą się od daty rozpoczęcia etapu, więc zmiana tego pola ich nie przesuwa.",
+  "regimen_auto_log_label": "Zapisuj dawki z tego harmonogramu za mnie",
+  "regimen_auto_log_hint": "Każda zaplanowana dawka zostaje zapisana jako przyjęta o swojej zwykłej porze, chyba że zapiszesz ją samodzielnie albo oznaczysz jako pominiętą. Każdą z nich możesz cofnąć.",
+  "dose_from_schedule": "zapisana z harmonogramu",
+  "dose_from_schedule_skipped": "pominięta, zapisana z harmonogramu",
+  "dose_from_schedule_skip_action": "Oznacz jako pominiętą",
+  "tile_dose_auto_logged_yesterday": "Wczorajsza dawka została zapisana za ciebie",
+  "clinician_summary_auto_logged_legend": "zapisana z harmonogramu, niepotwierdzona ręcznie",
   "regimen_schedule_kind_label": "Rytm",
   "regimen_schedule_kind_every_days": "Stały odstęp",
   "regimen_schedule_kind_weekdays": "Dni tygodnia",
@@ -1412,11 +1580,7 @@
   "regimen_pause_ongoing": "trwa",
   "regimen_doses_link": "Dawki",
   "regimen_stock_link": "Zapas leków",
-  "regimen_stock_link_sub": "Ile zostało i kiedy się skończy",
-  "regimen_exposure_link": "Skumulowana ekspozycja",
-  "regimen_exposure_link_sub": "Sumy dawek, dni na każdej trasie podania, czas na każdym schemacie",
   "stock_title": "Zapas leków",
-  "stock_intro": "Ile zostało z każdego leku i kiedy się skończy, licząc od zapisanych dawek.",
   "stock_excluded_note": "Dawki pominięte we wszystkich prognozach powyżej, bo aktywny był więcej niż jeden etap kuracji i aplikacja nie potrafiła rozstrzygnąć, którego leku dotyczyły: {count}.",
   "stock_add_aria": "Dodaj zapas leku",
   "stock_empty_title": "Nie masz jeszcze żadnego zapasu",
@@ -1434,6 +1598,9 @@
   "stock_quantity_placeholder": "np. 10",
   "stock_unit_label": "Jednostka",
   "stock_unit_placeholder": "np. fiolki, tabletki",
+  "stock_lead_time_label": "Czas realizacji (dni)",
+  "stock_lead_time_placeholder": "np. 21",
+  "stock_lead_time_hint": "Jak długo zwykle trwa uzupełnienie zapasu. Zostaw puste, jeśli nie wiesz.",
   "stock_date_label": "Stan na dzień",
   "stock_save": "Zapisz zapas",
   "stock_delete_action": "Przestań śledzić zapas leku {drug}",
@@ -1451,19 +1618,10 @@
   "stock_window_until": "Okres używania do {date}",
   "stock_window_past": "Poza okresem używania od {date}",
   "exposure_title": "Skumulowana ekspozycja",
-  "exposure_intro": "Same liczby z dziennika dawek i historii schematów. Bez zakresów docelowych, bez porównań.",
-  "exposure_range_group": "Zakres",
   "exposure_dose_totals_title": "Sumy dawek",
-  "exposure_dose_totals_empty": "W tym zakresie nie zapisano żadnych dawek.",
-  "exposure_excluded_note": "Dawki pominięte w sumach powyżej, bo aktywny był więcej niż jeden etap kuracji i aplikacja nie potrafiła rozstrzygnąć, którego leku dotyczyły: {count}.",
-  "exposure_dose_total_sub": "{route} · razem {total} {unit}",
   "exposure_route_days_title": "Dni na każdej trasie podania",
-  "exposure_route_days_empty": "W tym zakresie nie ma historii schematu.",
   "exposure_days_count": "{days} dni",
   "exposure_regimen_days_title": "Czas na każdym schemacie",
-  "exposure_regimen_days_empty": "W tym zakresie nie ma historii schematu.",
-  "exposure_regimen_days_sub": "{dose} {unit} · {route}",
-  "side_effects_intro": "To, co zauważasz, i kiedy to zauważasz. Bez ocen i bez porad.",
   "side_effect_add_aria": "Zapisz skutek uboczny",
   "side_effect_empty_title": "Jeszcze nic nie zapisano",
   "side_effect_empty_body": "Zapisz skutek uboczny, kiedy go zauważysz.",
@@ -1506,15 +1664,39 @@
   "severity_4": "wyraźne",
   "severity_5": "silne",
   "effects_timeline": "Zauważone zmiany",
+  "effects_timeline_subtitle": "To, co zauważasz po rozpoczęciu kuracji, upragnione lub nie, i kiedy. Bez ocen i bez porad.",
   "effects_intro": "Zaznacz dzień, w którym pierwszy raz pojawiła się każda zmiana. Tam, gdzie literatura podaje typowy czas liczony od początku kuracji, widać to jako zacieniowany pas, z tabeli dla hormonu z twojej kuracji: feminizującej przy estradiolu, maskulinizującej przy testosteronie. Brak pasa oznacza, że tabele o tej zmianie milczą.",
   "effects_source": "Zacieniowane pasy pochodzą z wytycznych klinicznych Endocrine Society z 2017 roku (Hembree i wsp.) oraz z tabel czasowych kuracji hormonalnej GenderGP, które powołują się na WPATH Standards of Care w wersji 7. Każdy pozostały efekt poniżej jest podpisany źródłem, z którego pochodzi, bez pasa: nazwanie zmiany przez poradnik to nie to samo, co podanie jej czasu przez wytyczne.",
   "effect_variability_notice": "Nic nie wskazuje, że wiek, budowa ciała, pochodzenie etniczne czy wygląd rodziny pozwalają wiarygodnie przewidzieć reakcję na kurację hormonalną. Prawdopodobnym wyjątkiem jest obniżenie głosu przy testosteronie. Pasy tutaj opisują literaturę. Nie są harmonogramem dla twojego ciała.",
   "effects_no_regimen_title": "Brak zapisanej kuracji",
-  "effects_no_regimen_body": "Ta oś czasu liczy się od dnia rozpoczęcia kuracji. Najpierw zapisz etap kuracji, a oś sama go uwzględni.",
+  "effects_no_regimen_body": "Bez niej oś powyżej liczy miesiące kalendarzowe. Zapisz etap kuracji, a zacznie liczyć miesiące od dnia rozpoczęcia.",
   "effects_no_regimen_action": "Przejdź do kuracji",
   "effects_direction_feminizing": "Feminizujące",
   "effects_direction_masculinizing": "Maskulinizujące",
   "effects_direction_other": "Bez przypisanego kierunku",
+  "effects_axis_onset": "Miesiące od początku kuracji, {date}.",
+  "effects_axis_calendar": "Według miesięcy kalendarzowych. Nie ma jeszcze zapisanej kuracji, więc nie ma od czego liczyć miesięcy.",
+  "effects_axis_empty": "Nic jeszcze nie zaznaczono. Zaznacz zmianę poniżej, a trafi na tę oś.",
+  "effects_axis_mark_aria": "{name}, pierwszy raz zauważone {date}",
+  "effects_axis_mark_aria_severity": "{name}, pierwszy raz zauważone {date}, {severity}",
+  "effects_axis_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input date",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zauważona zmiana, {date}.",
+        "countPlural=few": "Zauważone zmiany: {count}, ostatnia {date}.",
+        "countPlural=many": "Zauważone zmiany: {count}, ostatnia {date}.",
+        "countPlural=other": "Zauważone zmiany: {count}, ostatnia {date}."
+      }
+    }
+  ],
   "effect_group_count": [
     {
       "declarations": [
@@ -1750,18 +1932,60 @@
   "ph_compare": "Porównaj",
   "ph_tab_browse": "Przeglądaj",
   "ph_tab_compare": "Porównaj",
-  "ph_earlier": "Wcześniejsze zdjęcie",
-  "ph_later": "Późniejsze zdjęcie",
-  "ph_from_entry": "wpis w dzienniku",
   "ph_back_to_all": "Wróć do wszystkich zdjęć",
   "ph_compare_reset": "Jedno z wybranych zdjęć już nie jest dostępne. Wybierz ponownie dwa punkty.",
-  "ph_pick_two": "Wszystkie zdjęcia z dziennika, od najstarszego. Wybierz dwa, żeby je porównać.",
+  "ph_pick_two": "Wybierz dwa, żeby je porównać.",
   "ph_one_selected": "Jedno wybrane. Wybierz drugie, żeby porównać.",
   "ph_two_selected": "Dwa wybrane.",
   "ph_cell_aria": "Zdjęcie z {date}",
   "ph_empty_title": "Jeszcze bez zdjęć",
   "ph_empty_body": "Zdjęcia dodane do wpisów i kamieni milowych zbierają się tutaj. Kiedyś zestawienie „kiedyś i teraz” będzie tego warte.",
   "ph_edit_day": "Edytuj dzień",
+  "ph_chips_label": "Pokaż",
+  "ph_chip_everything": "Wszystko",
+  "ph_chip_body": "Ciało",
+  "ph_chip_hair": "Włosy",
+  "ph_chip_tryouts": "Próby",
+  "ph_chip_surgery": "Operacja",
+  "ph_chip_video": "Wideo",
+  "ph_source_entry": "Wpis",
+  "ph_source_milestone": "Kamień milowy",
+  "ph_source_hair": "Włosy",
+  "ph_source_hair_removal": "Depilacja",
+  "ph_source_tryout": "Próba",
+  "ph_source_procedure": "Operacja",
+  "ph_source_video": "Notatka wideo",
+  "ph_cell_aria_sourced": "{source}, {date}",
+  "ph_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zdjęcie",
+        "countPlural=few": "Zdjęcia: {count}",
+        "countPlural=many": "Zdjęcia: {count}",
+        "countPlural=other": "Zdjęcia: {count}"
+      }
+    }
+  ],
+  "ph_years_label": "Przejdź do roku",
+  "ph_year_jump": "Przejdź do roku {year}",
+  "ph_video_open": "Odtwórz notatkę wideo z {date}",
+  "ph_video_title": "Notatka wideo",
+  "ph_video_grid_hint": "Notatka wideo odtwarza się i nie wchodzi do porównania dwóch zdjęć.",
+  "photo_wipe_handle": "Linia porównania",
+  "photo_wipe_value": "{percent}% z wcześniejszego zdjęcia",
+  "photo_wipe_earlier_back": "Wcześniejsze zdjęcie: jedno wstecz",
+  "photo_wipe_earlier_forward": "Wcześniejsze zdjęcie: jedno dalej",
+  "photo_wipe_later_back": "Późniejsze zdjęcie: jedno wstecz",
+  "photo_wipe_later_forward": "Późniejsze zdjęcie: jedno dalej",
+  "photo_wipe_crop": "Te dwa zdjęcia mają różne proporcje. Oba są kadrowane do ramki od środka, żadne nie jest rozciągane.",
+  "photo_wipe_no_file": "Jedno z tych dwóch nie ma zapisanego pliku, więc są obok siebie zamiast pod jedną linią.",
   "photo_day_label": "Dzień",
   "photo_day_edit_title": "Dzień zdjęcia",
   "photo_day_edit_hint": "Zmienia dzień, pod którym pokazuje się to zdjęcie. Zostaje przy tym samym wpisie albo kamieniu milowym.",
@@ -1872,14 +2096,9 @@
   "prov_view_stock": "Zobacz zapas",
   "prov_reminder_wear": "Ustawione na podstawie zalogowanej sesji noszenia.",
   "prov_view_wear_log": "Zobacz dziennik noszenia",
-  "tl_intro": "Twoje kamienie milowe do tej pory i to, co przed tobą.",
   "tl_you_are_here": "dziś, tutaj jesteś",
   "tl_gap_aria": "{duration} bez kamieni milowych, skrócone",
   "tl_gap_label": "{duration} skrócone",
-  "tl_add_aria": "Dodaj kamień milowy",
-  "tl_empty_title": "Jeszcze bez kamieni milowych",
-  "tl_empty_body": "Dodaj dni, które coś znaczą, i twoja oś czasu zacznie nabierać kształtu.",
-  "tl_empty_action": "Dodaj kamień milowy",
   "home_anniv_years": "{name}, {years} temu. Tamten dzień był ważny. Ten też jest.",
   "home_anniv_today": "{name} jest dziś. Ten dzień jest ważny.",
   "recap_tags_title": "Najczęstsze tagi",
@@ -1898,7 +2117,7 @@
   "recap_open_range": "Bieżący zakres zapisany twoimi słowami.",
   "recap_tags_none_range": "W tym zakresie bez tagów.",
   "compare_title": "Porównanie okresów",
-  "compare_sub": "dwa zakresy dat obok siebie",
+  "compare_sub": "Dwa zakresy dat obok siebie.",
   "compare_period_a_label": "Okres A",
   "compare_period_b_label": "Okres B",
   "compare_start_label": "{period}: dzień początkowy",
@@ -1964,11 +2183,12 @@
   "entry_day_count": "{count} tego dnia",
   "entry_no_note": "Brak notatki",
   "tags_group_aria": "tagi: {group}",
-  "notif_title": "Kafelki i powiadomienia",
-  "notif_sub": "Co ekran główny może sam pokazać, i co może trafić na telefon.",
-  "notif_col_home": "Start",
+  "notif_title": "Komunikaty i powiadomienia",
+  "notif_sub": "Co aplikacja może powiedzieć sama z siebie, i co może trafić na telefon.",
+  "notif_col_show": "Pokazuj",
   "notif_col_notify": "Powiadamiaj",
-  "notif_home_toggle_aria": "{name}, ekran główny",
+  "notif_show_toggle_aria": "{name}, pokazuj w aplikacji",
+  "notif_prompts_heading": "Podpowiedzi w aplikacji",
   "notif_notify_toggle_aria": "{name}, powiadomienia",
   "notif_reminders_sub": "O godzinie ustawionej w danym przypomnieniu.",
   "notif_check_in_sub": "O godzinie codziennego pytania, w dni bez wpisu.",
@@ -1990,6 +2210,8 @@
   "tile_wear_sub": "Pokazuje, jak długo trwa rozpoczęta sesja noszenia.",
   "tile_dose_title": "Panel dawek",
   "tile_dose_sub": "Pokazuje skrót do zapisania dawki, gdy kuracja jest aktywna.",
+  "tile_dose_next": "Następna: {date}",
+  "tile_dose_next_today": "Dawka dzisiaj",
   "tile_letter_title": "Gotowy list",
   "tile_letter_sub": "Pokazuje się, gdy list z kapsuły czasu można już przeczytać.",
   "tile_letter_dismiss_action": "Ukryj przypomnienie",
@@ -2009,7 +2231,9 @@
   "tile_stock_title": "Kończący się zapas",
   "tile_stock_sub": "Ostrzega, kiedy zapas leków ma się wkrótce skończyć.",
   "notice_stock_low_title": "Kończący się zapas leków",
-  "notice_stock_low_body": "Twój zapas leku {drug} wystarczy na jeszcze {days} dni.",
+  "notice_stock_reorder_title": "Czas na zamówienie",
+  "notice_stock_reorder_body": "Zamów więcej leku {drug} do {date}.",
+  "notice_stock_projected_body": "Twój zapas leku {drug} prawdopodobnie skończy się około {date}.",
   "notice_stock_out_body": "Twój zapas leku {drug} prawdopodobnie już się skończył.",
   "notice_stock_manage": "Zarządzaj zapasem",
   "notice_stock_dismiss_action": "Ukryj przypomnienie o zapasie",
@@ -2134,54 +2358,22 @@
   "doubt_snapshot_delete_hint": "Tego nie można cofnąć.",
   "doubt_snapshot_delete": "Usuń",
   "safe_space_title": "Bezpieczna przestrzeń",
-  "safe_space_calm_title": "Złap oddech",
+  "safe_space_moments_title": "Listy i zdjęcia",
+  "safe_space_moments_sub": "Otwarte listy, zdjęcia z gwiazdką",
+  "safe_space_comfort_sub": "Do kogo napisać, jaki spacer",
+  "safe_space_evidence_sub": "Dni nazwane po swojemu",
+  "safe_space_readings_sub": "W Przeglądzie, razem z resztą odczytów",
+  "safe_space_readings_row_title": "Jak układały się dobre dni",
   "safe_space_breathing_desc": "Spokojny oddech pudełkowy, aby odzyskać równowagę.",
   "safe_space_breathing_start": "Rozpocznij oddychanie",
   "safe_space_breathing_pause": "Pauza",
   "safe_space_breathing_inhale": "Wdech",
   "safe_space_breathing_hold": "Zatrzymaj",
   "safe_space_breathing_exhale": "Wydech",
-  "safe_space_stats_title": "Z twojego dziennika",
-  "safe_space_stat_evidence_title": "Dobre chwile",
-  "safe_space_stat_evidence_note": "W twojej historii",
-  "safe_space_counterevidence_title": "Z twojej historii",
-  "safe_space_counterevidence_sub": "Wpisy oznaczone jako euforia, z wysoką euforią ciała lub z gwiazdką.",
-  "safe_space_letters_intro": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "List zapieczętowany dla siebie, teraz odblokowany.",
-        "countPlural=few": "Listy zapieczętowane dla siebie, teraz odblokowane.",
-        "countPlural=many": "Listy zapieczętowane dla siebie, teraz odblokowane.",
-        "countPlural=other": "Listy zapieczętowane dla siebie, teraz odblokowane."
-      }
-    }
-  ],
-  "safe_space_letters_all": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "Zobacz pozostały list",
-        "countPlural=few": "Zobacz pozostałe {count} listy",
-        "countPlural=many": "Zobacz pozostałe {count} listów",
-        "countPlural=other": "Zobacz pozostałe {count} listów"
-      }
-    }
-  ],
+  "safe_space_counterevidence_title": "Dobre chwile",
+  "safe_space_counterevidence_sub": "Dni oznaczone jako dobre i dni z gwiazdką.",
+  "safe_space_evidence_see_all": "Zobacz wszystkie {count}",
   "safe_space_photos_intro": "Zdjęcia oznaczone gwiazdką.",
-  "safe_space_chart_timeline_title": "Ostatnie 30 dni",
   "safe_space_chart_themes_title": "Motywy dające spokój",
   "safe_space_no_themes": "Brak oznaczonych chwil w puli.",
   "comfort_list_title": "Co pomaga",
@@ -2263,14 +2455,76 @@
   "tryout_adopt_update_profile_name": "Zaktualizuj imię profilu w aplikacji na „{name}”",
   "tryout_adopt_confirm_add": "Dodaj kamień milowy i przyjmij",
   "tryout_adopt_without_milestone": "Przyjmij bez kamienia milowego",
+  "tryout_running_heading": "Trwa teraz",
+  "tryout_ended_heading": "Zakończone",
+  "tryout_unit_days_trying": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień próby",
+        "nPlural=few": "dni próby",
+        "nPlural=many": "dni próby",
+        "nPlural=other": "dni próby"
+      }
+    }
+  ],
+  "tryout_ran_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} dzień",
+        "nPlural=few": "{n} dni",
+        "nPlural=many": "{n} dni",
+        "nPlural=other": "{n} dni"
+      }
+    }
+  ],
+  "tryout_felt_count": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} zapis odczuć",
+        "nPlural=few": "{n} zapisy odczuć",
+        "nPlural=many": "{n} zapisów odczuć",
+        "nPlural=other": "{n} zapisów odczuć"
+      }
+    }
+  ],
+  "tryout_felt_latest": "ostatni {day}",
+  "tryout_felt_none": "Nie ma jeszcze zapisu odczuć",
+  "tryout_feeling_today": "Jak to się czuło dzisiaj",
+  "tryout_feeling_today_title": "Jak to się czuło dzisiaj?",
   "letters_title": "Listy w kapsule czasu",
-  "letters_intro": "Napisz do siebie z przyszłości i wybierz kamień milowy albo datę otwarcia. Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
+  "letters_intro": "Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
   "letters_compose_title": "Napisz list",
   "letters_compose_placeholder": "Do mnie z przyszłości...",
   "letters_unlock_label": "Odblokuj w dniu",
   "letters_save": "Zapieczętuj list",
-  "letters_yours_title": "Twoje listy",
+  "letters_waiting_title": "Czekają",
+  "letters_opened_title": "Otwarte",
   "letters_sealed_title": "Zapieczętowany",
+  "letters_ready_title": "Gotowy",
+  "letters_arrival_title": "Dziś otwiera się list",
+  "letters_arrival_open": "Otwórz go",
+  "letters_close": "Zamknij list",
   "letters_sealed_until": "Otwiera się {date}",
   "letters_empty_title": "Nie masz jeszcze żadnych listów",
   "letters_empty_body": "Napisz jeden powyżej, a poczeka tutaj do dnia odblokowania.",
@@ -2373,6 +2627,7 @@
   "clinician_summary_include_note": "Wybierz sekcje, które mają znaleźć się w drukowanym raporcie.",
   "clinician_summary_drugs_title": "Uwzględnione leki",
   "clinician_summary_drugs_note": "Wyłącz lek, aby pominąć go w sekcjach schematu, dawek i ekspozycji poniżej.",
+  "clinician_summary_preview_title": "Podgląd",
   "clinician_summary_part_demographics": "Profil pacjenta",
   "clinician_summary_part_regimen": "Kuracja i historia dawek",
   "clinician_summary_part_exposure": "Łączna ekspozycja",
@@ -2400,7 +2655,7 @@
   "clinician_summary_prep_pending": "Do omówienia",
   "clinician_summary_prep_done": "Omówione",
   "resources_title": "Wsparcie i kontakty",
-  "resources_row_sub": "Telefony zaufania i organizacje, zapisane w aplikacji",
+  "resources_row_sub": "Telefony zaufania i organizacje",
   "resources_intro": "Numery i adresy, które warto mieć, kiedy nie ma jak ich wyszukać. Nic się tu nie pobiera, więc ten ekran działa bez zasięgu.",
   "resources_group_pl": "Polska",
   "resources_group_int": "Po angielsku",
@@ -2423,9 +2678,28 @@
   "resources_int_wpath_soc8": "Międzynarodowy standard opieki nad osobami trans i niebinarnymi, obejmujący terapię hormonalną w niskich dawkach i dla osób niebinarnych. Dostępny bezpłatnie, oparty na obszernej bibliografii.",
   "resources_pl_zaimki": "Zaimki, neutratywy i inne formy neutralne płciowo w polszczyźnie, plus karta, na której można pokazać swoje.",
   "roadmap_title": "Mapa tranzycji",
+  "roadmap_pack_details_toggle": "Czym jest ten pakiet, a czym nie jest",
   "roadmap_intro": "Cztery ścieżki, każdą odhaczasz osobno. Kolejność w ścieżce pokazuje, jak to zwykle idzie, i nic tu nie blokuje niczego innego.",
   "roadmap_not_advice": "To opis procedury, nie porada prawna. Nic tu nie odnosi się do twojej konkretnej sprawy.",
   "roadmap_reviewed_on": "Treść sprawdzona ze źródłami: {date}.",
+  "roadmap_track_switch_label": "Ścieżka",
+  "roadmap_track_steps_left": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "Został {n} krok",
+        "nPlural=few": "Zostały {n} kroki",
+        "nPlural=many": "Zostało {n} kroków",
+        "nPlural=other": "Zostało {n} kroków"
+      }
+    }
+  ],
   "roadmap_track_social": "Społeczna",
   "roadmap_track_legal": "Prawna",
   "roadmap_track_presentational": "Wizerunkowa",
@@ -2520,7 +2794,7 @@
   "roadmap_milestone_prompt_title": "Dodać „{goal}” jako kamień milowy na osi czasu?",
   "roadmap_milestone_prompt_add": "Dodaj kamień milowy",
   "roadmap_milestone_sync_title": "Podpowiedzi kamieni milowych z mapy",
-  "roadmap_milestone_sync_sub": "Pytaj o dodanie odhaczonych kroków z mapy jako kamieni milowych",
+  "roadmap_milestone_sync_sub": "Pytaj o dodanie odhaczonych kroków z mapy jako kamieni milowych.",
   "pj_open": "Zrób kolaż albo film poklatkowy",
   "pj_title": "Kolaż i film poklatkowy",
   "pj_range_title": "Które zdjęcia",
@@ -2687,12 +2961,30 @@
   "surgery_name_placeholder": "np. mastektomia",
   "surgery_date_label": "Data operacji",
   "surgery_date_none": "termin nieustalony",
+  "surgery_kind_label": "Rodzaj",
+  "surgery_kind_sheet": "Rodzaj zabiegu",
+  "surgery_kind_change": "Zmień",
+  "surgery_kind_dilation_toggle_label": "To gojenie obejmuje rozszerzanie",
+  "procedure_kind_vaginoplasty": "Waginoplastyka",
+  "procedure_kind_vulvoplasty": "Wulwoplastyka",
+  "procedure_kind_orchiectomy": "Orchidektomia",
+  "procedure_kind_breast_augmentation": "Powiększenie piersi",
+  "procedure_kind_facial_feminization": "Feminizacja twarzy",
+  "procedure_kind_tracheal_shave": "Redukcja grdyki",
+  "procedure_kind_voice_surgery": "Operacja strun głosowych",
+  "procedure_kind_chest_reconstruction": "Rekonstrukcja klatki piersiowej",
+  "procedure_kind_hysterectomy": "Histerektomia",
+  "procedure_kind_oophorectomy": "Owariektomia",
+  "procedure_kind_phalloplasty": "Faloplastyka",
+  "procedure_kind_metoidioplasty": "Metoidioplastyka",
+  "procedure_kind_body_contouring": "Modelowanie sylwetki",
+  "procedure_kind_hair_transplant": "Przeszczep włosów",
+  "procedure_kind_custom": "Własna",
   "surgery_save": "Zapisz",
   "surgery_delete": "Usuń",
   "surgery_delete_sheet": "Usuń operację",
   "surgery_delete_q": "Usunąć {name}?",
   "surgery_delete_hint": "Razem z nią znikną terminy konsultacji, notatki, zdjęcia i lista. Tego nie da się cofnąć.",
-  "surgery_row_aria": "Otwórz {name}",
   "surgery_day_unscheduled": "Termin jeszcze nieustalony",
   "surgery_set_date": "Ustaw datę",
   "surgery_day_upcoming": "Zostało {days}",
@@ -2738,7 +3030,6 @@
   "surgery_phase_recovery": "Gojenie",
   "surgery_phase_archived": "Historia",
   "surgery_post_op_day": "Dzień {days} po operacji",
-  "surgery_countdown_badge": "{days} do operacji",
   "surgery_consult_questions_title": "Pytania na konsultację i notatki",
   "surgery_prep_checklist_title": "Przygotowanie i formalności",
   "surgery_clearance_checklist_title": "Kwalifikacja i pakowanie",
@@ -2793,7 +3084,6 @@
   "journal_book_part_dysphoria_euphoria_tags": "Tagi dysforii i eufori",
   "journal_book_empty": "W tym zakresie nie ma nic do wydruku.",
   "journal_book_range": "od {from} do {to}",
-  "stats_range_sub": "ostatnie {days} dni",
   "stats_day_by_day": "Dzień po dniu",
   "stats_scales_now": "Każda skala w tym okresie",
   "stats_mood_days": "Dni przy każdym nastroju",
@@ -2801,17 +3091,38 @@
   "stats_compare_label": "Druga skala",
   "stats_compare_none": "Bez drugiej skali",
   "stats_compare_empty": "Nic nie zapisano na tej skali w tym zakresie.",
-  "stats_look_back": "Spojrzenie wstecz",
-  "stats_group_cross": "W całym dzienniku",
+  "lookback_read_span": "Bilans tego okresu",
+  "lookback_facts_average": "{name}: średnia",
+  "lookback_handle_start": "Początek okresu",
+  "lookback_handle_end": "Koniec okresu",
+  "lookback_era_aria": "Wybierz erę {name}",
+  "lookback_empty_title": "Jeszcze nic za tobą",
+  "lookback_empty_body": "Oś czasu zaczyna się od pierwszego wpisu, kamienia milowego albo ery.",
+  "lookback_era_offer_title": "Nazwać ten odcinek?",
+  "lookback_era_offer_body": "Era z tymi datami, gotowa do odczytu w kalendarzu, podsumowaniu i porównaniu.",
+  "lookback_era_offer_confirm": "Nazwij",
+  "lookback_era_offer_dismiss": "Nie teraz",
+  "lookback_legend_group": "Co pokazuje ta oś",
+  "lookback_legend_eras": "Ery",
+  "lookback_legend_regimen": "Kuracja",
+  "lookback_legend_tryouts": "Próby",
+  "lookback_legend_surgery": "Operacje",
+  "lookback_band_aria": "Wybierz okres {name}, od {from} do {to}",
+  "lookback_mark_aria": "Wybierz okres kończący się na: {name}",
+  "lookback_drag_hint": "Przeciągnij końce, żeby wybrać okres",
   "stats_tag_share": "O czym piszesz",
   "stats_tag_share_rest": "Cała reszta",
   "stats_tag_share_note": "użyć tagów w zakresie",
   "stats_highest_days": "Najwyższe dni",
   "stats_highest_days_note": "Dotknij dnia, żeby go otworzyć.",
-  "stats_all_history": "Czyta cały dziennik, nie zakres powyżej.",
+  "stats_readings_group": "Odczyty",
+  "stats_reading_days": "Jak rozłożyły się dni",
+  "stats_reading_unknown_title": "Nie ma takiego odczytu",
+  "stats_reading_unknown_body": "Odczyty są w Przeglądzie. Wybierz tam jeden.",
+  "lookback_compare_before": "odcinek przed nim",
+  "count_times": "{count}×",
   "interval_day_n": "Dzień {n}",
   "wrapped_cadence_range": "Zakres",
-  "wrapped_range_title": "Dowolny zakres",
   "scales_none_ticked": "Nic nie zaznaczono",
   "scale_custom_note": "Własna skala, od {low} do {high}.",
   "scales_change": "zmień",
@@ -2846,6 +3157,10 @@
   "am_export_note": "Ten sposób przypina dziennik do tego urządzenia, więc zaszyfrowany eksport to jedyna kopia, która przetrwa jego utratę.",
   "am_confirm_passphrase": "Użyj tego hasła",
   "am_confirm_device": "Użyj tego urządzenia",
+  "am_mode_unlocked": "Bez blokady",
+  "am_mode_unlocked_sub": "szyfrowany na dysku, otwiera się bez pytania",
+  "am_unlocked_detail": "Dziennik pozostaje zaszyfrowany na dysku i powiązany z tym urządzeniem, ale otwiera się bez żadnego pytania. Każda osoba z odblokowanym telefonem może go otworzyć. Jeśli telefon przepadnie albo zostanie zresetowany, nic, co wiesz, nie przywróci dziennika.",
+  "am_confirm_unlocked": "Zostaw bez blokady",
   "am_setup_failed": "Nie udało się. Spróbuj ponownie albo wybierz inny sposób.",
   "am_changed_toast": "Zmienione. Od teraz dziennik otwiera się w ten sposób.",
   "am_change_failed": "Nie udało się zmienić. Dziennik otwiera się tak jak dotąd.",
@@ -2909,6 +3224,7 @@
   "rkr_body": "Klucz odzyskiwania otworzył dziennik. Dotychczasowy sposób nadal nie zadziała, więc wybierz taki, który masz teraz. Klucz odzyskiwania działa dalej, a w ustawieniach można go wymienić albo usunąć.",
   "rko_title": "Utworzyć klucz odzyskiwania?",
   "rko_body_web": "W tym trybie nic nie da się odzyskać z tego, co pamiętasz. Jeśli ta przeglądarka wyczyści dane albo profil zniknie, dziennik zniknie razem z nim. Klucz odzyskiwania to 25 znaków przechowywanych gdzie indziej i jedyna rzecz, która otworzy dziennik po czymś takim.",
+  "rko_body_android": "W tym trybie nic nie da się odzyskać z tego, co pamiętasz. Jeśli ten telefon przepadnie albo dane aplikacji zostaną wyczyszczone, dziennik zniknie razem z nimi. Klucz odzyskiwania to 25 znaków przechowywanych gdzie indziej i jedyna rzecz, która otworzy dziennik po czymś takim.",
   "rko_make": "Utwórz teraz",
   "rko_skip": "Nie teraz",
   "dbr_recovery_offer": "Jeśli klucz odzyskiwania został utworzony, to jest właśnie na taką sytuację.",
@@ -2936,6 +3252,7 @@
   "vb_passage_own_clear": "Wróć do tekstu z aplikacji",
   "vb_passage_own_in_use": "Własny tekst",
   "vb_record": "Nagraj",
+  "vb_reading_covered": "Przeczytane",
   "vb_stop": "Zatrzymaj",
   "vb_again": "Nagraj jeszcze raz",
   "vb_vowel_hint": "Powiedz „aaa” i utrzymaj przez trzy sekundy, jeden spokojny dźwięk. Jeśli nie wyjdzie, powtarza się tylko ten krok.",
@@ -2944,7 +3261,6 @@
   "vb_vowel_skip": "Pomiń dźwięk",
   "vb_vowel_start": "Zacznij trzy sekundy",
   "vb_gauge_run": "Utrzymane: {seconds}s",
-  "vb_hearing_label": "Co odbiera mikrofon",
   "vb_hearing_silent": "Na razie nic nie dochodzi.",
   "vb_gauge_label_steady": "Jak równo trzymasz ten dźwięk, w półtonach",
   "vb_fail_clipping": "Dalej od mikrofonu.",
@@ -2963,6 +3279,27 @@
   "vb_room": "Głos nad tłem",
   "vb_scale": "Skala formantów",
   "vb_not_measured": "Nie zmierzono",
+  "vb_history_run": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Twoje ostatnie podejście.",
+        "countPlural=few": "Twoje ostatnie {count} podejścia.",
+        "countPlural=many": "Twoje ostatnie {count} podejść.",
+        "countPlural=other": "Twoje ostatnie {count} podejść."
+      }
+    }
+  ],
+  "vb_history_first": "Twoje pierwsze podejście, więc nie ma jeszcze nic za nim.",
+  "vb_history_other_passage": "Pierwszy odczyt z tego tekstu.",
+  "vb_history_other_setup": "Pierwszy odczyt na tym sprzęcie.",
+  "vb_history_unread": "Brak wcześniejszego odczytu tej liczby.",
   "vb_hz": "{value} Hz",
   "vb_hz_range": "{low} do {high} Hz",
   "vb_semitones": "{value} półtonu",
@@ -3064,7 +3401,7 @@
   "vm_rate_studied": "Tempo jest dobrze zbadane w fonetyce i prawie niezbadane jako wskazówka płci głosu. Nie znaleziono normy dla dorosłych podzielonej na płcie dla czytanego tekstu w żadnym z tych języków.",
   "vm_rate_typical": "Nie istnieje żaden pewny typowy zakres, a dwa teksty tej aplikacji i tak nie mogłyby dzielić jednego. Tekst angielski ma 98 słów po około 1,32 sylaby, polski 82 słowa po 1,74, więc przeczytanie obu dokładnie tak samo szybko daje około 222 słowa na minutę po angielsku i 172 po polsku. Wspólne pasmo pokazywałoby każdą osobę czytającą po polsku jako powolną.",
   "vm_rate_cannot": "Nie da się postawić obok niczyjej innej liczby ani obok własnej z innego tekstu. Słowa na minutę to fakt o słowach tak samo jak o mowie.",
-  "vm_rate_tier": "Do czytania na tle własnych wcześniejszych nagrań tego samego tekstu. Zmiana własnego tekstu zaczyna nową serię, a dla tej liczby liczy się to najbardziej.",
+  "vm_rate_tier": "Do czytania na tle własnych wcześniejszych nagrań tego samego tekstu. Zmiana własnego tekstu zaczyna nową serię, a dla tej liczby liczy się to najbardziej. Kilka wczesnych wyników może tu nie być: nagranie przerwane w połowie zapisywało tempo zbyt szybkie, żeby było prawdziwe, więc takie wartości są pomijane.",
   "vm_resonance_measures": "Dwa rezonanse traktu głosowego, zmierzone na trzymanym dźwięku: dwa pierwsze wzniesienia, które kształt gardła, jamy ustnej i języka wprowadza w dźwięk. To one odróżniają jedną samogłoskę od drugiej.",
   "vm_resonance_how": "Predykcja liniowa na spokojnym środku trzymanego dźwięku, która szacuje miejsca rezonansu z samego dźwięku, a nie mierzy traktu.",
   "vm_resonance_changes": "Długość i kształt traktu głosowego. Długość to anatomia i hormony feminizujące jej nie zmieniają (WPATH Standards of Care, wersja 8). Ułożenie języka i ust rusza tymi dwoma bardzo mocno, a podniesienie krtani skraca trakt trochę, i na tym pracuje trening głosu.",
@@ -3087,6 +3424,7 @@
   "vm_scale_cannot": "Nie dosięgnie też tego, co w rezonansie liczy się najbardziej. To wymaga trzeciego i czwartego rezonansu, a mikrofon telefonu ich nie zmierzy.",
   "vm_scale_tier": "Do czytania na tle własnych wcześniejszych nagrań z tego samego telefonu. Dopasowanie trzech samogłosek naraz uspokaja liczbę wobec przypadku jednego nagrania, ale wciąż rusza się z powodów sprzętowych, które nie mają nic wspólnego z głosem.",
   "presentation_label": "Tryb",
+  "presentations_manage": "zarządzaj",
   "presentations_title": "Tryby",
   "presentations_intro": "Nazwa i kolor dla sposobu prezentacji. Nic więcej.",
   "presentations_empty_title": "Nie ma jeszcze żadnego trybu.",
@@ -3132,17 +3470,38 @@
   "era_delete_sheet": "Usuń erę",
   "era_delete_q": "Usunąć „{name}”? Dni zostają, nazwa znika.",
   "era_start_here": "Zacznij tu erę",
-  "words_title": "Słowa",
-  "words_sub": "Jak często poszczególne słowa pojawiają się w notatkach.",
+  "era_band_open_aria": "Otwórz {name}",
   "words_group_by_label": "Grupuj według",
   "words_mode_presentation": "Tryb",
   "words_mode_era": "Era",
   "words_pl_caveat": "Formy fleksyjne słowa liczone są osobno, więc słowo używane w różnych przypadkach jest tu niedoszacowane.",
   "words_empty": "Brak notatek ze słowami.",
-  "words_group_empty": "Brak słów dla tej grupy.",
-  "words_ignore_aria": "Ignoruj {word}",
   "words_unignore_aria": "Przywróć {word}",
   "words_ignored_title": "Ignorowane słowa",
+  "words_reading_title": "Słowa, które się wyróżniają",
+  "words_reading_note": "Wielkość pokazuje, o ile częściej dane słowo pada tutaj niż w reszcie dziennika.",
+  "words_reading_empty": "Nic się jeszcze nie wyróżnia. Te notatki używają tych samych słów co reszta dziennika.",
+  "words_reading_needs_stretch": "Nazwij erę albo dodaj tryb, a słowa z tego okresu pojawią się tutaj.",
+  "words_ignore_action": "Przestań liczyć to słowo",
+  "words_ignored_sub": "Słowa pomijane w tym odczycie.",
+  "words_ignored_empty": "Żadne słowo nie jest pomijane.",
+  "words_times": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} raz",
+        "nPlural=few": "{n} razy",
+        "nPlural=many": "{n} razy",
+        "nPlural=other": "{n} razy"
+      }
+    }
+  ],
   "stats_constellation": "Dwie skale naraz",
   "constellation_x_label": "W poziomie",
   "constellation_y_label": "W pionie",
@@ -3241,6 +3600,45 @@
   "clinician_summary_section_finished_areas": "Co zostało zakończone",
   "clinician_summary_finished_areas_empty": "Nic nie jest oznaczone jako zakończone.",
   "clinician_summary_part_finished_areas": "Co zostało zakończone",
+  "clinician_summary_settings_range": "{start} do {end}",
+  "clinician_summary_settings_sections": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} sekcja",
+        "nPlural=other": "{n} sekcji",
+        "nPlural=few": "{n} sekcje",
+        "nPlural=many": "{n} sekcji"
+      }
+    }
+  ],
+  "clinician_summary_settings_drugs": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} lek",
+        "nPlural=other": "{n} leków",
+        "nPlural=few": "{n} leki",
+        "nPlural=many": "{n} leków"
+      }
+    }
+  ],
+  "clinician_summary_settings_row": "{range}, {sections}, {drugs}. Zmień",
+  "clinician_summary_settings_row_no_drugs": "{range}, {sections}. Zmień",
+  "clinician_summary_settings_title": "Ustawienia",
+  "clinician_summary_section_truncated": "i jeszcze {count}, wszystkie w wersji do druku",
   "area_finish_table_area": "Nazwa",
   "area_finish_table_ended": "Zakończono",
   "area_finish_offer_dismiss_sub": "Aplikacja nie zapyta o to ponownie.",
@@ -3256,6 +3654,23 @@
   "area_suspend_confirm": "Wstrzymaj",
   "area_suspend_cancel": "Jeszcze nie",
   "vm_empty_title": "Jeszcze bez nagrań",
+  "vm_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} nagranie, łącznie {total}",
+        "countPlural=few": "{count} nagrania, łącznie {total}",
+        "countPlural=many": "{count} nagrań, łącznie {total}",
+        "countPlural=other": "{count} nagrań, łącznie {total}"
+      }
+    }
+  ],
   "vm_empty_body": "Nagrania głosowe dodane do wpisów zbierają się tutaj, w jednym miejscu - bez pamiętania, którego dnia je nagrano.",
   "vm_open_entry_aria": "Otwórz wpis z {date}",
   "saved_questions_open": "Zapisane pytania",
@@ -3307,7 +3722,7 @@
   "margin_note_delete_q": "Usunąć tę notatkę? Wpis zostaje bez zmian.",
   "margin_note_delete": "Usuń",
   "coming_back_title": "Czeka na ciebie",
-  "coming_back_intro": "Aplikacja to przechowała, kiedy cię tu nie było. Weź, co chcesz, resztę zostaw.",
+  "coming_back_intro": "Weź, co chcesz, resztę zostaw.",
   "coming_back_done_action": "Na razie tyle",
   "coming_back_empty_body": "Aplikacja nie trzyma teraz dla ciebie niczego.",
   "coming_back_letter_title": "List, który możesz przeczytać",
@@ -3335,8 +3750,6 @@
   "home_count_since": "{entries} od {date}",
   "home_tiles_more": "{names} i jeszcze {count}",
   "home_tiles_fewer": "Pokaż mniej",
-  "safe_space_stat_written_title": "Zapisane wpisy",
-  "safe_space_stat_written_note": "W całym dzienniku",
   "tile_pause_value": "Nie ma czego nadrabiać",
   "home_start_title": "Na początek",
   "home_start_intro": "Kilka rzeczy, które warto ustawić wcześnie. Wszystkie poczekają, jeśli wolisz po prostu pisać.",
@@ -3381,6 +3794,25 @@
   "documents_empty_title": "Jeszcze nic tu nie ma",
   "documents_empty_body": "Zrób zdjęcie kartki, napisz, co to jest i z jakiego jest dnia. Leży zaszyfrowane, tak jak reszta.",
   "documents_empty_action": "Dodaj dokument",
+  "documents_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} dokument · {size}",
+        "countPlural=few": "{count} dokumenty · {size}",
+        "countPlural=many": "{count} dokumentów · {size}",
+        "countPlural=other": "{count} dokumentów · {size}"
+      }
+    }
+  ],
+  "document_kind_pdf": "PDF",
+  "document_kind_image": "Zdjęcie",
   "document_new_sheet": "Nazwij ten dokument",
   "document_title_label": "Co to jest",
   "document_title_placeholder": "Opinia psychiatryczna",
@@ -3470,5 +3902,111 @@
   "daylio_running_rows": "Zapisywanie wpisów…",
   "exp_running_packing": "Pakowanie dziennika…",
   "exp_auto_running_writing": "Zapisywanie w folderze kopii…",
-  "pj_running": "Rysowanie podróży…"
+  "pj_running": "Rysowanie podróży…",
+  "calendar_event_appointment_title": "Wizyta",
+  "calendar_event_surgery_title": "Operacja",
+  "calendar_event_letter_unlock_title": "List",
+  "calendar_handoff_button": "Dodaj do kalendarza",
+  "calendar_handoff_disclosure": "Kto zobaczy ten kalendarz, zobaczy też tytuł poniżej.",
+  "calendar_handoff_title_label": "Tytuł",
+  "calendar_handoff_time_label": "Godzina (opcjonalnie)",
+  "calendar_handoff_share": "Udostępnij",
+  "agenda_passed_dose": "Zaplanowana dawka na {date}",
+  "home_agenda_heading": "Nadchodzi",
+  "agenda_more": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Jeszcze {count} w tym miesiącu",
+        "countPlural=few": "Jeszcze {count} w tym miesiącu",
+        "countPlural=many": "Jeszcze {count} w tym miesiącu",
+        "countPlural=other": "Jeszcze {count} w tym miesiącu"
+      }
+    }
+  ],
+  "home_log_heading": "Jak dziś?",
+  "home_pinned_heading": "Przypięte",
+  "home_pinned_edit": "Ułóż tę listę",
+  "home_pinned_edit_empty": "Przypnij tu coś",
+  "home_edit_heading": "Układasz Start",
+  "home_edit_hint": "Przeciągnij pozycję za uchwyt albo przenieś ją strzałkami.",
+  "home_edit_unpin": "Odepnij: {row}",
+  "home_edit_move": "Przenieś: {row}",
+  "home_edit_none": "Nic nie jest przypięte. To, co dodasz poniżej, pojawi się tutaj.",
+  "home_edit_add_heading": "Dodaj pozycję",
+  "home_edit_add": "Przypnij: {row}",
+  "home_edit_agenda_heading": "Co widać w Nadchodzi",
+  "home_edit_tiles_heading": "Kafelki",
+  "home_edit_tiles_hint": "Każdy pojawia się wtedy, kiedy jest o czym mówić.",
+  "home_edit_done": "Gotowe",
+  "home_edit_reset": "Wróć do domyślnego zestawu",
+  "home_edit_reset_question": "Wrócić do domyślnego zestawu?",
+  "home_edit_reset_hint": "Przypięte pozycje wracają do domyślnego zestawu, więc to, co zdjęte, wraca, a to, co dodane, znika, i wracają wszystkie kafelki oraz rodzaje wpisów w Nadchodzi. Nic nie zostaje usunięte: te ekrany dalej są na swoim miejscu.",
+  "tomorrow": "Jutro",
+  "surgery_unit_post_op": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień po operacji",
+        "nPlural=few": "dni po operacji",
+        "nPlural=many": "dni po operacji",
+        "nPlural=other": "dni po operacji"
+      }
+    }
+  ],
+  "surgery_unit_to_go": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień do operacji",
+        "nPlural=few": "dni do operacji",
+        "nPlural=many": "dni do operacji",
+        "nPlural=other": "dni do operacji"
+      }
+    }
+  ],
+  "surgery_reading_no_date": "Brak daty",
+  "surgery_photo_day": "Dzień {days}",
+  "surgery_photo_more": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "jeszcze {n}",
+        "nPlural=few": "jeszcze {n}",
+        "nPlural=many": "jeszcze {n}",
+        "nPlural=other": "jeszcze {n}"
+      }
+    }
+  ],
+  "strip_week_range": "od {from} do {to}",
+  "strip_week_earlier": "Tydzień wcześniej",
+  "strip_week_later": "Tydzień później",
+  "strip_day_state": "{day}: {state}",
+  "dilation_nothing_expected": "Nic nie zaplanowano",
+  "strip_day_today_state": "Dzisiaj, {state}",
+  "strip_week_nothing": "W tym tygodniu nic"
 }

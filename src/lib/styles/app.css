@@ -50,8 +50,9 @@ body {
 
    Deliberately not extended to every other place a `note` prop shows up
    (WrappedYear's figure captions, BarRows', PairedDots' and Tile's own
-   `note` slots): those are computed summaries the app wrote, not something
-   the person typed, and belong with the rest of the app's chrome. */
+   `note` slots):
+   those are computed summaries the app wrote, not something the person
+   typed, and belong with the rest of the app's chrome. */
 :is(
   .entry-note,
   .kit-entry-note,
@@ -73,11 +74,14 @@ body {
   container: app / inline-size;
   height: 100dvh;
   width: 100%;
+  max-width: 100%;
 }
 
 .app {
   position: relative;
   height: 100%;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -137,10 +141,99 @@ body {
      transition roadmap: "the fade-in jumps a lot of pixels"; measured with
      a scroll listener across a real back navigation to /more). */
   overflow-anchor: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding-top: var(--inset-top);
   padding-left: var(--inset-left);
   padding-right: var(--inset-right);
   padding-bottom: var(--nav-clearance);
+}
+
+/* ---------- the column: the scroll region, and the foot beside it ----------
+
+   Two pinned things sit over this column and only one of them ever floated.
+   `.app-nav` is absolute against the frame and the region reserves
+   `--nav-clearance` for it, which is the promise that lets a bar cover a
+   row mid-scroll and not at the end of the column. The save bar was the
+   second one and it made no such promise: `position: sticky` at the end of
+   the content, over a column that did not know it was there, so it landed
+   on whatever the screen happened to have at that height - the bottom 19px
+   of a 48px slider on `/settings/dimension`, 44 of the same slider's 48 in
+   the entry editor, 36px of a selected photo cell on `/media/photos/export`
+   (carpet 28's occlusion pass; `$lib/stores/saveBar.svelte` has the
+   arithmetic that made every fix from inside the column impossible).
+
+   So the foot is out of the region and beside it, and the reservation is
+   layout: the region is a foot shorter, and nothing is under the foot at
+   any scroll position. This box is what holds the two together, and what
+   keeps them beside the rail rather than under it at desktop width, where
+   `.app` itself is a row. */
+.app-column {
+  flex: 1;
+  /* A flex item will not go below its content's size without this, so a
+     long screen would grow the column and push the foot off the frame
+     instead of letting the region scroll. */
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* What the region owes below its content, on a screen that has a foot: the
+   foot holds the floating bar's room itself (below), so asking for
+   `--nav-clearance` here as well would count the bar twice - which is the
+   defect the sticky version's own negative offset was written to undo. The
+   breath between the last block and the foot is the block's own trailing
+   margin (`.screen > *`), the same 20 the sticky bar's `margin-top`
+   collapsed into. */
+.app-column.has-savebar > .app-main {
+  padding-bottom: 0;
+}
+
+/* The foot itself: the one commitment a deep screen asks for.
+
+   It sits *on* the floating bar rather than above it, keeping `--space-2`
+   and giving the breath back - the trade the sticky version documented and
+   Alicja asked for (2026-08-25, "too high"). Held as the padding under the
+   controls, since a box in the frame's flow has no scroll port for an
+   offset to be measured from. Its ground is the page's, as it always was:
+   the foot is where the column ends, not a surface over it (rule 4).
+
+   Two of the three arrangements are in the app's vocabulary already: rule
+   12's foot is a primary with the ways past it under it, and rule 15's is
+   one control. `row` is the third - two of equal weight, where declining is
+   as ordinary an outcome as keeping (a voice take). */
+.app-savebar {
+  flex: 0 0 auto;
+  display: flex;
+  padding: var(--space-3) var(--space-5) calc(var(--nav-clearance) - var(--space-5) + var(--space-2));
+  /* Opaque, and this is mechanism rather than decoration. The column gives
+     up the foot's room on the last frame of its arrival and takes it back
+     on the first frame of its leave ($lib/motion/foot), which is invisible
+     only because the strip being clipped is already covered: through a
+     see-through foot the same swap reads as a band of content disappearing
+     in one frame. `.return-foot` says the same thing for the same reason
+     ("opaque, or the rows scroll through it").
+
+     The ground is the page's, so nothing here is a surface (rule 4): what
+     the hairline marks is where the column ends, which is what rule 12's
+     foot is - "pinned to the bottom edge above a hairline". The app draws
+     this foot twice already, in setup and on the return moment, and both
+     draw the line. */
+  background: var(--bg);
+  border-top: 1px solid var(--hairline);
+}
+.app-savebar .btn { width: 100%; }
+.savebar-row {
+  gap: var(--space-3);
+}
+.savebar-row .btn { flex: 1; }
+.savebar-stack {
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 /* What the floating bar occupies, measured from the bottom of the window:
@@ -153,10 +246,11 @@ body {
   --nav-clearance: calc(
     var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
-  --nav-float-gap: var(--space-3);
-  /* The gap between the bar's edge and the controls inside it, which is
-     also what separates the bar's corner radius from --r-add's. */
-  --nav-bar-pad: 5px;
+  /* Trimmed from --space-3/5px for ticket 08: the four tab labels grew, and
+     every px reclaimed from the bar's own margins is a px the five equal
+     columns (below) can give the label instead of the ellipsis. */
+  --nav-float-gap: var(--space-2);
+  --nav-bar-pad: 4px;
 }
 
 /* The gates and onboarding, which render instead of the app and have no bar
@@ -188,6 +282,9 @@ body {
   padding: 0 var(--space-5);
   position: relative;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* Nothing on a screen touches the thing above it.
@@ -218,28 +315,28 @@ body {
    The trailing margin on the last block is deliberate and harmless: the
    scroll region already clears the floating bar with its own padding.
 
-   --space-6, not --space-4: two cards read as one with a line through it at
-   16px (Alicja, 2026-08-26, register finding 32.14). This is a different
-   axis from DIRECTION.md decision 3's "tighter, not airier" - that gap
-   (--space-3) is between related items inside a section and deliberately
-   shrank; this one is between unrelated blocks that need to read as
-   separate, and grows for the same reason the other one shrank. */
+   20 between two blocks (phase 10, DIRECTION.md rule 1). It was 24, set
+   when two outlined cards at 16px read as one card with a line through it
+   (Alicja, 2026-08-26, register finding 32.14); two flush blocks separated
+   by hairlines can sit closer than two outlined cards, and 20 is one of
+   the three distances the rhythm names. A section heading asks for 40
+   above its rule and owns that margin itself (kit.css). */
 .screen > * {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
 /* A heading belongs to what comes after it. Less space under it than over it
    is what makes a screen read as named areas rather than as an even column
-   of blocks. */
+   of blocks: 12 under the heading (rule 1). */
 .screen > .kit-heading {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
-/* The header is the screen's own title block: its subtitle already carries
-   the space under it. */
-.screen > .screen-header {
-  margin-bottom: 0;
-}
+/* The header takes the same 20 as every other block. It used to take 0,
+   because its own padding carried the space under the subtitle; the field
+   (components.css, redesign ticket 23) pads nothing below itself, so the
+   first block on a screen sits 20 under the field, or under the subtitle
+   where there is one. */
 
 /* The floor reaches one level down, because most screens put their content
    inside a branch wrapper: `{#if loading}...{:else}<div>` needs an element to
@@ -253,13 +350,13 @@ body {
    Named rather than reached through with `.screen > * > *`, which would put
    a margin inside every card, list and chart on the screen.
 
-   --space-6 to match the floor above it (32.14). */
+   --space-5 to match the floor above it. */
 .screen > .screen-part > * {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
 .screen > .screen-part > .kit-heading {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 /* The wrapper's own last child would otherwise add its margin to the
@@ -293,9 +390,9 @@ body {
   right: calc(var(--nav-float-gap) + var(--inset-right));
   bottom: calc(var(--nav-float-gap) + var(--inset-bottom));
   height: var(--bottom-nav-height);
-  border-radius: calc(var(--r-add) + var(--nav-bar-pad));
+  border-radius: var(--r-block);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--outline);
   box-shadow: var(--shadow-float);
   padding: var(--nav-bar-pad);
   /* Five equal cells: two tabs, the add button, two tabs. Equal rather
@@ -308,11 +405,11 @@ body {
   z-index: 30;
 }
 
-/* The bar's corner and the add button's are the same shape, one padding
-   step apart, so the button reads as sitting inside the plane rather than
-   as a second unrelated rounded thing. That is the agreement DIRECTION.md
-   asks --r-add to carry, and it is why the bar's radius is derived from it
-   here instead of being its own number. */
+/* The bar's corner and the add button's are the same shape: both take
+   --r-block (phase 10, rule 5), the one corner the app has, so the button
+   reads as sitting inside the plane rather than as a second unrelated
+   rounded thing. The bar used to derive its corner from the button's
+   --r-add plus the pad; with one radius there is nothing to derive. */
 .nav-item {
   display: grid;
   justify-items: center;
@@ -321,8 +418,8 @@ body {
   justify-self: stretch;
   min-width: 0;
   min-height: var(--touch-target);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--r-add);
+  padding: var(--space-1);
+  border-radius: var(--r-block);
   color: var(--text-2);
   text-decoration: none;
   font-size: var(--text-xs);
@@ -335,9 +432,23 @@ body {
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
-.nav-icon { display: grid; place-items: center; }
+/* A box around the glyph on both shapes, and on the rail that is all it is
+   for: the arrival swing (redesign ticket 26) needs something to transform
+   that is not the row itself, since the row carries the press. */
+.nav-icon,
+.rail-icon { display: grid; place-items: center; }
 /* One line, ellipsed rather than wrapped: a two-line label would grow the
-   bar's height on one tab and not the others. */
+   bar's height on one tab and not the others.
+
+   Ticket 08 measured every label's fit at the 320px floor after widening
+   the cells as far as this bar's own margins allow (Alicja, 2026-09-07):
+   Today/Dzisiaj and Journal/Dziennik clear it, Look back and Transition
+   (English) do not, by 4-5px, and closing that without shrinking the text
+   or giving up the floating bar's own margin needs more room than five
+   equal columns have at 320px. Accepted as a truncation this ellipsis
+   already existed to catch, at the narrowest phone still supported - it
+   is not one this ticket's wording made possible that wasn't already true
+   of "Calendar"/"Kalendarz"/"Statystyki" at the same width. */
 .nav-label {
   max-width: 100%;
   overflow: hidden;
@@ -355,72 +466,221 @@ body {
    label paint over the pill: the pill is a positioned element and would
    otherwise sit on top of static siblings whatever the source order says. */
 .nav-item { position: relative; }
-.nav-item.is-active { color: var(--accent); }
+/* The same ink the rail's lit row always took, which the bar should have
+   taken all along: --accent on --accent-soft measures 4.07:1 at worst
+   (trans, light) and the label is 11px, so the bar's active label has been
+   under the 4.5 floor since the pill first travelled. --on-accent-soft is
+   5.27:1 on the same fill. It also reads heavier, which is half of what
+   makes the lit tab more pronounced (redesign ticket 26). One ink for one
+   fill across both shapes of the navigation. */
+.nav-item.is-active { color: var(--on-accent-soft); }
 .nav-item:hover { color: var(--text); }
 
 /* One lit shape for the set, travelling to whichever tab is current, on both
    shapes of the navigation - across the bar, down the rail (phase 5 ticket
-   31). AppNav.svelte measures the tab and writes the five custom properties;
-   the axis is the only thing that differs between the two, and it arrives
-   already folded into --pill-sx and --pill-sy.
+   31). AppNav.svelte measures the tab and writes the four insets it is
+   pinned by, plus a schedule for each edge of the axis it travels on.
 
    Tier 2. The bar is how you move between the four areas of the app, and
    this is that move made visible in the one piece of chrome that is on every
    screen. It answers the same navigation the fade-through between the
    screens does, and it spends the same --dur-med.
 
-   Only `translate` transitions. The four tabs are equal cells of a five
-   column grid and the rail's rows are all the width of the rail, so the size
-   is the same wherever the pill lands and there is nothing else to animate -
-   which keeps this inside DIRECTION.md's contract of transform and opacity
-   rather than beside it. Should a translation ever make one tab a different
-   size, the pill resizes at the start of the move instead of over it, which
-   is invisible under a travelling shape.
+   Pinned by four insets rather than placed by `translate` (redesign ticket
+   26), because the two edges of the travelling axis are no longer on the
+   same clock. The leading edge - the one nearer the destination - sets off
+   first on --ease-out-soft over --dur-med; the trailing edge waits
+   --stagger-step, then follows on --ease-in-out over --dur-slow, catching up
+   and closing the shape. Two independently scheduled lengths is what that
+   is, and there is no way to say it in one transform: a translate moves both
+   edges together, and the width in between is the live difference of two
+   curves rather than a value with a curve of its own.
 
-   The stretch is a keyframe rather than a third transition, for the reason
-   .segment-pill already gives: a stretch is a there-and-back, and a
-   transition can go to a peak or come back from one, not both. It ends on
-   `scale: 1 1`, which the resting rule below also declares, so the
-   reduced-motion clamp to 1ms strands it at its true size rather than
-   stretched. */
+   Each edge carries its own duration as well as its own curve, because the
+   catch-up is the slower half by design (Alicja, on the first flipbook: "the
+   whole thing needs to be a little longer"). The leading edge still lands on
+   --dur-med, so the tab that was tapped lights on tier 2's own duration;
+   what got longer is the closing, which now finishes at 430ms.
+
+   An inset is a layout property, and motion/materials.css's contract says
+   only transform and opacity animate, because the target is a Capacitor
+   WebView on a mid-range Android phone. So this is the contract's second
+   amendment, and it arrives the way the first one did: with a cap a test can
+   check, a reduced-motion substitute, and a number from a benchmark.
+
+   The cap is structural rather than a threshold. The pill is one absolutely
+   positioned, empty box per navigation - no children, no text, and no
+   sibling whose position depends on it - so changing its insets invalidates
+   the layout of exactly that box and there is nothing for a reflow to
+   cascade into. `all` is never named, only the four insets and opacity are,
+   and motion-system.test.ts enumerates every layout property the app is
+   allowed to animate, so the next one has to be argued rather than added.
+
+   The substitute is the same one every --dur-* animation in the app gets:
+   the 1ms clamp lands both edges on the tab at its own size, so what goes
+   is the travel and not the change of state.
+
+   The number is tests/nav-motion-cost.mjs. Desktop Chromium at the 390px
+   floor, unthrottled and at 4x CPU throttling: every frame across the whole
+   456ms sequence is 16.7ms in both runs, and the single long frame in each
+   (34ms, 63ms) lands at +59ms and +78ms, which is the route change drawing
+   the new screen rather than anything the pill does. Not the device tier -
+   see that script's own note on which machine may be quoted for what.
+
+   The old version said it with `scale` and a keyframe, and paid for it
+   twice. The stretch was a tuned percentage of the pill's own length (18% at
+   the cap) rather than the gap it was actually crossing, so the shape never
+   touched both tabs at once; and scaling a rounded rectangle scales its
+   corners with it, which flattened --r-block along the way. Insets keep the
+   one corner the app has at both ends of the stretch, which is what every
+   tab bar in the reference sweep does with its highlight (Apple Store,
+   Flighty, Truecaller).
+
+   Two transitions rather than one for the same reason: a transition on a
+   layout inset retargets from wherever it currently is, so a second tab
+   tapped mid-travel picks the shape up in flight instead of restarting from
+   a position it has already left - which a keyframe on a class cannot do
+   without being cancelled and replayed.
+
+   Both edges end on the tab's own insets, which is the whole of the
+   reduced-motion contract here: the 1ms clamp lands the pill on its
+   destination at its own size, with nothing left mid-stretch. Both delays
+   are tokens the clamp zeroes too (--stagger-step), so the trailing edge
+   cannot outlive it. */
 .nav-pill {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: var(--pill-w, 0);
-  height: var(--pill-h, 0);
-  translate: var(--pill-x, 0) var(--pill-y, 0);
-  scale: 1 1;
-  border-radius: var(--r-add);
+  left: var(--pill-left, 0);
+  right: var(--pill-right, 0);
+  top: var(--pill-top, 0);
+  bottom: var(--pill-bottom, 0);
+  border-radius: var(--r-block);
+  /* The fill it always had, and a line at full --accent around it: at 11%
+     of the accent the shape is a wash you have to look for (Alicja,
+     2026-09-08), and a stronger fill is not available. Mid-travel the
+     stretched shape passes under the tabs between the two it spans, so
+     their --text-2 label sits on this fill for as long as it is open, and
+     that pair is already at the floor: 4.56:1 at 11% (trans, light), 4.42
+     at 13%, 3.95 at the 20% this was first tried at. So the weight goes on
+     the edge instead, where no label sits. A 1px line rather than a
+     shadow, which the kit does not have, and at --accent rather than
+     --accent-border because a 30% line on an 11% fill is the same wash
+     again. --accent on this fill is 4.07:1 at worst, well over the 3:1
+     floor a non-text boundary answers to.
+
+     Naming what that costs: DIRECTION.md rule 4 budgets two line strengths,
+     --hairline at 14% of the ink and --outline at 19%, and --accent-border
+     is already the accent's own third. A full-strength accent line is a
+     fourth, and it exists on this one element because this is the one block
+     in the app whose whole job is to be seen rather than to sit quietly
+     behind something. Deliberate, argued here, and put to Alicja as a
+     deviation rather than slipped in as a detail. */
   background: var(--accent-soft);
+  border: 1px solid var(--accent);
   opacity: 0;
   pointer-events: none;
-  transition: translate var(--dur-med) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+/* The axis each shape travels on, and it is the only thing that differs
+   between them: the bar's two edges are left and right, the rail's are top
+   and bottom. Which of the pair is leading and which is trailing flips with
+   the direction of travel, so the schedules arrive as --pill-near-* (left or
+   top) and --pill-far-* (right or bottom) and the component decides which is
+   which - indicator.ts's `leadingEdge`.
+
+   The cross-axis pair is deliberately not transitioned. Every cell of the
+   bar is the same height and every rail row the same width, so those insets
+   only change when the nav itself relaid out, and a relayout is not a
+   navigation to animate. */
+[data-nav-pill='bar'] {
+  transition:
+    left var(--pill-near-dur, var(--dur-med)) var(--pill-near-ease, var(--ease-out-soft))
+      var(--pill-near-delay, 0ms),
+    right var(--pill-far-dur, var(--dur-med)) var(--pill-far-ease, var(--ease-out-soft))
+      var(--pill-far-delay, 0ms),
+    opacity var(--dur-fast) var(--ease-out);
+}
+[data-nav-pill='rail'] {
+  transition:
+    top var(--pill-near-dur, var(--dur-med)) var(--pill-near-ease, var(--ease-out-soft))
+      var(--pill-near-delay, 0ms),
+    bottom var(--pill-far-dur, var(--dur-med)) var(--pill-far-ease, var(--ease-out-soft))
+      var(--pill-far-delay, 0ms),
+    opacity var(--dur-fast) var(--ease-out);
 }
 /* Hidden until a tab is lit rather than absent from the DOM: seven routes
    light no tab at all (active-tab.ts), and a pill that is removed and
    remounted has no previous position to travel from when one of them leads
    back into the four. */
 .nav-pill.is-shown { opacity: 1; }
-/* `scale: 1 1` restated on the sliding state and not only on the resting
-   rule, because the reduced-motion invariant is checked against the selector
-   the animation is declared on - and because it is true: this is where the
-   keyframe both starts and ends, so the 1ms clamp leaves the pill its own
-   size rather than stranding it mid-stretch. */
-.nav-pill.is-sliding {
-  scale: 1 1;
-  animation: nav-pill-slide var(--dur-med) var(--ease-out);
+
+/* The destination icon answers the arrival (redesign ticket 26). Every tab
+   bar in the reference sweep marks its active icon as the heavier of the set
+   - filled against outline - and this app does not, because a permanent
+   delta between the lit icon and its peers is a second active state to keep
+   honest in eight palettes and two themes. So the weight is spent in time
+   instead of in ink: the icon gains presence at the moment the highlight
+   lands and gives it straight back, and at rest it is the same drawing as
+   the other three.
+
+   A loop, not a settle. Both frames at either end are `transform: none`, so
+   there is no resting declaration to keep in step and nothing for the 1ms
+   clamp to strand - and no tab can accumulate a scale by being visited
+   twice.
+
+   It pivots on a corner rather than on its middle, and which corner is the
+   one fact about it worth stating plainly (Alicja, 2026-09-08): the bottom
+   corner on the far side of the travel, so a highlight arriving from the
+   right pivots the house on its bottom left. A centred pivot is a thing
+   inflating in place; a corner pivot on the side the motion is heading for
+   is a thing the motion caught and swung past, which is what this is meant
+   to be. The component writes --nav-anchor, since only it knows which way
+   the pill came - indicator.ts's `leadingEdge`, mapped onto each axis's own
+   pair of keywords.
+
+   --dur-slow over --dur-med, on the swing rather than on the pill's leading
+   edge, because a 240ms there-and-back on a 24px glyph is two direction
+   changes inside a quarter of a second and reads as a yank rather than a
+   swing (Alicja, on the first flipbook). Delayed --stagger-step, the same
+   beat the trailing edge waits, so the peak lands as the leading edge does
+   and the swing settles exactly when the shape closes. */
+.nav-icon,
+.rail-icon { transform-origin: var(--nav-anchor, center); }
+.nav-icon.is-arriving {
+  animation: nav-icon-arrive-x var(--dur-slow) var(--ease-out-soft) var(--stagger-step);
 }
-/* Longer along the way and a little thinner with it, the peak before halfway
-   because a thing stretches as it accelerates away and has recovered by the
-   time it lands. How much is a function of how far it went, which
-   indicator.ts computes: a hop between neighbouring tabs and the jump across
-   the add button from Calendar to Stats should not deform alike, or the
-   deformation is illustrating travel rather than answering to any. */
-@keyframes nav-pill-slide {
-  0% { scale: 1 1; }
-  40% { scale: var(--pill-sx, 1) var(--pill-sy, 1); }
-  100% { scale: 1 1; }
+.rail-icon.is-arriving {
+  animation: nav-icon-arrive-y var(--dur-slow) var(--ease-out-soft) var(--stagger-step);
+}
+/* The lean follows the axis its own shape travels on, which is the same
+   mapping the insets above make: the bar runs across the screen, so its
+   icons lean across it, about Z. --nav-swing is the sign of the travel, so
+   a tab reached from the left and the same tab reached from the right lean
+   opposite ways.
+
+   A curve per half, not one for the whole. The swing out answers the
+   highlight and wants the same softened deceleration the leading edge has;
+   the return is the icon settling back under nothing, and wants the gather
+   the trailing edge has. One curve over a there-and-back applies the same
+   acceleration to a departure and to a homecoming, which is most of what
+   made the first version read as a yank. */
+@keyframes nav-icon-arrive-x {
+  0% { transform: none; animation-timing-function: var(--ease-out-soft); }
+  50% {
+    transform: scale(1.15) rotate(calc(var(--nav-swing, 0) * 8deg));
+    animation-timing-function: var(--ease-in-out);
+  }
+  100% { transform: none; }
+}
+/* The rail runs down the screen, so its icons lean down it - which is a tip
+   about X rather than a turn about Z, and needs the perspective to be a tip
+   at all. Negative, so a highlight travelling downward drags the icon's top
+   face down toward the reader the way a finger drawn down a card would. */
+@keyframes nav-icon-arrive-y {
+  0% { transform: none; animation-timing-function: var(--ease-out-soft); }
+  50% {
+    transform: perspective(160px) scale(1.15) rotateX(calc(var(--nav-swing, 0) * -20deg));
+    animation-timing-function: var(--ease-in-out);
+  }
+  100% { transform: none; }
 }
 
 .nav-add,
@@ -454,7 +714,7 @@ body {
   position: relative;
   z-index: 1;
   width: 56px; height: 56px;
-  border-radius: var(--r-add);
+  border-radius: var(--r-block);
   border: none;
   background: var(--accent);
   color: var(--on-accent);
@@ -508,7 +768,15 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
    ticket could wire tier 2 through the whole app without remounting a page
    component on every navigation.
    ============================================================ */
-.app-main { view-transition-name: screen; }
+/* The column rather than the scroll region inside it, since carpet 26 put
+   the foot beside the region: a group holds one box for both sides of a
+   transition, so naming the region would hand the browser a box a foot
+   shorter on a screen that has one than on the screen being left, and a
+   tween of the box is a scale of the picture in it. The column is the same
+   size on every screen, foot or no foot, and the foot rides inside its
+   snapshot exactly as it did when it was a block at the end of the
+   column. */
+.app-column { view-transition-name: screen; }
 
 /* The floating bar is its own group, above the screen's (Alicja, 2026-08-25:
    "during the transition the new tab is rendering above the nav for a
@@ -539,6 +807,7 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 ::view-transition-new(nav) {
   animation-duration: var(--dur-fast);
   animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
 }
 
 /* The outgoing screen leaves faster than the incoming one arrives. An exit
@@ -550,10 +819,36 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
   animation-timing-function: var(--ease-out);
   animation-fill-mode: both;
 }
+/* Two animations, because the incoming screen is doing two things at once
+   and they are not on the same clock (redesign ticket 28). Its own pattern
+   - the fade-through's scale, the shared axis's X - runs on --dur-med as it
+   always has; the follow, which is the content travelling with the blind's
+   bottom edge, runs on the blind's --dur-slow. They compose rather than
+   overwrite each other because the follow is written as `translate` and
+   every pattern's own movement as `transform`: the individual property is
+   applied first, and neither animation touches the other's. A pattern that
+   names only one animation simply leaves the second duration unused. */
 ::view-transition-new(screen) {
-  animation-duration: var(--dur-med);
+  animation-duration: var(--dur-med), var(--dur-slow);
   animation-timing-function: var(--ease-out);
   animation-fill-mode: both;
+}
+/* Plain --ease-out, and deliberately not the blind's settle: the blind is
+   painted over the page and covers the difference between the two curves,
+   while a page that bounced with the edge would rock the whole screen at
+   the end of every navigation. --blind-delta is the height the field lost,
+   so the content starts where the old edge was and arrives at its own
+   place; it is 0 where the two fields are the same height, which makes
+   this a no-op rather than a case to switch off. */
+@keyframes blind-follow {
+  from { translate: 0 var(--blind-delta, 0px); }
+  to { translate: 0 0; }
+}
+/* The other side of the same ride: what was printed on the blind before the
+   navigation goes where the edge goes, which is the height the field lost. */
+@keyframes blind-lead {
+  from { translate: 0 0; }
+  to { translate: 0 calc(-1 * var(--blind-delta, 0px)); }
 }
 
 /* Between the four tabs: fade-through. The outgoing screen settles to 0.97
@@ -564,10 +859,178 @@ html[data-nav='fade-through']::view-transition-old(screen) {
   animation-name: screen-fade-out;
 }
 html[data-nav='fade-through']::view-transition-new(screen) {
-  animation-name: screen-fade-in;
+  animation-name: screen-fade-in, blind-follow;
 }
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
 @keyframes screen-fade-in { from { opacity: 0; transform: scale(1.03); } }
+
+/* The field is a blind over the content (redesign ticket 28, which amends
+   rule 10 and ADR-0078's field paragraph).
+
+   Ticket 25 gave the whole card one name on both sides, so the browser
+   tweened its box between the two doors' heights and crossfaded what was
+   drawn on it. That crossfade is a photograph of the card, contents
+   included, stretched between two heights: the smear Alicja named at frame
+   5 of Journal to Look back (2026-09-08). Her instruction was that the
+   field be "a separate module painted over the content" which "slides out a
+   little bit further down" on the way to a taller door and back up on the
+   way to a shorter one.
+
+   So the card is split. The blind is its paint - a flat block, one window
+   tall, hanging from the field's top edge, carrying the name `blind` on
+   every screen - and the field's height is a clip on it rather than a size.
+   Nothing is ever scaled: a snapshot squashed from 175px to 102px would
+   deform the two bottom corners, and this cannot, because the corners are
+   the clip's own `round` and the picture behind them never changes shape.
+   The group is pinned rather than tweened for the same reason - it holds
+   the incoming blind's box, and the edge is the only thing that moves.
+
+   Both halves run the same slide rather than one fading into the other.
+   They are the same flat colour on every screen (--field is published once,
+   on <html>, by activeFlag), so two identical opaque images on one clip
+   read as one block; a crossfade between them would dip through the middle
+   frames and read as the card blinking.
+
+   --blind-from, --blind-to and the settle on --blind-ease are measured and
+   published per navigation by $lib/motion/fieldBlind. The name is handed
+   over from there too, never written as a rule: a rule names both blinds at
+   once at the new capture - the outgoing screen can still be in the DOM -
+   and Chromium aborts the whole transition on the duplicate.
+
+   Reduced motion needs nothing of its own here: --dur-slow is clamped to
+   1ms at the token, so the blind cuts to its new height, which is the
+   substitute the contract asks for. */
+/* Over the content and in the order the field itself paints them: the
+   blind's colour, the type on it, and the sun over both. Written out
+   because a group with no z-index of its own falls in where its name was
+   first encountered, which is under the two groups above.
+
+   The blind's group is pinned rather than tweened: it holds the incoming
+   blind's box, and the edge is the only thing that moves. */
+::view-transition-group(blind) { z-index: 3; animation: none; }
+::view-transition-group(*.field-part) { z-index: 4; }
+/* The sun above everything the field carries, both closing and opening: it
+   is the app's own mark rather than one more thing painted on a card, and a
+   ring passing behind a title that is on its way out reads as the drawing
+   being interrupted (Alicja, 2026-09-09, on Transition to Today). */
+::view-transition-group(*.sun-ring) { z-index: 5; }
+/* The field, named only so the blind, its parts and the sun - all nested
+   under it via view-transition-group: nearest (fieldBlind.ts) - inherit an
+   ancestor to be clipped by. A promoted element's capture ignores ancestor
+   overflow: hidden by design (confirmed against the W3C spec and Chrome's
+   own docs, which describe this exact symptom by name); nesting the
+   children's groups under the field's own and clipping THAT is Chrome's
+   shipped answer, stable since 140. The field's own capture is hidden
+   rather than left to crossfade - a second whole-field photograph is
+   exactly the smear ticket 25 split this file apart to stop, and nothing
+   here needs the field to be seen, only to contain. */
+::view-transition-old(field),
+::view-transition-new(field) { opacity: 0; animation: none; }
+::view-transition-group-children(field) { overflow: clip; }
+::view-transition-old(blind),
+::view-transition-new(blind) {
+  animation: blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+}
+@keyframes blind-slide {
+  from {
+    clip-path: inset(0 0 calc(100vh - var(--blind-from, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+  }
+  to {
+    clip-path: inset(0 0 calc(100vh - var(--blind-to, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+  }
+}
+
+/* What is painted on the field is printed on it, and rides with it (Alicja,
+   round one, 2026-09-09: "make it so that the content on top of the field -
+   especially texts, bars, buttons - actually move with the blind, as if they
+   were physically printed on it"). This replaces the ticket's own "the texts
+   do not ride the blind", and it settles the note beside it - that nothing
+   painted on the field may ever stick out of it - by construction rather
+   than by a clip: a mark on the fabric keeps its distance from the edge, so
+   if it starts inside the field it cannot leave it. Both sides ride on the
+   blind's own curve, not the content's, because they are the blind.
+
+   On top of the ride, each element still leaves and arrives on its own, and
+   no frame carries two of them: the outgoing one fades out over --dur-fast,
+   the incoming one fades in over the --dur-fast after that. That travel goes
+   the way the blind is going - the old text drops and the new comes from
+   above on a blind being pulled down, and both the other way on one being
+   pulled up (Alicja, same round) - which is what --part-travel carries. It
+   is 12px against the field's own 16px of bottom padding, so an element
+   travelling towards the edge still cannot reach it.
+
+   Two animations rather than one because they are on two clocks. They
+   compose rather than overwrite because the ride is written as `translate`
+   and the travel as `transform`: the individual property is applied first,
+   and neither touches the other's. */
+::view-transition-old(*.field-part) {
+  animation:
+    field-part-out var(--dur-fast) var(--ease-in-out) both,
+    blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+}
+::view-transition-new(*.field-part) {
+  animation:
+    field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
+    blind-follow var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+}
+@keyframes field-part-out {
+  to { opacity: 0; transform: translateY(var(--part-travel, 12px)); }
+}
+@keyframes field-part-in {
+  from { opacity: 0; transform: translateY(calc(-1 * var(--part-travel, 12px))); }
+}
+
+/* The sun leaves as a movement rather than as part of a photograph: every
+   ring is its own group, and they close outermost first on --stagger-ring,
+   which is the entrance's 110ms beat compressed into the door's clock.
+   Agender is the longest flag at seven rings, so the last one starts at
+   180ms and lands at 330, inside --dur-slow; tests/motion-system.test.ts
+   fails if a palette is ever given more stripes than there are steps
+   written here. Coming back to Today is the same run the other way.
+
+   A delay per ring is a rule per ring, because a view transition's pseudo
+   element cannot read a custom property off the element it was taken from.
+   Both sides in one rule: the outgoing ring closes on the same beat the
+   incoming one opens on. */
+/* Closing rides with the blind - the sun is one of the things printed on
+   the field, and as the field hides, what's on it goes with it. Opening
+   does not (Alicja, 2026-09-10, ticket 99 round 2 - a fourth motion note
+   on top of the glitch this round already fixed): "make the sun appearing
+   NOT move with the blind - we don't want it to overshoot like the blind
+   - we just want it to appear independently. but when the blind HIDES,
+   the sun SHOULD follow it". The arriving sun draws where it will rest
+   and only scales there; nothing about a blind's own settle (the
+   overshoot --blind-ease can carry) touches it. */
+::view-transition-old(*.sun-ring) {
+  animation:
+    sun-ring-close var(--dur-fast) var(--ease-in-out) both,
+    blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+}
+::view-transition-new(*.sun-ring) {
+  /* Much slower than the fast tier it drew on before (Alicja, 2026-09-10:
+     "the sun appearing should be much slower", then "even slower", then
+     "let's go for 900ms") - --dur-sun-open (theme/base.css), its own
+     token rather than reusing --dur-slow or --dur-authored, since
+     neither of those numbers is this one and changing either would move
+     something else that asked for nothing. */
+  animation: sun-ring-open var(--dur-sun-open) var(--ease-out) both;
+}
+@keyframes sun-ring-close { to { scale: 0; } }
+@keyframes sun-ring-open { from { scale: 0; } }
+::view-transition-old(sun-a-0),
+::view-transition-new(sun-b-0) { animation-delay: calc(0 * var(--stagger-ring)), 0s; }
+::view-transition-old(sun-a-1),
+::view-transition-new(sun-b-1) { animation-delay: calc(1 * var(--stagger-ring)), 0s; }
+::view-transition-old(sun-a-2),
+::view-transition-new(sun-b-2) { animation-delay: calc(2 * var(--stagger-ring)), 0s; }
+::view-transition-old(sun-a-3),
+::view-transition-new(sun-b-3) { animation-delay: calc(3 * var(--stagger-ring)), 0s; }
+::view-transition-old(sun-a-4),
+::view-transition-new(sun-b-4) { animation-delay: calc(4 * var(--stagger-ring)), 0s; }
+::view-transition-old(sun-a-5),
+::view-transition-new(sun-b-5) { animation-delay: calc(5 * var(--stagger-ring)), 0s; }
+::view-transition-old(sun-a-6),
+::view-transition-new(sun-b-6) { animation-delay: calc(6 * var(--stagger-ring)), 0s; }
 
 /* Into a detail, and back out of it: shared-axis-X. Both halves travel
    --motion-distance-md so the pair reads as one axis rather than as two
@@ -576,13 +1039,13 @@ html[data-nav='shared-axis']::view-transition-old(screen) {
   animation-name: screen-axis-out;
 }
 html[data-nav='shared-axis']::view-transition-new(screen) {
-  animation-name: screen-axis-in;
+  animation-name: screen-axis-in, blind-follow;
 }
 html[data-nav='shared-axis-back']::view-transition-old(screen) {
   animation-name: screen-axis-back-out;
 }
 html[data-nav='shared-axis-back']::view-transition-new(screen) {
-  animation-name: screen-axis-back-in;
+  animation-name: screen-axis-back-in, blind-follow;
 }
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
 @keyframes screen-axis-in { from { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
@@ -609,12 +1072,35 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
    `fill` against a box that is changing size: a 60px row stretched into a
    full screen is a smear, and the same two frames cropped are a card
    opening. */
-html[data-nav='container']::view-transition-old(screen),
-html[data-nav='container']::view-transition-new(screen) {
-  animation-name: screen-crossfade;
-}
 html[data-nav='container']::view-transition-old(screen) {
+  animation-name: screen-crossfade;
   animation-direction: reverse;
+}
+html[data-nav='container']::view-transition-new(screen) {
+  animation-name: screen-crossfade, blind-follow;
+}
+
+/* The app opening for its owner: the secret is accepted and the gate gives
+   way (redesign ticket 34, $lib/motion/appOpening, which explains why this
+   one is not a navigation and has to start its own transition).
+
+   The only pattern in the app whose two screens do nothing but change
+   opacity, and the reason is that the movement is already there. A gate's
+   field is one title tall; Home's is 175px of the flag with the sun in it.
+   So the blind opens by that difference on --dur-slow, the wordmark printed
+   on it rides down onto the place Home draws its own, the sun's rings open
+   outermost-first as it goes, and the page follows the edge down instead of
+   waiting under it. A scale on top of all that - fade-through's 0.97 and
+   1.03, which the four tabs use because they are peers with nothing else
+   moving between them - is the app also being replaced while it opens.
+
+   The gate does not recede either, for the same reason: it is not going
+   anywhere, it is being covered. */
+html[data-nav='open']::view-transition-old(screen) {
+  animation-name: screen-fade-away;
+}
+html[data-nav='open']::view-transition-new(screen) {
+  animation-name: screen-crossfade, blind-follow;
 }
 
 /* The container transform is the one pattern that also cared about this: a
@@ -638,23 +1124,50 @@ html[data-nav='container']::view-transition-old(screen) {
    --dur-crossfade, which the 1ms clamp deliberately does not reach. A screen
    change that cuts with no acknowledgement at all is a worse answer to
    "reduce motion" than a change of opacity that moves nothing. */
+/* Out, then in, rather than both at once (redesign ticket 25). A
+   simultaneous crossfade of two text-dense doors is a double exposure for
+   its whole length - "the 'today' appears well before the old screen fades
+   out", then, once both halves ran the same curve, still two screens
+   legible at once through the middle frames (Alicja, round one and two).
+   So the outgoing screen fades to the page over --dur-crossfade and the
+   incoming one fades up from it over the next --dur-crossfade, each on its
+   own and linear; no frame holds two screens. The delay is a token, so the
+   1ms clamp is not what times it - --dur-crossfade sits outside the clamp
+   on purpose, and the whole change is 240ms of opacity and nothing else.
+   The new image is held at its first frame through the delay
+   (fill-mode both), or it would sit at full opacity under the old one. */
 html[data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-a11y-motion='reduce']::view-transition-new(screen) {
+html[data-a11y-motion='reduce']::view-transition-old(*.field-part) {
+  animation-name: screen-fade-away;
+  animation-duration: var(--dur-crossfade) !important;
+  animation-timing-function: linear;
+}
+html[data-a11y-motion='reduce']::view-transition-new(screen),
+html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   animation-name: screen-crossfade;
   animation-duration: var(--dur-crossfade) !important;
+  animation-delay: var(--dur-crossfade);
+  animation-fill-mode: both;
+  animation-timing-function: linear;
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(screen),
-  ::view-transition-new(screen) {
+  ::view-transition-old(*.field-part) {
+    animation-name: screen-fade-away;
+    animation-duration: var(--dur-crossfade) !important;
+    animation-timing-function: linear;
+  }
+  ::view-transition-new(screen),
+  ::view-transition-new(*.field-part) {
     animation-name: screen-crossfade;
     animation-duration: var(--dur-crossfade) !important;
+    animation-delay: var(--dur-crossfade);
+    animation-fill-mode: both;
+    animation-timing-function: linear;
   }
 }
 @keyframes screen-crossfade { from { opacity: 0; } }
-html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-direction: reverse; }
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(screen) { animation-direction: reverse; }
-}
+@keyframes screen-fade-away { to { opacity: 0; } }
 
 /* ---------- desktop: left rail + centred column ---------- */
 .app-rail { display: none; }
@@ -674,16 +1187,32 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
     padding: calc(var(--space-6) + var(--inset-top)) var(--space-4)
              calc(var(--space-6) + var(--inset-bottom))
              calc(var(--space-4) + var(--inset-left));
-    border-right: 1px solid var(--border);
+    border-right: 1px solid var(--outline);
     background: var(--surface);
     overflow-y: auto;
   }
   /* The rail has taken the left inset, so the scroll region beside it only
      owes the right one. */
   .app-main { flex: 1; padding-left: 0; }
+  /* The centred column's own width, named once: the screen and the foot
+     under it are two boxes that have to be the same width to line up, and
+     carpet 26 is what made that two rules instead of one. */
+  .app { --column-max: calc(var(--content-max) + 2 * var(--space-5)); }
   .screen {
-    max-width: calc(var(--content-max) + 2 * var(--space-5));
+    max-width: var(--column-max);
     margin: 0 auto;
+  }
+  /* The foot takes the column's width and its inset, so it lines up with
+     the content above it rather than with the window. Nothing floats over
+     this shell, so what is under the foot is the page's own edge: 20, the
+     screen's inset, and not the 56px the phone's bar needs - that number
+     was the clearance a column reserved for a bar this width does not
+     have. */
+  .app-savebar {
+    width: 100%;
+    max-width: var(--column-max);
+    margin: 0 auto;
+    padding-bottom: var(--space-5);
   }
 }
 
@@ -707,7 +1236,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
    instead of the sun stopping at an edge and a border being drawn
    somewhere else. */
 .rail-brand {
-  font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg);
+  font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-lg);
   letter-spacing: var(--display-track);
   padding: 0 var(--space-3) var(--space-5);
   display: flex; align-items: center; gap: var(--space-2);
@@ -731,7 +1260,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   width: 100%; min-height: var(--touch-target);
   margin-bottom: var(--space-4);
   padding: 0 var(--space-4);
-  border: none; border-radius: var(--r-add);
+  border: none; border-radius: var(--r-block);
   background: var(--accent); color: var(--on-accent);
   font: inherit; font-weight: var(--weight-bold);
   cursor: pointer;
@@ -740,16 +1269,36 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   position: relative;
   display: flex; align-items: center; gap: var(--space-3);
   padding: 10px var(--space-3); min-height: var(--touch-target);
-  border-radius: var(--r-add);
+  border-radius: var(--r-block);
   color: var(--text-2); text-decoration: none; font-weight: var(--weight-medium);
   transition-property: color, background-color;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
 .rail-item:hover { background: var(--surface-2); color: var(--text); }
+/* Not over the lit row. The hover wash predates the travelling pill and used
+   to sit beside it; once the pill became the lit fill, a pointer parked on
+   the row it just landed on painted --surface-2 straight over the pink - so
+   the rail's highlight settled cool grey-blue where the bar's settles in the
+   accent, and the two shapes of the same navigation disagreed on what a lit
+   tab looks like (Alicja, 2026-09-08: "the web nav bg highlight color turns
+   blue... we want it to look just like the android nav"). The bar never had
+   this because .nav-item:hover only ever changed the ink. The lit row's own
+   ink already survives hover, since .rail-item.is-active is declared after
+   it; the fill is the whole of what was wrong. */
+.rail-item.is-active:hover { background: none; }
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
    instead of across. What stays here is the colour and the weight. */
 .rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
+/* Pushed to the rail's foot by the flex column's own auto margin, and cut
+   off from the four doors above it by a hairline rather than a gap alone -
+   a gap reads as spacing, a rule reads as a different kind of row (ticket
+   09, ADR-0076). */
+.rail-settings {
+  margin-top: auto;
+  padding-top: calc(10px + var(--space-2));
+  border-top: 1px solid var(--outline);
+}
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
@@ -760,7 +1309,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   position: absolute; top: -48px; left: var(--space-3); z-index: 100;
   background: var(--accent); color: var(--on-accent);
   padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-block);
   text-decoration: none; font-weight: var(--weight-bold);
   transition: top var(--dur-fast) var(--ease-out);
 }
@@ -819,9 +1368,8 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
     --surface-2: #FFFFFF;
     --text: #000000;
     --text-2: #444444;
-    --border: #CCCCCC;
-    --shadow-1: none;
-    --shadow-2: none;
+    --outline: #CCCCCC;
+    --hairline: #CCCCCC;
   }
 
   /* Paper has neither a display cutout nor a floating bar, so the insets
@@ -878,6 +1426,6 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
 .icon-btn.is-outlined {
   outline: 1.5px solid var(--outline);
   outline-offset: -1.5px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
 }
-.icon-btn.is-outlined:hover { outline-color: var(--outline-strong); }
+.icon-btn.is-outlined:hover { outline-color: var(--outline); }

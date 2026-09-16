@@ -113,9 +113,9 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
   const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
   const components = readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8');
 
-  it("home-header's resting radius is SUN_OUTER/2, not a second number", () => {
-    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\((\d+)px/.exec(home);
-    expect(raw, '.home-header should set min-height from a literal px radius').not.toBeNull();
+  it("home-field's resting radius is SUN_OUTER/2, not a second number", () => {
+    const raw = /\.home-field\s*\{[\s\S]*?min-height:\s*calc\((\d+)px/.exec(home);
+    expect(raw, '.home-field should set min-height from a literal px radius').not.toBeNull();
     expect(Number(raw![1])).toBe(SUN_OUTER / 2);
   });
 
@@ -125,8 +125,8 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
     // by the scale instead of multiplying by it - shrinking the room for
     // the sun rather than growing it, which is worse than the bug this
     // fixes and would pass just as silently.
-    const raw = /\.home-header\s*\{[\s\S]*?min-height:\s*calc\(([^;]+)\);/.exec(home);
-    expect(raw, '.home-header should set min-height').not.toBeNull();
+    const raw = /\.home-field\s*\{[\s\S]*?min-height:\s*calc\(([^;]+)\);/.exec(home);
+    expect(raw, '.home-field should set min-height').not.toBeNull();
     expect(raw![1].replace(/\s+/g, ' ').trim()).toBe(
       `${SUN_OUTER / 2}px * var(--sun-breathe-scale) + var(--inset-top)`
     );

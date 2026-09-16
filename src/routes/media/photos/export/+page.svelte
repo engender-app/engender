@@ -9,6 +9,9 @@
      screen worth looking at, was boxed at the same weight as the two
      controls above it. It sits on the page now at the width of the screen,
      which is also the width the collage was made at. */
+  import { tick } from 'svelte';
+  import { page } from '$app/state';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -34,6 +37,14 @@
     JOURNEY_SURROUND,
     type JourneyFrame
   } from '$lib/data/photos/journey-render';
+  import {
+    chipsFor,
+    narrowTo,
+    photoChipFromQuery,
+    type PhotoChip
+  } from '$lib/data/photos/library';
+  import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
+  import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
   import Progress from '$lib/components/Progress.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
@@ -41,13 +52,15 @@
   import { readPhoto } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
+  import PhotoChipRow from '$lib/components/PhotoChipRow.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -57,14 +70,48 @@
      until somebody shares it or leaves the screen, which is what keeps the
      export off the device unless a person asked for it. */
 
-  let photosQuery = liveList((j) => j.photos.inJournal());
-  let photos = $derived(photosQuery.rows);
+  /* The whole library (phase 11 ticket 14), minus its video notes: a
+     collage and a timelapse are made by decoding each frame as a
+     photograph (journey-render.ts), and a note's `.webm` is not one. So
+     the grid below reads every photograph the journal holds - hair,
+     tryouts, surgery recovery included - and the chip row narrows it, but
+     Video is never one of the chips here. */
+  let libraryQuery = liveList((j) => j.photoLibrary.inJournal());
+  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video'));
   let bounds = $derived(journeyRangeBounds(photos));
 
   let startInput = $state('');
   let endInput = $state('');
   let excluded = $state<string[]>([]);
   let output = $state<JourneyOutput>('collage');
+
+  /** The same query parameter the library reads, so a chip survives the
+      trip between the two screens (library.ts, media/photos/+page.svelte). */
+  const SOURCE_PARAM = 'source';
+  let gridEl = $state<HTMLElement>();
+
+  /* The same gate the library keeps on its own tiles, and for the same
+     reason: the tiles that come with the grid get no entrance, the ones a
+     chip brings in afterwards fade (motion/narrow.ts). */
+  let painted = $state(false);
+  $effect(() => {
+    if (gridEl) painted = true;
+  });
+
+  /** Narrowing moves the grid rather than repainting it, the same three
+      frames the library's own chip row plays (ADR-0078, motion/narrow.ts). */
+  async function pickChip(next: PhotoChip) {
+    const before = measureCells(gridEl, 'data-photo-key');
+    const url = new URL(page.url);
+    if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
+    else url.searchParams.set(SOURCE_PARAM, next);
+    // `replaceRoute`, not `replaceState`: see the library screen's own note -
+    // shallow routing never updates `page.url`, which is where the chip is
+    // read from, and a replacing navigation owes the back-depth count a word.
+    await replaceRoute(url, { noScroll: true, keepFocus: true });
+    await tick();
+    travelCells(before, gridEl, 'data-photo-key');
+  }
 
   let running = $state(false);
   /* The shared bar (ADR-0070). This screen had the app's only honest
@@ -92,9 +139,19 @@
 
   /* The grid shows everything in the range and the export takes what has not
      been tapped out, so both go through journeySelection() rather than one of
-     them repeating the range test. */
+     them repeating the range test.
+
+     The chip sits between the two: it says which photographs this export is
+     of, and tapping a tile out says which of those to leave behind. Its
+     chips come from what the range actually holds, so narrowing to Hair
+     over a fortnight with no hair photographs in it is not something this
+     screen can offer. */
   let inRange = $derived(range ? journeySelection(photos, range, []) : []);
-  let selected = $derived(range ? journeySelection(photos, range, excluded) : []);
+  let chips = $derived(chipsFor(inRange));
+  let requested = $derived(photoChipFromQuery(page.url.searchParams.get(SOURCE_PARAM)));
+  let chip = $derived(chips.includes(requested) ? requested : 'everything');
+  let shown = $derived(narrowTo(inRange, chip));
+  let selected = $derived(shown.filter((photo) => !excluded.includes(photo.id)));
   let seconds = $derived(Math.max(1, Math.round(timelapseDurationMs(selected.length) / 1000)));
 
   /* What a finished export was made from. Changing the range, tapping a
@@ -201,7 +258,7 @@
 <div class="screen">
   <ScreenHeader title={m.pj_title()} back="/media/photos" />
 
-  <ReadGate read={photosQuery} variant="block" count={2}>
+  <ReadGate read={libraryQuery} variant="block" count={2}>
     {#snippet rows()}
       <div class="screen-part">
         <SectionHeading text={m.pj_range_title()} />
@@ -211,6 +268,8 @@
           <label for="pj-end">{m.recap_custom_end_label()}</label>
           <DatePicker id="pj-end" min={dayRangeEndMin(startInput)} bind:value={endInput} />
         </div>
+        <PhotoChipRow {chips} {chip} onPick={pickChip} />
+
         <p class="muted small">
           {#if !range}
             {m.recap_custom_range_required()}
@@ -221,21 +280,26 @@
           {/if}
         </p>
 
-        {#if inRange.length}
-          <div class="photo-grid">
-            {#each inRange as p (p.id)}
+        {#if shown.length}
+          <div class="photo-grid" bind:this={gridEl}>
+            {#each shown as p (p.id)}
               {@const included = !excluded.includes(p.id)}
-              <button
-                class="photo-cell"
-                class:is-selected={included}
-                aria-pressed={included}
-                aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                onclick={() => toggle(p.id)}
-              >
-                <PhotoThumb photo={p} size={104} />
-                <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-                {#if included}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
-              </button>
+              <div class="photo-cell-wrap" data-photo-key={p.id} data-photo-source={p.source} in:tileIn={{ when: painted }} out:pinnedOut>
+                <button
+                  class="photo-cell"
+                  class:is-selected={included}
+                  aria-pressed={included}
+                  aria-label={m.ph_cell_aria_sourced({
+                    source: photoSourceLabel(p.source),
+                    date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                  })}
+                  onclick={() => toggle(p.id)}
+                >
+                  <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
+                  <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                  {#if included}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+                </button>
+              </div>
             {/each}
           </div>
         {/if}
@@ -267,8 +331,11 @@
             {#if output === 'collage'}
               <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
             {:else}
-              <!-- svelte-ignore a11y_media_has_caption -->
-              <video src={previewUrl} controls playsinline muted style:background={JOURNEY_SURROUND}></video>
+              <!-- The app's own video player (ticket 46), not the browser's
+                   transport: a timelapse this app just rendered is played
+                   with the same control, scrub and materials as a video note
+                   and a recording. The URL stays this screen's to revoke. -->
+              <VideoNotePlayer src={previewUrl} />
             {/if}
             <p class="muted small">{m.pj_stays_here()}</p>
             <div class="journey-actions">
@@ -281,11 +348,11 @@
             </div>
           </div>
         {:else}
-          <div class="editor-savebar journey-actions">
+          <SaveBar>
             <button class="btn btn-primary press" data-generate disabled={running || selected.length === 0} onclick={make}>
               <span>{m.pj_generate()}</span>
             </button>
-          </div>
+          </SaveBar>
           <Progress run={progress} label={m.pj_running()} handle="journey" />
         {/if}
       </div>
@@ -320,12 +387,13 @@
     margin-top: var(--space-4);
   }
 
-  .journey-preview img,
-  .journey-preview video {
+  /* The collage only: a timelapse is VideoNotePlayer now (ticket 46), which
+     brings its own frame and its own corner. */
+  .journey-preview img {
     display: block;
     width: 100%;
     height: auto;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
   }
   .journey-actions {
     display: flex;

@@ -23,7 +23,6 @@
   import { soonestFutureAppointment, mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { severityName } from '$lib/data/vocabulary/labels';
-  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -98,11 +97,6 @@
       ? Promise.resolve([])
       : j.sideEffects.getSideEffectsInRange(lastAppointment.epochDay, today)
   );
-
-  /* The stock horizon is a live snapshot, not a range - it answers "how
-     long until this runs out", which has nothing to do with when the last
-     appointment was. */
-  let stockQuery = liveList((j) => j.stock.getProjections(today));
 
   let addSheet = $state(false);
   let newItemText = $state('');
@@ -211,10 +205,12 @@
   </ReadGate>
 
   <!-- Everything below is a live read of a module that already owns the
-       figure - regimen.ts through doses.getComparison, labs.ts,
-       sideEffects.ts, stock.ts. Each section prints when its own read has
-       rows, and the card prints always: the date row is the one place the
-       app says when the next visit is, and it has an answer either way. -->
+     figure - regimen.ts through doses.getComparison, labs.ts,
+     sideEffects.ts. Each section prints when its own read has rows, and the
+     card prints always: the date row is the one place the app says when the
+     next visit is, and it has an answer either way. Ticket 09 (ADR-0084)
+     took this screen's own stock section off it - the run-out projection
+     prints on Care only now, and ticket 12 rebuilds this screen anyway. -->
   <div class="screen-part">
     <SectionHeading text={m.appointment_prep_context_heading()} />
     <ListCard role={roleAt(activeFlag.roles, 1)}>
@@ -270,10 +266,10 @@
           icon="curve"
           title={activeEpisode.drug}
           subtitle={m.care_regimen_sub({ dose: String(activeEpisode.dose), unit: activeEpisode.doseUnit, interval: activeEpisode.interval })}
-          href="/settings/regimen"
+          href="/care/regimen"
         />
       {:else if severalRegimens}
-        <ListRow key="regimen" icon="curve" title={m.care_regimen_several()} href="/settings/regimen" />
+        <ListRow key="regimen" icon="curve" title={m.care_regimen_several()} href="/care/regimen" />
       {/if}
       <ListRow
         key="clinician-summary"
@@ -304,7 +300,7 @@
               `${lab.value} ${lab.unit}`.trim(),
               `${dayShort(lab.epochDay)}${lab.timing ? ` · ${labTimingLabel(lab.timing)}` : ''}`
             ]}
-            href="/settings/labs"
+            href="/care/labs"
           />
         {/each}
       </ListCard>
@@ -321,31 +317,8 @@
             icon="zap"
             title={effect.name}
             subtitle={[severityName(effect.severity), dayShort(effect.epochDay)]}
-            href="/health/side-effects"
+            href="/practice/personal-effects"
           />
-        {/each}
-      </ListCard>
-    </div>
-  {/if}
-
-  {#if stockQuery.rows.length}
-    <div class="screen-part">
-      <SectionHeading text={m.regimen_stock_link()} />
-      <ListCard role={roleAt(activeFlag.roles, 1)}>
-        {#each stockQuery.rows as row (row.entry.id)}
-          {@const runOut = stockRunOutLabel(row.projection, today)}
-          <ListRow
-            key={row.entry.id}
-            title={row.entry.drug}
-            subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
-            href="/settings/stock"
-          >
-            {#snippet leading()}
-              <span class="kit-row-ico" class:is-warn={runOut.warn}>
-                <Icon name="package" size={22} />
-              </span>
-            {/snippet}
-          </ListRow>
         {/each}
       </ListCard>
     </div>
@@ -385,8 +358,8 @@
      the same struck-through-when-done rule - a checked item is not hidden or
      removed, only marked handled. */
   .ap-box {
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
+    border: 2px solid var(--outline);
+    border-radius: var(--r-block);
     width: 28px;
     height: 28px;
     display: flex;
@@ -415,16 +388,5 @@
 
   .ap-flagged {
     color: var(--role-mark);
-  }
-
-  /* The stock horizon's warn signal, the same rule /settings/stock's own
-     rows use (ADR-0046's surfaces): a disc that takes the warn pair only
-     when a run-out is close, ordinary role colour otherwise. Not shared
-     kit CSS because .kit-row-ico itself is (kit.css) and this variant is
-     the one thing each stock-reading screen adds on top of it. */
-  .kit-row-ico.is-warn {
-    background: var(--warn-soft);
-    color: var(--on-warn-soft);
-    border-color: transparent;
   }
 </style>

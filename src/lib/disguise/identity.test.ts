@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { DECOY_NAME, appWordmark, tabIdentity } from './identity.ts';
+import { DECOY_NAME, appWordmark, hubTabLabel, tabIdentity } from './identity.ts';
 
 describe('the wordmark a surface prints', () => {
   it('is the decoy name under disguise, whatever the app is called', () => {
@@ -27,6 +27,16 @@ describe('the wordmark a surface prints', () => {
     /* The name is a parameter because it is a catalogue lookup and this
        tier may not import paraglide (ADR-0016). */
     expect(appWordmark(false, 'enGender')).toBe('enGender');
+  });
+});
+
+describe('what the fourth tab says (ticket 08)', () => {
+  it('reads the generic hub label under disguise, not the subject', () => {
+    expect(hubTabLabel(true, 'More', 'Transition')).toBe('More');
+  });
+
+  it('names the whole subject otherwise', () => {
+    expect(hubTabLabel(false, 'More', 'Transition')).toBe('Transition');
   });
 });
 
@@ -120,7 +130,18 @@ describe('where the decoy name is allowed to appear', () => {
        here. The rail's wordmark is why this test exists - it was the one
        of the five sites nothing asserted at all, so a disguise that
        stopped reaching the desktop rail would have shipped green. */
-    for (const path of ['src/lib/components/AppNav.svelte', 'src/routes/+page.svelte']) {
+    for (const path of [
+      'src/lib/components/AppNav.svelte',
+      'src/routes/+page.svelte',
+      /* The three gates whose title is the app's own name since redesign
+         ticket 34 (DIRECTION.md rule 15): a gate greets you if it knows your
+         name and shows the wordmark if it does not, and a lock screen is the
+         single most likely surface for somebody other than the owner to be
+         looking at. */
+      'src/lib/components/JournalGate.svelte',
+      'src/lib/components/AndroidKeyGate.svelte',
+      'src/lib/components/SessionUnlock.svelte'
+    ]) {
       /* The call, not its argument list: matching the arguments would fail
          a rename that kept the behaviour, which is the polarity this
          ticket exists to remove. */

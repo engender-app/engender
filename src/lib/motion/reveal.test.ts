@@ -1,13 +1,16 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 
 import {
   collapse,
   crossfade,
   disclose,
+  discloseWidth,
   markScreenArrival,
   markSlotReplacement,
+  maskHeight,
   resize,
+  slideMonit,
   wipe
 } from './reveal';
 
@@ -26,6 +29,11 @@ function stubDocument(reduced = false, clipPath = true, box?: Record<string, str
   });
   g.CSS = { supports: () => clipPath };
 }
+
+/* The screen settled long ago, unless a test says otherwise: the arrival
+   window now gates leaving as well as arriving (redesign ticket 19), and the
+   module marks its own load as an arrival, which this file runs inside. */
+beforeEach(() => markScreenArrival(performance.now() - 1000));
 
 afterEach(() => {
   const g = globalThis as Record<string, unknown>;
@@ -141,6 +149,112 @@ describe('tier 3, a group opening its own height', () => {
     stubDocument(true, true, { height: '180px' });
     expect(disclose(node).duration).toBe(0);
   });
+
+  /* Redesign ticket 25: a card tile carries min-height 176px, and a height
+     travel under a floor goes nowhere - the box stood at full size from the
+     first frame. The travel owns the whole box for its length. */
+  it('lifts any min-height for the travel, so a floored box can actually close', () => {
+    stubDocument(false, true, { height: '176px', paddingTop: '0px', paddingBottom: '0px' });
+    expect(frame(disclose(node).css!, 0.5)).toContain('min-height: 0');
+  });
+
+  /* The 20px at the very end (Alicja, notice dismissed on Home, frames 32 to
+     33). An open box is a formatting context, so the margins either side of
+     it are both spent; the frame it is gone they collapse into the larger.
+     The bottom margin therefore ends at minus the smaller neighbour, which
+     is what collapsing takes away, and the page never has to. */
+  it('ends its bottom margin where the neighbours will collapse to, in block flow', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', display: 'block' });
+    const between = {
+      parentElement: {},
+      previousElementSibling: {},
+      nextElementSibling: {}
+    } as unknown as Element;
+    /* One computed style for every element in the stub: the node's own
+       margin-bottom is 20 and so is the block above's; the heading below
+       gets its 40 through the same table, so the smaller of the pair is
+       20 and the box ends at -20. */
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) =>
+      el === (between as unknown as { nextElementSibling: unknown }).nextElementSibling
+        ? { ...shared(), marginTop: '40px' }
+        : shared();
+    const { css } = disclose(between);
+    expect(frame(css!, 1)).toContain('margin-bottom: 20px');
+    expect(frame(css!, 0)).toContain('margin-bottom: -20px');
+  });
+
+  it('leaves the bottom margin at zero inside a flex or grid parent, where margins never collapse', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '20px', display: 'flex' });
+    const inRow = { parentElement: {}, previousElementSibling: {}, nextElementSibling: {} } as unknown as Element;
+    expect(frame(disclose(inRow).css!, 0)).toContain('margin-bottom: 0px');
+  });
+
+  /* The first child's top margin that collapsed through the box at rest
+     lands inside it the frame `overflow: hidden` applies (the Transition
+     door's index: "Body" moved down 16px on the keystroke). The box is
+     pulled up by that margin and made taller by it, so nothing moves. */
+  it('takes a first child\'s collapsed top margin into the box, so the content does not drop when the box clips', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
+    const child = {};
+    const wrapper = { parentElement: {}, firstElementChild: child } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === child ? { ...shared(), marginTop: '16px' } : shared());
+    const { css } = disclose(wrapper);
+    expect(frame(css!, 1)).toContain('height: 116px');
+    expect(frame(css!, 1)).toContain('margin-top: -16px');
+    expect(frame(css!, 0)).toContain('height: 0px');
+  });
+
+  it('leaves a box that already clips or pads its top alone', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '16px', paddingBottom: '0px', marginTop: '0px', overflow: 'hidden', display: 'block' });
+    const wrapper = { parentElement: {}, firstElementChild: {} } as unknown as Element;
+    expect(frame(disclose(wrapper).css!, 1)).toContain('height: 100px');
+  });
+});
+
+describe('tier 3, an inline element opening its own width', () => {
+  it('grows from zero width to the element width, fading opacity', () => {
+    stubDocument(false, true, { width: '48px' });
+    const { css, duration } = discloseWidth(node);
+    expect(duration).toBe(150);
+    expect(frame(css!, 0)).toContain('width: 0px');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+    expect(frame(css!, 1)).toContain('width: 48px');
+    expect(frame(css!, 1)).toContain('opacity: 1');
+  });
+
+  it('clips overflow and prevents wrapping while running', () => {
+    stubDocument(false, true, { width: '48px' });
+    const { css } = discloseWidth(node);
+    expect(frame(css!, 0.5)).toContain('overflow: hidden');
+    expect(frame(css!, 0.5)).toContain('white-space: nowrap');
+    expect(frame(css!, 0.5)).toContain('min-width: 0');
+  });
+
+  it('absorbs the parent column gap on the leading margin when preceded by a sibling', () => {
+    stubDocument(false, true, { width: '48px', columnGap: '8px' });
+    const parent = {};
+    const child = { parentElement: parent, previousElementSibling: {} } as unknown as Element;
+    const { css } = discloseWidth(child);
+    expect(frame(css!, 1)).toContain('margin-inline-start: 0px');
+    expect(frame(css!, 0)).toContain('margin-inline-start: -8px');
+  });
+
+  it('leaves leading margin alone when it is the first child', () => {
+    stubDocument(false, true, { width: '48px', columnGap: '8px' });
+    const parent = {};
+    const firstChild = { parentElement: parent, previousElementSibling: null } as unknown as Element;
+    const { css } = discloseWidth(firstChild);
+    expect(frame(css!, 0)).not.toContain('margin-inline-start');
+  });
+
+  it('cuts instantly under reduced motion', () => {
+    stubDocument(true, true, { width: '48px' });
+    expect(discloseWidth(node).duration).toBe(0);
+  });
 });
 
 describe('tier 3, a panel giving its space back', () => {
@@ -233,10 +347,30 @@ describe('tier 3, a panel giving its space back', () => {
     const both = collapse(node, undefined, { direction: 'both' }) as unknown;
     expect(typeof both).toBe('function');
 
-    markScreenArrival();
+    markScreenArrival(performance.now() - 1000);
     const asked = both as (o: { direction: 'in' | 'out' }) => TransitionConfig;
-    expect(asked({ direction: 'in' }).duration).toBe(0);
     expect(asked({ direction: 'out' }).duration).toBe(380);
+    markScreenArrival();
+    expect(asked({ direction: 'in' }).duration).toBe(0);
+  });
+
+  /* Redesign ticket 19, found on the agenda's arrival flipbook and present
+     on main: Home's live tiles answer their reads one by one, and a heavier
+     tile answering after a lighter one displaces it into the fold. That is
+     the list settling, not a dismissal - nobody can tap inside the first
+     240ms of a screen - and carpet ticket 04's rule that leaving is never
+     suppressed had the wrong premise for a capped grid: the displaced tile
+     dissolved in front of the reader while the screen was still arriving,
+     a "Ready letter" ghost under the log strip for 200ms. A leave inside
+     the arrival window cuts, as an arrival does. */
+  it('cuts a leave inside the arrival window too, since the list is settling and nobody dismissed anything', () => {
+    stubDocument();
+    markScreenArrival();
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(0);
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(0);
+    markScreenArrival(performance.now() - 1000);
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(380);
   });
 
   /* A dismissal the fold fills in the same tick is a swap rather than a
@@ -422,12 +556,89 @@ describe('tier 3, a panel giving its space back', () => {
     expect(collapse(node, undefined, { direction: 'in' }).duration).toBe(380);
   });
 
-  /* Leaving is never suppressed: a panel dismissed during the arrival window
-     was dismissed by somebody, which is a change however early it lands. */
-  it('still collapses on the way out during the arrival window', () => {
+  /* Redesign ticket 25, Alicja on the fold: the new tile should arrive the
+     way a tile closes, "with the only difference being the new one comes
+     from above". Down a column the block keeps its size, is pulled up by the
+     travel still to come and clipped by the same amount, so its laid-out
+     height grows from nothing and its top edge is the last thing to show. */
+  it('comes down from above when it arrives alone in a column', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px' });
+    markScreenArrival(performance.now() - 1000);
+    const { css, duration } = collapse(node, undefined, { direction: 'in' });
+    expect(duration).toBe(380);
+    expect(frame(css!, 0)).toContain('clip-path: inset(100px 0 0 0)');
+    expect(frame(css!, 0)).toContain('margin-top: -100px');
+    expect(frame(css!, 1)).toContain('clip-path: inset(0px 0 0 0)');
+    expect(frame(css!, 1)).toContain('margin-top: 0px');
+    expect(frame(css!, 0.5)).not.toContain('height:');
+  });
+
+  /* The margin under the arriving block grows with it: at full margin from
+     the first frame the Transition door's empty results wrapper pushed the
+     index under it 20px on the keystroke. */
+  it('grows its bottom margin with it on the way down', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginBottom: '20px' });
+    markScreenArrival(performance.now() - 1000);
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 0)).toContain('margin-bottom: 0px');
+    expect(frame(css!, 1)).toContain('margin-bottom: 20px');
+  });
+
+  /* A list is not a block: the Transition door's 1500px index coming down
+     from above is the whole door rushing past. Past a phone screen's half
+     the panel opens in place, which is the height travel. */
+  it('opens in place instead when it is taller than a block', () => {
+    const node = panel({ height: 1500, beside: [[1600, 1700]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    markScreenArrival(performance.now() - 1000);
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 0)).not.toContain('clip-path');
+  });
+
+  it('still gives its height back from the bottom on the way out', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    const { css } = collapse(node, undefined, { direction: 'out' });
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 1)).toContain('height: 100px');
+  });
+
+  /* Alicja, round three: a notice's top hairline "simply disappears" on the
+     first frame of its close. The edges stay for the travel and the box
+     fades over its last third instead, so the line goes with the box. */
+  it('keeps a closing panel\'s hairlines and fades the box over its last third', () => {
+    const node = panel(
+      { beside: [[120, 220]] },
+      { paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '1px', borderBottomWidth: '1px' }
+    );
+    const { css } = collapse(node, undefined, { direction: 'out' });
+    expect(frame(css!, 0.5)).toContain('border-top-width: 1px');
+    expect(frame(css!, 0.5)).toContain('opacity: 1');
+    expect(frame(css!, 0.175)).toContain('opacity: 0.5');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+    expect(frame(css!, 1)).toContain('opacity: 1');
+  });
+
+  it('never fades a panel in: an arriving block does not come from nothing', () => {
+    const node = panel({ height: 1500, beside: [[1600, 1700]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    markScreenArrival(performance.now() - 1000);
+    expect(frame(collapse(node, undefined, { direction: 'in' }).css!, 0.1)).not.toContain('opacity');
+  });
+
+  /* Redesign ticket 25: the grid's stagger (kit.css, --tile-index by
+     nth-child) is for a grid arriving together. A tile arriving alone on a
+     settled screen - the third out of the fold - sat as a blank block for
+     its two stagger steps before its clip began, so its turn is zeroed
+     inline on the way in, and left alone on the way out. */
+  it('skips the stagger for a panel arriving alone on a settled screen', () => {
     const node = panel({ beside: [[0, 100]] });
-    markScreenArrival();
-    expect(collapse(node, undefined, { direction: 'out' }).duration).toBe(380);
+    const set: string[][] = [];
+    (node as unknown as { style: { setProperty: (k: string, v: string) => void } }).style.setProperty = (k, v) =>
+      set.push([k, v]);
+    markScreenArrival(performance.now() - 1000);
+    collapse(node, undefined, { direction: 'in' });
+    expect(set).toEqual([['--tile-index', '0']]);
+    collapse(node, undefined, { direction: 'out' });
+    expect(set).toHaveLength(1);
   });
 
   it('cuts instantly under reduced motion and when the caller says to skip', () => {
@@ -525,3 +736,98 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 });
+
+/* Tier 3, the third and last spend of the height exception: a box that has
+   already been relaid out uncovering itself from the height it had. */
+describe('tier 3, a panel uncovering its new height', () => {
+  /** A node that records what was animated and what was set on its style. */
+  function panel(height: number, rows = '40px 20px') {
+    const style: Record<string, string> = { overflow: '', gridTemplateRows: '' };
+    let settle: (() => void) | undefined;
+    const calls: { keyframes: Keyframe[]; options: KeyframeAnimationOptions }[] = [];
+    const node = {
+      style,
+      getBoundingClientRect: () => ({ height }) as DOMRect,
+      animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+        calls.push({ keyframes, options });
+        return {
+          finished: {
+            then: (done: () => void) => {
+              settle = done;
+            }
+          }
+        };
+      }
+    } as unknown as HTMLElement;
+    (globalThis as Record<string, unknown>).getComputedStyle = () => ({ gridTemplateRows: rows });
+    return { node, style, calls, finish: () => settle?.() };
+  }
+
+  it('travels from the height the caller measured to the one the box now has', () => {
+    const { node, calls } = panel(420);
+    maskHeight(node, 36, 380);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].keyframes).toEqual([{ height: '36px' }, { height: '420px' }]);
+    expect(calls[0].options.duration).toBe(380);
+  });
+
+  it('clips and pins the tracks for the travel, and only for the travel', () => {
+    const { node, style, finish } = panel(420, '40px 20px 16px');
+    maskHeight(node, 36, 380);
+    expect(style.overflow).toBe('clip');
+    expect(style.gridTemplateRows).toBe('40px 20px 16px');
+    finish();
+    expect(style.overflow).toBe('');
+    expect(style.gridTemplateRows).toBe('');
+  });
+
+  it('gives back whatever the box was already saying about its own overflow', () => {
+    const { node, style, finish } = panel(420);
+    style.overflow = 'auto';
+    maskHeight(node, 36, 380);
+    expect(style.overflow).toBe('clip');
+    finish();
+    expect(style.overflow).toBe('auto');
+  });
+});
+
+describe('tier 3, the slideMonit transition', () => {
+  it('unfolds height, resets min-height, fades opacity, and slides into place', () => {
+    stubDocument(false, true, {
+      height: '88px',
+      paddingTop: '16px',
+      paddingBottom: '16px',
+      marginTop: '0px',
+      marginBottom: '0px'
+    });
+    const config = slideMonit(node);
+    expect(config.duration).toBe(380);
+    const css0 = frame(config.css!, 0);
+    expect(css0).toContain('min-height: 0');
+    expect(css0).toContain('height: 0px');
+    expect(css0).toContain('padding-top: 0px');
+    expect(css0).toContain('opacity: 0');
+    expect(css0).toContain('transform: translateY(-10px)');
+
+    const css1 = frame(config.css!, 1);
+    expect(css1).toContain('height: 88px');
+    expect(css1).toContain('padding-top: 16px');
+    expect(css1).toContain('opacity: 1');
+    expect(css1).toContain('transform: translateY(0px)');
+  });
+
+  it('cuts instantly under reduced motion', () => {
+    stubDocument(true);
+    const config = slideMonit(node);
+    expect(config.duration).toBe(0);
+    expect(config.css).toBeUndefined();
+  });
+
+  it('cuts instantly when skip is passed', () => {
+    stubDocument();
+    const config = slideMonit(node, { skip: true });
+    expect(config.duration).toBe(0);
+    expect(config.css).toBeUndefined();
+  });
+});
+

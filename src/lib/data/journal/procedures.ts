@@ -30,7 +30,7 @@
    removeFilesOf reclaims them the same way on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure } from '../types';
+import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure, ProcedureKind } from '../types';
 import type { AppointmentsArea } from './appointments';
 import type { ChecklistsArea } from './checklists';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -60,6 +60,12 @@ interface ProcedureInput {
       notes in one call; `setNotes` is how notes are edited afterwards, so
       an ordinary name/date edit cannot blank them by omission. */
   notes?: string;
+  /** Defaults to `custom` (phase 9 carpet ticket 17) - an existing
+      procedure's editor always echoes its current kind back here, so this
+      default is only ever reached by a brand-new procedure. */
+  kind?: ProcedureKind;
+  /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
+  dilationOptIn?: boolean;
 }
 
 /** One dated recovery photo. Its own shape rather than hairProgress.ts's
@@ -108,6 +114,13 @@ export interface ProceduresArea {
   deleteConsult(id: string): Promise<void>;
   /** A procedure's recovery photos, oldest first. */
   getPhotos(procedureId: string): Promise<ProcedurePhoto[]>;
+  /** Every procedure's recovery photos, oldest first, keyed by procedure
+      and read in one query rather than one per row - the shape
+      `consultsByProcedure` already takes for the other thing the index
+      draws against each procedure (ticket 52). A procedure with no photos
+      is absent rather than present with an empty list, so a caller reads
+      "has any" off `get` alone. */
+  photosByProcedure(): Promise<Map<string, ProcedurePhoto[]>>;
   /** What a procedure put on one day (phase 5 deepening ticket 21): the
       recovery photos taken on it, carrying the procedure they belong to.
       Its consults are appointments now and reach a day through
@@ -153,6 +166,8 @@ type ProcedureRow = {
   name: string;
   surgery_epoch_day: number | null;
   notes: string;
+  kind: ProcedureKind;
+  dilation_opt_in: number;
 };
 
 export function makeProceduresArea(
@@ -174,7 +189,7 @@ export function makeProceduresArea(
       // would sort NULL to the front in SQLite, putting a procedure with no
       // date yet ahead of one already had.
       const rows = await driver.query<ProcedureRow>(
-        `SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure
+        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
       // The appointments that name a procedure, grouped by it and read in
@@ -188,17 +203,21 @@ export function makeProceduresArea(
         name: row.name,
         surgeryEpochDay: row.surgery_epoch_day,
         notes: row.notes,
-        consults: consults.get(row.uuid) ?? []
+        consults: consults.get(row.uuid) ?? [],
+        kind: row.kind,
+        dilationOptIn: row.dilation_opt_in !== 0
       }));
     },
 
     async upsertProcedure(input) {
       const surgeryEpochDay = input.surgeryEpochDay ?? null;
+      const kind = input.kind ?? 'custom';
+      const dilationOptIn = input.dilationOptIn ?? false;
 
       if (input.id) {
         const result = await driver.run(
-          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, updated_at = ? WHERE uuid = ?',
-          [input.name, surgeryEpochDay, now(), input.id]
+          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, updated_at = ? WHERE uuid = ?',
+          [input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, now(), input.id]
         );
         assertChanged(result, `procedure: ${input.id}`);
         return input.id;
@@ -206,8 +225,8 @@ export function makeProceduresArea(
 
       const uuid = mintUuid();
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [uuid, input.name, surgeryEpochDay, input.notes ?? '', now()]
+        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, now()]
       );
       return uuid;
     },
@@ -284,6 +303,27 @@ export function makeProceduresArea(
         [procedureId]
       );
       return rows.map((row) => ({ id: row.uuid, procedureId, epochDay: row.epoch_day, fileName: row.file_path }));
+    },
+
+    async photosByProcedure() {
+      const rows = await driver.query<{ uuid: string; procedure_uuid: string; epoch_day: number; file_path: string }>(
+        `SELECT p.uuid AS uuid, r.uuid AS procedure_uuid, p.epoch_day AS epoch_day, p.file_path AS file_path
+           FROM procedure_photo p JOIN procedure r ON r.id = p.procedure_id
+          ORDER BY p.epoch_day, p.id`
+      );
+      const byProcedure = new Map<string, ProcedurePhoto[]>();
+      for (const row of rows) {
+        const photo = {
+          id: row.uuid,
+          procedureId: row.procedure_uuid,
+          epochDay: row.epoch_day,
+          fileName: row.file_path
+        };
+        const found = byProcedure.get(row.procedure_uuid);
+        if (found) found.push(photo);
+        else byProcedure.set(row.procedure_uuid, [photo]);
+      }
+      return byProcedure;
     },
 
     /* One query rather than one per procedure: a day view that walked the

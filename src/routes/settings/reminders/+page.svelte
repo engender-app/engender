@@ -10,9 +10,11 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
 
@@ -116,7 +118,13 @@
       }}
     />
   {:else}
-    <div class="card checkin-card">
+    <!-- Carpet 30: the app's own daily check-in, flush on the page. It had a
+         `.card` with a 1.5px `--accent-border` edge, which was the group
+         saying "this one is mine, not a reminder you made" - a claim rule 4
+         has no treatment for, and one the row's own title makes in words.
+         The shape is the disguise sheet's, settled on carpet 29: `.spread`
+         rows in a stack, no ground, no edge, no separators. -->
+    <div class="stack-3" data-checkin>
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
@@ -131,29 +139,45 @@
         />
       </div>
       {#if prefs.checkInEnabled}
-        <div class="spread">
-          <label class="small muted" for="checkin-time">{m.checkin_time()}</label>
-          <input
-            class="input"
-            style="width:110px"
-            type="time"
-            id="checkin-time"
-            name="checkin-time"
-            bind:value={prefs.checkInTime}
-          />
-        </div>
-        <div class="spread" data-checkin-affirmations>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
-            <span class="kit-row-sub">{m.checkin_affirmations_sub()}</span>
-          </span>
-          <Switch
-            checked={prefs.checkInAffirmationsEnabled}
-            label={m.checkin_affirmations_title()}
-            onChange={(v) => {
-              prefs.checkInAffirmationsEnabled = v;
-            }}
-          />
+        <!-- What the switch above turns on, opening its own height rather
+             than arriving at full size (rule 10, and it is the group's own
+             edge that used to hold these two rows together). `disclose` is
+             tier 3's primitive for exactly this, and it substitutes a cut
+             under reduced motion rather than being deleted. -->
+        <div class="disclosed" transition:disclose>
+          <!-- `Field spread`, so this row carries the same shape as the two
+               switch rows around it: the name at the left edge, the control at
+               the right. What was here wrote the pair by hand and capped the
+               input at `width: 110px`, which is under the min-content width of
+               a platform time control - notifications' `.quiet-window` already
+               says so about the same input - so the value was clipped and the
+               row read as a label losing an argument with a pill. The cap is
+               the 160px `/settings/reminders/[id]` gives the same field. -->
+          <Field label={m.checkin_time()} id="checkin-time" spread>
+            {#snippet children(id)}
+              <input
+                class="input"
+                style="max-width:160px"
+                type="time"
+                {id}
+                name="checkin-time"
+                bind:value={prefs.checkInTime}
+              />
+            {/snippet}
+          </Field>
+          <div class="spread" data-checkin-affirmations>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
+              <span class="kit-row-sub">{m.checkin_affirmations_sub()}</span>
+            </span>
+            <Switch
+              checked={prefs.checkInAffirmationsEnabled}
+              label={m.checkin_affirmations_title()}
+              onChange={(v) => {
+                prefs.checkInAffirmationsEnabled = v;
+              }}
+            />
+          </div>
         </div>
       {/if}
     </div>

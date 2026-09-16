@@ -8,7 +8,7 @@
    is logged against it", and stops: no target rate, no streak, no
    good/bad. The comparison is the feature (ticket 02, out of scope). */
 
-import { epochDayFromTimestamp, weekdayOfEpochDay } from './epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp, weekdayOfEpochDay } from './epochDay';
 import { spanCoversDay } from './span';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types';
 
@@ -319,7 +319,7 @@ export function expectedSlots(
     against it, or null if nothing was. A `skipped` dose fills its slot -
     that is the difference between a gap someone recorded and one they
     never mentioned. */
-interface AdherenceRow {
+export interface AdherenceRow {
   slot: DoseSlot;
   dose: DoseEvent | null;
 }
@@ -371,6 +371,27 @@ export function adherence(
   return { rows, unmatched };
 }
 
+/** The most recent slot before `todayEpochDay` with nothing logged against
+    it, or null. Today's own slot is never it: the person has all day, and
+    a surface asking about it would be asking about a dose they are still
+    free to take.
+
+    `rows` is already the schedule's own answer with pauses removed above:
+    a break somebody declared is not a slot that passed.
+
+    Named here rather than written twice because two surfaces select the
+    same row and neither may quietly select a different one - the return
+    surface (comingBack.ts) and Today's agenda (agenda.ts). Deliberately no
+    verdict and no plural, like the rest of this file: one row, and nothing
+    about how many there were. */
+export function mostRecentPassedSlot({ rows }: Adherence, todayEpochDay: number): AdherenceRow | null {
+  return (
+    rows
+      .filter((row) => row.dose === null && row.slot.epochDay < todayEpochDay)
+      .sort((a, b) => b.slot.epochDay - a.slot.epochDay)[0] ?? null
+  );
+}
+
 /** The amount the schedule is still expecting on `epochDay`: the first slot
     that day with nothing logged against it. Null where the day expects
     nothing, where every slot is already logged, or where the schedule
@@ -413,4 +434,112 @@ export function nearestOpenSlotDistance(
   const { rows } = adherence(slots, doses, pauses);
   const distances = rows.filter((row) => row.dose === null).map((row) => Math.abs(row.slot.epochDay - todayEpochDay));
   return distances.length > 0 ? Math.min(...distances) : null;
+}
+
+/* When a dose nobody timed gets written (phase 11 ticket 11). A schedule
+   says how many doses a day expects and never when - that is the whole of
+   the "no verdict" rule this file keeps - so an auto-logged dose has no
+   recorded time to copy and one has to be chosen.
+
+   The window runs midday to evening and the day's slots are spread evenly
+   across it: once a day lands at noon, twice a day at noon and eight, three
+   times a day at noon, four and eight. Deliberately not a morning: a dose
+   written at 8am for a day that has already ended reads as a claim about
+   when the person took it, where midday reads as the middle of the day it
+   is standing in for. The clinician summary marks these rows anyway, so
+   nothing downstream mistakes the chosen time for a recorded one. */
+const AUTO_LOG_WINDOW_START_HOUR = 12;
+const AUTO_LOG_WINDOW_END_HOUR = 20;
+
+const HOUR_MS = 3600000;
+
+/** Whether a schedule expects a dose on any day at all - the same three
+    guards `expectedSlots` applies before it generates anything, named here
+    so a screen can ask the question without generating a range of slots to
+    find out. */
+function expectsAnyDose(schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay'>): boolean {
+  if (schedule.dosesPerDay < 1) return false;
+  return schedule.recurrence.kind === 'everyNDays'
+    ? schedule.recurrence.everyNDays >= 1
+    : schedule.recurrence.weekdays.length > 0;
+}
+
+/** Whether this schedule is definite enough to log its own doses (ticket 11,
+    ADR-0086): it expects a dose on some day, it says how much, and the route
+    the doses would be written with is one of the six the dose log records.
+    The switch is offered on exactly this, so a schedule can never be switched
+    on with nothing definite to write.
+
+    A regimen episode's `route` is free text (types.ts), so it takes reading -
+    `routeWords` is `ROUTE_OPTIONS` from doseLabels.ts, the app's own word for
+    each route in whichever language is running, handed in rather than
+    imported for the reason matchDoseRoute gives (ADR-0016). Both callers pass
+    the same list, the schedule editor and the auto-log pass alike, so the
+    switch is never offered on an episode the pass would then read nothing
+    from. */
+export function canAutoLog(
+  /* The parts of a schedule this reads, not a whole one: the schedule
+     editor asks the question of the draft in front of the person, which has
+     no id yet on an episode whose rhythm has never been saved, and a full
+     `DoseSchedule` would have made it invent two. */
+  schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay' | 'doseAmounts'>,
+  episodeRoute: string,
+  routeWords: readonly RouteOption[]
+): boolean {
+  return (
+    expectsAnyDose(schedule) &&
+    (schedule.doseAmounts?.length ?? 0) > 0 &&
+    matchDoseRoute(episodeRoute, routeWords) !== null
+  );
+}
+
+/** One slot the auto-log pass will write, and the moment it writes it at. */
+export interface AutoLogSlot {
+  slot: DoseSlot;
+  /** Epoch milliseconds, inside `slot.epochDay`. */
+  timestamp: number;
+}
+
+function autoLogTimestamp(slot: DoseSlot, dosesPerDay: number): number {
+  const span = AUTO_LOG_WINDOW_END_HOUR - AUTO_LOG_WINDOW_START_HOUR;
+  const hour =
+    dosesPerDay < 2
+      ? AUTO_LOG_WINDOW_START_HOUR
+      : AUTO_LOG_WINDOW_START_HOUR + (span * slot.indexInDay) / (dosesPerDay - 1);
+  return startOfDayTimestamp(slot.epochDay) + Math.round(hour * HOUR_MS);
+}
+
+/**
+ * Every slot an auto-logging schedule still owes a dose, oldest first
+ * (phase 11 ticket 11, ADR-0086).
+ *
+ * The range is the later of the schedule's own switch-on day and the
+ * episode's start, up to **yesterday**: today is still the person's to log,
+ * and a slot is only written once the day it belongs to has ended, so
+ * nothing is ever asserted about a dose they could still be about to take.
+ *
+ * Which slots are open is `adherence`'s answer, not a second rule: a day a
+ * pause covers expects nothing, a hand-logged dose fills the slot it sits
+ * in, and a dose this pass wrote on an earlier run fills its slot the same
+ * way - which is what makes running it again write nothing. There is no
+ * stored high-water mark to keep in step with the log.
+ *
+ * Pure, like everything else here: `todayEpochDay` is handed in, and what to
+ * do with the result is the doses area's (journal/doses.ts).
+ */
+export function autoLogSlots(
+  schedule: DoseSchedule,
+  anchorEpochDay: number,
+  doses: readonly DoseEvent[],
+  pauses: readonly DosePause[],
+  todayEpochDay: number
+): AutoLogSlot[] {
+  const from = schedule.autoLogFromEpochDay;
+  if (from === null) return [];
+
+  const slots = expectedSlots(schedule, anchorEpochDay, from, todayEpochDay - 1);
+  const { rows } = adherence(slots, doses, pauses);
+  return rows
+    .filter((row) => row.dose === null)
+    .map((row) => ({ slot: row.slot, timestamp: autoLogTimestamp(row.slot, schedule.dosesPerDay) }));
 }

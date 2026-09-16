@@ -433,6 +433,31 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // it hangs off.
     reads: { inJournal: ['photo', 'entry', 'milestone'], starredPhotos: ['photo', 'entry', 'milestone'] }
   }),
+  /* The library across all six photo-carrying tables (phase 11 ticket 14),
+     and reads only - every one of those tables is written through the area
+     that owns it, which announces its own name. So the names here are the
+     ones whose rows the union reads: the six tables plus `entry` and
+     `milestone`, which date and name what hangs off them and whose trash
+     state decides whether an entry's photographs and notes are in the list
+     at all. */
+  photoLibrary: classify<Journal['photoLibrary']>()({
+    writes: {},
+    reads: {
+      inJournal: [
+        'photo',
+        'entry',
+        'milestone',
+        'hairProgress',
+        'hairRemoval',
+        'tryout',
+        'procedure',
+        'videoNote'
+      ],
+      // The `photo` table's own arm, which is the only one with a starred
+      // column (photoLibrary.ts says why).
+      starred: ['photo', 'entry', 'milestone']
+    }
+  }),
   /* One table and one owner - itself - so unlike `photos` above there is no
      second name to announce (phase 8 features ticket 52). The day view and
      search reach these rows through their own registries, whose tables are
@@ -516,7 +541,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getMeasurementsInRange: ['measurement'],
       countAll: ['measurement'],
       getMeasurementTypes: ['measurementType'],
-      lastWriteEpochDay: ['measurement']
+      lastWriteEpochDay: ['measurement'],
+      latestMeasurement: ['measurement']
     }
   }),
   sizeRecords: classify<Journal['sizeRecords']>()({
@@ -676,6 +702,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getProcedures: ['procedure', 'appointment'],
       getPhotos: ['procedure'],
+      photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
       getMilestone: ['milestone'],
@@ -759,6 +786,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // Keyed by the tryout's own uuid, so the owner table is joined the way
       // `forTryout` joins it.
       latestDaysForTryouts: ['feltSense', 'tryout'],
+      // The same join, every tryout at once (ticket 53).
+      byTryout: ['feltSense', 'tryout'],
       forMilestone: ['feltSense', 'milestone'],
       // Both owners' names travel on a day's rows, so both tables are read.
       onDay: ['feltSense', 'tryout', 'milestone'],
@@ -827,7 +856,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteDose: ['dose'],
       upsertSchedule: ['dose'],
       upsertPause: ['dose'],
-      deletePause: ['dose']
+      deletePause: ['dose'],
+      // The auto-log pass writes dose rows and nothing else (ticket 11).
+      autoLogDueDoses: ['dose']
     },
     // A schedule and a pause both hang off an episode, and are read back
     // joined to it (doses.ts), so ending an episode changes what they answer.
@@ -902,7 +933,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // and 11, ADR-0010).
   hormoneCurve: classify<Journal['hormoneCurve']>()({
     writes: {},
-    reads: { getCurves: ['dose', 'regimen', 'lab'] }
+    reads: { getCurves: ['dose', 'regimen', 'lab'], getCurveDirection: ['dose', 'regimen'] }
   }),
   /* Read-only, the same reason exposure is: a clinician summary assembles
      rows other areas own and stores nothing of its own (phase 4 ticket 12).
@@ -977,6 +1008,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       wearTimeTrend: ['wearSession'],
       tallyTrend: ['tally'],
       bodyRegionReadings: ['entry'],
+      bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],
       // Filters entry.presentation_id directly, the same reason
       // bodyRegionTrend above depends on 'entry' alone: which days match

@@ -24,6 +24,7 @@ import dev.engender.app.clipboard.SensitiveClipboard;
 import dev.engender.app.quickexit.QuickExitPlugin;
 import dev.engender.app.reminders.ReminderPayloadStore;
 import dev.engender.app.reminders.ReminderScheduler;
+import dev.engender.app.screencapture.ScreenCapturePlugin;
 
 /**
  * The Android half of "nothing outlives a reset" (F-01), on a device rather
@@ -48,6 +49,7 @@ public class DeviceStoresTest {
     private static final String REMINDERS_PREFS = ReminderScheduler.PREFS;
     private static final String AUTO_EXPORT_PREFS = AutoExportPlugin.PREFS;
     private static final String QUICK_EXIT_PREFS = QuickExitPlugin.PREFS;
+    private static final String SCREEN_CAPTURE_PREFS = ScreenCapturePlugin.PREFS;
     private static final String SENSITIVE_CLIPBOARD_PREFS = SensitiveClipboard.PREFS;
     private static final String PASSWORD_ALIAS = AutoExportPlugin.PASSWORD_ALIAS;
     private static final String REMINDERS_ALIAS = ReminderPayloadStore.ALIAS;
@@ -71,6 +73,7 @@ public class DeviceStoresTest {
         write(AUTO_EXPORT_PREFS, "destinationLabel", "Journal backups");
         write(AUTO_EXPORT_PREFS, "passwordCiphertext", "not-really-a-ciphertext");
         write(QUICK_EXIT_PREFS, "enabled", "true");
+        write(SCREEN_CAPTURE_PREFS, "allowed", "true");
         write(SENSITIVE_CLIPBOARD_PREFS, "digest", "bm90LXJlYWxseS1hLWRpZ2VzdA==");
 
         wipe();
@@ -78,6 +81,7 @@ public class DeviceStoresTest {
         assertEmpty("the reminder titles are still here", REMINDERS_PREFS);
         assertEmpty("the backup destination is still here", AUTO_EXPORT_PREFS);
         assertEmpty("the quick-exit preference is still here", QUICK_EXIT_PREFS);
+        assertEmpty("the screen-capture preference is still here", SCREEN_CAPTURE_PREFS);
         assertEmpty("the pending clipboard clear is still here", SENSITIVE_CLIPBOARD_PREFS);
     }
 

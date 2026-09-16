@@ -209,7 +209,9 @@ test("a procedure prints its dates, notes, recovery photo days and checklist sta
       consults: [{ id: summary.procedures[0].consults[0].id, epochDay: 17900 }],
       notes: 'drains out on day five',
       photoEpochDays: [18002],
-      checklistItems: [{ id: item.id, content: 'buy gauze', checked: true, carriedForward: false }]
+      checklistItems: [{ id: item.id, content: 'buy gauze', checked: true, carriedForward: false }],
+      kind: 'custom',
+      dilationOptIn: false
     }
   ]);
 });

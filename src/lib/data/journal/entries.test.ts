@@ -12,6 +12,18 @@ import { markJournalBusy } from '../journal-busy.ts';
 import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from './entries.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins.ts';
+import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats.ts';
+import { BAD_MOMENT_REGION_DYSPHORIA_FLOOR, DYSPHORIA_TAG_KEYS } from '../safeSpaceNudge.ts';
+import { BODY_REGION_MIDPOINT } from '../bodyMap.ts';
+import { COUNTEREVIDENCE_LIMIT } from '../counterevidence.ts';
+import { persona } from '../demo/persona.ts';
+
+/** The slider position a euphoria intensity of `intensity` maps to
+    (bodyMap.ts's now-deleted `sliderToFeeling`, run by hand): the tests
+    below key their floors off the exported intensity constants rather
+    than a pasted slider literal. */
+const euphoriaValue = (intensity: number) => 50 + intensity / 2;
+const dysphoriaValue = (intensity: number) => 50 - intensity / 2;
 
 async function countingJournalWithBuiltIns() {
   const db = await migratedDb();
@@ -34,7 +46,7 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
     note: 'łóżko',
     dims: { euphoria_dysphoria: 70, femininity: 55 },
     tags: ['e-happy', 'g-soc-eu'],
-    bodyRegions: { chest: { dysphoria: 60, euphoria: null }, voice_throat: { dysphoria: 30, euphoria: null } }
+    bodyRegions: { chest: 20, voice_throat: 35 }
   });
 
   const entry = await journal.entries.getEntry(id);
@@ -52,7 +64,7 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
       photos: [],
       recordings: [],
       videos: [],
-      bodyRegions: { chest: { dysphoria: 60, euphoria: null }, voice_throat: { dysphoria: 30, euphoria: null } },
+      bodyRegions: { chest: 20, voice_throat: 35 },
       starred: false,
       presentationId: null
     }
@@ -123,51 +135,32 @@ test('body regions replace as a whole set on update, unlike dimension values', a
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 40, euphoria: null }, hairline: { dysphoria: 70, euphoria: null } }
+    bodyRegions: { chest: 30, hairline: 15 }
   });
 
-  await journal.entries.upsertEntry({ id, mood: 3, bodyRegions: { chest: { dysphoria: 90, euphoria: null } } });
+  await journal.entries.upsertEntry({ id, mood: 3, bodyRegions: { chest: 5 } });
 
-  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, { chest: { dysphoria: 90, euphoria: null } });
+  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, { chest: 5 });
 });
 
-test('a region can carry euphoria alone, distinct from a region that did not hurt', async () => {
+test('a region can sit on either side of the scale', async () => {
   const { journal } = await journalWithBuiltIns();
-  const good = await journal.entries.upsertEntry({
+  const euphoric = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 80 } }
+    bodyRegions: { chest: 90 }
   });
-  const painless = await journal.entries.upsertEntry({
+  const dysphoric = await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 0, euphoria: null } }
+    bodyRegions: { chest: 10 }
   });
 
-  // The point of the second axis: "this felt good" and "this did not hurt"
-  // are different statements, and neither is the absence of the other.
-  assert.deepEqual((await journal.entries.getEntry(good))?.bodyRegions, {
-    chest: { dysphoria: null, euphoria: 80 }
-  });
-  assert.deepEqual((await journal.entries.getEntry(painless))?.bodyRegions, {
-    chest: { dysphoria: 0, euphoria: null }
-  });
+  assert.deepEqual((await journal.entries.getEntry(euphoric))?.bodyRegions, { chest: 90 });
+  assert.deepEqual((await journal.entries.getEntry(dysphoric))?.bodyRegions, { chest: 10 });
 });
 
-test('a region can carry both axes at once', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({
-    epochDay: 100,
-    mood: 3,
-    bodyRegions: { chest: { dysphoria: 40, euphoria: 65 } }
-  });
-
-  assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, {
-    chest: { dysphoria: 40, euphoria: 65 }
-  });
-});
-
-test('a region with neither axis set is not stored', async () => {
+test('a region at the midpoint is not stored', async () => {
   const { journal } = await journalWithBuiltIns();
 
   // Picking a region in the editor and then leaving it alone writes no row:
@@ -175,19 +168,19 @@ test('a region with neither axis set is not stored', async () => {
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: null, euphoria: null }, hairline: { dysphoria: 20, euphoria: null } }
+    bodyRegions: { chest: 50, hairline: 40 }
   });
   assert.deepEqual((await journal.entries.getEntry(id))?.bodyRegions, {
-    hairline: { dysphoria: 20, euphoria: null }
+    hairline: 40
   });
 });
 
 test('an entry can log body regions with no dysphoria tag and independently of one', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: { dysphoria: 55, euphoria: null } } });
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 45 } });
 
   const entry = await journal.entries.getEntry(id);
-  assert.deepEqual(entry?.bodyRegions, { chest: { dysphoria: 55, euphoria: null } });
+  assert.deepEqual(entry?.bodyRegions, { chest: 45 });
   assert.deepEqual(entry?.tags, []);
 });
 
@@ -256,22 +249,22 @@ test('unknown write ids throw: entry id, dimension key, tag id, body region', as
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, dims: { nope: 1 } }), /unknown dimension/);
   await assert.rejects(journal.entries.upsertEntry({ epochDay: 1, mood: 4, tags: ['nope'] }), /unknown tag/);
   await assert.rejects(
-    journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { nope: { dysphoria: 1, euphoria: null } } }),
+    journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { nope: 1 } }),
     /unknown body region/
   );
 
-  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { chest: { dysphoria: 1, euphoria: null } } });
-  await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: { dysphoria: 1, euphoria: null } } }), /unknown body region/);
+  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { chest: 1 } });
+  await assert.rejects(journal.entries.upsertEntry({ id, bodyRegions: { nope: 1 } }), /unknown body region/);
 });
 
 test('an entry can log an intensity against a custom body region by its uuid', async () => {
   const { journal } = await journalWithBuiltIns();
   const region = await journal.bodyRegions.addCustomRegion('scar tissue');
 
-  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { [region.id]: { dysphoria: 70, euphoria: null } } });
+  const id = await journal.entries.upsertEntry({ epochDay: 1, mood: 4, bodyRegions: { [region.id]: 15 } });
 
   const entry = await journal.entries.getEntry(id);
-  assert.deepEqual(entry?.bodyRegions, { [region.id]: { dysphoria: 70, euphoria: null } });
+  assert.deepEqual(entry?.bodyRegions, { [region.id]: 15 });
 });
 
 test('deleting an entry moves it to trash: hidden from getEntry, but its rows and files survive; twice is success', async () => {
@@ -285,7 +278,7 @@ test('deleting an entry moves it to trash: hidden from getEntry, but its rows an
     mood: 4,
     dims: { femininity: 60 },
     tags: ['e-happy'],
-    bodyRegions: { chest: { dysphoria: 30, euphoria: null } }
+    bodyRegions: { chest: 35 }
   });
   db.raw.prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', ?, 'p1.jpg', 0)").run(id);
   db.raw
@@ -715,6 +708,19 @@ test('counterevidencePool unions the tag and starred entries, newest first, with
   assert.deepEqual(pool.map((e) => e.id), [both, starredOnly, tagOnly]);
 });
 
+test('counterevidencePool can be read over a span, both ends inclusive (phase 11 ticket 07)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const day of [100, 101, 102, 103]) {
+    const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4 });
+    await journal.entries.setEntryStarred(id, true);
+  }
+
+  const pool = await journal.entries.counterevidencePool(['e-happy'], 10, { from: 101, to: 102 });
+  assert.deepEqual(pool.map((e) => e.epochDay), [102, 101]);
+  // No span reads the whole journal, as every caller before the span did.
+  assert.equal((await journal.entries.counterevidencePool(['e-happy'], 10)).length, 4);
+});
+
 test('counterevidencePool stops at the limit it is given, keeping the newest', async () => {
   const { journal } = await journalWithBuiltIns();
   for (const day of [100, 101, 102]) {
@@ -730,7 +736,7 @@ test('a trashed entry\'s body-region euphoria does not enter the counterevidence
   const trashed = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 90 } }
+    bodyRegions: { chest: euphoriaValue(90) }
   });
   await journal.entries.deleteEntry(trashed);
 
@@ -740,32 +746,34 @@ test('a trashed entry\'s body-region euphoria does not enter the counterevidence
 test('counterevidencePool includes an entry whose body-region euphoria clears the floor, with no euphoria tag', async () => {
   // The case ticket 44 was found by.
   const { journal } = await journalWithBuiltIns();
+  const euphoriaFloorValue = euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR);
   const byRegion = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 70 } }
+    bodyRegions: { chest: euphoriaFloorValue + 10 }
   });
   await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+    bodyRegions: { chest: euphoriaFloorValue - 1 }
   }); // below the floor - excluded
 
   const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
   assert.deepEqual(pool.map((e) => e.id), [byRegion]);
 });
 
-test('counterevidencePool\'s region-euphoria floor is inclusive: exactly 50 clears it, 49 does not', async () => {
+test('counterevidencePool\'s region-euphoria floor is inclusive: the floor clears it, one below does not', async () => {
   const { journal } = await journalWithBuiltIns();
+  const euphoriaFloorValue = euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR);
   const atFloor = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 50 } }
+    bodyRegions: { chest: euphoriaFloorValue }
   });
   await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+    bodyRegions: { chest: euphoriaFloorValue - 1 }
   });
 
   const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
@@ -826,22 +834,23 @@ test('latestBadMomentEntry identifies bad moments and returns newest entry (tick
   found = await journal.entries.latestBadMomentEntry();
   assert.equal(found?.id, badTagId);
 
-  // Newer bad entry via body-region dysphoria >= 50
+  // Newer bad entry via body-region dysphoria clearing the floor
+  const dysphoriaFloorValue = dysphoriaValue(BAD_MOMENT_REGION_DYSPHORIA_FLOOR);
   const badBodyId = await journal.entries.upsertEntry({
     epochDay: 103,
     timestamp: 4000,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 50, euphoria: null } }
+    bodyRegions: { chest: dysphoriaFloorValue }
   });
   found = await journal.entries.latestBadMomentEntry();
   assert.equal(found?.id, badBodyId);
 
-  // Region dysphoria under 50 does NOT qualify
+  // One step further from the midpoint (less dysphoric) does NOT qualify
   await journal.entries.upsertEntry({
     epochDay: 104,
     timestamp: 5000,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 49, euphoria: null } }
+    bodyRegions: { chest: dysphoriaFloorValue + 1 }
   });
   found = await journal.entries.latestBadMomentEntry();
   assert.equal(found?.id, badBodyId);
@@ -1063,4 +1072,109 @@ test('a trashed entry leaves the whole-journal count, and comes back to it resto
 
   await journal.entries.restoreEntry(id);
   assert.equal(await journal.entries.countAll(), 2);
+});
+
+/* The qualification rule, narrowed (phase 11 ticket 15).
+
+   The pool's third arm used to admit an entry on one positively marked
+   body region alone, note and all. On the demo journal that handed Safe
+   space "Tired. Work ran long and I skipped voice practice again." as
+   evidence that the bad day was not the whole story, which is the one
+   thing this screen must never do. A region is a magnitude somebody can
+   log on a day that was otherwise miserable, so it is now the weakest of
+   the three conditions rather than an equal of them: it admits an entry
+   only when nothing else on that entry says the day went badly.
+
+   Starring and the good tags are untouched. A starred entry is a person
+   choosing this day as counterevidence, so it qualifies whatever else it
+   carries. */
+
+test('counterevidencePool refuses a dysphoria-tagged entry that only qualifies through a body region', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 2,
+    note: 'Tired. Work ran long and I skipped voice practice again.',
+    tags: ['g-body-dys'],
+    bodyRegions: { chest: euphoriaValue(90) }
+  });
+
+  assert.deepEqual(await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10), []);
+});
+
+test('counterevidencePool refuses a body-region entry that also marked a region below the midpoint', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: euphoriaValue(90), hips_waist: dysphoriaValue(20) }
+  });
+
+  assert.deepEqual(await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10), []);
+});
+
+test('counterevidencePool keeps a starred entry that carries a dysphoria tag - the person chose it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const chosen = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 2,
+    tags: ['g-misgendered'],
+    bodyRegions: { chest: dysphoriaValue(60) }
+  });
+  await journal.entries.setEntryStarred(chosen, true);
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [chosen]);
+});
+
+test('counterevidencePool keeps a good-tagged entry that carries a dysphoria tag beside it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const mixed = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    tags: ['g-body-eu', 'g-soc-dys']
+  });
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [mixed]);
+});
+
+test('counterevidencePool keeps an entry whose only mark is a high region, with no dysphoria tag and no low region', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const clean = await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 4,
+    tags: ['a-friends'],
+    bodyRegions: { chest: euphoriaValue(90), face_jaw: BODY_REGION_MIDPOINT }
+  });
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 10);
+  assert.deepEqual(pool.map((e) => e.id), [clean]);
+});
+
+test('the demo journal offers back no dysphoria-tagged day it was not starred on', async () => {
+  /* The rule stated over the fixture rather than over three hand-written
+     entries: what ticket 15 was found by is a screenful of real-looking
+     days, and the persona is the only place in the node tier that has
+     them. Its photos are drawn on a canvas, so the entries are written
+     here directly rather than through `seedPersonaJournal` - the pool
+     reads no photo. */
+  const { journal } = await journalWithBuiltIns();
+  const today = 20_000;
+  for (const { photoCount, presentationName, ...entry } of persona(today).entries) {
+    void photoCount;
+    void presentationName;
+    await journal.entries.upsertEntry(entry);
+  }
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT);
+  assert.ok(pool.length > 0, 'the demo journal has counterevidence to offer at all');
+  const offeredBad = pool.filter(
+    (e) => !e.starred && (e.tags ?? []).some((tag) => DYSPHORIA_TAG_KEYS.includes(tag))
+  );
+  assert.deepEqual(
+    offeredBad.map((e) => e.note),
+    [],
+    'a day tagged as dysphoria was offered back as counterevidence'
+  );
 });

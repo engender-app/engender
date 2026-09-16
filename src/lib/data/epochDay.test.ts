@@ -20,6 +20,7 @@ import {
   dayRangeStartMax,
   dayRangeEndMin,
   calendarDuration,
+  durationParts,
   crossesCalendarYear,
   anniversaryYears,
   customInclusiveRange,
@@ -149,6 +150,39 @@ test(`calendarDuration.months is always 0-11 regardless of gap length under TZ=$
     const { months } = calendarDuration(from, from + gap);
     expect(months).toBeGreaterThanOrEqual(0);
     expect(months).toBeLessThanOrEqual(11);
+  }
+});
+
+/* durationParts is the one place the "largest one or two units" rule lives
+   (ticket 45): fmtDuration renders it as words, and a letter's countdown
+   draws the same parts as numbers on blocks. Two renderings of one rule, so
+   a card and a sentence about the same gap can never disagree. */
+test(`durationParts gives years and months for a gap over a year under TZ=${tz}`, () => {
+  expect(durationParts({ years: 4, months: 11, days: 6 })).toEqual([
+    { n: 4, unit: 'years' },
+    { n: 11, unit: 'months' }
+  ]);
+});
+
+test(`durationParts drops a zero second unit rather than showing it under TZ=${tz}`, () => {
+  expect(durationParts({ years: 2, months: 0, days: 9 })).toEqual([{ n: 2, unit: 'years' }]);
+});
+
+test(`durationParts stops at months, never months and days, under TZ=${tz}`, () => {
+  expect(durationParts({ years: 0, months: 1, days: 14 })).toEqual([{ n: 1, unit: 'months' }]);
+});
+
+test(`durationParts falls to days under a month, zero included, under TZ=${tz}`, () => {
+  expect(durationParts({ years: 0, months: 0, days: 12 })).toEqual([{ n: 12, unit: 'days' }]);
+  expect(durationParts({ years: 0, months: 0, days: 0 })).toEqual([{ n: 0, unit: 'days' }]);
+});
+
+test(`durationParts never returns more than two parts, over every gap, under TZ=${tz}`, () => {
+  const from = epochDayFromLocalDate(new Date(2020, 0, 1));
+  for (let gap = 0; gap <= 4000; gap += 7) {
+    const parts = durationParts(calendarDuration(from, from + gap));
+    expect(parts.length).toBeGreaterThanOrEqual(1);
+    expect(parts.length).toBeLessThanOrEqual(2);
   }
 });
 

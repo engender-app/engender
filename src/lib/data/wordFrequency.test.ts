@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { analyseNotes, countWords, noteLanguage, wordFrequency, type WordFrequencySource } from './wordFrequency';
+import {
+  analyseNotes,
+  countWords,
+  distinctiveWords,
+  noteLanguage,
+  wordFrequency,
+  type WordFrequencySource
+} from './wordFrequency';
 import type { EraSpan } from './eras';
 
 const note = (
@@ -257,5 +264,63 @@ describe('grouping', () => {
     expect(grouped.get('before')!.map((r) => r.note)).toEqual(['a']);
     expect(grouped.get('first-year')!.map((r) => r.note)).toEqual(['b']);
     expect(grouped.get(null)!.map((r) => r.note)).toEqual(['c']);
+  });
+});
+
+/* Ticket 62's fold: the reading is what is distinctive about one stretch,
+   not what is frequent in it. The baseline is the journal's own text, so
+   every case below states both sides. */
+describe('distinctiveWords', () => {
+  const analysed = (notes: string[]) => analyseNotes(notes.map((n) => note(n)));
+
+  it('drops a word spread evenly across the journal, however often it is written', () => {
+    // "long" in every note, in and out of the stretch, is the demo journal's
+    // own complaint in miniature.
+    const baseline = analysed(['long laser', 'long walk', 'long walk', 'long walk']);
+    const selected = analysed(['long laser']);
+    const words = distinctiveWords(selected, baseline).map((w) => w.word);
+    expect(words).not.toContain('long');
+    expect(words).toContain('laser');
+  });
+
+  it('weights a word by how much more it is written here than across the journal', () => {
+    const baseline = analysed(['laser laser cheeks', 'walk walk', 'walk walk', 'walk walk']);
+    const selected = analysed(['laser laser cheeks']);
+    const [first, second] = distinctiveWords(selected, baseline);
+    // Both are written only in the stretch; "laser" twice, so it weighs more.
+    expect(first.word).toBe('laser');
+    expect(second.word).toBe('cheeks');
+    expect(first.weight).toBeGreaterThan(second.weight);
+  });
+
+  it('carries each words own count, which is what the stretch actually holds', () => {
+    const baseline = analysed(['laser laser cheeks', 'walk walk walk walk']);
+    const selected = analysed(['laser laser cheeks']);
+    expect(distinctiveWords(selected, baseline).find((w) => w.word === 'laser')?.count).toBe(2);
+  });
+
+  it('breaks a tie alphabetically, so two runs over one journal agree', () => {
+    const baseline = analysed(['beta alpha', 'walk walk walk walk']);
+    const selected = analysed(['beta alpha']);
+    expect(distinctiveWords(selected, baseline).map((w) => w.word)).toEqual(['alpha', 'beta']);
+  });
+
+  it('honours the ignore list the count already honours', () => {
+    const baseline = analysed(['marta laser', 'walk walk', 'walk walk']);
+    const selected = analysed(['marta laser']);
+    const words = distinctiveWords(selected, baseline, new Set(['marta'])).map((w) => w.word);
+    expect(words).toEqual(['laser']);
+  });
+
+  it('says nothing at all where the stretch is the whole journal', () => {
+    // Every rate is the baseline rate, so no word is distinctive of it -
+    // which is why the screen names one stretch rather than offering "All".
+    const both = analysed(['long laser', 'long walk']);
+    expect(distinctiveWords(both, both)).toEqual([]);
+  });
+
+  it('holds an empty stretch and an empty journal without dividing by nothing', () => {
+    expect(distinctiveWords([], analysed(['long walk']))).toEqual([]);
+    expect(distinctiveWords([], [])).toEqual([]);
   });
 });

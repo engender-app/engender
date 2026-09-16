@@ -4,14 +4,17 @@
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
   import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
-  import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
-  import { openArchive } from '$lib/data/archive/pack';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { archiveFailureKind, type ArchiveFailureKind } from '$lib/data/archive/failure';
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
-  import { EmptyArchiveFileError, pickArchive, type PickedArchive } from '$lib/data/archive/pick';
-  import { verifyArchive } from '$lib/data/journal/restore';
+  import type { PickedArchive } from '$lib/data/archive/pick';
+  import {
+    pickForRestore,
+    runRestore,
+    runVerify,
+    type RestoreFailureKind
+  } from '$lib/data/journal/restoreFlow';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
@@ -27,12 +30,13 @@
   import { createProgress } from '$lib/components/progress.svelte';
   import type { RestoreProgress } from '$lib/data/journal/restore';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { isAndroid } from '$lib/platform';
   import { onMount } from 'svelte';
 
@@ -50,16 +54,11 @@
   let impError = $state('');
   /* Walkthrough handle for which catalogued sentence impError holds, so the
      suite can tell import failures apart without matching on the wording
-     itself (ADR: the walkthrough grips handles, never wording). The
-     archive's own four kinds come from archive/failure.ts, which classifies
-     what the container, the codec and the crypto throw; the three below are
-     this screen's own guards ahead of that: 'pick-first' and
-     'password-needed' never reach a file, and 'empty-file' reaches one but
-     refuses it (EmptyArchiveFileError, pick.ts) before a byte is
-     decrypted - still this screen's guard, not the container's, because
-     nothing archive-shaped was ever opened. */
-  type ImportGuardKind = '' | 'pick-first' | 'password-needed' | 'empty-file';
-  let impErrorKind = $state<ArchiveFailureKind | ImportGuardKind>('');
+     itself (ADR: the walkthrough grips handles, never wording). The kinds
+     are restoreFlow.ts's, which is where the guards and the archive's own
+     five now sit in one union; '' is this screen's "nothing has gone wrong
+     yet" and belongs to the field rather than to the flow. */
+  let impErrorKind = $state<RestoreFailureKind | ''>('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
   let daylioName = $state('');
@@ -421,37 +420,25 @@
 
   async function choose() {
     try {
-      const chosen = await pickArchive();
+      const chosen = await pickForRestore();
       if (!chosen) return; // backed out
-      picked = chosen;
+      if ('ok' in chosen) {
+        impErrorKind = chosen.kind;
+        impError = importFailureMessage(chosen.kind);
+        return;
+      }
+      picked = chosen.picked;
       impError = '';
       impErrorKind = '';
-    } catch (error) {
-      console.error('the archive picker failed', error);
-      if (error instanceof EmptyArchiveFileError) {
-        impErrorKind = 'empty-file';
-        impError = m.imp_file_empty();
-      } else {
-        toast(m.imp_picker_failed());
-      }
+    } catch {
+      toast(m.imp_picker_failed());
     }
   }
 
-  /* The import. Every step before the last one is reversible, and the last
-     one is a single journal operation that either lands whole or leaves the
-     journal exactly as it was (ADR-0011) - which is why this screen does no
-     sequencing of its own beyond picking a mode. */
+  /* The import, run by restoreFlow.ts so the welcome step's restore and this
+     one are the same act (ticket 36). What is left here is what this screen
+     says about it. */
   async function doImport() {
-    if (!picked) {
-      impError = m.imp_pick_first();
-      impErrorKind = 'pick-first';
-      return;
-    }
-    if (!impPass) {
-      impError = m.imp_password_needed();
-      impErrorKind = 'password-needed';
-      return;
-    }
     impError = '';
     impErrorKind = '';
     importing = true;
@@ -463,70 +450,41 @@
     importLabel = m.imp_running_files();
     importProgress.start();
     const onProgress = restoreWatcher(importProgress, (label) => (importLabel = label), m.imp_running_files);
-    try {
-      const { payload, files } = await openArchive(picked.bytes(), impPass);
-      // The manifest is what the stream is about to deliver, so the bar
-      // has a denominator for its first half (restore.ts).
-      const contents = { journal: payload.journal, files, fileCount: payload.files.length };
-
-      if (impMode === 'replace') {
-        await journal.archive.replace(contents, onProgress);
-        await importProgress.finish();
-        /* The settings that describe the journal travel with it (ADR-0003);
-           the ones that describe this installation - the PIN, the lock flags,
-           the disguise - are not in the archive at all, so restoring cannot
-           lock anybody out of an app with no recovery path. */
-        applyPortablePreferences(payload.preferences);
-        toast(m.imp_replaced_toast());
-      } else {
-        // A merge writes no settings, for the same reason it leaves rows
-        // alone: what is already on this device wins.
-        await journal.archive.merge(contents, onProgress);
-        await importProgress.finish();
-        toast(m.imp_merged_toast());
-      }
-    } catch (error) {
+    const result = await runRestore(picked, impPass, impMode as 'merge' | 'replace', onProgress);
+    if (result.ok) {
+      await importProgress.finish();
+      toast(impMode === 'replace' ? m.imp_replaced_toast() : m.imp_merged_toast());
+    } else {
       importProgress.abandon();
-      console.error('the import failed', error);
-      impErrorKind = archiveFailureKind(error);
-      impError = importFailureMessage(impErrorKind);
-    } finally {
-      importing = false;
+      impErrorKind = result.kind;
+      impError = importFailureMessage(result.kind);
     }
+    importing = false;
   }
 
   /* The backup health drill (ticket 28): the same picked file and password
-     as import, but only decrypting, parsing and validating it - restore.ts's
-     verifyArchive never takes a driver or a file store, so there is nothing
-     here for it to write to. */
+     as import, but only decrypting, parsing and validating it - nothing here
+     is written to. */
   async function doVerify() {
-    if (!picked) {
-      impError = m.imp_pick_first();
-      return;
-    }
-    if (!impPass) {
-      impError = m.imp_password_needed();
-      return;
-    }
     impError = '';
+    impErrorKind = '';
     verifying = true;
     // Not cancellable either, though nothing is written: a half-drained
     // archive proves nothing, and a drill that can be stopped early is a
     // drill somebody can believe they passed (ADR-0070).
     importLabel = m.verify_running_files();
     importProgress.start();
-    try {
-      await verifyArchive(picked.bytes(), impPass, (done, total) => importProgress.report(done, total));
+    const result = await runVerify(picked, impPass, (done, total) => importProgress.report(done, total));
+    if (result.ok) {
       await importProgress.finish();
       prefs.lastVerifiedAt = Date.now();
       toast(m.verify_ok_toast());
-    } catch (error) {
+    } else {
       importProgress.abandon();
-      console.error('the verify drill failed', error);
-      impError = verifyFailureMessage(archiveFailureKind(error));
-    } finally {
-      verifying = false;
+      impErrorKind = result.kind;
+      impError = verifyFailureMessage(result.kind);
     }
+    verifying = false;
   }
 
   function openDaylio() {
@@ -728,7 +686,7 @@
 <div class="screen">
   <ScreenHeader title={m.exp_title()} back="/settings" />
 
-  <div class="card" style="margin-bottom:var(--space-4)">
+  <div class="kit-panel" data-kit-surface style="margin-bottom:var(--space-4)">
     <div class="spread">
       <span class="kit-row-text">
         <span class="kit-row-title">{m.exp_last_backup()}</span>
@@ -744,7 +702,7 @@
         </span>
       </span>
       {#if stale}
-        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
+        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--r-block);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
       {:else}
         <Icon name="check" size={20} />
       {/if}
@@ -766,10 +724,13 @@
   </div>
 
   {#if importLog.length > 0}
-    <SectionTitle text={m.imp_log_section()} />
-    <div class="card editor-section">
-      {#each importLog as record, i (record.id)}
-        {#if i > 0}<div class="hr"></div>{/if}
+    <SectionHeading text={m.imp_log_section()} />
+    <!-- The card is gone, so the hairline a list begins and ends with
+         (DIRECTION.md rule 4) is the list card's own, and the separator
+         between two rows is `.kit-row + .kit-row`'s rather than an `.hr`
+         written out per row. -->
+    <ListCard>
+      {#each importLog as record (record.id)}
         <ListRow
           static
           data-import-log-row
@@ -777,175 +738,174 @@
           subtitle={m.imp_log_row_sub({ counts: importLogCountsText(record.counts), when: stampText(record.importedAt) })}
         />
       {/each}
-    </div>
+    </ListCard>
   {/if}
 
-  <SectionTitle text={m.exp_encrypted_section()} />
-  <div class="card editor-section">
-    <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
-    <Field label={m.exp_password_label()} id="exp-pass">
-      {#snippet children(id)}
-        <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
-          autocomplete="new-password" bind:value={expPass} />
-      {/snippet}
-    </Field>
-    <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
-      <Icon name={android ? 'share' : 'download'} size={20} />
-      <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
-    </button>
-    <!-- The encrypted path only. journalCsv and journalJson build their
-         whole string synchronously before the body is ever pulled, so
-         there is nothing for a bar to count and, worse, nothing for it to
-         paint: the show-delay timer cannot fire inside a block that never
-         yields, so a bar there would appear only once the work it was
-         reporting had finished. The two plain buttons stay disabled and
-         say so, which is the honest amount this screen knows about them. -->
-    {#if running === 'encrypted'}
-      <Progress run={exportProgress} label={exportLabel} handle="export" />
-    {/if}
-    <p class="muted small">
-      <Icon name="key" size={13} /> {m.exp_crypto_note()}
-    </p>
-  </div>
+  <SectionHeading text={m.exp_encrypted_section()} />
+  <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
+  <Field label={m.exp_password_label()} id="exp-pass">
+    {#snippet children(id)}
+      <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
+        autocomplete="new-password" bind:value={expPass} />
+    {/snippet}
+  </Field>
+  <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
+    <Icon name={android ? 'share' : 'download'} size={20} />
+    <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
+  </button>
+  <!-- The encrypted path only. journalCsv and journalJson build their
+       whole string synchronously before the body is ever pulled, so
+       there is nothing for a bar to count and, worse, nothing for it to
+       paint: the show-delay timer cannot fire inside a block that never
+       yields, so a bar there would appear only once the work it was
+       reporting had finished. The two plain buttons stay disabled and
+       say so, which is the honest amount this screen knows about them. -->
+  {#if running === 'encrypted'}
+    <Progress run={exportProgress} label={exportLabel} handle="export" />
+  {/if}
+  <p class="muted small">
+    <Icon name="key" size={13} /> {m.exp_crypto_note()}
+  </p>
 
   {#if android}
     <!-- Mockup only: no password prompt or export trigger exists yet, so
          there's nothing here to attach ticket 12's "warning before any
          encrypted export" to. Its real Android implementation must show
          the same warning the manual export sheet above does, once. -->
-    <div class="card editor-section">
+    <!-- The card had been the only thing saying where this area began, and
+         it follows another area rather than the screen's own header, so
+         unboxed it needs the heading (rule 4, and the entry editor's
+         precedent). The switch row's title moves up into it rather than
+         being said twice; the switch keeps it as its accessible name. -->
+    <SectionHeading text={m.exp_auto_title()} />
+    <div class="spread">
+      <span class="small muted">{m.exp_auto_sub()}</span>
+      <Switch checked={prefs.autoExportEnabled} label={m.exp_auto_title()}
+        onChange={setAutoEnabled} />
+    </div>
+
+    <div class="spread">
+      <span class="small muted">{m.exp_auto_destination_label()}</span>
+      <button class="btn btn-soft" type="button" onclick={pickAutoDestination} disabled={autoBusy}>
+        <span>{autoDestination ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
+      </button>
+    </div>
+    <p class="muted small">
+      {m.exp_auto_destination_note()}
+    </p>
+    <p class="muted small">
+      {autoDestination ?? m.exp_auto_destination_missing()}
+    </p>
+
+    {#if prefs.autoExportEnabled}
       <div class="spread">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.exp_auto_title()}</span>
-          <span class="kit-row-sub">{m.exp_auto_sub()}</span>
-        </span>
-        <Switch checked={prefs.autoExportEnabled} label={m.exp_auto_title()}
-          onChange={setAutoEnabled} />
+        <span class="small muted">{m.exp_schedule()}</span>
+        <Segmented name={m.exp_schedule()}
+          options={[{ value: 'weekly', label: m.exp_schedule_weekly() }, { value: 'monthly', label: m.exp_schedule_monthly() }]}
+          value={prefs.autoExportSchedule}
+          onChange={setAutoSchedule} />
       </div>
 
-        <div class="spread">
-          <span class="small muted">{m.exp_auto_destination_label()}</span>
-          <button class="btn btn-soft" type="button" onclick={pickAutoDestination} disabled={autoBusy}>
-            <span>{autoDestination ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
-          </button>
-        </div>
-        <p class="muted small">
-          {m.exp_auto_destination_note()}
-        </p>
-        <p class="muted small">
-          {autoDestination ?? m.exp_auto_destination_missing()}
-        </p>
+      <button class="btn btn-soft" type="button"
+        onclick={backupNowToDestination} disabled={autoBusy}>
+        <span>{autoBusy ? m.exp_auto_running() : m.exp_auto_backup_now()}</span>
+      </button>
+      <Progress run={autoProgress} label={autoLabel} handle="auto-export" />
+    {/if}
 
-      {#if prefs.autoExportEnabled}
-        <div class="spread">
-          <span class="small muted">{m.exp_schedule()}</span>
-          <Segmented name={m.exp_schedule()}
-            options={[{ value: 'weekly', label: m.exp_schedule_weekly() }, { value: 'monthly', label: m.exp_schedule_monthly() }]}
-            value={prefs.autoExportSchedule}
-            onChange={setAutoSchedule} />
-        </div>
-
-          <button class="btn btn-soft" type="button"
-            onclick={backupNowToDestination} disabled={autoBusy}>
-            <span>{autoBusy ? m.exp_auto_running() : m.exp_auto_backup_now()}</span>
-          </button>
-          <Progress run={autoProgress} label={autoLabel} handle="auto-export" />
+    <p class="muted small">
+      {m.exp_auto_note({ folder: autoDestination ?? m.exp_auto_destination_missing() })}
+    </p>
+    <p class="muted small">
+      {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
+    </p>
+    <p class="muted small">
+      {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
+    </p>
+    {#if autoLastFailureAt !== null}
+      <p class="muted small">
+        {m.exp_auto_last_failure({ when: stampText(autoLastFailureAt) })}
+      </p>
+      {#if autoLastFailureReason}
+        <p class="muted small">{m.exp_auto_failed()}</p>
       {/if}
-
-        <p class="muted small">
-          {m.exp_auto_note({ folder: autoDestination ?? m.exp_auto_destination_missing() })}
-        </p>
-        <p class="muted small">
-          {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
-        </p>
-        <p class="muted small">
-          {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
-        </p>
-        {#if autoLastFailureAt !== null}
-          <p class="muted small">
-            {m.exp_auto_last_failure({ when: stampText(autoLastFailureAt) })}
-          </p>
-          {#if autoLastFailureReason}
-            <p class="muted small">{m.exp_auto_failed()}</p>
-          {/if}
-        {/if}
-    </div>
+    {/if}
   {/if}
 
-  <SectionTitle text={m.imp_section()} />
-  <div class="card editor-section">
-    <Field label={m.imp_file_label()} legend>
-      {#snippet children()}
-        <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={choose}>
-          <Icon name="upload" size={18} />
-          <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
-            {picked ? picked.name : m.imp_file_placeholder()}
-          </span>
-        </button>
-      {/snippet}
-    </Field>
-    <Field label={m.exp_password_label()} id="imp-pass">
-      {#snippet children(id)}
-        <input class="input" type="password" {id} name="imp-pass"
-          placeholder={m.imp_password_placeholder()} bind:value={impPass} />
-      {/snippet}
-    </Field>
-    <Field label={m.imp_how_label()} legend>
-      {#snippet children()}
-        <Segmented name={m.imp_how_label()}
-          options={[{ value: 'merge', label: m.imp_mode_merge() }, { value: 'replace', label: m.imp_mode_replace() }]}
-          value={impMode} onChange={(v) => (impMode = v)} />
-      {/snippet}
-    </Field>
-    {#if impError}
-      <div class="notice notice-danger" style="margin-bottom:var(--space-3)" role="alert" data-import-error={impErrorKind}>
-        <Icon name="alert" size={20} />
-        <div class="notice-body">{impError}</div>
-      </div>
-    {/if}
-    <p class="muted small" style="margin-bottom:var(--space-3)">
-      {impMode === 'replace' ? m.imp_replace_note() : m.imp_merge_note()}
-    </p>
-    <div class="spread">
-      <button class="btn btn-ghost" data-verify onclick={doVerify} disabled={importing || verifying}>
-        <Icon name="shield" size={18} />
-        <span>{verifying ? m.verify_running() : m.verify_run()}</span>
+  <SectionHeading text={m.imp_section()} />
+  <Field label={m.imp_file_label()} legend>
+    {#snippet children()}
+      <button class="input" style="text-align:left;color:var(--text-2)" data-pick-file onclick={choose}>
+        <Icon name="upload" size={18} />
+        <span id="picked-file" style={picked ? 'color:var(--text)' : ''}>
+          {picked ? picked.name : m.imp_file_placeholder()}
+        </span>
       </button>
-      <button class="btn btn-soft" data-import onclick={doImport} disabled={importing || verifying}>
-        <span>{importing ? m.imp_running() : m.imp_run()}</span>
-      </button>
+    {/snippet}
+  </Field>
+  <Field label={m.exp_password_label()} id="imp-pass">
+    {#snippet children(id)}
+      <input class="input" type="password" {id} name="imp-pass"
+        placeholder={m.imp_password_placeholder()} bind:value={impPass} />
+    {/snippet}
+  </Field>
+  <Field label={m.imp_how_label()} legend>
+    {#snippet children()}
+      <Segmented name={m.imp_how_label()}
+        options={[{ value: 'merge', label: m.imp_mode_merge() }, { value: 'replace', label: m.imp_mode_replace() }]}
+        value={impMode} onChange={(v) => (impMode = v)} />
+    {/snippet}
+  </Field>
+  {#if impError}
+    <div class="notice notice-danger" style="margin-bottom:var(--space-3)" role="alert" data-import-error={impErrorKind}>
+      <Icon name="alert" size={20} />
+      <div class="notice-body">{impError}</div>
     </div>
-    <!-- One bar for the two buttons above it: they are disabled by each
-         other, so only one of them is ever running. -->
-    <Progress run={importProgress} label={importLabel} handle="import" />
-    <div class="hr"></div>
-    <div data-import-rows>
-    <ListRow
-      icon="book"
-      title={m.daylio_row_title()}
-      subtitle={m.daylio_row_sub()}
-      onclick={openDaylio}
-      data-daylio
-      style="border-radius:var(--radius-md);background:var(--surface-2)"
-    />
-    <ListRow
-      icon="package"
-      title={m.dlb_row_title()}
-      subtitle={m.dlb_row_sub()}
-      onclick={openBackup}
-      data-daylio-backup
-      style="border-radius:var(--radius-md);background:var(--surface-2);margin-top:var(--space-2)"
-    />
-    </div>
+  {/if}
+  <p class="muted small" style="margin-bottom:var(--space-3)">
+    {impMode === 'replace' ? m.imp_replace_note() : m.imp_merge_note()}
+  </p>
+  <div class="spread">
+    <button class="btn btn-ghost" data-verify onclick={doVerify} disabled={importing || verifying}>
+      <Icon name="shield" size={18} />
+      <span>{verifying ? m.verify_running() : m.verify_run()}</span>
+    </button>
+    <button class="btn btn-soft" data-import onclick={doImport} disabled={importing || verifying}>
+      <span>{importing ? m.imp_running() : m.imp_run()}</span>
+    </button>
+  </div>
+  <!-- One bar for the two buttons above it: they are disabled by each
+       other, so only one of them is ever running. -->
+  <Progress run={importProgress} label={importLabel} handle="import" />
+  <!-- Two entries of one list: the hairlines the list card draws are what
+       separates them and what says where they begin and end, so the tonal
+       ground each row used to carry is gone (Alicja, 2026-09-09: "the list
+       entries have both the bg and the line separators - lose the bg"). The
+       `.hr` that used to sit above them was doing the list card's job. -->
+  <div data-import-rows>
+    <ListCard>
+      <ListRow
+        icon="book"
+        title={m.daylio_row_title()}
+        subtitle={m.daylio_row_sub()}
+        onclick={openDaylio}
+        data-daylio
+      />
+      <ListRow
+        icon="package"
+        title={m.dlb_row_title()}
+        subtitle={m.dlb_row_sub()}
+        onclick={openBackup}
+        data-daylio-backup
+      />
+    </ListCard>
   </div>
 
-  <SectionTitle text={m.plain_section()} />
-  <div class="card editor-section">
-    <p class="small" style="margin-bottom:var(--space-3)">{m.plain_body()}</p>
-    <div class="spread">
-      <button class="btn btn-soft" data-plain="csv" disabled={running !== null} onclick={() => (plainSheet = 'csv')}><span>CSV</span></button>
-      <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>JSON</span></button>
-    </div>
+  <SectionHeading text={m.plain_section()} />
+  <p class="small" style="margin-bottom:var(--space-3)">{m.plain_body()}</p>
+  <div class="spread">
+    <button class="btn btn-soft" data-plain="csv" disabled={running !== null} onclick={() => (plainSheet = 'csv')}><span>CSV</span></button>
+    <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>JSON</span></button>
   </div>
 
   <Sheet open={exportWarningOpen} title={m.exp_warning_sheet()} onClose={() => (exportWarningOpen = false)}>
@@ -1003,7 +963,7 @@
       </div>
     {/if}
     {#if daylioPreview}
-      <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
+      <div class="kit-panel" data-kit-surface style="margin-bottom:var(--space-4)">
         <div class="rows-divide value-row"><span>{m.daylio_entries_to_add()}</span><strong>{daylioPreview.entryCount}</strong></div>
         <div class="rows-divide value-row">
           <span>{m.daylio_activities_to_tags()}</span>
@@ -1067,7 +1027,7 @@
            arriving, how each mood landed, and what stays behind. The rows
            arrive in sequence on the app's own stagger, which reads down the
            list in the order somebody would check it. -->
-      <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
+      <div class="kit-panel" data-kit-surface style="margin-bottom:var(--space-4)">
         {#if nothingArriving(backupPreview)}
           <p class="muted small" style="margin:0" data-import-nothing-new>{m.dlb_nothing_new()}</p>
         {:else}

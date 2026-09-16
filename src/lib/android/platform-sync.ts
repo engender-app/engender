@@ -65,6 +65,7 @@ export interface PlatformSyncDeps {
     quietHoursEnd: string;
     disguise: boolean;
     quickExit: boolean;
+    allowScreenCapture: boolean;
   };
   journal: {
     reminders: { getReminders(): Promise<Reminder[]> };
@@ -87,6 +88,7 @@ export interface PlatformSyncDeps {
   };
   androidDisguise: { setDisguised(options: { disguised: boolean }): Promise<void> };
   androidQuickExit: { setEnabled(options: { enabled: boolean }): Promise<void> };
+  androidScreenCapture: { setAllowed(options: { allowed: boolean }): Promise<void> };
   androidBackButton: {
     addListener(eventName: 'backButton', listener: () => void): Promise<{ remove(): Promise<void> }>;
     minimizeApp(): Promise<void>;
@@ -342,6 +344,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
 
   void deps.androidDisguise.setDisguised({ disguised: deps.prefs.disguise });
   void deps.androidQuickExit.setEnabled({ enabled: deps.prefs.quickExit });
+  void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture });
 
   stopCurrent = () => {
     if (!active) return;

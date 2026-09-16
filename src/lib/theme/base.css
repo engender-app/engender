@@ -9,25 +9,40 @@
   --font-body: 'Nunito', system-ui, sans-serif;
   --font-display: 'Outfit', 'Nunito', system-ui, sans-serif;
 
-  --text-xs: 0.75rem;    /* 12px — timestamps, legends */
-  --text-sm: 0.875rem;   /* 14px — secondary text, chips */
+  /* The phase 10 scale (DIRECTION.md rule 2): 48 / 28 / 17 / 15, set from
+     the top down. Secondary text is 15 at weight 600 rather than 14 at 450,
+     because a flashy screen with grey 14px whispers under it is two apps;
+     a content title is 17 in the body face; the section heading is 28 and a
+     door's title 48, both in the display face at weight 800. */
+  --text-xs: 0.75rem;    /* 12px — timestamps, legends, a tag */
+  --text-sm: 0.9375rem;  /* 15px — secondary text, subtitles, a tile's note */
   --text-md: 1rem;       /* 16px — body */
-  --text-lg: 1.125rem;   /* 18px — emphasised body, list titles */
-  --text-xl: 1.3125rem;  /* 21px — section headings */
-  --text-2xl: 1.625rem;  /* 26px — screen titles (display face) */
-  --text-3xl: 2rem;      /* 32px — greeting, big numbers */
+  --text-lg: 1.0625rem;  /* 17px — a content title: a chart's heading, a row's title */
+  /* 19px is where large text starts at bold (18.66px), which is the whole
+     reason for the step: a title written on a block answers to 3:1 rather
+     than 4.5:1, and nonbinary's purple carries 4.41. Anything smaller has
+     to come off the stripe (rule 3's foot). */
+  --text-block: 1.1875rem; /* 19px — a title or a note written on a block */
+  --text-xl: 1.3125rem;  /* 21px — a sheet's heading, a row-weight number */
+  --text-2xl: 1.75rem;   /* 28px — a section heading (display face) */
+  --text-3xl: 2.5rem;    /* 40px — a number on a block (display face) */
+  --text-4xl: 3rem;      /* 48px — a door's title, a deep screen's title (display face) */
 
   --leading-body: 1.5;
-  --leading-display: 1.2;
+  --leading-display: 1.05;
 
   /* Outfit sets wide by default and needs pulling in at display sizes; Baloo
      2 did not, and wanted 0. Every rule that reaches for --font-display
-     wants this with it. */
-  --display-track: -0.024em;
+     wants this with it. -0.04em at 28 and above (phase 10); a door's title
+     at 48 tightens one step further, to -0.045em, in its own rule. */
+  --display-track: -0.04em;
 
   --weight-regular: 450;
   --weight-medium: 600;
   --weight-bold: 750;
+  /* Outfit's weight axis at 800 for every display size (phase 10, rule 2):
+     the body face keeps 750 for bold, the display face never sets less. */
+  --weight-display: 800;
 
   /* --- Spacing (4px base) --- */
   --space-1: 4px;
@@ -41,26 +56,31 @@
   --space-9: 48px;
   --space-10: 64px;
 
-  /* --- Shape: soft, rounded, never sharp (warm, not clinical) --- */
-  --radius-xs: 6px;      /* heat-map cells, small chips */
-  --radius-sm: 10px;     /* inputs, small controls */
-  --radius-md: 14px;     /* buttons, list rows */
-  --radius-lg: 18px;     /* cards */
-  --radius-xl: 26px;     /* sheets, hero surfaces */
-  --radius-pill: 999px;  /* tags, mood ring, segmented controls */
-
-  /* The redesign names two shapes rather than picking a step off the ramp
-     above, because both are load-bearing: --r-card is every surface a
-     screen is built from, and --r-add is the floating add button and the
-     nav bar it sits in, which have to agree. Ticket 17 keeps the ticket's
-     and the prototype's names for these two; --radius-* stays the ramp. */
-  --r-card: 20px;
-  --r-add: 18px;
+  /* --- Shape: one radius, and the disc (phase 10, DIRECTION.md rule 5) ---
+     Every block, every control track, every input, the sheet, the floating
+     bar and its add button take --r-block. A disc - an icon that is a face, a
+     heat cell that is a day - is 50%, written where it is drawn. A mood face
+     is neither: it sits on a block of its own drawn inside a 24-unit viewBox,
+     so its corner is 6.4 of those units and scales with the face
+     (moodFace.ts's MOOD_BLOCK, ADR-0077) - the one proportional corner in the
+     app, and the one exception direction-contract.test.ts carries. The pill survives on
+     the one shape that is a capsule, a tag, and nowhere else. The ramp this
+     replaces (--radius-xs..xl, --r-card 20, --r-add 18) counted twenty-three
+     distinct corners across the app; tests/direction-contract.test.ts holds
+     every corner in every sheet and component to this budget. */
+  --r-block: 6px;
+  --radius-pill: 999px;  /* a tag, which is a pill because it is one word */
 
   /* --- Elevation: soft ambient, never harsh --- */
-  --shadow-1: 0 1px 2px rgb(15 30 40 / 0.05), 0 2px 8px rgb(15 30 40 / 0.05);
-  --shadow-2: 0 2px 4px rgb(15 30 40 / 0.06), 0 8px 24px rgb(15 30 40 / 0.09);
-  --shadow-3: 0 4px 8px rgb(15 30 40 / 0.08), 0 16px 48px rgb(15 30 40 / 0.14);
+  /* The three-step elevation ramp retired with the cohesion sweep (redesign
+     ticket 20). Rule 4 gives the app one shadow and it belongs to the
+     floating bar, which has --shadow-float below; the ramp survived ticket
+     07 only because fifteen rules outside the kit still read it, and once
+     those became a hairline apiece nothing read it at all. Deliberately not
+     left defined-but-unused: a token that resolves is a token the next rule
+     reaches for, and `box-shadow: var(--shadow-1)` is a one-line way back
+     into a world this phase spent itself leaving.
+     tests/direction-contract.test.ts holds it retired. */
 
   /* The redesign separates surfaces with a line, not a plane, so it has one
      shadow: the floating nav bar and its add button, which genuinely do sit
@@ -78,6 +98,26 @@
   /* --- Motion (ticket 09: one token language for every shared transition,
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Two curves for the two edges of a shape that travels in stages
+     (redesign ticket 26), and what separates them is only how much of a
+     gather each one starts with.
+
+     --ease-out-soft is --ease-out with the instant off the front. --ease-out
+     leaves at four times its average speed, which is right for something
+     appearing and wrong for a long edge setting off: at 16ms it was already
+     29% of the way there, so the leading edge read as a jump followed by a
+     drift (Alicja, on the first flipbook: "the lead must be a little bit
+     ease-in too").
+
+     --ease-in-out is the edge left behind. It starts from a stop after the
+     edge ahead of it has gone, so it gathers before it sheds - but only
+     just: a full ease-in held it still for another 80ms after its delay had
+     already passed, which read as a snap rather than a catch-up. Its own
+     initial slope is 0.4 against the leading curve's 0.84, so the two are
+     the same gesture at two weights rather than two different ideas. */
+  --ease-out-soft: cubic-bezier(0.38, 0.32, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.45, 0.18, 0.3, 1);
 
   /* Phase 5 ticket 29 removed an --ease-spring from beside this. Its
      numbers are deliberately not repeated here: the detector scans
@@ -128,6 +168,14 @@
   --dur-breathe: 7s;
   --sun-breathe-scale: 1.035;
 
+  /* The sun's own arrival during a navigation (fieldBlind.ts/app.css),
+     slower again than --dur-authored's cold-boot entrance (Alicja,
+     2026-09-10, ticket 99 round 2: "even slower" than --dur-slow, then
+     "let's go for 900ms") - its own token rather than reusing
+     --dur-authored, since that number is the cold-start entrance's and
+     changing it would also slow that down, which nothing asked for. */
+  --dur-sun-open: 900ms;
+
   /* One pass of the progress bar's indeterminate sweep (Progress.svelte,
      ADR-0070). Its own token rather than a tier duration, because it is
      the only loop in the app besides the sun and it is not tier 0's: it
@@ -147,8 +195,16 @@
      flatten every CSS transition regardless of its token. */
   --dur-crossfade: 120ms;
   --motion-distance-sm: 10px;  /* toast */
-  --motion-distance-md: 24px;  /* sheet */
+  --motion-distance-md: 24px;  /* shared axis, between a list and its detail */
   --stagger-step: 50ms;
+  /* The sun's rings, closing and opening one after another inside a door
+     change (redesign ticket 28). Its own step rather than --stagger-step,
+     which is the beat a grid of tiles arrives on: the sun has seven rings
+     at its widest and the whole movement has to fit inside --dur-slow, so
+     the last ring starts at 180ms and lands at 330. The entrance on a cold
+     start keeps its own 110ms, which is authored rather than staggered
+     (components.css). */
+  --stagger-ring: 30ms;
 
   /* --- Materials beyond transform and opacity (phase 5 ticket 28) ---
 
@@ -241,7 +297,11 @@ html[data-a11y-text-size='boost'] {
 html[data-palette][data-theme][data-a11y-legibility='boost'] {
   --leading-body: 1.65;
   --text-2: color-mix(in oklab, var(--text) 76%, var(--bg));
-  --border: color-mix(in oklab, var(--text) 24%, var(--bg));
+  /* The two line strengths the app has left (phase 10, rule 4), each one
+     step darker: --outline 19% -> 28%, --hairline 14% -> 22%. --border,
+     which this used to boost, retired with the ramp it belonged to. */
+  --outline: color-mix(in oklab, var(--text) 28%, transparent);
+  --hairline: color-mix(in oklab, var(--text) 22%, transparent);
 }
 
 /* --dur-breathe is deliberately not clamped here. It belongs to an infinite
@@ -253,7 +313,9 @@ html[data-a11y-motion='reduce'] {
   --dur-slow: 1ms;
   --dur-press: 1ms;
   --dur-authored: 1ms;
+  --dur-sun-open: 1ms;
   --stagger-step: 0ms;
+  --stagger-ring: 0ms;
 }
 
 html[data-a11y-motion='reduce'] *,
@@ -270,7 +332,9 @@ html[data-a11y-motion='reduce'] *::after {
     --dur-slow: 1ms;
     --dur-press: 1ms;
     --dur-authored: 1ms;
+    --dur-sun-open: 1ms;
     --stagger-step: 0ms;
+    --stagger-ring: 0ms;
   }
   *, *::before, *::after {
     animation-duration: 1ms !important;

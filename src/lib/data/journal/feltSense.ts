@@ -48,6 +48,19 @@ export interface FeltSenseArea {
       `forEntries` and `photosByEntry` use; what an absence means is the
       caller's to say. */
   latestDaysForTryouts(tryoutIds: readonly string[]): Promise<Map<string, number>>;
+  /** Every tryout's readings, oldest first, keyed by tryout and read in one
+      query rather than one per row - `photosByProcedure` (procedures.ts)
+      is the shape, and the reason is the one `latestDaysForTryouts` gives
+      just above: a screen drawing several tryouts at once costs one query,
+      not one per tryout. A tryout with no readings is absent rather than
+      present with an empty list, so a caller reads "has any" off `get`
+      alone.
+
+      Oldest first, where `forTryout` is newest first, because this answers
+      a drawing rather than a log: the tryouts index puts a running
+      tryout's readings on a line running left to right in time (ticket 53,
+      tryoutReading.ts), and a log shows the last thing first. */
+  byTryout(): Promise<Map<string, FeltSenseEntry[]>>;
   /** Newest first, like forTryout. */
   forMilestone(milestoneId: string): Promise<FeltSenseEntry[]>;
   /** Both owners' entries dated to one day, tryouts before milestones and
@@ -111,6 +124,22 @@ export function makeFeltSenseArea(driver: SqliteDriver): FeltSenseArea {
       );
       for (const row of rows) latest.set(row.uuid, row.day);
       return latest;
+    },
+
+    async byTryout() {
+      const rows = await driver.query<FeltSenseRow & { tryout_uuid: string }>(
+        `SELECT f.uuid, f.epoch_day, f.mood, f.note, t.uuid AS tryout_uuid
+           FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
+          ORDER BY f.epoch_day, f.id`
+      );
+      const byTryout = new Map<string, FeltSenseEntry[]>();
+      for (const row of rows) {
+        const entry = toFeltSenseEntry(row);
+        const found = byTryout.get(row.tryout_uuid);
+        if (found) found.push(entry);
+        else byTryout.set(row.tryout_uuid, [entry]);
+      }
+      return byTryout;
     },
 
     async forMilestone(milestoneId) {

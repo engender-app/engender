@@ -66,6 +66,8 @@
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearKind, WearSession } from '$lib/data/types';
+  import DayStrip from '$lib/components/DayStrip.svelte';
+  import { stripWindow, type DayMark } from '$lib/components/dayStrip';
   import Icon from '$lib/components/Icon.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -75,7 +77,6 @@
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -94,7 +95,13 @@
      only role guaranteed chromatic on all 8 palettes, and a two-line chart
      drawn in an achromatic band reads as disabled. The sessions take the
      stripe after it. */
-  const SECTION_ROLE = { chart: 0, sessions: 1 };
+  const SECTION_ROLE = { chart: 0, strip: 0, sessions: 1 };
+
+  /* The strip's fill is a colour carrying a value, so it takes role 0 with
+     the chart rather than the sessions' stripe (ticket 44) - index 0 is
+     the only one guaranteed chromatic on all 8 palettes, and a logged day
+     filled in a palette's achromatic band is a day drawn as nothing. The
+     calendar states the same rule for its own three readings of a day. */
   import Switch from '$lib/components/Switch.svelte';
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
@@ -122,8 +129,96 @@
      reads the same answer (QuickAdd.svelte). */
   let latestKind = $derived<WearKind>(latestKindQuery.value ?? 'binder');
 
-  // Newest first - the running session (if any) gets its own card above this list.
-  let completed = $derived([...sessions].filter((s) => s.durationMs !== null).reverse());
+  let completed = $derived(sessions.filter((s) => s.durationMs !== null));
+
+  /* The log is a week at a time now (phase 10 redesign ticket 44), drawn
+     as a strip with the running session under it at full size - the same
+     treatment dilation takes, and for the same reason. Ninety days of wear
+     rows captured this screen at 2794px on a demo build with every feature
+     filled, most of it a list saying which days had one.
+
+     A day here is `logged` or nothing. There is no `expected`: nothing
+     schedules a wear session, so a day with none is a day with none and
+     never a day something was missed on (ADR-0012, and the streak this app
+     removed on purpose). */
+  let dayOf = (session: WearSession) => epochDayFromTimestamp(session.startTimestamp);
+  let sessionsByDay = $derived.by(() => {
+    const byDay = new Map<number, WearSession[]>();
+    for (const s of completed) {
+      const day = dayOf(s);
+      byDay.set(day, [...(byDay.get(day) ?? []), s]);
+    }
+    return byDay;
+  });
+  let markOf = $derived(
+    (epochDay: number): DayMark =>
+      sessionsByDay.has(epochDay) || (running !== null && dayOf(running) === epochDay) ? 'logged' : 'off'
+  );
+
+  /** How long a day's sessions came to, which is what the cell says when a
+      screen reader reaches it - a reading of that day, not a score of it. */
+  const dayTotal = (epochDay: number) => {
+    const onDay = sessionsByDay.get(epochDay) ?? [];
+    if (onDay.length === 0) return null;
+    const parts = hoursMinutesOf(onDay.reduce((sum, s) => sum + (s.durationMs ?? 0), 0));
+    return m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) });
+  };
+
+  /* Where paging back stops: the earliest session in the window the query
+     reads, never before it, so a page can never be one this screen has no
+     rows for. */
+  let earliest = $derived(
+    completed.length === 0 && !running
+      ? null
+      : Math.max(from, Math.min(...[...completed.map(dayOf), ...(running ? [dayOf(running)] : [])]))
+  );
+
+  /* What a cell says on the day a session is still running: it has no
+     duration yet, so the total is null and "nothing logged" would be a
+     lie about the one day something is happening on. */
+  let runningWords = $derived(running ? wearRunningCardTitle(running.kind) : m.adherence_nothing_logged());
+
+  let weeksBack = $state(0);
+  let shownWeek = $derived(stripWindow(today, weeksBack));
+  /* Newest first, and today's completed sessions included: the block above
+     these is the running timer, which is a different record from any of
+     them. */
+  let weekSessions = $derived(
+    completed.filter((s) => dayOf(s) >= shownWeek.first && dayOf(s) <= shownWeek.last).reverse()
+  );
+
+  /** A tap on a day of the strip: its first session if it has one, or a
+      backfill draft anchored to that day's local midnight if it has none -
+      the same two ways in the add control already offers, pointed at one
+      day.
+
+      Today is the exception, and it is the row under the strip that
+      decides it: a blank draft, which opens live when nothing is running
+      and as a backfill when something is. Without this, tapping today's
+      cell and tapping the row directly below it - the same day, on the
+      same screen - opened the sheet in two different modes. */
+  function openSessionFor(epochDay: number) {
+    const existing = sessionsByDay.get(epochDay)?.[0];
+    if (existing) {
+      record.openEditor(existing);
+      return;
+    }
+    if (epochDay === today) {
+      record.openEditor(null);
+      return;
+    }
+    record.editor = {
+      kind: latestKind,
+      isRunning: false,
+      startTimestamp: startOfDayTimestamp(epochDay),
+      mode: 'backfill',
+      day: dateInputValueFromEpochDay(epochDay),
+      durationHours: '',
+      note: '',
+      reminderEnabled: false,
+      reminderHours: ''
+    };
+  }
 
   let nowTick = $state(Date.now());
   $effect(() => {
@@ -385,6 +480,24 @@
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else}
     <div class="screen-part">
+      <!-- What is true now, before what was true before (rule 16): the week
+           as a strip, and the session that is actually running under it. -->
+      {#if earliest !== null}
+        <DayStrip
+          {today}
+          markOf={(day) => markOf(day)}
+          labelOf={(day, mark) =>
+            m.strip_day_state({
+              day: fmtDayLong(day),
+              state: dayTotal(day) ?? (mark === 'logged' ? runningWords : m.adherence_nothing_logged())
+            })}
+          {earliest}
+          onPick={openSessionFor}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+          bind:weeksBack
+        />
+      {/if}
+
       {#if running}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
@@ -410,37 +523,25 @@
             <p class="muted small wear-cue" data-wear-duration-cue transition:disclose>{m.wear_session_cue()}</p>
           {/if}
         </ListCard>
+      {:else if earliest !== null}
+        <!-- Nothing running, so what is true now is what today came to. -->
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+          <ListRow
+            key="wear-today"
+            data-wear-today
+            icon="clock"
+            title={m.today()}
+            subtitle={fmtDayLong(today)}
+            onclick={() => openSessionFor(today)}
+          >
+            {#snippet trailing()}
+              {dayTotal(today) ?? m.adherence_nothing_logged()}
+            {/snippet}
+          </ListRow>
+        </ListCard>
       {/if}
 
-      {#if completed.length}
-        <!-- A batch at a time (ticket 66). Ninety days of wear time is the
-             app's first list long enough that rendering all of it left the
-             scrollbar too small to use. -->
-        <div class="screen-part">
-          <BatchedList
-            items={completed}
-            key="wear-sessions"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          >
-            {#snippet rows(shown)}
-              {#each shown as session (session.id)}
-                {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
-                <ListRow
-                  key={session.id}
-                  data-wear-session={session.id}
-                  icon="clock"
-                  title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
-                  subtitle={session.note
-                    ? `${fmtDayLong(epochDayFromTimestamp(session.startTimestamp))} · ${session.note}`
-                    : fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}
-                  chevron={false}
-                  onclick={() => record.openEditor(session)}
-                />
-              {/each}
-            {/snippet}
-          </BatchedList>
-        </div>
-      {:else if !running}
+      {#if earliest === null && !running}
         <Notice
           icon="clock"
           key="wear-empty"
@@ -449,6 +550,31 @@
           text={m.wear_session_empty_body()}
           action={{ label: m.wear_session_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
+      {:else}
+        <div class="screen-part">
+          {#if weekSessions.length === 0}
+            <!-- Its own words rather than a day's answer stretched over
+                 seven, the same line dilation's empty week carries. -->
+            <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+          {:else}
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+              {#each weekSessions as session (session.id)}
+                {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
+                <ListRow
+                  key={session.id}
+                  data-wear-session={session.id}
+                  icon="clock"
+                  title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
+                  subtitle={session.note
+                    ? `${fmtDayLong(dayOf(session))} · ${session.note}`
+                    : fmtDayLong(dayOf(session))}
+                  chevron={false}
+                  onclick={() => record.openEditor(session)}
+                />
+              {/each}
+            </ListCard>
+          {/if}
+        </div>
       {/if}
 
       <!-- No heading over the range. The chart card under it is called
@@ -535,10 +661,10 @@
         {/if}
       </ChartCard>
     </div>
-  {/if}
 
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="wear" />
+    <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+    <AreaFinish group="wear" />
+  {/if}
 
   <RecordSheet
     {record}
@@ -696,7 +822,7 @@
     display: inline-block;
     width: 10px;
     height: 10px;
-    border-radius: 999px;
+    border-radius: 50%;
     margin-right: 4px;
   }
 

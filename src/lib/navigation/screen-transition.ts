@@ -24,8 +24,6 @@ export interface NavigationFacts {
   type: string;
   /** SvelteKit's history delta, negative when the navigation goes back. */
   delta?: number;
-  /** Android draws its own back animation, and it starts before we would. */
-  isAndroid: boolean;
   /** The gates and onboarding, which have no chrome and no peers. */
   isChromeless: boolean;
   /** Whether a sheet was open over the screen the navigation left from, so
@@ -45,12 +43,10 @@ export interface NavigationFacts {
  * The four tabs are peers, so crossing them is a fade-through and never a
  * slide: a slide implies an order the tabs do not have. Going deeper inside
  * one tab is a sequence, so that is the shared axis. Coming back up reverses
- * it - except on Android, where the system's predictive back gesture has
- * already started showing the person where they are going, and a fixed
- * animation played on top of that is worse than no animation at all.
+ * it.
  */
 export function screenTransition(facts: NavigationFacts): ScreenTransition {
-  const { from, to, type, delta, isAndroid, isChromeless, fromSheet, chromeOrigin } = facts;
+  const { from, to, type, delta, isChromeless, fromSheet, chromeOrigin } = facts;
 
   /* A cold start has nothing to come from, and the gates are not part of
      the app's navigation - they render instead of it. */
@@ -58,7 +54,6 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
   if (from === to) return 'none';
 
   if (isBack(from, to, type, delta, chromeOrigin)) {
-    if (isAndroid) return 'none';
     /* Out of the editor the transform runs backwards, which is the pattern
        being symmetric rather than a second decision: the same two boxes
        swap which one is arriving. Symmetric in the carve-out too: a screen
@@ -182,10 +177,10 @@ function isBack(from: string, to: string, type: string, delta: number | undefine
   if (to === '/') return false;
   if (from.startsWith(to.endsWith('/') ? to : `${to}/`)) return true;
   /* /more is the settings tab's own hub, the same role /stats or /calendar
-     plays for theirs - but ticket 09 already reaches it from routes a URL
-     prefix cannot see it under (/doses) and links straight to /settings/*
-     pages that skip an intervening /settings step (the roadmap and the
-     rest of More's rows), so the check above never fires
+     plays for theirs - but a features-phase ticket already reaches it from
+     routes a URL prefix cannot see it under (/care/doses) and links
+     straight to /settings/* pages that skip an intervening /settings step
+     (the roadmap and the rest of More's rows), so the check above never fires
      for the one back link most of those screens actually have. Without
      this, closing the roadmap read as a step deeper instead of a step up -
      the wrong shared-axis direction, which is what a slide in the wrong

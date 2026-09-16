@@ -32,7 +32,7 @@ async function populated() {
     note: 'a good day',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    bodyRegions: { chest: { dysphoria: 40, euphoria: null } }
+    bodyRegions: { chest: 30 }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a recording')] });
@@ -111,7 +111,7 @@ async function populated() {
     status: 'changed',
     scheduled: { dose: 2, route: 'oral', timestamp: 1_700_090_000_000 }
   });
-  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
     startEpochDay: 19100,
@@ -206,7 +206,7 @@ test('entries travel by uuid, with their dimension values, tags, photos, recordi
     photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false, epochDayOverride: null }],
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
     videos: [{ id: videoNote, fileName: `${videoNote}.webm` }],
-    bodyRegions: { chest: { dysphoria: 40, euphoria: null } },
+    bodyRegions: { chest: 30 },
     starred: false,
     presentationId: null
   });
@@ -443,7 +443,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledDose: null,
       scheduledRoute: null,
       scheduledTimestamp: null,
-      drug: null
+      drug: null,
+      source: 'person'
     },
     {
       id: changedDose,
@@ -458,7 +459,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledDose: 2,
       scheduledRoute: 'oral',
       scheduledTimestamp: 1_700_090_000_000,
-      drug: null
+      drug: null,
+      source: 'person'
     }
   ]);
 });
@@ -489,7 +491,8 @@ test('schedules and pauses name their episode by its travelling uuid, not this d
       everyNDays: 14,
       weekdays: null,
       dosesPerDay: 1,
-      doseAmounts: null
+      doseAmounts: null,
+      autoLogFromEpochDay: null
     }
   ]);
   assert.deepEqual(snapshot.journal.dosePauses, [
@@ -513,9 +516,36 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       reminderDismissed: false,
       openedEpochDay: null,
       inUseWindowDays: null,
-      inUseEndEpochDay: null
+      inUseEndEpochDay: null,
+      leadTimeDays: null
     }
   ]);
+});
+
+/* Redesign phase 10 ticket 01: a lead time is a person's own typed figure,
+   not derivable, so it has to travel rather than defaulting silently to
+   null on the other end - the same reasoning ticket 43's end reason test
+   above gives. */
+test('a lead time travels, and a restore keeps it', async () => {
+  const { journal, stock } = await populated();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    leadTimeDays: 21
+  });
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.equal(snapshot.journal.medicationStock.find((s) => s.id === stock)?.leadTimeDays, 21);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  const restored = (await target.stock.getEntries()).find((s) => s.id === stock);
+  assert.equal(restored?.leadTimeDays, 21);
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
@@ -775,7 +805,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   entry_tag: ['entry_id', 'tag_id'],
   // Child of entry. `region` stores bodyRegions' own domain key directly,
   // not a rowid, so this needs no `after` even though it is a child.
-  entry_body_region: ['entry_id', 'region', 'dysphoria', 'euphoria'],
+  entry_body_region: ['entry_id', 'region', 'value'],
   // Built-in rows are updated in place, not just inserted, and the two
   // children below are its own (applyEntryTemplates).
   entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_id', 'hidden'],
@@ -807,7 +837,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // rowids travel as keys (ADR-0002). Its own rowid is resolved against
   // regimenEpisodes, and dose_schedule_weekday/dose_schedule_dose_amount
   // below are its own children.
-  dose_schedule: ['uuid', 'episode_id', 'recurrence_kind', 'every_n_days', 'doses_per_day'],
+  dose_schedule: ['uuid', 'episode_id', 'recurrence_kind', 'every_n_days', 'doses_per_day', 'auto_log_from_epoch_day'],
   // Rowid resolved against regimenEpisodes, the same reason dose_schedule
   // above is hand-written.
   dose_pause: ['uuid', 'episode_id', 'start_epoch_day', 'end_epoch_day', 'reason'],
@@ -836,7 +866,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   // Owns a child (procedure_photo) below. Its consults are appointments now
   // and travel in their own section (ticket 57).
-  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes'],
+  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
   appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],

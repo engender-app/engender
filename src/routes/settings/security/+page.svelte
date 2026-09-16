@@ -24,6 +24,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import { accessModeTitle } from '$lib/components/AccessModeSetup.svelte';
 
   let android = $derived(isAndroid());
   /** Whether there is a secret to ask for again mid-session. False for
@@ -32,17 +33,7 @@
       somebody to discover. */
   let hasSecret = $derived(accessModeHasSecret(bootState.accessMode, android));
 
-  let modeName = $derived(
-    bootState.accessMode === 'passphrase'
-      ? m.am_mode_passphrase()
-      : bootState.accessMode === 'pin'
-        ? m.am_mode_pin({ digits: '4' })
-        : bootState.accessMode === 'biometric'
-          ? m.am_mode_biometric()
-          : android
-            ? m.am_mode_device_android()
-            : m.am_mode_device_web()
-  );
+  let modeName = $derived(bootState.accessMode ? accessModeTitle(bootState.accessMode) : '');
 
   /* The prompt this toggle affects only exists where device-bound mode is the
      one in use: it is Keystore's, and Keystore is what device-bound mode
@@ -59,11 +50,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.settings_security_row()} back="/settings" />
-
-  <div class="card">
-    <p class="ob-text">{m.security_intro()}</p>
-  </div>
+  <ScreenHeader title={m.settings_security_row()} back="/settings" subtitle={m.security_intro()} />
 
   <div data-security-list>
     <ListCard>
@@ -116,6 +103,27 @@
               label={m.bio_row_title()}
               onChange={(v) => {
                 prefs.bioOptIn = v;
+              }}
+            />
+          {/snippet}
+        </ListRow>
+        <!-- Android only: FLAG_SECURE has no web equivalent, and a toggle
+             that did nothing on this platform would be worse than none
+             (screen-capture-guard/01). Replaces the isDebuggable() carve-out
+             that used to hand this to any debug build. -->
+        <ListRow
+          static
+          key="screen-capture"
+          icon="eyeOff"
+          title={m.screen_capture_title()}
+          subtitle={m.screen_capture_sub()}
+        >
+          {#snippet trailing()}
+            <Switch
+              checked={prefs.allowScreenCapture}
+              label={m.screen_capture_title()}
+              onChange={(v) => {
+                prefs.allowScreenCapture = v;
               }}
             />
           {/snippet}

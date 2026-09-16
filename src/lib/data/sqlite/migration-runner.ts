@@ -109,7 +109,13 @@ export async function assertFts5Available(db: MigrationDb): Promise<void> {
     await db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS __fts5_probe USING fts5(x)");
     await db.exec('DROP TABLE IF EXISTS __fts5_probe');
   } catch (err) {
-    throw new Fts5UnavailableError(err);
+    const reason = err instanceof Error ? err.message : String(err);
+    const causeReason =
+      err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
+    if (/no such module:\s*fts5/i.test(reason) || /no such module:\s*fts5/i.test(causeReason)) {
+      throw new Fts5UnavailableError(err);
+    }
+    throw err;
   }
 }
 

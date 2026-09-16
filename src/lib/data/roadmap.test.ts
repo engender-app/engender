@@ -10,8 +10,10 @@ import {
   ROADMAP_TRACKS,
   goalsInTrack,
   roadmapSections,
+  whereYouAreInRoadmap,
   type RoadmapPack
 } from './roadmap.ts';
+import type { RoadmapGoalStatus } from './types.ts';
 
 const allGoals = ROADMAP_PACKS.flatMap((pack) => pack.goals);
 
@@ -197,4 +199,71 @@ test('a stored dismissal naming a track this build does not have folds nothing',
   // stored row is never the name of anything ROADMAP_TRACKS still lists.
   const sections = roadmapSections(POLISH_PACK, CUSTOM, ['financial']);
   expect(sections.some((section) => section.dismissed)).toBe(false);
+});
+
+/* Ticket 54: the header's "where you are", read off the fold rather than
+   off the pack directly, so a dismissed track is already out of the
+   running the same way it already is for the goals a person sees. */
+
+const allUnchecked = (): RoadmapGoalStatus => 'unchecked';
+
+test('with nothing ticked yet, where you are is the pack\'s first track', () => {
+  const sections = roadmapSections(POLISH_PACK, [], []);
+  const here = whereYouAreInRoadmap(sections, allUnchecked);
+
+  expect(here).toEqual({ track: 'social', stepsLeft: goalsInTrack(POLISH_PACK, 'social').length });
+});
+
+test('a resolved track is skipped for the next live one with something left', () => {
+  const sections = roadmapSections(POLISH_PACK, [], []);
+  const social = new Set(goalsInTrack(POLISH_PACK, 'social').map((goal) => goal.key));
+  const statuses: Record<string, RoadmapGoalStatus> = {};
+  for (const key of social) statuses[key] = 'checked';
+
+  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
+
+  expect(here).toEqual({ track: 'legal', stepsLeft: goalsInTrack(POLISH_PACK, 'legal').length });
+});
+
+test('not-my-path resolves a track the same way checked does', () => {
+  const sections = roadmapSections(POLISH_PACK, [], []);
+  const statuses: Record<string, RoadmapGoalStatus> = {};
+  for (const goal of goalsInTrack(POLISH_PACK, 'social')) statuses[goal.key] = 'not-my-path';
+
+  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
+
+  expect(here?.track).toBe('legal');
+});
+
+test('a dismissed track is skipped even with everything else untouched', () => {
+  const sections = roadmapSections(POLISH_PACK, [], ['social']);
+  const here = whereYouAreInRoadmap(sections, allUnchecked);
+
+  expect(here).toEqual({ track: 'legal', stepsLeft: goalsInTrack(POLISH_PACK, 'legal').length });
+});
+
+test('every track dismissed leaves nowhere to be', () => {
+  const sections = roadmapSections(POLISH_PACK, [], [...ROADMAP_TRACKS]);
+  expect(whereYouAreInRoadmap(sections, allUnchecked)).toBeNull();
+});
+
+test('every track resolved still names the last one, with nothing left', () => {
+  const sections = roadmapSections(POLISH_PACK, [], []);
+  const statuses: Record<string, RoadmapGoalStatus> = {};
+  for (const goal of POLISH_PACK.goals) statuses[goal.key] = 'checked';
+
+  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
+
+  expect(here).toEqual({ track: 'medical', stepsLeft: 0 });
+});
+
+test('an unchecked custom goal keeps its track current, same as a bundled one', () => {
+  const custom = [{ id: 'c1', track: 'social', text: 'Come out to my book club', status: 'unchecked' as const }];
+  const sections = roadmapSections(POLISH_PACK, custom, []);
+  const statuses: Record<string, RoadmapGoalStatus> = {};
+  for (const goal of goalsInTrack(POLISH_PACK, 'social')) statuses[goal.key] = 'checked';
+
+  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
+
+  expect(here).toEqual({ track: 'social', stepsLeft: 1 });
 });

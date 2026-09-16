@@ -474,7 +474,7 @@
       </div>
     {/if}
 
-    <div class="editor-section">
+    <div>
       <Field label={m.document_title_label()} id="document-title">
         {#snippet children(id)}
           <input class="input" {id} name="document-title" bind:value={draft.title} />
@@ -613,7 +613,7 @@
     /* The share the renderer draws to, handed down from the script so the
        page is never rasterised at one size and capped at another. */
     max-height: var(--doc-sheet-height);
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     /* A scan of white paper on a light background has no edge of its own -
        in the light theme the sheet and the screen behind it are within a
        few percent of each other and the page floats. The app separates

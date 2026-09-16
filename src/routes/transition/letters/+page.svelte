@@ -1,41 +1,65 @@
 <script lang="ts">
-  /* Letters to your future self, on the surface kit (phase 5 UX ticket 25).
+  /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
+     redesign ticket 45).
 
-     Two things were crowded.
-
-     The compose card held a textarea, a label, a scrolling list of every
-     milestone as a tappable row, a date input and a save button, all inside
-     one `.card` with no heading between them - the milestone list read as
-     part of the date field rather than as a shortcut into it. Composing is
-     a sheet now, opened from the header's add control the way every other
+     Two things were crowded, and phase 5 fixed the first: composing is a
+     sheet now, opened from the header's add control the way every other
      feature screen on the hub opens its editor, and the screen itself is
-     what it says it is: the letters you have written.
+     what it says it is.
 
-     And a letter's whole text was the row's subtitle, so a letter longer
-     than a phrase was a row of ellipsis. The row carries the date and the
-     first of it; tapping opens the letter, which is the thing the screen is
-     for and had nowhere to happen. A sealed one opens too, and says what it
-     is waiting for - a row that answers a press with nothing is worse than
-     a row that cannot be pressed. */
+     What ticket 45 changes is what a letter looks like once it is here. All
+     three states were one list row - a lock glyph, "Sealed", and `Opens 19
+     Aug 2031` in secondary grey - so five years of waiting read exactly like
+     a size record. They are three drawings now and `LetterCard` holds them;
+     opening one unfolds it in place rather than replacing it with a sheet
+     of text.
+
+     Rule 16 asks an area screen to open by saying what is true now. This one
+     answers it with its order rather than with a second drawing above the
+     list: the letters still waiting come first, soonest to open at the top,
+     and the ones already open run underneath - Appointments' Coming up and
+     Behind you, on the only fact that changes which of them you want. The
+     next letter to open, and how long until it does, is then the first thing
+     on the screen and is not repeated anywhere.
+
+     **The starred photographs are here too** (phase 11 ticket 15). They and
+     the open letters were a screen of their own under Safe space,
+     `/doubt/moments`, showing the same two letters this screen already
+     showed one door away - two surfaces for one set of things somebody put
+     aside on purpose. That screen is a redirect here now, and its photo
+     half sits in the Open section under the words it already had. Safe
+     space still has its way down: the row points at `#opened`, so a person
+     arriving from their worst day lands on what is open rather than on
+     what is still sealed. */
+  import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { isLetterSealed, markLetterRead } from '$lib/data/letterStatus';
-  import { fmtDay } from '$lib/data/dates';
+  import {
+    getGreetedLetterIds,
+    getReadLetterIds,
+    isLetterSealed,
+    letterToGreet,
+    markLetterGreeted,
+    markLetterRead
+  } from '$lib/data/letterStatus';
+  import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Letter } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import LetterArrival from '$lib/components/LetterArrival.svelte';
+  import LetterCard from '$lib/components/LetterCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import ListCard from '$lib/components/kit/ListCard.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
+  import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -54,7 +78,36 @@
   let lettersQuery = liveList((j) => j.letters.getLetters(HISTORY_LIMIT));
   let letters = $derived(lettersQuery.rows);
 
-  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
+  /* Starred photos shown beside the open letters, most recently
+     starred-shelf-worthy first - the bound and the order both carried over
+     from the screen this absorbed. `starredPhotos()` reads oldest first
+     (CONTEXT: "Starred", the shelf's own order) and somebody reaching for
+     what they kept wants the newest of it. Six, so a large starred
+     collection stays a glance; the shelf itself (/search/starred) is
+     unbounded and one tap further. */
+  const PHOTO_LIMIT = 6;
+  let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
+  let starredPhotos = $derived([...starredPhotosQuery.rows].reverse().slice(0, PHOTO_LIMIT));
+
+  /* Which letters have been read, and which arrivals have been met. Both
+     live in localStorage rather than in the journal (ADR-0039), and both are
+     mirrored into state here so opening a letter re-draws its card without a
+     reload - a plain read of the store would be taken once and never again. */
+  let readIds = $state(getReadLetterIds());
+  let greetedIds = $state(getGreetedLetterIds());
+
+  /* Waiting first, soonest to open at the top, then the ones already open,
+     most recently unlocked first. Rule 16's ordering, and the reason there
+     is no separate reading above the list. */
+  let waiting = $derived(
+    letters
+      .filter((letter) => isLetterSealed(letter, today))
+      .sort((a, b) => a.unlockEpochDay - b.unlockEpochDay || a.epochDay - b.epochDay)
+  );
+  /* `safeSpaceLetters` rather than the same filter and sort written out
+     again: it is the ordering the folded screen read its letters through,
+     and this section is where that screen's readers land now. */
+  let opened = $derived(safeSpaceLetters(letters, today));
 
   async function saveLetter() {
     const trimmed = text.trim();
@@ -65,21 +118,49 @@
     composing = false;
   }
 
-  let reading = $state<Letter | null>(null);
+  /* Which card is unfolded. One at a time: two open letters on one screen is
+     two columns of prose to scroll past to reach the third. */
+  let openId = $state<string | null>(null);
 
-  function openReading(letter: Letter) {
-    reading = letter;
-    if (!isLetterSealed(letter, today)) {
-      markLetterRead(letter.id);
-    }
+  function markRead(letter: Letter) {
+    markLetterRead(letter.id);
+    readIds = getReadLetterIds();
+  }
+
+  function openLetter(letter: Letter) {
+    openId = letter.id;
+    markRead(letter);
+  }
+
+  /* A letter unlocking today, not yet met either way, takes the screen -
+     including one written from this very screen and dated today, which is
+     why this watches the live rows rather than a snapshot taken on mount.
+
+     Held in state rather than derived, and that is the whole of why this is
+     an effect. Opening the letter from the arrival marks it read, which is
+     exactly the condition `letterToGreet` refuses on - so a derived arrival
+     would unmount itself in the frame the person pressed Open it, which is
+     the yank this screen most has to avoid. Once taken, the arrival is the
+     arrival's to end. */
+  let arrival = $state<Letter | null>(null);
+  $effect(() => {
+    const met = new Set([...readIds, ...greetedIds]);
+    const due = letterToGreet(letters, today, met);
+    if (due && untrack(() => arrival) === null) arrival = due;
+  });
+
+  function endArrival(letter: Letter) {
+    markLetterGreeted(letter.id);
+    greetedIds = getGreetedLetterIds();
+    arrival = null;
   }
 
   $effect(() => {
     const readId = page.url.searchParams.get('read') ?? page.url.searchParams.get('id');
     if (!readId) return;
     const match = letters.find((l) => l.id === readId);
-    if (match && reading?.id !== match.id) {
-      openReading(match);
+    if (match && !isLetterSealed(match, today) && openId !== match.id) {
+      openLetter(match);
     }
   });
 
@@ -87,6 +168,10 @@
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
+
+  // Ticket 18: only a sealed letter's unlock day is worth a mark elsewhere -
+  // once it has opened the day has already passed.
+  let calendarFor = $state<Letter | null>(null);
 </script>
 
 <div class="screen">
@@ -98,28 +183,63 @@
     {/snippet}
   </ScreenHeader>
 
-  <SectionHeading text={m.letters_yours_title()} />
   <ReadGate read={lettersQuery} variant="line" count={3}>
     {#snippet rows()}
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each letters as letter (letter.id)}
-            {@const sealed = isLetterSealed(letter, today)}
-            <ListRow
-              key={letter.id}
-              data-letter={letter.id}
-              icon={sealed ? 'lock' : 'book'}
-              title={sealed ? m.letters_sealed_title() : dayLabel(letter.epochDay)}
-              subtitle={sealed
-                ? m.letters_sealed_until({ date: dayLabel(letter.unlockEpochDay) })
-                : letter.text}
-              chevron={false}
-              onclick={() => openReading(letter)}
-              action={{ icon: 'trash', label: m.letters_delete_sheet(), onclick: () => record.askToDelete(letter) }}
+      {#if waiting.length}
+        <SectionHeading text={m.letters_waiting_title()} />
+        <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+          {#each waiting as letter (letter.id)}
+            <LetterCard
+              {letter}
+              {today}
+              read={readIds.has(letter.id)}
+              oncalendar={() => (calendarFor = letter)}
+              ondelete={() => record.askToDelete(letter)}
             />
           {/each}
-        </ListCard>
-      </div>
+        </div>
+      {/if}
+
+      {#if opened.length || starredPhotos.length}
+        <SectionHeading id="opened" text={m.letters_opened_title()} />
+        {#if opened.length}
+          <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+            {#each opened as letter (letter.id)}
+              <LetterCard
+                {letter}
+                {today}
+                read={readIds.has(letter.id)}
+                open={openId === letter.id}
+                onopen={() => openLetter(letter)}
+                onclose={() => (openId = null)}
+                ondelete={() => record.askToDelete(letter)}
+              />
+            {/each}
+          </div>
+        {/if}
+
+        <!-- The photographs keep the words they had on the screen they came
+             from rather than taking a heading of their own: the section is
+             already named, and a second heading inside it would make two
+             areas out of one set of kept things. Absent rather than empty
+             when nothing is starred.
+
+             It arrives rather than being painted where it lands: this read
+             resolves after the letters' (SQLite answers them in turn, ~350ms
+             apart on the demo), so without the clip the grid would cut into
+             place on a settled screen. Same movement every block in the app
+             makes (rule 10, ADR-0078). -->
+        {#if starredPhotos.length}
+          <div class="letters-photos">
+            <p class="muted small">{m.safe_space_photos_intro()}</p>
+            <div class="photo-grid" data-safe-space-photos>
+              {#each starredPhotos as p (p.id)}
+                <PhotoThumb photo={p} size={104} />
+              {/each}
+            </div>
+          </div>
+        {/if}
+      {/if}
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">
@@ -166,7 +286,7 @@
 
     <button
       class="btn btn-primary btn-block"
-     
+
       data-save-letter
       disabled={text.trim().length === 0 || !unlockDate}
       onclick={saveLetter}
@@ -175,21 +295,14 @@
     </button>
   </Sheet>
 
-  <Sheet
-    open={reading !== null}
-    title={reading ? dayLabel(reading.epochDay) : m.letters_title()}
-    onClose={() => (reading = null)}
-  >
-    {#if reading}
-      {#if isLetterSealed(reading, today)}
-        <SectionHeading text={m.letters_sealed_title()} />
-        <p class="muted">{m.letters_sealed_until({ date: dayLabel(reading.unlockEpochDay) })}</p>
-      {:else}
-        <SectionHeading text={dayLabel(reading.epochDay)} />
-        <p class="letter-text" data-letter-text>{reading.text}</p>
-      {/if}
-    {/if}
-  </Sheet>
+  {#if calendarFor}
+    <CalendarHandoffSheet
+      open={calendarFor !== null}
+      kind="letterUnlock"
+      epochDay={calendarFor.unlockEpochDay}
+      onClose={() => (calendarFor = null)}
+    />
+  {/if}
 
   <RecordSheet
     {record}
@@ -204,6 +317,11 @@
   />
 </div>
 
+{#if arrival}
+  {@const met = arrival}
+  <LetterArrival letter={met} {today} onopen={() => markRead(met)} ondone={() => endArrival(met)} />
+{/if}
+
 <style>
   .letter-anchors {
     display: flex;
@@ -212,11 +330,24 @@
     margin-top: var(--space-3);
   }
 
-  /* A letter is prose, so it keeps prose's measure and its own line
-     height rather than inheriting a list row's. */
-  .letter-text {
-    white-space: pre-wrap;
-    line-height: var(--leading-body);
-    max-width: 65ch;
+  /* Rule 4's flush list: the cards run between two full-width hairlines with
+     one between each pair, and the hairline between them is the card's own
+     (LetterCard). No ground, no outline, no box. */
+  .letter-list {
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  /* The separator between two cards is the list's, not the card's: a card
+     cannot see its own sibling, and the one on the letter's own route has
+     none to be separated from. */
+  .letter-list :global(.letter-card + .letter-card) {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .letters-photos {
+    display: grid;
+    gap: var(--space-2);
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
   }
 </style>

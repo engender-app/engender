@@ -23,9 +23,26 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
 
   let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark));
+
+  /* A door change draws the sun's arrival itself, ring by ring on the
+     door's own clock (redesign ticket 28): every ring is pulled out of the
+     screen's snapshot under a name of its own and opened from nothing,
+     outermost first, inside --dur-slow. The 700ms entrance below would then
+     be a second arrival running underneath the first - and worse, the new
+     side is captured the instant this mounts, so the photograph the
+     transition animates would be of seven rings at no size at all.
+
+     Read once, here, rather than as a reactive expression: `data-nav` is on
+     <html> for the length of the transition and is taken off at the end of
+     it, and an expression that noticed it going would restart the entrance
+     the moment the door change finished. What this asks is "did I mount
+     inside a navigation", which is answered at mount and never again. A
+     cold start has no data-nav and keeps the authored entrance, which is
+     the one place it was ever meant to play. */
+  const carried = typeof document !== 'undefined' && 'nav' in document.documentElement.dataset;
 </script>
 
-<div class="sun" aria-hidden="true">
+<div class="sun" class:is-carried={carried} aria-hidden="true" data-flag-sun>
   {#each rings as ring, i (i)}
     <i
       style={`--d: ${ring.diameter}px; --c: ${ring.color}; --in-delay: ${ring.inDelay}s; --breathe-delay: ${ring.breatheDelay}s`}

@@ -21,7 +21,6 @@
    clock and never the archive's, and the columns are what validate a value
    on the way in. */
 
-import { bodyRegionIsLogged } from '../bodyMap';
 import { foldText } from '../fold';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -512,19 +511,15 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
     // the same forward-compatible treatment lab_result.analyte gets: an
     // archive from a build that knows a region this one does not still
     // restores rather than failing the whole import.
-    for (const [region, feeling] of Object.entries(entry.bodyRegions ?? {})) {
-      const f = { dysphoria: feeling?.dysphoria ?? null, euphoria: feeling?.euphoria ?? null };
-      // Both null would fail the CHECK and says nothing the region's absence
-      // does not, so it is dropped rather than aborting the import.
-      if (!bodyRegionIsLogged(f)) continue;
-      bodyRegionRows.push([entryId, region, f.dysphoria, f.euphoria]);
+    for (const [region, value] of Object.entries(entry.bodyRegions ?? {})) {
+      bodyRegionRows.push([entryId, region, value]);
     }
   }
 
   await insertRows(driver, 'INSERT INTO entry_fts (rowid, folded_text)', ftsRows);
   await insertRows(driver, 'INSERT INTO entry_dimension_value (entry_id, dimension_id, value)', dimensionRows);
   await insertRows(driver, 'INSERT INTO entry_tag (entry_id, tag_id)', tagRows);
-  await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria)', bodyRegionRows);
+  await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, value)', bodyRegionRows);
   await insertRows(
     driver,
     'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, epoch_day_override, updated_at)',
@@ -848,9 +843,21 @@ export async function applyDoseSchedules({ driver, journal, ts }: Restoring): Pr
     episodesWithSchedule.add(schedule.episodeId);
 
     const result = await driver.run(
-      `INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [schedule.id, episodeId, schedule.recurrenceKind, schedule.everyNDays, schedule.dosesPerDay, ts]
+      `INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day,
+                                  auto_log_from_epoch_day, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        schedule.id,
+        episodeId,
+        schedule.recurrenceKind,
+        schedule.everyNDays,
+        schedule.dosesPerDay,
+        // `?? null` because an archive from before ticket 11 has no such
+        // field: a restored schedule is switched off until the person says
+        // otherwise on this device.
+        schedule.autoLogFromEpochDay ?? null,
+        ts
+      ]
     );
     const scheduleId = result.lastInsertRowid;
 
@@ -1029,8 +1036,18 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
   for (const procedure of journal.procedures) {
     if (!procedures.has(procedure.id)) {
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [procedure.id, procedure.name, procedure.surgeryEpochDay, procedure.notes, ts]
+        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [
+          procedure.id,
+          procedure.name,
+          procedure.surgeryEpochDay,
+          procedure.notes,
+          // Absent on an archive written before ticket 17, read the same
+          // way `upsertProcedure` defaults a write that names neither.
+          procedure.kind ?? 'custom',
+          procedure.dilationOptIn ? 1 : 0,
+          ts
+        ]
       );
     }
 

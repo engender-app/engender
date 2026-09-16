@@ -42,9 +42,27 @@ describe('ClinicianSummaryDossier component contract', () => {
   /* Ticket 67: restores the record-linking ticket 09's rewrite dropped when
      the flat, static rows became a printed table. */
   it('links every regimen and dose row back to its own record', () => {
-    expect(dossierComponent).toContain('href={`/settings/regimen#${ep.id}`}');
-    expect(dossierComponent).toContain('href={`/doses#${dose.id}`}');
+    expect(dossierComponent).toContain('href={`/care/regimen#${ep.id}`}');
+    expect(dossierComponent).toContain('href={`/care/doses#${dose.id}`}');
     expect(dossierComponent).toContain('class="dossier-row-link"');
+  });
+
+  /* Phase 11 ticket 11: a dose a schedule wrote on the person's behalf is
+     marked where it leaves the device, and the mark is explained in words
+     rather than left as a symbol a reader has to guess at. */
+  it('marks an auto-logged dose in the dose table and explains the mark in a legend', () => {
+    expect(dossierComponent).toContain("dose.source === 'schedule'");
+    expect(dossierComponent).toContain('data-dose-auto-logged');
+    expect(dossierComponent).toContain('data-dossier-auto-logged-legend');
+    expect(dossierComponent).toContain('m.clinician_summary_auto_logged_legend()');
+  });
+
+  it('prints the auto-logged legend rather than hiding it with the screen-only notes', () => {
+    // `.dossier-truncate-note` is `.no-print` in the markup; this one is a
+    // fact about the rows a clinician is reading and has no such class.
+    expect(printCss).toContain('.dossier-footnote {');
+    expect(dossierComponent).toContain('class="dossier-footnote"');
+    expect(dossierComponent).not.toContain('class="dossier-footnote no-print"');
   });
 
   it('renders cumulative exposure section', () => {
@@ -107,5 +125,44 @@ describe('clinician-print.css contract', () => {
     expect(printCss).toContain('.dossier-row-link');
     const printBlock = printCss.slice(printCss.indexOf('@media print'));
     expect(printBlock).toMatch(/\.dossier-row-link\s*{[^}]*text-decoration:\s*none/);
+  });
+});
+
+/* Ticket 08: every section's table shows its first rows on screen and every
+   row in print. The floor is 12 (the ticket's own proposal, kept - see the
+   component's own comment on PREVIEW_ROW_FLOOR for why). */
+describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
+  it('sets the row floor to twelve', () => {
+    expect(dossierComponent).toContain('const PREVIEW_ROW_FLOOR = 12;');
+  });
+
+  /* One `dossier-row-overflow` mark per table this dossier draws - current
+     regimen, past regimen, dose log, the three exposure tables, labs, side
+     effects, cycle events, appointment prep, procedures and finished areas.
+     A count rather than one assertion per table so a table added later that
+     forgets the mark fails loudly instead of silently passing everything
+     else. */
+  it('marks every table row past the floor as an overflow row, on all twelve of the dossier\'s tables', () => {
+    const marks = dossierComponent.match(/class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}/g) ?? [];
+    expect(marks.length).toBe(12);
+  });
+
+  it('reports a table\'s overflow through the same helper everywhere, one call per table', () => {
+    const calls = dossierComponent.match(/overflowCount\(/g) ?? [];
+    // Once per table to compute the count, once more to render the note.
+    expect(calls.length).toBe(24);
+  });
+
+  it('renders the truncation note through one shared snippet, screen-only', () => {
+    expect(dossierComponent).toContain('{#snippet truncateNote(hidden: number)}');
+    expect(dossierComponent).toContain('m.clinician_summary_section_truncated({ count: hidden })');
+    expect(dossierComponent).toContain('class="dossier-truncate-note no-print"');
+  });
+
+  it('hides an overflow row until print, where it becomes a real table row', () => {
+    expect(printCss).toContain('.dossier-row-overflow');
+    expect(printCss).toMatch(/\.dossier-row-overflow\s*{\s*display:\s*none;\s*}/);
+    const printBlock = printCss.slice(printCss.indexOf('@media print'));
+    expect(printBlock).toMatch(/\.dossier-row-overflow\s*{[^}]*display:\s*table-row/);
   });
 });

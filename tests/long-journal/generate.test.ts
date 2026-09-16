@@ -163,7 +163,7 @@ test('it writes the phase 5 content the new measurements read (ticket 01)', asyn
   const entries = await journal.entries.recentDays(400);
   const withRegions = entries.filter((e) => Object.keys(e.bodyRegions).length > 0);
   expect(withRegions.length).toBeGreaterThan(0);
-  expect(withRegions.some((e) => Object.values(e.bodyRegions).some((f) => (f.euphoria ?? 0) >= 50))).toBe(true);
+  expect(withRegions.some((e) => Object.values(e.bodyRegions).some((value) => value >= 75))).toBe(true);
 
   expect(summary.hairStagings).toBeGreaterThan(0);
   expect(await journal.hairProgress.getStages()).toHaveLength(summary.hairStagings);

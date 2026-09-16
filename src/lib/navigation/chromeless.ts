@@ -1,24 +1,73 @@
-/* The routes that render without the app's chrome whoever is looking at
-   them - onboarding, the lock screen where a PIN is set, and the in-the-room
-   view of the prep list.
+/* Two questions about the same handful of routes, and they do not have the
+   same answer.
 
-   The last of those is a focused mode rather than a gate (phase 8 features
-   ticket 60): it is read while somebody is being spoken to, and a tab bar
-   floating over it is four ways to leave the screen by accident mid-sentence
-   when what it owes the reader is one deliberate way out.
+   **Which routes the shell paints no chrome for** - no tab bar, no rail.
+   Onboarding, the in-the-room view of the prep list, and the return moment.
 
-   Apart from the gate states the layout folds in beside it (locked,
-   waiting on a passphrase, schema too new), because those depend on how
-   boot went and this does not. The split is what lets the tier-2
-   transition ask the question about a route it has not arrived at yet
-   (screen-transition.ts's `isChromeless`).
+   **Which routes render *instead of* the app rather than inside it.** That
+   is the narrower set, and it is what decides between a tier-2 movement and
+   an instant cut (screen-transition.ts): a gate or onboarding is not
+   somewhere the app navigated to, it is what is drawn when the app is not.
+   The return moment is not one of those. It is a step Home walks to
+   (+layout.svelte's own `goto`), and it lights the Today tab
+   (active-tab.ts), so it owes the movement every other step inside a tab
+   gets - the field's blind coming down from the sun's height to the step's.
+
+   Conflating the two is what Alicja caught on ticket 35's flipbooks: the
+   empty state arriving had "no animation at all, yank between frames 7 and
+   8", and the yank was one predicate answering both questions. Home sat
+   still for 107ms and then the whole screen cut.
+
+   The room is on the narrower list because it is read while somebody is
+   being spoken to and a floating tab bar would be four ways to leave by
+   accident mid-sentence; the screen's own header back control (carpet 27)
+   is a deliberate exception to that and does not put the bar back.
 
    Here rather than in the layout for the reason active-tab.ts gives: the
    rule is a table, the layout is where a table gets buried, and a rule
    nobody can run in a test is one nobody can check. */
-export function chromelessPath(path: string): boolean {
+
+/**
+ * Whether one navigation is a cut rather than a movement.
+ *
+ * `from` is null on a cold start, which has nothing to come from.
+ *
+ * Setup is the one route on the narrow list above whose two legs are not
+ * the same question, and redesign ticket 33 is where that showed. Arriving
+ * is not a navigation: there is no app yet, and the shell redirects here
+ * because `prefs.onboarded` is false. Leaving is - somebody pressed "Start
+ * writing" and the app opened, which is the moment the whole flow is for,
+ * and rule 12 already says the sun's handover to Home is one object at one
+ * size rather than two suns. Cut, it was the app's largest surface changing
+ * in a single frame at the end of ten steps that had all moved.
+ *
+ * This is ticket 35's lesson one route further on: one predicate answering
+ * two questions is what produced that ticket's own yank, and the fix each
+ * time is another question rather than a wider answer.
+ */
+export function cutsInsteadOfMoving(from: string | null, to: string): boolean {
+  if (from === null) return true;
+  /* Setup handing over to the app, by either of its two doors: the finish's
+     "Start writing" and every step's "Straight to the app" are the same
+     act, and complete() is literally one function for both. */
+  if (from.startsWith('/onboarding') && !to.startsWith('/onboarding')) return false;
+  return replacesAppNavigation(from) || replacesAppNavigation(to);
+}
+
+/** Renders instead of the app: no chrome, and no navigation to animate. */
+export function replacesAppNavigation(path: string): boolean {
   // Onboarding by prefix, since every step of it is chromeless; the room by
   // exact match, since the screens around it - appointments and the prep
   // list it is a view over - both keep their bar.
   return path.startsWith('/onboarding') || path === '/health/appointments/in-the-room';
+}
+
+/** Renders without the shell's chrome, whoever is looking at it. */
+export function chromelessPath(path: string): boolean {
+  /* The return moment (ADR-0062, redesign ticket 35) is chromeless and
+     nothing more: it is a step in DIRECTION.md rule 15's sense - one
+     purpose, no navigation - and its foot carries the one way off, so a bar
+     over it would be both a second way and a claim that this is a place
+     rather than a moment. */
+  return replacesAppNavigation(path) || path === '/coming-back';
 }

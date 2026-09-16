@@ -95,7 +95,7 @@ await block('ticket 03 browser tier', 5, async () => {
 });
 
 // --- Ticket 04: the real driver + boot() against the real schema -----------
-await block('ticket 04 browser tier', 7, async () => {
+await block('ticket 04 browser tier', 8, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
@@ -126,6 +126,16 @@ await block('ticket 04 browser tier', 7, async () => {
   if (rc.lastInsertRowid === rc.rowidByUuid && typeof rc.lastInsertRowid === 'number')
     ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
   else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
+
+  /* Ticket 134: two transactions started at once, over the driver the app
+     ships. Before the fix the second BEGIN failed with "cannot start a
+     transaction within a transaction" and its ROLLBACK discarded the first
+     one's insert, so both halves of this - nothing rejected, both rows
+     committed - are what the regression would break. */
+  const ct = first.concurrentTransactions;
+  if (ct.rejected.length === 0 && ct.committed === 2)
+    ok('two transactions started at once both commit, one after the other');
+  else fail('two transactions started at once both commit, one after the other', JSON.stringify(ct));
 
   // Ticket 10: the recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.
@@ -1116,10 +1126,19 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
   const slid = pillAfter.x - pillBefore.x;
   if (slid > 20) ok(`the segmented pill crosses to the chosen segment (${Math.round(slid)}px)`);
   else fail('the segmented pill crosses to the chosen segment', `moved ${Math.round(slid)}px`);
-  const settled = await pill.evaluate((el) => getComputedStyle(el).scale);
-  if (settled === 'none' || settled === '1' || settled === '1 1')
-    ok(`and it settles back to its own width rather than staying stretched (${settled})`);
-  else fail('the pill settles back to its own width', settled);
+  /* Against the segment's own box rather than against `scale`. The pill used
+     to stretch by scaling and the check read the scale back, which stopped
+     being able to fail the moment the mechanic became two scheduled insets
+     (2026-09-08) - a pill with no `scale` at all computes to `none` and
+     passed whatever its width was. Its width is the claim, so measure it. */
+  const seat = await page.locator('[data-case="segmented"] [data-segment="year"]').boundingBox();
+  const slack = Math.max(Math.abs(pillAfter.width - seat.width), Math.abs(pillAfter.x - seat.x));
+  /* 2px of sub-pixel layout, not a threshold with an opinion: a pill that
+     stayed stretched is most of the track out, so anything under about ten
+     would catch it, and the measured slack here is 0.8. */
+  if (slack < 2)
+    ok(`and it settles on that segment's own box rather than staying stretched (${slack.toFixed(1)}px off)`);
+  else fail("the pill settles on the segment's own box", `${slack.toFixed(1)}px off`);
 
   /* One ruler mark per stop, which is the claim the coarser step rests on. */
   const marks = await page.evaluate(() => ({
@@ -1981,6 +2000,70 @@ await block('ticket 27 browser tier', 7, async () => {
   else fail('the whole table carries one reviewed-on date', JSON.stringify(reviewed));
 });
 
+/* --- Redesign ticket 42: the pitch density, and the figure blocks that
+       replaced the definition list. --- */
+await block('redesign ticket 42 browser tier', 8, async () => {
+  const r = await load('/voice-density.html', 'voice-density-probe');
+  if (r.error) throw new Error(r.error);
+  const { drawn, trackless, first, joined, broken } = r;
+
+  if (drawn.densities === 1 && drawn.outlinePoints > 40 && drawn.marks.median === 1 && drawn.marks.span === 2)
+    ok(`a take draws its own distribution, with the three marks on it (${drawn.outlinePoints} points)`);
+  else fail('a take draws its own distribution, with the three marks on it', JSON.stringify(drawn));
+
+  /* The whole reason the shape is drawn: the median is a percentile of it,
+     so its mark has to end on the outline and not at some width of its
+     own. Read off the rendered SVG, in the box's own units. */
+  const on = drawn.onOutline;
+  if (on && Math.abs(on.markEndsAt - on.outlineAt) < 2)
+    ok(`the median mark ends on the outline, not across the box (${on.markEndsAt.toFixed(1)} against ${on.outlineAt.toFixed(1)})`);
+  else fail('the median mark ends on the outline, not across the box', JSON.stringify(on));
+
+  /* Rule 9's ink, and ADR-0083's "never a fill": a filled region in the
+     hue, beside two washes that are citations, would read as a third band. */
+  const outline = drawn.outlineInk;
+  const spine = drawn.spineInk;
+  if (
+    outline?.width === '2px' &&
+    outline.cap === 'square' &&
+    outline.join === 'miter' &&
+    outline.fill === 'none' &&
+    outline.stroke === drawn.traceInk?.stroke &&
+    spine?.width === '1px' &&
+    spine.stroke !== outline.stroke
+  )
+    ok(`the shape is a 2px square-capped series with no fill, on a 1px guide spine (${outline.stroke})`);
+  else fail('the shape is a 2px square-capped series with no fill, on a 1px guide spine', JSON.stringify({ outline, spine }));
+
+  if (drawn.bandsBehindShape >= 2)
+    ok(`the cited bands run behind the shape as well as the plot (${drawn.bandsBehindShape})`);
+  else fail('the cited bands run behind the shape as well as the plot', JSON.stringify(drawn.bandsBehindShape));
+
+  /* Every benchmark from before schema v58 kept no frames, and a shape
+     with bands and nothing on it looks like a take with no voice in it. */
+  if (trackless.densities === 0 && trackless.traces === 0 && trackless.said.length > 20)
+    ok('a take with no stored track draws its sentence and no empty shape');
+  else fail('a take with no stored track draws its sentence and no empty shape', JSON.stringify(trackless));
+
+  if (first.blocks === 6 && first.stated === 6 && first.lines === 0 && first.pitchBlocks === 1)
+    ok('a first benchmark draws six figures and no empty plot anywhere');
+  else fail('a first benchmark draws six figures and no empty plot anywhere', JSON.stringify(first));
+
+  /* And no history plot carries a band: ADR-0059 allows the cited ranges
+     on the pitch figure and nowhere else, so a wash behind one of these
+     lines would be a published range for a figure that has none. */
+  if (joined.lines >= 6 && joined.rings >= 6 && joined.stated === 6 && joined.bands === 0 && first.bands === 0)
+    ok(`four joined takes draw a bandless history under every figure, ringed on this one (${joined.lines} lines)`);
+  else fail('four joined takes draw a bandless history under every figure, ringed on this one', JSON.stringify(joined));
+
+  /* ADR-0061, asserted where it is drawn rather than only where it is
+     computed: one take on another chain and every figure loses its line at
+     once, with a sentence in place of each. */
+  if (broken.lines === 0 && broken.stated === 6 && broken.against.length === 6)
+    ok('a change of capture chain takes the history off every figure at once');
+  else fail('a change of capture chain takes the history off every figure at once', JSON.stringify(broken));
+});
+
 /* --- Ticket 29 (phase 8 features): the own-series trends, and that a
        change of capture chain arrives as a break with a reason in it. --- */
 await block('ticket 29 browser tier', 6, async () => {
@@ -2238,6 +2321,57 @@ await block('phase 8 features ticket 66 batched list', 8, async () => {
      restores what was actually grown and remembered - one batch, since
      nothing here ever pressed "more". */
   eq('a link-expanded list is not what a later, link-free visit remembers', r.onReturnAfterFocus, 30);
+});
+
+// --- Ticket redesign-30: the lock step splits choosing from typing --------
+await block('ticket redesign-30 the lock step splits in two', 2, async () => {
+  /* The gates fixture (phase 5 ticket 26), not a probe page: this is the
+     real JournalGate over the real stylesheets, moved into the same
+     first-run "choosing a mode" state the screenshot script drives. */
+  await page.goto(`http://localhost:${port}/gates.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
+  await page.setViewportSize({ width: 320, height: 568 });
+
+  /* The baseline this ticket did not create: GateScreen's mark and title
+     plus PinPad's own touch-target keypad already overflow 320x568 on
+     today's plain PIN unlock gate, before this ticket's screen ever
+     existed. Read before the split screen, so the check below is against
+     what the shared gate shell actually costs rather than against the
+     no-scroll rule ticket 29 states for the sizes it names - closing that
+     rule needs GateScreen and PinPad sized for a short viewport, which is
+     ticket 34's "the gates" look, not this ticket's structural split. */
+  await page.selectOption('select[aria-label="Scene"]', 'unlock-pin');
+  await page.waitForSelector('[data-pin-pad]');
+  const baseline = await page.locator('.app-main').evaluate((el) => el.scrollHeight);
+
+  await page.selectOption('select[aria-label="Scene"]', 'unlock-passphrase');
+  await page.selectOption('select[aria-label="Scene"]', 'access-choice');
+  await page.locator('[data-list-row="pin"]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+  await page.locator('[data-access-continue]').click();
+  await page.waitForSelector('[data-access-secret="pin"]');
+
+  /* Screen two carries one instruction and the pad, and nothing else
+     (ticket 30's scope): the consequence and the export note both moved to
+     screen one, and neither should have followed the pad here. */
+  const carriedOver = await page.locator('.am-secret .am-notice, .am-secret [data-access-export-note]').count();
+  if (carriedOver === 0) ok('the secret screen carries no consequence text or export note - both stayed on screen one');
+  else fail('the secret screen carries no consequence text or export note', `${carriedOver} node(s) found`);
+
+  const afterSplit = await page.locator('.app-main').evaluate((el) => el.scrollHeight);
+  console.log(
+    `INFO  PIN secret screen: ${afterSplit}px tall at 320 wide (today's plain PIN unlock gate: ${baseline}px). ` +
+      "Neither fits ticket 29's 320x568/320x360 no-scroll sizes yet - GateScreen and PinPad need a short-viewport " +
+      'treatment, tracked against ticket 34.'
+  );
+  if (afterSplit <= baseline) {
+    ok('splitting the screen leaves the pad screen no taller than the gate shell already was');
+  } else {
+    fail(
+      'splitting the screen leaves the pad screen no taller than the gate shell already was',
+      `${afterSplit}px vs a ${baseline}px baseline`
+    );
+  }
 });
 
 await browser.close();

@@ -18,7 +18,12 @@
           before=.claude/panel-motion-before:light after=.claude/panel-motion-after
    `pattern` keeps only the scenes whose name contains it, which is how a
    before-and-after pair stays inside a page's size budget: the defect a
-   before recording is showing is the same defect in either theme. */
+   before recording is showing is the same defect in either theme.
+
+   A scene in the manifest may carry its own `crop` ({left, top, width,
+   height}) and its own `trace` of per-frame measurements; both override or
+   ride past the CLI's one crop, for a run whose scenes are not all the same
+   band of the same screen. */
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium } from './browser-harness.mjs';
@@ -34,7 +39,33 @@ const CROP_HEIGHT = 800;
     every third one after it. */
 const MOTION_MS = 620;
 
-const [outFile, ...pairs] = process.argv.slice(2);
+/* Another ticket's scenes are another band and another duration - the
+   Journal door's month is the top of the screen and runs at --dur-slow
+   (redesign ticket 10) - so both are overridable, with Home's own numbers
+   as the defaults:
+     --crop <top>,<height>   --motion <ms> */
+const argv = process.argv.slice(2);
+const opt = (name) => {
+  const at = argv.indexOf(`--${name}`);
+  if (at < 0) return null;
+  const value = argv[at + 1];
+  argv.splice(at, 2);
+  return value;
+};
+const cropArg = opt('crop');
+const motionArg = opt('motion');
+/* A recording that keeps every composited frame is three times the frames a
+   30fps one was, so a run that wants all of them can trade resolution for
+   them: the page draws these at about 280px wide however big they are.
+     --scale <0..1>   --quality <0..1> */
+const scale = Number(opt('scale')) || 1;
+const jpegQuality = Number(opt('quality')) || 0.4;
+const [cropTopArg, cropHeightArg] = (cropArg ?? '').split(',').map(Number);
+const cropTop = Number.isFinite(cropTopArg) ? cropTopArg : CROP_TOP;
+const cropHeight = Number.isFinite(cropHeightArg) ? cropHeightArg : CROP_HEIGHT;
+const motionMs = Number(motionArg) || MOTION_MS;
+
+const [outFile, ...pairs] = argv;
 if (!outFile || pairs.length === 0) {
   console.error('usage: node tests/panel-motion-flipbook.mjs <out.json> <label>=<dir> ...');
   process.exit(2);
@@ -43,25 +74,30 @@ if (!outFile || pairs.length === 0) {
 const browser = await launchChromium();
 const page = await browser.newPage();
 
-/** Crops and re-encodes one JPEG, in the page, and hands back a data URI. */
-async function shrink(bytes, cropTop, quality) {
+/** Crops and re-encodes one JPEG, in the page, and hands back a data URI.
+    The box is `{ left, top, width, height }`; a null width means the frame's
+    own, which is every vertical band this started out cropping. */
+async function shrink(bytes, box, quality, scale = 1) {
   return page.evaluate(
-    async ({ b64, cropTop, cropHeight, quality }) => {
+    async ({ b64, box, quality, scale }) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${b64}`;
       await img.decode();
+      const w = Math.max(1, Math.min(box.width ?? img.width, img.width - box.left));
+      const h = Math.max(1, Math.min(box.height, img.height - box.top));
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = Math.max(1, Math.min(cropHeight, img.height - cropTop));
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, -cropTop);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, -box.left, -box.top);
       return { uri: canvas.toDataURL('image/jpeg', quality), w: canvas.width, h: canvas.height };
     },
-    { b64: bytes.toString('base64'), cropTop, cropHeight: CROP_HEIGHT, quality }
+    { b64: bytes.toString('base64'), box, quality, scale }
   );
 }
 
-const bundle = { crop: CROP_TOP, sets: {} };
+const bundle = { crop: cropTop, sets: {} };
 let total = 0;
 
 for (const pair of pairs) {
@@ -72,18 +108,42 @@ for (const pair of pairs) {
   const scenes = [];
   for (const scene of manifest.scenes) {
     if (pattern && !scene.name.includes(pattern)) continue;
+    /* A scene may name its own crop, which is what a run whose scenes are
+       not all the same band needs: the nav's two shapes are a strip along
+       the bottom of a phone and a column down the left of a desktop
+       (redesign ticket 26), and one crop for the run would carry most of a
+       screen that never moves to fit both. The CLI's crop stays the default
+       for every scene that says nothing. */
+    const box = { left: 0, width: null, top: cropTop, height: cropHeight, ...(scene.crop ?? {}) };
     const kept = scene.frames.filter(
-      (frame, i) => frame.at <= MOTION_MS || i % 3 === 0 || i === scene.frames.length - 1
+      (frame, i) => frame.at <= motionMs || i % 3 === 0 || i === scene.frames.length - 1
     );
     const frames = [];
     let size = { w: 0, h: 0 };
     for (const frame of kept) {
-      const shrunk = await shrink(await readFile(resolve(root, frame.file)), CROP_TOP, 0.4);
+      const shrunk = await shrink(await readFile(resolve(root, frame.file)), box, jpegQuality, scale);
       total += shrunk.uri.length;
       size = { w: shrunk.w, h: shrunk.h };
       frames.push({ at: frame.at, uri: shrunk.uri });
     }
-    scenes.push({ name: scene.name, note: scene.note, w: size.w, h: size.h, frames });
+    /* `trace` rides along untouched where a scene carries one: a flipbook of
+       a two-phase move has to be readable against the numbers the same move
+       measured, frame by frame, or "the trailing edge held" is a description
+       rather than a measurement. */
+    scenes.push({
+      name: scene.name,
+      note: scene.note,
+      w: size.w,
+      h: size.h,
+      frames,
+      ...(scene.trace ? { trace: scene.trace, axis: scene.axis, clickAt: scene.clickAt } : {}),
+      /* `samples` rides along the same way `trace` does, and for the same
+         reason: the per-animation-frame reads the state and return
+         recorders take (tests/motion-sampling.mjs) are what turn "the row
+         collapsed" into a number per frame, and a review page that has the
+         frames without them can only describe what it shows. */
+      ...(scene.samples ? { samples: scene.samples } : {})
+    });
     console.log(`${label}/${scene.name}: ${frames.length} of ${scene.frames.length} frames`);
   }
   bundle.sets[label] = scenes;

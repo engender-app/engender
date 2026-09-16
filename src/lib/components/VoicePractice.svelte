@@ -29,7 +29,7 @@
   import { bandsFor, comfortBand } from '$lib/audio/bands';
   import { trackPitch, type PitchFrame } from '$lib/audio/pitch';
   import { practiceTakeStats, type PracticeTakeStats } from '$lib/audio/practiceTake';
-  import { PASSAGE_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
+  import { SPEECH_GATE, type QualityCheck, type QualityReport } from '$lib/audio/quality';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -41,6 +41,7 @@
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -51,10 +52,6 @@
   const READING_MS = 100;
   /** Two seconds of trace on screen, at the tracker's 10 ms frame. */
   const TRACE_FRAMES = 200;
-  /** What the run bar fills towards. The gate's own length floor: nothing
-      here is working towards a longer hold, so the bar says "this counts as
-      speaking" and stops. */
-  const TARGET_SECONDS = 1.5;
   /** The ordinary use of this tab runs five to ten minutes, and nothing
       bounded a single take before this (phase 8 audit issue 04). The poll no
       longer costs more the longer the take runs (issue 05), so this is not
@@ -93,14 +90,14 @@
      population is worse than no band (ADR-0059). */
   let bands = $derived(bandsFor('', getLocale()));
 
-  /** The gate's findings, in words, and only ever about the recording. The
-      length check is left out of the sentence: on this tab a short stretch
-      of speech is a short stretch of speech, not a take that came up
-      short. */
+  /** The gate's findings, in words, and only ever about the recording.
+      `SPEECH_GATE` asks nothing about length, so there is nothing to filter
+      out of this any more: on this tab a short stretch of speech is a short
+      stretch of speech, not a take that came up short. */
   let advice = $derived(
-    (reading?.failed ?? [])
-      .filter((check) => check !== 'tooShort')
-      .map((check: QualityCheck) => (check === 'clipping' ? m.vb_fail_clipping() : m.vb_fail_noise()))
+    (reading?.failed ?? []).map((check: QualityCheck) =>
+      check === 'clipping' ? m.vb_fail_clipping() : m.vb_fail_noise()
+    )
   );
 
   let refusalCopy = $derived.by(() => {
@@ -120,7 +117,7 @@
   async function start() {
     const controller = new AbortController();
     opening = controller;
-    const opened = await startTake(PASSAGE_CHECKS, controller.signal);
+    const opened = await startTake(SPEECH_GATE, controller.signal);
     if (opening === controller) opening = null;
     // The screen went away while the microphone was opening: startTake has
     // already stopped whatever it opened, so there is nothing left to do.
@@ -218,14 +215,14 @@
       <p class="muted small vp-sealed-note">{m.vb_practice_sealed_note()}</p>
     </div>
 
-    <div class="editor-savebar vp-review-actions">
+    <SaveBar arrange="row">
       <button class="btn btn-ghost" data-vp-discard disabled={saving} onclick={discardTake}>
         <span>{m.vb_practice_discard()}</span>
       </button>
       <button class="btn btn-primary" data-vp-save disabled={saving} onclick={saveTake}>
         <Icon name="check" size={20} /><span>{m.vb_practice_save()}</span>
       </button>
-    </div>
+    </SaveBar>
   {:else}
     <div class="screen-part vp-body">
       <p class="muted small vp-lead">{m.vb_practise_lead()}</p>
@@ -239,7 +236,7 @@
           languageGuessed={bands.guessed}
           {frames}
           report={reading}
-          targetSeconds={TARGET_SECONDS}
+          targetSeconds={null}
           label={m.vb_practise_gauge()}
           {advice}
         />
@@ -249,7 +246,7 @@
       {/if}
     </div>
 
-    <div class="editor-savebar">
+    <SaveBar>
       {#if running}
         <button class="btn btn-primary" data-vp-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
@@ -259,7 +256,7 @@
           <Icon name="mic" size={20} /><span>{m.vb_record()}</span>
         </button>
       {/if}
-    </div>
+    </SaveBar>
   {/if}
 </div>
 
@@ -280,16 +277,4 @@
     margin: var(--space-4) 0 0;
   }
 
-  /* Discard and Save, side by side rather than stacked - the savebar's own
-     default - because neither is the primary action a person came to the
-     screen for the way a single save button usually is: declining to keep
-     a take is as ordinary an outcome here as keeping it. */
-  .vp-review-actions {
-    display: flex;
-    gap: var(--space-3);
-  }
-
-  .vp-review-actions .btn {
-    flex: 1;
-  }
 </style>

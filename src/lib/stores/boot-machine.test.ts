@@ -209,6 +209,16 @@ test('android reaches each of its four gates', () => {
   });
 });
 
+test('android reaches auto-unlock when native device key requires no auth', () => {
+  const { machine, effects } = walk(
+    started('android'),
+    surveyedAndroid({ nativeDeviceKeyExists: true, nativeDeviceKeyAuthRequired: false })
+  );
+  expect(machine.boot.status).toBe('booting');
+  expect(machine.boot.accessMode).toBe('unlocked');
+  expect(effects).toEqual([{ type: 'auto-unlock-android' }]);
+});
+
 test('a refused android key leaves the gate the refusal to render', () => {
   const refusal = {
     kind: 'refused' as const,
@@ -457,4 +467,32 @@ test('choosing device-bound mode names what the android refusal leaves to do', (
     deviceBoundSetupOutcome({ kind: 'refused', authentication: interpretAuthentication('lockedOut') })
   ).toBe('device-bound-unavailable');
   expect(deviceBoundSetupOutcome({ kind: 'invalidated' })).toBe('device-bound-unavailable');
+});
+
+test('journal-open-failed with database lock preserves the lock error and allows retry with key-obtained', () => {
+  const lockError = new Error('database is locked (code 5): , while compiling: SELECT COUNT(*) FROM sqlite_schema;');
+  const failed = walk(
+    started('android'),
+    surveyedAndroid({ nativeDeviceKeyExists: true }),
+    { type: 'android-key-answered', result: { kind: 'key', dataKey: KEY } },
+    { type: 'journal-open-failed', error: lockError }
+  );
+
+  expect(failed.machine.boot.status).toBe('error');
+  expect(failed.machine.boot.error).toContain('database is locked (code 5)');
+  expect(failed.machine.boot.error).not.toContain('FTS5 is not available');
+
+  const retried = reduce(failed.machine, {
+    type: 'key-obtained',
+    dataKey: KEY,
+    accessMode: 'device-bound',
+    unlocked: true
+  });
+
+  expect(retried.machine.boot.status).toBe('booting');
+  expect(retried.machine.boot.error).toBeNull();
+  expect(retried.effects).toEqual([
+    { type: 'mark-unlocked' },
+    { type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }
+  ]);
 });

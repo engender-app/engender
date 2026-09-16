@@ -3,9 +3,9 @@
 
      No coloured bar down its side. A 4px accent border-left is named
      outright in the craft floor as the most recognisable AI-UI tell there
-     is, and the slop audit took it off the backup notice this replaces. The
-     weight comes from --outline-strong instead, which is the card's own
-     line one step darker.
+     is, and the slop audit took it off the backup notice this replaces. It
+     is flush on the page between two hairlines (phase 10, rule 4), with a
+     40px square of ink as its mark; kit.css draws it.
 
      The dismiss is a drawn icon, not a multiplication sign standing in for
      one - the same audit, the same list.
@@ -103,19 +103,18 @@
      one frame - the same defect on the way in that the paragraph above
      names on the way out.
 
-     `skip`: without it this shrink replayed whenever the *page*
+     `|global`: a transition is local by default and only plays when its own
+     block is created or destroyed. A notice is wrapped in its caller's
+     `{#if}`, so a local transition was skipped when unmounted from the outside,
+     teleporting the rows below in a single frame (ticket 104). `|global` makes
+     the collapse run whenever its parent block unmounts.
+
+     `skip`: with `|global`, this shrink would replay whenever the *page*
      unmounts the notice - navigating away from a screen that never sets
      `dismiss` at all (the roadmap's provenance notice, phase 5 ticket 99
-     item 16) still collapsed it to nothing over the outgoing screen's
-     transition, which read as an extra yank on top of the real page
-     transition. Every other caller of Notice wraps it in its own
-     `{#if}` - the empty-state notices behind a data check, the
-     dismissible ones behind the dismissed flag - which happens to keep
-     Svelte's outro from riding along with an unrelated ancestor's; this
-     one is mounted bare, with nothing of its own to fall back on. `skip`
-     (see `disclose`'s own comment in reveal.ts) reads `navigating` and
-     cuts the animation exactly when it is the page leaving, not the
-     notice itself, that is the reason this node is going away.
+     item 16) would collapse it over the outgoing screen's transition. `skip`
+     (see `disclose`'s own comment in reveal.ts) reads `navigating` and cuts
+     the animation when it is the page leaving rather than the notice itself.
 
      `use:resize` on the body below, not here, for the other half of the
      same finding: a notice that stays mounted and changes size under its
@@ -128,7 +127,7 @@
   class="kit-notice"
   data-kit-surface
   data-notice={key}
-  transition:collapse={{ skip: navigating.to !== null }}
+  transition:collapse|global={{ skip: navigating.to !== null }}
   {...roleAttrs(role)}
   {...rest}
 >

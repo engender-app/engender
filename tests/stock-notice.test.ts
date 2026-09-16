@@ -2,7 +2,7 @@
    Verifies:
    - Projection trigger criteria (<= 7 days remaining, 0 units / exhausted).
    - Depleting stocks multi-drug urgency sorting.
-   - Home notice presentation, action link to /settings/stock, and dismiss controls.
+   - Home notice presentation, action link to /care, and dismiss controls.
    - 24-hour reminder snooze behavior and restoration past 24 hours.
    - "Don't show again" setting preference toggle.
    - Stock restocking reconciliation / reactive dismissal.
@@ -26,6 +26,7 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const home = read('src/routes/+page.svelte');
 const homeMarkup = home.replace(/<script[\s\S]*?<\/script>/g, '');
+const care = read('src/routes/care/+page.svelte');
 const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
@@ -122,7 +123,8 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       reminderDismissed: false,
       openedEpochDay: null,
       inUseWindowDays: null,
-      inUseEndEpochDay: null
+      inUseEndEpochDay: null,
+      leadTimeDays: null
     };
     const stockB: MedicationStock = {
       id: 'stock-b',
@@ -134,7 +136,8 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       reminderDismissed: false,
       openedEpochDay: null,
       inUseWindowDays: null,
-      inUseEndEpochDay: null
+      inUseEndEpochDay: null,
+      leadTimeDays: null
     };
     const stockC: MedicationStock = {
       id: 'stock-c',
@@ -146,7 +149,8 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       reminderDismissed: false,
       openedEpochDay: null,
       inUseWindowDays: null,
-      inUseEndEpochDay: null
+      inUseEndEpochDay: null,
+      leadTimeDays: null
     };
 
     const rows = [
@@ -191,11 +195,11 @@ describe('Home stock notice rendering and interaction', () => {
     expect(home).toContain('depletingStocks(stockProjectionsQuery.rows, today)[0]');
   });
 
-  it('renders Notice on Home with alert icon, action to /settings/stock, and dismiss control', () => {
+  it('renders Notice on Home with alert icon, action to /care, and dismiss control', () => {
     expect(homeMarkup).toContain('data-stock-notice');
     expect(homeMarkup).toContain('key="stock-low"');
     expect(homeMarkup).toContain('icon="alert"');
-    expect(home).toContain("href: '/settings/stock'");
+    expect(home).toContain("href: '/care'");
     expect(home).toContain('stockDismissSheetOpen = true');
   });
 
@@ -222,7 +226,9 @@ describe('Localization keys for stock notice', () => {
     'tile_stock_title',
     'tile_stock_sub',
     'notice_stock_low_title',
-    'notice_stock_low_body',
+    'notice_stock_reorder_title',
+    'notice_stock_reorder_body',
+    'notice_stock_projected_body',
     'notice_stock_out_body',
     'notice_stock_manage',
     'notice_stock_dismiss_action',
@@ -230,7 +236,11 @@ describe('Localization keys for stock notice', () => {
     'notice_stock_dismiss_hint',
     'notice_stock_snooze_btn',
     'notice_stock_dont_show_btn',
-    'notice_stock_snoozed_toast'
+    'notice_stock_snoozed_toast',
+    'care_mark_reorder_by',
+    'stock_lead_time_label',
+    'stock_lead_time_placeholder',
+    'stock_lead_time_hint'
   ];
 
   for (const key of requiredKeys) {
@@ -239,4 +249,31 @@ describe('Localization keys for stock notice', () => {
       expect(plMessages[key]).toBeTruthy();
     });
   }
+});
+
+describe('The reorder-by day, on screen (ticket 16)', () => {
+  it('names the same day everywhere: Home reads actionableEpochDay through the shared sentence', () => {
+    expect(home).toContain("import { stockNotice } from '$lib/data/vocabulary/stockLabel';");
+    expect(home).toContain('stockNotice(');
+    expect(home).toContain('urgentDepletingStock.actionableEpochDay');
+    // The countdown this ticket retires must not come back.
+    expect(home).not.toContain('notice_stock_low_body');
+  });
+
+  it('the care spine reads the same actionableEpochDay and relabels its mark', () => {
+    // One lane per running drug (phase 11 ticket 10), so both halves are
+    // now per lane: the mark's day is that lane's own stock row, and the
+    // label reads that row's own lead time.
+    expect(care).toContain('runOutEpochDay: lane.runOut?.actionableEpochDay ?? null');
+    expect(care).toContain('leadTimeDays !== null ? m.care_mark_reorder_by() : m.care_mark_run_out()');
+  });
+
+  it('the stock surface carries a lead-time field, typed as an optional day count', () => {
+    // Ticket 09 (ADR-0084): the stock editor is a sheet off Care now, not
+    // its own screen at /settings/stock.
+    const stockSheet = read('src/routes/care/+page.svelte');
+    expect(stockSheet).toContain('m.stock_lead_time_label()');
+    expect(stockSheet).toContain('m.stock_lead_time_hint()');
+    expect(stockSheet).toContain('leadTimeDays');
+  });
 });

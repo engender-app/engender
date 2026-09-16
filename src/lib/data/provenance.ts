@@ -81,7 +81,7 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
   const hint = m.prov_reminder_takeover_hint();
   if (reminder.autoSource.startsWith(STOCK_PREFIX)) {
     const drug = reminder.autoSource.slice(STOCK_PREFIX.length);
-    return { text: m.prov_reminder_stock({ drug }), hint, href: '/settings/stock', actionLabel: m.prov_view_stock() };
+    return { text: m.prov_reminder_stock({ drug }), hint, href: '/care', actionLabel: m.prov_view_stock() };
   }
   if (reminder.autoSource.startsWith(WEAR_PREFIX)) {
     return { text: m.prov_reminder_wear(), hint, href: '/practice/wear', actionLabel: m.prov_view_wear_log() };

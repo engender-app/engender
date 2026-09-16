@@ -5,8 +5,8 @@
 
 import { getLocale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
-import { crossesCalendarYear, localDateFromEpochDay } from './epochDay';
-import type { CalendarDuration } from './epochDay';
+import { crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
+import type { CalendarDuration, DurationUnit } from './epochDay';
 
 export function intlLocale(): string {
   return getLocale() === 'pl' ? 'pl-PL' : 'en-GB';
@@ -49,9 +49,19 @@ export function fmtMonthYear(year: number, month: number): string {
 }
 
 /** The largest one or two units of a CalendarDuration, in words: "2 years",
-    "1 year 3 months", "5 months", or "12 days". */
+    "1 year 3 months", "5 months", or "12 days".
+
+    Which units those are is `durationParts`' decision, not this function's -
+    a sealed letter's card draws the same parts as numbers on blocks (ticket
+    45) and the two must agree. This is only the rendering. */
+const DURATION_WORD: Record<DurationUnit, (n: number) => string> = {
+  years: (n) => m.n_years({ n }),
+  months: (n) => m.n_months({ n }),
+  days: (n) => m.n_days({ n })
+};
+
 export function fmtDuration(d: CalendarDuration): string {
-  if (d.years > 0) return d.months > 0 ? `${m.n_years({ n: d.years })} ${m.n_months({ n: d.months })}` : m.n_years({ n: d.years });
-  if (d.months > 0) return m.n_months({ n: d.months });
-  return m.n_days({ n: d.days });
+  return durationParts(d)
+    .map((part) => DURATION_WORD[part.unit](part.n))
+    .join(' ');
 }

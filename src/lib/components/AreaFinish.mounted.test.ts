@@ -2,11 +2,16 @@
    04).
 
    The ticket's own line: it appears on each finishable area's own screen and
-   nowhere else. That is a claim about eight route files, and nothing else in
+   nowhere else. That is a claim about seven route files, and nothing else in
    the tree can make it - `areaGroups.ts` knows which groups exist and the
    routes know which screen is which, and only this test knows they line up.
-   A ninth group added without a screen to finish it on would otherwise be a
-   compile-clean feature nobody can reach.
+   An eighth group added without a screen to finish it on would otherwise be
+   a compile-clean feature nobody can reach.
+
+   Phase 11 all-four-doors ticket 13 took `health/side-effects` off this list
+   without adding a replacement: side effects finish on
+   practice/personal-effects now, under `effects`, the way hair progress's
+   two areas always have.
 
    A source scan, like the clinician summary's print-parity test: these are
    `.svelte` files and the node tier cannot mount one (ADR-0016). */
@@ -47,9 +52,7 @@ describe('where the finish control is mounted', () => {
       { route: 'body/hair-progress', group: 'hair-progress' },
       { route: 'body/hair-removal', group: 'hair-removal' },
       { route: 'body/measurements', group: 'measurements' },
-      { route: 'body/sizes', group: 'sizes' },
       { route: 'health/dilation', group: 'dilation' },
-      { route: 'health/side-effects', group: 'side-effects' },
       { route: 'practice/personal-effects', group: 'effects' },
       { route: 'practice/voice', group: 'voice' },
       { route: 'practice/wear', group: 'wear' }
@@ -61,10 +64,10 @@ describe('where the finish control is mounted', () => {
     expect(new Set(groups).size).toBe(groups.length);
   });
 
-  it('covers every finishable area through those nine screens', () => {
-    /* The sections, not the groups: hair progress and voice are each one
-       screen and two areas, so a count of screens would not prove the eleven
-       are reachable. */
+  it('covers every finishable area through those seven screens', () => {
+    /* The sections, not the groups: measurements, hair progress, effects and
+       voice are each one screen and two areas, so a count of screens would
+       not prove the eleven are reachable. */
     const covered = mounts.flatMap((m) => [...AREA_GROUPS[m.group as keyof typeof AREA_GROUPS]]);
     expect(covered.length).toBe(11);
     expect(new Set(covered).size).toBe(11);
@@ -86,11 +89,9 @@ describe('where the finish control is mounted', () => {
     const owner = Object.fromEntries(mounts.map((m) => [m.group, m.route]));
     expect(AREA_GROUP_ROW_KEYS).toEqual({
       measurements: 'measurements',
-      sizes: 'sizes',
       wear: 'wear',
       'hair-progress': 'hair-progress',
       'hair-removal': 'hair-removal',
-      'side-effects': 'side-effects',
       effects: 'effects',
       voice: 'voice-benchmark',
       dilation: 'dilation'

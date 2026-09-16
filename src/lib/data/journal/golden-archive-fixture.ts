@@ -154,12 +154,14 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     note: 'a good day, zażółć gęślą jaźń',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    // Three shapes on purpose, so the fixture pins all of them: distress
-    // only, euphoria only, and both at once (ticket 31).
+    // Three regions on purpose, so the fixture pins the range: one on the
+    // dysphoria side, one on the euphoria side, one further out (ticket 39,
+    // ADR-0081 - the {dysphoria, euphoria} pair ticket 31 gave this table
+    // is retired).
     bodyRegions: {
-      chest: { dysphoria: 45, euphoria: null },
-      [bodyRegion.id]: { dysphoria: 30, euphoria: 55 },
-      voice_throat: { dysphoria: null, euphoria: 70 }
+      chest: 25,
+      [bodyRegion.id]: 80,
+      voice_throat: 65
     },
     presentationId: femme.id
   });
@@ -329,7 +331,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     injectionSite: 'ventrogluteal-left',
     vehicle: 'oil'
   });
-  await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
+  await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' });
   await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 5, unit: 'ampoules', recordedEpochDay: 20000 });
 
@@ -348,7 +350,10 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const procedure = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: 20050,
-    notes: 'drains out on day five'
+    notes: 'drains out on day five',
+    // A compiled-in kind rather than 'custom' (the default), so the fixture
+    // proves `kind` round-trips through the archive (ticket 17).
+    kind: 'chest_reconstruction'
   });
   await journal.procedures.addConsult(procedure, 19950);
   /* One appointment on its own beside the consult above, so the section

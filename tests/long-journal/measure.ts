@@ -438,7 +438,7 @@ export async function measureLongJournal(
   // --- phase 5 features (ticket 01) ---------------------------------------
   // Five features landed without a line here: this section checks the four
   // that turned out to be genuinely new reads. The fifth, regimen templates
-  // (settings/regimen/+page.svelte's vocabulary.regimenTemplates), is a
+  // (care/regimen/+page.svelte's vocabulary.regimenTemplates), is a
   // static built-in list with no query behind it at all, so it gets no
   // measurement - one for form's sake would report nothing a budget could
   // ever fail.
@@ -565,7 +565,7 @@ export async function measureLongJournal(
   // sizes, wear and the overlapping-episode fan-out were surveyed too and
   // found not to need a line here - see ticket 05's Comments for why.
 
-  // Hormone curve (settings/hormone-curve/+page.svelte): the one call the
+  // Hormone curve (care/curve/+page.svelte): the one call the
   // screen makes, at its widest window (180 days) - the injectable band model
   // plus one qualitative model per hormone this app curves (estradiol,
   // testosterone), over one read of the dose log and one read per analyte any
@@ -587,7 +587,7 @@ export async function measureLongJournal(
     };
   });
 
-  // Labs (settings/labs/+page.svelte): the screen's own five concurrent
+  // Labs (care/labs/+page.svelte): the screen's own five concurrent
   // queries for whichever analyte is selected, none date-bounded or LIMITed
   // (labs.ts:136-179).
   await measure('labs-series', 'labs screen, one analyte across every query the screen runs', async () => {
@@ -652,7 +652,7 @@ export async function measureLongJournal(
     return { result: recordings, detail: `${recordings.length} recordings` };
   });
 
-  // Stock (settings/stock/+page.svelte): getProjections(today) used to read
+  // Stock (care/+page.svelte's stock sheet): getProjections(today) used to read
   // every dose from the oldest stock entry forward and reduce three numbers
   // per entry out of them - O(entries x doses) at decade scale, and 538KB of
   // Home's mount on this fixture. Phase 8 audit ticket 26 replaced that with

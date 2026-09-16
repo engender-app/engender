@@ -7,7 +7,7 @@
 
      Hiding an area takes it out of the navigation - ADR-0052's own
      consequence, and CONTEXT.md's "Hidden" says it in those words. Drawn as
-     a literal `<ListRow>` on each host, a hidden side-effects area would
+     a literal `<ListRow>` on each host, a hidden hair progress area would
      have gone from the hub and stayed on the changes screen, which is
      hiding that hides nothing. And an area the person has declared finished
      says so under its title, in the same words `area_finish_done_title`
@@ -59,8 +59,24 @@
     states === undefined
       ? []
       : rowsHostedBy(host)
+          /* Its own hand-drawn block wherever it lives, not a generic row
+             here (ADR-0043): `cycleEvents` reads `rowHidden` as always false,
+             so a row drawn through this component would show regardless of
+             `cycleTrackingVisible`, which is the one gate that is allowed to
+             make it not exist at all. Ticket 13 moved that block onto
+             /practice/personal-effects, sharing a host with hair progress
+             for the first time, which is what makes this filter load-bearing
+             rather than always a no-op. */
+          .filter((row) => row.key !== 'cycle-events')
           .filter((row) => !rowHidden(row, states))
-          .map((row) => ({ row, line: rowLine(row, { todayEpochDay: today, lastWrites: {}, states }) }))
+          /* No last write and nothing forward: a hosted row is drawn beside
+             the very records it would report on (dilation on the surgery
+             screen, hair progress on the screen that asks what you
+             noticed), so its line stays the sentence about what is behind
+             it. None of the three is a row `rowForward.ts` answers for
+             either, so `{}` is the whole answer rather than a read this
+             screen skipped. */
+          .map((row) => ({ row, line: rowLine(row, { todayEpochDay: today, lastWrites: {}, states, forward: {} }) }))
   );
 </script>
 
@@ -70,7 +86,7 @@
       key={row.key}
       icon={row.icon}
       title={hubRowTitle(row.key)}
-      subtitle={hubRowLine(row.key, line, today)}
+      subtitle={hubRowLine(row.key, line, today, Date.now())}
       href={row.href}
       data-hub-host={host}
       data-hub-line={line.kind}

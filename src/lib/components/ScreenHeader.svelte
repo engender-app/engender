@@ -34,7 +34,30 @@
      A screen whose own tab already names it passes `titleHidden`: the title
      stays in the document for a screen reader and for the document outline,
      and stops being a second visible label directly above the first group
-     heading (DIRECTION.md 3d). The More hub is the case that motivates it. */
+     heading (DIRECTION.md 3d). The More hub is the case that motivates it.
+
+     `field` is what a door puts *in* the field beside its title, which
+     DIRECTION.md rule 7 gives a different answer for per door: the
+     Transition door holds a search input there and nothing else (redesign
+     ticket 15), and Journal holds its month label and two icon controls
+     (ticket 10). A snippet rather than a prop per shape, because none of
+     those contents is the header's business - what the header owns is the
+     block they sit on, its ink and its bleed to the window's edges. Only
+     large type may sit on the field, or a block of the page's own colour
+     with page ink in it, which is how the search input's 16px is legal
+     there; tests/direction-contract.test.ts holds both halves.
+
+     `chrome` is rule 7's third case (carpet 25). A door never shows a back
+     control and a deep screen always does, and Settings is neither: it is
+     chrome reached by one persistent control (ADR-0076), a gear in Today's
+     foot on the phone and a fifth row at the rail's foot on the desktop.
+     The two reaches want different answers - from the gear, back means
+     Today; from the rail, a back control points at nothing - so the flag
+     draws the control and components.css drops it inside the 1024px
+     shell's own container query, which is where the app decides between
+     the bar and the rail too (AppNav's note). A prop rather than a class
+     the screen remembers, so the next chrome screen asks for the case
+     rather than for its consequences. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
@@ -47,8 +70,10 @@
     backLabel,
     screen,
     titleHidden = false,
+    chrome = false,
     class: klass = '',
-    actions
+    actions,
+    field
   }: {
     title: string;
     subtitle?: string;
@@ -59,8 +84,12 @@
     /** The screen's own identity, for the walkthrough's handle (ADR-0029). */
     screen?: string;
     titleHidden?: boolean;
+    /** Rule 7's third case: chrome, whose back control is the phone's only. */
+    chrome?: boolean;
     class?: string;
     actions?: Snippet;
+    /** What this door puts on the field under the title's line (rule 7). */
+    field?: Snippet;
   } = $props();
 
   /* Everything the browser does with a click that is not "follow this link
@@ -78,7 +107,12 @@
   }
 </script>
 
-<header class="screen-header {klass}" class:is-collapsed={titleHidden && !back && !actions} data-screen-header>
+<header
+  class="screen-header {klass}"
+  class:is-collapsed={titleHidden && !back && !actions && !field}
+  class:is-chrome={chrome}
+  data-screen-header
+>
   <!-- The subtitle is a row of its own rather than a second line inside the
        title's box. Beside the back control it would centre the arrow
        against the whole block, which drops it to the middle of a header
@@ -94,29 +128,61 @@
        was the one thing out of the column. Above it, the title starts where
        the content does and the arrow keeps its full target. Material's own
        large-title pattern puts it there too. -->
-  <div class="screen-header-row">
-    {#if typeof back === 'string'}
-      <a
-        class="icon-btn press screen-back"
-        href={back}
-        data-screen-back
-        aria-label={backLabel ?? m.back()}
-        onclick={goBack}
+  <!-- The field (phase 10, DIRECTION.md rules 3 and 7; ADR-0075): a solid
+       block of one of the flag's colours, published by activeFlag as
+       --field and --field-ink, behind the back control, the title and the
+       actions. Only large type sits on it - nonbinary's purple carries
+       white at 4.41:1, legal for large text and nothing smaller - which is
+       why the subtitle is outside the field, on the page, and why
+       tests/direction-contract.test.ts holds every rule that sizes type
+       inside this element to 24px, or 18.66px bold. Under disguise the
+       shell publishes --surface-2 and --text instead, so the same markup
+       draws a grey header and nothing here has to know. -->
+  <div class="screen-field" data-screen-field>
+    <!-- The blind (redesign ticket 28): the field's colour, split off from
+         the box that measures it so the two can move on different clocks
+         during a navigation. Decoration and nothing else - what it paints
+         at rest is exactly the field, since the field clips it. -->
+    <div class="field-blind" data-field-blind aria-hidden="true"></div>
+    <div class="screen-header-row" class:has-back-actions={!!back && !!actions}>
+      {#if typeof back === 'string'}
+        <a
+          class="icon-btn press screen-back"
+          href={back}
+          data-screen-back
+          data-field-part
+          aria-label={backLabel ?? m.back()}
+          onclick={goBack}
+        >
+          <Icon name="arrowLeft" />
+        </a>
+      {:else if back}
+        <button class="icon-btn press screen-back" data-screen-back data-field-part aria-label={backLabel ?? m.back()} onclick={back}>
+          <Icon name="arrowLeft" />
+        </button>
+      {/if}
+
+      <!-- Named for the navigation only while it is painted: a hidden title
+           is still the screen's heading, and a heading nobody can see has
+           nothing to leave or arrive with. -->
+      <h1
+        class="screen-title"
+        class:visually-hidden={titleHidden}
+        data-screen-title={screen ?? ''}
+        data-field-part={titleHidden ? undefined : ''}
       >
-        <Icon name="arrowLeft" />
-      </a>
-    {:else if back}
-      <button class="icon-btn press screen-back" data-screen-back aria-label={backLabel ?? m.back()} onclick={back}>
-        <Icon name="arrowLeft" />
-      </button>
-    {/if}
+        {title}
+      </h1>
 
-    <h1 class="screen-title" class:visually-hidden={titleHidden} data-screen-title={screen ?? ''}>
-      {title}
-    </h1>
+      {#if actions}
+        <div class="header-action" data-field-part>{@render actions()}</div>
+      {/if}
+    </div>
 
-    {#if actions}
-      <div class="header-action">{@render actions()}</div>
+    <!-- Under the title's line, still on the block: the field's own
+         contents, which are the door's (rule 7). -->
+    {#if field}
+      <div class="screen-field-slot" data-field-part>{@render field()}</div>
     {/if}
   </div>
 

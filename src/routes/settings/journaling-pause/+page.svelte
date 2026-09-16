@@ -66,7 +66,7 @@
 <div class="screen">
   <ScreenHeader title={m.journaling_pause_title()} back="/settings" subtitle={m.journaling_pause_intro()} />
 
-  <div class="card">
+  <div class="kit-panel" data-kit-surface>
     {#if current}
       <p class="kit-row-title">
         {m.journaling_pause_running_since({

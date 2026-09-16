@@ -74,10 +74,21 @@ export const DEFAULT_CLINICIAN_DOSSIER_INCLUSION: ClinicianDossierInclusion = {
   finishedAreas: true
 };
 
+/** A dose as the dossier's dose log prints it.
+
+    Ticket 08 left an `autoLogged?: boolean` here for ticket 11 to fill in.
+    Ticket 11 filled it differently: `source` landed on `DoseEvent` itself
+    (types.ts), because the fact is the journal's rather than the print
+    layout's - it round-trips through the archive and the dose log reads it
+    too. So the marker is `source === 'schedule'` and the reserved field is
+    gone rather than restating it, which is the one thing the row must not
+    do: two fields for one fact is two fields that can disagree. */
+export type ClinicianDossierDoseRow = DoseEvent;
+
 interface ClinicianDossierRegimenData {
   current: RegimenEpisode[];
   history: RegimenEpisode[];
-  doses: DoseEvent[];
+  doses: ClinicianDossierDoseRow[];
 }
 
 export interface ClinicianDossier {
