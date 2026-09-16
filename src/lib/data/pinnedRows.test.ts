@@ -367,6 +367,64 @@ test('switching the last kind off leaves an empty list, not a null', () => {
   assert.deepEqual(withAgendaKind({ agendaKinds: ['surgery'] }, 'surgery', false), []);
 });
 
+// --- what the four default pins say facing forwards -------------------------
+
+/* Phase 11 all-four-doors ticket 02. The pinned rows on Today drew the same
+   backwards lines the Transition door did - "Last logged 8 days ago",
+   "Nothing logged for 1 year 4 months" - and they draw the forward ones now
+   through the same function, so a row cannot say one thing on one screen and
+   something else on the other. The four here are `DEFAULT_ONBOARDING_AREAS`,
+   which is the ticket's own sign-off set. */
+
+test('the four default pins draw whatever the forward read gave them', () => {
+  const forward = {
+    measurements: { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' },
+    care: { kind: 'next', epochDay: TODAY + 2, what: { area: 'dose', runOutEpochDay: TODAY + 19 } },
+    milestones: { kind: 'next', epochDay: TODAY + 16, what: { area: 'milestone', name: 'Name-change hearing' } },
+    tryouts: { kind: 'running', what: { area: 'tryout', label: 'she/her', dayCount: 101 } }
+  } as const;
+
+  const rows = pinnedRows({ pinnedRows: null, onboardingAreas: null }, reading({ forward }));
+
+  assert.deepEqual(keysOf(rows), [...DEFAULT_ONBOARDING_AREAS]);
+  assert.deepEqual(
+    rows.map((row) => row.line),
+    [forward.measurements, forward.care, forward.milestones, forward.tryouts]
+  );
+});
+
+/* The whole complaint the ticket answers, at the pinned rows: a journal with
+   every feature filled showed three rows reporting how long it had been
+   since anything happened, over the same records that said what was next. */
+test('a forward fact replaces the gap a pinned row used to report', () => {
+  const stale = { milestones: TODAY - 487 };
+  const backwards = pinnedRows({ pinnedRows: ['milestones'], onboardingAreas: [] }, reading({ lastWrites: stale }));
+  const forwards = pinnedRows(
+    { pinnedRows: ['milestones'], onboardingAreas: [] },
+    reading({
+      lastWrites: stale,
+      forward: { milestones: { kind: 'next', epochDay: TODAY + 16, what: { area: 'milestone', name: 'Name-change hearing' } } }
+    })
+  );
+
+  assert.equal(backwards[0].line.kind, 'quiet');
+  assert.equal(forwards[0].line.kind, 'next');
+});
+
+/* A pinned row is the hub row's own line and never a second opinion
+   (`PinnedRow` is `DrawnRow`), so the add list inside the editor reads the
+   same way - somebody looking at a row to pin sees what it will say. */
+test('the add list carries the forward line too', () => {
+  const forward = {
+    letters: { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: true } }
+  } as const;
+
+  const addable = addablePins(arranged(['measurements']), reading({ forward }), { cycleVisible: false });
+  const letters = addable.find((row) => row.spec.key === 'letters');
+
+  assert.deepEqual(letters?.line, forward.letters);
+});
+
 // --- fallback reading for hydration (ticket 106) ----------------------------
 
 test('fallbackReading supplies an empty reading for synchronous initial render', () => {
