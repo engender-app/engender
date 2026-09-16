@@ -57,7 +57,6 @@
     statusLabel,
     vehicleLabel
   } from '$lib/data/vocabulary/doseLabels';
-  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
   import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
   import type { DoseEvent, DoseRoute, DoseStatus, InjectionVehicle } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -98,11 +97,6 @@
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let dosesQuery = liveList((j) => j.doses.getDoses(from, today));
-  /** Every drug with a stock entry, read where its doses are logged (phase
-      5 deepening ticket 06) - the same getProjections /settings/stock reads,
-      not a new query. A drug with no stock entry adds no row here. */
-  let stockQuery = liveList((j) => j.stock.getProjections(today));
-  let stockRows = $derived(stockQuery.rows);
   /** Read separately from the windowed `dosesQuery` above (ticket 10): a
       rotation site's last use routinely predates the log's 90-day window,
       and "never used" has to mean never, not merely not in that window. */
@@ -139,6 +133,9 @@
   );
 
   let view = $state<'log' | 'schedule'>('log');
+  /** The old intro, folded under the tab bar rather than printed over every
+      row (ticket 09). Closed by default: the log opens on the log. */
+  let attributionOpen = $state(false);
 
   /* Every episode active right now (phase 5 ticket 38): usually one, but a
      concurrent second drug's episode makes it two. This is the editor's
@@ -279,7 +276,7 @@
        URL, and a goto would start a second navigation on top of the one that
        just landed here, which aborts it and leaves the shell's transition
        promise rejecting for nothing. */
-    replaceState('/doses', {});
+    replaceState('/care/doses', {});
   });
 
   /* Same story as the regimen screen's: the clinician summary links a dose
@@ -559,7 +556,7 @@
        exactly. The header goes back where there is something to go back to
        and takes the hub where there is not, which is the answer for a
        screen with two doors rather than a third hardcoded one. -->
-  <ScreenHeader title={m.doses()} back="/more" subtitle={m.doses_intro()}>
+  <ScreenHeader title={m.doses()} back="/more">
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
@@ -578,35 +575,29 @@
     key="doses-view"
   />
 
+  <!-- The intro used to be the ScreenHeader's own subtitle, printed above
+       every row whether or not anyone needed it (ticket 09). With the
+       stock cards gone too, the log opens on the log now - this stays
+       reachable folded, under the tab bar rather than over the rows. -->
+  <button
+    type="button"
+    class="doses-attribution-toggle"
+    aria-expanded={attributionOpen}
+    data-attribution-toggle
+    onclick={() => (attributionOpen = !attributionOpen)}
+  >
+    <span>{m.doses_attribution_disclosure()}</span>
+    <span class="doses-attribution-chev"><Icon name="chevronDown" size={18} /></span>
+  </button>
+  {#if attributionOpen}
+    <div class="disclosed" transition:disclose|local>
+      <p class="muted small">{m.doses_intro()}</p>
+    </div>
+  {/if}
+
   {#if loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if view === 'log'}
-    {#if stockRows.length}
-      <!-- What the log is spending (phase 5 deepening ticket 06): every
-           drug with a stock entry, read and worded the same way
-           /settings/stock does (vocabulary/stockLabel.ts, ADR-0046). A
-           reading, not a control - editing a count still happens on
-           /settings/stock, so this row is static. -->
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
-          {#each stockRows as row (row.entry.id)}
-            {@const runOut = stockRunOutLabel(row.projection, today)}
-            <ListRow
-              static
-              data-stock={row.entry.id}
-              title={row.entry.drug}
-              subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
-            >
-              {#snippet leading()}
-                <span class="kit-row-ico" class:is-warn={runOut.warn}>
-                  <Icon name="package" size={22} />
-                </span>
-              {/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
     {#if doses.length}
       <div class="screen-part">
         <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
@@ -1141,6 +1132,35 @@
 </div>
 
 <style>
+  /* The old intro, folded (ticket 09): a quiet row rather than a full-width
+     card, since it is a hint about bookkeeping rather than a reading. */
+  .doses-attribution-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: var(--touch-target);
+    padding: var(--space-2) 0;
+    margin: var(--space-2) 0;
+    border: 0;
+    background: none;
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+  .doses-attribution-chev {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+  .doses-attribution-toggle[aria-expanded='true'] .doses-attribution-chev {
+    transform: rotate(180deg);
+  }
+
   /* The bookkeeping stacks at the end of the row rather than running along
      it: three facts on one line at 390px is an ellipsis, and the widest of
      them is a whole scheduled dose written out. Right-aligned, so the
@@ -1162,14 +1182,6 @@
     color: var(--text-2);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
-  }
-
-  /* The warn signal, on the icon disc exactly as /settings/stock's own row -
-     one presentation of the projection wherever it appears (ADR-0046). */
-  .kit-row-ico.is-warn {
-    background: var(--warn-soft);
-    color: var(--on-warn-soft);
-    border-color: transparent;
   }
 
   /* The record's three lines (phase 5 UX ticket 37). Uncontained: the sheet

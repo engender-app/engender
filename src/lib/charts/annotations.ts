@@ -37,7 +37,7 @@
 
      /stats, the values chart      a scale over a date range, which is the
                                    central case this rule is built around
-     /settings/labs, per analyte   "where did the schedule change" is the
+     /care/labs, per analyte       "where did the schedule change" is the
                                    question a lab series is read with
      /body-map, both trajectories  a region's dysphoria and euphoria over a
                                    range, same shape as the values chart
@@ -54,13 +54,12 @@
                                    the last month, and a screen someone opens
                                    on a bad night is not where those should
                                    arrive unasked.
-     /settings/hormone-curve       its x axis is hours since a dose, not a
+     /care/curve                   its x axis is hours since a dose, not a
                                    calendar. A date has no position on it,
                                    and its own dose marks already say what a
                                    chart there needs to say.
      /stats, interval mood         same reason: x is a position in the dosing
                                    interval.
-     /settings/exposure            has no chart. Its counters are list rows.
      /body/measurements            a time chart, and it would fit - but it is
                                    not wired in yet, and doing so here would
                                    be a decision made in the wrong place.

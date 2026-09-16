@@ -22,6 +22,19 @@
   import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import Tile from './kit/Tile.svelte';
 
+  /* On the Look back door the tile opens the day in place under the pair
+     (phase 11 ticket 07): the door hands in `onOpen` and prevents the
+     navigation, and `open` marks the tile as the disclosure's control.
+     The href stays, since the route stays for the notification deep link
+     and a middle-click or a reader following the link still lands there. */
+  let {
+    open = false,
+    onOpen
+  }: {
+    open?: boolean;
+    onOpen?: (event: MouseEvent) => void;
+  } = $props();
+
   const candidates = onThisDayCandidates(todayEpochDay());
 
   /* Invalidated on entry or tag writes (the good-day rule's own two
@@ -63,5 +76,8 @@
     href="/on-this-day"
     key="on-this-day"
     data-on-this-day-card=""
+    aria-expanded={onOpen ? open : undefined}
+    aria-controls={onOpen ? 'lookback-day' : undefined}
+    onclick={onOpen}
   />
 {/if}
