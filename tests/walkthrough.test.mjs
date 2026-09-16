@@ -675,10 +675,20 @@ try {
      about is that the switch beside the pins takes it off the page it is
      on. In place, with the editor still open - that is the acceptance. */
   if (!tileOnToday) throw new Error('Today drew no live tile to switch off');
-  await page.locator(`[data-edit-tile="${tileOnToday}"] [role="switch"]`).scrollIntoViewIfNeeded();
-  await page.locator(`[data-edit-tile="${tileOnToday}"] [role="switch"]`).click();
+  const tileSwitch = page.locator(`[data-edit-tile="${tileOnToday}"] [role="switch"]`);
+  await tileSwitch.scrollIntoViewIfNeeded();
+  await tileSwitch.click();
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
   await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { state: 'detached', timeout: 8000 });
+
+  /* And back on by the same switch, which is the other half of the
+     acceptance and not the same path as the reset below: one is a write to
+     one preference, the other is thirteen written from the catalogue. */
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { timeout: 8000 });
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
 
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row="doubt"]');
