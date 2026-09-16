@@ -59,7 +59,7 @@ export const SPINE_FORWARD_DAYS = 120;
 export const SPINE_MIN_BACK_DAYS = 14;
 export const SPINE_MIN_FORWARD_DAYS = 14;
 
-/** How close two labels may sit in the same lane, as a fraction of the
+/** How close two labels may sit in the same label row, as a fraction of the
     rail.
 
     0.17 was sized against "a date label is around 48px wide", which is the
@@ -77,10 +77,11 @@ export const SPINE_MIN_FORWARD_DAYS = 14;
     for both catalogues at the narrowest screen the app supports.
 
     The cost is paid by the narrow labels: "Today" is 32.6px and now claims
-    room it does not need, so a crowded rail opens a lane sooner than it
-    strictly must. A lane is what this algorithm has for crowding - it
-    alternates sides and keeps a stem to the line - so the trade is a taller
-    card against two captions printed on top of each other. */
+    room it does not need, so a crowded lane opens a second label row sooner
+    than it strictly must. A label row is what this algorithm has for
+    crowding - it hangs the caption one row further from the line and keeps a
+    stem back to it - so the trade is a taller card against two captions
+    printed on top of each other. */
 /* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
 export const MIN_LABEL_GAP = 0.3;
 
@@ -100,18 +101,34 @@ export interface SpineMark {
   /** True where `epochDay` fell outside the rail's reach, so the mark is
       drawn at the end it was pulled in to and the screen can say so. */
   beyondSpan: boolean;
-  /** Which label lane. Lane 0 sits nearest the line and every lane after it
-      one row further out, alternating sides so lane 1 stands above the line
-      rather than forming a second row below it (the screen reads the
-      parity). A caption takes the lowest lane with room for it. */
-  lane: number;
+  /** Which label row, counting away from the line this mark belongs to. Row
+      0 sits nearest it and each row after it one further out; a caption
+      takes the lowest row with space for it, and a mark pushed out keeps a
+      stem back to the line. Collisions are resolved inside one lane and
+      among the shared marks separately, because the two never print on the
+      same row (the shared captions head the rail; a lane's hang under its
+      own line). */
+  labelRow: number;
 }
 
-interface CareSpine {
+/** One running drug's own line: its name, and its own three readings placed
+    on the shared day axis. */
+export interface SpineLane {
+  episodeId: string;
+  drug: string;
+  /** Left to right. Last dose, next dose and run-out, whichever of them
+      this drug has. */
+  marks: SpineMark[];
+}
+
+export interface CareSpine {
   fromEpochDay: number;
   toEpochDay: number;
-  /** Left to right. */
-  marks: SpineMark[];
+  /** Today's tick and the most recent draw, left to right: the marks every
+      lane is read against. */
+  shared: SpineMark[];
+  /** One per running regimen, in `railEpisodes` order. */
+  lanes: SpineLane[];
 }
 
 /** Where a day sits along the rail, 0 at its left end and 1 at its right,
@@ -145,15 +162,23 @@ function positionOf(epochDay: number, todayEpochDay: number, fromEpochDay: numbe
   return forward === 0 ? 0.5 : 0.5 + 0.5 * Math.sqrt((day - todayEpochDay) / forward);
 }
 
-/** The four readings, each as the day it belongs to or null where there is
-    nothing to draw: no dose logged yet, no schedule to expect one from, no
-    lab result, no stock entry. Today is not among them - the rail always
-    has today. */
-interface SpineFacts {
+/** One running drug's three readings, each as the day it belongs to or null
+    where there is nothing to draw: no dose logged yet, no schedule to
+    expect one from, no stock entry for it. */
+export interface LaneFacts {
+  episodeId: string;
+  drug: string;
   lastDoseEpochDay: number | null;
   nextDoseEpochDay: number | null;
-  labDrawEpochDay: number | null;
   runOutEpochDay: number | null;
+}
+
+/** What the whole rail is drawn from: one lane per running regimen, and the
+    one reading that belongs to no lane. Today is not among them - the rail
+    always has today. */
+interface SpineFacts {
+  labDrawEpochDay: number | null;
+  lanes: readonly LaneFacts[];
 }
 
 /** The day of the most recent dose that actually happened, or null when
@@ -196,81 +221,118 @@ export function nextExpectedSlot(
   return adherence(slots, doses, pauses).rows.find((row) => row.dose === null)?.slot ?? null;
 }
 
+/** The days one set of captions has to share, in reading order: earlier
+    first, and ties in `KIND_ORDER` so a draw and a dose on one day always
+    come out in the same order. */
+function orderedDays(days: readonly [SpineMarkKind, number][]): [SpineMarkKind, number][] {
+  return [...days].sort(([kindA, dayA], [kindB, dayB]) =>
+    dayA === dayB ? KIND_ORDER.indexOf(kindA) - KIND_ORDER.indexOf(kindB) : dayA - dayB
+  );
+}
+
+/** One set of captions placed along the rail, left to right.
+
+    Rows fill from 0 up: a caption goes in the lowest row whose last caption
+    is at least a label's width behind it, and opens a new row when none is.
+    A fixed pair of rows was the first attempt and it was wrong - three marks
+    at one point, dosed and drawn on the same day, has no two-row
+    arrangement, and what it produced was two captions printed exactly over
+    each other rather than a lane one row taller. So the count follows the
+    arrangement, up to one row per mark, and the screen grows the lane to
+    fit.
+
+    Called once per lane and once for the shared marks, never across the two:
+    a lane's captions hang under its own line and the shared ones head the
+    rail, so a lane's "Next dose" cannot print over "Today" however close the
+    two days are. That is what buys back the room the one-lane spine used to
+    spend pushing today and next dose onto opposite sides of the line. */
+function placeMarks(
+  days: readonly [SpineMarkKind, number][],
+  todayEpochDay: number,
+  fromEpochDay: number,
+  toEpochDay: number
+): SpineMark[] {
+  const lastInRow: number[] = [];
+  return orderedDays(days).map(([kind, epochDay]) => {
+    const position = positionOf(epochDay, todayEpochDay, fromEpochDay, toEpochDay);
+    let labelRow = lastInRow.findIndex((last) => position - last >= MIN_LABEL_GAP);
+    if (labelRow === -1) labelRow = lastInRow.length;
+    lastInRow[labelRow] = position;
+    return { kind, epochDay, position, beyondSpan: epochDay < fromEpochDay || epochDay > toEpochDay, labelRow };
+  });
+}
+
+/** One lane's own three days, whichever of them it has. */
+function laneDays(lane: LaneFacts): [SpineMarkKind, number][] {
+  const days: [SpineMarkKind, number][] = [];
+  if (lane.lastDoseEpochDay !== null) days.push(['lastDose', lane.lastDoseEpochDay]);
+  if (lane.nextDoseEpochDay !== null) days.push(['nextDose', lane.nextDoseEpochDay]);
+  if (lane.runOutEpochDay !== null) days.push(['runOut', lane.runOutEpochDay]);
+  return days;
+}
+
 /** The rail, or null where there is nothing to put on one.
 
     Today alone is not a rail: a line with a single tick in the middle of it
     is a decoration, and the screen has an empty state for that case which
-    says what would fill it. */
+    says what would fill it. A lane with no mark of its own is the same
+    silence one drug at a time - a running regimen nothing has been logged
+    against yet - so it draws no line either, and its block below still names
+    the regimen.
+
+    Every lane shares one day axis, which is the whole point of drawing them
+    together: two drugs' next doses are only comparable if the same distance
+    along the rail means the same day on both. So the span is taken across
+    every lane's marks at once, and a lane whose own days are all near today
+    still gets drawn against the reach a far-off run-out on another lane
+    opened up. */
 export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine | null {
-  const days: [SpineMarkKind, number][] = [['today', todayEpochDay]];
-  if (facts.labDrawEpochDay !== null) days.push(['labDraw', facts.labDrawEpochDay]);
-  if (facts.lastDoseEpochDay !== null) days.push(['lastDose', facts.lastDoseEpochDay]);
-  if (facts.nextDoseEpochDay !== null) days.push(['nextDose', facts.nextDoseEpochDay]);
-  if (facts.runOutEpochDay !== null) days.push(['runOut', facts.runOutEpochDay]);
-  if (days.length < 2) return null;
+  const sharedDays: [SpineMarkKind, number][] = [['today', todayEpochDay]];
+  if (facts.labDrawEpochDay !== null) sharedDays.push(['labDraw', facts.labDrawEpochDay]);
 
-  days.sort(([kindA, dayA], [kindB, dayB]) =>
-    dayA === dayB ? KIND_ORDER.indexOf(kindA) - KIND_ORDER.indexOf(kindB) : dayA - dayB
-  );
+  const laneEntries = facts.lanes.map((lane) => ({ lane, days: laneDays(lane) })).filter(({ days }) => days.length > 0);
+  const everyDay = [...sharedDays, ...laneEntries.flatMap(({ days }) => days)];
+  if (everyDay.length < 2) return null;
 
-  const earliest = Math.min(...days.map(([, day]) => day));
-  const latest = Math.max(...days.map(([, day]) => day));
+  const earliest = Math.min(...everyDay.map(([, day]) => day));
+  const latest = Math.max(...everyDay.map(([, day]) => day));
   const fromEpochDay = Math.max(todayEpochDay - SPINE_BACK_DAYS, Math.min(todayEpochDay - SPINE_MIN_BACK_DAYS, earliest));
   const toEpochDay = Math.min(todayEpochDay + SPINE_FORWARD_DAYS, Math.max(todayEpochDay + SPINE_MIN_FORWARD_DAYS, latest));
 
-  /* Lanes, filled left to right: a caption goes in the lowest lane whose
-     last caption is at least a label's width behind it, and opens a new lane
-     when none is. A fixed pair of lanes was the first attempt and it was
-     wrong - three marks at one point, dosed and drawn on the same day, has
-     no two-lane arrangement, and what it produced was two captions printed
-     exactly over each other rather than a rail one row taller.
-
-     So the count follows the arrangement, up to one lane per mark, and the
-     screen grows the rail to fit. Lanes fill from 0 up, so a journal whose
-     marks are spread out still gets a one-lane rail. */
-  const lastInLane: number[] = [];
-  const marks: SpineMark[] = days.map(([kind, epochDay]) => {
-    const position = positionOf(epochDay, todayEpochDay, fromEpochDay, toEpochDay);
-    let lane = lastInLane.findIndex((last) => position - last >= MIN_LABEL_GAP);
-    if (lane === -1) lane = lastInLane.length;
-    lastInLane[lane] = position;
-    return { kind, epochDay, position, beyondSpan: epochDay < fromEpochDay || epochDay > toEpochDay, lane };
-  });
-
-  return { fromEpochDay, toEpochDay, marks };
+  return {
+    fromEpochDay,
+    toEpochDay,
+    shared: placeMarks(sharedDays, todayEpochDay, fromEpochDay, toEpochDay),
+    lanes: laneEntries.map(({ lane, days }) => ({
+      episodeId: lane.episodeId,
+      drug: lane.drug,
+      marks: placeMarks(days, todayEpochDay, fromEpochDay, toEpochDay)
+    }))
+  };
 }
 
-/** Which of several active episodes draws the rail, and which fall to their
-    own line beneath it (ticket 38, "the spine assumes one dose a day").
-    The rail draws one schedule's last/next dose or none at all - its
-    captions carry no episode, so two marks of the same kind would be two
-    unlabelled dates with no way to tell them apart. A single active
-    episode of any drug is unambiguous and keeps every existing journal's
-    rail exactly as it read before this ticket.
+/** Every running episode, in the order their lanes are drawn.
 
-    With several active at once, the curve drug - the one this app models a
-    hormone level from (hormoneDrug.ts) - is the one whose timing the rail
-    exists to show, so it wins when there is exactly one. Two curve
-    episodes active together (switching hormones) is the one case
-    genuinely ambiguous, same as "several regimens" always read: the rail
-    draws neither, and every active episode - including the two competing
-    ones - falls to its own row instead of the rail naming nothing at all. */
-export function chooseRailEpisode(activeEpisodes: readonly RegimenEpisode[]): {
-  rail: RegimenEpisode | null;
-  others: RegimenEpisode[];
-  ambiguous: boolean;
-} {
-  if (activeEpisodes.length <= 1) {
-    return { rail: activeEpisodes[0] ?? null, others: [], ambiguous: false };
-  }
+    One lane per running drug (phase 11 ticket 10), which is what replaced
+    `chooseRailEpisode`. That function picked one episode for the rail and
+    handed the rest back as `others`, because a single-lane rail's captions
+    carried no episode: two marks of the same kind would have been two
+    unlabelled dates with no way to tell them apart, so with two curve
+    episodes running it drew neither. A lane per drug, each labelled with its
+    drug's name, answers that ambiguity in the drawing instead of by dropping
+    regimens out of it (ADR-0012: lanes are categorical, one stripe per drug,
+    and no drug is primary).
 
-  const curveEpisodes = activeEpisodes.filter((episode) => resolveCurveDrug(episode.drug) !== null);
-  if (curveEpisodes.length !== 1) {
-    return { rail: null, others: [...activeEpisodes], ambiguous: true };
-  }
-
-  const rail = curveEpisodes[0];
-  return { rail, others: activeEpisodes.filter((episode) => episode.id !== rail.id), ambiguous: false };
+    Curve drugs first, so the lane the hormone curve reads sits nearest the
+    labs row under the rail, then by start day, oldest first - the order the
+    regimen list already reads in. Neither is a ranking: the order exists so
+    the lanes do not reshuffle under somebody between two visits. */
+export function railEpisodes(activeEpisodes: readonly RegimenEpisode[]): RegimenEpisode[] {
+  return [...activeEpisodes].sort((a, b) => {
+    const curveA = resolveCurveDrug(a.drug) === null ? 1 : 0;
+    const curveB = resolveCurveDrug(b.drug) === null ? 1 : 0;
+    return curveA === curveB ? a.startEpochDay - b.startEpochDay : curveA - curveB;
+  });
 }
 
 /** One episode's own last and next dose, scoped so a second, unrelated
