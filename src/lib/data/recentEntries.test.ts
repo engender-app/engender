@@ -47,6 +47,29 @@ test('is empty for an empty read, and grouping is untouched by the headings', ()
   assert.deepEqual(headed.entries, groups[0].entries);
 });
 
+test('growing the limit only appends - nothing already drawn repaginates (ADR-0069)', () => {
+  // Five days' worth, the shape "Earlier entries" reads before a tap.
+  const first = [5, 4, 3, 2, 1].map((d) => entry(d, epochDayFromLocalDate(new Date(2026, 7, d))));
+  // Ten days' worth - what the same read returns once the limit has grown by
+  // one step, five older days appended after the first five and crossing
+  // into July.
+  const grown = [
+    ...first,
+    ...[31, 30, 29, 28, 27].map((d) => entry(d, epochDayFromLocalDate(new Date(2026, 6, d))))
+  ];
+  const before = recentDayHeadings(entryDayGroups(first));
+  const after = recentDayHeadings(entryDayGroups(grown));
+  // The first five days' headings are byte-identical whether ten days are
+  // in hand or five - a tap grows what is drawn, it does not redraw it.
+  assert.deepEqual(after.slice(0, before.length), before);
+  // And growing past a month boundary still opens exactly one new heading,
+  // on the first day of the new month rather than on every day inside it.
+  assert.deepEqual(
+    after.slice(before.length).map((g) => g.monthHeading),
+    [{ year: 2026, month: 6 }, undefined, undefined, undefined, undefined]
+  );
+});
+
 test('an entry\'s marks are the media it carries, in drawing order', () => {
   // Only the lengths are read, so one stand-in per kind is the whole fixture.
   const one = [{}] as unknown;
