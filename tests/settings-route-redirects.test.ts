@@ -117,7 +117,16 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ],
   ['settings/resources', () => import('../src/routes/settings/resources/+page.ts'), '/practice/resources'],
   ['settings/photos', () => import('../src/routes/settings/photos/+page.ts'), '/media/photos'],
-  ['settings/voice/memos', () => import('../src/routes/settings/voice/memos/+page.ts'), '/media/voice/memos'],
+  [
+    'settings/voice/memos',
+    () => import('../src/routes/settings/voice/memos/+page.ts'),
+    '/practice/voice?tab=recordings'
+  ],
+  [
+    'media/voice/memos',
+    () => import('../src/routes/media/voice/memos/+page.ts'),
+    '/practice/voice?tab=recordings'
+  ],
   ['settings/voice/metrics', () => import('../src/routes/settings/voice/metrics/+page.ts'), '/practice/voice/metrics'],
   ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones'],
   [
