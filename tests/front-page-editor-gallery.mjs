@@ -42,8 +42,18 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const shots = [];
 const errors = [];
 
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 page.on('pageerror', (err) => errors.push(String(err)));
+
+/** A narrower phone, for the width where a switch row and a wrapping title
+    have to share 195 CSS px (390 at 200% zoom - the accessibility floor this
+    app holds itself to). A new context rather than a resize: the app reads
+    its width at mount. */
+const reopen = async (width) => {
+  await page.close();
+  page = await browser.newPage({ viewport: { width, height: 844 }, deviceScaleFactor: 2 });
+  page.on('pageerror', (err) => errors.push(String(err)));
+};
 
 const settle = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
@@ -110,12 +120,12 @@ const grow = async () => {
     });
     if (tall <= last + 4) break;
     last = tall;
-    await page.setViewportSize({ width: 390, height: tall });
+    await page.setViewportSize({ width: page.viewportSize().width, height: tall });
   }
   await page.waitForTimeout(400);
 };
 
-const shrink = () => page.setViewportSize({ width: 390, height: 844 });
+const shrink = () => page.setViewportSize({ width: page.viewportSize().width, height: 844 });
 
 /** `sel` or `sel@n` for the nth match, which is how a section heading is
     named here: the kit's heading takes no handle of its own, and reading it
@@ -230,6 +240,19 @@ try {
       '[data-cycle-tracking-toggle]',
       '[data-list-row="metric"]',
       `trans ${theme}: the Tracking section from cycle tracking down to the colour row`
+    );
+  }
+  /* And the new section at the accessibility floor, where the row has 195
+     CSS px for a wrapping title, a wrapping line and a 48px switch. */
+  if (tag === 'after') {
+    await reopen(195);
+    await dress('light');
+    await openEditor();
+    await cropBand(
+      `${tag}-editor-tiles-zoom`,
+      '[data-today-editor] [data-section-heading]@2',
+      '[data-edit-tile="surgery-countdown"]',
+      'trans light at 195px (200% zoom on a 390px phone): the title and the line wrap, the switch keeps its 48'
     );
   }
 } catch (err) {
