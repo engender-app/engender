@@ -267,12 +267,9 @@
      definite to write - a rhythm, an amount, and a route the dose log can
      record. Read off the draft rather than off the saved schedule, so the
      switch appears as soon as an amount is typed rather than one save later,
-     and so it goes away again the moment the last amount is deleted. The two
-     ids are what `canAutoLog` does not look at. */
+     and so it goes away again the moment the last amount is deleted. */
   let autoLogOffered = $derived(
-    scheduleValues !== null &&
-      scheduleCanSave &&
-      canAutoLog({ id: '', episodeId: '', ...scheduleValues }, editor?.route ?? '', ROUTE_OPTIONS)
+    scheduleValues !== null && scheduleCanSave && canAutoLog(scheduleValues, editor?.route ?? '', ROUTE_OPTIONS)
   );
 
   /* Turning it on dates the instruction today, so nothing is written for the
@@ -288,11 +285,10 @@
   async function toggleAutoLog(on: boolean) {
     if (!schedule || !editor?.id || !scheduleValues) return;
     schedule.autoLogFromEpochDay = on ? todayEpochDay() : null;
-    await journal.doses.upsertSchedule({
-      episodeId: editor.id,
-      ...scheduleValues,
-      autoLogFromEpochDay: schedule.autoLogFromEpochDay
-    });
+    /* `scheduleValues` is derived off the draft, so reading it after the
+       line above carries the new day along with the rest of what is on
+       screen - stating the day again here would be the same fact twice. */
+    await journal.doses.upsertSchedule({ episodeId: editor.id, ...scheduleValues });
   }
 
   async function saveSchedule() {
