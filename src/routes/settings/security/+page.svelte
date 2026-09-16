@@ -82,7 +82,7 @@
           ? undefined
           : recoveryKeyPresence.exists
             ? m.rk_row_sub_active()
-            : m.rk_row_sub_none()}
+            : [m.rk_row_sub_none(), m.rk_row_sub_none_consequence()]}
         href="/settings/recovery-key"
       />
       <ListRow

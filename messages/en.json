@@ -2822,6 +2822,7 @@
   "am_biometric_unavailable": "This device would not release a secret for the journal. Choose a PIN or passphrase instead.",
   "rk_row_title": "Recovery key",
   "rk_row_sub_none": "not set up",
+  "rk_row_sub_none_consequence": "Without it, a forgotten passphrase means the journal cannot be opened.",
   "rk_row_sub_active": "set up",
   "rk_title": "Recovery key",
   "rk_intro": "A recovery key is 25 characters you write down and keep somewhere other than this device. It opens this journal when the usual way cannot: a passphrase you no longer have, or a browser that lost the key it was holding for you.",
