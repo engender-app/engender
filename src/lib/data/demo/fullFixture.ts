@@ -30,6 +30,7 @@ import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
 import { encodePitchTrack } from '../../audio/track';
 import { percentileOfSorted } from '../../audio/series';
+import { acceptDocumentFile } from '../documents/accept';
 
 function rng(seed: number) {
   return function () {
@@ -391,6 +392,31 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   }
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
 
+  // A document attached to the procedure, kind PDF - so documentGroups.ts
+  // has a group to draw beside the persona's own unlinked referral, and the
+  // PDF thumbnail path (rather than a photo document's) has something to
+  // render. acceptDocumentFile is the real picker path, not a hand-built
+  // StoredPdf, so this exercises exactly what a person importing a scan
+  // hits - a page pdf.js could fail to render only costs the thumbnail
+  // (renderPdfThumbnail swallows that itself), never the document.
+  const preOpClearanceId = await journal.documents.addDocument(
+    { epochDay: today - 405, title: 'Pre-op clearance' },
+    await acceptDocumentFile(demoDocumentPdf('Cleared for surgery.'))
+  );
+  await journal.documents.setDocumentTarget(preOpClearanceId, { kind: 'procedure', id: procedureId });
+
+  // A second procedure, still ahead of its surgery date with a consult
+  // already behind it - `open` (ProcedureRecoveryCard.svelte) is everything
+  // but the archived phase, so this is what puts a full-size, still-running
+  // rail beside the first procedure's collapsed, archived one.
+  const secondProcedureId = await journal.procedures.upsertProcedure({
+    name: 'facial feminization surgery',
+    kind: 'facial_feminization',
+    surgeryEpochDay: today + 60,
+    notes: 'Consult went well, surgeon proposed a date.'
+  });
+  await journal.procedures.addConsult(secondProcedureId, today - 10);
+
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
   for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
     await journal.checklists.addToStandaloneChecklist(item);
@@ -459,6 +485,124 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     bodyRegions: {},
     attachRecordings: [demoAudioBytes(r)]
   });
+
+  // Comfort list: who to text, which walk, which song - the editor's own
+  // register (comfort_list_item_placeholder).
+  for (const text of ['Text Ola', 'Walk by the river', 'Rewatch Steven Universe', 'Call my sister']) {
+    await journal.comfortItems.addItem(text);
+  }
+
+  /* Two starred entries. The recent one is a guaranteed day (`back <= 22`
+     in buildEntries is always written); the older one has no guaranteed
+     day, so this reads whatever the persona's sparse previous-year loop
+     actually wrote rather than naming a day and hoping - the roll that
+     loop makes is real (demo-fixture-seeded-rolls-can-yield-nothing), so a
+     named day could easily have written nothing. */
+  const recentEntry = (await journal.entries.entriesForDay(today - 5))[0];
+  if (recentEntry) await journal.entries.setEntryStarred(recentEntry.id, true);
+  const olderEntries = (await journal.entries.recentDays(900)).filter((e) => e.epochDay <= today - 150);
+  const goodOldEntry = [...olderEntries].sort((a, b) => (b.mood ?? 0) - (a.mood ?? 0))[0];
+  if (goodOldEntry) {
+    await journal.entries.setEntryStarred(goodOldEntry.id, true);
+    // A note added on rereading - the day is when she looked back, not the
+    // entry's own day (ADR-0010).
+    await journal.marginNotes.add({
+      entryId: goodOldEntry.id,
+      epochDay: today,
+      text: 'Reading this again - I remember exactly how nervous I was.'
+    });
+  }
+
+  // Two starred photos: one off an entry, one off a milestone, so both
+  // halves of "Letters and photos" draw something (milestoneName is null
+  // for an entry-owned photo, DatedPhoto's own convention).
+  const journalPhotos = await journal.photos.inJournal();
+  const entryPhoto = journalPhotos.find((p) => p.milestoneName === null);
+  if (entryPhoto) await journal.photos.setStarred(entryPhoto.id, true);
+  const milestonePhoto = journalPhotos.find((p) => p.milestoneName !== null);
+  if (milestonePhoto) await journal.photos.setStarred(milestonePhoto.id, true);
+
+  // Saved questions: a query plus its filters, the shape the search
+  // screen keeps past closing (savedQuestionQuery.ts). The tag filter is
+  // guaranteed hits - g-soc-eu is written across dozens of the persona's
+  // own entries - the free-text one is a real search she might keep
+  // without needing to be guaranteed anything.
+  await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Good days',
+    queryText: '',
+    tagIds: ['g-soc-eu'],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+  await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Laser progress',
+    queryText: 'laser',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+
+  // One custom entry template, alongside whatever built-ins ship.
+  await journal.entryTemplates.addEntryTemplate({
+    name: 'Hard day',
+    tags: ['g-body-dys', 'e-anxious'],
+    dims: { euphoria_dysphoria: 20 },
+    noteScaffold: 'What was hard today: ',
+    presentationId: null
+  });
+
+  // One ignored word - "voice" shows up constantly (voice practice, voice
+  // workshop, the voice tag) without saying anything about a given day.
+  await journal.wordIgnore.setWordIgnored('voice', true);
+
+  // One voice practice take, distinct from the benchmarks above - a
+  // practice session has nothing to compare it against (voicePracticeTakes.ts).
+  await journal.voicePracticeTakes.addTake({
+    epochDay: today - 5,
+    minHz: 142,
+    maxHz: 214,
+    medianHz: 168,
+    feltSense: 4
+  });
+
+  // One custom affirmation line, beside the built-in pool.
+  await journal.affirmations.addLine('en', 'I get to move at my own pace.');
+}
+
+/** A minimal, valid one-page PDF (phase 11 ticket 01), built the same way
+    tests/pdf-fixture.mjs is - independently, since src/ cannot import from
+    tests/: precise object offsets are what make this a file pdf.js will
+    actually open, not just a header with bytes after it. */
+function demoDocumentPdf(text: string): Uint8Array {
+  const objects: string[] = [];
+  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objects[2] = '<< /Type /Pages /Kids [4 0 R] /Count 1 >>';
+  objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  const stream = `BT /F1 24 Tf 60 760 Td (${text}) Tj ET`;
+  objects[4] =
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>';
+  objects[5] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  for (let id = 1; id < objects.length; id++) {
+    offsets[id] = pdf.length;
+    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+  }
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for (let id = 1; id < objects.length; id++) pdf += `${String(offsets[id]).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+
+  const bytes = new Uint8Array(pdf.length);
+  for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 0xff;
+  return bytes;
 }
 
 /** The six benchmarks above, as figures.
