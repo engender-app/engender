@@ -340,11 +340,19 @@ describe('what spec 08 took off Home', () => {
        area state, off the same two reads the Transition door makes; the
        words are the hub's own, so a pinned row and its hub row agree. */
     expect(home).toContain("from '$lib/data/pinnedRows'");
-    expect(home).toContain('lastWrites: lastWritesQuery.value, states: areaStatesQuery.value');
+    expect(home).toContain('lastWrites: lastWritesQuery.value');
+    expect(home).toContain('states: areaStatesQuery.value');
     expect(home).toContain('pinnedRows(prefs, reading)');
     expect(home).toContain('j.lastWrite.getLastWrites(today)');
     expect(home).toContain('j.areaStates.getAreaStates()');
-    expect(markup).toMatch(/<ListRow[\s\S]*?title=\{hubRowTitle\(row\.spec\.key\)\}[\s\S]*?subtitle=\{hubRowLine\(row\.spec\.key, row\.line, today\)\}[\s\S]*?data-pinned-row=\{row\.spec\.key\}/);
+    /* The third read, phase 11 all-four-doors ticket 02: a pinned row draws
+       the same line its hub row does, so it asks the same forward question
+       rather than a second one of its own. */
+    expect(home).toContain('forward: forwardQuery.value');
+    expect(home).toContain('readRowForward(j, today)');
+    /* The wear row counts up off the tile grid's own clock rather than a
+       second interval (ADR-0051). */
+    expect(markup).toMatch(/<ListRow[\s\S]*?title=\{hubRowTitle\(row\.spec\.key\)\}[\s\S]*?subtitle=\{hubRowLine\(row\.spec\.key, row\.line, today, liveTiles\.nowMs\)\}[\s\S]*?data-pinned-row=\{row\.spec\.key\}/);
     expect(home).not.toMatch(/pinned[\s\S]{0,200}\.sort\(/);
   });
 

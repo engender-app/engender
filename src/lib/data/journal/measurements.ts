@@ -49,6 +49,13 @@ export interface MeasurementsArea {
       lastWrite.ts). One bounded row, not `getMeasurementsInRange(0, 999999)`
       reduced in JS the way `liveTiles.ts` used to. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
+  /** The most recent measurement of any type at or before `todayEpochDay`,
+      whole, or null if there is none (phase 11 all-four-doors ticket 02).
+      `lastWriteEpochDay`'s own read with the row kept instead of reduced to
+      its day: the Body row states the value it holds rather than the age of
+      it ("Waist 77 cm, 8 days ago"), and a surface that wants one row has
+      no business fetching a type's whole series to find it. */
+  latestMeasurement(todayEpochDay: number): Promise<Measurement | null>;
   /** How many measurements are stored, over every type. One `COUNT(*)`, the
       same shape `entries.countAll` is: a surface asking whether anything has
       ever been measured has no business holding every measurement to find
@@ -95,6 +102,16 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
   const measurementsFor = (type: string): Promise<Measurement[]> =>
     measurements.read('WHERE type = ? ORDER BY epoch_day, id', [type]);
 
+  /* One bounded row. `id` breaks a tie inside a day so the answer is stable
+     across calls rather than whichever the engine happened to return - the
+     same tiebreak every other read in this file orders by. */
+  const latestMeasurement = async (todayEpochDay: number): Promise<Measurement | null> => {
+    const [latest] = await measurements.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC, id DESC LIMIT 1', [
+      todayEpochDay
+    ]);
+    return latest ?? null;
+  };
+
   return {
     getMeasurements: measurementsFor,
 
@@ -115,11 +132,10 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
       measurements.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
 
     async lastWriteEpochDay(todayEpochDay) {
-      const [latest] = await measurements.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [
-        todayEpochDay
-      ]);
-      return latest?.epochDay ?? null;
+      return (await latestMeasurement(todayEpochDay))?.epochDay ?? null;
     },
+
+    latestMeasurement,
 
     async countAll() {
       const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM measurement');

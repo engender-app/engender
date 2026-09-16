@@ -516,7 +516,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getMeasurementsInRange: ['measurement'],
       countAll: ['measurement'],
       getMeasurementTypes: ['measurementType'],
-      lastWriteEpochDay: ['measurement']
+      lastWriteEpochDay: ['measurement'],
+      latestMeasurement: ['measurement']
     }
   }),
   sizeRecords: classify<Journal['sizeRecords']>()({

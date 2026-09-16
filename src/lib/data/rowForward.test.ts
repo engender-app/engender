@@ -8,7 +8,7 @@ const TODAY = 20000;
 const facts = (over: Partial<Facts> = {}): Facts => ({
   todayEpochDay: TODAY,
   milestones: [],
-  sealedUnlockDays: [],
+  letterUnlockDays: [],
   runningWear: null,
   tryouts: [],
   appointments: [],
@@ -100,17 +100,17 @@ test('a past milestone does not become a forward fact through its anniversary', 
 // --- letters -------------------------------------------------------------
 
 test('one sealed letter says when it opens', () => {
-  const map = rowForward(facts({ sealedUnlockDays: [TODAY + 42] }));
+  const map = rowForward(facts({ letterUnlockDays: [TODAY + 42] }));
   assert.deepEqual(map.letters, { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: false } });
 });
 
 test('several sealed letters report the soonest, and that there are several', () => {
-  const map = rowForward(facts({ sealedUnlockDays: [TODAY + 300, TODAY + 42, TODAY + 90] }));
+  const map = rowForward(facts({ letterUnlockDays: [TODAY + 300, TODAY + 42, TODAY + 90] }));
   assert.deepEqual(map.letters, { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: true } });
 });
 
 test('a letter already open counts towards neither the day nor the several', () => {
-  const map = rowForward(facts({ sealedUnlockDays: [TODAY - 5, TODAY + 42] }));
+  const map = rowForward(facts({ letterUnlockDays: [TODAY - 5, TODAY + 42] }));
   assert.deepEqual(map.letters, { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: false } });
 });
 
@@ -282,7 +282,7 @@ test('every declared key has a rule, and no rule invents a key', () => {
   const map = rowForward(
     facts({
       milestones: [milestone('Name-change hearing', TODAY + 16)],
-      sealedUnlockDays: [TODAY + 42],
+      letterUnlockDays: [TODAY + 42],
       runningWear: { kind: 'binder', startTimestamp: 1_700_000_000_000 },
       tryouts: [tryout('she/her', TODAY - 100)],
       appointments: [appointment(TODAY + 12, 'Endocrinologist')],

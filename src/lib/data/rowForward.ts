@@ -141,10 +141,11 @@ export interface RowForwardFacts {
       already keeps with `Pick<Milestone, 'epochDay'>`: a row names a
       milestone and dates it, and has no business holding its photo. */
   milestones: readonly Pick<Milestone, 'name' | 'epochDay'>[];
-  /** Every sealed letter's unlock day, in any order. Days, not letters:
-      what the row may say is that one opens and when, so the ids and the
-      text never travel this far. */
-  sealedUnlockDays: readonly number[];
+  /** Every letter's unlock day, in any order. Days, not letters: what the
+      row may say is that one opens and when, so the ids and the text never
+      travel this far. A letter already open falls out on the day rather
+      than on a flag - its unlock day has passed, which is the same fact. */
+  letterUnlockDays: readonly number[];
   runningWear: { kind: WearKind; startTimestamp: number } | null;
   tryouts: readonly Pick<Tryout, 'label' | 'startEpochDay' | 'endEpochDay'>[];
   appointments: readonly Pick<Appointment, 'epochDay' | 'kind' | 'procedureId'>[];
@@ -181,9 +182,9 @@ function nextMilestone(facts: RowForwardFacts): RowForward | null {
 }
 
 function nextLetter(facts: RowForwardFacts): RowForward | null {
-  const day = soonest(facts.sealedUnlockDays, facts.todayEpochDay);
+  const day = soonest(facts.letterUnlockDays, facts.todayEpochDay);
   if (day === null) return null;
-  const stillSealed = facts.sealedUnlockDays.filter((each) => each >= facts.todayEpochDay).length;
+  const stillSealed = facts.letterUnlockDays.filter((each) => each >= facts.todayEpochDay).length;
   return { kind: 'next', epochDay: day, what: { area: 'letter', several: stillSealed > 1 } };
 }
 

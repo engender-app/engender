@@ -7,20 +7,21 @@
      about what was behind it. Every row says something now, and this screen
      owns none of the reasoning: `hubRows.ts` holds the rows and what sits
      behind them, `vocabulary/hubLabels.ts` holds the words. What is left here
-     is three live reads and two loops.
+     is four live reads and two loops.
 
-     Two of the reads are the door's own, and they come out of one assembled
-     call each (`journal/lastWrite.ts`, measured as `hub-last-writes` before
-     this screen was written) beside the area record. The third is the search
-     (ticket 15) and it asks nothing until somebody types.
+     Three of the reads are the door's own, and each comes out of one
+     assembled call (`journal/lastWrite.ts`, measured as `hub-last-writes`
+     before this screen was written; `rowForwardReads.ts`, phase 11
+     all-four-doors ticket 02) beside the area record. The fourth is the
+     search (ticket 15) and it asks nothing until somebody types.
 
-     It was three until phase 9 carpet ticket 16: the third was the regimen
+     It was three reads until phase 9 carpet ticket 16: the third was the regimen
      episode list, read only to answer ADR-0043's gate for the cycle row. That
      row is drawn on /health/side-effects now, which was already asking the
      same question for the cycle block it draws, so the gate and the read that
      feeds it are in one place instead of two.
 
-     Nothing gates the screen on either of the door's two reads. This is a
+     Nothing gates the screen on the door's own three reads. This is a
      navigation surface, and a skeleton in front of twenty links a person can
      already read would be slower than the links.
 
@@ -59,6 +60,8 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
+  import { readRowForward } from '$lib/data/rowForwardReads';
+  import type { RowForwardMap } from '$lib/data/rowForward';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { collapse, disclose } from '$lib/motion/reveal';
 
@@ -66,22 +69,47 @@
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  /* The forward half (phase 11 all-four-doors ticket 02): what is running
+     and what is next, which is what nine of this door's rows were getting
+     wrong by reporting a gap over a screen full of dated plans. One
+     assembled call, `rowForwardReads.ts`, the shape the last-write read next
+     to it already has. */
+  let forwardQuery = liveQuery((j) => readRowForward(j, today));
 
-  /* Both reads or neither, which is a correctness rule and not only a tidier
-     transition. Rendering whichever landed first would put a finished row in
-     its old group with a reading under it, and then move it into the finished
-     set once the area record arrived - a wrong state on screen, not a partial
-     one. Held together, the hub goes from titles to titles-and-lines once.
+  /* All three reads or none, which is a correctness rule and not only a
+     tidier transition. Rendering whichever landed first would put a finished
+     row in its old group with a reading under it, and then move it into the
+     finished set once the area record arrived - a wrong state on screen, not
+     a partial one. The forward read joins them for the same reason and a
+     sharper one: a row that said "Nothing logged for 1 year 4 months" and
+     then replaced it with "Name-change hearing in 16 days" would have
+     printed the wrong thing first, which is the exact complaint this ticket
+     answers. Held together, the hub goes from titles to titles-and-lines
+     once.
 
      Until then the written rows already say their line, because a line about
      what is behind a row needs no read at all. */
   let landed = $derived(
-    lastWritesQuery.value !== undefined && statesQuery.value !== undefined
-      ? { lastWrites: lastWritesQuery.value, states: statesQuery.value }
-      : { lastWrites: {}, states: {} }
+    lastWritesQuery.value !== undefined && statesQuery.value !== undefined && forwardQuery.value !== undefined
+      ? { lastWrites: lastWritesQuery.value, states: statesQuery.value, forward: forwardQuery.value }
+      : { lastWrites: {}, states: {}, forward: {} as RowForwardMap }
   );
 
   let reading = $derived({ todayEpochDay: today, ...landed });
+
+  /* One second hand, and only while something is actually counting up. The
+     wear row is the single line on this door that reads a clock rather than
+     a day ("Binding now, 9h 1m"), so the interval starts when a session is
+     running and stops when it is not - a navigation screen has no business
+     waking once a second to redraw twenty-two static rows. */
+  let running = $derived(reading.forward.wear?.kind === 'running');
+  let nowMs = $state(Date.now());
+  $effect(() => {
+    if (!running) return;
+    nowMs = Date.now();
+    const id = setInterval(() => (nowMs = Date.now()), 1000);
+    return () => clearInterval(id);
+  });
   let sections = $derived(hubSections(reading));
 
   /** One page of record hits, and what "show more" asks for again. Twenty
@@ -305,7 +333,7 @@
                 key={row.spec.key}
                 icon={row.spec.icon}
                 title={hubRowTitle(row.spec.key)}
-                subtitle={hubRowLine(row.spec.key, row.line, today)}
+                subtitle={hubRowLine(row.spec.key, row.line, today, nowMs)}
                 href={row.spec.href}
                 data-hub-section={row.where}
                 data-hub-line={row.line.kind}
@@ -369,7 +397,7 @@
               key={row.spec.key}
               icon={row.spec.icon}
               title={hubRowTitle(row.spec.key)}
-              subtitle={hubRowLine(row.spec.key, row.line, today)}
+              subtitle={hubRowLine(row.spec.key, row.line, today, nowMs)}
               href={row.spec.href}
               data-hub-section={section.key}
               data-hub-line={row.line.kind}
