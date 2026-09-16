@@ -80,11 +80,24 @@ describe('what Settings is built from', () => {
        job is to hold a Switch would make that switch's own button a nested
        control. Those stay plain .kit-row divs. The wrapped and on-this-day
        rows moved to the unprompted registry's own screen (ticket 51, merged
-       to one screen by deepening ticket 09), which unprompted-view.test.ts
-       holds to the same rule. */
-    for (const handle of ['data-entry-nudges', 'data-guided-prompts', 'data-roadmap-milestone-sync']) {
-      const re = new RegExp(`<div class="kit-row" ${handle}>`);
-      expect(withoutScript).toMatch(re);
+       to one screen by deepening ticket 09), and the four prompt toggles
+       followed them there in phase 11 ticket 04 - unprompted-view.test.ts
+       holds all of them to the same rule. Cycle tracking is the switch row
+       this screen has left. */
+    expect(withoutScript).toMatch(/<div class="kit-row" data-cycle-tracking-toggle>/);
+  });
+
+  it('keeps no switch for a prompt the notifications screen now carries', () => {
+    /* Phase 11 ticket 04. Entry nudges, guided prompts, the binder duration
+       cue and roadmap milestone prompts floated here under no heading of
+       their own; all four are the app speaking up unasked, which is what
+       /settings/notifications is about. Left behind, each would be a second
+       switch writing the same preference. */
+    for (const gone of ['data-entry-nudges', 'data-guided-prompts', 'data-wear-duration-cue-toggle', 'data-roadmap-milestone-sync']) {
+      expect(settings).not.toContain(gone);
+    }
+    for (const pref of ['entryNudges', 'guidedPromptsEnabled', 'wearDurationCueEnabled', 'roadmapMilestoneSyncEnabled']) {
+      expect(settings).not.toContain(`prefs.${pref}`);
     }
   });
 
