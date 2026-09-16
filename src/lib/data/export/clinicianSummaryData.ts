@@ -74,10 +74,19 @@ export const DEFAULT_CLINICIAN_DOSSIER_INCLUSION: ClinicianDossierInclusion = {
   finishedAreas: true
 };
 
+/** A dose as the dossier's dose log prints it. `DoseEvent` is a union
+    keyed by route, so this is an intersection rather than an `extends` -
+    one reserved, currently-unpopulated field on top of whichever variant
+    (ticket 08): ticket 11's auto-logged doses will need a marker in this
+    row, and the row shape holds the slot for it now rather than ticket 11
+    widening it later. Nothing here sets `autoLogged` yet - what the
+    dossier computes is unchanged. */
+export type ClinicianDossierDoseRow = DoseEvent & { autoLogged?: boolean };
+
 interface ClinicianDossierRegimenData {
   current: RegimenEpisode[];
   history: RegimenEpisode[];
-  doses: DoseEvent[];
+  doses: ClinicianDossierDoseRow[];
 }
 
 export interface ClinicianDossier {

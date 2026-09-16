@@ -41,11 +41,13 @@
      row in print - the preview is the page, not a scrollable assembly of
      the whole range. Twelve was the ticket's own proposal and nothing in
      the dossier's data pushed it either way, so it stands as written. One
-     floor for every table (`data-dossier-truncate` marks which row is the
-     first hidden one, for a test to find), so the regimen table and the
-     dose log each truncate on their own row count rather than sharing a
-     budget - a range with three regimen episodes and ninety doses prints a
-     full regimen table and a truncated dose log, not half of each. */
+     floor for every table, applied independently, so the regimen table
+     and the dose log each truncate on their own row count rather than
+     sharing a budget - a range with three regimen episodes and ninety
+     doses prints a full regimen table and a truncated dose log, not half
+     of each. A row past the floor carries `dossier-row-overflow`
+     (clinician-print.css); the note under a truncated table carries
+     `data-dossier-truncate`, for a test to find either. */
   const PREVIEW_ROW_FLOOR = 12;
   const overflowCount = (rows: readonly unknown[]) =>
     rows.length > PREVIEW_ROW_FLOOR ? rows.length - PREVIEW_ROW_FLOOR : 0;
