@@ -4030,13 +4030,47 @@ try {
        directly. */
     ['/practice/wear', 'wear-empty'],
     ['/settings/stock', 'stock-empty'],
-    ['/settings/reminders', 'reminders-empty']
+    ['/settings/reminders', 'reminders-empty'],
+    // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
+    // starred entries, saved questions, an attached document, a second
+    // procedure) - the first three read straight off their own empty-state
+    // markers the same way as every route above.
+    ['/doubt/comfort', 'comfort-list-empty'],
+    ['/search/starred', 'starred-empty'],
+    ['/search/questions', 'saved-questions-empty'],
+    ['/media/documents', 'documents-empty']
   ];
   for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
     if (await page.locator(`[data-notice="${emptyKey}"]`).count()) {
       throw new Error(`${route} still shows its empty state (${emptyKey}) after filling every feature`);
     }
+  }
+
+  /* The other two of the audit's five gaps aren't caught by an empty-state
+     marker: /doubt/moments already had unlocked letters to show before this
+     ticket, so its own Notice was never the empty one - the gap was the
+     photo half specifically. And /health/surgery already showed its one
+     archived procedure - the gap was a second, running one beside it. */
+  await page.goto(BASE + '/doubt/moments', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-safe-space-photos] > *').count()) === 0) {
+    throw new Error('Safe space moments shows no starred photo after filling every feature');
+  }
+
+  await page.goto(BASE + '/media/documents', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-documents-group="procedure"]').count()) === 0) {
+    throw new Error('the documents screen draws no group linked to a procedure after filling every feature');
+  }
+
+  await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-procedure-card]').count()) < 2) {
+    throw new Error('the surgery index shows fewer than two procedures after filling every feature');
+  }
+  if ((await page.locator('[data-phase="archived"]').count()) === 0) {
+    throw new Error('the surgery index has no archived procedure after filling every feature');
+  }
+  if ((await page.locator('[data-procedure-card][data-phase]:not([data-phase="archived"])').count()) === 0) {
+    throw new Error('the surgery index has no still-running procedure beside the archived one');
   }
 
   /* The voice screen's three tabs (phase 8 features ticket 09): each one
