@@ -6,7 +6,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readAgenda, type AgendaAreas } from './agendaReads.ts';
 import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
-import type { DayAheadMark } from './journal/dayAhead.ts';
+import { DAY_AHEAD_MARK_KINDS, type DayAheadMark } from './journal/dayAhead.ts';
 
 const TODAY = 20000;
 
@@ -67,6 +67,37 @@ test('a kind switched off never reaches the projection, and the cap counts only 
   assert.deepEqual(projection?.folded, []);
   const none = await readAgenda(areas, TODAY, false, []);
   assert.equal(none, null);
+});
+
+/* Phase 11 ticket 03. Today draws a dose panel whenever a regimen is
+   running, and that panel now carries the next slot's own day - so a
+   doseSlot row in the band beside it is the same medication stated twice,
+   which is the defect the ticket is named after. The panel is the dose's
+   one home while it is up; when it is not (switched off in the unprompted
+   registry, or snoozed) the band keeps the kind, because otherwise the day
+   the schedule expects would be on the screen nowhere at all. */
+test('the dose kind is withheld while a dose panel is showing', async () => {
+  const marks: DayAheadMark[] = [
+    { kind: 'doseSlot', epochDay: TODAY + 6 },
+    { kind: 'appointment', epochDay: TODAY + 12 }
+  ];
+
+  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true);
+  assert.deepEqual(
+    withPanel?.shown.map((item) => item.kind),
+    ['appointment']
+  );
+
+  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, false);
+  assert.deepEqual(
+    withoutPanel?.shown.map((item) => item.kind),
+    ['doseSlot', 'appointment']
+  );
+});
+
+test('a week whose only mark is a dose the panel states is absent, not empty', async () => {
+  const marks: DayAheadMark[] = [{ kind: 'doseSlot', epochDay: TODAY + 6 }];
+  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true), null);
 });
 
 test('the schedule is asked about the week behind, ending yesterday', async () => {
