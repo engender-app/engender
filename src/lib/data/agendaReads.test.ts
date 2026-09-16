@@ -5,7 +5,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readAgenda, type AgendaAreas } from './agendaReads.ts';
-import { AGENDA_DAYS } from './agenda.ts';
+import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
 import type { DayAheadMark } from './journal/dayAhead.ts';
 
 const TODAY = 20000;
@@ -37,7 +37,7 @@ function recordingAreas(marks: DayAheadMark[] = []) {
   return { areas, asked, dayAheadCalls, doseWindows };
 }
 
-test('the forward read is dayAhead, asked for the seven days from today', async () => {
+test('the forward read is dayAhead, asked for the thirty days from today', async () => {
   const { areas, asked, dayAheadCalls } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
 
   const projection = await readAgenda(areas, TODAY, false);
@@ -74,7 +74,7 @@ test('the schedule is asked about the week behind, ending yesterday', async () =
 
   await readAgenda(areas, TODAY, false);
 
-  assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_DAYS, toEpochDay: TODAY - 1 }]);
+  assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_PASSED_DAYS, toEpochDay: TODAY - 1 }]);
 });
 
 test('a disguised screen reads nothing at all', async () => {
