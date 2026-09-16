@@ -453,31 +453,6 @@ const AUTO_LOG_WINDOW_END_HOUR = 20;
 
 const HOUR_MS = 3600000;
 
-/** Which of the six routes an auto-logged dose on this episode is written
-    with, or null where nothing answers - and null is the switch's own gate,
-    since a dose has to be one of the six to be recorded at all.
-
-    The episode's own doses first, because that is a fact the person recorded
-    rather than a reading of what they typed: a regimen's `route` is free text
-    (types.ts), and someone who has been logging this episode by hand has
-    already answered the question six times over. Only when there is no dose
-    to read does this fall back to the prose, and then through `matchDoseRoute`
-    with no words handed in - the app's own route words speak paraglide and
-    this file may not (ADR-0016), so a route written in Polish prose on an
-    episode with no doses yet is one this cannot resolve. Which is the right
-    way round: the switch is then simply not offered, rather than offered and
-    quietly writing nothing.
-
-    `doses` is this episode's own, attributed by the caller the way adherence's
-    are (journal/doses.ts). */
-export function autoLogRoute(episodeRoute: string, doses: readonly DoseEvent[]): DoseRoute | null {
-  let latest: DoseEvent | null = null;
-  for (const dose of doses) {
-    if (!latest || dose.timestamp > latest.timestamp) latest = dose;
-  }
-  return latest ? latest.route : matchDoseRoute(episodeRoute, []);
-}
-
 /** Whether a schedule expects a dose on any day at all - the same three
     guards `expectedSlots` applies before it generates anything, named here
     so a screen can ask the question without generating a range of slots to
@@ -491,14 +466,26 @@ function expectsAnyDose(schedule: DoseSchedule): boolean {
 
 /** Whether this schedule is definite enough to log its own doses (ticket 11,
     ADR-0086): it expects a dose on some day, it says how much, and the route
-    it would be written with is one the dose log can record. The switch is
-    offered on exactly this, so there is never a schedule switched on with
-    nothing definite to write. */
-export function canAutoLog(schedule: DoseSchedule, episodeRoute: string, doses: readonly DoseEvent[]): boolean {
+    the doses would be written with is one of the six the dose log records.
+    The switch is offered on exactly this, so a schedule can never be switched
+    on with nothing definite to write.
+
+    A regimen episode's `route` is free text (types.ts), so it takes reading -
+    `routeWords` is `ROUTE_OPTIONS` from doseLabels.ts, the app's own word for
+    each route in whichever language is running, handed in rather than
+    imported for the reason matchDoseRoute gives (ADR-0016). Both callers pass
+    the same list, the schedule editor and the auto-log pass alike, so the
+    switch is never offered on an episode the pass would then read nothing
+    from. */
+export function canAutoLog(
+  schedule: DoseSchedule,
+  episodeRoute: string,
+  routeWords: readonly RouteOption[]
+): boolean {
   return (
     expectsAnyDose(schedule) &&
     (schedule.doseAmounts?.length ?? 0) > 0 &&
-    autoLogRoute(episodeRoute, doses) !== null
+    matchDoseRoute(episodeRoute, routeWords) !== null
   );
 }
 

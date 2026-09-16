@@ -49,6 +49,13 @@
      (clinician-print.css); the note under a truncated table carries
      `data-dossier-truncate`, for a test to find either. */
   const PREVIEW_ROW_FLOOR = 12;
+
+  /** The footnote marker for a dose a schedule wrote (phase 11 ticket 11).
+      A dagger rather than an asterisk, which the printed page already spends
+      on nothing else, and rather than a word in the cell: the table has six
+      columns on paper and a seventh reading "from a schedule" on one row in
+      twenty would push the rest of them narrower for the whole print. */
+  const AUTO_LOGGED_MARK = '\u2020';
   const overflowCount = (rows: readonly unknown[]) =>
     rows.length > PREVIEW_ROW_FLOOR ? rows.length - PREVIEW_ROW_FLOOR : 0;
 
@@ -243,12 +250,32 @@
                       <span class="muted small">({vehicleLabel(dose.vehicle)})</span>
                     {/if}
                   </td>
-                  <td>{dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}</td>
+                  <td>
+                    {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
+                    <!-- The footnote marker for a dose a schedule wrote
+                         rather than the person (phase 11 ticket 11,
+                         ADR-0086). In the status cell, because what it
+                         qualifies is the status: "taken" on this row is the
+                         schedule's word for it. aria-hidden, with the
+                         legend under the table carrying the meaning in
+                         words - a dagger read aloud is noise. -->
+                    {#if dose.source === 'schedule'}<span
+                        class="dossier-footnote-mark"
+                        data-dose-auto-logged
+                        aria-hidden="true">{AUTO_LOGGED_MARK}</span
+                      >{/if}
+                  </td>
                 </tr>
               {/each}
             </tbody>
           </table>
         </div>
+        {#if dossier.regimen.doses.some((dose) => dose.source === 'schedule')}
+          <p class="dossier-footnote" data-dossier-auto-logged-legend>
+            {AUTO_LOGGED_MARK}
+            {m.clinician_summary_auto_logged_legend()}
+          </p>
+        {/if}
         {#if overflowCount(dossier.regimen.doses) > 0}
           {@render truncateNote(overflowCount(dossier.regimen.doses))}
         {/if}

@@ -536,7 +536,7 @@ beforeAll(async () => {
       autoLogFromEpochDay: 19010
     })
   );
-  await drive('doses', 'autoLogDueDoses', () => journal.doses.autoLogDueDoses(19015));
+  await drive('doses', 'autoLogDueDoses', () => journal.doses.autoLogDueDoses(19015, []));
   const secondDoseId = (await drive('doses', 'upsertDose', () =>
     journal.doses.upsertDose({ timestamp: 1_700_100_000_000, route: 'oral', dose: 100, doseUnit: 'mg' })
   )) as string;
