@@ -235,6 +235,16 @@
   );
   let moodTrend = $derived((moodTrendQuery.rows) as DayAverage[]);
 
+  /* The year's rows shade the active scale rather than mood (phase 11
+     ticket 07, WrappedYear.svelte), so a year reads that scale's series
+     too; the compact template's chart stays on mood. */
+  let scaleTrendQuery = liveList((j) =>
+    on && cadence === 'year' && range && !muted
+      ? j.stats.dayAverages(metricKey(prefs), range.start, range.end)
+      : Promise.resolve([])
+  );
+  let scaleTrend = $derived(scaleTrendQuery.rows as DayAverage[]);
+
   /* The four reads spec 06 adds. Tag insights follow the selected metric,
      the same one the stats hub's own insight card reads: which scale "better
      or worse days" is measured on is one preference with one control, and it
@@ -345,7 +355,12 @@
   );
 
   let loading = $derived(
-    recapQuery.loading || moodTrendQuery.loading || insightsQuery.loading || tallyQuery.loading || lettersQuery.loading
+    recapQuery.loading ||
+      moodTrendQuery.loading ||
+      scaleTrendQuery.loading ||
+      insightsQuery.loading ||
+      tallyQuery.loading ||
+      lettersQuery.loading
   );
 </script>
 
@@ -448,7 +463,7 @@
         year={period?.year ?? 0}
         intro={subtitle}
         {recap}
-        {moodTrend}
+        {scaleTrend}
         {dimChange}
         {topTags}
         {anchorDuration}

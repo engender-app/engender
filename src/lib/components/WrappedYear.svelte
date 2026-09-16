@@ -11,9 +11,15 @@
      a week and the wrong one here.
 
      The month strip was twelve hand-drawn bars with their own CSS, then the
-     kit's horizontal bars, and is now a grid of every day of the year on
-     mood's own ramp: twelve bars say where the shape went, and a year of
-     cells says what the year was. And the cover dropped the
+     kit's horizontal bars, then a grid of every day of the year as a mood
+     face each - 365 svgs and 1900px of them, with the year's own figures
+     pushed underneath (the whole-app audit's finding 7). Phase 11 ticket
+     07 put the figures first and made the year twelve shaded rows on the
+     active scale's single-hue ramp (YearRows.svelte): a face wanted 27px,
+     a shaded cell wants none, and mood's own five hexes are all dark on the
+     dark theme at that size, which is what ADR-0025's ramp was never built
+     for. Twelve bars say where the shape went, and a year of cells says
+     what the year was. And the cover dropped the
      decorative bloom - an infinite ring animation - because the flag sun on
      Home is the whole of the app's ambient motion budget and a second loop
      spends it twice - and Alicja put it back: a yearly wrapped is opened
@@ -24,9 +30,8 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
-  import { moodYear } from '$lib/charts/moodYear';
-  import { moodName } from '$lib/data/vocabulary/labels';
-  import { MOOD_RANGE } from '$lib/data/metricRange';
+  import { yearRows } from '$lib/charts/yearRows';
+  import { MOOD_RANGE, heatLevel } from '$lib/data/metricRange';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -47,7 +52,7 @@
   import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
   import type { BarRow } from './kit/barRow';
-  import MoodYear from './kit/MoodYear.svelte';
+  import YearRows from './kit/YearRows.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -58,7 +63,7 @@
     year,
     intro,
     recap,
-    moodTrend,
+    scaleTrend,
     dimChange,
     topTags,
     anchorDuration = null,
@@ -72,7 +77,10 @@
     year: number;
     intro: string;
     recap: Recap;
-    moodTrend: DayAverage[];
+    /** The active scale's day averages over the year, for the rows. The
+        caller reads the scale the preference names, the same one the
+        calendar shades by (metricKey). */
+    scaleTrend: DayAverage[];
     dimChange: RecapDimChange | null;
     topTags: { label: string; count: number }[];
     /** The journey anchor's duration (phase 5 ticket 25), already named and
@@ -97,18 +105,34 @@
      rather than one stripe of it. */
   const AREA_ROLE = WRAPPED_AREA_ROLE;
 
-  /* The year, a day at a time. It was twelve bars, one per month: those said
-     where the shape went and this says what the year was, which is what a
-     yearly retrospective is for - and a month is still legible in it as a
-     block of columns (Alicja, 2026-08-25). */
-  let grid = $derived(moodYear(year, moodTrend.map((p) => ({ day: p.day, value: p.value }))));
+  /* The year, a day at a time, on the active scale (phase 11 ticket 07).
+     Which scale is one preference with one control, set on the screen
+     that draws the scales; the rows take it the way the calendar's month
+     grid does. Each day steps onto the ramp's four shaded levels over the
+     scale's own range (heatLevel, ADR-0012: the value stays native, only
+     the step is normalised), and a day nothing was logged on is step 0. */
+  let metric = $derived(metricKey(prefs));
+  let range = $derived(vocabulary.rangeOf(metric));
+  let grid = $derived(
+    yearRows(
+      year,
+      scaleTrend.map((p) => ({ day: p.day, value: p.value })),
+      (value) => heatLevel(value, range)
+    )
+  );
+
+  /* One stripe for the whole year, the charts' own: the role's heat ramp
+     at the cell's step, and the ramp's empty end for a day nobody logged -
+     the same lookup a calendar cell makes (HeatMap.svelte's fillAt). */
+  let rowsRole = $derived(roleAt(activeFlag.roles, AREA_ROLE.charts));
+  const fillAt = (step: number) => rowsRole?.heat[step]?.fill ?? `var(--heat-${step})`;
 
   const shortMonth = (month: number) =>
     fmtDay(epochDayFromLocalDate(new Date(year, month, 1)), { month: 'short' });
 
-  const dayLabel = (epochDay: number, step: number | null) => {
+  const dayLabel = (epochDay: number, value: number | null) => {
     const day = fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
-    return step === null ? day : `${day} · ${moodName(step)}`;
+    return value === null ? day : `${day} · ${nativeValue(metric, value)}`;
   };
 
   /* Which scale the insight bars are of, named once in the heading. The
@@ -116,7 +140,6 @@
      against whichever metric the preference held, and unlike /stats it has
      no picker for the heading line to hold, because a retrospective cannot
      change the scale it is a retrospective of. */
-  let metric = $derived(metricKey(prefs));
   let insightRows = $derived(tagInsightRows(insights, metric));
   let tally_rows = $derived(tallyRows(tally));
 
@@ -181,13 +204,8 @@
   <p class="wrapped-cover-intro">{intro}</p>
 </div>
 
-<ChartCard heading={m.wrapped_year_months()} kind="wrapped-months" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-  <!-- Short month names: full ones took 70px of a 340px card, which is a
-       fifth of the grid's width spent on labels the reader already knows the
-       order of. -->
-  <MoodYear {grid} monthName={shortMonth} {dayLabel} />
-</ChartCard>
-
+<!-- The year's figures first (phase 11 ticket 07): they sat under 1900px
+     of grid at y≈2550, and a retrospective's first answer is a number. -->
 <SectionHeading text={m.wrapped_year_figures()} />
 <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
   {#each figures as figure (figure.key)}
@@ -196,6 +214,13 @@
     </ListRow>
   {/each}
 </ListCard>
+
+<ChartCard heading={m.wrapped_year_months()} kind="wrapped-months" role={rowsRole}>
+  <!-- Short month names: full ones took 70px of a 340px card, which is a
+       fifth of the grid's width spent on labels the reader already knows the
+       order of. -->
+  <YearRows {grid} monthName={shortMonth} {dayLabel} {fillAt} />
+</ChartCard>
 
 {#if insightRows.length}
   <ChartCard
