@@ -637,6 +637,10 @@ interface ArchiveDoseEvent {
       existed, read as null the same way any other field a pre-ticket
       build never wrote is. */
   drug: string | null;
+  /** Who wrote the row - 'person' or 'schedule' (phase 11 ticket 11,
+      ADR-0086). Absent on an archive from before auto-logging existed, read
+      back as 'person', which is what every row in one was. */
+  source: string;
 }
 
 /** Named by the episode's travelling uuid, not its rowid: the rowid means
@@ -658,6 +662,11 @@ export interface ArchiveDoseSchedule {
   weekdays: number[] | null;
   dosesPerDay: number;
   doseAmounts: { dose: number; doseUnit: string }[] | null;
+  /** The day auto-logging went on, or null for off (phase 11 ticket 11,
+      ADR-0086). Absent on an archive from before the switch existed, read
+      back as null, which is off - importing a journal must never start
+      writing doses on the person's behalf without them saying so. */
+  autoLogFromEpochDay: number | null;
 }
 
 export interface ArchiveDosePause {

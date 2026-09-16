@@ -856,7 +856,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteDose: ['dose'],
       upsertSchedule: ['dose'],
       upsertPause: ['dose'],
-      deletePause: ['dose']
+      deletePause: ['dose'],
+      // The auto-log pass writes dose rows and nothing else (ticket 11).
+      autoLogDueDoses: ['dose']
     },
     // A schedule and a pause both hang off an episode, and are read back
     // joined to it (doses.ts), so ending an episode changes what they answer.

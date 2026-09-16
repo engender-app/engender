@@ -527,6 +527,21 @@ export type InjectionVehicle = 'oil' | 'aqueous';
     but not as scheduled. */
 export type DoseStatus = 'taken' | 'skipped' | 'changed';
 
+/** Who wrote the row. `person` is every dose logged by hand and every dose
+    that existed before auto-logging did; `schedule` is one a schedule the
+    person switched on wrote on their behalf (phase 11 ticket 11, ADR-0086).
+
+    A field of its own rather than a fourth `DoseStatus`, because it answers a
+    different question: status is what happened to the dose, source is who
+    said so. A schedule-written dose can be `taken` or, once the person
+    corrects it, `skipped`, and it keeps saying where it came from either way.
+
+    The same job `autoSource` does for a Reminder (autoSource.ts), with none
+    of its shape: a reminder names which feature and which row made it because
+    the feature has to find its own row again, and nothing here ever needs to
+    go back and edit a dose it wrote. */
+export type DoseSource = 'person' | 'schedule';
+
 /** What a `changed` dose was supposed to be, kept beside what it actually
     was. Null on every other status: there is nothing to compare against
     when the dose went as planned. */
@@ -547,6 +562,7 @@ interface DoseEventFields {
   dose: number;
   doseUnit: string;
   status: DoseStatus;
+  source: DoseSource;
   scheduled: ScheduledDose | null;
   /** Which drug this dose was, in the dose's own words - optional, and null
       on almost every dose (phase 5 ticket 38). Attribution still resolves
@@ -629,6 +645,17 @@ export interface DoseSchedule {
   /** Twice-daily oral is 2. */
   dosesPerDay: number;
   doseAmounts: DoseScheduleAmount[] | null;
+  /** The day the person switched auto-logging on for this schedule, or null
+      for off - the standing instruction "assume I took it unless I say
+      otherwise" (phase 11 ticket 11, ADR-0086).
+
+      One nullable day rather than a boolean beside a day, because the pair
+      has a state that means nothing: switched on with no day to start from.
+      The day is what the walk needs anyway - nothing is ever written before
+      it, so turning the switch on does not reach back over a gap the person
+      never asked about, and turning it off and on again months later starts
+      from the second day rather than filling in the months between. */
+  autoLogFromEpochDay: number | null;
 }
 
 /** Planned is a break someone chose or a clinician directed; accidental is

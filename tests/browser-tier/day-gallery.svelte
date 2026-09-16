@@ -104,6 +104,7 @@
         dose: 4,
         doseUnit: 'mg',
         status: 'taken',
+        source: 'person',
         scheduled: null,
         drug: null,
         route: 'im',
@@ -132,6 +133,7 @@
         dose: 100,
         doseUnit: 'mg',
         status: 'skipped',
+        source: 'person',
         scheduled: null,
         drug: null,
         route: 'oral'
