@@ -578,6 +578,29 @@ interface TileGate {
     builder can disagree with the table the ordering reads. */
 type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
 
+/** Whether Today's dose panel accounts for every dose slot the agenda could
+    draw, which is what the screen withholds the `doseSlot` kind on
+    (agendaReads.ts, phase 11 ticket 03).
+
+    Two conditions, and the second is the one worth writing down. The panel
+    states one drug - `activeEpisodesAt`'s first - while `dayAhead`'s
+    `doseSlot` section reads *every* active episode, so on two concurrent
+    regimens the panel stands for one of them and the band's rows for both.
+    Withholding there would take a drug the panel never names off the screen
+    altogether, which is the failure the withholding exists to prevent, not
+    to cause. So two running regimens keep their rows, and the cost is that
+    one drug is stated twice - the direction ADR-0074 already errs in when
+    it would otherwise state one drug's arrangement under another's name. */
+export function dosePanelCoversEveryRegimen(
+  tiles: readonly HomeTile[],
+  episodes: readonly RegimenEpisode[],
+  nowMs: number
+): boolean {
+  return (
+    tiles.some((tile) => tile.key === 'dose-panel') && activeEpisodesAt(episodes, nowMs).length === 1
+  );
+}
+
 /** Home's grid: the twelve kinds, gated, in `LIVE_TILE_ORDER`, with nothing
     dropped for being twelfth. A `Record` keyed by `LiveTileKind` rather
     than an array, so a kind added to the union is a missing-property error

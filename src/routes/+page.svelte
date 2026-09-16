@@ -253,21 +253,25 @@
      cap, disclosed in place and never a route.
 
      Phase 11 ticket 03: a `doseSlot` row is withheld while the dose panel
-     is up, because the panel now carries the next slot's own day and the
-     two together were the same medication stated twice. Read off the
-     composed grid through a `$derived` boolean rather than inside the
-     query's run: `liveTiles.tiles` is rebuilt on every tick of the wear
-     timer's clock, so a run tracking the list itself would re-issue the
-     whole forward read once a second. A boolean only wakes the query when
-     it flips. */
-  let dosePanelShowing = $derived(liveTiles.tiles.some((tile) => tile.key === 'dose-panel'));
+     accounts for every dose slot the band could draw, because the panel now
+     carries the next slot's own day and the two together were the same
+     medication stated twice. Not merely "a panel is showing": the panel
+     names one drug and the band's rows cover every running regimen, so
+     `dosePanelCoversEveryRegimen` is the grid's own answer to whether the
+     one stands for the other (liveTiles.ts).
+
+     Read off the grid through a `$derived` boolean rather than inside the
+     query's run: the grid is rebuilt on every tick of the wear timer's
+     clock, so a run tracking it would re-issue the whole forward read once
+     a second. A boolean only wakes the query when it flips. */
+  let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
   let agendaQuery = liveQuery((j) =>
     readAgenda(
       { dayAhead: j.dayAhead, doses: j.doses },
       today,
       prefs.disguise,
       shownAgendaKinds(prefs),
-      dosePanelShowing
+      dosePanelCoversEveryDose
     )
   );
   let agenda = $derived(agendaQuery.value ?? null);

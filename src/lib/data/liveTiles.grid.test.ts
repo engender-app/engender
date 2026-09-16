@@ -23,6 +23,7 @@ import {
   LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
+  dosePanelCoversEveryRegimen,
   liveTilePrefKeys,
   splitHomeTiles,
   type HomeTileActions,
@@ -436,6 +437,31 @@ describe('what each tile says', () => {
 
   it('a regimen with no schedule gets a panel with no forward line', () => {
     expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
+  });
+
+  /* What Today reads to decide whether to withhold the agenda's `doseSlot`
+     rows (agendaReads.ts). The panel names one drug - `activeEpisodesAt`'s
+     first - so it only accounts for the whole kind while that is the only
+     regimen running. With two, a row the panel does not stand for would be
+     stated nowhere at all, which is the thing the withholding exists to
+     prevent rather than to cause. */
+  describe('what the dose panel accounts for', () => {
+    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', startEpochDay: TODAY - 8 };
+
+    it('covers the whole kind while one regimen is running', () => {
+      const grid = input();
+      expect(dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, NOW)).toBe(true);
+    });
+
+    it('covers nothing extra while two regimens are running', () => {
+      const grid = input({ reads: { episodes: [episode, second] } });
+      expect(dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, NOW)).toBe(false);
+    });
+
+    it('covers nothing when the panel is switched off', () => {
+      const grid = input({ enabled: { ...allOn(true), 'dose-panel': false } });
+      expect(dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, NOW)).toBe(false);
+    });
   });
 
   it('the surgery countdown reads the nearest procedure and carries no control', () => {

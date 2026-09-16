@@ -50,29 +50,32 @@ export interface AgendaAreas {
     has no switches to hand. The switches sit above the projection, as
     ADR-0074 puts it, and this is the one place they touch it.
 
-    `dosePanelShowing` is the second thing that can take a kind off the
-    band, and it is not a switch: Today draws a dose panel for as long as a
-    regimen is running, and since phase 11 ticket 03 that panel states the
-    next slot's own day. A `doseSlot` row beside it is the same medication
-    twice - the whole-app audit found the drug stated four ways on one
-    screen - so the kind is withheld while the panel is up. Withheld here
-    rather than dropped from `kinds` at the call site, so the rule is
-    written where the band is assembled and can be tested without a screen.
+    `dosePanelCoversEveryDose` is the second thing that can take a kind off
+    the band, and it is not a switch: Today draws a dose panel for as long
+    as a regimen is running, and since phase 11 ticket 03 that panel states
+    the next slot's own day. A `doseSlot` row beside it is the same
+    medication twice - the whole-app audit found the drug stated four ways
+    on one screen - so the kind is withheld while the panel says it.
+    Withheld here rather than dropped from `kinds` at the call site, so the
+    rule is written where the band is assembled and can be tested without a
+    screen.
 
-    The panel is one per screen and is gated on there being an active
-    episode, which is the gate `dayAhead`'s own `doseSlot` read runs too: so
-    while the panel is up, every slot mark belongs to a drug the panel is
-    standing for. A drug with no panel - the tile switched off in the
-    unprompted registry, or snoozed - keeps its rows, which is what stops
-    the day a schedule expects from being on the screen nowhere at all.
-    ADR-0067 is untouched either way: the kind is still read, and the
-    calendar and the day view still draw it. */
+    What the caller has to have established is that the panel accounts for
+    the *whole* kind, not merely that one is drawn. The panel names one drug
+    and `dayAhead`'s `doseSlot` section reads every active episode, so on
+    two concurrent regimens the panel stands for one of them and the rows
+    for both; `dosePanelCoversEveryRegimen` (liveTiles.ts) is the answer to
+    that question and the flag Today passes. A drug the panel does not stand
+    for keeps its rows, which is what stops the day a schedule expects from
+    being on the screen nowhere at all. ADR-0067 is untouched either way:
+    the kind is still read, and the calendar and the day view still draw
+    it. */
 export async function readAgenda(
   areas: AgendaAreas,
   todayEpochDay: number,
   disguised: boolean,
   kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
-  dosePanelShowing = false
+  dosePanelCoversEveryDose = false
 ): Promise<Agenda | null> {
   if (disguised) return null;
 
@@ -87,6 +90,6 @@ export async function readAgenda(
   ]);
 
   const on = new Set<DayAheadMarkKind>(kinds);
-  if (dosePanelShowing) on.delete('doseSlot');
+  if (dosePanelCoversEveryDose) on.delete('doseSlot');
   return agenda({ todayEpochDay, marks: marks.filter((mark) => on.has(mark.kind)), doses, disguised });
 }
