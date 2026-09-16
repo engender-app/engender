@@ -817,6 +817,7 @@
         surgeries={railSurgeries}
         firstEntryDay={boundsQuery.value?.firstEpochDay ?? null}
         hintSeen={prefs.spanRailHintDismissed}
+        flagFill={activeFlag.fill}
         roles={activeFlag.roles}
         onChange={pickSpan}
         onLive={(next) => (live = next)}

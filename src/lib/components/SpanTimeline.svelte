@@ -126,6 +126,10 @@
     firstEntryDay = null,
     /** Whether the drag hint has already been answered on this journal. */
     hintSeen = true,
+    /** The whole flag as one gradient, for the eras' legend key - the one
+        kind here whose colour is plural. `'none'` under disguise
+        (ADR-0035), where the key falls back to an outline with no fill. */
+    flagFill = null,
     roles,
     onChange,
     onLive,
@@ -142,6 +146,7 @@
     surgeries?: readonly RailMark[];
     firstEntryDay?: number | null;
     hintSeen?: boolean;
+    flagFill?: string | null;
     roles: Role[];
     onChange: (span: Span) => void;
     onLive?: (span: Span) => void;
@@ -310,9 +315,14 @@
   const x = (day: number) => railPosition(day, railStart, today) * railWidth;
   let startX = $derived(x(live.start));
   let endX = $derived(x(live.end));
-  /* Between the two handles, held inside the rail so a span at either end
-     does not push the line off it. */
-  let hintX = $derived(Math.min(railWidth, Math.max(0, (startX + endX) / 2)));
+  /* Between the two handles, and held inside the rail by its own half-width
+     so a span sitting at either end does not push the line off the screen -
+     which is what the default span, the last thirty days against today's
+     edge, does every first time. */
+  let hintWidth = $state(0);
+  let hintX = $derived(
+    Math.min(railWidth - hintWidth / 2, Math.max(hintWidth / 2, (startX + endX) / 2))
+  );
   /* The clip that lifts the span out of the history: the far edge of the
      end handle's day, so a one-day span is still a visible stretch. */
   let clipRight = $derived(Math.max(0, railWidth - Math.min(railWidth, endX + Math.max(2, pxPerDayAt(live.end)))));
@@ -455,6 +465,8 @@
   style:--tl-hint-x="{hintX}px"
   style:--tl-clip-right="{clipRight}px"
   style:--tl-lanes={lanes.length}
+  style:--tl-gutter={lanes.length ? '7px' : '0px'}
+  style:--tl-flag={flagFill && flagFill !== 'none' ? flagFill : null}
 >
   <!-- The years, as a ruler above the rail: the one label a rail of years
        is read by. On the page, small type, so they are legal anywhere. -->
@@ -635,7 +647,13 @@
          already carry their own names, and a slider that read out "drag the
          ends" every time it took focus would be worse than silent. -->
     {#if showHint}
-      <span class="span-tl-hint" data-span-hint aria-hidden="true" transition:hintFade>{m.lookback_drag_hint()}</span>
+      <span
+        class="span-tl-hint"
+        bind:clientWidth={hintWidth}
+        data-span-hint
+        aria-hidden="true"
+        transition:hintFade>{m.lookback_drag_hint()}</span
+      >
     {/if}
   </div>
 
@@ -643,8 +661,7 @@
        elements away under the title (DIRECTION.md rule 7's own "say it
        once, where it is true"). -->
   <p class="span-tl-state" data-span-state-line>
-    <span class="span-tl-dates">{spanDates}</span><span class="span-tl-sep">, </span><span
-      class="span-tl-days">{m.n_days({ n: shownDays })}</span>
+    {spanDates}<span class="span-tl-days">{`, ${m.n_days({ n: shownDays })}`}</span>
   </p>
 
   {#if legend.length}
@@ -678,17 +695,26 @@
     --low-h: 8px;
     /* One lane per history kind this journal has, stacked off the axis.
        Zero lanes leaves every measurement below exactly where it was
-       before the history layer existed. */
+       before the history layer existed.
+
+       The gutter is the marks' own room: a milestone or a surgery day is a
+       12px block standing on the axis, so the first lane starts above where
+       those blocks reach and no lane is drawn under one. It is switched on
+       by the component rather than written here, because CSS cannot make a
+       constant conditional on a count and a rail with no lanes owes no
+       gutter. */
     --lane-h: 6px;
-    --hist-h: calc(var(--tl-lanes, 0) * var(--lane-h));
+    --hist-h: calc(var(--tl-lanes, 0) * var(--lane-h) + var(--tl-gutter, 0px));
     /* What is left for the span to stand up in. */
     --span-h: calc(var(--rail-h) - var(--hist-h));
     /* How much of the lifted layer and of a grip shows at rest. A share of
        the span's own height rather than a fixed 18px, so a rail carrying
-       three lanes still has a rise worth watching and its era names are
-       still hidden until it takes one. 2.9 is what puts a rail with no
-       history back at the 18px this shipped with. */
-    --rest-h: calc(var(--span-h) / 2.9);
+       three lanes still has a rise worth watching: 2.9 is what puts a rail
+       with no history back at the 18px this shipped with. The floor is the
+       history strip plus five, because the resting span is meant to read as
+       "a band a little taller than the history under it" and a share of a
+       27px layer is not taller than an 8px strip. */
+    --rest-h: max(calc(var(--low-h) + 5px), calc(var(--span-h) / 2.9));
     --rest-grip: 26px;
   }
 
@@ -799,6 +825,13 @@
   .span-tl-era.is-open-start { border-left: 0; }
   .span-tl-era.is-open-end { border-right: 0; }
 
+  /* The name opens with the band rather than being revealed by it. The
+     layer's own clip used to hide the names at rest, and it cannot once the
+     history lanes have taken part of the rail's height: what is left for
+     the span is shorter than a name is tall, so a resting rail showed the
+     bottom five pixels of every era's name. So the name carries a clip of
+     its own, opening upward on the same duration and curve the band's does
+     - a wipe rather than a fade, which is rule 10's own answer. */
   .span-tl-era-name {
     position: absolute;
     top: 6px;
@@ -809,6 +842,11 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path var(--dur-med) var(--ease-out);
+  }
+  .is-active .span-tl-era-name {
+    clip-path: inset(0);
   }
 
   .span-tl-targets {
@@ -848,7 +886,7 @@
      and a tab stop, which is the path that does not depend on aim. */
   .span-tl-hband {
     position: absolute;
-    bottom: calc(var(--tl-lane, 0) * var(--lane-h));
+    bottom: calc(var(--tl-gutter, 0px) + var(--tl-lane, 0) * var(--lane-h));
     height: var(--lane-h);
     min-width: 3px;
     box-sizing: border-box;
@@ -1001,16 +1039,17 @@
 
   /* The one-time hint, sitting between the two grips it is about, on the
      page's second surface inside the outline every kit element separates
-     with (the kit refuses shadows). Over the bands rather than under the
-     rail, so it reads as belonging to the handles rather than to the line
-     below. */
+     with (the kit refuses shadows). At the top of the rail rather than
+     across it: that band is the part of the lifted layer the rest state
+     leaves empty, so the hint covers nothing a resting rail is drawing, and
+     it is gone by the time a drag raises the layer into it. */
   .span-tl-hint {
     position: absolute;
-    top: 50%;
+    top: -1px;
     left: var(--tl-hint-x);
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
     max-width: 100%;
-    padding: 3px 8px;
+    padding: 2px 8px;
     background: var(--surface-2);
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
@@ -1063,14 +1102,14 @@
     background: var(--text-2);
   }
   /* The eras are the one kind whose colour is plural, so their key is the
-     flag itself - the same bar the wrapped cover draws. Under disguise
-     roles.ts hands out no gradient at all (ADR-0035), and `none` as a
-     background image leaves the accent underneath showing, which is what
-     every other role resolves to there. */
+     flag itself rather than any one stripe - which is also what keeps it
+     from colliding with the two coloured lanes on a two-colour flag. Under
+     disguise roles.ts hands out no gradient at all (ADR-0035), the variable
+     is unset, and the key falls back to the outline every block here wears
+     over nothing, which is what "no colour" looks like on that theme. */
   .span-tl-chip.is-flag {
-    background-color: var(--accent);
-    background-image: var(--flag-fill);
-    background-size: 100% 100%;
+    background: var(--tl-flag, transparent);
+    border-color: var(--text);
   }
   /* A mark, drawn as one: the milestone block's own size and radius. */
   .span-tl-chip.is-mark {
