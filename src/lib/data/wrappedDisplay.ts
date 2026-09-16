@@ -21,6 +21,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { BarRow } from '$lib/components/kit/barRow';
+import type { MetricRange } from './metricRange';
 import type { DaySpread } from './journal/stats';
 import { coveredGround } from './statsCharts';
 import type { WrappedTagInsight, WrappedTallyCounts } from './wrappedSections';
@@ -107,6 +108,53 @@ export function tagInsightRows(
     value: signedValue(insight.delta, format),
     amount: nativeAmount(metric, Math.abs(insight.delta))
   }));
+}
+
+/** A correlation card, already resolved to what a row prints: which scale it
+    is (redesign ticket 05 merged the tag insights card and the correlation
+    cards into one, so a row can no longer lean on "the card names the
+    scale" the way `tagInsightRows` above does), a display label and its
+    metric's own range. */
+export interface CorrelationBarInput {
+  key: string;
+  label: string;
+  metric: string;
+  metricName: string;
+  range: MetricRange;
+  count: number;
+  withAvg: number;
+  withoutAvg: number;
+}
+
+/** The merged tag card's rows: bars, one ranking function's worth, mixing
+    every scale in play and the dose-day occurrence (correlationCards.ts).
+
+    Length is `tagInsightRows`'s own rule - the size of the movement, never
+    its direction - but normalized to the metric's own width first
+    (`rankCorrelationCards`'s span, recomputed here rather than threaded
+    through the ranking's own return type). A raw native delta would put a
+    5-point move on a 0-100 dimension next to a 1-point move on mood's 1-to-5
+    and draw the smaller-looking number as the longer bar: five is bigger
+    than one, but a twentieth of a dimension's width is four times a
+    quarter of mood's. The note names the scale on every row now that a card
+    is no longer one metric by construction. */
+export function correlationBarRows(inputs: CorrelationBarInput[]): BarRow[] {
+  return inputs.map((input) => {
+    const format = (value: number) => nativeValue(input.metric, value);
+    const delta = input.withAvg - input.withoutAvg;
+    const width = Math.max(input.range.max - input.range.min, 1);
+    return {
+      key: input.key,
+      name: input.label,
+      note: `${input.metricName} · ${m.insight_row_sub({
+        count: String(input.count),
+        with: format(input.withAvg),
+        without: format(input.withoutAvg)
+      })}`,
+      value: signedValue(delta, format),
+      amount: Math.abs(delta) / width
+    };
+  });
 }
 
 /** The two tally counts as bars.
