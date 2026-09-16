@@ -3765,7 +3765,7 @@
   "home_edit_done": "Done",
   "home_edit_reset": "Back to the default set",
   "home_edit_reset_question": "Go back to the default set?",
-  "home_edit_reset_hint": "The order you arranged goes, and every tile and agenda kind comes back on. Nothing is deleted: those screens are still in their own place.",
+  "home_edit_reset_hint": "The pinned rows go back to the default set, so a row you took off comes back and a row you added goes, and every tile and agenda kind comes back on. Nothing is deleted: those screens are still in their own place.",
   "tomorrow": "Tomorrow",
   "surgery_unit_post_op": [
     {
