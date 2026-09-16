@@ -4,16 +4,21 @@ import {
   defaultSpan,
   eraBands,
   eraOfferDue,
+  historyBands,
+  historyKindsPresent,
   historyStart,
   moveHandle,
   nearestHandle,
+  railLegendKinds,
   railPosition,
   dayAtPosition,
   snapDay,
   grainAt,
   spanRangeQuery,
+  surgeryMarks,
   yearTicks
 } from './lookBackSpan';
+import { annotationsInRange, type ChartAnnotationSource } from '../charts/annotations';
 import { parseWrappedRangeParams } from './wrappedRange';
 
 const TODAY = 20700;
@@ -178,6 +183,72 @@ describe('eraBands: eras clamped to the rail, open bounds reaching its ends', ()
     expect(
       eraBands([{ id: 'x', name: 'Later', startEpochDay: TODAY + 1, endEpochDay: null }], 18000, TODAY)
     ).toEqual([]);
+  });
+});
+
+describe('the rail draws every dated history, not only the eras', () => {
+  const RAIL_START = 18000;
+  /* The four record kinds the rail reads, put through the query's own
+     selection so these read the shapes the screen really hands over
+     (charts/annotations.ts) rather than a hand-built copy of them. */
+  const sources: ChartAnnotationSource[] = [
+    { id: 'e1', kind: 'regimen', name: 'Estradiol', startEpochDay: 17000, endEpochDay: 19000 },
+    { id: 'e2', kind: 'regimen', name: 'Estradiol valerate', startEpochDay: 19001, endEpochDay: null },
+    { id: 't1', kind: 'tryout', name: 'Alex', startEpochDay: 20000, endEpochDay: 20100 },
+    { id: 's1', kind: 'surgery', name: 'Orchiectomy', startEpochDay: 20300, endEpochDay: null },
+    /* Four kinds the same query returns and the rail does not draw: a
+       milestone and an era already have their own marks and bands here, a
+       recovery window is a reading of a procedure rather than a stretch the
+       person lived through as its own thing, and a journaling pause came
+       off the rail on the sign-off renders - it is the absence of a journal
+       rather than a stretch of a life, and the charts still band it. */
+    { id: 'p1', kind: 'journalingPause', name: null, startEpochDay: 20200, endEpochDay: 20230 },
+    { id: 'm1', kind: 'milestone', name: 'Came out', startEpochDay: 20400, endEpochDay: null },
+    { id: 'era1', kind: 'era', name: 'First year', startEpochDay: 19500, endEpochDay: null },
+    { id: 'r1', kind: 'recovery', name: 'Orchiectomy', startEpochDay: 20301, endEpochDay: 20390 }
+  ];
+  const annotations = annotationsInRange(sources, { from: RAIL_START, to: TODAY, today: TODAY });
+
+  it('takes the two stretch kinds and nothing else, clamped to the rail', () => {
+    expect(historyBands(annotations)).toEqual([
+      { id: 'e1', kind: 'regimen', name: 'Estradiol', start: RAIL_START, end: 19000, openStart: true, openEnd: false },
+      { id: 'e2', kind: 'regimen', name: 'Estradiol valerate', start: 19001, end: TODAY, openStart: false, openEnd: true },
+      { id: 't1', kind: 'tryout', name: 'Alex', start: 20000, end: 20100, openStart: false, openEnd: false }
+    ]);
+  });
+
+  it('takes a procedure as a mark on its day', () => {
+    expect(surgeryMarks(annotations)).toEqual([{ id: 's1', name: 'Orchiectomy', epochDay: 20300 }]);
+  });
+
+  it('gives each kind present its own row, in the rail’s own order', () => {
+    expect(historyKindsPresent(historyBands(annotations))).toEqual(['regimen', 'tryout']);
+  });
+
+  it('leaves out a kind this journal has none of', () => {
+    const onlyTryouts = historyBands(
+      annotationsInRange([sources.find((s) => s.kind === 'tryout')!], { from: RAIL_START, to: TODAY, today: TODAY })
+    );
+    expect(historyKindsPresent(onlyTryouts)).toEqual(['tryout']);
+  });
+
+  it('names in the legend only the kinds this journal has', () => {
+    expect(railLegendKinds(historyBands(annotations), surgeryMarks(annotations), true)).toEqual([
+      'era',
+      'regimen',
+      'tryout',
+      'surgery'
+    ]);
+    expect(railLegendKinds([], [], false)).toEqual([]);
+    expect(railLegendKinds([], surgeryMarks(annotations), false)).toEqual(['surgery']);
+  });
+
+  it('sets the span to the thirty days ending on a mark', () => {
+    const mark = surgeryMarks(annotations)[0];
+    expect(defaultSpan(RAIL_START, mark.epochDay)).toEqual({
+      start: mark.epochDay - DEFAULT_SPAN_DAYS + 1,
+      end: mark.epochDay
+    });
   });
 });
 

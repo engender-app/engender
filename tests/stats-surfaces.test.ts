@@ -15,6 +15,10 @@ import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const stats = readFileSync(root + 'src/routes/stats/+page.svelte', 'utf8');
+/* The rail is its own component, and three of this door's own rules live
+   in it rather than on the page (ticket 06): where the span line sits,
+   which stripe each band kind takes, and the one-time drag hint. */
+const timeline = readFileSync(root + 'src/lib/components/SpanTimeline.svelte', 'utf8');
 
 describe('the summary panels wait for the floor', () => {
   /* WRAPPED_ENTRY_FLOOR, read off the module that owns it rather than
@@ -92,8 +96,8 @@ describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
 /* Redesign ticket 11: the door leads with the person's history, and one
    span drives every read on it. */
 describe('the Look back door leads with the rail, and the span is the range', () => {
-  it('opens on the title, the span as the subtitle, the quick picks, then the rail', () => {
-    const header = stats.indexOf('<ScreenHeader title={m.nav_lookback()} subtitle={spanLabel}');
+  it('opens on the title, the quick picks, then the rail', () => {
+    const header = stats.indexOf('<ScreenHeader title={m.nav_lookback()}');
     const picks = stats.indexOf('key="lookback-quick"');
     const rail = stats.indexOf('<SpanTimeline');
     const cross = stats.indexOf('<SectionHeading text={m.stats_group_cross()} />');
@@ -101,6 +105,49 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(picks).toBeGreaterThan(header);
     expect(rail).toBeGreaterThan(picks);
     expect(cross).toBeGreaterThan(rail);
+  });
+
+  /* Ticket 06: the line naming the span used to be the header's subtitle,
+     two elements above the rail it is a reading of, where it parsed as a
+     subtitle of the door's title. The rail owns it now, against the
+     handles that move it. */
+  it('writes the span under the rail rather than under the title', () => {
+    expect(stats).not.toContain('subtitle={spanLabel}');
+    expect(timeline).toContain('data-span-state-line');
+    expect(timeline.indexOf('data-span-state-line')).toBeGreaterThan(timeline.indexOf('class="span-tl-rail"'));
+  });
+
+  /* The rail draws every dated history the journal holds, not the two it
+     happens to be handed directly: the other three stretch kinds and the
+     surgery days come out of the one annotations query. */
+  it('reads the rest of the history through the annotations query, over the whole rail', () => {
+    expect(stats).toContain('j.chartAnnotations.getAnnotations(start, today, today)');
+    expect(stats).toContain('historyBands(railAnnotationsQuery.rows)');
+    expect(stats).toContain('surgeryMarks(railAnnotationsQuery.rows)');
+  });
+
+  /* Colour on the rail means an era and nothing else: the history rows are
+     ink, one solid and one hollow, so they cannot collide with a flag stripe
+     on any palette or under disguise (Alicja, on the first renders: "they
+     use the same colors, it looks bad"). */
+  it('names only the kinds present, and asks the flag for nothing but the eras', () => {
+    expect(timeline).toContain('railLegendKinds(history, surgeries, bands.length > 0)');
+    expect(timeline).toMatch(
+      /\.span-tl-hband\[data-span-band='regimen'\] \{[^}]*background: var\(--text-2\);/
+    );
+    expect(timeline).toMatch(
+      /\.span-tl-hband\[data-span-band='tryout'\] \{[^}]*background: var\(--bg\);\s*border-color: var\(--text-2\);/
+    );
+    // No role reaches a history row: `roleAttrs` is spent on the eras alone.
+    expect(timeline).not.toMatch(/span-tl-hband[\s\S]{0,400}--role-draw/);
+  });
+
+  it('shows the drag hint once per journal and lets the first move answer it', () => {
+    expect(stats).toContain('hintSeen={prefs.spanRailHintDismissed}');
+    expect(stats).toContain('onHintSeen={() => (prefs.spanRailHintDismissed = true)}');
+    expect(timeline).toContain('{#if showHint}');
+    // Both ways a handle moves answer it: the finger and the key.
+    expect((timeline.match(/answerHint\(\);/g) ?? []).length).toBe(2);
   });
 
   it('reaches the three cadence routes one tap each, as links', () => {

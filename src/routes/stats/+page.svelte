@@ -84,7 +84,16 @@
   import { calendarDuration, localDateFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { defaultSpan, eraBands, eraOfferDue, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
+  import {
+    defaultSpan,
+    eraBands,
+    eraOfferDue,
+    historyBands,
+    historyStart,
+    spanRangeQuery,
+    surgeryMarks,
+    type Span
+  } from '$lib/data/lookBackSpan';
   import { precedingWindow, compareStretchQuery } from '$lib/data/compareStretch';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
@@ -175,6 +184,23 @@
           today
         )
   );
+
+  /* The rest of the rail's history (ticket 06): the regimen episodes,
+     tryouts and journaling pauses it draws as bands and the procedures it
+     draws as marks. One question rather than four - `getAnnotations` is
+     already the app's single "what happened between these days" query and
+     every one of these kinds is in its answer - asked over the whole rail
+     rather than over the span, since the rail is what is behind the person
+     and the span is only the part of it they are pointing at. The two
+     kinds it also returns that the rail draws its own way, eras and
+     milestones, are dropped by `historyBands` and `surgeryMarks`. */
+  let railAnnotationsQuery = liveList(async (j) => {
+    const start = railStart;
+    if (start === null) return [];
+    return j.chartAnnotations.getAnnotations(start, today, today);
+  });
+  let railHistory = $derived(historyBands(railAnnotationsQuery.rows));
+  let railSurgeries = $derived(surgeryMarks(railAnnotationsQuery.rows));
 
   /* The span, settled. Null until the rail is known, then wrapped's own
      default window; from there it is the person's, and a later write that
@@ -754,9 +780,12 @@
 </script>
 
 <div class="screen">
-  <!-- The door's title at 48 on the field; the span, which is small type,
-       on the page under it as the first line (DIRECTION.md rule 7). -->
-  <ScreenHeader title={m.nav_lookback()} subtitle={spanLabel} screen="stats" />
+  <!-- The door's title at 48 on the field, and nothing under it: the span
+       used to be the header's subtitle and sat two elements above the rail
+       it was a reading of, where it parsed as a subtitle of the door
+       (ticket 06). It is written under the rail now, against the handles
+       that move it. -->
+  <ScreenHeader title={m.nav_lookback()} screen="stats" />
 
   <!-- Week, month and year, one tap each: the three completed cadences at
        their own routes, in the square track. None is current here. -->
@@ -784,10 +813,15 @@
         {span}
         eras={erasQuery.rows}
         milestones={vocabulary.milestones}
+        history={railHistory}
+        surgeries={railSurgeries}
         firstEntryDay={boundsQuery.value?.firstEpochDay ?? null}
+        hintSeen={prefs.spanRailHintDismissed}
+        flagFill={activeFlag.fill}
         roles={activeFlag.roles}
         onChange={pickSpan}
         onLive={(next) => (live = next)}
+        onHintSeen={() => (prefs.spanRailHintDismissed = true)}
       />
       <!-- The way into the span's retrospective: the same range read wrapped
            already makes, at the URL the range picker itself would write for
