@@ -90,7 +90,12 @@ export interface StockProjection {
 
 const isConsuming = (dose: DoseEvent) => dose.status !== 'skipped';
 
-const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
+/** Whether two drug names are the same drug. Exported because pairing a
+    stock entry to a regimen is the same question outside this file as in
+    it - Care pairs each running drug's lane to the stock it is counting
+    down (phase 11 ticket 10), and a second comparison written there could
+    disagree with the one the projection itself is made from. */
+export const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
 
 /** Whether `dose` counts against `stock`'s drug: taken or changed - a
     skipped dose used nothing - and attributed (regimenEpisode.ts) to this

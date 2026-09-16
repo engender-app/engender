@@ -302,7 +302,7 @@
       forced, and not merely for having more than one episode active, now
       that activeEpisode already resolves the common case on its own. */
   let editorNeedsDrugPick = $derived(
-    editor !== null && !editor.id && activeDrugChoices.length > 1 && activeEpisode === null
+    editor !== null && !editor.id && activeDrugChoices.length > 1 && activeEpisode === null && !editor.drug
   );
 
   /* Which of the record's three lines is open (phase 5 UX ticket 37).
@@ -325,7 +325,16 @@
      this is reached from inside the app only. */
   $effect(() => {
     if (page.url.searchParams.get('add') !== '1') return;
-    openEditor(null);
+    /* Seeded with the drug the caller already knew (phase 11 ticket 10:
+       Care's regimen blocks each carry a Log button, and somebody on three
+       regimens said which one by pressing that block's button rather than
+       the one two blocks down). Handed to openEditor rather than applied
+       after it: this runs inside an effect, and `pickDrug` reads `editor`
+       back, which would make the effect depend on the state it had just
+       written - the loop the comment in openEditor below is about. A drug
+       that is not one of the active ones falls through to the picker, same
+       as arriving with no drug at all. */
+    openEditor(null, page.url.searchParams.get('drug'));
     /* replaceState rather than goto: this only has to take the param off the
        URL, and a goto would start a second navigation on top of the one that
        just landed here, which aborts it and leaves the shell's transition
@@ -343,7 +352,7 @@
     if (!loading && view === 'log') scrollToHash();
   });
 
-  function openEditor(dose: DoseEvent | null) {
+  function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
     const now = Date.now();
     if (!dose) {
       /* Seeded from the active episode: someone logging today's dose is
@@ -396,14 +405,16 @@
         scheduledTime: timeInputValue(now),
         drug: activeEpisode?.drug ?? ''
       };
+      const seeded = seedDrug ? withDrug(draft, seedDrug) : draft;
       /* A line whose fact the app does not know opens as the fields that
          make one. Those are the two cases that also block the save: an
          amount nothing seeded, and several active episodes tied with no
-         drug picked yet (ticket 40 - activeEpisode already resolves the
-         common case, seeding draft.dose above with it). Everything else
-         opens stated and closed. */
-      openGroup = draft.dose === '' || (activeDrugChoices.length > 1 && activeEpisode === null) ? 'what' : null;
-      editor = draft;
+         drug named yet (ticket 40 - activeEpisode already resolves the
+         common case, seeding draft.dose above with it; a caller that named
+         the drug resolves it too). Everything else opens stated and
+         closed. */
+      openGroup = seeded.dose === '' || (activeDrugChoices.length > 1 && !seeded.drug) ? 'what' : null;
+      editor = seeded;
       return;
     }
 
@@ -426,23 +437,31 @@
     };
   }
 
-  /** Picking a drug in the disambiguation prompt also seeds the amount, the
-      unit and the route from that episode, the same convenience a single
-      active episode already gets for free. */
-  function pickDrug(drug: string) {
-    if (!editor) return;
+  /** A draft with this drug named on it, and with the amount, the unit and
+      the route that come with it - the same convenience a single active
+      episode already gets for free. A drug no active episode carries is
+      still named on the draft and seeds nothing else, which is what leaves
+      the fields for somebody logging a drug they have no regimen row for.
+
+      Pure, and separate from the handler below, because the `?add=1` effect
+      seeds a draft through `openEditor` before there is an `editor` to read
+      back (and an effect that read one would invalidate itself). */
+  function withDrug(draft: Editor, drug: string): Editor {
     const match = activeEpisodes.find((e) => e.drug === drug);
-    if (!match) {
-      editor = { ...editor, drug };
-      return;
-    }
-    editor = {
-      ...editor,
+    if (!match) return { ...draft, drug };
+    return {
+      ...draft,
       drug,
       dose: String(match.dose),
       doseUnit: match.doseUnit,
-      route: matchDoseRoute(match.route, ROUTE_OPTIONS) ?? editor.route
+      route: matchDoseRoute(match.route, ROUTE_OPTIONS) ?? draft.route
     };
+  }
+
+  /** Picking a drug in the disambiguation prompt. */
+  function pickDrug(drug: string) {
+    if (!editor) return;
+    editor = withDrug(editor, drug);
   }
 
   /* What the record's three lines state, and the one rule they share: a

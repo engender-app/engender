@@ -294,6 +294,11 @@
            on that reading and never read here for its own sake, so it is
            managed here and takes no hub row. -->
       <ListRow key="words" icon="note" title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} href="/settings/words" />
+      <!-- Eras (redesign ticket 16, ADR-0084): spent on seven other screens
+           and created on exactly one, which is this card's own test. The
+           milestone rail is the one place left under Transition that draws
+           one, as a band rather than a row. -->
+      <ListRow key="eras" icon="columns" title={m.eras_title()} subtitle={m.hub_sub_eras()} href="/settings/eras" />
     </ListCard>
 
     <!-- ADR-0043: the manual way into cycle tracking, for someone no

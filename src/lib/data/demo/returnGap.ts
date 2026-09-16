@@ -26,6 +26,7 @@ import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
 import { seedPersonaJournal } from './journal-seed';
 import { seedFullFixture } from './fullFixture';
+import { persona } from './persona';
 
 /** How far back the journal stops. */
 const DEMO_GAP_DAYS = 35;
@@ -58,10 +59,18 @@ export async function seedReturnGap(journal: Journal, today: number = todayEpoch
     if (episode.drug !== 'Estradiol valerate') await journal.regimen.endEpisode(episode.id, anchor);
   }
 
-  /* The era the person is in. Open at both ends on purpose: an era with no
-     end is what makes it the stretch they are still in, and no start is the
-     ordinary shape of the first era somebody names (eras.ts). */
-  await journal.eras.upsertEra({ name: 'Second year', startEpochDay: anchor - 300, endEpochDay: null });
+  /* The era the person is in. Open at the end on purpose: an era with no end
+     is what makes it the stretch they are still in. Started the day after
+     `seedPersonaJournal`'s own last era ends, rather than at a fixed offset
+     from `anchor` - `persona`'s eras are dated relative to `anchor` too
+     (it's seeded with `anchor` as its own "today"), and a fixed offset
+     reached backward into them, tripping eras.ts's no-overlap invariant and
+     leaving the whole reseed clearing itself out on the throw (ticket 23). */
+  await journal.eras.upsertEra({
+    name: 'Second year',
+    startEpochDay: firstDayAfterPersonaEras(persona(anchor).eras),
+    endEpochDay: null
+  });
 
   /* A letter written before the gap that came due inside it, which is the
      whole point of a time capsule and the one row on the return surface
@@ -78,4 +87,12 @@ export async function seedReturnGap(journal: Journal, today: number = todayEpoch
     epochDay: anchor + 16,
     description: ''
   });
+}
+
+/** The day after the latest of the persona's own eras ends, so an era
+    started there can never overlap one of them (ticket 23). Exported for
+    its own unit test - `seedReturnGap` as a whole needs a DOM for the
+    photos `seedPersonaJournal` writes, so it can't run in the Node tier. */
+export function firstDayAfterPersonaEras(personaEras: readonly { endEpochDay: number }[]): number {
+  return Math.max(...personaEras.map((era) => era.endEpochDay)) + 1;
 }

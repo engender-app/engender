@@ -304,7 +304,7 @@
             class="era-offer-yes"
             data-era-offer-confirm
             data-span-keep
-            href={`/transition/eras?start=${offerSpan.start}&end=${offerSpan.end}`}
+            href={`/settings/eras?start=${offerSpan.start}&end=${offerSpan.end}`}
             onclick={() => settleEraOffer(offerSpan)}
           >
             {m.lookback_era_offer_confirm()}

@@ -47,7 +47,6 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   roadmap: m.roadmap_title,
   letters: m.letters_title,
   tryouts: m.tryout_title,
-  eras: m.eras_title,
   doubt: m.safe_space_title,
   'voice-benchmark': m.vb_title,
   wear: m.wear_log,
@@ -81,7 +80,6 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,
   tryouts: m.hub_sub_tryouts,
-  eras: m.hub_sub_eras,
   doubt: m.hub_sub_doubt,
   'voice-benchmark': m.hub_sub_voice_benchmark,
   wear: m.hub_sub_wear,
@@ -188,7 +186,7 @@ function nextLine(what: NextWhat, epochDay: number, todayEpochDay: number): stri
       return today ? m.hub_line_next_surgery_today() : m.hub_line_next_surgery({ gap });
     case 'dose':
       return what.runOutEpochDay === null
-        ? m.care_other_next_dose({ when: fullDay(epochDay) })
+        ? m.care_next_dose({ when: fullDay(epochDay) })
         : m.hub_line_care_dose_and_stock({ when: fullDay(epochDay), date: fullDay(what.runOutEpochDay) });
     case 'runOut':
       return m.hub_line_run_out({ date: fullDay(epochDay) });

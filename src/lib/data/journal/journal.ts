@@ -476,7 +476,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
        the curve screen ever asks for them. */
     hormoneCurve: deferredArea<HormoneCurveArea>(async () =>
       (await import('./hormoneCurve')).makeHormoneCurveArea(doses, regimen, labs)
-    )(['getCurves']),
+    )(['getCurves', 'getCurveDirection']),
     sideEffects,
     cycleEvents,
     journalingPauses,

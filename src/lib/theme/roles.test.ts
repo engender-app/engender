@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { HOME_AREA_ROLE, roleAt } from './roles.ts';
+import { eraBandRoles, HOME_AREA_ROLE, roleAt } from './roles.ts';
 
 describe('roleAt', () => {
   const roles = ['a', 'b', 'c'].map((stripe) => ({
@@ -21,6 +21,21 @@ describe('roleAt', () => {
   it('has nothing to give when the flag published none', () => {
     // Which is what disguise looks like from here (ADR-0035).
     expect(roleAt([], 0)).toBeUndefined();
+  });
+});
+
+describe('eraBandRoles', () => {
+  const role = (stripe: string) => ({ stripe, ink: stripe, mark: stripe, paired: stripe, heat: [] });
+
+  it('cycles over the flag colours where there are two or more', () => {
+    const roles = [role('#2E3192'), role('#EC008C'), role('#FFFFFF')];
+    expect(eraBandRoles(roles).map((r) => r.stripe)).toEqual(['#2E3192', '#EC008C']);
+  });
+
+  it("adds a flag's own shades in behind its one colour, so a second era is not the same stripe again", () => {
+    // agender's shape: one chromatic stripe, two achromatic shades.
+    const roles = [role('#000000'), role('#B8B8B8'), role('#00FF00')];
+    expect(eraBandRoles(roles).map((r) => r.stripe)).toEqual(['#00FF00', '#000000', '#B8B8B8']);
   });
 });
 
