@@ -112,6 +112,7 @@ export function homeTiles(
   const schedules = liveList((j) => j.doses.getSchedules());
   const dosePauses = liveList((j) => j.doses.getPauses());
   const todayDoses = liveList((j) => j.doses.getDoses(todayEpochDay, todayEpochDay));
+  const yesterdayDoses = liveList((j) => j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1));
   const latestBenchmarkDay = liveQuery((j) => j.voiceBenchmarks.lastWriteEpochDay(todayEpochDay));
   const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
   /* Which areas are hidden or finished (phase 8 features ticket 04). One
@@ -174,6 +175,7 @@ export function homeTiles(
         schedules: schedules.rows,
         dosePauses: dosePauses.rows,
         todayDoses: todayDoses.rows,
+        yesterdayDoses: yesterdayDoses.rows,
         latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
         journalingPauses: journalingPauses.rows,
         latestHairRemovalSession: latestHairRemoval.value ?? null,

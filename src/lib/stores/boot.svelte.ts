@@ -35,6 +35,8 @@ import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
+import { todayEpochDay } from '../data/epochDay';
+import { ROUTE_OPTIONS } from '../data/vocabulary/doseLabels';
 import { hydrateReference } from '../data/live/reference.svelte';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import {
@@ -669,6 +671,16 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       if (reclaimed > 0) bump(tablesWrittenBy('entries', 'deleteEntry'));
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
+    /* The standing instruction, carried out (phase 11 ticket 11, ADR-0086).
+       Through the journal rather than the driver, unlike the two passes
+       above: this one is an ordinary area operation, so it takes the write
+       guard and the write recorder on the way like every other write does.
+       It announces what it wrote for the same reason the purge does - the
+       dose log and Today are live while this runs. */
+    autoLogDueDoses: async () => {
+      const written = await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
+      if (written > 0) bump(tablesWrittenBy('doses', 'autoLogDueDoses'));
+    },
     scheduleHousekeeping: whenIdle
   });
 

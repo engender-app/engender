@@ -516,7 +516,8 @@ export async function generateLongJournal(
     episodeId,
     recurrence: { kind: 'weekdays', weekdays: REGIMEN_WEEKDAYS },
     dosesPerDay: 1,
-    doseAmounts: REGIMEN_DOSE_AMOUNTS
+    doseAmounts: REGIMEN_DOSE_AMOUNTS,
+    autoLogFromEpochDay: null
   });
   for (let day = regimenStartEpochDay; day <= lastEpochDay; day++) {
     if (!REGIMEN_WEEKDAYS.includes(weekdayOfEpochDay(day))) continue;
@@ -556,7 +557,8 @@ export async function generateLongJournal(
     episodeId: secondEpisodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 100, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   for (let day = secondEpisodeStartEpochDay; day <= secondEpisodeEndEpochDay; day++) {
     if (random() < 0.08) continue;
@@ -593,7 +595,8 @@ export async function generateLongJournal(
     episodeId: thirdEpisodeId,
     recurrence: { kind: 'weekdays', weekdays: [0] },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   let injectionCount = 0;
   for (let day = thirdEpisodeStartEpochDay; day <= lastEpochDay; day++) {

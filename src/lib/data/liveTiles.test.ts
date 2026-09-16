@@ -147,7 +147,8 @@ describe('liveTiles trigger predicates', () => {
       episodeId: 'ep-1',
       recurrence: { kind: 'everyNDays', everyNDays: 3 },
       dosesPerDay: 1,
-      doseAmounts: null
+      doseAmounts: null,
+      autoLogFromEpochDay: null
     };
 
     it('suppresses when disabled, snoozed, or daily', () => {
@@ -156,7 +157,8 @@ describe('liveTiles trigger predicates', () => {
         episodeId: 'ep-1',
         recurrence: { kind: 'everyNDays', everyNDays: 1 },
         dosesPerDay: 1,
-        doseAmounts: null
+        doseAmounts: null,
+        autoLogFromEpochDay: null
       };
 
       expect(
@@ -215,6 +217,7 @@ describe('liveTiles trigger predicates', () => {
         dose: 100,
         doseUnit: 'mcg',
         status: 'taken',
+        source: 'person',
         scheduled: null,
         drug: 'Estradiol patch',
         applicationSite: 'abdomen'

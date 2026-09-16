@@ -671,8 +671,10 @@ export async function readDoseSchedules({ driver }: SectionRead): Promise<Archiv
     recurrence_kind: string;
     every_n_days: number | null;
     doses_per_day: number;
+    auto_log_from_epoch_day: number | null;
   }>(
-    `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day
+    `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day,
+            s.auto_log_from_epoch_day
        FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
       ORDER BY s.id`
   );
@@ -701,7 +703,8 @@ export async function readDoseSchedules({ driver }: SectionRead): Promise<Archiv
       everyNDays: r.every_n_days,
       weekdays: await weekdaysOf(r.id),
       dosesPerDay: r.doses_per_day,
-      doseAmounts: await doseAmountsOf(r.id)
+      doseAmounts: await doseAmountsOf(r.id),
+      autoLogFromEpochDay: r.auto_log_from_epoch_day
     }))
   );
 }

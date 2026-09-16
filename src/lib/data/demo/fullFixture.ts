@@ -68,7 +68,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     episodeId: estradiolEpisodeId,
     recurrence: { kind: 'weekdays', weekdays: [0] },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   const injectionSites = ['thigh-left', 'thigh-right', 'deltoid-left', 'deltoid-right', 'ventrogluteal-left', 'ventrogluteal-right'] as const;
   let injectionCount = 0;
@@ -104,7 +105,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     episodeId: progesteroneEpisodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 100, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   for (let day = progesteroneStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -139,7 +141,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     episodeId: sertralineEpisodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 50, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 50, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   for (let day = sertralineStart; day <= today; day++) {
     if (r() < 0.08) continue;

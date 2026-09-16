@@ -516,13 +516,27 @@ beforeAll(async () => {
       episodeId,
       recurrence: { kind: 'everyNDays', everyNDays: 14 },
       dosesPerDay: 1,
-      doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+      doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+      autoLogFromEpochDay: null
     })
   );
   const dosePauseId = (await drive('doses', 'upsertPause', () =>
     journal.doses.upsertPause({ episodeId, startEpochDay: 19100, endEpochDay: null, reason: 'planned' })
   )) as string;
   await drive('doses', 'deletePause', () => journal.doses.deletePause(dosePauseId));
+  /* Auto-logging on, then the pass itself (ticket 11): the schedule is every
+     14 days on an episode anchored at 19000 and the route is `im`, so
+     asking on 19015 leaves exactly one passed slot to write. */
+  await drive('doses', 'upsertSchedule', () =>
+    journal.doses.upsertSchedule({
+      episodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 14 },
+      dosesPerDay: 1,
+      doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+      autoLogFromEpochDay: 19010
+    })
+  );
+  await drive('doses', 'autoLogDueDoses', () => journal.doses.autoLogDueDoses(19015, []));
   const secondDoseId = (await drive('doses', 'upsertDose', () =>
     journal.doses.upsertDose({ timestamp: 1_700_100_000_000, route: 'oral', dose: 100, doseUnit: 'mg' })
   )) as string;
