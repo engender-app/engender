@@ -168,7 +168,6 @@ const ROUTES = [
   { path: '/health/clinician-summary' },
   { path: '/health/cycle-events' },
   { path: '/health/dilation' },
-  { path: '/health/side-effects' },
   { path: '/health/surgery' },
   { path: '/media/documents' },
   { path: '/media/photos' },

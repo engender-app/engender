@@ -57,3 +57,31 @@ test('opening Safe Space performs zero writes, across the pool, stats, snapshots
 
   assert.equal(counting.roundTrips().run, 0, 'opening Safe Space must not run a single write statement');
 });
+
+/* What that same read hands back, which is the other half of the contract
+   (phase 11 ticket 15). The rule itself is proved over the query in
+   `entries.test.ts`; it is proved again here, where Safe space stands - an
+   opened journal, the limit the screen passes - because the pool is the one
+   read on this screen whose answer a person takes as a claim about their
+   own days. */
+test('the pool Safe Space opens on refuses a bad day that was marked positively in one place', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({
+    epochDay: TODAY - 1,
+    mood: 2,
+    note: 'Tired. Work ran long and I skipped voice practice again.',
+    tags: ['g-body-dys'],
+    bodyRegions: { chest: 95 }
+  });
+  const chosen = await journal.entries.upsertEntry({ epochDay: TODAY - 2, mood: 2, tags: ['g-misgendered'] });
+  await journal.entries.setEntryStarred(chosen, true);
+  const named = await journal.entries.upsertEntry({ epochDay: TODAY - 3, mood: 4, tags: ['g-body-eu'] });
+
+  const pool = await journal.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT);
+
+  assert.deepEqual(
+    pool.map((e) => e.id),
+    [chosen, named],
+    'the pool holds the day the person starred and the day they tagged, and not the one it read a chest measurement off'
+  );
+});

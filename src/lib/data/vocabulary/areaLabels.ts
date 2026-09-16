@@ -19,7 +19,6 @@ const GROUP_NAME: Record<AreaGroupKey, () => string> = {
   wear: m.wear_log,
   'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,
-  'side-effects': m.side_effects,
   effects: m.effects_timeline,
   voice: m.vb_title,
   dilation: m.dilation

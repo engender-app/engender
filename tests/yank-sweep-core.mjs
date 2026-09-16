@@ -121,6 +121,11 @@ const SCENES = [
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
   { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
+  /* Phase 11 ticket 15: the good-moments list opens on six and discloses
+     the rest in place, so the control collapses while fourteen cards clip
+     open under it. New movement, and the one on this screen most likely to
+     read as a jump. */
+  { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', is: 'the rest of the good moments disclosed under the six' },
   /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
      45: a sealed letter's card answers no press at all now, and it is the
      first card on the screen, so the old selector picked the one letter that
@@ -879,10 +884,13 @@ const HYDRATION_SCENES = [
   { name: 'home-celebrate', at: '/?celebrate=1', when: 'persona', is: 'the celebration card variant of Home' },
   { name: 'coming-back', at: '/coming-back', is: 'the return surface, reached by hand' },
   { name: 'doubt', at: '/doubt', is: 'Safe space, opening on the breath (redesign ticket 47)' },
-  { name: 'doubt-moments', at: '/doubt/moments', is: "Safe space's letters and photos" },
+  /* `doubt-moments` and `doubt-readings` were here until phase 11 ticket 15
+     folded them into `/transition/letters` and the Look back door. Both
+     addresses redirect now, so a scene on either would have hydrated the
+     screen it points at under the wrong name - and both of those screens
+     are already swept, as `letters` and `stats` below. */
   { name: 'doubt-comfort', at: '/doubt/comfort', is: "Safe space's comfort list" },
   { name: 'doubt-evidence', at: '/doubt/evidence', is: 'the counterevidence check and its snapshots' },
-  { name: 'doubt-readings', at: '/doubt/readings', is: "Safe space's tiles and charts" },
   { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
   /* Calendar tab */
   { name: 'calendar', at: '/calendar', is: 'the heat map month' },
@@ -921,7 +929,6 @@ const HYDRATION_SCENES = [
   { name: 'clinician-summary', at: '/health/clinician-summary', is: 'the printable summary' },
   { name: 'cycle-events', at: '/health/cycle-events', is: 'cycle events' },
   { name: 'dilation', at: '/health/dilation', is: 'the dilation taper' },
-  { name: 'side-effects', at: '/health/side-effects', is: 'side effects logged plainly' },
   { name: 'surgery', at: '/health/surgery', is: 'the surgery journal' },
   { name: 'hormone-curve', at: '/care/curve', is: 'the hormone curve' },
   { name: 'doses', at: '/care/doses', is: 'the dose log' },
@@ -939,7 +946,7 @@ const HYDRATION_SCENES = [
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
   { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
   /* Practice group */
-  { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline' },
+  { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline, side effects and the cycle block' },
   { name: 'resources', at: '/practice/resources', is: 'organisations and helplines' },
   { name: 'voice', at: '/practice/voice', is: 'the voice benchmark' },
   { name: 'voice-record', at: '/practice/voice?tab=record', is: 'the benchmark record tab' },
