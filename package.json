@@ -51,6 +51,7 @@
     "gallery:noticed-axis-motion": "VITE_DEMO=1 npm run build && node tests/noticed-axis-motion.mjs",
     "gallery:photo-wipe": "VITE_DEMO=1 npm run build && node tests/photo-wipe-gallery.mjs --tag after",
     "gallery:photo-wipe-motion": "VITE_DEMO=1 npm run build && node tests/photo-wipe-motion.mjs",
+    "gallery:photo-library": "VITE_DEMO=1 npm run build && node tests/photo-library-gallery.mjs --tag after",
     "measure:safe-space": "VITE_DEMO=1 npm run build && node tests/safe-space-height.mjs",
     "measure:surgery-rail": "VITE_DEMO=1 npm run build && node tests/surgery-rail-measure.mjs",
     "measure:day-strip": "VITE_DEMO=1 npm run build && node tests/day-strip-measure.mjs --tag after",

@@ -6839,6 +6839,121 @@ finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }
 
+/* The photo library (phase 11 ticket 14): one grid over all six tables that
+   hold a photograph, and the wipe over any two of them.
+
+   On the full fixture, which is the only journal that has all six - the
+   persona writes entry and milestone photographs only, which is why the
+   flow near the top of this file sees no chip row and should not.
+
+   Gripped by `data-photo-source` rather than by the words on the tiles
+   (ADR-0029). One assertion does read a label, because the label carrying
+   the source is the thing the ticket asks for and a handle cannot say
+   whether it says anything. */
+try {
+  /* Seeded here rather than relying on the "Fill every feature" run near the
+     top of this file: everything between the two - an archive round trip, a
+     Daylio import, the discard flows - replaces the journal, so by this
+     point it holds the persona's entry and milestone photographs alone. */
+  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  await booted();
+  await page.click('[data-fill-every-feature]');
+  await page.waitForURL('**/more');
+  await booted();
+
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-key]');
+
+  const sourcesOn = async () =>
+    page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
+  const everySource = await sourcesOn();
+  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']) {
+    if (!everySource.includes(source)) {
+      throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
+    }
+  }
+
+  /* "Every photo in your journal" as a number the screen can be held to:
+     what it counts above the grid is what the grid draws. */
+  const stated = (await page.locator('[data-photo-count]').textContent()).match(/\d+/);
+  if (!stated || Number(stated[0]) !== everySource.length) {
+    throw new Error(`the count says ${stated?.[0]} over a grid of ${everySource.length}`);
+  }
+
+  const removalLabel = await page
+    .locator('[data-photo-source="hairRemoval"] [data-photo-cell]')
+    .first()
+    .getAttribute('aria-label');
+  if (!removalLabel?.includes('Hair removal')) {
+    throw new Error(`a tile does not say where its photograph came from: ${removalLabel}`);
+  }
+
+  // The chip row, and what one chip leaves on screen.
+  const drawnChips = await page
+    .locator('[data-photo-chip]')
+    .evaluateAll((chips) => chips.map((chip) => chip.dataset.photoChip));
+  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'])) {
+    throw new Error(`the chip row is not the six this journal has: ${JSON.stringify(drawnChips)}`);
+  }
+  await page.locator('[data-photo-chip="hair"]').click();
+  /* Waited out rather than counted down: a narrowed-away tile is pinned out
+     of the flow and fades, so it is still in the DOM for the length of its
+     own outro (motion/narrow.ts) and a count taken too early catches it. */
+  await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
+  const narrowed = await sourcesOn();
+  if (narrowed.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+    throw new Error(`Hair left something else on screen: ${JSON.stringify([...new Set(narrowed)])}`);
+  }
+  if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
+
+  // Two photographs from two different tables, which is the comparison
+  // neither the hair screen nor the surgery screen can offer.
+  await page.locator('[data-photo-source="hair"] [data-photo-cell]').first().click();
+  await page.locator('[data-photo-chip="everything"]').click();
+  await page.waitForSelector('[data-photo-source="procedure"]');
+  await page.locator('[data-photo-source="procedure"] [data-photo-cell]').first().click();
+  await page.locator('[data-segment="compare"]').click();
+  await page.waitForSelector('[data-photo-wipe]');
+  if ((await page.locator('[data-wipe-date]').count()) !== 2) {
+    throw new Error('the wipe inside the library did not open on two photographs');
+  }
+  /* Out of the wipe by its own control rather than by the segmented pair,
+     which the compare view does not draw - it is a screen with a back arrow
+     and this button, not a tab. */
+  await page.locator('[data-photos-back-to-all]').click();
+  await page.waitForSelector('[data-photo-key]');
+
+  // A video note plays rather than being picked.
+  await page.locator('[data-photo-video]').first().click();
+  await page.waitForSelector('[data-sheet] video');
+
+  ok('the photo library holds all six sources, says where each came from, narrows by chip and wipes across tables');
+} catch (e) { fail('the photo library', e); }
+
+/* The same chips over the export grid, so "Hair" alone can be made into a
+   collage. Video notes are never in it: a collage decodes every frame as a
+   photograph (journey-render.ts). */
+try {
+  await page.goto(BASE + '/media/photos/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-key]');
+  if (await page.locator('[data-photo-source="video"]').count()) {
+    throw new Error('a video note reached the export grid');
+  }
+  await page.locator('[data-photo-chip="hair"]').click();
+  await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
+  const exportSources = await page
+    .locator('[data-photo-source]')
+    .evaluateAll((cells) => [...new Set(cells.map((cell) => cell.dataset.photoSource))]);
+  if (exportSources.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+    throw new Error(`the export grid did not narrow: ${JSON.stringify(exportSources)}`);
+  }
+  if (!(await page.locator('[data-generate]').count())) throw new Error('the narrowed export cannot be made');
+
+  ok('the journey export reads the library, narrows by the same chips and leaves video notes out');
+} catch (e) { fail('the export grid narrowed by source', e); }
+
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
 

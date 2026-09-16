@@ -49,6 +49,7 @@ import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
+import { makePhotoLibraryArea, type PhotoLibraryArea } from './photoLibrary';
 import { makePresentationsArea, type PresentationsArea } from './presentations';
 import { makeEntryTemplatesArea, type EntryTemplatesArea } from './entryTemplates';
 import { makeAppointmentsArea, type AppointmentsArea } from './appointments';
@@ -103,6 +104,12 @@ export interface Journal {
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
+  /** Every photograph in the journal, whichever table holds it (phase 11
+      ticket 14): a read across `photos` and the five areas that keep photo
+      rows of their own, for the one library `/media/photos` draws. Owns no
+      table and writes nothing - `photos`, `hairProgress`, `hairRemoval`,
+      `tryouts`, `procedures` and the entry editor keep every write. */
+  photoLibrary: PhotoLibraryArea;
   /** The paper a transition generates (phase 8 features ticket 52,
       ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court
       ruling. Its own area rather than a kind of photo, because a photo
@@ -446,6 +453,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     dimensions,
     milestones,
     photos: makePhotosArea(driver, files),
+    photoLibrary: makePhotoLibraryArea(driver),
     documents,
     presentations: makePresentationsArea(driver),
     entryTemplates: makeEntryTemplatesArea(driver),

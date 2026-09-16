@@ -12,6 +12,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
+  import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
@@ -29,7 +30,13 @@
   let entries = $derived(entriesQuery.rows);
   let groups = $derived(entryDayGroups(entries));
 
-  let photosQuery = liveList((j) => j.photos.starredPhotos());
+  /* The library's own read rather than `photos.starredPhotos()` (phase 11
+     ticket 14), for the source label under each thumbnail: a starred
+     photograph says where it came from here the same way it does in the
+     library. Only the `photo` table carries a `starred` column, so what
+     comes back is the same set it always was - an entry's photographs and
+     a milestone's - now labelled. */
+  let photosQuery = liveList((j) => j.photoLibrary.starred());
   let photos = $derived(photosQuery.rows);
 
   /* Not ReadGate's shape, and deliberately so (phase 5 audit ticket 04): the
@@ -67,7 +74,7 @@
       <div class="photo-grid" data-starred-photos>
         {#each photos as p (p.id)}
           <div class="starred-photo-cell">
-            <PhotoThumb photo={p} size={104} />
+            <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
             <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
             <button
               class="starred-photo-unstar press"
