@@ -29,7 +29,12 @@ import { preview } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 
 const VIEWPORT = { width: 390, height: 844 };
-const ROUTES = ['/doubt', '/doubt/moments', '/doubt/comfort', '/doubt/evidence', '/doubt/readings'];
+/* The screens Safe space's ways down land on (safeSpaceWays.ts). Phase 11
+   ticket 15 folds two of them into screens that already existed, so the
+   letters screen is measured here - it carries Safe space's starred photos
+   now - and the readings are not, because they land on the Look back door
+   and that door's own length is ticket 07's to answer for. */
+const ROUTES = ['/doubt', '/transition/letters', '/doubt/comfort', '/doubt/evidence'];
 
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;

@@ -25,7 +25,11 @@ const outDir = resolve(process.argv[2] ?? resolve(root, '.claude/safe-space-shot
 
 const VIEWPORT = { width: 390, height: 844 };
 const THEMES = ['light', 'dark'];
-const WAYS = ['/doubt/moments', '/doubt/comfort', '/doubt/evidence', '/doubt/readings'];
+/* The screens the ways down land on (safeSpaceWays.ts). Phase 11 ticket 15
+   folded two of them into screens that already existed: the letters screen
+   carries Safe space's letters and photos now, and the readings land on the
+   Look back door, whose own stills are ticket 07's. */
+const WAYS = ['/transition/letters', '/doubt/comfort', '/doubt/evidence'];
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
@@ -95,6 +99,69 @@ async function shoot(name, note, sel, pad = 16) {
   console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
 }
 
+/** Runs `take` with the viewport grown to everything the scroll region
+    holds, then shrinks it back. `fullPage` catches the viewport and an
+    element shot of the scroller is clipped to what is visible inside it, so
+    this is the only way to photograph past the fold: the layout stays the
+    390px one throughout and only the height is unreal. */
+async function grown(take) {
+  const tall = await page.evaluate(() => {
+    const scroller = document.querySelector('[data-app-scroll-region]');
+    return Math.min(window.innerHeight + (scroller.scrollHeight - scroller.clientHeight) + 40, 8000);
+  });
+  await page.setViewportSize({ width: VIEWPORT.width, height: tall });
+  await page.waitForTimeout(500);
+  try {
+    return await take(tall);
+  } finally {
+    await page.setViewportSize(VIEWPORT);
+    await page.waitForTimeout(300);
+  }
+}
+
+/** A screen end to end, however far past the fold it runs. */
+async function shootWhole(name, note) {
+  const tall = await grown(async (tall) => {
+    await page.locator('[data-app-root]').screenshot({ path: resolve(outDir, `${name}.png`) });
+    return tall;
+  });
+  shots.push({ name, note });
+  console.log(`${name}: ${VIEWPORT.width}x${tall} (whole screen)`);
+}
+
+/** One section of a screen, which is a heading and the run of things under
+    it rather than one box - so the crop runs from the top of `fromSel` to
+    the bottom of the last `toSel`. Measured and shot inside the same grown
+    viewport, since a clip is in page coordinates and those move when the
+    viewport does. */
+async function shootSection(name, note, fromSel, toSel, pad = 16) {
+  const clip = await grown(async () => {
+    const box = await page.evaluate(
+      ([fromSel, toSel, pad]) => {
+        const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
+        const from = document.querySelector(fromSel);
+        if (!from) return null;
+        const tails = document.querySelectorAll(toSel);
+        const to = tails[tails.length - 1] ?? from;
+        const top = from.getBoundingClientRect().top - pad;
+        const bottom = to.getBoundingClientRect().bottom + pad;
+        return { x: frame.x, y: Math.max(frame.y, top), width: frame.width, height: bottom - top };
+      },
+      [fromSel, toSel, pad]
+    );
+    if (box && box.height >= 4) {
+      await page.screenshot({ path: resolve(outDir, `${name}.png`), clip: box });
+    }
+    return box;
+  });
+  if (!clip || clip.height < 4) {
+    console.warn(`${name}: nothing to shoot`);
+    return;
+  }
+  shots.push({ name, note });
+  console.log(`${name}: ${Math.round(clip.width)}x${Math.round(clip.height)}`);
+}
+
 try {
   await settle('/', { keepDemoBar: true });
   await page.locator('[data-fill-every-feature]').click();
@@ -112,6 +179,35 @@ try {
       if (!(await page.locator('[data-screen-header]').count())) continue;
       const name = way.split('/').pop();
       await shoot(`${name}-${theme}`, `The top of ${way}, so that what moved can be seen to be intact.`);
+    }
+
+    /* The two things phase 11 ticket 15 changed, whole rather than cropped
+       to the fold, because both are arguments about length: the good
+       moments end at a control instead of at a twentieth card, and the
+       letters screen's Open section holds the photographs the folded screen
+       used to hold. */
+    await settle('/doubt/evidence');
+    await shootWhole(
+      `evidence-whole-${theme}`,
+      'The whole of the good moments: six cards, the save under them, then the way to the rest.'
+    );
+
+    await settle('/transition/letters');
+    await shootSection(
+      `letters-opened-${theme}`,
+      'The letters screen\'s Open section: the unlocked letters and, beside them, the starred photographs.',
+      '#opened',
+      '[data-safe-space-photos], [data-letter-open]'
+    );
+
+    /* Only on a build that still has it: the screen this ticket folded
+       away, so the before column can show what was on it. On a build that
+       folded it the address redirects, and a redirect draws a header of its
+       own - the letters screen's - so the address is what says whether the
+       screen is there, not the header. */
+    await settle('/doubt/moments');
+    if (page.url().includes('/doubt/moments')) {
+      await shootWhole(`moments-whole-${theme}`, 'The screen that was: Safe space\'s own letters and photos.');
     }
   }
 } finally {

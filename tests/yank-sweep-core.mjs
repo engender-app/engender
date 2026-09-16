@@ -112,19 +112,27 @@ const SCENES = [
 
   /* Transition screens (ticket 108): buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
+  /* Redesign ticket 16 collapsed the list behind `[data-ms-log-toggle]`, so
+     `[data-milestone]` no longer exists until that row is opened - this
+     scene has no step for that and needs one before ticket 139's sweep. */
   { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
   { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', is: 'a mark on the rail opening the same editor (redesign 43)' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
   { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
+  /* Phase 11 ticket 15: the good-moments list opens on six and discloses
+     the rest in place, so the control collapses while fourteen cards clip
+     open under it. New movement, and the one on this screen most likely to
+     read as a jump. */
+  { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', is: 'the rest of the good moments disclosed under the six' },
   /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
      45: a sealed letter's card answers no press at all now, and it is the
      first card on the screen, so the old selector picked the one letter that
      cannot open. This handle is on the two states that can. */
   { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', is: 'a letter unfolded to read' },
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
-  { name: 'eras-add', at: '/transition/eras', act: '[data-add]', is: 'the add era sheet opening' },
+  { name: 'eras-add', at: '/settings/eras', act: '[data-add]', is: 'the add era sheet opening' },
 
   /* Settings screens (ticket 108): swatches, switchers, switches and modals */
   { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },
@@ -876,10 +884,13 @@ const HYDRATION_SCENES = [
   { name: 'home-celebrate', at: '/?celebrate=1', when: 'persona', is: 'the celebration card variant of Home' },
   { name: 'coming-back', at: '/coming-back', is: 'the return surface, reached by hand' },
   { name: 'doubt', at: '/doubt', is: 'Safe space, opening on the breath (redesign ticket 47)' },
-  { name: 'doubt-moments', at: '/doubt/moments', is: "Safe space's letters and photos" },
+  /* `doubt-moments` and `doubt-readings` were here until phase 11 ticket 15
+     folded them into `/transition/letters` and the Look back door. Both
+     addresses redirect now, so a scene on either would have hydrated the
+     screen it points at under the wrong name - and both of those screens
+     are already swept, as `letters` and `stats` below. */
   { name: 'doubt-comfort', at: '/doubt/comfort', is: "Safe space's comfort list" },
   { name: 'doubt-evidence', at: '/doubt/evidence', is: 'the counterevidence check and its snapshots' },
-  { name: 'doubt-readings', at: '/doubt/readings', is: "Safe space's tiles and charts" },
   { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
   /* Calendar tab */
   { name: 'calendar', at: '/calendar', is: 'the heat map month' },

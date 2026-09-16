@@ -1,9 +1,15 @@
 <script lang="ts">
   /* Naming the person's own eras (phase 6 ticket 01, ADR-0049, CONTEXT:
-     "Era"): list, add, rename, move either bound, delete. A surface under
-     /more rather than a preference under Settings (ADR-0036) - an era is
-     the person's own content, and the filters it feeds only appear once a
-     row exists here.
+     "Era"): list, add, rename, move either bound, delete.
+
+     Moved here from a hub row under /more by redesign ticket 16 (ADR-0084):
+     an era is spent on seven other screens - the calendar, Wrapped,
+     compare, on this day, stats, Today, the words reading - and created on
+     exactly one, which is ADR-0084's own test for a reference area. It is
+     managed in Settings now, the way modes and entry templates are, and the
+     milestone rail is the one place under Transition an era is still drawn
+     (as a band behind the marks, MilestoneRail.svelte). `/transition/eras`
+     stays a redirect stub for anyone who bookmarked it.
 
      The design problem this screen has and its neighbours do not: an era's
      bounds are optional, and the era people most want to name first is the
@@ -172,12 +178,27 @@
     record.openEditor(null);
     arrivingStart = '';
     arrivingEnd = '';
-    void replaceRoute('/transition/eras', { noScroll: true, keepFocus: true });
+    void replaceRoute('/settings/eras', { noScroll: true, keepFocus: true });
+  });
+
+  /* Tapping an era's band on the milestone rail (redesign ticket 16) hands
+     its id over the same way a milestone's own `?edit=` deep link does
+     (transition/milestones/+page.svelte): the id is read once the list has
+     arrived, which is what subscribes this effect to it, and dropped again
+     so the sheet does not reopen on a later visit. */
+  let requestedEdit = $derived(page.url.searchParams.get('edit'));
+  $effect(() => {
+    const id = requestedEdit;
+    if (!id) return;
+    const existing = eras.find((era) => era.id === id);
+    if (!existing) return;
+    record.openEditor(existing);
+    void replaceRoute('/settings/eras', { noScroll: true, keepFocus: true });
   });
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.eras_title()} back="/more" subtitle={m.eras_intro()}>
+  <ScreenHeader title={m.eras_title()} back="/settings" subtitle={m.eras_intro()}>
     {#snippet actions()}
       <button class="icon-btn" data-add aria-label={m.eras_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

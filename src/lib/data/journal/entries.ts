@@ -952,7 +952,20 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // check, so any one of an entry's logged regions clearing the floor
       // is enough, the same inclusive floor and the same constant isGoodDay
       // reads.
+      //
+      // Phase 11 ticket 15 makes that arm the weakest of the three rather
+      // than an equal of them. A region is a magnitude somebody can mark on
+      // a day that went badly in every other way, and on the demo journal
+      // one high chest reading was admitting "Tired. Work ran long and I
+      // skipped voice practice again." as evidence the bad day was not the
+      // whole story - which is the one thing this screen must never do. So
+      // a region admits an entry only when nothing else on the entry
+      // contradicts it: no dysphoria tag, and no second region marked below
+      // the midpoint. The other two arms are untouched. Starring is a
+      // person choosing the day themselves, and a good tag is them naming
+      // it, so both still qualify whatever else the entry carries.
       const placeholders = tagIds.map(() => '?').join(', ');
+      const dysphoriaPlaceholders = DYSPHORIA_TAG_KEYS.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL
@@ -963,14 +976,31 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
                SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
                WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
              )
-             OR EXISTS (
-               SELECT 1 FROM entry_body_region ebr
-               WHERE ebr.entry_id = e.id AND ebr.value >= 50 + ? / 2
+             OR (
+               EXISTS (
+                 SELECT 1 FROM entry_body_region ebr
+                 WHERE ebr.entry_id = e.id AND ebr.value >= 50 + ? / 2
+               )
+               AND NOT EXISTS (
+                 SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+                 WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${dysphoriaPlaceholders})
+               )
+               AND NOT EXISTS (
+                 SELECT 1 FROM entry_body_region ebr
+                 WHERE ebr.entry_id = e.id AND ebr.value < ?
+               )
              )
            )
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [...(span ? [span.from, span.to] : []), ...tagIds, GOOD_DAY_REGION_EUPHORIA_FLOOR, limit]
+        [
+          ...(span ? [span.from, span.to] : []),
+          ...tagIds,
+          GOOD_DAY_REGION_EUPHORIA_FLOOR,
+          ...DYSPHORIA_TAG_KEYS,
+          BODY_REGION_MIDPOINT,
+          limit
+        ]
       );
       return hydrate(rows);
     },
