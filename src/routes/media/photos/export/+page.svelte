@@ -44,7 +44,7 @@
     type PhotoChip
   } from '$lib/data/photos/library';
   import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
-  import { measureCells, pinnedOut, travelCells } from '$lib/motion/narrow';
+  import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
   import Progress from '$lib/components/Progress.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
@@ -61,7 +61,6 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -90,6 +89,14 @@
       trip between the two screens (library.ts, media/photos/+page.svelte). */
   const SOURCE_PARAM = 'source';
   let gridEl = $state<HTMLElement>();
+
+  /* The same gate the library keeps on its own tiles, and for the same
+     reason: the tiles that come with the grid get no entrance, the ones a
+     chip brings in afterwards fade (motion/narrow.ts). */
+  let painted = $state(false);
+  $effect(() => {
+    if (gridEl) painted = true;
+  });
 
   /** Narrowing moves the grid rather than repainting it, the same three
       frames the library's own chip row plays (ADR-0078, motion/narrow.ts). */
@@ -274,7 +281,7 @@
           <div class="photo-grid" bind:this={gridEl}>
             {#each shown as p (p.id)}
               {@const included = !excluded.includes(p.id)}
-              <div class="photo-cell-wrap" data-photo-key={p.id} in:crossfade out:pinnedOut>
+              <div class="photo-cell-wrap" data-photo-key={p.id} data-photo-source={p.source} in:tileIn={{ when: painted }} out:pinnedOut>
                 <button
                   class="photo-cell"
                   class:is-selected={included}

@@ -108,3 +108,24 @@ export function pinnedOut(node: Element): TransitionConfig {
       `transform: scale(${0.94 + 0.06 * t});`
   };
 }
+
+/** A tile arriving because a chip widened, or because a live query added a
+    photograph while somebody was looking at the grid.
+
+    Gated on `when`, and the gate is the point. A screen's content gets no
+    entrance of its own on the way in: the skeleton fades out over it and a
+    second fade a moment later is the content arriving twice
+    (tests/feature-screens.test.ts, DIRECTION.md tier 3). So a caller passes
+    false for the tiles that come with the grid and true for every tile
+    after that, which it knows from whether its own grid has been painted
+    yet.
+
+    The duration token is clamped to 1ms under reduced motion by the theme,
+    which is the instant cut this owes that setting. */
+export function tileIn(_node: Element, params: { when: boolean }): TransitionConfig {
+  if (!params.when) return { duration: 0 };
+  return {
+    duration: motionDuration('--dur-fast'),
+    css: (t) => `opacity: ${t}; transform: scale(${0.94 + 0.06 * t});`
+  };
+}
