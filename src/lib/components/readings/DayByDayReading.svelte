@@ -27,6 +27,7 @@
   import { metricStandings } from '$lib/data/statsCharts';
   import { nativeAmount, nativeValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
+  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -64,12 +65,9 @@
      "colour that carries a value takes role 0"). */
   const CHART_ROLE = 0;
 
-  let metrics = $derived([
-    { key: 'mood', name: m.mood(), min: 1, max: 5 },
-    ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max }))
-  ]);
+  let metrics = $derived(metricChoices());
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
+  let shown = $derived(shownMetric(metrics));
 
   let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, to, today));
 
