@@ -62,6 +62,14 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/care')).toBe('settings');
   });
 
+  /* Redesign ticket 05: the ignore list's reading draws on Look back
+     (redesign ticket 62's words card), not on Settings, so the tab under
+     the person's finger should match where that reading lives rather than
+     where the manager screen happens to sit in the address space. */
+  it('lights stats for settings/words, whose reading draws on Look back', () => {
+    expect(activeTabKey('/settings/words')).toBe('stats');
+  });
+
   it('lights settings for doses, even though its route sits outside /settings', () => {
     expect(activeTabKey('/doses')).toBe('settings');
   });

@@ -206,6 +206,14 @@
         <ChartEmpty>{m.words_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
+
+    <!-- The manager, reachable without picking a word first (redesign
+         ticket 05: the whole-app audit found the only way here was through
+         a word's own sheet, three taps deep). The sheet below keeps its own
+         link too - "put this back" belongs beside the word it names - this
+         one is "go look at the list", which does not need a word picked to
+         want. -->
+    <a class="words-manage-link" href="/settings/words">{m.words_ignored_title()}</a>
   {/if}
 </ChartCard>
 
@@ -257,6 +265,20 @@
     display: flex;
     align-items: center;
     min-height: var(--touch-target);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+  }
+
+  /* The same face as the sheet's own link above: a text action at the
+     screen's secondary weight, not the accent-coloured "All values" style
+     stats/+page.svelte's card actions took, since this is a way to another
+     screen rather than the chart's own control. */
+  .words-manage-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    margin-top: var(--space-2);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
