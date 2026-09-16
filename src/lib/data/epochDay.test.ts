@@ -29,6 +29,7 @@ import {
   previousCalendarMonthRange,
   previousCalendarWeekRange,
   previousCalendarYearRange,
+  relativeDayFromToday,
   yearToDateRange
 } from './epochDay.ts';
 
@@ -389,4 +390,27 @@ test(`crossesCalendarYear is true for the lab range that found it under TZ=${tz}
   const from = epochDayFromLocalDate(new Date(2025, 5, 22));
   const to = epochDayFromLocalDate(new Date(2026, 5, 17));
   expect(crossesCalendarYear(from, to)).toBe(true);
+});
+
+/* Audit item 20.2: "in 0 days" and "in 1 days" - a reminder due today or
+   tomorrow, or one already gone by, each got its own case instead of the
+   general "in n days" clamped at zero. */
+test(`relativeDayFromToday is today at zero days under TZ=${tz}`, () => {
+  expect(relativeDayFromToday(100, 100)).toEqual({ kind: 'today' });
+});
+
+test(`relativeDayFromToday is tomorrow at one day out under TZ=${tz}`, () => {
+  expect(relativeDayFromToday(101, 100)).toEqual({ kind: 'tomorrow' });
+});
+
+test(`relativeDayFromToday is "in" for two or more days out under TZ=${tz}`, () => {
+  expect(relativeDayFromToday(112, 100)).toEqual({ kind: 'in', days: 12 });
+});
+
+test(`relativeDayFromToday is "passed" rather than clamped for a day already gone under TZ=${tz}`, () => {
+  expect(relativeDayFromToday(97, 100)).toEqual({ kind: 'passed', days: 3 });
+});
+
+test(`relativeDayFromToday is "passed" with days: 1 for yesterday under TZ=${tz}`, () => {
+  expect(relativeDayFromToday(99, 100)).toEqual({ kind: 'passed', days: 1 });
 });

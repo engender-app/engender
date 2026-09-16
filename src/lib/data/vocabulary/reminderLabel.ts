@@ -4,7 +4,7 @@
    Node tier touches may import (ADR-0016). */
 
 import { m } from '$lib/paraglide/messages';
-import { todayEpochDay } from '../epochDay';
+import { relativeDayFromToday, todayEpochDay } from '../epochDay';
 import type { Reminder } from '../types';
 
 const TYPE_NAME: Record<Reminder['type'], () => string> = {
@@ -26,9 +26,22 @@ function recurrenceLabel(r: Reminder): string {
   return m.recurrence_every_n_days({ n: r.interval ?? 0 });
 }
 
+function relativeDayLabel(r: Reminder): string {
+  const today = todayEpochDay();
+  const rel = relativeDayFromToday(r.epochDay ?? today, today);
+  switch (rel.kind) {
+    case 'today':
+      return m.today();
+    case 'tomorrow':
+      return m.reminder_tomorrow();
+    case 'in':
+      return m.reminder_in_days({ days: m.n_days({ n: rel.days }) });
+    case 'passed':
+      return m.reminder_passed_days_ago({ days: m.n_days({ n: rel.days }) });
+  }
+}
+
 export function reminderScheduleLabel(r: Reminder): string {
   if (r.recurrence) return `${recurrenceLabel(r)} · ${r.time}`;
-  // Clamped: an elapsed one-off reads "in 0 days", not "in -3 days".
-  const days = Math.max(0, (r.epochDay ?? todayEpochDay()) - todayEpochDay());
-  return `${m.reminder_once()} · ${m.reminder_in_days({ days })} · ${r.time}`;
+  return `${m.reminder_once()} · ${relativeDayLabel(r)} · ${r.time}`;
 }
