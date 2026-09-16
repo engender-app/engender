@@ -941,11 +941,15 @@
     text-align: left;
     cursor: pointer;
   }
+  /* Full-strength text and a bit more weight than the total line above it
+     (--text-2 there): a design review flagged the two as indistinguishable
+     plain text with only the chevron - easy to miss - to tell "a fact" from
+     "a control" apart. */
   .care-regimen-stock-text {
     flex: 1;
     min-width: 0;
     font-size: var(--text-sm);
-    color: var(--text-2);
+    font-weight: var(--weight-medium);
   }
 
   /* The runOut mark, a button now rather than a link (ADR-0084) - reset to
