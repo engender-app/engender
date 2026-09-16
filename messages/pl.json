@@ -1908,16 +1908,52 @@
   "ph_compare": "Porównaj",
   "ph_tab_browse": "Przeglądaj",
   "ph_tab_compare": "Porównaj",
-  "ph_from_entry": "wpis w dzienniku",
   "ph_back_to_all": "Wróć do wszystkich zdjęć",
   "ph_compare_reset": "Jedno z wybranych zdjęć już nie jest dostępne. Wybierz ponownie dwa punkty.",
-  "ph_pick_two": "Wszystkie zdjęcia z dziennika, od najstarszego. Wybierz dwa, żeby je porównać.",
+  "ph_pick_two": "Wybierz dwa, żeby je porównać.",
   "ph_one_selected": "Jedno wybrane. Wybierz drugie, żeby porównać.",
   "ph_two_selected": "Dwa wybrane.",
   "ph_cell_aria": "Zdjęcie z {date}",
   "ph_empty_title": "Jeszcze bez zdjęć",
   "ph_empty_body": "Zdjęcia dodane do wpisów i kamieni milowych zbierają się tutaj. Kiedyś zestawienie „kiedyś i teraz” będzie tego warte.",
   "ph_edit_day": "Edytuj dzień",
+  "ph_chips_label": "Pokaż",
+  "ph_chip_everything": "Wszystko",
+  "ph_chip_body": "Ciało",
+  "ph_chip_hair": "Włosy",
+  "ph_chip_tryouts": "Próby",
+  "ph_chip_surgery": "Operacja",
+  "ph_chip_video": "Wideo",
+  "ph_source_entry": "Wpis",
+  "ph_source_milestone": "Kamień milowy",
+  "ph_source_hair": "Włosy",
+  "ph_source_hair_removal": "Depilacja",
+  "ph_source_tryout": "Próba",
+  "ph_source_procedure": "Operacja",
+  "ph_source_video": "Notatka wideo",
+  "ph_cell_aria_sourced": "{source}, {date}",
+  "ph_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zdjęcie",
+        "countPlural=few": "Zdjęcia: {count}",
+        "countPlural=many": "Zdjęcia: {count}",
+        "countPlural=other": "Zdjęcia: {count}"
+      }
+    }
+  ],
+  "ph_years_label": "Przejdź do roku",
+  "ph_year_jump": "Przejdź do roku {year}",
+  "ph_video_open": "Odtwórz notatkę wideo z {date}",
+  "ph_video_title": "Notatka wideo",
+  "ph_video_grid_hint": "Notatka wideo odtwarza się i nie wchodzi do porównania dwóch zdjęć.",
   "photo_wipe_handle": "Linia porównania",
   "photo_wipe_value": "{percent}% z wcześniejszego zdjęcia",
   "photo_wipe_earlier_back": "Wcześniejsze zdjęcie: jedno wstecz",

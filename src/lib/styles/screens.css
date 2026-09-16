@@ -835,7 +835,11 @@
 }
 
 /* ---------- Progress photos ---------- */
-.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
+/* `position: relative` is the containing block a narrowed-away tile is
+   pinned to on its way out (motion/narrow.ts): out of the flow in the
+   frame the chip drops it, so the grid rewraps once rather than after
+   every fade has finished. */
+.photo-grid { display: grid; position: relative; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
 .photo-cell {
   position: relative; border: none; background: none; padding: 0; cursor: pointer;
   display: flex; flex-direction: column; gap: 4px; align-items: center;

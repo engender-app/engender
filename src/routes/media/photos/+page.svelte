@@ -1,14 +1,34 @@
 <script lang="ts">
-  /* All photos, then vs now, on the surface kit (phase 5 UX ticket 25).
+  /* The photo library: every photograph in the journal, wherever it is
+     kept, and the wipe over any two of them (phase 11 ticket 14).
 
-     The compare view's measurement summary was a `.card` holding a heading
-     and a `.list-group` of rows that could not be pressed - two containers
-     for one list. It is a heading over a list card now, with the rows as
-     `<ListRow static>`, which is what a row that states a reading and goes
-     nowhere is.
+     Until this the grid read the `photo` table, which is an entry's
+     photographs and a milestone's, and the line over it said "Every photo
+     in your journal". Four more tables hold photographs - hair progress,
+     hair removal, tryouts, surgery recovery - and `video_note` holds a
+     note recorded in the editor, and none of the five could be found again
+     except through the day it hangs off. `journal.photoLibrary` is the one
+     read across all six; this screen is where it is looked at.
 
-     The picking grid stays a grid. A photo is chosen by looking at it, so
-     the cell is the photograph; nothing about that was the old world's. */
+     What the chips do is narrow, not navigate. The grid is the same grid
+     either way and the selection is the same selection, so tapping "Hair"
+     moves the photographs rather than repainting the screen (ADR-0078,
+     motion/narrow.ts). The chip lives in the query, so a link can open the
+     library already narrowed and a reload keeps it.
+
+     COMPARE READS THE WHOLE LIBRARY, never the narrowed grid. Putting a
+     hair photograph beside a body one is the thing this screen offers that
+     neither the hair screen nor the surgery screen can, and an anchor
+     picked under one chip has to survive the next chip. So the wipe's list
+     is every photograph the library holds, in order, and the grid is only
+     where they are picked.
+
+     A video note is in the library and is not in that list: the wipe reads
+     full JPEG bytes through readPhoto (PhotoWipe.svelte) and a `.webm` is
+     not a frame. Its tile plays it instead of picking it. */
+  import { tick } from 'svelte';
+  import { page } from '$app/state';
+  import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -19,14 +39,24 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/photos/compare-state';
+  import {
+    chipsFor,
+    narrowTo,
+    photoChipFromQuery,
+    yearMarks,
+    type LibraryPhoto,
+    type PhotoChip
+  } from '$lib/data/photos/library';
+  import { photoOwnerLine, photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Measurement } from '$lib/data/types';
-  import type { DatedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
+  import PhotoChipRow from '$lib/components/PhotoChipRow.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -35,26 +65,44 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade } from '$lib/motion/reveal';
+  import { measureCells, pinnedOut, travelCells } from '$lib/motion/narrow';
+  import { isReducedMotion } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  /* One query, not a union of a table and a column: entry photos and
-     milestone photos are rows in the same table (ADR-0008), already dated and
-     ordered oldest first by the journal. Thumbnails only - PhotoThumb never
-     decodes a full photo to draw a 104px tile. */
-  let photosQuery = liveList((j) => j.photos.inJournal());
-  let photos = $derived(photosQuery.rows);
+  /* One query over six tables, already dated and ordered by the journal
+     (photoLibrary.ts). Thumbnails only - PhotoThumb never decodes a full
+     photo to draw a 104px tile. */
+  let libraryQuery = liveList((j) => j.photoLibrary.inJournal());
+  let library = $derived(libraryQuery.rows);
+
+  /** Which chip the query names, falling back to the whole library both
+      for an unknown value and for a chip this journal has nothing behind:
+      a link to `?source=tryouts` written before the last tryout photograph
+      was deleted opens on everything rather than on an empty grid with no
+      chip to leave it by. */
+  const SOURCE_PARAM = 'source';
+  let chips = $derived(chipsFor(library));
+  let requested = $derived(photoChipFromQuery(page.url.searchParams.get(SOURCE_PARAM)));
+  let chip = $derived(chips.includes(requested) ? requested : 'everything');
+  let shown = $derived(narrowTo(library, chip));
+  let marks = $derived(yearMarks(shown));
+
+  /* Every photograph the wipe can read, narrowed by nothing. See the header:
+     an anchor picked under one chip must still be there under the next. */
+  let comparable = $derived(library.filter((photo) => photo.source !== 'video'));
 
   let selected = $state<string[]>([]);
   let comparing = $state(false);
+  let playing = $state<LibraryPhoto | null>(null);
 
-  let orderedSelected = $derived(orderAnchorsByJourney(selected, photos));
-  let pair = $derived(toComparePair(selected, photos));
+  let orderedSelected = $derived(orderAnchorsByJourney(selected, comparable));
+  let pair = $derived(toComparePair(selected, comparable));
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const duration = calendarDuration(photos[pair.left].epochDay, photos[pair.right].epochDay);
+    const duration = calendarDuration(comparable[pair.left].epochDay, comparable[pair.right].epochDay);
     return `${fmtDuration(duration)} ${m.apart_suffix()}`;
   });
 
@@ -62,7 +110,9 @@
      anchor photos span, so a number and an image answer "what changed"
      side by side. */
   let rangeQuery = liveList((j) =>
-    pair ? j.measurements.getMeasurementsInRange(photos[pair.left].epochDay, photos[pair.right].epochDay) : Promise.resolve([])
+    pair
+      ? j.measurements.getMeasurementsInRange(comparable[pair.left].epochDay, comparable[pair.right].epochDay)
+      : Promise.resolve([])
   );
   let rangeMeasurements = $derived(rangeQuery.rows);
 
@@ -86,7 +136,7 @@
   });
 
   function toggle(id: string) {
-    selected = toggleCompareAnchor(selected, id, photos);
+    selected = toggleCompareAnchor(selected, id, comparable);
   }
 
   /* The wipe owns which two photographs it is showing and hands back the
@@ -94,7 +144,7 @@
      holds them as ids, because the grid behind it is where they were
      picked and a live update can drop one of them. */
   function setPair(next: ComparePair) {
-    selected = [photos[next.left].id, photos[next.right].id];
+    selected = [comparable[next.left].id, comparable[next.right].id];
   }
 
   /* The mode control (ticket 11): a segmented Browse/Compare, matching how
@@ -114,17 +164,72 @@
     }
   }
 
+  let gridEl = $state<HTMLElement>();
+
+  /** Narrowing by a chip, as one move rather than a repaint: measure where
+      the tiles stand, change the query, then walk the survivors back to
+      where they were and release them (ADR-0078, motion/narrow.ts). The
+      tiles the chip drops leave the flow in the same frame, so the grid
+      rewraps once instead of twice. */
+  async function pickChip(next: PhotoChip) {
+    const before = measureCells(gridEl, 'data-photo-key');
+    const url = new URL(page.url);
+    if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
+    else url.searchParams.set(SOURCE_PARAM, next);
+    // Shallow: the library is already in hand and the screen is not being
+    // navigated to, so this changes the address and nothing else.
+    replaceState(url, page.state);
+    await tick();
+    travelCells(before, gridEl, 'data-photo-key');
+  }
+
+  /* The scrubber appears once the grid is taller than the screen, which is
+     the point at which scrolling to a year stops being something a thumb
+     can do (the ticket's own rule). Measured rather than counted: how many
+     thumbnails a screen holds depends on the width, the text size and
+     whether the grid is narrowed. */
+  let gridTall = $state(false);
+  $effect(() => {
+    const grid = gridEl;
+    if (!grid || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      gridTall = grid.getBoundingClientRect().height > window.innerHeight;
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  });
+
+  function jumpToYear(id: string) {
+    gridEl?.querySelector(`[data-photo-key="${id}"]`)?.scrollIntoView({
+      behavior: isReducedMotion() ? 'auto' : 'smooth',
+      block: 'start'
+    });
+  }
+
   /* Editing a single photo's day (ticket 47, ADR-0008/0015): every photo
      this app can normalize has had its capture date stripped on import, so
      this is the only place after the fact to say when one is really from -
      Persona 1's shoebox print, dated to 1994 rather than to the day it was
      scanned in. Held by id rather than by the photo object itself: the
      list is a live query, and re-opening the sheet after a write should
-     read the row it just changed rather than a stale copy of it. */
+     read the row it just changed rather than a stale copy of it.
+
+     Offered on an entry's and a milestone's photographs alone, because
+     `epoch_day_override` is a column the `photo` table alone has: the other
+     five tables date a row from the record it belongs to, and a photograph
+     dated to its hair-removal session has no day of its own to override. */
   let dayEditorId = $state<string | null>(null);
   let dayEditorValue = $state('');
 
-  function openDayEditor(photo: DatedPhoto) {
+  const datedByItsOwner = (photo: LibraryPhoto) => photo.source === 'entry' || photo.source === 'milestone';
+
+  function openDayEditor(photo: LibraryPhoto) {
     dayEditorId = photo.id;
     dayEditorValue = dateInputValueFromEpochDay(photo.epochDay);
   }
@@ -134,6 +239,9 @@
     await journal.photos.setEpochDayOverride(dayEditorId, epochDayFromDateInputValueOrToday(dayEditorValue));
     dayEditorId = null;
   }
+
+  const cellDate = (photo: LibraryPhoto) =>
+    fmtDay(photo.epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 </script>
 
 <div class="screen">
@@ -141,12 +249,12 @@
     <ScreenHeader title={m.ph_compare()} back={() => (comparing = false)} />
     <p class="compare-gap" data-compare-gap>{gapLabel}</p>
     <PhotoWipe
-      {photos}
+      photos={comparable}
       {pair}
       onPair={setPair}
       role={roleAt(activeFlag.roles, 0)}
       date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-      note={(photo) => photo.milestoneName ?? m.ph_from_entry()}
+      note={photoOwnerLine}
     />
     {#if rangeSummaries.length}
       <SectionHeading text={m.ph_measurements_title()} />
@@ -184,8 +292,9 @@
         key="photos-tab"
       />
     </div>
-    <ReadGate read={photosQuery} variant="block" count={2}>
+    <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
+        <PhotoChipRow {chips} {chip} onPick={pickChip} />
         {#if comparing && !pair}
           <!-- Reachable when a live update drops one of the two anchors
                while the full compare view is open (code review, ticket 11):
@@ -196,6 +305,7 @@
                screen showing the grid and this very reset notice. -->
           <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
         {/if}
+        <p class="photo-count" data-photo-count>{m.ph_count({ count: shown.length })}</p>
         <p class="muted small" style="margin-bottom:var(--space-4)">
           {orderedSelected.length === 0
             ? m.ph_pick_two()
@@ -203,21 +313,66 @@
               ? m.ph_one_selected()
               : m.ph_two_selected()}
         </p>
-        <div class="photo-grid">
-          {#each photos as p, i (p.id + String(p.epochDay))}
-            <div class="photo-cell-wrap">
-              <button class="photo-cell" data-photo-cell class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
-                aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                onclick={() => toggle(p.id)}>
-                <PhotoThumb photo={p} size={104} />
-                <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-                {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
-              </button>
-              <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} onclick={() => openDayEditor(p)}>
-                <Icon name="calendar" size={14} />
-              </button>
+        <div class="photo-library">
+          <div class="photo-grid" bind:this={gridEl}>
+            {#each shown as p (p.id)}
+              <div class="photo-cell-wrap" data-photo-key={p.id} in:crossfade out:pinnedOut>
+                {#if p.source === 'video'}
+                  <!-- A note plays rather than being picked, and its tile
+                       draws no still: the bytes are up to 10MiB apiece
+                       (videoNotes/limits.ts) and decoding one per tile to
+                       show a frame nobody asked for is the cost the
+                       thumbnail pipeline exists to avoid. The glyph is the
+                       affordance; the note itself opens in the app's own
+                       player. -->
+                  <button
+                    class="photo-cell"
+                    data-photo-video={p.id}
+                    aria-label={m.ph_video_open({ date: cellDate(p) })}
+                    onclick={() => (playing = p)}
+                  >
+                    <span class="photo-thumb photo-video-thumb">
+                      <Icon name="play" size={26} />
+                      <span class="photo-label">{photoSourceLabel(p.source)}</span>
+                    </span>
+                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                  </button>
+                {:else}
+                  <button
+                    class="photo-cell"
+                    data-photo-cell
+                    class:is-selected={orderedSelected.includes(p.id)}
+                    aria-pressed={orderedSelected.includes(p.id)}
+                    aria-label={m.ph_cell_aria_sourced({ source: photoSourceLabel(p.source), date: cellDate(p) })}
+                    onclick={() => toggle(p.id)}
+                  >
+                    <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
+                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                    {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+                  </button>
+                  {#if datedByItsOwner(p)}
+                    <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} onclick={() => openDayEditor(p)}>
+                      <Icon name="calendar" size={14} />
+                    </button>
+                  {/if}
+                {/if}
+              </div>
+            {/each}
+          </div>
+          {#if gridTall && marks.length}
+            <div class="photo-years" role="group" aria-label={m.ph_years_label()} data-photo-years>
+              {#each marks as mark (mark.year)}
+                <button
+                  class="photo-year"
+                  data-photo-year={mark.year}
+                  aria-label={m.ph_year_jump({ year: mark.year })}
+                  onclick={() => jumpToYear(mark.id)}
+                >
+                  {mark.year}
+                </button>
+              {/each}
             </div>
-          {/each}
+          {/if}
         </div>
         <div>
           <a class="btn btn-soft press" href="/media/photos/export" data-journey-export>
@@ -238,6 +393,14 @@
       {/snippet}
     </ReadGate>
   {/if}
+
+  <Sheet open={playing !== null} title={m.ph_video_title()} onClose={() => (playing = null)}>
+    {#if playing}
+      <h3>{m.ph_video_title()}</h3>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.ph_video_grid_hint()}</p>
+      <VideoNotePlayer fileName={playing.fileName} />
+    {/if}
+  </Sheet>
 
   <Sheet open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
     {#if dayEditorId !== null}
@@ -284,6 +447,53 @@
     /* The same disc as .starred-photo-unstar::before in screens.css, and
        the same trade: an edge rather than the app's second elevation. */
     background: var(--surface); border: 1px solid var(--outline);
+  }
+
+  /* The grid and the year rail beside it. The rail sticks while the grid
+     scrolls past it, which is the whole of what a scrubber is. */
+  .photo-library { display: flex; align-items: flex-start; gap: var(--space-2); }
+  .photo-library .photo-grid { flex: 1; min-width: 0; }
+  .photo-years {
+    position: sticky; top: var(--space-4);
+    display: flex; flex-direction: column;
+    flex: none;
+  }
+  .photo-year {
+    min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    border: none; background: none; cursor: pointer;
+    font: inherit; font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+  }
+  .photo-year:hover { color: var(--text-1); }
+
+  /* A video note's tile. Flat rather than the hue a photograph's
+     placeholder takes (PhotoThumb.svelte), because this one is not a
+     photograph waiting to load: it is what a video note looks like. */
+  .photo-video-thumb {
+    background: var(--surface-2);
+    color: var(--text-2);
+    width: 100%;
+    aspect-ratio: 1;
+  }
+
+  /* The source label over the thumbnail. Always there on a touch screen,
+     where there is no hover to reveal it and the app is an Android app
+     first; on a pointer it stays out of the photograph until the tile is
+     under the cursor or the keyboard's focus. */
+  @media (hover: hover) {
+    .photo-cell :global(.photo-label) {
+      opacity: 0;
+      transition: opacity var(--dur-fast) var(--ease-out);
+    }
+    .photo-cell:hover :global(.photo-label),
+    .photo-cell:focus-visible :global(.photo-label) { opacity: 1; }
+  }
+
+  .photo-count {
+    font-size: var(--text-sm);
+    color: var(--text-1);
+    margin: 0 0 var(--space-1);
   }
 
   /* The two-up grid this screen drew before redesign ticket 55 went with

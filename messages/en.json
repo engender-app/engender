@@ -1864,16 +1864,50 @@
   "ph_compare": "Compare",
   "ph_tab_browse": "Browse",
   "ph_tab_compare": "Compare",
-  "ph_from_entry": "journal entry",
   "ph_back_to_all": "Back to all photos",
   "ph_compare_reset": "One selected photo is no longer available. Pick two anchors again.",
-  "ph_pick_two": "Every photo in your journal, oldest first. Select two to compare.",
+  "ph_pick_two": "Select two to compare.",
   "ph_one_selected": "One selected. Pick a second to compare.",
   "ph_two_selected": "Two selected.",
   "ph_cell_aria": "Photo from {date}",
   "ph_empty_title": "No photos yet",
   "ph_empty_body": "Photos you attach to entries and milestones gather here, and one day “then vs now” will be worth it.",
   "ph_edit_day": "Edit day",
+  "ph_chips_label": "Show",
+  "ph_chip_everything": "Everything",
+  "ph_chip_body": "Body",
+  "ph_chip_hair": "Hair",
+  "ph_chip_tryouts": "Tryouts",
+  "ph_chip_surgery": "Surgery",
+  "ph_chip_video": "Video",
+  "ph_source_entry": "Entry",
+  "ph_source_milestone": "Milestone",
+  "ph_source_hair": "Hair",
+  "ph_source_hair_removal": "Hair removal",
+  "ph_source_tryout": "Tryout",
+  "ph_source_procedure": "Surgery",
+  "ph_source_video": "Video note",
+  "ph_cell_aria_sourced": "{source}, {date}",
+  "ph_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} photo",
+        "countPlural=other": "{count} photos"
+      }
+    }
+  ],
+  "ph_years_label": "Jump to a year",
+  "ph_year_jump": "Jump to {year}",
+  "ph_video_open": "Play the video note from {date}",
+  "ph_video_title": "Video note",
+  "ph_video_grid_hint": "A video note plays, and is not one of the two a comparison takes.",
   "photo_wipe_handle": "Comparison divider",
   "photo_wipe_value": "{percent}% from the earlier photo",
   "photo_wipe_earlier_back": "Earlier photo: one further back",
