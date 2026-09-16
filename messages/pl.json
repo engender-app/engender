@@ -2870,6 +2870,7 @@
   "am_biometric_unavailable": "To urządzenie nie wydało sekretu dla dziennika. Wybierz zamiast tego PIN albo hasło.",
   "rk_row_title": "Klucz odzyskiwania",
   "rk_row_sub_none": "brak",
+  "rk_row_sub_none_consequence": "Bez niego zapomniane hasło oznacza, że dziennika nie da się otworzyć.",
   "rk_row_sub_active": "ustawiony",
   "rk_title": "Klucz odzyskiwania",
   "rk_intro": "Klucz odzyskiwania to 25 znaków do zapisania i przechowania poza tym urządzeniem. Otwiera ten dziennik wtedy, gdy zwykły sposób już nie działa: gdy hasła nie ma, albo gdy przeglądarka utraciła klucz, który dla ciebie trzymała.",
