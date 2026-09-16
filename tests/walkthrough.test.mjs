@@ -999,6 +999,32 @@ try {
   ok('a saved question runs and shows entries, the same read /search itself made');
 } catch (e) { fail('saved question runs', e); }
 
+/* 5g. search opens with something: the opening state's tag chips and this
+   device's own recent searches both run a search on a tap (ticket 18). The
+   recent-search row relies on earlier flows in this same file having
+   already typed something and let it debounce - a fresh browsing context
+   with no history of its own would show no rows, which is the point: the
+   row is this device's memory, not the journal's. */
+try {
+  await fresh('/search');
+  await page.waitForSelector('[data-search-idle]');
+
+  await page.waitForSelector('[data-idle-tag-chip]');
+  await page.locator('[data-idle-tag-chip]').first().click();
+  await page.waitForSelector('[data-active-filter-chip]');
+
+  await page.locator('[data-filter-clear]').click();
+  await page.waitForSelector('[data-search-idle]');
+
+  await page.waitForSelector('[data-recent-search-row]');
+  const term = await page.locator('[data-recent-search-row]').first().innerText();
+  await page.locator('[data-recent-search-row]').first().click();
+  await page.waitForFunction((t) => document.querySelector('#q')?.value === t, term.trim());
+  await page.waitForSelector('[data-entry-card], [data-search-count]');
+
+  ok('search opens with tag chips and recent searches, and tapping either runs the search');
+} catch (e) { fail('search opening state', e); }
+
 /* 6. stats range + value list.
 
    The handles moved with ticket 23's rebuild: the period is the header's
