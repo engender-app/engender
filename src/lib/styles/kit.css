@@ -1971,7 +1971,7 @@ button.kit-strip-day .kit-strip-cell {
    a control, but a surface *followed* by a skeleton keeps skeleton's own
    --space-5 rule above. Stamping it [data-kit-surface] would hand that pair
    to the two-surface rule instead, which is a different number. */
-:is(.segmented, .stats-caption, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
+:is(.segmented, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
   + :is([data-kit-surface], .skeleton-stack) {
   margin-top: var(--space-5);
 }

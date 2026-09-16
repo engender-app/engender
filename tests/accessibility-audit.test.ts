@@ -36,7 +36,9 @@ describe('phase 2 accessibility seams', () => {
        list of the same rows, which costs nothing on screen and keeps the
        numbers reachable. If that list ever goes too, this check should fail
        rather than be updated again. */
-    const stats = read('src/routes/stats/+page.svelte');
+    /* The chart and its list moved off the door onto the day-by-day
+       reading's own screen (phase 11 ticket 07); the rule moved with them. */
+    const stats = read('src/lib/components/readings/DayByDayReading.svelte');
     expect(stats).toContain('data-values-list');
     expect(stats).toMatch(/<ul class="visually-hidden" data-values-list/);
     expect(stats).toContain('valueRows');
