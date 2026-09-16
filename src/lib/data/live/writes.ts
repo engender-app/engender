@@ -931,7 +931,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // and 11, ADR-0010).
   hormoneCurve: classify<Journal['hormoneCurve']>()({
     writes: {},
-    reads: { getCurves: ['dose', 'regimen', 'lab'] }
+    reads: { getCurves: ['dose', 'regimen', 'lab'], getCurveDirection: ['dose', 'regimen'] }
   }),
   /* Read-only, the same reason exposure is: a clinician summary assembles
      rows other areas own and stores nothing of its own (phase 4 ticket 12).

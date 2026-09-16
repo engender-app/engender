@@ -979,6 +979,9 @@ beforeAll(async () => {
   await driveRead('hormoneCurve', 'getCurves', () =>
     journal.hormoneCurve.getCurves({ fromEpochDay: 0, toEpochDay: 30000, fitToOwnLabs: false })
   );
+  await driveRead('hormoneCurve', 'getCurveDirection', () =>
+    journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: 20000 })
+  );
   await driveRead('sideEffects', 'getSideEffects', () => journal.sideEffects.getSideEffects());
   await driveRead('sideEffects', 'getSideEffectsInRange', () => journal.sideEffects.getSideEffectsInRange(0, 30000));
   await driveRead('sideEffects', 'lastWriteEpochDay', () => journal.sideEffects.lastWriteEpochDay(20000));

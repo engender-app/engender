@@ -211,11 +211,10 @@ const SECTIONS = [
   }),
   /* A dose slot, only where the active schedule is not daily (ADR-0067): a
      daily slot would mark every cell a calendar could draw, which is
-     wallpaper rather than information. Every active episode is asked, not
-     only the one `careSpine.ts` puts on its rail - two concurrent
-     schedules each still earn their own weekly mark, the ambiguity
-     `chooseRailEpisode` exists for being a question about one rail's
-     drawing, not about which days matter. A pause suppresses a slot the
+     wallpaper rather than information. Every active episode is asked, the
+     same set `careSpine.ts` now draws a lane each for (phase 11 ticket 10;
+     before it, the rail picked one episode and this section was already
+     the wider read). A pause suppresses a slot the
      same way it does everywhere else a schedule is read against one
      (doseSchedule.ts's own `adherence`). */
   section({

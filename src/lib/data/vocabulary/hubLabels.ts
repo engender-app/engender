@@ -186,7 +186,7 @@ function nextLine(what: NextWhat, epochDay: number, todayEpochDay: number): stri
       return today ? m.hub_line_next_surgery_today() : m.hub_line_next_surgery({ gap });
     case 'dose':
       return what.runOutEpochDay === null
-        ? m.care_other_next_dose({ when: fullDay(epochDay) })
+        ? m.care_next_dose({ when: fullDay(epochDay) })
         : m.hub_line_care_dose_and_stock({ when: fullDay(epochDay), date: fullDay(what.runOutEpochDay) });
     case 'runOut':
       return m.hub_line_run_out({ date: fullDay(epochDay) });
