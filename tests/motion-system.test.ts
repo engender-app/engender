@@ -343,9 +343,9 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
   },
   {
     file: 'src/lib/components/SpanTimeline.svelte',
-    count: 3,
+    count: 5,
     reason:
-      'the rail answers a touch by moving the span itself - a handle follows the finger and the clip travels - so a scale on an era, a mark or a handle would be a second answer to the same touch (redesign ticket 11)'
+      'the rail answers a touch by moving the span itself - a handle follows the finger and the clip travels - so a scale on an era, a history band, a mark, a surgery mark or a handle would be a second answer to the same touch (redesign ticket 11, the two history controls on phase 11 ticket 06)'
   }
 ];
 
