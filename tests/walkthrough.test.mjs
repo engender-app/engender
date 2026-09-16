@@ -4614,15 +4614,14 @@ try {
   if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
     throw new Error('a row with only a last write stopped reporting it');
   }
-  // Photos, voice memos and documents live together now, and Body keeps the
-  // rest. Documents joined in phase 8 features ticket 52.
+  // Photos and documents live together now, and Body keeps the rest.
+  // Documents joined in phase 8 features ticket 52; voice memos left in
+  // phase 11 ticket 17, folded into the voice screen's own Recordings tab.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,voice,documents') {
-    throw new Error(
-      `the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, voice memos and documents`
-    );
+  if (mediaRows.join(',') !== 'photos,documents') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and documents`);
   }
 
   /* An area declared finished leaves its group for the finished set, keeps
