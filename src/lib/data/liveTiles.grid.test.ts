@@ -19,11 +19,13 @@ import { SURFACE_ROWS, UNPROMPTED_KINDS } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import {
   HOME_TILE_CAP,
+  LIVE_TILE_DRAW_ORDER,
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
   dosePanelCoversEveryRegimen,
+  isLiveTileKind,
   liveTilePrefKeys,
   splitHomeTiles,
   type HomeTileActions,
@@ -311,6 +313,25 @@ describe('the tier every kind is in', () => {
 describe('the order, and the cap', () => {
   it('orders by tier first, and by LIVE_TILE_ORDER inside a tier', () => {
     expect(keysOf()).toEqual(TIERED);
+  });
+
+  it('states that order once, for the grid and for the editor that arranges it', () => {
+    /* Phase 11 ticket 04: Today's editor lists the switches in the order
+       the grid draws them, and a second nested loop over the same two
+       lists would be a copy of the order that nothing keeps in step. So
+       `composeHomeTiles` and the editor read the same array, and this is
+       what says the array is the tiered order rather than something that
+       merely happens to agree with it today. */
+    expect([...LIVE_TILE_DRAW_ORDER]).toEqual(TIERED);
+  });
+
+  it('knows a tile kind from the rest of the registry', () => {
+    /* What the notifications screen filters its Home column by, so a kind
+       the editor now arranges is not also switchable in Settings. */
+    for (const kind of TIERED) expect(isLiveTileKind(kind)).toBe(true);
+    for (const notATile of ['stock-notice', 'wrapped', 'on-this-day', 'reminders'] as const) {
+      expect(isLiveTileKind(notATile)).toBe(false);
+    }
   });
 
   it('keeps the order when the ones before a tile drop out', () => {

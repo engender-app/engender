@@ -141,7 +141,7 @@ export function homeTiles(
   }
 
   /* Which preference switches a tile off is the unprompted registry's to
-     say - the same field /settings/live-tiles draws its switch from - so
+     say - the same field Today's own editor draws its switch from - so
      this indexes the store by it rather than naming eleven preferences. */
   const gates = $derived.by(() => {
     const enabled = {} as Record<LiveTileKind, boolean>;
