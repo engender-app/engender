@@ -4,8 +4,13 @@
      rows the same way a tag or a gender dimension is: edited into the
      person's own or hidden, never deleted (CONTEXT: "Hidden") - the shared
      record editor's `remove` handle is wired to throw rather than ever
-     being reachable from this screen, the same shape /settings/presentations
-     already gives a hide-only area.
+     being reachable from this screen, the same shape presentations already
+     gives a hide-only area.
+
+     A sheet's own body rather than a screen (audit item 6): even hosted on
+     Settings (redesign ticket 51, ADR-0084), fifteen rows of names still
+     ran long for a screen of its own. See VocabularyManagerSheets.svelte
+     for where this mounts and why.
 
      No empty state: reconcile seeds every `ENTRY_TEMPLATES` built-in on
      every boot, so the list is never empty the way a fresh presentations
@@ -17,7 +22,6 @@
   import { dimensionName, tagLabel } from '$lib/data/vocabulary/labels';
   import type { EntryTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -82,8 +86,7 @@
   /** What a row states under its name (audit item 5): its dimensions and
       tags, three named and the rest counted (templateSummaryKeys), read
       from the record rather than left blank. `undefined` for a template
-      with neither - the blank draft a "+" starts from, say - which is a
-      line the row does not have rather than an empty one. */
+      with neither. */
   function templateSummary(t: EntryTemplate): string | undefined {
     const { shown, rest } = templateSummaryKeys(t);
     if (shown.length === 0) return undefined;
@@ -92,116 +95,119 @@
   }
 </script>
 
-<div class="screen">
-  <ScreenHeader title={m.entry_templates_title()} back="/settings" subtitle={m.entry_templates_intro()}>
-    {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.entry_templates_add()} onclick={() => record.openEditor(null)}>
-        <Icon name="plus" size={22} />
-      </button>
-    {/snippet}
-  </ScreenHeader>
-
-  <div class="screen-part">
-    <ListCard role={roleAt(activeFlag.roles, 0)}>
-      {#each templates as t (t.id)}
-        <ListRow
-          key={t.id}
-          data-entry-template={t.id}
-          title={t.name}
-          subtitle={[templateSummary(t), t.hidden ? m.tags_hidden() : undefined]}
-          chevron={false}
-          onclick={() => record.openEditor(t)}
-          action={{
-            icon: t.hidden ? 'eye' : 'eyeOff',
-            label: t.hidden
-              ? m.entry_template_show_aria({ name: t.name })
-              : m.entry_template_hide_aria({ name: t.name }),
-            onclick: () => toggleHidden(t)
-          }}
-        />
-      {/each}
-    </ListCard>
-  </div>
-
-  <RecordSheet
-    {record}
-    handle="entry-template"
-    newTitle={m.entry_template_new_sheet()}
-    editTitle={m.entry_template_edit_sheet()}
-    saveLabel={m.entry_template_save()}
-    canSave={(draft) => draft.name.trim().length > 0}
-    confirm={{
-      // Unreachable, the same reason presentations' own confirm block is:
-      // required by the shared component regardless of whether a screen
-      // offers deletion at all.
-      title: '',
-      question: () => '',
-      confirmLabel: '',
-      cancelLabel: ''
-    }}
-  >
-    {#snippet fields(editor)}
-      <Field label={m.entry_template_name_label()} id="entry-template-name">
-        {#snippet children(id)}
-          <input
-            class="input"
-            {id}
-            name="entry-template-name"
-            placeholder={m.entry_template_name_placeholder()}
-            bind:value={editor.name}
-          />
-        {/snippet}
-      </Field>
-
-      {#if vocabulary.visiblePresentations.length > 0}
-        <SectionHeading text={m.presentation_label()} />
-        <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
-          {#each vocabulary.visiblePresentations as p (p.id)}
-            {@const role = roleAt(activeFlag.roles, p.roleIndex)}
-            <button
-              type="button"
-              class="contextual-chip presentation-chip press"
-              class:is-active={editor.presentationId === p.id}
-              {...roleAttrs(role)}
-              role="radio"
-              aria-checked={editor.presentationId === p.id}
-              onclick={() => (editor.presentationId = editor.presentationId === p.id ? null : p.id)}
-            >
-              {p.name}
-            </button>
-          {/each}
-        </div>
-      {/if}
-
-      <SectionHeading text={m.gender_label()} />
-      {#each vocabulary.visibleDimensions as dim (dim.key)}
-        <DimensionSlider {dim} value={editor.dims[dim.key] ?? null} onInput={(v) => (editor.dims = { ...editor.dims, [dim.key]: v })} />
-      {/each}
-
-      <SectionHeading text={m.tags_label()} />
-      <TagPicker
-        groups={vocabulary.visibleTagGroups}
-        selected={editor.tags}
-        onToggle={(id) =>
-          (editor.tags = editor.tags.includes(id) ? editor.tags.filter((x) => x !== id) : [...editor.tags, id])}
-      />
-
-      <Field label={m.note_label()} id="entry-template-note-scaffold">
-        {#snippet children(id)}
-          <textarea
-            class="input"
-            {id}
-            name="entry-template-note-scaffold"
-            placeholder={m.entry_template_note_scaffold_placeholder()}
-            bind:value={editor.noteScaffold}
-          ></textarea>
-        {/snippet}
-      </Field>
-    {/snippet}
-  </RecordSheet>
+<div class="vocab-manager-head">
+  <h3>{m.entry_templates_title()}</h3>
+  <button class="icon-btn press" data-add aria-label={m.entry_templates_add()} onclick={() => record.openEditor(null)}>
+    <Icon name="plus" size={22} />
+  </button>
 </div>
+<p class="ob-text">{m.entry_templates_intro()}</p>
+
+<ListCard role={roleAt(activeFlag.roles, 0)}>
+  {#each templates as t (t.id)}
+    <ListRow
+      key={t.id}
+      data-entry-template={t.id}
+      title={t.name}
+      subtitle={[templateSummary(t), t.hidden ? m.tags_hidden() : undefined]}
+      chevron={false}
+      onclick={() => record.openEditor(t)}
+      action={{
+        icon: t.hidden ? 'eye' : 'eyeOff',
+        label: t.hidden
+          ? m.entry_template_show_aria({ name: t.name })
+          : m.entry_template_hide_aria({ name: t.name }),
+        onclick: () => toggleHidden(t)
+      }}
+    />
+  {/each}
+</ListCard>
+
+<RecordSheet
+  {record}
+  handle="entry-template"
+  newTitle={m.entry_template_new_sheet()}
+  editTitle={m.entry_template_edit_sheet()}
+  saveLabel={m.entry_template_save()}
+  canSave={(draft) => draft.name.trim().length > 0}
+  confirm={{
+    // Unreachable, the same reason presentations' own confirm block is:
+    // required by the shared component regardless of whether a screen
+    // offers deletion at all.
+    title: '',
+    question: () => '',
+    confirmLabel: '',
+    cancelLabel: ''
+  }}
+>
+  {#snippet fields(editor)}
+    <Field label={m.entry_template_name_label()} id="entry-template-name">
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="entry-template-name"
+          placeholder={m.entry_template_name_placeholder()}
+          bind:value={editor.name}
+        />
+      {/snippet}
+    </Field>
+
+    {#if vocabulary.visiblePresentations.length > 0}
+      <SectionHeading text={m.presentation_label()} />
+      <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
+        {#each vocabulary.visiblePresentations as p (p.id)}
+          {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+          <button
+            type="button"
+            class="contextual-chip presentation-chip press"
+            class:is-active={editor.presentationId === p.id}
+            {...roleAttrs(role)}
+            role="radio"
+            aria-checked={editor.presentationId === p.id}
+            onclick={() => (editor.presentationId = editor.presentationId === p.id ? null : p.id)}
+          >
+            {p.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    <SectionHeading text={m.gender_label()} />
+    {#each vocabulary.visibleDimensions as dim (dim.key)}
+      <DimensionSlider {dim} value={editor.dims[dim.key] ?? null} onInput={(v) => (editor.dims = { ...editor.dims, [dim.key]: v })} />
+    {/each}
+
+    <SectionHeading text={m.tags_label()} />
+    <TagPicker
+      groups={vocabulary.visibleTagGroups}
+      selected={editor.tags}
+      onToggle={(id) =>
+        (editor.tags = editor.tags.includes(id) ? editor.tags.filter((x) => x !== id) : [...editor.tags, id])}
+    />
+
+    <Field label={m.note_label()} id="entry-template-note-scaffold">
+      {#snippet children(id)}
+        <textarea
+          class="input"
+          {id}
+          name="entry-template-note-scaffold"
+          placeholder={m.entry_template_note_scaffold_placeholder()}
+          bind:value={editor.noteScaffold}
+        ></textarea>
+      {/snippet}
+    </Field>
+  {/snippet}
+</RecordSheet>
 
 <style>
+  .vocab-manager-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
   /* The presentation chip row, copied from EntryEditor.svelte rather than
      shared with it: both are the app's only two presentation pickers, and
      neither is a component the third caller that would justify extracting

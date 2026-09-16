@@ -64,6 +64,7 @@
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
+  import VocabularyManagerSheets from '$lib/components/VocabularyManagerSheets.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
@@ -794,6 +795,7 @@
     </main>
 
     <QuickAdd />
+    <VocabularyManagerSheets />
 
     <Toasts />
   </div>

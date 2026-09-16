@@ -4788,13 +4788,21 @@ try {
   await page.locator('[data-list-row="words"]').click();
   await page.waitForURL('**/settings/words');
 
+  // Modes and entry templates stopped being screens of their own (audit
+  // item 6): each row now raises a sheet over Settings rather than
+  // navigating, so the URL settles back on /settings and the manager's own
+  // content is what proves the row worked.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="entry-templates"]').click();
-  await page.waitForURL('**/settings/entry-templates');
+  await page.waitForURL('**/settings');
+  await page.locator('[data-entry-template]').first().waitFor();
+  await page.keyboard.press('Escape');
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="presentations"]').click();
-  await page.waitForURL('**/settings/presentations');
+  await page.waitForURL('**/settings');
+  await page.locator('[data-add]').waitFor();
+  await page.keyboard.press('Escape');
 
   /* Safe space and Support and resources are one group now, and the hub
      draws no Practice heading at all. Asserted on the section handle rather

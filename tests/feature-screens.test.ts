@@ -108,13 +108,6 @@ const REACHED_FROM_INSIDE = [
      unwatched. */
   'doubt/comfort',
   'doubt/evidence',
-  /* Redesign ticket 51 (ADR-0084): modes and entry templates are reference
-     areas, so both left `hubRows.ts` entirely for a plain row on Settings -
-     reached from there and from the entry editor's chip picker, never from
-     the hub. Still built on the kit, so they stay on this list for the
-     reason the note above it gives. */
-  'settings/presentations',
-  'settings/entry-templates',
   /* Redesign ticket 62 (ADR-0084): the words reading draws on the Look back
      door itself now, and the ignore list it used to carry stayed behind as a
      reference area - reached from a plain row on Settings and from the
@@ -183,8 +176,13 @@ describe('every feature screen', () => {
        since phase 11 all-four-doors ticket 12 took `health/appointment-prep`
        off this list (the appointments screen's own verb row reaches it now),
        eighteen since phase 11 ticket 17 took the metric reference off it too
-       - its markup moved to screens the hub already reaches. */
-    expect(REACHED_FROM_INSIDE.length).toBe(18);
+       - its markup moved to screens the hub already reaches - and sixteen
+       since audit item 6 turned modes and entry templates into sheets
+       raised over Settings: neither has a +page.svelte of its own left at
+       its route for this file to read (feature-screens.test.ts's own
+       NOT_A_FEATURE_SCREEN equivalent for a non-hub route is simply not
+       listing it at all). */
+    expect(REACHED_FROM_INSIDE.length).toBe(16);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -243,17 +241,18 @@ describe('every feature screen', () => {
 describe('what a first-run journal sees', () => {
   /** Every one of these ships an empty state today and must keep one - the
       ticket's own line. Milestones is reference data with a seeded
-      catalogue, resources is a bundled directory and entry templates
-      reconciles every `ENTRY_TEMPLATES` built-in on every boot (the
-      screen's own header comment), so none of the three can be empty; the
-      clinician summary states its emptiness per section rather than per
-      screen. */
+      catalogue and resources is a bundled directory, so neither can be
+      empty; the clinician summary states its emptiness per section rather
+      than per screen. Entry templates left this list with its own route
+      (audit item 6) - it still reconciles every `ENTRY_TEMPLATES` built-in
+      on every boot and is still never empty, just not read from
+      `src/routes` any more (EntryTemplatesManager.svelte, off this file's
+      reach). */
   const WITH_EMPTY_STATE = ROUTES.filter(
     (route) =>
       ![
         'transition/milestones',
         'practice/resources',
-        'settings/entry-templates',
         'health/clinician-summary',
         /* The return moment is a step rather than a screen (DIRECTION.md
            rule 15, redesign ticket 35), and rule 12 forbids a notice on
@@ -303,21 +302,18 @@ describe('what a first-run journal sees', () => {
 
 describe('what the worker is still fetching', () => {
   /** Reference data is held in memory and read synchronously (CONTEXT.md),
-      so a screen reading only that owes no loading state. Five here:
+      so a screen reading only that owes no loading state. Three here:
       milestones reads the milestone catalogue, resources reads a directory
-      compiled into the bundle, the notifications view reads nothing but the
-      preference store, and presentations and entry templates both read the
-      mirrored vocabulary (reference.svelte.ts) rather than a live query -
-      all the same shape, a projection already in memory, with no round trip
-      to wait on. */
+      compiled into the bundle, and the notifications view reads nothing but
+      the preference store. Presentations and entry templates read the same
+      mirrored vocabulary (reference.svelte.ts) rather than a live query, but
+      left this list with audit item 6 along with their routes. */
   const ENTRY_DATA = ROUTES.filter(
     (route) =>
       ![
         'transition/milestones',
         'practice/resources',
         'settings/notifications',
-        'settings/presentations',
-        'settings/entry-templates',
         /* Reads the OS rather than the journal: what the four grantable rows
            show comes from two Capacitor plugins and, on the web, from
            navigator.permissions. There is no query to wait on, and a

@@ -78,16 +78,17 @@ const TAB_ROUTES: TabRoute[] = [
    nothing to borrow, lights none. */
 const CHROME_PREFIX = '/settings';
 
-/* Reference areas ticket 51 (ADR-0084) hosted under Settings without
-   making them preferences - a mode, a template and an era are vocabulary,
-   the same content the fourth door used to carry a row for, just filed
-   under a different address now. Chrome-borrowing them would mean the
-   editor's own "manage"/"change" links (plain `<a href>`s, not a raise)
-   surface presentations under whichever tab happened to be lit when the
-   editor was opened, which answers a different question than "where is
-   Settings' own reference data". They keep the fixed tab those hub rows
-   lit before ticket 51 moved them. */
-const SETTINGS_REFERENCE_AREA_PREFIXES = ['/settings/presentations', '/settings/entry-templates', '/settings/eras'];
+/* Eras, ticket 51's third reference area (ADR-0084), hosted under Settings
+   without becoming a preference - the fourth door's own content, just
+   filed under a different address. Chrome-borrowing it would mean the
+   tab following whichever screen the person happened to be on, which
+   answers a different question than "where does Settings' own reference
+   data live" - it keeps the fixed tab its hub row lit before ticket 51
+   moved it. Modes and entry templates, ticket 51's other two, are not
+   here any more: audit item 6 turned them into sheets raised over
+   Settings, so `/settings/presentations` and `/settings/entry-templates`
+   redirect before either ever reaches this function as a live pathname. */
+const SETTINGS_REFERENCE_AREA_PREFIXES = ['/settings/eras'];
 
 /* The word ignore list kept its old address (`/settings/words` redirects
    here, ADR-0036) but never belonged to the fourth door either: it

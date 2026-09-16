@@ -13,6 +13,7 @@
      problem any more, but `.kit-row.is-static` also drops the row's cursor
      and its :active wash, and moving a row that keeps neither today would
      be a press-state change on tap - out of this ticket's reach). */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
@@ -20,6 +21,8 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import { replaceRoute } from '$lib/navigation/smart-back';
+  import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -100,6 +103,21 @@
      render as "coming soon" rather than a live link. Setting this to the
      real Ko-fi URL is the whole follow-up; no markup changes with it. */
   const KOFI_URL = '';
+
+  /* The modes/entry-templates sheets raise from here (audit item 6):
+     `?raise=` is what their old standalone-screen addresses' redirects
+     hand off (settings/presentations, settings/entry-templates), since
+     only a mounted screen can reach ui.svelte.ts - a +page.ts load()
+     cannot. Read once and stripped straight back off, so the sheet's own
+     open state, not the URL, is what a later close answers to; a plain
+     visit to /settings carries no such param and this is a no-op. */
+  $effect(() => {
+    const raise = page.url.searchParams.get('raise');
+    if (raise === 'modes' || raise === 'templates') {
+      ui.raisedManager = raise;
+      void replaceRoute('/settings');
+    }
+  });
 </script>
 
 <div class="screen">
