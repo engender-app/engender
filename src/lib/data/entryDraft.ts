@@ -12,6 +12,7 @@
 import { BODY_REGION_MIDPOINT, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
 import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
+import type { EntrySection } from './entrySections';
 import type { Entry, EntryTemplate } from './types';
 import type {
   EntryCycleEventInput,
@@ -59,6 +60,12 @@ export interface EntryDraft {
       domain id or null, never pre-filled for a new entry - only an existing
       entry's own value seeds it, the same way `mood` does. */
   presentationId: string | null;
+  /** The chip whose section is open under the note (phase 11 ticket 19),
+      or null with every section folded. Editor state rather than entry
+      content - `toUpsert()` never reads it - but it lives on the draft so
+      the process-death mirror carries it: a return to a half-written entry
+      lands where the person left it. */
+  openSection: EntrySection | null;
   readonly isEmpty: boolean;
   readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
@@ -95,6 +102,7 @@ export interface EntryDraft {
   setEffectMarker(marker: EntryEffectMarkerInput | null): void;
   setCycleEvent(cycleEvent: EntryCycleEventInput | null): void;
   setPresentation(id: string | null): void;
+  setOpenSection(section: EntrySection | null): void;
   /** The exact upsertEntry payload for the draft as it stands, including the
       photo, recording and video-note attach and remove lists. */
   toUpsert(): EntryInput;
@@ -132,6 +140,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     effectMarker: null,
     cycleEvent: null,
     presentationId: existing ? existing.presentationId : null,
+    openSection: null,
 
     get isEmpty() {
       return entryIsEmpty({
@@ -248,6 +257,10 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
 
     setPresentation(id) {
       this.presentationId = id;
+    },
+
+    setOpenSection(section) {
+      this.openSection = section;
     },
 
     toUpsert() {
