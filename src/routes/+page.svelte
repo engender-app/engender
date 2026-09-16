@@ -360,7 +360,7 @@
   let showGettingStarted = $derived(entryCount != null && entryCount < GETTING_STARTED_UNTIL);
   const GETTING_STARTED = [
     { key: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
-    { key: 'regimen', icon: 'flask', href: '/settings/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
+    { key: 'regimen', icon: 'flask', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
     { key: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
@@ -792,7 +792,7 @@
       key="stock-low"
       title={stockNoticeCopy.title}
       text={stockNoticeCopy.body}
-      action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
+      action={{ label: m.notice_stock_manage(), href: '/care' }}
       dismiss={{
         label: m.notice_stock_dismiss_action(),
         onclick: () => {

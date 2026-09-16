@@ -99,7 +99,7 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
 
   for (const days of ['30', '90', '180']) {
-    await settle('/settings/hormone-curve');
+    await settle('/care/curve');
     await page.waitForSelector('.band-chart, .qual-chart', { timeout: 20000 });
     await page.locator(`[data-segment="${days}"]`).click();
     await page.waitForTimeout(700);
@@ -110,7 +110,7 @@ try {
   }
 
   // One mark open, which is where the tap-through lives.
-  await settle('/settings/hormone-curve');
+  await settle('/care/curve');
   await page.waitForSelector('.curve-markers .chart-hit', { timeout: 20000 });
   const marks = page.locator('.curve-markers .chart-hit');
   const count = await marks.count();
@@ -139,13 +139,13 @@ try {
   /* The illustrative curve carries the same layer, and it is the only chart
      somebody on oral estradiol ever sees, so it is worth a shot of its own.
      The fixture's dose log is all injectable, so the shot needs an oral dose
-     logged first - and the way to log one, /doses, does not boot in a
+     logged first - and the way to log one, /care/doses, does not boot in a
      production build at all. That is a bug on clean main, reproduced there
      on 2026-09-03 as `Cannot read properties of undefined (reading '$set')`
      with the app root stuck at data-boot="booting", and nothing this ticket
      touched. So the section is shot when the journal happens to hold one and
      skipped otherwise, rather than seeding it. */
-  await settle('/settings/hormone-curve');
+  await settle('/care/curve');
   const qualIndex = await page.locator('[data-chart-card]').evaluateAll((cards) =>
     cards.findIndex((card) => card.querySelector('.qual-chart') !== null)
   );

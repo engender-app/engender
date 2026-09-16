@@ -61,7 +61,7 @@ test('a link whose target is gone pins nothing and still leads with its kind', (
 test('each kind has a screen to open, and a goal carries its own key', () => {
   assert.equal(documentTargetHref({ kind: 'milestone', id: 'm1' }), '/transition/milestones');
   assert.equal(documentTargetHref({ kind: 'procedure', id: 'p1' }), '/health/surgery');
-  assert.equal(documentTargetHref({ kind: 'episode', id: 'e1' }), '/settings/regimen');
+  assert.equal(documentTargetHref({ kind: 'episode', id: 'e1' }), '/care/regimen');
   assert.equal(
     documentTargetHref({ kind: 'goal', id: 'pl-medical-keep-opinions' }),
     '/transition/roadmap?goal=pl-medical-keep-opinions'

@@ -353,7 +353,7 @@ function injectionSources(
       name: episode.drug,
       startEpochDay: epochDayFromTimestamp(dose.timestamp),
       endEpochDay: null,
-      href: '/doses',
+      href: '/care/doses',
       series
     });
   }

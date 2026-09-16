@@ -139,10 +139,13 @@ const SCENES = [
   { name: 'presentations-add', at: '/settings/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
   { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
   { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
-  { name: 'regimen-add', at: '/settings/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
-  { name: 'regimen-edit', at: '/settings/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
-  { name: 'stock-add', at: '/settings/stock', act: '[data-add]', is: 'opening stock editor sheet' },
-  { name: 'stock-edit', at: '/settings/stock', act: '[data-stock]', when: 'persona', is: 'opening existing stock row for editing' },
+  { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
+  { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
+  /* Ticket 09 (ADR-0084): the stock editor stopped being its own screen,
+     so opening it is no longer one `at`/`act` step from a cold load - it
+     is a sheet off Care's regimen block, which the carpet's ticket 139
+     sweep can add a scene for once it is naming sheet-opens-sheet scenes
+     generally. */
   /* Setup's four movements (redesign ticket 33). `firstRun` is what these
      need that no other scene does: the flow is reached through the demo's
      first-run control and then walked, and the settle deliberately leaves
@@ -917,12 +920,13 @@ const HYDRATION_SCENES = [
   { name: 'dilation', at: '/health/dilation', is: 'the dilation taper' },
   { name: 'side-effects', at: '/health/side-effects', is: 'side effects logged plainly' },
   { name: 'surgery', at: '/health/surgery', is: 'the surgery journal' },
-  { name: 'hormone-curve', at: '/settings/hormone-curve', is: 'the hormone curve' },
-  { name: 'doses', at: '/doses', is: 'the dose log' },
-  { name: 'labs', at: '/settings/labs', is: 'lab results' },
-  { name: 'regimen', at: '/settings/regimen', is: 'the regimen editor' },
-  { name: 'stock', at: '/settings/stock', is: 'stock and the run-out day' },
-  { name: 'exposure', at: '/settings/exposure', is: 'cumulative exposure' },
+  { name: 'hormone-curve', at: '/care/curve', is: 'the hormone curve' },
+  { name: 'doses', at: '/care/doses', is: 'the dose log' },
+  { name: 'labs', at: '/care/labs', is: 'lab results' },
+  { name: 'regimen', at: '/care/regimen', is: 'the regimen editor' },
+  /* Ticket 09 (ADR-0084): stock and exposure stopped being screens - stock
+     is a sheet off 'care' above, and exposure's own figure is a line on
+     it - so neither gets a scene of its own here any more. */
   /* Transition group */
   { name: 'milestones', at: '/transition/milestones', is: 'the milestone rail over its list' },
   { name: 'roadmap', at: '/transition/roadmap', is: 'the roadmap checklist' },
@@ -981,7 +985,7 @@ const HYDRATION_SCENES = [
      log lands in. */
   { name: 'quick-log-dims', at: '/?quickLogDims={entry}', needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
   { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the quick add fan opening' },
-  { name: 'doses-sheet', at: '/doses', act: '[data-add]', is: 'the dose editor sheet' },
+  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet' },
   /* The two prologue scenes. Onboarding only exists before the profile
      finishes it, so the empty profile records its cold mount between the

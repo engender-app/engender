@@ -92,7 +92,7 @@ const enter = (page_, path) =>
 /** A regimen to count months from, so the axis is its onset mode - the one
     the screen shows whenever there is anything to count from. */
 async function seedRegimen(startOffsetDays) {
-  await settle('/settings/regimen');
+  await settle('/care/regimen');
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
