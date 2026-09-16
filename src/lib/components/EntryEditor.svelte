@@ -150,14 +150,20 @@
      `existing` and kept in its own local state rather than `entryDraft`:
      starring is its own mutation (entries.ts, setEntryStarred), never part
      of a content save, and `loaded`'s deliberately empty table list (see
-     above) means it will not refresh itself from elsewhere either. */
+     above) means it will not refresh itself from elsewhere either.
+
+     A new entry has no id to write `setEntryStarred` against yet, so
+     toggling one before the first save only flips this local flag - ticket
+     18's "starred before it is saved". `saveEntry` below applies it once
+     `upsertEntry` has handed back an id. An existing entry keeps writing
+     immediately, the same as it always has. */
   let starred = $state(false);
 
   async function toggleStarred() {
-    if (!existing) return;
     const next = !starred;
-    await journal.entries.setEntryStarred(existing.id, next);
     starred = next;
+    if (!existing) return;
+    await journal.entries.setEntryStarred(existing.id, next);
   }
 
   /* A day chosen to see this entry again (phase 8 features ticket 08,
@@ -656,6 +662,15 @@
     saving = true;
     try {
       const id = await journal.entries.upsertEntry(entryDraft.toUpsert());
+      /* A star set before this entry ever had an id (ticket 18): there was
+         nothing for `toggleStarred` to write against yet, so it only
+         flipped the local flag, and this is that flag's first chance to
+         land. An existing entry never reaches here still starred-but-
+         unwritten - `toggleStarred` already wrote it the moment it was
+         pressed - so this is a no-op for every save but a new one's. */
+      if (entryId == null && starred) {
+        await journal.entries.setEntryStarred(id, true);
+      }
       /* Ticket 16 (phase 8 deepening): the mirror's job is to survive an
          *unsaved* draft. Once the write has landed there is nothing left to
          restore, so clearing only on unmount (below) left a killed process
@@ -736,14 +751,9 @@
   >
     {#snippet actions()}
       {#if existing}
-        <button
-          class="icon-btn press"
-          aria-label={starred ? m.unstar_entry() : m.star_entry()}
-          aria-pressed={starred}
-          onclick={toggleStarred}
-        >
-          <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
-        </button>
+        <!-- The star left this header for the save bar (ticket 18): a new
+             entry can be starred before it exists, which this header
+             cannot offer since it is only drawn `{#if existing}`. -->
         <button
           class="icon-btn press"
           aria-label={m.revisit_open_aria()}
@@ -1219,9 +1229,24 @@
   </div>
 
   <SaveBar>
-    <button class="btn btn-primary" data-save disabled={saving} onclick={saveEntry}>
-      <Icon name="check" size={20} /><span>{m.save_entry()}</span>
-    </button>
+    <!-- The star beside Save rather than a `row` arrangement's two equal
+         controls (ticket 18): a toggle and a commit are not the same
+         weight, so this is its own row with its own flex rule
+         (.editor-save-row below) instead of SaveBar's shared 50/50 split. -->
+    <div class="editor-save-row">
+      <button
+        class="icon-btn press"
+        aria-label={starred ? m.unstar_entry() : m.star_entry()}
+        aria-pressed={starred}
+        data-save-star
+        onclick={toggleStarred}
+      >
+        <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
+      </button>
+      <button class="btn btn-primary" data-save disabled={saving} onclick={saveEntry}>
+        <Icon name="check" size={20} /><span>{m.save_entry()}</span>
+      </button>
+    </div>
   </SaveBar>
   {/if}
 
@@ -1354,6 +1379,23 @@
     background: var(--bg);
   }
   .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+
+  /* The star's own row inside the save bar (ticket 18), rather than
+     SaveBar's `row` arrangement: that one splits two controls 50/50, and a
+     48px toggle stretched to half the bar's width beside a one-word Save
+     is not what "beside Save" meant. `flex: 1` on the primary button
+     overrides `.app-savebar .btn`'s own `width: 100%` for layout purposes -
+     a flex item's basis wins over a plain `width` once it is set - so the
+     star keeps its intrinsic 48px and Save takes the rest, the same
+     icon-btn-plus-flexible-control shape the calendar's own control line
+     already uses (`.cal-controls`). */
+  .editor-save-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .editor-save-row .icon-btn { flex: none; }
+  .editor-save-row .btn { flex: 1; }
 
   /* The line under a heading that needs one. A hint is the area's own second
      sentence rather than a caption on a field, so it sits at the page's

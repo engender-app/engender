@@ -923,6 +923,7 @@ beforeAll(async () => {
   await driveRead('entries', 'trashedEntries', () => journal.entries.trashedEntries());
   await driveRead('entries', 'lastWriteEpochDay', () => journal.entries.lastWriteEpochDay(20000));
   await driveRead('entries', 'countAll', () => journal.entries.countAll());
+  await driveRead('entries', 'countDistinctDays', () => journal.entries.countDistinctDays());
   await driveRead('entries', 'noteEntries', () => journal.entries.noteEntries());
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
