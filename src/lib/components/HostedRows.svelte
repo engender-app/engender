@@ -60,7 +60,14 @@
       ? []
       : rowsHostedBy(host)
           .filter((row) => !rowHidden(row, states))
-          .map((row) => ({ row, line: rowLine(row, { todayEpochDay: today, lastWrites: {}, states }) }))
+          /* No last write and nothing forward: a hosted row is drawn beside
+             the very records it would report on (dilation on the surgery
+             screen, side effects and hair progress on the screen that asks
+             what you noticed), so its line stays the sentence about what is
+             behind it. None of the four is a row `rowForward.ts` answers
+             for either, so `{}` is the whole answer rather than a read this
+             screen skipped. */
+          .map((row) => ({ row, line: rowLine(row, { todayEpochDay: today, lastWrites: {}, states, forward: {} }) }))
   );
 </script>
 
@@ -70,7 +77,7 @@
       key={row.key}
       icon={row.icon}
       title={hubRowTitle(row.key)}
-      subtitle={hubRowLine(row.key, line, today)}
+      subtitle={hubRowLine(row.key, line, today, Date.now())}
       href={row.href}
       data-hub-host={host}
       data-hub-line={line.kind}

@@ -159,7 +159,8 @@ export function fallbackReading(todayEpochDay: number): HubReading {
   return {
     todayEpochDay,
     lastWrites: {},
-    states: {}
+    states: {},
+    forward: {}
   };
 }
 

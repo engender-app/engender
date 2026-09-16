@@ -4415,25 +4415,77 @@ try {
    most areas - a hub row's line is a read of the journal and there is nothing
    to read on the persona alone.
 
-   Three kinds of line, and the third is the one only a real journal can show.
-   A row whose areas hold a write states when, and a row that fronts no dated
-   stream states what is behind it instead, whatever the journal holds. Both
-   are walked here. The third kind - a reading row with nothing written yet -
-   is walked further up, on the persona alone: "Fill every feature" now
-   writes into every reading row there is, the voice benchmark included
-   (redesign ticket 42), so there is no longer an empty one to point at under
-   this seed.
+   Seven kinds of line since phase 11 all-four-doors ticket 02, and the walk
+   covers the ones only a real journal can show. A row with something running
+   says so, a row with a dated future says that, the Body row states its last
+   value, a row with neither states its last write, and a row that fronts no
+   dated stream and has nothing ahead states what is behind it instead. All
+   five are walked here, on a journal where every feature has been filled.
+
+   The order is what this actually proves, and it is why the finished walk
+   below uses the wear row in particular: that row has a session running on
+   this seed, so "finished" winning over it is the choice rule holding at the
+   top of `rowLine` rather than a row that had nothing to say anyway.
+
+   The sixth kind - a reading row with nothing written yet - is walked further
+   up, on the persona alone: "Fill every feature" now writes into every
+   reading row there is, the voice benchmark included (redesign ticket 42), so
+   there is no longer an empty one to point at under this seed.
 
    Handles, never wording or structure (ADR-0029). Each row carries
-   `data-hub-line` naming which kind it drew, so the three are told apart by
-   that rather than by the copy, which a rewording would let pass for free, or
-   by the kit's `.kit-row-sub` class, which is structure. */
+   `data-hub-line` naming which kind it drew, so they are told apart by that
+   rather than by the copy, which a rewording would let pass for free, or by
+   the kit's `.kit-row-sub` class, which is structure. */
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="last"]', { timeout: 8000 });
+  /* The Body row states the value it holds rather than the age of it, which
+     is the one row with neither a span nor a date (ticket 02). */
+  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="value"]', { timeout: 8000 });
 
-  if ((await page.locator('[data-list-row="care"][data-hub-line="no-stream"]').count()) === 0) {
-    throw new Error('the care row states nothing about what is behind it');
+  /* Care fronts no archive section at all, so before this ticket it could
+     only ever say what was behind it. It states its next dose and its
+     run-out day now, which is the forward fact beating `no-stream`. */
+  if ((await page.locator('[data-list-row="care"][data-hub-line="next"]').count()) === 0) {
+    throw new Error('the care row says nothing about the next dose or the run-out day');
+  }
+  /* A dated future on a row that also has a stale last write. The milestones
+     row is the one the audit named: it said "Nothing logged for 1 year 4
+     months" over a screen showing a hearing sixteen days out. */
+  if ((await page.locator('[data-list-row="milestones"][data-hub-line="next"]').count()) === 0) {
+    throw new Error('the milestones row reports a gap rather than the milestone ahead of it');
+  }
+  /* A span running now, which wins over both. All seven rows the ticket
+     names are asserted rather than a sample of them: the one row whose
+     forward fact comes from a different seed file than the rest
+     (`appointments`, whose standalone rows are the persona's from
+     `journal-seed.ts` rather than `fullFixture.ts`'s consults) is exactly
+     the one a sample would have missed. */
+  /* Wear is deliberately not in this list. It has a session running on a
+     fresh fill, but the wear editor is walked further up and stops it, so by
+     the time the hub is read the row has a last write and nothing running.
+     Its running line is covered by `rowForward.test.ts`, and the walk below
+     still proves the order over it - "finished" outranking whatever it
+     drew. */
+  for (const [key, kind] of [
+    ['tryouts', 'running'],
+    ['surgery', 'running'],
+    ['appointments', 'next'],
+    ['letters', 'next']
+  ]) {
+    if ((await page.locator(`[data-list-row="${key}"][data-hub-line="${kind}"]`).count()) === 0) {
+      const drew = await page
+        .locator(`[data-list-row="${key}"]`)
+        .getAttribute('data-hub-line');
+      throw new Error(`the ${key} row drew "${drew}" rather than "${kind}"`);
+    }
+  }
+  /* And a row with nothing either way still says what is behind it. */
+  if ((await page.locator('[data-list-row="roadmap"][data-hub-line="no-stream"]').count()) === 0) {
+    throw new Error('a row with no reading and nothing ahead stopped stating what is behind it');
+  }
+  /* A row whose last write is all it has reads exactly as it did before. */
+  if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
+    throw new Error('a row with only a last write stopped reporting it');
   }
   // Photos, voice memos and documents live together now, and Body keeps the
   // rest. Documents joined in phase 8 features ticket 52.
@@ -4477,7 +4529,7 @@ try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { timeout: 8000 });
 
-  ok('the More hub reads its own data: a reading where there is a write, what is behind the row where there is no stream and where nothing is written yet, and a finished area moving out of its group and back');
+  ok('the More hub reads its own data: what is running, what is next, the last value, a reading where there is only a write, what is behind the row where there is neither, and a finished area moving out of its group and back over a session that is still running');
 } catch (e) {
   fail('the hub reads its own data', e);
 }

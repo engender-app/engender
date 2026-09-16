@@ -104,13 +104,20 @@ describe('what the More hub is built from', () => {
 
        Three until ticket 16, the third being the regimen episode list that
        only ADR-0043's gate needed. Three again since redesign ticket 15, and
-       the new third one asks nothing until somebody types: the search's
-       record half returns a resolved empty answer for an empty box. */
+       that third one asks nothing until somebody types: the search's record
+       half returns a resolved empty answer for an empty box.
+
+       Four since phase 11 all-four-doors ticket 02, and the fourth is one
+       assembled call for the same reason the first is: what every row has to
+       say facing forwards, rather than a read per row for the milestone, the
+       letter, the wear session, the tryout, the appointment, the procedure,
+       the dose slot, the stock and the measurement. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 
-    expect(reads).toHaveLength(3);
+    expect(reads).toHaveLength(4);
     expect(more).toContain('j.lastWrite.getLastWrites(today)');
     expect(more).toContain('j.areaStates.getAreaStates()');
+    expect(more).toContain('readRowForward(j, today)');
     expect(more).toMatch(/if \(!asked\) return Promise\.resolve/);
   });
 
