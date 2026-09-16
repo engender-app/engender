@@ -275,6 +275,16 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.letters.addLetter({ epochDay: today - 20, text: 'For the day the court hearing is scheduled.', unlockEpochDay: today + 45 });
   await journal.letters.addLetter({ epochDay: today - 3, text: 'For five years from now.', unlockEpochDay: today + 1800 });
 
+  /* Two breaks from journaling, both finished and both well behind the
+     persona's entry window so they never collide with the days it writes.
+     This is the one feature the module's own header list did not cover and
+     nothing else seeds, so every reading of a pause - Home's tile, the
+     chart's band, the Look back rail's own lane - captured empty in every
+     review anyone had run (found on ticket 06, the same gap the door audit
+     found for eras). */
+  await journal.journalingPauses.upsertPause({ startEpochDay: today - 330, endEpochDay: today - 300 });
+  await journal.journalingPauses.upsertPause({ startEpochDay: today - 210, endEpochDay: today - 195 });
+
   // Tryouts: dated inside the persona's own 150-day entry window, so the
   // detail route has real entries to read back by date overlap.
   const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'garment' | 'makeup' | 'presentation_step'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
