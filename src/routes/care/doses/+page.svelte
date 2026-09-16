@@ -682,73 +682,73 @@
                    adjacent siblings (kit.css). -->
               {#key sourceNote}
                 <div class="rows-divide" out:crossfade>
-              <ListRow
-                key={dose.id}
-                data-dose={dose.id}
-                id={dose.id}
-                icon="clock"
-                title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
-                subtitle={[
-                  [
-                    whenOf(dose),
-                    site,
-                    isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
-                    sourceNote ? attributionLabel(attribution) : ''
-                  ]
-                    .filter(Boolean)
-                    .join(' · '),
-                  sourceNote
-                ]}
-                chevron={false}
-                onclick={() => openEditor(dose)}
-                action={offersSkip(dose)
-                  ? {
-                      /* The app's own word for the status this sets, not a
-                         sentence: a dose row already carries an amount, a
-                         route, a time, where it came from and which episode
-                         it is under, and a four-word button at 390px left
-                         the title wrapping one character to a line. The
-                         accessible name is the whole sentence, which is
-                         what a control read out of its row needs and what a
-                         control sitting in one does not. */
-                      text: statusLabel('skipped'),
-                      label: m.dose_from_schedule_skip_action(),
-                      attrs: { 'data-dose-skip': dose.id },
-                      onclick: () => skipAutoLoggedDose(dose)
-                    }
-                  : undefined}
-              >
-                {#snippet trailing()}
-                  <!-- The bookkeeping, at the end of the row rather than as
-                       two more lines under the dose: which episode the app
-                       attributed it to, whether it was taken as logged, and
-                       what a schedule had asked for. All three are about the
-                       record rather than about the dose.
+                <ListRow
+                  key={dose.id}
+                  data-dose={dose.id}
+                  id={dose.id}
+                  icon="clock"
+                  title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                  subtitle={[
+                    [
+                      whenOf(dose),
+                      site,
+                      isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
+                      sourceNote ? attributionLabel(attribution) : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' · '),
+                    sourceNote
+                  ]}
+                  chevron={false}
+                  onclick={() => openEditor(dose)}
+                  action={offersSkip(dose)
+                    ? {
+                        /* The app's own word for the status this sets, not a
+                           sentence: a dose row already carries an amount, a
+                           route, a time, where it came from and which episode
+                           it is under, and a four-word button at 390px left
+                           the title wrapping one character to a line. The
+                           accessible name is the whole sentence, which is
+                           what a control read out of its row needs and what a
+                           control sitting in one does not. */
+                        text: statusLabel('skipped'),
+                        label: m.dose_from_schedule_skip_action(),
+                        attrs: { 'data-dose-skip': dose.id },
+                        onclick: () => skipAutoLoggedDose(dose)
+                      }
+                    : undefined}
+                >
+                  {#snippet trailing()}
+                    <!-- The bookkeeping, at the end of the row rather than as
+                         two more lines under the dose: which episode the app
+                         attributed it to, whether it was taken as logged, and
+                         what a schedule had asked for. All three are about the
+                         record rather than about the dose.
 
-                       An auto-logged row says the first two on its second
-                       line instead, in one sentence with where it came from.
-                       Partly because "skipped" beside "skipped, was logged
-                       from your schedule" is the same word twice - and
-                       partly because that row carries a control at this
-                       trailing edge, and a 390px row cannot hold an icon, a
-                       dose, an episode name and a button. Measured: the
-                       title had 78px to wrap "100 mg · Oral" in. -->
-                  <span class="dose-trail">
-                    {#if dose.status !== 'taken' && !sourceNote}
-                      <span class="dose-status">{statusLabel(dose.status)}</span>
-                    {/if}
-                    {#if !sourceNote}
-                      <span>{attributionLabel(attribution)}</span>
-                    {/if}
-                    {#if dose.scheduled}
-                      <span>
-                        {m.dose_scheduled_legend()}: {dose.scheduled.dose}
-                        {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
-                      </span>
-                    {/if}
-                  </span>
-                {/snippet}
-              </ListRow>
+                         An auto-logged row says the first two on its second
+                         line instead, in one sentence with where it came from.
+                         Partly because "skipped" beside "skipped, was logged
+                         from your schedule" is the same word twice - and
+                         partly because that row carries a control at this
+                         trailing edge, and a 390px row cannot hold an icon, a
+                         dose, an episode name and a button. Measured: the
+                         title had 78px to wrap "100 mg · Oral" in. -->
+                    <span class="dose-trail">
+                      {#if dose.status !== 'taken' && !sourceNote}
+                        <span class="dose-status">{statusLabel(dose.status)}</span>
+                      {/if}
+                      {#if !sourceNote}
+                        <span>{attributionLabel(attribution)}</span>
+                      {/if}
+                      {#if dose.scheduled}
+                        <span>
+                          {m.dose_scheduled_legend()}: {dose.scheduled.dose}
+                          {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
+                        </span>
+                      {/if}
+                    </span>
+                  {/snippet}
+                </ListRow>
                 </div>
               {/key}
             {/each}
@@ -1271,8 +1271,6 @@
     max-width: 12rem;
     line-height: 1.25;
   }
-
-
 
   .dose-status {
     padding: 2px 8px;

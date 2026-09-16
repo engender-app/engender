@@ -457,7 +457,7 @@ const HOUR_MS = 3600000;
     guards `expectedSlots` applies before it generates anything, named here
     so a screen can ask the question without generating a range of slots to
     find out. */
-function expectsAnyDose(schedule: DoseSchedule): boolean {
+function expectsAnyDose(schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay'>): boolean {
   if (schedule.dosesPerDay < 1) return false;
   return schedule.recurrence.kind === 'everyNDays'
     ? schedule.recurrence.everyNDays >= 1
@@ -478,7 +478,11 @@ function expectsAnyDose(schedule: DoseSchedule): boolean {
     switch is never offered on an episode the pass would then read nothing
     from. */
 export function canAutoLog(
-  schedule: DoseSchedule,
+  /* The parts of a schedule this reads, not a whole one: the schedule
+     editor asks the question of the draft in front of the person, which has
+     no id yet on an episode whose rhythm has never been saved, and a full
+     `DoseSchedule` would have made it invent two. */
+  schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay' | 'doseAmounts'>,
   episodeRoute: string,
   routeWords: readonly RouteOption[]
 ): boolean {
