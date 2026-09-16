@@ -214,13 +214,18 @@ describe('every row the hub carries', () => {
      and the same axis as the changes somebody was hoping for now, so there
      is one row where there were two, and `cycle-events` moved with it -
      `effects` hosts it, not `side-effects`, which is not a host at all any
-     more. Twenty-one rows now. */
+     more. Twenty-one rows then.
+
+     Redesign ticket 16 (ADR-0084) took `eras` off outright, the same way
+     ticket 62 took `words` off: eras is a reference area, spent on seven
+     other screens and created on exactly one, so it moved to Settings and
+     left this registry rather than moving screens within it. Twenty rows
+     now. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['appointments', 'check', '/health/appointments', 'health', 'read'],
-    ['eras', 'columns', '/transition/eras', 'transition', 'written'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
     ['tryouts', 'tag', '/transition/tryouts', 'transition', 'read'],
     ['voice-benchmark', 'curve', '/practice/voice?tab=record', 'transition', 'read'],
