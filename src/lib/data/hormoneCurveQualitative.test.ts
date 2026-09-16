@@ -35,6 +35,7 @@ function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'oral'
     dose: 2,
     doseUnit: 'mg',
     status: 'taken',
+    source: 'person',
     scheduled: null,
     drug: null,
     route: 'oral',

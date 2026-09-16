@@ -145,7 +145,8 @@ test('a daily dose schedule produces no marks; a weekly one does', async () => {
     episodeId: dailyEpisode,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
 
   const weeklyEpisode = await journal.regimen.upsertEpisode({
@@ -163,7 +164,8 @@ test('a daily dose schedule produces no marks; a weekly one does', async () => {
     episodeId: weeklyEpisode,
     recurrence: { kind: 'everyNDays', everyNDays: 7 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
 
   // The weekly episode's own anchor is today, so its next slot after today
@@ -195,7 +197,8 @@ test('a pause covering the next slot suppresses its mark', async () => {
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 7 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   await journal.doses.upsertPause({ episodeId, startEpochDay: TODAY, endEpochDay: TODAY + 7, reason: 'planned' });
 

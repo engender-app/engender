@@ -23,7 +23,8 @@ const SCHEDULE: DoseSchedule = {
   episodeId: 'e1',
   recurrence: { kind: 'everyNDays', everyNDays: 7 },
   dosesPerDay: 1,
-  doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+  doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+  autoLogFromEpochDay: null
 };
 
 const EPISODE: RegimenEpisode = {
@@ -53,6 +54,7 @@ function comparison(loggedSlotDays: readonly number[] = []) {
     status: 'taken' as const,
     injectionSite: 'thigh-left',
     vehicle: 'oil' as const,
+    source: 'person',
     scheduled: null,
     drug: null
   }));

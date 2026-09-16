@@ -81,7 +81,8 @@ const schedule: DoseSchedule = {
   episodeId: 'ep-1',
   recurrence: { kind: 'everyNDays', everyNDays: 3 },
   dosesPerDay: 1,
-  doseAmounts: null
+  doseAmounts: null,
+  autoLogFromEpochDay: null
 };
 
 const procedure: Procedure = {
@@ -473,7 +474,8 @@ describe('what each tile says', () => {
       episodeId,
       recurrence: { kind: 'everyNDays', everyNDays: 1 },
       dosesPerDay: 1,
-      doseAmounts: null
+      doseAmounts: null,
+      autoLogFromEpochDay: null
     });
     const weeklyFor = (episodeId: string): DoseSchedule => ({ ...dailyFor(episodeId), recurrence: { kind: 'everyNDays', everyNDays: 4 } });
     const covers = (over?: Overrides) => {
