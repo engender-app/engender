@@ -4241,16 +4241,19 @@ try {
   }
   await page.locator('[data-benchmark-delta]').waitFor();
 
-  /* The metric reference (phase 8 features ticket 27). Reached from a
-     figure in the app, and there is no figure to press here: a benchmark
-     needs a microphone this browser does not have, so the link itself is
-     asserted in the browser tier against a mounted list
-     (tests/browser-tier/voice-metrics-probe.ts). What only a built app can
-     say is that the route boots at all - `/doses` sticks at "booting" in a
-     production build while every test in the node tier passes - so this
-     walks to it by URL and reads what it drew. */
+  /* The metric reference (phase 8 features ticket 27), a sheet over the
+     voice screen since phase 11 ticket 17 rather than a screen of its own.
+     Reached from a figure in the app, and there is no figure to press
+     here: a benchmark needs a microphone this browser does not have, so
+     the link itself is asserted in the browser tier against a mounted
+     list (tests/browser-tier/voice-metrics-probe.ts). What only a built
+     app can say is that the route boots at all - `/doses` sticks at
+     "booting" in a production build while every test in the node tier
+     passes - so this walks to the old address by URL, which redirects to
+     `/practice/voice?metric=pitch` and opens the sheet there, and reads
+     what it drew. */
   await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-metric="pitch"]');
+  await page.waitForSelector('[data-sheet] [data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
   if (explained !== 7) {
     throw new Error(`the metric reference explains ${explained} figures, not seven`);
@@ -4614,15 +4617,14 @@ try {
   if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
     throw new Error('a row with only a last write stopped reporting it');
   }
-  // Photos, voice memos and documents live together now, and Body keeps the
-  // rest. Documents joined in phase 8 features ticket 52.
+  // Photos and documents live together now, and Body keeps the rest.
+  // Documents joined in phase 8 features ticket 52; voice memos left in
+  // phase 11 ticket 17, folded into the voice screen's own Recordings tab.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,voice,documents') {
-    throw new Error(
-      `the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, voice memos and documents`
-    );
+  if (mediaRows.join(',') !== 'photos,documents') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and documents`);
   }
 
   /* An area declared finished leaves its group for the finished set, keeps

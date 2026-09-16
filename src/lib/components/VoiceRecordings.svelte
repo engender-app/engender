@@ -1,19 +1,18 @@
 <script lang="ts">
-  /* The memo browser (phase 8 features ticket 11). A voice memo is recorded
-     inside the entry editor and used to be reachable only through the entry
-     it was attached to - somebody looking for a recording had to remember
-     which day it was. This screen is every memo in the journal, newest
-     first, next to photos in the Media group (ADR-0036: a memo and a photo
-     are the same kind of thing, media attached to an entry, browsed and
-     compared).
+  /* The memo browser, as a tab of the voice screen (phase 11 ticket 17). It
+     was its own screen at /media/voice/memos (phase 8 features ticket 11) -
+     the render showed two rows and 520px of black rather than the grid with
+     compare and export ADR-0036's media grouping pictured, so this is a
+     presentation merge and not a change of what a memo is: it stays entry
+     content, recorded in the editor and attached to the entry
+     (voiceRecordings.ts), and this component still owns no records,
+     registers no archive section, and deletes nothing. `/media/voice/memos`
+     redirects here.
 
-     A memo is entry content: this screen owns no records, registers no
-     archive section, and deletes nothing (that stays the entry editor's
-     job, out of scope here). It reads back `journal.voice.inJournal()`,
-     built for ticket 25's voice compare picker and never called until now -
-     that comparison was cut from the voice screen before it shipped
-     (ticket 09's own note), leaving the query with no caller until this
-     one.
+     It reads back `journal.voice.inJournal()`, built for ticket 25's voice
+     compare picker and never called until ticket 11 - that comparison was
+     cut from the voice screen before it shipped (ticket 09's own note),
+     leaving the query with no caller until the memo browser gave it one.
 
      Playback is VoicePlayer's own transport (ticket 46), which is the app's
      rather than the browser's. It cannot sit inside the row's own link to
@@ -22,9 +21,9 @@
      row is a plain, non-pressable container holding both real controls: the
      player, and a small link through to the entry.
 
-     The screen opens by saying what is true now (DIRECTION rule 16): how
-     many recordings there are and how long they run altogether. The total is
-     the players' own durations as they arrive - a recording's length is not
+     The tab opens by saying what is true now (DIRECTION rule 16): how many
+     recordings there are and how long they run altogether. The total is the
+     players' own durations as they arrive - a recording's length is not
      stored, being derivable from the file (ADR-0010), and the row is already
      loading that file's metadata to play it. It counts up rather than
      landing, because a number that changes is a number that moves. */
@@ -35,7 +34,6 @@
   import { formatClock } from '$lib/media/playback';
   import { countUp } from '$lib/motion/countUp';
   import Icon from '$lib/components/Icon.svelte';
-  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -50,7 +48,7 @@
   const lengths = new SvelteMap<string, number>();
   /* Summed over the recordings that are here now rather than over everything
      the map has ever been told: a memo deleted from its entry while this
-     screen is open leaves its length behind in the map, and a reading that
+     tab is open leaves its length behind in the map, and a reading that
      kept counting it would be saying something that stopped being true -
      which is the one thing rule 16 asks this line not to do. */
   const total = $derived(memos.reduce((sum, r) => sum + (lengths.get(r.id) ?? 0), 0));
@@ -63,8 +61,7 @@
   });
 </script>
 
-<div class="screen">
-  <ScreenHeader title={m.recordings_label()} back="/more" />
+<div class="screen-part">
   <ReadGate read={memosQuery} variant="line" count={3}>
     {#snippet rows()}
       <p class="memo-reading" data-memo-reading>
@@ -99,15 +96,13 @@
       </ListCard>
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="mic"
-          key="voice-memos-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.vm_empty_title()}
-          text={m.vm_empty_body()}
-        />
-      </div>
+      <Notice
+        icon="mic"
+        key="voice-memos-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.vm_empty_title()}
+        text={m.vm_empty_body()}
+      />
     {/snippet}
   </ReadGate>
 </div>

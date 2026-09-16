@@ -485,7 +485,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // (ticket 25).
   voice: classify<Journal['voice']>()({
     writes: {},
-    reads: { inJournal: ['voiceRecording', 'entry'] }
+    reads: { inJournal: ['voiceRecording', 'entry'], lastWriteEpochDay: ['voiceRecording', 'entry'] }
   }),
   // Unlike `voice`, this area owns its rows: a benchmark is not written
   // through the entry editor, so the save announces its own table.
