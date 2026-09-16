@@ -39,23 +39,75 @@
      The span is committed on release, not on every move: the charts under
      the door re-read on commit, and re-reading six queries per pointer
      event is not what a drag is for. `onLive` is for the one line that has
-     to follow the finger, the span written under the title. */
+     to follow the finger, the span written under the rail.
+
+     ## What the rail says about itself (phase 11 ticket 06)
+
+     Three things the rail had not been saying, and none of them is a
+     decoration.
+
+     **It draws every dated history now, not two of five.** Under the eras
+     lie one lane per kind of stretch the journal holds - a regimen episode,
+     a tryout, a break from journaling - and a procedure's surgery day is a
+     mark on the axis like a milestone's. Each of those is tap-to-select the
+     way an era already was, so "my moods over the HRT episode" is a stretch
+     somebody can point at rather than one they have to reconstruct with two
+     handles. The lanes sit below the lifted layer rather than behind it: a
+     band drawn behind the span would be covered by it exactly where the
+     person is looking.
+
+     **Two kinds never share a stripe.** The two coloured lanes take the
+     first two of `bandRoles`, which is never shorter than two on any of the
+     eight flags (tests/palette-contrast.test.ts holds that floor); a break
+     takes no stripe at all but `--text-2`, because a break is the absence
+     of journal rather than a category of it, which is the same call
+     GenderConstellationChart makes for a point with no presentation; and a
+     surgery mark is ink, like every other mark here. The eras are the one
+     kind whose colour is plural - they run the flag - so their cycle starts
+     past the coloured lanes and their legend chip is the flag itself. On a
+     two-colour flag (trans, nonbinary, pansexual) the cycle wraps and an
+     era can land on a lane's stripe; they are told apart by register, a
+     named band at full height against a 6px lane at the foot, which is the
+     same answer the rail already gives under disguise, where every role
+     resolves to the accent and the 1px edges do the work.
+
+     **It says it can be dragged, and what it is showing.** The span, its
+     length and the legend sit directly under the rail against the handles
+     rather than two elements away as a subtitle of the door's title, and on
+     a journal where nobody has dragged it yet a one-time line sits between
+     the handles (Mobbin: Google Photos' trim tooltip, where the bracket
+     shape alone was not enough either). It fades on the first move of a
+     handle and never comes back - one preference, keyed the way the other
+     one-time hints are. The length counts rather than cutting when the span
+     changes by something other than a finger, which is the same rule the
+     rest of this component follows and the same primitive a live tile's
+     value uses. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
+  import { localDateFromEpochDay } from '$lib/data/epochDay';
   import {
     dayAtPosition,
+    defaultSpan,
     eraBands,
+    historyKindsPresent,
     moveHandle,
     nearestHandle,
+    railLegendKinds,
     railPosition,
     snapDay,
     grainAt,
     yearTicks,
+    type RailBand,
+    type RailHistoryKind,
+    type RailLegendKind,
+    type RailMark,
     type Span,
     type SpanHandle
   } from '$lib/data/lookBackSpan';
+  import { countUp } from '$lib/motion/countUp';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import type { Era, Milestone } from '$lib/data/types';
-  import { chromaticRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { bandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
 
   let {
@@ -64,12 +116,20 @@
     span,
     eras,
     milestones,
+    /** Every other dated stretch the journal holds, already clamped to the
+        rail (lookBackSpan.ts's `historyBands`). */
+    history = [],
+    /** The procedures' surgery days, as marks. */
+    surgeries = [],
     /** The first day the journal holds an entry for, if any: a magnet the
         handles snap to, drawn as nothing. */
     firstEntryDay = null,
+    /** Whether the drag hint has already been answered on this journal. */
+    hintSeen = true,
     roles,
     onChange,
-    onLive
+    onLive,
+    onHintSeen
   }: {
     railStart: number;
     today: number;
@@ -78,10 +138,14 @@
     span: Span;
     eras: readonly Era[];
     milestones: readonly Milestone[];
+    history?: readonly RailBand[];
+    surgeries?: readonly RailMark[];
     firstEntryDay?: number | null;
+    hintSeen?: boolean;
     roles: Role[];
     onChange: (span: Span) => void;
     onLive?: (span: Span) => void;
+    onHintSeen?: () => void;
   } = $props();
 
   /* How close a finger has to be to a milestone or an era's edge for the
@@ -141,6 +205,12 @@
     today
   ]);
 
+  /* The history lanes, bottom-up: one per kind this journal has anything
+     of, and none for a kind it has none of. */
+  let lanes = $derived(historyKindsPresent(history));
+  let legend = $derived(railLegendKinds(history, surgeries, bands.length > 0));
+  const laneOf = (kind: RailHistoryKind) => lanes.indexOf(kind);
+
   /* One band of the flag per era, in order, wrapping over the flag's
      colours - and, on a flag with a single colour (agender), over its
      shades too, so its second and third era are black and grey rather than
@@ -148,15 +218,33 @@
      eras in the same colour"). A black or white block is a block here
      because every band wears the 1px edge rule 4 gives it; a flag with two
      or more colours never needs one. Nothing is skipped, since the marks
-     are ink and take no band. */
+     are ink and take no band.
+
+     The cycle starts past the coloured lanes, so on a flag with three or
+     more colours the first era is not the same stripe as the regimen lane
+     under it. On a two-colour flag it wraps back onto them, which the
+     header above says is the case register rather than colour separates. */
   let markRole = $derived(roleAt(roles, 0));
-  let bandRoles = $derived.by(() => {
-    const colours = chromaticRoles(roles);
-    if (colours.length >= 2) return colours;
-    return [...colours, ...roles.filter((role) => !colours.includes(role))];
-  });
+  let railRoles = $derived(bandRoles(roles));
+  let colouredLanes = $derived(lanes.filter((kind) => kind !== 'journalingPause').length);
   const bandRole = (index: number): Role | undefined =>
-    bandRoles.length ? bandRoles[index % bandRoles.length] : undefined;
+    railRoles.length ? railRoles[(index + colouredLanes) % railRoles.length] : undefined;
+  /* A lane's stripe, by kind rather than by position, so adding a kind
+     never repaints the ones already on the rail. A break takes none. */
+  const laneRole = (kind: RailHistoryKind): Role | undefined =>
+    kind === 'regimen' ? roleAt(railRoles, 0) : kind === 'tryout' ? roleAt(railRoles, 1) : undefined;
+
+  const LEGEND_WORD: Record<RailLegendKind, () => string> = {
+    era: () => m.lookback_legend_eras(),
+    regimen: () => m.lookback_legend_regimen(),
+    tryout: () => m.lookback_legend_tryouts(),
+    journalingPause: () => m.lookback_legend_breaks(),
+    surgery: () => m.lookback_legend_surgery()
+  };
+  /* A journaling pause is the one record with no name of its own
+     (types.ts), so the kind's word stands in where a band's label would
+     otherwise be empty. */
+  const bandName = (band: RailBand) => band.name ?? m.lookback_break_name();
 
   /* The span as the finger has it, which is the settled span whenever no
      finger holds a handle. */
@@ -206,9 +294,25 @@
     if (dragging === null) live = { ...settled };
   });
 
+  /* The hint goes on the first move of a handle, by finger or by key, and
+     never comes back. Local as well as preferred: the preference write is a
+     round trip to SQLite and the line has to leave on the frame the drag
+     starts, not when the write lands. */
+  let hintGone = $state(false);
+  let showHint = $derived(!hintSeen && !hintGone);
+  const hintFade = (_node: Element) => fadeOnly(motionDuration('--dur-med'));
+  function answerHint() {
+    if (hintGone || hintSeen) return;
+    hintGone = true;
+    onHintSeen?.();
+  }
+
   const x = (day: number) => railPosition(day, railStart, today) * railWidth;
   let startX = $derived(x(live.start));
   let endX = $derived(x(live.end));
+  /* Between the two handles, held inside the rail so a span at either end
+     does not push the line off it. */
+  let hintX = $derived(Math.min(railWidth, Math.max(0, (startX + endX) / 2)));
   /* The clip that lifts the span out of the history: the far edge of the
      end handle's day, so a one-day span is still a visible stretch. */
   let clipRight = $derived(Math.max(0, railWidth - Math.min(railWidth, endX + Math.max(2, pxPerDayAt(live.end)))));
@@ -247,6 +351,7 @@
   function onHandleMove(event: PointerEvent, handle: SpanHandle) {
     if (dragging !== handle) return;
     moving = true;
+    answerHint();
     settle(moveHandle(live, handle, rawDayAtClientX(event.clientX)));
   }
   function onHandleUp(handle: SpanHandle) {
@@ -270,6 +375,7 @@
     if (event.key === 'End') next = today;
     if (next === null) return;
     event.preventDefault();
+    answerHint();
     settle(moveHandle(live, handle, Math.min(today, Math.max(railStart, next))));
     clearTimeout(keyTimer);
     keyTimer = setTimeout(() => onChange(live), 300);
@@ -285,9 +391,53 @@
     commit(moveHandle(live, nearestHandle(live, day), day));
   }
   const pickEra = (band: { start: number; end: number }) => commit({ start: band.start, end: band.end });
-  const pickMark = (day: number) => commit(moveHandle(live, nearestHandle(live, day), day));
+  /* A mark is one day, and one day is not a reading: it sets the span to
+     the door's own default window ending on it, the stretch a person means
+     when they point at the day something happened. Bands set the span to
+     themselves; marks set it to the month behind themselves. */
+  const pickMark = (day: number) => commit(defaultSpan(railStart, day));
 
   const valueText = (day: number) => fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
+  /* The span written under the rail, in the words the range picker uses.
+     Years only where they carry information: the start's when it is not
+     this year, the end's when it is not this year either. */
+  const dayWithYear = (day: number, year: number) =>
+    fmtDay(
+      day,
+      localDateFromEpochDay(day).getFullYear() === year
+        ? { day: 'numeric', month: 'short' }
+        : { day: 'numeric', month: 'short', year: 'numeric' }
+    );
+  let spanDates = $derived(
+    m.wrapped_week_range({
+      from: dayWithYear(live.start, localDateFromEpochDay(today).getFullYear()),
+      to: dayWithYear(live.end, localDateFromEpochDay(today).getFullYear())
+    })
+  );
+
+  /* The length counts rather than cutting, on the same rule the rest of
+     this component follows: while a finger holds a handle the number is
+     the day under it exactly, and every other change - a tap on a band, a
+     mark, a key, the settle after a release - travels. `lastShown` mirrors
+     the drawn number in a plain variable so the effect that writes it never
+     reads its own state and re-runs itself, and so a count interrupted
+     halfway carries on from the number on screen rather than from the one
+     it was heading for. */
+  let shownDays = $state(0);
+  let lastShown = 0;
+  $effect(() => {
+    const days = live.end - live.start + 1;
+    const held = dragging !== null;
+    const show = (n: number) => {
+      lastShown = n;
+      shownDays = n;
+    };
+    if (held) {
+      show(days);
+      return;
+    }
+    return countUp(lastShown, days, show);
+  });
 </script>
 
 <div
@@ -302,7 +452,9 @@
   data-span-end={live.end}
   style:--tl-start="{startX}px"
   style:--tl-end="{endX}px"
+  style:--tl-hint-x="{hintX}px"
   style:--tl-clip-right="{clipRight}px"
+  style:--tl-lanes={lanes.length}
 >
   <!-- The years, as a ruler above the rail: the one label a rail of years
        is read by. On the page, small type, so they are legal anywhere. -->
@@ -395,6 +547,31 @@
       {/each}
     </div>
 
+    <!-- The rest of the history, low: one lane per kind, each band its own
+         control. Drawn and tapped by the same element, unlike the eras -
+         nothing clips these, so the drawing can carry the target. -->
+    {#each history as band (band.id)}
+      <button
+        type="button"
+        class="span-tl-hband"
+        class:is-open-start={band.openStart}
+        class:is-open-end={band.openEnd}
+        class:is-break={band.kind === 'journalingPause'}
+        style:left="{railPosition(band.start, railStart, today) * 100}%"
+        style:width="{(railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)) * 100}%"
+        style:--tl-lane={laneOf(band.kind)}
+        data-span-band={band.kind}
+        data-no-press
+        aria-label={m.lookback_band_aria({
+          name: bandName(band),
+          from: valueText(band.start),
+          to: valueText(band.end)
+        })}
+        onclick={() => commit({ start: band.start, end: band.end })}
+        {...roleAttrs(laneRole(band.kind))}
+      ></button>
+    {/each}
+
     <!-- Milestones: a block each on the axis, in the flag's first colour. -->
     {#each marks as mark (mark.id)}
       <button
@@ -403,7 +580,22 @@
         style:left="{railPosition(mark.epochDay, railStart, today) * 100}%"
         data-span-milestone={mark.id}
         data-no-press
-        aria-label={m.lookback_milestone_aria({ name: mark.name })}
+        aria-label={m.lookback_mark_aria({ name: mark.name })}
+        onclick={() => pickMark(mark.epochDay)}
+      ></button>
+    {/each}
+
+    <!-- A surgery day: the same mark a milestone gets, because it is the
+         same kind of thing on this rail - a day that happened. What tells
+         them apart is the label and the legend, not the weight. -->
+    {#each surgeries as mark (mark.id)}
+      <button
+        type="button"
+        class="span-tl-mark"
+        style:left="{railPosition(mark.epochDay, railStart, today) * 100}%"
+        data-span-surgery={mark.id}
+        data-no-press
+        aria-label={m.lookback_mark_aria({ name: mark.name ?? m.lookback_legend_surgery() })}
         onclick={() => pickMark(mark.epochDay)}
       ></button>
     {/each}
@@ -437,7 +629,42 @@
         <span class="span-tl-grip" aria-hidden="true"></span>
       </button>
     {/each}
+
+    <!-- The one-time hint, between the handles it is about, gone on the
+         first move of either. Not a control and not announced: the handles
+         already carry their own names, and a slider that read out "drag the
+         ends" every time it took focus would be worse than silent. -->
+    {#if showHint}
+      <span class="span-tl-hint" data-span-hint aria-hidden="true" transition:hintFade>{m.lookback_drag_hint()}</span>
+    {/if}
   </div>
+
+  <!-- What the rail is showing, against the handles rather than two
+       elements away under the title (DIRECTION.md rule 7's own "say it
+       once, where it is true"). -->
+  <p class="span-tl-state" data-span-state-line>
+    <span class="span-tl-dates">{spanDates}</span><span class="span-tl-sep">, </span><span
+      class="span-tl-days">{m.n_days({ n: shownDays })}</span>
+  </p>
+
+  {#if legend.length}
+    <ul class="span-tl-legend" data-span-legend aria-label={m.lookback_legend_group()}>
+      {#each legend as kind (kind)}
+        <li class="span-tl-key" data-span-key={kind}>
+          {#if kind === 'era'}
+            <span class="span-tl-chip is-flag" aria-hidden="true"></span>
+          {:else if kind === 'surgery'}
+            <span class="span-tl-chip is-mark" aria-hidden="true"></span>
+          {:else if kind === 'journalingPause'}
+            <span class="span-tl-chip is-break" aria-hidden="true"></span>
+          {:else}
+            <span class="span-tl-chip" aria-hidden="true" {...roleAttrs(laneRole(kind))}></span>
+          {/if}
+          {LEGEND_WORD[kind]()}
+        </li>
+      {/each}
+    </ul>
+  {/if}
 </div>
 
 <style>
@@ -449,8 +676,19 @@
     --grip: 14px;
     --rail-h: 52px;
     --low-h: 8px;
-    /* How much of the lifted layer and of a grip shows at rest. */
-    --rest-h: 18px;
+    /* One lane per history kind this journal has, stacked off the axis.
+       Zero lanes leaves every measurement below exactly where it was
+       before the history layer existed. */
+    --lane-h: 6px;
+    --hist-h: calc(var(--tl-lanes, 0) * var(--lane-h));
+    /* What is left for the span to stand up in. */
+    --span-h: calc(var(--rail-h) - var(--hist-h));
+    /* How much of the lifted layer and of a grip shows at rest. A share of
+       the span's own height rather than a fixed 18px, so a rail carrying
+       three lanes still has a rise worth watching and its era names are
+       still hidden until it takes one. 2.9 is what puts a rail with no
+       history back at the 18px this shipped with. */
+    --rest-h: calc(var(--span-h) / 2.9);
     --rest-grip: 26px;
   }
 
@@ -489,10 +727,15 @@
     pointer-events: none;
   }
 
+  /* Both layers stop above the history lanes: a band drawn behind the span
+     would be covered by it exactly where somebody is looking. */
   .span-tl-low,
   .span-tl-full {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: var(--hist-h);
     pointer-events: none;
   }
 
@@ -570,7 +813,10 @@
 
   .span-tl-targets {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: var(--hist-h);
     pointer-events: none;
   }
   .span-tl-era-target {
@@ -588,6 +834,50 @@
   .span-tl-era-target:focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: -2px;
+  }
+
+  /* A history band: a lane's worth of stripe, drawn and tapped by the same
+     element. The 1px edge every block on this rail wears is what keeps two
+     episodes that meet on consecutive days from reading as one, and what
+     keeps a break's grey band from dissolving into the page.
+
+     The target is taller than the lane by 3px each way, the way a
+     milestone's is wider than its mark: the rail's height is fixed and
+     three lanes plus the eras' own strip have to live inside it, so the hit
+     box is what gives rather than the drawing. A band still carries a name
+     and a tab stop, which is the path that does not depend on aim. */
+  .span-tl-hband {
+    position: absolute;
+    bottom: calc(var(--tl-lane, 0) * var(--lane-h));
+    height: var(--lane-h);
+    min-width: 3px;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    background: var(--role-draw);
+    border: 1px solid var(--outline);
+    border-radius: 0;
+    cursor: pointer;
+    z-index: 1;
+  }
+  /* A break is the absence of journal rather than a kind of it, so it takes
+     no stripe - the same call GenderConstellationChart makes for a point
+     with no presentation, and for the same reason: on several palettes the
+     roleless fallback is one of the flag's own colours. */
+  .span-tl-hband.is-break {
+    background: var(--text-2);
+  }
+  .span-tl-hband.is-open-start { border-left: 0; }
+  .span-tl-hband.is-open-end { border-right: 0; }
+  .span-tl-hband::before {
+    content: '';
+    position: absolute;
+    inset: -3px 0;
+  }
+  .span-tl-hband:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+    z-index: 2;
   }
 
   /* A milestone: a 12px block of ink on the axis, edged in the page so it
@@ -707,5 +997,87 @@
   .span-tl-handle:focus-visible .span-tl-grip {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
+  }
+
+  /* The one-time hint, sitting between the two grips it is about, on the
+     page's second surface inside the outline every kit element separates
+     with (the kit refuses shadows). Over the bands rather than under the
+     rail, so it reads as belonging to the handles rather than to the line
+     below. */
+  .span-tl-hint {
+    position: absolute;
+    top: 50%;
+    left: var(--tl-hint-x);
+    transform: translate(-50%, -50%);
+    max-width: 100%;
+    padding: 3px 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    color: var(--text-2);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  /* The span, written once, directly under the rail. */
+  .span-tl-state {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  .span-tl-days {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The legend: one line, wrapping where it has to, naming only the kinds
+     this journal has. Small type on the page, so every chip owes its own
+     edge rather than a contrast floor its fill would fail. */
+  .span-tl-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px var(--space-3);
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  .span-tl-key {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .span-tl-chip {
+    display: block;
+    box-sizing: border-box;
+    width: 14px;
+    height: var(--lane-h);
+    background: var(--role-draw);
+    border: 1px solid var(--outline);
+  }
+  .span-tl-chip.is-break {
+    background: var(--text-2);
+  }
+  /* The eras are the one kind whose colour is plural, so their key is the
+     flag itself - the same bar the wrapped cover draws. Under disguise
+     roles.ts hands out no gradient at all (ADR-0035), and `none` as a
+     background image leaves the accent underneath showing, which is what
+     every other role resolves to there. */
+  .span-tl-chip.is-flag {
+    background-color: var(--accent);
+    background-image: var(--flag-fill);
+    background-size: 100% 100%;
+  }
+  /* A mark, drawn as one: the milestone block's own size and radius. */
+  .span-tl-chip.is-mark {
+    width: 8px;
+    height: 8px;
+    background: var(--text);
+    border-color: var(--bg);
+    border-radius: 2px;
   }
 </style>
