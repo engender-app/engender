@@ -18,9 +18,19 @@
      opened the inspector sheet, so the map could not be browsed at all:
      every tap left the screen. Now exactly one control selects, a tap only
      says which region the charts describe, and the sheet is one explicit
-     row under them. */
+     row under them.
+
+     Redesign ticket 05 took the screen's own 7d-to-365d range picker off
+     it: the only way here is Look back's list, at the same span/query
+     shape /wrapped/range already reads (spanRangeQuery), so the range
+     picker on this side would only ever disagree with the one the person
+     just dragged. A direct visit with no query still gets a window - the
+     door's own default of the last thirty days - rather than an empty
+     screen. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { DEFAULT_SPAN_DAYS } from '$lib/data/lookBackSpan';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { plotDaySeriesGroup, type AxisPlot, type DayAxis } from '$lib/charts/dayAxis';
   import { PLOT_HEIGHT } from '$lib/charts/geometry';
@@ -37,7 +47,6 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -46,9 +55,6 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import BodyRegionInspectorSheet from '$lib/components/BodyRegionInspectorSheet.svelte';
-
-  const RANGES = [7, 14, 30, 90, 180, 365];
-  let range = $state(30);
 
   /* Undefined is the unfiltered view (ADR-0048, ticket 18) - every entry,
      with and without a presentation, byte for byte what this screen showed
@@ -80,6 +86,18 @@
   // rather than captured.
   let today = $derived(todayEpochDay());
 
+  /* The span, reached from Look back (redesign ticket 05) at the same query
+     /wrapped/range reads (stats/+page.svelte's spanRangeQuery) - this screen
+     only ever wants the two dates out of it. A direct visit with no query,
+     or one that fails to parse, falls back to the door's own default
+     window: the last DEFAULT_SPAN_DAYS days ending today. */
+  let queryFrom = $derived(epochDayFromDateInputValue(page.url.searchParams.get('from') ?? ''));
+  let queryTo = $derived(epochDayFromDateInputValue(page.url.searchParams.get('to') ?? ''));
+  let hasSpan = $derived(queryFrom !== null && queryTo !== null && queryFrom <= queryTo);
+  let spanFrom = $derived(hasSpan ? (queryFrom as number) : today - DEFAULT_SPAN_DAYS + 1);
+  let spanTo = $derived(hasSpan ? (queryTo as number) : today);
+  let spanDays = $derived(spanTo - spanFrom + 1);
+
   /* Which axis the two charts are read on (ticket 16). Both take the same
      one: they are one region's two readings and a person switches axis to
      ask a question of the region, not of one of its halves. The queries,
@@ -88,33 +106,32 @@
   const readAxis = dayAxisState(() => today);
 
   /* A re-keyed axis reads the whole journal and says so, which is the same
-     call the two interval cards on /stats make: the question needs every
-     interval and every day either side of a surgery available, and the
-     range picker above would otherwise hand it a slice near today that
-     answers nothing. So the range control is swapped out rather than left
-     to sit there doing nothing. */
-  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : today - range + 1);
+     call Care's own interval folds make: the question needs every interval
+     and every day either side of a surgery available, and the span above
+     would otherwise hand it a slice that answers nothing. So the note below
+     swaps in instead of the span quietly doing nothing. */
+  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : spanFrom);
 
-  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today, modeFilter));
-  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today, modeFilter));
+  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, spanTo, modeFilter));
+  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, spanTo, modeFilter));
   /* Both axes of one region over one range, so both take the same
      annotations (ticket 23) - and neither takes any on a re-keyed axis.
      An annotation is a calendar date and a position is not one: several
      calendar days collapse onto one position under the repeating rule, so
      a mark drawn there would claim a coincidence the data does not carry. */
   let annotationsQuery = liveList((j) =>
-    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, today, today)
+    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, spanTo, today)
   );
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
   /* One call for both series, so they fold onto one width and the two
      cards' axes cannot disagree ($lib/charts/dayAxis). */
-  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, range));
+  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, spanDays));
   let plottedDysphoria = $derived(plotted[0]);
   let plottedEuphoria = $derived(plotted[1]);
 
-  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, today));
+  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, spanTo));
 
   /* A screen reader is told which axis a reading is on, and only when it is
      not the one every chart starts on: ", read by Date" on the calendar
@@ -135,7 +152,7 @@
      range and the same presentation filter the charts below take, so the
      figure and the charts can never disagree about which entries are in
      view. */
-  let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, today, modeFilter));
+  let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, spanTo, modeFilter));
 </script>
 
 <div class="screen">
@@ -172,27 +189,15 @@
         </div>
       {/if}
 
-    <!-- The range control and the whole-journal note share one slot. A
-         re-keyed axis reads all history, so the range picker has nothing
-         left to say and is swapped out rather than left sitting there
-         inert. The swap travels: a pill row and a one-line note are
-         different heights, so the slot animates its own resize, and the
-         control that is leaving fades off its own footprint instead of
-         popping (motion/reveal). -->
+    <!-- The range picker that used to sit in this slot is gone (redesign
+         ticket 05): the screen takes its span from Look back now, the same
+         way /compare takes its two. A re-keyed axis still reads all
+         history regardless of that span, so the note it says so with keeps
+         its own resize and crossfade - what used to swap out for the range
+         picker now just leaves. -->
       <div class="kit-reading-slot" use:resize>
         {#if readAxis.keying}
           <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-        {:else}
-          <div out:crossfade>
-            <Segmented
-              name={m.stats_range_group()}
-              options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-              value={String(range)}
-              onChange={(v) => (range = Number(v))}
-              compact
-              key="body-map-range"
-            />
-          </div>
         {/if}
       </div>
     </div>

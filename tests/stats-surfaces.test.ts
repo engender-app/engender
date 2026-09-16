@@ -1,5 +1,7 @@
-/* The stats screen's emptiness rule (phase 8 UX ticket 03, ADR-0056), and
-   ticket 05's two notes before it.
+/* The stats screen's emptiness rule (phase 8 UX ticket 03, ADR-0056). The
+   two interval folds this file used to hold to the same rule left for
+   /care whole (redesign ticket 05); their own describe block went with
+   them, to tests/care-surfaces.test.ts.
 
    Greps by design (ticket 08): every one of these is a Svelte template fact
    - which branch a panel is inside - rather than a function with an answer
@@ -13,64 +15,6 @@ import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const stats = readFileSync(root + 'src/routes/stats/+page.svelte', 'utf8');
-
-describe('the two folds say they read the whole journal, and only when they draw', () => {
-  /* Ticket 05 gated the old paragraphs; this ticket replaced what they said.
-     The header above them names the range picker's window and these two
-     cards ignore it on purpose, so the line that used to explain the fold
-     now says which journal it read. Inside the ReadGate's `rows` snippet, so
-     it prints on exactly the branch the chart prints on.
-
-     The window is generous because what is being checked is which branch the
-     line sits on, never how far down it sits: ticket 99 item 34 put an
-     explainer and its comment above it, which is the kind of thing that
-     belongs there and should not fail this. */
-  it('puts the all-history line inside the interval fold that draws it', () => {
-    expect(stats).toMatch(
-      /<ReadGate read=\{intervalMoodQuery\}[\s\S]{0,120}\{#snippet rows\(\)\}[\s\S]{0,2000}?<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
-    );
-  });
-
-  it('puts it inside the custom fold too', () => {
-    expect(stats).toMatch(
-      /\{#snippet rows\(customIntervalPattern\)\}\s*\{#if foldDrawable\(customIntervalPattern\)\}\s*<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
-    );
-    expect(stats).toContain('let customIntervalPattern = $derived(customIntervalQuery.rows);');
-  });
-
-  /* Both folds say they read the whole journal, so neither may be gated on a
-     count of the range above them - which is what they were, and it hid both
-     cards for a long dose history with a quiet month. The floor is
-     WRAPPED_ENTRY_FLOOR positions of the fold's own all-history output. */
-  it('gates each fold on its own output, not on the range', () => {
-    expect(stats).toMatch(
-      /const foldDrawable = \(pattern[^)]*\) => pattern\.length >= WRAPPED_ENTRY_FLOOR;/
-    );
-    expect(stats.match(/\{#if foldDrawable\(/g)).toHaveLength(2);
-  });
-
-  /* Alicja, on the rendered screen: an interval fold is keyed on a position
-     and drew a value gutter with no ends at all, so the one thing the picture
-     is keyed on went unnamed. */
-  it('names both ends of each fold axis', () => {
-    expect(stats.match(/\{@const ends = positionEnds\(/g)).toHaveLength(2);
-    expect(stats.match(/from=\{ends\.from\}\s*to=\{ends\.to\}/g)).toHaveLength(2);
-    expect(stats).toContain("m.interval_day_n({ n: String(point.x) })");
-  });
-
-  it('leaves no ungated paragraph explaining a chart nobody has data for', () => {
-    expect(stats).not.toContain('m.interval_mood_sub()');
-    expect(stats).not.toContain('m.custom_interval_sub()');
-  });
-
-  /* `.stats-note` hung a sentence under the card it qualified, where its
-     margin-top of 8 collapsed under the card's own 24 and left it reading as
-     a preamble to the next chart. All three consumers are inside their cards
-     now and the class is gone from both stylesheets. */
-  it('hangs no note outside the card it belongs to', () => {
-    expect(stats).not.toMatch(/class="stats-note"/);
-  });
-});
 
 describe('the summary panels wait for the floor', () => {
   /* WRAPPED_ENTRY_FLOOR, read off the module that owns it rather than
@@ -176,6 +120,52 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin" data-lookback-thin>\s*\{m\.wrapped_thin_body\(/);
   });
 
+  /* The whole-app audit's own finding 1: "zero facts in the first
+     viewport" - the door used to lead with six ways out and no number
+     about the span. Wrapped's own three-line shape, directly under the
+     rail's own line and before the era offer or the tile grid, neither of
+     which is a card either but both of which are what "before any card"
+     has to mean here: the first real card is the cross-journal section
+     below. */
+  it('puts the span\'s facts directly under the rail, before the tile grid', () => {
+    const railLine = stats.indexOf('class="lookback-line"');
+    const facts = stats.indexOf('data-lookback-fact');
+    const eraOffer = stats.indexOf('data-era-offer');
+    const tileGrid = stats.indexOf('<TileGrid');
+    expect(railLine).toBeGreaterThan(-1);
+    expect(facts).toBeGreaterThan(railLine);
+    expect(facts).toBeLessThan(eraOffer);
+    expect(facts).toBeLessThan(tileGrid);
+  });
+
+  /* Wrapped's second line is always mood (WrappedCompact.svelte); this
+     one is deliberately not, so the door's first number is never a scale
+     nobody keeps. `activeScaleRow` is `scaleRows`'s own entry for
+     `shown.key`, the same stored preference the day-by-day chart and the
+     merged tag card already shade by. */
+  it('shows the active scale\'s average, not always mood', () => {
+    expect(stats).toContain(
+      'let activeScaleRow = $derived(scaleRows.find((row) => row.key === shown.key));'
+    );
+    expect(stats).toContain('m.lookback_facts_average({ name: shown.name })');
+  });
+
+  /* Same source, same naming step wrapped uses (recapDisplay.ts's
+     recapDimChange) - one read answers the door's own retrospective link,
+     the entry count and the scale that moved furthest all at once
+     (ADR-0056, ADR-0010). */
+  it('reads entries and the scale that moved furthest off the one recap read', () => {
+    expect(stats).toContain('import { recapDimChange } from \'$lib/data/recapDisplay\';');
+    expect(stats).toContain(
+      'let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);'
+    );
+    expect(stats).toContain('{m.wrapped_scale_arc()}');
+  });
+
+  it('draws no facts under the floor, where the thin-body line already says why', () => {
+    expect(stats).toMatch(/\{#if recapQuery\.loading\}\s*<Skeleton variant="line" count=\{3\} \/>\s*\{:else if enoughEntries\}\s*<ListCard/);
+  });
+
   it('reads every ranged chart over the span, not over today', () => {
     for (const read of ['j.stats.recap(from, to)', 'j.stats.tagShare(from, to)', 'j.stats.daySpread(shown.key, from, to)', 'j.correlationCards.getCards(from, to)']) {
       expect(stats).toContain(read);
@@ -202,5 +192,35 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     for (const key of ['body-map', 'compare']) {
       expect(stats).toContain(`key="${key}"`);
     }
+  });
+
+  /* Redesign ticket 05: both rows in the list take the span rather than
+     opening on their own empty or default state. `resolvedSpan` is
+     `from`/`to` as the `Span` object the two query-builders take -
+     compareStretch.test.ts already proves precedingWindow/compareStretchQuery
+     mint the right query for any span; this is the one line that hands
+     them Look back's own. */
+  it('hands both look-back rows the resolved span, not an empty query', () => {
+    expect(stats).toContain('href={`/body-map${spanRangeQuery(resolvedSpan)}`}');
+    expect(stats).toContain('href={compareStretchQuery(resolvedSpan, precedingWindow(resolvedSpan))}');
+  });
+});
+
+/* Redesign ticket 05: the merged tag card draws as paired dots, not bars -
+   Alicja's call over the bars the tag-insights half of the duplication
+   drew, since a paired dot reads each row against its own track rather
+   than against the longest one in the set, and needs no normalizing to
+   mix scales in one card the way a bar's leader measure would. */
+describe('the merged tag card draws as paired dots', () => {
+  it('feeds PairedDots, not BarRows, for the merged ranking', () => {
+    expect(stats).toContain('<PairedDots rows={correlationRows} onPick={pickCorrelationRow} />');
+    expect(stats).not.toContain('kind="tag-insights"');
+    expect(stats).not.toContain('kind="correlations"');
+  });
+
+  it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
+    expect(stats).toMatch(
+      /const pickCorrelationRow = \(key: string\) => \{[\s\S]{0,200}occurrence\.kind === 'tag'/
+    );
   });
 });
