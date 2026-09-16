@@ -25,7 +25,11 @@ const outDir = resolve(process.argv[2] ?? resolve(root, '.claude/safe-space-shot
 
 const VIEWPORT = { width: 390, height: 844 };
 const THEMES = ['light', 'dark'];
-const WAYS = ['/doubt/moments', '/doubt/comfort', '/doubt/evidence', '/doubt/readings'];
+/* The screens the ways down land on (safeSpaceWays.ts). Phase 11 ticket 15
+   folded two of them into screens that already existed: the letters screen
+   carries Safe space's letters and photos now, and the readings land on the
+   Look back door, whose own stills are ticket 07's. */
+const WAYS = ['/transition/letters', '/doubt/comfort', '/doubt/evidence'];
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
