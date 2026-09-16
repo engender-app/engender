@@ -96,16 +96,15 @@
        (mostRecentPastAppointment, appointments.ts). Nothing jotted goes back
        where the person came from. */
     if (carrying && todaysAppointment) goto(`/entry/new/today?debriefFor=${todaysAppointment.id}`);
-    else smartBack('/health/appointment-prep');
+    else smartBack('/health/appointments');
   }
 </script>
 
 <div class="screen room">
   <!-- No actions: nothing lives beside the title. The back control returns
-       to whichever screen led here - the appointments list or the
-       appointment-prep list, both of which offer this row (smartBack) -
-       falling back to the appointments list only for a deep link or a
-       reload (carpet 27). The title stays in the document for the outline
+       to whichever screen led here, which is the visit screen and nowhere
+       else since phase 11 all-four-doors ticket 12 (smartBack), falling
+       back to it by name for a deep link or a reload (carpet 27). The title stays in the document for the outline
        and for a screen reader, which is what a chromeless screen owes them
        when the largest text on it is a question rather than a name. -->
   <ScreenHeader
@@ -180,7 +179,7 @@
         action={{
           label: m.in_the_room_empty_action(),
           primary: true,
-          onclick: () => goto('/health/appointment-prep')
+          onclick: () => goto('/health/appointments')
         }}
       />
     {/snippet}

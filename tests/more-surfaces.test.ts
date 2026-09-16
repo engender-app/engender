@@ -112,13 +112,20 @@ describe('what the More hub is built from', () => {
        assembled call for the same reason the first is: what every row has to
        say facing forwards, rather than a read per row for the milestone, the
        letter, the wear session, the tryout, the appointment, the procedure,
-       the dose slot, the stock and the measurement. */
+       the dose slot, the stock and the measurement.
+
+       Five since phase 11 ticket 17: voice-benchmark's own second read, a
+       memo's last write, which has no place in the first call because a
+       memo has no archive section of its own to be registered under
+       (ADR-0036) - one more assembled call rather than a read hubRows.ts
+       forces onto the registry it does not belong in. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 
-    expect(reads).toHaveLength(4);
+    expect(reads).toHaveLength(5);
     expect(more).toContain('j.lastWrite.getLastWrites(today)');
     expect(more).toContain('j.areaStates.getAreaStates()');
     expect(more).toContain('readRowForward(j, today)');
+    expect(more).toContain('j.voice.lastWriteEpochDay(today)');
     expect(more).toMatch(/if \(!asked\) return Promise\.resolve/);
   });
 
@@ -220,7 +227,13 @@ describe('every row the hub carries', () => {
      ticket 62 took `words` off: eras is a reference area, spent on seven
      other screens and created on exactly one, so it moved to Settings and
      left this registry rather than moving screens within it. Twenty rows
-     now. */
+     then.
+
+     Phase 11 ticket 17 folded `voice` into `voice-benchmark`: the memos
+     browser is a fourth tab on the voice screen now rather than a screen of
+     its own, `/media/voice/memos` redirects there, and `voice-benchmark`'s
+     own href drops `?tab=record` since that is already the screen's
+     default tab. Nineteen rows now. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
@@ -228,7 +241,7 @@ describe('every row the hub carries', () => {
     ['appointments', 'check', '/health/appointments', 'health', 'read'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
     ['tryouts', 'tag', '/transition/tryouts', 'transition', 'read'],
-    ['voice-benchmark', 'curve', '/practice/voice?tab=record', 'transition', 'read'],
+    ['voice-benchmark', 'curve', '/practice/voice', 'transition', 'read'],
     ['wear', 'clock', '/practice/wear', 'transition', 'read'],
     ['hair-removal', 'shuffle', '/body/hair-removal', 'transition', 'read'],
     ['roadmap', 'globe', '/transition/roadmap', 'transition', 'written'],
@@ -236,7 +249,6 @@ describe('every row the hub carries', () => {
     ['doubt', 'heart', '/doubt', 'support', 'written'],
     ['resources', 'info', '/practice/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
-    ['voice', 'mic', '/media/voice/memos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
     ['effects', 'eye', '/practice/personal-effects', 'care', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],

@@ -82,3 +82,44 @@ test('an entry with several recordings orders them oldest first alongside anothe
     [first.id, second.id]
   );
 });
+
+/* journal.voice.lastWriteEpochDay (phase 11 ticket 17): hubRows.ts's
+   voice-benchmark row folds this in beside the benchmark's own last write,
+   so it needs the same bounded-by-today MAX every other lastWriteEpochDay
+   keeps (journal/lastWrite.ts's own rule). */
+
+test('lastWriteEpochDay is the newest recording at or before today', async () => {
+  const { journal } = await journalWithFiles();
+  await journal.entries.upsertEntry({ epochDay: 20000, mood: 3, attachRecordings: [new Uint8Array([1])] });
+  await journal.entries.upsertEntry({ epochDay: 20100, mood: 4, attachRecordings: [new Uint8Array([2])] });
+
+  assert.equal(await journal.voice.lastWriteEpochDay(30000), 20100);
+});
+
+test('lastWriteEpochDay excludes a recording dated after today', async () => {
+  const { journal } = await journalWithFiles();
+  await journal.entries.upsertEntry({ epochDay: 20000, mood: 3, attachRecordings: [new Uint8Array([1])] });
+  await journal.entries.upsertEntry({ epochDay: 20100, mood: 4, attachRecordings: [new Uint8Array([2])] });
+
+  assert.equal(await journal.voice.lastWriteEpochDay(20050), 20000);
+});
+
+test('lastWriteEpochDay is null with no recordings', async () => {
+  const { journal } = await journalWithFiles();
+  await journal.entries.upsertEntry({ epochDay: 20000, mood: 3 });
+
+  assert.equal(await journal.voice.lastWriteEpochDay(30000), null);
+});
+
+test("lastWriteEpochDay excludes a trashed entry's recording", async () => {
+  const { journal } = await journalWithFiles();
+  await journal.entries.upsertEntry({ epochDay: 20000, mood: 3, attachRecordings: [new Uint8Array([1])] });
+  const trashed = await journal.entries.upsertEntry({
+    epochDay: 20100,
+    mood: 4,
+    attachRecordings: [new Uint8Array([2])]
+  });
+  await journal.entries.deleteEntry(trashed);
+
+  assert.equal(await journal.voice.lastWriteEpochDay(30000), 20000);
+});

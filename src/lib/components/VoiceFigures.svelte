@@ -53,8 +53,8 @@
   import type { Formants } from '$lib/audio/resonance';
   import { ownSeries, type BenchmarkForSeries } from '$lib/charts/ownSeries';
   import {
+    metricHref,
     OWN_SERIES_METRICS,
-    VOICE_METRICS_ROUTE,
     type OwnSeriesMetricKey
   } from '$lib/data/voice/metrics';
   import { metricName } from '$lib/data/voice/metricLabels';
@@ -312,10 +312,13 @@
 
 <!-- The one way in. Outside the figures rather than as a last block of
      them: it is not a figure, and this is where ticket 27 put it. Its own
-     words are the screen's title, so the link says where it goes without a
-     second string to keep in step. -->
+     words are the sheet's title, so the link says where it goes without a
+     second string to keep in step. Opens on pitch (`metricHref`'s own
+     lead figure) rather than the bare screen with nothing open, since
+     ticket 17 folded the reference into a sheet a link has to name a
+     section to open at all. -->
 <p class="vf-more" {...roleAttrs(role)}>
-  <a href={VOICE_METRICS_ROUTE}>
+  <a href={metricHref('pitch')}>
     <span>{m.vm_title()}</span>
     <Icon name="chevronRight" size={16} />
   </a>

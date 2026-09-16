@@ -432,7 +432,8 @@ test('fallbackReading supplies an empty reading for synchronous initial render',
     todayEpochDay: TODAY,
     lastWrites: {},
     states: {},
-    forward: {}
+    forward: {},
+    voiceMemoLastWriteEpochDay: null
   });
 });
 

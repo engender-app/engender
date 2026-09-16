@@ -6,7 +6,8 @@
 
 /** Deletes every item on the standing prep list through the screen's own
     control, and waits for the empty state to arrive. The page must already
-    be on /health/appointment-prep. The confirm handle is the record's own
+    be on /health/appointments, which is where the list is drawn since phase
+    11 all-four-doors ticket 12. The confirm handle is the record's own
     (`recordHandles.ts` builds it from RecordSheet's `handle="appointment-item"`)
     rather than the kit-generic one, so a wrong selector fails here instead
     of quietly leaving the list untouched. */

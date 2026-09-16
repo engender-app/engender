@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { captureChainOf } from '../audio/captureChain.ts';
 import { OWN_SERIES_METRICS } from '../data/voice/metrics.ts';
-import { ownSeries, type BenchmarkForSeries } from './ownSeries.ts';
+import { latestReading, ownSeries, type BenchmarkForSeries } from './ownSeries.ts';
 
 const UNPROCESSED = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 const PIXEL = captureChainOf('Pixel 10a', 'Bottom microphone', UNPROCESSED);
@@ -240,4 +240,29 @@ test('a rate nobody could have read at is a gap in the trend, not a reading', ()
 
   // Only the rate was wrong on that take. Its other figures are readings.
   assert.equal(ownSeries(rows, 'spread').runs[0].points[1].y, 2.02);
+});
+
+// --- latestReading (the metric reference sheet's own mini figure, ticket 17) -
+
+test('latestReading is the newest benchmark that measured the figure', () => {
+  const rows = [take(1, PIXEL), take(2, PIXEL), take(3, PIXEL)];
+  assert.equal(latestReading(rows, 'rate'), 143);
+});
+
+test('latestReading skips back past a take that did not measure the figure', () => {
+  const rows = [
+    take(1, PIXEL, { wordsPerMinute: 148 }),
+    // 500 wpm clears no language's ceiling (quality.ts's MAX_PLAUSIBLE_WPM
+    // tops out at 300), so plausibleRate drops it regardless of passage.
+    take(2, PIXEL, { wordsPerMinute: 500 }),
+    take(3, PIXEL, { wordsPerMinute: 151 })
+  ];
+  // The middle take's rate is unmeasurable the same way ownSeries treats it -
+  // proven by reading its own point back as null rather than assuming it.
+  assert.equal(ownSeries(rows, 'rate').runs[0].points[1].y, null);
+  assert.equal(latestReading(rows, 'rate'), 151);
+});
+
+test('latestReading is null with nothing measured', () => {
+  assert.equal(latestReading([], 'rate'), null);
 });
