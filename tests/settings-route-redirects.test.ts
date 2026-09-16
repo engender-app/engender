@@ -58,6 +58,14 @@
    The `settings/eras` entry above is gone - that is the real screen now -
    and `transition/eras` carries the stub instead, pointing back in.
 
+   Phase 11 ticket 17 folds the memo browser and the metric reference into
+   the voice screen's own Recordings tab and its own sheet: `media/voice/
+   memos` and `practice/voice/metrics` both join this table as stubs for
+   addresses that used to be real screens, and `settings/voice/memos` and
+   `settings/voice/metrics` are repointed straight at the final
+   destinations rather than at the other two stubs - one hop, not two,
+   ticket 61's own rule.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -94,10 +102,20 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
+  /* Phase 11 all-four-doors ticket 12 (ADR-0066): the prep list is a section
+     of the visit screen now rather than a screen beside it, so its own
+     address is a stub. `settings/appointment-prep` is repointed at the visit
+     screen directly rather than at that stub, the same one-hop rule ticket 61
+     set for `body/sizes`. */
   [
     'settings/appointment-prep',
     () => import('../src/routes/settings/appointment-prep/+page.ts'),
-    '/health/appointment-prep'
+    '/health/appointments'
+  ],
+  [
+    'health/appointment-prep',
+    () => import('../src/routes/health/appointment-prep/+page.ts'),
+    '/health/appointments'
   ],
   [
     'settings/clinician-summary',
@@ -117,8 +135,26 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ],
   ['settings/resources', () => import('../src/routes/settings/resources/+page.ts'), '/practice/resources'],
   ['settings/photos', () => import('../src/routes/settings/photos/+page.ts'), '/media/photos'],
-  ['settings/voice/memos', () => import('../src/routes/settings/voice/memos/+page.ts'), '/media/voice/memos'],
-  ['settings/voice/metrics', () => import('../src/routes/settings/voice/metrics/+page.ts'), '/practice/voice/metrics'],
+  [
+    'settings/voice/memos',
+    () => import('../src/routes/settings/voice/memos/+page.ts'),
+    '/practice/voice?tab=recordings'
+  ],
+  [
+    'media/voice/memos',
+    () => import('../src/routes/media/voice/memos/+page.ts'),
+    '/practice/voice?tab=recordings'
+  ],
+  [
+    'settings/voice/metrics',
+    () => import('../src/routes/settings/voice/metrics/+page.ts'),
+    '/practice/voice?metric=pitch'
+  ],
+  [
+    'practice/voice/metrics',
+    () => import('../src/routes/practice/voice/metrics/+page.ts'),
+    '/practice/voice?metric=pitch'
+  ],
   ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones'],
   [
     'transition/presentations',
@@ -142,7 +178,13 @@ const REDIRECTS: [string, () => unknown, string][] = [
      rows on `/doubt` itself do not come through here: they point straight at
      the destination (safeSpaceWays.test.ts holds that). */
   ['doubt/moments', () => import('../src/routes/doubt/moments/+page.ts'), '/transition/letters'],
-  ['doubt/readings', () => import('../src/routes/doubt/readings/+page.ts'), '/stats']
+  ['doubt/readings', () => import('../src/routes/doubt/readings/+page.ts'), '/stats'],
+  /* Phase 11 all-four-doors ticket 18: the starred shelf and the saved-
+     questions list both stopped being screens of their own and became
+     search's own opening state / filter sheet - the query string carries
+     which one a stale link meant. */
+  ['search/starred', () => import('../src/routes/search/starred/+page.ts'), '/search?starred=1'],
+  ['search/questions', () => import('../src/routes/search/questions/+page.ts'), '/search?questions=1']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {

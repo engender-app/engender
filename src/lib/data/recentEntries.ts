@@ -14,6 +14,7 @@
    inside the last five days makes Home longer that day; a quiet run keeps
    it short, same as it always has. */
 
+import { localDateFromEpochDay } from './epochDay';
 import type { Entry } from './types';
 
 export interface EntryDayGroup {
@@ -38,6 +39,30 @@ export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
     group.entries.push(entry);
   }
   return groups;
+}
+
+export interface EntryDayGroupWithHeading extends EntryDayGroup {
+  /** Set when this day falls in a different month than the day before it in
+      the list - or this is the first day at all - so a heading can fall out
+      of the dates themselves rather than being inserted by a caller who
+      already knows which month it is (ticket 18: the Journal door's
+      "Earlier entries" run). `undefined` everywhere else. */
+  monthHeading?: { year: number; month: number };
+}
+
+/** `groups`, newest first as `entryDayGroups` already returns them, each
+    day marked with a month heading exactly where the month it falls in
+    differs from the day before it - which, read newest to oldest, is the
+    first day of that month somebody scrolling down reaches. */
+export function recentDayHeadings(groups: EntryDayGroup[]): EntryDayGroupWithHeading[] {
+  let previousKey: string | null = null;
+  return groups.map((group) => {
+    const date = localDateFromEpochDay(group.epochDay);
+    const key = `${date.getFullYear()}-${date.getMonth()}`;
+    const monthHeading = key === previousKey ? undefined : { year: date.getFullYear(), month: date.getMonth() };
+    previousKey = key;
+    return { ...group, monthHeading };
+  });
 }
 
 /** Icon names for the media an entry carries, in the order a row draws them.

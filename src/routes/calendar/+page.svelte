@@ -7,12 +7,21 @@
      for something they wrote - so the picture is folded away to a strip
      until it is asked for, and what they wrote leads.
 
-     Three things moved here. Recent entries and the week strip come off
-     Home in the shape Home draws them, uncapped, reading the same five
-     logged days (ticket 13 takes them off Home; until it lands both screens
-     draw them, which is the price of one ticket per door). Search and
-     starred stay in the header where they already were, joined by starred's
-     own entry point, which was only reachable from inside search.
+     Recent entries came off Home in the shape Home drew them (ticket 13
+     took the week strip itself off Home, and its compact copy lived under
+     "Recent days" here until ticket 18 retired that duplicate - see below).
+     Search stays in the header where it already was; starred moved out of
+     the header entirely, ticket 18's decision that the starred shelf has
+     one door now and it is search's own `?starred=1` filter.
+
+     Ticket 18: "Recent entries" no longer stops at five days and a strip
+     underneath repeating the same week. It grows five days at a tap
+     ("Earlier entries", the same limit-growing control search's own
+     "show N more" already used - ADR-0069), with a month heading falling
+     out of the dates themselves wherever the month changes
+     (recentEntries.ts's `recentDayHeadings`). The top strip stays exactly
+     what it was: the affordance that opens the month, not a second reading
+     of the same seven days.
 
      The header is ticket 23's field, and DIRECTION.md rule 7 says what this
      door puts on it: the month at the section-heading size and those two
@@ -41,11 +50,10 @@
      to its cell and grows, because a month does not stop existing and a
      different month appear - it opens.
 
-     Colour: the strip, the grid and the week strip are one reading of one
-     day, so all three take role 0 - the only index guaranteed to be a colour
-     on all 8 palettes, and the index HOME_AREA_ROLE.week names for the same
-     reason on Home (roles.ts; DIRECTION.md, "colour that carries a value
-     takes role 0"). Written out rather than through that table because here
+     Colour: the strip and the grid are one reading of one day, so both take
+     role 0 - the only index guaranteed to be a colour on all 8 palettes
+     (roles.ts; DIRECTION.md, "colour that carries a value takes role 0").
+     Written out rather than through that table because here
      it is the rule about value-carrying colour and not this screen's turn in
      a reading order. The day cards do take their turn from the table, and
      take the one they took on Home, so an entry looks the same wherever it
@@ -61,7 +69,6 @@
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import WeekStrip from '$lib/components/WeekStrip.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
@@ -69,7 +76,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { entryDayGroups, entryMarks } from '$lib/data/recentEntries';
+  import { entryDayGroups, entryMarks, recentDayHeadings } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import {
@@ -137,10 +144,24 @@
 
   /* Five days, not five entries: every entry of each shown day draws, so a
      day with more than one holds its own timeline rather than a bare count
-     over a truncated one (ux-carpet ticket 13, recentEntries.ts). */
-  const RECENT_DAYS = 5;
-  let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
+     over a truncated one (ux-carpet ticket 13, recentEntries.ts). Growing
+     rather than fixed since ticket 18: five more days at a tap, the whole
+     read regrown at the wider limit each time rather than a second page
+     appended, which is what keeps the days already on screen from ever
+     being asked for twice (ADR-0069's "batch" is the DOM's; this is still
+     one bounded read per render). */
+  const RECENT_DAYS_STEP = 5;
+  let recentDaysLimit = $state(RECENT_DAYS_STEP);
+  let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
   let dayGroups = $derived(entryDayGroups(recent.rows));
+  let headedDayGroups = $derived(recentDayHeadings(dayGroups));
+
+  /* How many more days exist to grow into, read off the journal's own
+     count of days that hold anything rather than guessed from whether the
+     last read came back full - a journal whose day count happens to land
+     exactly on a limit is the one case that guess gets wrong. */
+  let totalDaysQuery = liveQuery((j) => j.entries.countDistinctDays());
+  let moreDaysRemaining = $derived(Math.max(0, (totalDaysQuery.value ?? 0) - dayGroups.length));
 
   /* Which era each month belongs to (phase 6 ticket 03): each era paired
      with the role it draws in, the same way role 0 is picked for the
@@ -411,13 +432,9 @@
         <!-- On the month's own line, not in `actions`, which is the title's
              line: rule 7 puts all three of these on one line, and the title
              this door does not show is what the line above would have been
-             for. Starred was reachable only from inside search until now,
-             which is a shelf nobody finds by looking for it; both entry
-             points are the field's, since this is the door they belong to. -->
+             for. One control now (ticket 18): starred is a filter search
+             offers on its own screen, not a second door this field hosts. -->
         <a class="icon-btn press" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
-        <a class="icon-btn press" href="/search/starred" aria-label={m.starred_shelf_open()}>
-          <Icon name="star" size={22} />
-        </a>
       </div>
     {/snippet}
   </ScreenHeader>
@@ -480,7 +497,13 @@
     <ReadGate read={recent} variant="card" count={3}>
       {#snippet rows()}
         <div class="cal-days">
-          {#each dayGroups as group (group.epochDay)}
+          {#each headedDayGroups as group (group.epochDay)}
+            {#if group.monthHeading}
+              <!-- Falls out of the dates themselves (recentDayHeadings), not
+                   inserted per screen: reads "August" the first time an
+                   August day appears scrolling down from today. -->
+              <SectionHeading text={fmtMonthYear(group.monthHeading.year, group.monthHeading.month)} />
+            {/if}
             <DayCard
               key={String(group.epochDay)}
               role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
@@ -501,6 +524,11 @@
               {/each}
             </DayCard>
           {/each}
+          {#if moreDaysRemaining > 0}
+            <button class="btn btn-soft" data-recent-days-more onclick={() => (recentDaysLimit += RECENT_DAYS_STEP)}>
+              <span>{m.list_more_days({ count: Math.min(RECENT_DAYS_STEP, moreDaysRemaining) })}</span>
+            </button>
+          {/if}
         </div>
       {/snippet}
       {#snippet empty()}
@@ -520,15 +548,6 @@
       {/snippet}
     </ReadGate>
   </div>
-
-  <!-- The last seven days, which is a different question from the month
-       above: it always ends today and it never pages. It shades on the same
-       ramp and the same choice, so the control for it is the one on the
-       month's line. -->
-  {#if hasEntries && !recent.loading}
-    <SectionHeading text={m.recent_days()} />
-    <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
-  {/if}
 </div>
 
 <Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
