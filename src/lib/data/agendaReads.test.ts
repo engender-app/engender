@@ -72,11 +72,13 @@ test('a kind switched off never reaches the projection, and the cap counts only 
 /* Phase 11 ticket 03. Today draws a dose panel whenever a regimen is
    running, and that panel now carries the next slot's own day - so a
    doseSlot row in the band beside it is the same medication stated twice,
-   which is the defect the ticket is named after. The panel is the dose's
-   one home while it is up; when it is not (switched off in the unprompted
-   registry, or snoozed) the band keeps the kind, because otherwise the day
-   the schedule expects would be on the screen nowhere at all. */
-test('the dose kind is withheld while a dose panel is showing', async () => {
+   which is the defect the ticket is named after. The flag the caller passes
+   is not "a panel is drawn" but "the panel accounts for every dose slot the
+   band could draw" (`dosePanelCoversEveryRegimen`, liveTiles.ts): with the
+   tile switched off, snoozed, or standing for one of two running regimens,
+   the band keeps the kind, because otherwise a day some schedule expects
+   would be on the screen nowhere at all. */
+test('the dose kind is withheld while the panel accounts for every dose', async () => {
   const marks: DayAheadMark[] = [
     { kind: 'doseSlot', epochDay: TODAY + 6 },
     { kind: 'appointment', epochDay: TODAY + 12 }
@@ -95,7 +97,7 @@ test('the dose kind is withheld while a dose panel is showing', async () => {
   );
 });
 
-test('a week whose only mark is a dose the panel states is absent, not empty', async () => {
+test('a month whose only mark is a dose the panel states is absent, not empty', async () => {
   const marks: DayAheadMark[] = [{ kind: 'doseSlot', epochDay: TODAY + 6 }];
   assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true), null);
 });
