@@ -20,6 +20,7 @@
    the same query string for the same two days, and the test beside this
    file parses it back through `parseWrappedRangeParams` to prove it. */
 
+import type { ChartAnnotation } from '../charts/annotations';
 import { dateInputValueFromEpochDay, localDateFromEpochDay, epochDayFromLocalDate } from './epochDay';
 import type { EraSpan, JournalBounds } from './eras';
 import { spanOverlapsRange } from './span';
@@ -61,10 +62,15 @@ export function historyStart(
   return Math.min(todayEpochDay, ...days);
 }
 
-/** The last `DEFAULT_SPAN_DAYS` ending today, or the whole rail where the
-    rail is shorter than that. */
-export function defaultSpan(railStart: number, todayEpochDay: number): Span {
-  return { start: Math.max(railStart, todayEpochDay - DEFAULT_SPAN_DAYS + 1), end: todayEpochDay };
+/** The last `DEFAULT_SPAN_DAYS` ending on a day, or the whole rail where the
+    rail is shorter than that.
+
+    The day is today when the door opens, which is what this was written
+    for, and the day of a mark when somebody taps one (ticket 06): a mark is
+    one day and one day is not a reading, so pointing at one asks for the
+    same window the door itself opens on, ending there. */
+export function defaultSpan(railStart: number, endEpochDay: number): Span {
+  return { start: Math.max(railStart, endEpochDay - DEFAULT_SPAN_DAYS + 1), end: endEpochDay };
 }
 
 /** How many days one step of a handle covers, from how many pixels a day
@@ -181,6 +187,144 @@ export function eraBands(
     });
   }
   return out;
+}
+
+/* ## The rest of the history (phase 11 ticket 06)
+
+   The rail drew two of the five dated histories the journal holds - the
+   eras as bands, the milestones as marks - and the reading people most want
+   from this door, "my moods over the HRT episode", was a stretch it could
+   not select. Three more record types carry a stretch (RegimenEpisode,
+   Tryout, JournalingPause) and one carries a day (Procedure).
+
+   None of them is read here. `journal/chartAnnotations.ts` is already the
+   one query that asks every area what it has dated, and every one of these
+   is already in its answer - so the rail asks it over its own two days and
+   the functions below select. A fifth gatherer of dated history would have
+   been a second place for "what happened between these days" to drift.
+
+   What is deliberately dropped from that answer, and why: `milestone` and
+   `era`, which the rail already draws its own way and would otherwise draw
+   twice; `dosePause`, `appointment`, `finishedArea` and `suspendedArea`,
+   which are things inside an episode or a day in a stream rather than
+   stretches of the person's own history; `recovery`, which is a reading of
+   a procedure (Home's own cutoff) rather than a stretch anybody lived
+   through as its own thing - the surgery day is the fact, and it is drawn;
+   and `journalingPause`, which this ticket drew as a third lane until the
+   sign-off renders (Alicja, 2026-09-16: "lets remove pauses from the
+   strip"). A break is the absence of a journal rather than a stretch of a
+   life, three lanes plus the marks did not fit 52px legibly, and the two
+   that stayed are the two somebody would actually want to read a span over.
+   The chart's own annotation band still draws pauses where they explain a
+   flat stretch, which is the reading they were always for. */
+
+/** The two kinds of stretch the history layer draws under the eras. Not
+    merged into one record type: `span.ts`'s header refuses that, and this
+    keeps the refusal visible - a band knows which kind it is, and the rail
+    draws three kinds of band without the three tables becoming one. */
+export type RailHistoryKind = 'regimen' | 'tryout';
+
+/** The lanes, bottom-up, and the order the legend names them in. Fixed
+    rather than derived from what the journal happens to hold, so a person
+    who starts a tryout does not find the regimen in a different place
+    afterwards. */
+const HISTORY_ORDER: readonly RailHistoryKind[] = ['regimen', 'tryout'];
+
+/** One stretch on the rail, already clamped to it. `openStart`/`openEnd`
+    carry the same meaning `EraBand` gives them: the band runs off the end
+    of the rail rather than ending there, so the edge is not drawn. */
+export interface RailBand {
+  id: string;
+  kind: RailHistoryKind;
+  /** An episode's drug, a tryout's label. The query types it nullable
+      because a journaling pause has no name of its own; neither kind drawn
+      here is that one, so the rail falls back to the kind's own word rather
+      than drawing an unnamed band. */
+  name: string | null;
+  start: number;
+  end: number;
+  openStart: boolean;
+  openEnd: boolean;
+}
+
+/** One dated point on the rail that is not a milestone: a procedure's
+    surgery day. */
+export interface RailMark {
+  id: string;
+  name: string | null;
+  epochDay: number;
+}
+
+/** What the legend can name. `era` and `surgery` are not band kinds - the
+    eras are the rail's own top layer and a procedure is a mark - but the
+    legend names what the rail draws rather than how it draws it. */
+export type RailLegendKind = 'era' | RailHistoryKind | 'surgery';
+
+const HISTORY_OF_ANNOTATION: Partial<Record<ChartAnnotation['kind'], RailHistoryKind>> = {
+  regimen: 'regimen',
+  tryout: 'tryout'
+};
+
+/** The two stretch kinds out of a range's annotations, in the order the
+    query already sorted them (oldest first).
+
+    `annotationsInRange` has done the clamping, so an episode that started
+    before the rail arrives already cut to the rail's start and knowing that
+    its own start fell outside - which is exactly the open edge a band
+    draws. A stretch still running arrives reaching to today with
+    `endsInRange` false, the same. */
+export function historyBands(annotations: readonly ChartAnnotation[]): RailBand[] {
+  const out: RailBand[] = [];
+  for (const annotation of annotations) {
+    const kind = HISTORY_OF_ANNOTATION[annotation.kind];
+    if (!kind) continue;
+    out.push({
+      id: annotation.id,
+      kind,
+      name: annotation.name,
+      start: annotation.fromEpochDay,
+      end: annotation.toEpochDay,
+      openStart: !annotation.startsInRange,
+      openEnd: !annotation.endsInRange
+    });
+  }
+  return out;
+}
+
+/** The surgery days out of the same answer. A procedure with no date yet
+    never reaches here: the query drops it, because a record with no day has
+    no day to mark. */
+export function surgeryMarks(annotations: readonly ChartAnnotation[]): RailMark[] {
+  const out: RailMark[] = [];
+  for (const annotation of annotations) {
+    if (annotation.kind !== 'surgery') continue;
+    out.push({ id: annotation.id, name: annotation.name, epochDay: annotation.fromEpochDay });
+  }
+  return out;
+}
+
+/** Which history kinds this journal has anything of, in lane order. A kind
+    with no band takes no lane, so a journal with only HRT gets one lane
+    rather than one lane and two empty ones. */
+export function historyKindsPresent(bands: readonly RailBand[]): RailHistoryKind[] {
+  const present = new Set(bands.map((band) => band.kind));
+  return HISTORY_ORDER.filter((kind) => present.has(kind));
+}
+
+/** What the legend names, in the rail's own order: the eras first, since
+    they are the layer that stands up, then the lanes bottom-up, then the
+    marks. Absent kinds are absent - a journal with no tryouts does not read
+    "Tryouts". */
+export function railLegendKinds(
+  bands: readonly RailBand[],
+  marks: readonly RailMark[],
+  hasEras: boolean
+): RailLegendKind[] {
+  return [
+    ...(hasEras ? (['era'] as const) : []),
+    ...historyKindsPresent(bands),
+    ...(marks.length ? (['surgery'] as const) : [])
+  ];
 }
 
 /** The query string a span is read at on /wrapped/range: the same one the
