@@ -37,6 +37,14 @@ export interface VoiceArea {
       compare picker, which was cut before shipping (ticket 09) - this is
       its first caller. */
   inJournal(): Promise<DatedRecording[]>;
+  /** The day of the most recent memo, at or before `todayEpochDay`, or null
+      where there is none (phase 11 ticket 17). Its own method rather than a
+      `journal/lastWrite.ts` entry: a memo is entry content with no archive
+      section of its own (ADR-0036), so it has no `ArchiveSectionName` to be
+      registered under there - `hubRows.ts`'s `voice-benchmark` row is this
+      read's only caller, folding it in beside the benchmark's own last
+      write to report whichever is later. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
 const toRecording = (row: RecordingRow): VoiceRecording => ({ id: row.uuid, fileName: row.file_path });
@@ -133,6 +141,16 @@ export function makeVoiceArea(driver: SqliteDriver): VoiceArea {
          ORDER BY epoch_day DESC, v.entry_id DESC, v.order_index, v.id`
       );
       return rows.map((row) => ({ ...toRecording(row), epochDay: row.epoch_day, entryId: row.entry_id }));
+    },
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        `SELECT MAX(e.epoch_day) AS day
+         FROM voice_recording v
+         JOIN entry e ON e.id = v.entry_id
+         WHERE e.trashed_at IS NULL AND e.epoch_day <= ?`,
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     }
   };
 }

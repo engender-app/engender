@@ -1945,16 +1945,16 @@ await block('ticket 27 browser tier', 7, async () => {
     ok(`the list states seven figures and one way in (${listLink.text})`);
   else fail('the list states seven figures and one way in', JSON.stringify({ blank, listLink }));
 
-  /* The claim only a browser can answer: every fragment metricHref builds,
-     resolved against the rendered reference screen and read back through
-     `:target`. The compare view renders two of these against its own
-     labels; nothing but a rendered document can say they land. */
+  /* The claim only a browser can answer: every query key metricHref
+     builds names a section that is really one of the seven mounted. The
+     compare view renders two of these against its own labels; nothing but
+     a rendered document can say the section exists. */
   const stray = landings.filter((l) => l.landsOn !== l.key);
   if (stray.length === 0)
-    ok('every figure\'s own fragment lands on its own section of the reference screen');
+    ok("every figure's own query names a real section of the reference sheet");
   else
     fail(
-      "every figure's own fragment lands on its own section of the reference screen",
+      "every figure's own query names a real section of the reference sheet",
       JSON.stringify(stray.map((l) => [l.key, l.href, l.landsOn]))
     );
 

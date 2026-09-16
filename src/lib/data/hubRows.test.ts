@@ -198,9 +198,11 @@ test('thirteen rows can report a reading and seven never can', () => {
   // are untouched by that one. The written eight are nine less `words`,
   // which redesign ticket 62 took off with the screen it opened, and seven
   // since redesign ticket 16 took `eras` - also 'written' - off the same
-  // way.
+  // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
+  // into `voice-benchmark`'s own Recordings tab rather than giving it a
+  // row of its own.
   assert.equal(reads.length, 13);
-  assert.equal(HUB_ROWS.length - reads.length, 7);
+  assert.equal(HUB_ROWS.length - reads.length, 6);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -290,6 +292,31 @@ test('a side effect logged alone does not drag the effects row backwards', () =>
   );
 
   assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
+});
+
+test('voice-benchmark reports the later of a benchmark and a recording (ticket 17)', () => {
+  const line = rowLine(
+    spec('voice-benchmark'),
+    reading({ lastWrites: { voiceBenchmarks: TODAY - 40 }, voiceMemoLastWriteEpochDay: TODAY - 4 })
+  );
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 4, daysAgo: 4 });
+});
+
+test('a recording alone does not leave voice-benchmark reporting no-stream', () => {
+  const line = rowLine(spec('voice-benchmark'), reading({ voiceMemoLastWriteEpochDay: TODAY - 2 }));
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
+});
+
+test('a benchmark alone does not need a recording to report', () => {
+  const line = rowLine(spec('voice-benchmark'), reading({ lastWrites: { voiceBenchmarks: TODAY - 2 } }));
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
+});
+
+test('neither a benchmark nor a recording reads as not-yet, same as any other row', () => {
+  assert.deepEqual(rowLine(spec('voice-benchmark'), reading()), { kind: 'not-yet' });
 });
 
 test('a row only reads the areas it fronts, and asks for nothing else', () => {
@@ -688,7 +715,7 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
     'letters'
   ]);
   assert.deepEqual(group('support'), ['doubt', 'resources']);
-  assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
+  assert.deepEqual(group('media'), ['photos', 'documents']);
 });
 
 /* Ticket 15's search half. The words are paraglide's, so the matcher is
