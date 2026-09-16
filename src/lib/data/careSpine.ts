@@ -326,8 +326,10 @@ export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine |
     unlabelled dates with no way to tell them apart, so with two curve
     episodes running it drew neither. A lane per drug, each labelled with its
     drug's name, answers that ambiguity in the drawing instead of by dropping
-    regimens out of it (ADR-0012: lanes are categorical, one stripe per drug,
-    and no drug is primary).
+    regimens out of it. One stripe per drug and no drug primary: colour here
+    is categorical the way it is everywhere else in this app, which is
+    ADR-0012's line - a scale with a better end is the judgement it forbids,
+    and three drugs somebody takes have no better end.
 
     Curve drugs first, so the lane the hormone curve reads sits nearest the
     labs row under the rail, then by start day, oldest first - the order the

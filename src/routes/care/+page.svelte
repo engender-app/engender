@@ -12,8 +12,9 @@
      the diff is careSpine.ts working out where a set of days sit on one
      line.
 
-     One lane per running drug (phase 11 ticket 10, ADR-0012: lanes are
-     categorical, one stripe per drug, and no drug is primary). Before it
+     One lane per running drug (phase 11 ticket 10). A stripe per drug and
+     no drug primary: colour is categorical here as everywhere, which is
+     ADR-0012's line rather than this ticket's. Before it
      the rail drew one episode's days and every other running regimen fell
      to a grey two-line row under an "Other regimens" heading - which for
      the ordinary case of a hormone beside a daily pill meant two of three
@@ -433,9 +434,13 @@
   let curveReading = $derived.by(() => {
     const direction = curveDirectionQuery.value ?? null;
     /* The curve screen's own words for the same silence, rather than a
-       second sentence about it: nothing logged that this app draws a curve
-       for. */
-    if (!direction) return curveDrug === null ? m.curve_empty_title() : null;
+       second sentence about it. Both silences read alike on purpose: no
+       curve drug running at all, and one running with nothing logged inside
+       the model's reach yet - a regimen started this week - are the same
+       sentence from this row's side, and the row may never fall back to a
+       title and a chevron, which is the defect this whole ticket is about
+       (code review, spec axis). */
+    if (!direction) return m.curve_empty_title();
     const word = { rising: m.care_curve_rising(), level: m.care_curve_level(), falling: m.care_curve_falling() }[
       direction
     ];

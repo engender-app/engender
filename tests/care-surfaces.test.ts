@@ -152,3 +152,15 @@ describe('every row on Care states a current value', () => {
     expect(care).toContain('drugsMatch(lane.episode.drug, row.entry.drug)');
   });
 });
+
+describe('the curve row never falls back to a title and a chevron', () => {
+  /* The spec axis of this ticket's own code review: a curve drug running
+     with nothing logged inside the model's reach yet - a regimen started
+     this week - left `curveReading` null, and ListRow drops a falsy
+     subtitle, so the row came back as the bare title the ticket exists to
+     get rid of. Both silences take the curve screen's own words now. */
+  it('states the curve screen’s own empty words whenever there is no direction', () => {
+    expect(care).toContain('if (!direction) return m.curve_empty_title();');
+    expect(care).not.toMatch(/if \(!direction\).*curveDrug === null \? /);
+  });
+});
