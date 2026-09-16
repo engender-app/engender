@@ -109,9 +109,54 @@
     top: number;
     height: number;
     role: Role | undefined;
+    /** Where the name sits, relative to the band's own top - the largest
+        stretch of the band no dot's ring reaches into, not the band's
+        full height. A band covering one milestone still has a top and a
+        bottom clear of that milestone's own dot; a band covering three
+        picks whichever of the gaps between them is biggest. */
+    labelTop: number;
+    labelHeight: number;
   }
 
+  /** How far a dot's own ring reaches past its 12px circle - `.tl-dot`'s
+      `box-shadow: 0 0 0 4px`, which `getBoundingClientRect` never counts
+      as part of the element's box. A label sharing that ring's actual
+      footprint is the collision this exists to rule out, not just the
+      bare circle's. */
+  const DOT_RING_PX = 4;
+
+  /** A rough vertical advance per character of a rotated `--text-xs` bold
+      name (Alicja, 2026-09-16: an era too short for its own name has to be
+      "artificially lengthened a little on the timeline" - "Full time"
+      read as a barely-legible knot rather than a band). Rough because an
+      exact figure would mean measuring the label's own rendered box before
+      deciding the band's height it then renders into - a second pass this
+      component does not make. Generous rather than tight: a band a few
+      pixels taller than its name strictly needs reads as a band with room
+      to breathe, and a band a few pixels short of it reads as broken. */
+  const CHAR_HEIGHT_PX = 8;
+  const LABEL_PADDING_PX = 16;
+  const minLabelHeight = (name: string) => name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX;
+
   let bandRects = $state<BandRect[]>([]);
+
+  /** The largest run of `[0, height]` that none of `obstacles` reaches
+      into, as `[top, bottom]` relative to the same origin. Falls back to
+      the whole span when the obstacles cover all of it, which nothing
+      today produces - a band always has more height than one dot's ring
+      - but a label with nowhere to go is a worse failure than a label
+      that overlaps one anyway. */
+  function largestGap(height: number, obstacles: readonly [number, number][]): [number, number] {
+    const sorted = [...obstacles].sort((a, b) => a[0] - b[0]);
+    let cursor = 0;
+    let best: [number, number] = [0, 0];
+    for (const [start, end] of sorted) {
+      if (start - cursor > best[1] - best[0]) best = [cursor, start];
+      cursor = Math.max(cursor, end);
+    }
+    if (height - cursor > best[1] - best[0]) best = [cursor, height];
+    return best[1] > best[0] ? best : [0, height];
+  }
 
   function measureBands() {
     const el = rail;
@@ -127,12 +172,40 @@
       if (!first || !last) return;
       const a = first.getBoundingClientRect();
       const b = last.getBoundingClientRect();
+      let top = a.top - railTop;
+      let height = b.bottom - a.top;
+
+      const obstacles: [number, number][] = [];
+      for (let i = band.startIndex; i <= band.endIndex; i += 1) {
+        const dot = itemEls[i]?.querySelector('.tl-dot');
+        if (!dot) continue;
+        const dotRect = dot.getBoundingClientRect();
+        obstacles.push([dotRect.top - railTop - top - DOT_RING_PX, dotRect.bottom - railTop - top + DOT_RING_PX]);
+      }
+
+      // Stretched around its own middle rather than pinned to either end,
+      // so a lengthened band still reads as centred on the rows it covers.
+      const needed = minLabelHeight(band.name);
+      if (height < needed) {
+        const grown = (needed - height) / 2;
+        top -= grown;
+        height = needed;
+        for (const obstacle of obstacles) {
+          obstacle[0] += grown;
+          obstacle[1] += grown;
+        }
+      }
+
+      const [labelTop, labelBottom] = largestGap(height, obstacles);
+
       next.push({
         id: band.id,
         name: band.name,
-        top: a.top - railTop,
-        height: b.bottom - a.top,
-        role: roleAt(bandRoles, index)
+        top,
+        height,
+        role: roleAt(bandRoles, index),
+        labelTop,
+        labelHeight: labelBottom - labelTop
       });
     });
     bandRects = next;
@@ -158,13 +231,33 @@
 <!-- One role for the whole rail rather than one per item: the rail is a
      single area of the screen, and a colour per milestone would make the
      palette a sequence of unrelated marks. -->
-<div class="timeline" data-milestone-rail bind:this={rail} {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-  <!-- The low layer redesign ticket 16 adds: one band per era with a row
-       inside it, behind the axis and the marks (DOM order alone puts it
-       there - `.timeline::before` is painted first, these next, the rows
-       themselves last). Each is a button rather than a link, the same
-       reason the milestone rows below are: it opens a sheet on this
-       screen's own address, not a destination. -->
+<div
+  class="timeline"
+  class:has-eras={bandRects.length > 0}
+  data-milestone-rail
+  bind:this={rail}
+  {...roleAttrs(roleAt(activeFlag.roles, 0))}
+>
+  <!-- The low layer redesign ticket 16 adds: one band per era, centred on
+       the thread the way the ticket's own reference draws it. It sits
+       above the bare thread and below the rows: the thread's own colour is
+       what a stretch with no era draws, and a band is what the same stretch
+       draws once one is named, not a second thing layered over the first
+       (Alicja, 2026-09-16, on why the two don't need to coexist: "the
+       thread needs to be below the era rails"). A dot still paints over
+       both, which is what lets its ring read as a mark on the line rather
+       than a mark floating beside it.
+
+       The name is the harder half: a band spans every row its era covers,
+       and a name centred on the whole span runs straight through whichever
+       dot happens to sit near the middle - the defect version of this drew
+       "First year on HRT" through the milestone it was naming (2026-09-16).
+       `measureBands` places it in the band's biggest dot-free stretch
+       instead (`largestGap`), never the band's own geometric centre, so
+       the two only compete for space when a band is too short to give the
+       name anywhere else to be. Each band is a button rather than a link,
+       the same reason the milestone rows below are: it opens a sheet on
+       this screen's own address, not a destination. -->
   {#each bandRects as band (band.id)}
     <button
       type="button"
@@ -176,7 +269,7 @@
       onclick={() => onOpenEra(band.id)}
       {...roleAttrs(band.role)}
     >
-      <span class="tl-era-name">{band.name}</span>
+      <span class="tl-era-name" style:top="{band.labelTop}px" style:height="{band.labelHeight}px">{band.name}</span>
     </button>
   {/each}
   {#each items as item, index (item.id)}
@@ -267,9 +360,23 @@
     padding-left: 30px;
   }
 
-  /* One line, top to bottom, behind everything - including the gap and the
-     today marker, which used to interrupt it. A timeline whose axis stops is
-     not an axis. */
+  /* Widened only when there is a band to show (redesign ticket 16): a
+     journal with no eras spends nothing on the extra room. The dot/axis
+     column moves 10px further right to make that room on its own left,
+     symmetric with the 10px the band's other edge takes on its right - so
+     the column stays exactly where a band centres on it rather than the
+     band being centred on empty space beside the column. */
+  .timeline.has-eras {
+    padding-left: 40px;
+  }
+
+  /* The thread, top to bottom, behind everything - including the gap and
+     the today marker, which used to interrupt it. A timeline whose axis
+     stops is not an axis. An era's own band paints over it further down
+     this stretch, on purpose: the thread is what an unnamed stretch draws,
+     the band is what the same stretch draws once it is named, and neither
+     needs to show through the other (Alicja, 2026-09-16: "the thread needs
+     to be below the era rails"). */
   .timeline::before {
     content: '';
     position: absolute;
@@ -280,18 +387,22 @@
     border-radius: 1px;
     background: color-mix(in oklab, var(--role-draw) 60%, var(--bg));
   }
+  .timeline.has-eras::before {
+    left: 15px;
+  }
 
-  /* An era's band (redesign ticket 16): the same gutter the axis and the
-     dots share, wide enough to sit under both, top and height set from the
-     rows it measures. Every band wears an edge, the reason SpanTimeline's
-     own bands do - a black or white flag leaves no other way for two
-     adjacent bands to read as separate objects. */
+  /* An era's band (redesign ticket 16): centred on the thread and the dots
+     rather than beside them, the way the ticket's own reference draws it,
+     over the bare thread and under the dots (a dot's own ring still cuts a
+     clean gap through a band or a name behind it, the way it always has
+     through the thread). Every band wears an edge, the reason
+     SpanTimeline's own bands do - a black or white flag leaves no other
+     way for two adjacent bands to read as separate objects. */
   .tl-era-band {
     position: absolute;
-    left: 0;
+    left: 6px;
     width: 20px;
     box-sizing: border-box;
-    display: block;
     padding: var(--space-1) 0;
     margin: 0;
     border: 1px solid var(--outline);
@@ -302,19 +413,23 @@
     cursor: pointer;
   }
 
-  /* Read top to bottom with the timeline itself, at the band's own left
-     edge - the one label a short band still has room for, however few rows
-     it covers. */
+  /* Placed by `measureBands`' `largestGap`, not the band's own centre - the
+     one stretch of the band no dot's ring reaches into, so the name never
+     competes with the mark it is naming. Centred within that stretch,
+     which is its own top/height rather than the band's. */
   .tl-era-name {
-    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     writing-mode: vertical-rl;
-    margin: 0 auto;
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-height: 100%;
   }
 
   .tl-item {
