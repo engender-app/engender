@@ -39,7 +39,10 @@ const check = (label, ok) => console.log(`${ok ? 'PASS' : 'FAIL'} ${label}`);
 
 try {
   await settle('/health/appointments');
-  await page.locator('[data-add]').click();
+  /* The prep list's own add, beside its heading: `[data-add]` in the screen
+     header books an appointment (phase 11 all-four-doors ticket 12 put both
+     on one screen). */
+  await page.locator('[data-add-prep]').click();
   await page.locator('#appointment-prep-input').fill('ask about labs');
   await page.locator('[data-save-appointment-item]').click();
   // The row appearing is what says the write landed. Navigating on the click
@@ -108,7 +111,7 @@ try {
 
   await settle('/health/appointments');
   const debriefRow = page.locator('[data-list-row="debrief"]');
-  check('appointment prep shows the "your debrief" row', (await debriefRow.count()) > 0);
+  check('the visit screen shows the "your debrief" row', (await debriefRow.count()) > 0);
 } catch (error) {
   console.log('SCRIPT ERROR:', error.message);
   await page.screenshot({ path: resolve(root, '.claude/debrief-check-failure.png') }).catch(() => {});
