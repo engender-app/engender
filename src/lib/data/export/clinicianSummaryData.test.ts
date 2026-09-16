@@ -187,6 +187,21 @@ describe('assembleClinicianDossier', () => {
 
     expect(dossier.regimen!.current).toHaveLength(1);
   });
+
+  /* Ticket 08: the row shape reserves a slot for ticket 11's auto-logged
+     marker without this ticket populating it - a real dose row already
+     satisfies the wider type, and nothing here sets the field. */
+  it('leaves autoLogged unset on a dose row (ticket 11 populates it later)', async () => {
+    const dossier = await assembleClinicianDossier(journal, {
+      fromEpochDay: 19000,
+      toEpochDay: 19010
+    });
+
+    expect(dossier.regimen!.doses.length).toBeGreaterThan(0);
+    for (const dose of dossier.regimen!.doses) {
+      expect(dose.autoLogged).toBeUndefined();
+    }
+  });
 });
 
 describe('regimenDrugNames', () => {
