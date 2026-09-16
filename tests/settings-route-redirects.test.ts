@@ -42,6 +42,13 @@
    to `/care` itself rather than to a stub for something that no longer
    exists, and `/doses` joins the dose log under `/care/doses` too.
 
+   Phase 11 all-four-doors ticket 13 adds `health/side-effects`, on the same
+   pattern ticket 61 set for `body/sizes`: side effects merged onto
+   /practice/personal-effects rather than moving to a screen of their own,
+   so the old screen's address is a stub now, and `settings/side-effects`
+   is repointed at the merged screen directly rather than at that stub -
+   one hop, not two.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -66,7 +73,16 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/hair-progress', () => import('../src/routes/settings/hair-progress/+page.ts'), '/body/hair-progress'],
   ['settings/hair-removal', () => import('../src/routes/settings/hair-removal/+page.ts'), '/body/hair-removal'],
   ['settings/cycle-events', () => import('../src/routes/settings/cycle-events/+page.ts'), '/health/cycle-events'],
-  ['settings/side-effects', () => import('../src/routes/settings/side-effects/+page.ts'), '/health/side-effects'],
+  [
+    'settings/side-effects',
+    () => import('../src/routes/settings/side-effects/+page.ts'),
+    '/practice/personal-effects'
+  ],
+  [
+    'health/side-effects',
+    () => import('../src/routes/health/side-effects/+page.ts'),
+    '/practice/personal-effects'
+  ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
   [
