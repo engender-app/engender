@@ -112,6 +112,9 @@ const SCENES = [
 
   /* Transition screens (ticket 108): buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
+  /* Redesign ticket 16 collapsed the list behind `[data-ms-log-toggle]`, so
+     `[data-milestone]` no longer exists until that row is opened - this
+     scene has no step for that and needs one before ticket 139's sweep. */
   { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
   { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', is: 'a mark on the rail opening the same editor (redesign 43)' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
@@ -124,7 +127,7 @@ const SCENES = [
      cannot open. This handle is on the two states that can. */
   { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', is: 'a letter unfolded to read' },
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
-  { name: 'eras-add', at: '/transition/eras', act: '[data-add]', is: 'the add era sheet opening' },
+  { name: 'eras-add', at: '/settings/eras', act: '[data-add]', is: 'the add era sheet opening' },
 
   /* Settings screens (ticket 108): swatches, switchers, switches and modals */
   { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },

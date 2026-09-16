@@ -1072,6 +1072,16 @@
   "quick_exit_no_lock": "with no PIN or passphrase it only blanks the screen",
   "ms_intro": "Days that matter. Past ones come back as anniversaries, and future ones count down on Home.",
   "ms_log_heading": "Every milestone",
+  "ms_log_heading_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} milestone",
+        "countPlural=other": "{count} milestones"
+      }
+    }
+  ],
   "ms_add_heading": "Add a milestone",
   "ms_shuffle": "Shuffle suggestions",
   "ms_own_title": "Create your own",

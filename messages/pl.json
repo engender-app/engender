@@ -1112,6 +1112,18 @@
   "quick_exit_no_lock": "bez PIN-u albo hasła tylko gasi ekran",
   "ms_intro": "Dni, które coś znaczą. Przeszłe wracają jako rocznice, przyszłe odliczają czas na ekranie startowym.",
   "ms_log_heading": "Wszystkie kamienie milowe",
+  "ms_log_heading_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} kamień milowy",
+        "countPlural=few": "Kamienie milowe: {count}",
+        "countPlural=many": "Kamienie milowe: {count}",
+        "countPlural=other": "Kamienie milowe: {count}"
+      }
+    }
+  ],
   "ms_add_heading": "Dodaj kamień milowy",
   "ms_shuffle": "Przetasuj podpowiedzi",
   "ms_own_title": "Stwórz własny",
