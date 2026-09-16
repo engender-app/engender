@@ -9,3 +9,12 @@ export function demoAudioBytes(random: () => number): Uint8Array {
   for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(random() * 256);
   return bytes;
 }
+
+/** The same bytes for a video note (phase 11 ticket 14). Its own name
+    rather than a second call to the one above, because a video note's
+    bytes being arbitrary rests on a different fact about a different
+    table: `videoNotes.ts` writes them through unread, and the library
+    draws a glyph on a note's tile rather than decoding a still out of it.
+    If either of those two ever stops being true, this is the name that
+    has to change. */
+export const demoVideoBytes = demoAudioBytes;

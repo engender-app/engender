@@ -19,7 +19,7 @@ export type TargetSection = { kind: DocumentTargetKind; heading: string; rows: T
 export function documentTargetHref(target: DocumentTarget): string {
   if (target.kind === 'milestone') return '/transition/milestones';
   if (target.kind === 'procedure') return '/health/surgery';
-  if (target.kind === 'episode') return '/settings/regimen';
+  if (target.kind === 'episode') return '/care/regimen';
   return `/transition/roadmap?goal=${target.id}`;
 }
 

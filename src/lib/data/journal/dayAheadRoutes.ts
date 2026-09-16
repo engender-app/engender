@@ -19,5 +19,5 @@ export const DAY_AHEAD_ROUTES: Record<DayAheadMarkKind, string> = {
   surgery: '/health/surgery',
   milestone: '/transition/milestones',
   letterUnlock: '/transition/letters',
-  doseSlot: '/doses'
+  doseSlot: '/care/doses'
 };

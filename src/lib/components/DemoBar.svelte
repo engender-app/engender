@@ -26,7 +26,7 @@
     ['/settings/dimension', 'Custom dimension'],
     ['/settings/export', 'Export & import'],
     ['/media/photos', 'Progress photos'],
-    ['/settings/labs', 'Lab results'],
+    ['/care/labs', 'Lab results'],
   ];
 
   function setTheme(t: 'light' | 'dark') {

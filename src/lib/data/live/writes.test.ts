@@ -529,7 +529,9 @@ const READS_ITS_OWN_SQL: Partial<Record<keyof Journal, string>> = {
     "its own aggregate SQL, ad hoc CTEs and all, which is why the union rule cannot reach it and its thirteen declarations stay hand-written. Three of them are checked from above, by the areas that compose them - recap, dayAverages and tagInsights; the other ten have the rule below and nothing more",
   textSearch: 'its own registry of per-area queries, whose union it already derives (SEARCH_TABLES)',
   voice: 'the recording rows dated, read straight off the driver',
-  videos: 'the video-note rows dated, read straight off the driver'
+  videos: 'the video-note rows dated, read straight off the driver',
+  photoLibrary:
+    'one UNION ALL over the six tables that hold a photograph, so that the ordering rule is applied once by the thing holding the index rather than assembled from six reads above the seam (photoLibrary.ts)'
 };
 
 test('a composing read declares exactly the tables of the reads it composes', () => {

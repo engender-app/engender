@@ -83,9 +83,11 @@ import { ROW_FORWARD_KEYS, type RowForward, type RowForwardKey, type RowForwardM
     to sit one in Body and one in Practice with nothing saying they were the
     same kind of thing.
 
-    A video-note browse screen would be that group's third member and does not
-    exist yet, which is recorded rather than filled - ticket 02's own scope
-    line.
+    A video note is found in the photo library rather than on a browse screen
+    of its own (phase 11 ticket 14, ADR-0085), so this group stays at two
+    rows. Ticket 02 recorded the gap instead of filling it and the audit of
+    15 September 2026 named it again; what closed it was a sixth source in a
+    list that already existed, not a third row here.
 
     `practice` is gone and `support` is new, both from phase 9 carpet ticket
     16. Practice had become the group for whatever was not body, health,

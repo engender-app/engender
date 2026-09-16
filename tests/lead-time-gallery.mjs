@@ -1,12 +1,18 @@
 /* Renders for the lead time, on screen (redesign phase 10 ticket 16), for
    sign-off.
 
-   Only what the ticket changed: the new field on /settings/stock, and the
+   Only what the ticket changed: the new field on the stock editor, and the
    two surfaces that now name the reorder-by day instead of a countdown -
    Home's low-stock notice and the /care spine mark. Everything else on
    each screen is left in frame only as far as it gives the changed piece
    its context (ticket 23's field-gallery.mjs precedent), never a whole
    screen on its own.
+
+   Updated by ticket 09 (ADR-0084): the stock editor stopped being its own
+   screen at /settings/stock and is a sheet off Care's regimen block now,
+   opened here through the Hormones card's own "stock" row - a stale
+   render, from before that move, would have opened the sheet already
+   showing the entry rather than the plain list this documents.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
@@ -109,11 +115,12 @@ async function fillEveryFeature() {
     lead time, leaving every other field as the fixture seeded it. `null`
     leaves the lead-time field empty (cleared). */
 async function editStock(drug, quantity, leadTimeDays) {
-  await settle('/settings/stock');
-  await page.locator('[data-stock]', { hasText: drug }).click();
+  await settle('/care');
+  await page.locator('[data-list-row="stock"]').click();
   await page.waitForSelector('[data-sheet]');
-  await page.fill('#stock-quantity', String(quantity));
-  await page.fill('#stock-lead-time', leadTimeDays === null ? '' : String(leadTimeDays));
+  await page.locator('[data-stock]', { hasText: drug }).click();
+  await page.fill('#care-stock-quantity', String(quantity));
+  await page.fill('#care-stock-lead-time', leadTimeDays === null ? '' : String(leadTimeDays));
   await page.locator('[data-save-stock]').click();
   await page.waitForSelector('[data-sheet]', { state: 'hidden' });
   await page.waitForTimeout(SETTLED);
@@ -130,12 +137,22 @@ for (const [lang, width, scale] of [
   await settle('/');
   if (lang === 'pl') await setLanguage('pl');
   await setLook('trans', 'light');
-  await settle('/settings/stock');
-  await page.locator('[data-add]').click();
+  await settle('/care');
+  await page.locator('[data-list-row="stock"]').click();
   await page.waitForSelector('[data-sheet]');
+  /* A fresh journal's stock list is empty, so the sheet opens on its own
+     empty state rather than the plain list - `[data-add-stock]` only
+     exists once there is at least one entry to list beside it. */
+  const emptyAction = page.locator('[data-notice="care-stock-empty"] [data-notice-action]');
+  if (await emptyAction.count()) {
+    await emptyAction.click();
+  } else {
+    await page.locator('[data-add-stock]').click();
+  }
+  await page.waitForSelector('#care-stock-lead-time');
   await shootEl(`field-empty-${lang}-${width}`, '[data-sheet]');
 
-  await page.fill('#stock-lead-time', '21');
+  await page.fill('#care-stock-lead-time', '21');
   await shootEl(`field-filled-${lang}-${width}`, '[data-sheet]');
 }
 
