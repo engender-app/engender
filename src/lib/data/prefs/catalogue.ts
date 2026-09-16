@@ -304,9 +304,10 @@ export interface PreferenceValues {
   /** Whether the Look back rail's "drag the ends" hint has been answered by
       a drag (phase 11 ticket 06). One flag rather than a count: the hint is
       there to say the rail can be dragged, and one drag is the whole
-      answer. Portable for the same reason the two protocol flags above are
-      - it records something the person has learned about their journal, not
-      a setting on this device. */
+      answer. Device-local, with the two protocol flags above: what it
+      records is that somebody has worked out a gesture on this
+      installation, which does not travel with the journal - a restore on a
+      new device is a screen somebody has not used before. */
   spanRailHintDismissed: boolean;
   /** The day the hair-progress timeline counts from, as an epoch day, or
       null when the person has not set one (phase 5 ticket 33). Null is a

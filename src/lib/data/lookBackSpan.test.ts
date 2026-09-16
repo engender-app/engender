@@ -195,24 +195,25 @@ describe('the rail draws every dated history, not only the eras', () => {
     { id: 'e1', kind: 'regimen', name: 'Estradiol', startEpochDay: 17000, endEpochDay: 19000 },
     { id: 'e2', kind: 'regimen', name: 'Estradiol valerate', startEpochDay: 19001, endEpochDay: null },
     { id: 't1', kind: 'tryout', name: 'Alex', startEpochDay: 20000, endEpochDay: 20100 },
-    { id: 'p1', kind: 'journalingPause', name: null, startEpochDay: 20200, endEpochDay: 20230 },
     { id: 's1', kind: 'surgery', name: 'Orchiectomy', startEpochDay: 20300, endEpochDay: null },
-    /* Three kinds the same query returns and the rail does not draw: a
-       milestone and an era already have their own marks and bands here, and
-       a recovery window is a reading of a procedure rather than a stretch
-       the person lived through as its own thing. */
+    /* Four kinds the same query returns and the rail does not draw: a
+       milestone and an era already have their own marks and bands here, a
+       recovery window is a reading of a procedure rather than a stretch the
+       person lived through as its own thing, and a journaling pause came
+       off the rail on the sign-off renders - it is the absence of a journal
+       rather than a stretch of a life, and the charts still band it. */
+    { id: 'p1', kind: 'journalingPause', name: null, startEpochDay: 20200, endEpochDay: 20230 },
     { id: 'm1', kind: 'milestone', name: 'Came out', startEpochDay: 20400, endEpochDay: null },
     { id: 'era1', kind: 'era', name: 'First year', startEpochDay: 19500, endEpochDay: null },
     { id: 'r1', kind: 'recovery', name: 'Orchiectomy', startEpochDay: 20301, endEpochDay: 20390 }
   ];
   const annotations = annotationsInRange(sources, { from: RAIL_START, to: TODAY, today: TODAY });
 
-  it('takes the three stretch kinds and nothing else, clamped to the rail', () => {
+  it('takes the two stretch kinds and nothing else, clamped to the rail', () => {
     expect(historyBands(annotations)).toEqual([
       { id: 'e1', kind: 'regimen', name: 'Estradiol', start: RAIL_START, end: 19000, openStart: true, openEnd: false },
       { id: 'e2', kind: 'regimen', name: 'Estradiol valerate', start: 19001, end: TODAY, openStart: false, openEnd: true },
-      { id: 't1', kind: 'tryout', name: 'Alex', start: 20000, end: 20100, openStart: false, openEnd: false },
-      { id: 'p1', kind: 'journalingPause', name: null, start: 20200, end: 20230, openStart: false, openEnd: false }
+      { id: 't1', kind: 'tryout', name: 'Alex', start: 20000, end: 20100, openStart: false, openEnd: false }
     ]);
   });
 
@@ -220,13 +221,13 @@ describe('the rail draws every dated history, not only the eras', () => {
     expect(surgeryMarks(annotations)).toEqual([{ id: 's1', name: 'Orchiectomy', epochDay: 20300 }]);
   });
 
-  it('gives each kind present its own lane, in the rail’s own order', () => {
-    expect(historyKindsPresent(historyBands(annotations))).toEqual(['regimen', 'tryout', 'journalingPause']);
+  it('gives each kind present its own row, in the rail’s own order', () => {
+    expect(historyKindsPresent(historyBands(annotations))).toEqual(['regimen', 'tryout']);
   });
 
   it('leaves out a kind this journal has none of', () => {
     const onlyTryouts = historyBands(
-      annotationsInRange([sources[2]], { from: RAIL_START, to: TODAY, today: TODAY })
+      annotationsInRange([sources.find((s) => s.kind === 'tryout')!], { from: RAIL_START, to: TODAY, today: TODAY })
     );
     expect(historyKindsPresent(onlyTryouts)).toEqual(['tryout']);
   });
@@ -236,7 +237,6 @@ describe('the rail draws every dated history, not only the eras', () => {
       'era',
       'regimen',
       'tryout',
-      'journalingPause',
       'surgery'
     ]);
     expect(railLegendKinds([], [], false)).toEqual([]);

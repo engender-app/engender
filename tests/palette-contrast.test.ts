@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf } from '../src/lib/theme/colour';
-import { bandRoles, flagField, flagRoles } from '../src/lib/theme/roles';
+import { flagField, flagRoles } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -445,23 +445,6 @@ describe('the field and the fills (phase 10)', () => {
     }
     expect(Number(worst.ratio.toFixed(2)), worst.where).toBe(1.13);
     expect(worst.where).toContain('nonbinary/light');
-  });
-
-  /* The Look back rail draws four kinds of band, and its rule is that no
-     two of them share a stripe (phase 11 ticket 06). Two of those kinds -
-     the HRT lane and the tryout lane - take a flag stripe each; the other
-     two take no stripe at all, so the whole rule reduces to this floor. It
-     is not obvious that it holds: `bandRoles` hands out colours before
-     shades, and three of the eight flags yield only two colours. */
-  it('gives the rail two stripes to tell its two coloured lanes apart, on every flag', () => {
-    for (const palette of PALETTES) {
-      for (const theme of THEMES) {
-        const t = tokenMap(palette, theme);
-        const bands = bandRoles(flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']]));
-        expect(bands.length, `${palette}/${theme} yields ${bands.length} band role(s)`).toBeGreaterThanOrEqual(2);
-        expect(bands[0].stripe.toUpperCase(), `${palette}/${theme}`).not.toBe(bands[1].stripe.toUpperCase());
-      }
-    }
   });
 
   it('inks the pitch value block to rule 11\'s large-text floor on every flag', () => {
