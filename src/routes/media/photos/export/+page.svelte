@@ -11,7 +11,7 @@
      which is also the width the collage was made at. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -105,9 +105,10 @@
     const url = new URL(page.url);
     if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
     else url.searchParams.set(SOURCE_PARAM, next);
-    // `goto`, not `replaceState`: see the library screen's own note - shallow
-    // routing never updates `page.url`, which is where the chip is read from.
-    await goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+    // `replaceRoute`, not `replaceState`: see the library screen's own note -
+    // shallow routing never updates `page.url`, which is where the chip is
+    // read from, and a replacing navigation owes the back-depth count a word.
+    await replaceRoute(url, { noScroll: true, keepFocus: true });
     await tick();
     travelCells(before, gridEl, 'data-photo-key');
   }

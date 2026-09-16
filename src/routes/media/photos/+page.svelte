@@ -28,7 +28,7 @@
      not a frame. Its tile plays it instead of picking it. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -186,13 +186,15 @@
     const url = new URL(page.url);
     if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
     else url.searchParams.set(SOURCE_PARAM, next);
-    /* `goto` and not `replaceState`: shallow routing updates `history` and
-       `page.state` and never `page.url` (kit's own client.js), so a chip
+    /* A navigation and not `replaceState`: shallow routing updates `history`
+       and `page.state` and never `page.url` (kit's own client.js), so a chip
        read out of the query would never see its own write. A same-route
-       navigation keeps this component and its selection, replaces the
-       history entry rather than stacking one per chip, and leaves the
-       scroll and the focus where the finger left them. */
-    await goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+       navigation keeps this component and its selection, and `replaceRoute`
+       is how the app replaces an entry rather than pushing one - it tells
+       the back-depth count what SvelteKit cannot (smart-back.ts), so a chip
+       press does not leave a screen behind for back to walk into. The scroll
+       and the focus stay where the finger left them. */
+    await replaceRoute(url, { noScroll: true, keepFocus: true });
     await tick();
     travelCells(before, gridEl, 'data-photo-key');
   }
