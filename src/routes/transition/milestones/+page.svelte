@@ -27,9 +27,9 @@
      is a redirect to here now. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
-  import { replaceState } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
@@ -103,6 +103,12 @@
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let sorted = $derived(vocabulary.milestones);
+
+  /* Eras aren't mirrored the way milestones are, so the rail's bands read
+     a live query - `erasQuery.rows` is `[]` before it resolves, which
+     draws a rail with no bands rather than one waiting on a loading
+     state that never shows (redesign ticket 16). */
+  let erasQuery = liveList((j) => j.eras.getEras());
 
   /* What a blank draft is seeded from, set by whichever row of the picker
      was tapped just before it opens. Held beside the editor rather than
@@ -295,7 +301,12 @@
          16). The rail carries today's place among the milestones and the
          hollow marks ahead of it; the list under it is the same set as
          rows, which is where a milestone is opened, edited or deleted. -->
-    <MilestoneRail milestones={sorted} onOpen={(mi) => openEditor(mi, null)} />
+    <MilestoneRail
+      milestones={sorted}
+      eras={erasQuery.rows}
+      onOpen={(mi) => openEditor(mi, null)}
+      onOpenEra={(id) => goto(`/settings/eras?edit=${id}`)}
+    />
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       <ListRow
         data-ms-log-toggle

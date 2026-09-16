@@ -3403,6 +3403,7 @@
   "era_delete_sheet": "Delete era",
   "era_delete_q": "Delete “{name}”? The days stay, the name goes.",
   "era_start_here": "Start an era here",
+  "era_band_open_aria": "Open {name}",
   "words_group_by_label": "Group by",
   "words_mode_presentation": "Mode",
   "words_mode_era": "Era",
