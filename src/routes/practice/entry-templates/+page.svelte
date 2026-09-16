@@ -13,6 +13,8 @@
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { templateSummaryKeys } from '$lib/data/vocabulary/entryTemplates';
+  import { dimensionName, tagLabel } from '$lib/data/vocabulary/labels';
   import type { EntryTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -76,6 +78,18 @@
   async function toggleHidden(t: EntryTemplate) {
     await journal.entryTemplates.setEntryTemplateHidden(t.id, !t.hidden);
   }
+
+  /** What a row states under its name (audit item 5): its dimensions and
+      tags, three named and the rest counted (templateSummaryKeys), read
+      from the record rather than left blank. `undefined` for a template
+      with neither - the blank draft a "+" starts from, say - which is a
+      line the row does not have rather than an empty one. */
+  function templateSummary(t: EntryTemplate): string | undefined {
+    const { shown, rest } = templateSummaryKeys(t);
+    if (shown.length === 0) return undefined;
+    const names = shown.map((s) => (s.kind === 'dim' ? dimensionName(s.key) : tagLabel(s.key))).join(', ');
+    return rest > 0 ? m.entry_template_summary_more({ names, count: String(rest) }) : names;
+  }
 </script>
 
 <div class="screen">
@@ -94,7 +108,7 @@
           key={t.id}
           data-entry-template={t.id}
           title={t.name}
-          subtitle={t.hidden ? m.tags_hidden() : undefined}
+          subtitle={[templateSummary(t), t.hidden ? m.tags_hidden() : undefined]}
           chevron={false}
           onclick={() => record.openEditor(t)}
           action={{

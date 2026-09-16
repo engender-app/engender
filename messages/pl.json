@@ -588,6 +588,7 @@
   "entry_template_note_scaffold_placeholder": "Zdanie do dopisania, albo zostaw puste",
   "entry_template_hide_aria": "Ukryj {name}",
   "entry_template_show_aria": "Pokaż {name}",
+  "entry_template_summary_more": "{names} i jeszcze {count}",
   "tpl_regimen_estradiol_valerate_im": "Walerianian estradiolu, domięśniowo",
   "tpl_regimen_estradiol_oral": "Estradiol doustnie",
   "tpl_regimen_estradiol_gel": "Żel z estradiolem",
