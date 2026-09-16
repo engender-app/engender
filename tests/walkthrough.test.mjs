@@ -6918,7 +6918,10 @@ try {
   if ((await page.locator('[data-wipe-date]').count()) !== 2) {
     throw new Error('the wipe inside the library did not open on two photographs');
   }
-  await page.locator('[data-segment="browse"]').click();
+  /* Out of the wipe by its own control rather than by the segmented pair,
+     which the compare view does not draw - it is a screen with a back arrow
+     and this button, not a tab. */
+  await page.locator('[data-photos-back-to-all]').click();
   await page.waitForSelector('[data-photo-key]');
 
   // A video note plays rather than being picked.

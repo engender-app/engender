@@ -289,7 +289,7 @@
     {/if}
 
     <div>
-      <button class="btn btn-soft press" onclick={() => setComparing(false)}>
+      <button class="btn btn-soft press" data-photos-back-to-all onclick={() => setComparing(false)}>
         <span>{m.ph_back_to_all()}</span>
       </button>
     </div>
