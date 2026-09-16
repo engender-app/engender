@@ -17,9 +17,10 @@
 
      It was three reads until phase 9 carpet ticket 16: the third was the regimen
      episode list, read only to answer ADR-0043's gate for the cycle row. That
-     row is drawn on /health/side-effects now, which was already asking the
-     same question for the cycle block it draws, so the gate and the read that
-     feeds it are in one place instead of two.
+     row is drawn on /practice/personal-effects now (ticket 13 moved it again,
+     with the rest of what /health/side-effects used to draw), which was
+     already asking the same question for the cycle block it draws, so the
+     gate and the read that feeds it are in one place instead of two.
 
      Nothing gates the screen on the door's own three reads. This is a
      navigation surface, and a skeleton in front of twenty links a person can

@@ -70,7 +70,7 @@ async function setLook(page, palette, theme) {
     reads back is a free-text field, so it matters that these are the words
     a person would actually type. */
 async function addEpisode(page, { drug, dose, unit, route, interval = 'daily' }) {
-  await goto(page, '/settings/regimen');
+  await goto(page, '/care/regimen');
   await page.locator('[data-add]').click();
   await page.locator('[data-own]').click();
   await page.fill('#regimen-drug', drug);
@@ -87,7 +87,7 @@ async function addEpisode(page, { drug, dose, unit, route, interval = 'daily' })
     editor only exists on an episode that has been saved, so this reopens
     the row rather than filling it in on the way past. */
 async function addAlternatingSchedule(page, drug, amounts) {
-  await goto(page, '/settings/regimen');
+  await goto(page, '/care/regimen');
   await page.locator('[data-episode]', { hasText: drug }).click();
   await page.waitForSelector('[data-add-amount]');
   for (const [index, amount] of amounts.entries()) {
@@ -100,7 +100,7 @@ async function addAlternatingSchedule(page, drug, amounts) {
 }
 
 async function openSheet(page) {
-  await goto(page, '/doses');
+  await goto(page, '/care/doses');
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
   await page.waitForTimeout(SETTLED);

@@ -32,14 +32,13 @@ export type AreaGroupKey =
   | 'wear'
   | 'hair-progress'
   | 'hair-removal'
-  | 'side-effects'
   | 'effects'
   | 'voice'
   | 'dilation';
 
 /** Which areas each group finishes, together.
 
-    Five of the eight front exactly one area. Hair progress fronts two, and
+    Four of the seven front exactly one area. Hair progress fronts two, and
     so does voice (phase 8 features ticket 10): a benchmark and a practice
     take are both dated records of the same practice, so `voice` finishes
     them together the way hair progress finishes its stagings and its
@@ -56,14 +55,22 @@ export type AreaGroupKey =
     `sizes` group is gone rather than renamed: `areaState.ts` keys what is
     finished by `sizeRecords`, the archive section, so nothing a person has
     already finished is disturbed by the navigation above it changing
-    (ADR-0052). */
+    (ADR-0052).
+
+    `effects` is the fourth, from phase 11 all-four-doors ticket 13: a side
+    effect and a change you were hoping for both landed on one screen and one
+    axis, and the group followed the screen the same way `measurements` did -
+    `personalEffects` and `sideEffects` finish together now, and the old
+    `side-effects` group is gone rather than renamed, for the reason `sizes`
+    was: `areaState.ts` keys what is finished by `sideEffects`, the archive
+    section, so nothing already finished is disturbed by the screen above it
+    merging. */
 export const AREA_GROUPS = {
   measurements: ['measurements', 'sizeRecords'],
   wear: ['wearSessions'],
   'hair-progress': ['hairStages', 'hairPhotos'],
   'hair-removal': ['hairRemovalSessions'],
-  'side-effects': ['sideEffects'],
-  effects: ['personalEffects'],
+  effects: ['personalEffects', 'sideEffects'],
   voice: ['voiceBenchmarks', 'voicePracticeTakes'],
   dilation: ['taperSessions']
 } as const satisfies Record<AreaGroupKey, readonly FinishableArea[]>;

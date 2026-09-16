@@ -21,14 +21,14 @@ describe('choosing a tier-2 pattern', () => {
   it('shares an axis going deeper inside one tab, because that is a sequence', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690' }))).toBe('shared-axis');
     expect(screenTransition(nav({ from: '/stats', to: '/body-map' }))).toBe('shared-axis');
-    expect(screenTransition(nav({ from: '/more', to: '/settings/labs' }))).toBe('shared-axis');
+    expect(screenTransition(nav({ from: '/more', to: '/care/labs' }))).toBe('shared-axis');
   });
 
   it('reads a route that lights another tab as a tab change, not a detail', () => {
-    /* /doses is reached from More's health group and lights that tab
+    /* /care/doses is reached from More's health group and lights that tab
        (active-tab.ts), so arriving from Stats crosses tabs even though
        neither path is a tab root. */
-    expect(screenTransition(nav({ from: '/stats', to: '/doses' }))).toBe('fade-through');
+    expect(screenTransition(nav({ from: '/stats', to: '/care/doses' }))).toBe('fade-through');
   });
 
   it('steps into the return moment and back out of it (ticket 35)', () => {

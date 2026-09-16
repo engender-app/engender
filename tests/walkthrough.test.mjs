@@ -1002,49 +1002,59 @@ try {
 try {
   await fresh('/stats');
   await page.waitForSelector('[data-span-handle="start"]');
-  const spanBefore = await page.locator('[data-screen-subtitle]').textContent();
+  /* The line naming the span sits under the rail since ticket 06, and
+     counts as the handles move. */
+  const spanBefore = await page.locator('[data-span-state-line]').textContent();
   await page.locator('[data-span-handle="start"]').focus();
   await page.keyboard.press('Shift+ArrowLeft');
   await page.waitForFunction(
-    (was) => document.querySelector('[data-screen-subtitle]')?.textContent !== was,
+    (was) => document.querySelector('[data-span-state-line]')?.textContent !== was,
     spanBefore
   );
-  const period = await page.locator('[data-screen-subtitle]').textContent();
-  /* The subtitle carries the span's two dates and its length in days. */
-  if (!/\d/.test(period ?? '')) throw new Error('the subtitle carries no span: ' + period);
+  const period = await page.locator('[data-span-state-line]').textContent();
+  if (!/\d/.test(period ?? '')) throw new Error('the state line carries no span: ' + period);
   const spanStart = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-start'));
   const spanEnd = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-end'));
   if (!(spanEnd > spanStart)) throw new Error(`the span is not a span: ${spanStart}..${spanEnd}`);
-  /* The charts re-read on the settled span a beat after the last key. */
+  /* The tiles re-read on the settled span a beat after the last key. */
   await page.waitForTimeout(600);
-  /* The values are a visually hidden list on the screen itself since ticket
-     99 item 26 removed the "All values" link and its sheet - no control to
-     press, and the numbers still there in text for anything that reads the
-     page rather than looks at it. Counted rather than clicked, since a
-     hidden node cannot be interacted with. */
+  /* The door is a grid of readings now (phase 11 ticket 07): every tile
+     states a figure and opens a screen carrying the span it was read at,
+     so the address on each tile names the two days the rail shows. */
+  const tiles = page.locator('[data-reading-grid] [data-reading]');
+  if (!(await tiles.count())) throw new Error('the door draws no reading tiles');
+  const hrefs = await tiles.evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+  const startIso = await page.evaluate((day) => new Date(day * 86400000).toISOString().slice(0, 10), spanStart);
+  for (const href of hrefs) {
+    if (!/[?&]from=\d{4}-\d{2}-\d{2}|[?&]aStart=\d{4}-\d{2}-\d{2}/.test(href ?? '')) {
+      throw new Error('a tile opens without the span: ' + href);
+    }
+  }
+  if (!hrefs.some((h) => h?.includes(startIso))) throw new Error(`no tile carries the span's start ${startIso}: ${hrefs.join(' ')}`);
+  /* Day by day opens at the span: the chart with its picker, the scales
+     card under it, and the series still readable as text - a visually
+     hidden list since ticket 99 item 26 removed the "All values" link. */
+  await page.locator('[data-reading="day-by-day"]').click();
+  await page.waitForURL('**/stats/day-by-day?**');
+  await page.waitForSelector('[data-chart-card="day-by-day"]');
   if (!(await page.locator('[data-values-list] li').count())) {
     throw new Error('the stats series is no longer readable as text');
   }
-  /* Tag insights name a built-in tag, so a blank label means the key never
-     got resolved. */
-  const insight = await page
-    .locator('[data-chart-card="tag-insights"] [data-bar-name]')
-    .first()
-    .textContent();
-  if (!insight?.trim()) throw new Error('tag insight has no label');
   /* Every scale gets a bar, including one nothing was logged against. */
   if (!(await page.locator('[data-chart-card="scales"] [data-bar-row]').count())) {
     throw new Error('no scale bars drawn');
   }
-  /* Five mood steps, always. The columns this used to count became one
-     ordered strip (phase 8 UX ticket 04, ADR-0058) and the rule survived
-     the change of form intact: the sequence is what is being read, so a
-     step nothing landed on holds its place at zero width rather than
-     sliding the rest under the wrong part of the scale. */
+  /* How the days fell: five mood steps, always - a step nothing landed on
+     holds its place at zero width rather than sliding the rest under the
+     wrong part of the scale. */
+  await fresh('/stats');
+  await page.locator('[data-reading="days"]').click();
+  await page.waitForURL('**/stats/days?**');
+  await page.waitForSelector('[data-strip-step]');
   if ((await page.locator('[data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
-  ok('stats range, value list, named tag insights and the scale bars');
+  ok('stats: the span drives every tile, day by day and the days open at the span');
 } catch (e) { fail('stats', e); }
 
 /* 6a. a tag insight's sheet holds the same set the row's own count named
@@ -1053,12 +1063,15 @@ try {
    against the number of entry cards the sheet actually opened, so the two
    cannot drift apart again without failing here. */
 try {
-  await fresh('/stats');
-  const bar = page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first();
+  /* The merged tag card is a reading of its own since phase 11 ticket 07,
+     and draws as paired dots (redesign ticket 05): the row's note names
+     its scale first and then its count. */
+  await fresh('/stats/tags');
+  const bar = page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first();
   await bar.waitFor();
-  const note = await bar.locator('[data-bar-note]').textContent();
-  const claimed = Number((note ?? '').match(/\d+/)?.[0]);
-  if (!claimed) throw new Error('tag insight row has no entry count: ' + note);
+  const note = await bar.locator('[data-paired-note]').textContent();
+  const claimed = Number((note ?? '').match(/(\d+) /)?.[1]);
+  if (!claimed) throw new Error('tag row has no entry count: ' + note);
 
   await bar.click();
   await page.waitForSelector('[data-sheet]');
@@ -1085,8 +1098,9 @@ try {
    for it to be the ends of. Both are asserted on the resting state after the
    pick rather than on anything mid-tween. */
 try {
-  await fresh('/stats');
+  await fresh('/stats/day-by-day');
   const card = page.locator('[data-chart-card="day-by-day"]');
+  await card.waitFor();
   if (!(await card.locator('[data-chart-scale]').count())) {
     throw new Error('one scale should print its value gutter');
   }
@@ -1129,8 +1143,8 @@ try {
    pure function; what this proves is that the tap still arrives, which is
    the half a table cannot answer. */
 try {
-  await fresh('/stats');
-  await page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first().click();
+  await fresh('/stats/tags');
+  await page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first().click();
   /* The sheet, and then the entries in it: the read behind them is its own
      query, so the card can arrive a frame after the sheet does. */
   await page.waitForSelector('[data-sheet] [data-entry-card]');
@@ -1163,8 +1177,10 @@ try {
    rather than assumed, since a length past the persona's span draws nothing
    to wait for. */
 try {
-  await fresh('/stats');
-  const card = page.locator('[data-chart-card="custom-interval"]');
+  /* On Care since redesign ticket 05, as the merged interval card's own
+     control. */
+  await fresh('/care');
+  const card = page.locator('[data-chart-card="interval-mood"]');
   const field = page.locator('#custom-interval-length');
 
   await field.fill('');
@@ -1279,7 +1295,7 @@ try {
 
 /* 6c. lab result CRUD and per-analyte chart */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
      charted feature screens onto the chart kit, and the handle moved with
      the component the way ticket 24's list-row handles did. */
@@ -1317,7 +1333,7 @@ try {
    this step is about the pg/mL/pmol/L merge, not about which analyte opens
    the screen. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-segment="estradiol"]').click();
   /* The "+" sheet now prefills from whichever analyte is on screen (ticket
      37), so the add below has to happen after the switch has actually
@@ -1366,7 +1382,7 @@ try {
    mocked recognizer would prove the wiring works without proving the sheet
    that wiring lives in ever opens. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -1425,7 +1441,7 @@ try {
    engine to read, so unlike 6e this does not depend on what Tesseract makes
    of rendered text. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -3177,11 +3193,19 @@ try {
   if ((await june.locator('[data-year-cell]').count()) !== 30) {
     throw new Error('June should be thirty cells, one per day');
   }
-  /* The five entries this flow wrote landed in June, and a day that carried a
-     mood draws the picker's own face rather than an empty outline. */
-  if ((await june.locator('[data-year-cell] svg').count()) < 5) {
-    throw new Error('the month the entries went into drew no moods');
+  /* The five entries this flow wrote landed in June, and a day that carried
+     a value is a shaded cell rather than an empty one (phase 11 ticket 07:
+     a shaded row per month on the active scale's ramp, no face per day). */
+  if ((await june.locator('[data-year-cell]:not([data-year-step="0"])').count()) < 5) {
+    throw new Error('the month the entries went into shaded no days');
   }
+  /* No svg per day: the whole months card draws at most a handful. */
+  const monthSvgs = await page.locator('[data-chart-card="wrapped-months"] svg').count();
+  if (monthSvgs > 13) throw new Error(`the year draws ${monthSvgs} svgs; a face per day is back`);
+  /* The year's figures come before the months (finding 7 of the audit). */
+  const figuresTop = await page.locator('[data-wrapped-figure]').first().evaluate((el) => el.getBoundingClientRect().top);
+  const monthsTop = await page.locator('[data-chart-card="wrapped-months"]').evaluate((el) => el.getBoundingClientRect().top);
+  if (!(figuresTop < monthsTop)) throw new Error('the year still draws its grid before its figures');
   const yearCells = page.locator('[data-chart-card="wrapped-months"] [data-year-cell]');
   const dayCount = await page.evaluate(() => {
     const year = new Date().getFullYear() - 1;
@@ -3401,7 +3425,13 @@ try {
   const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
   const card = page.locator('[data-on-this-day-card]');
   if ((await card.count()) !== 1) throw new Error('Look back should offer the on-this-day card now, found ' + (await card.count()));
+  /* The tile opens the day in place under the pair (phase 11 ticket 07):
+     the block discloses on the door, and the URL stays. */
   await card.click();
+  await page.waitForSelector('[data-lookback-day] [data-lookback]');
+  if (!page.url().endsWith('/stats')) throw new Error('opening on-this-day left the door for ' + page.url());
+  /* And the route still answers, for the notification deep link. */
+  await fresh('/on-this-day');
   await page.waitForSelector('[data-lookback]');
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
@@ -3807,7 +3837,7 @@ try {
    - the disambiguation this ticket exists to force before a dose can be
    drawn into the wrong drug's curve. */
 try {
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
 
   const addOwnEpisode = async (drug, dose, unit) => {
     await page.click('[data-add]');
@@ -3836,7 +3866,7 @@ try {
     throw new Error('both concurrently active episodes should read Current, not just the latest one');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 2) {
     throw new Error('logging a dose with two active episodes should prompt for which drug it was');
@@ -3862,7 +3892,7 @@ try {
 
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   const localDateInput = (daysAgo = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -3892,7 +3922,7 @@ try {
     throw new Error('ending the estradiol episode should not touch spironolactone, which is still active');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 0) {
     throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
@@ -3914,7 +3944,7 @@ try {
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
-    '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
+    '/body/hair-removal', '/care/labs', '/care/regimen', '/care/curve',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
@@ -4071,12 +4101,14 @@ try {
     ['/body/measurements', 'sizes-empty'],
     ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
-    ['/settings/labs', 'labs-empty'],
-    ['/settings/regimen', 'regimen-empty'],
-    ['/settings/hormone-curve', 'curve-empty'],
-    ['/doses', 'doses-empty'],
+    ['/care/labs', 'labs-empty'],
+    ['/care/regimen', 'regimen-empty'],
+    ['/care/curve', 'curve-empty'],
+    ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
-    ['/health/side-effects', 'side-effects-empty'],
+    // The merged screen (ticket 13) - side effects keep their own
+    // empty-state marker under the same roof as the changes axis.
+    ['/practice/personal-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
     ['/health/dilation', 'dilation-schedule-empty'],
     ['/health/appointment-prep', 'appointment-prep-empty'],
@@ -4090,7 +4122,11 @@ try {
        about. The voice screen's own walk is below and asks the compare tab
        directly. */
     ['/practice/wear', 'wear-empty'],
-    ['/settings/stock', 'stock-empty'],
+    /* `/settings/stock` is not on this list any more (ticket 09, ADR-0084):
+       the stock editor is a sheet off Care's own regimen block now, closed
+       by default, so a bare page load of `/care` never renders its
+       `care-stock-empty` marker either way - the check above would pass
+       without the sheet ever having been opened. */
     ['/settings/reminders', 'reminders-empty'],
     // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
     // starred entries, saved questions, an attached document, a second
@@ -4311,7 +4347,7 @@ try {
    its presence is what actually proves the adoption on a screen a count
    can't. */
 try {
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   const onArrival = await page.locator('[data-dose]').count();
   if (onArrival !== 30) throw new Error(`the dose log rendered ${onArrival} rows on arrival, not one batch of 30`);
@@ -4324,7 +4360,7 @@ try {
 }
 
 try {
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   if ((await page.locator('[data-batched-list="episodes"]').count()) !== 1) {
     throw new Error('the regimen episode list is not wrapped in BatchedList');
@@ -4343,15 +4379,15 @@ try {
    is guaranteed to sit past the dose log's own newest-first first batch. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const firstDoseLink = page.locator('a[href^="/care/doses#"]').first();
   const href = await firstDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await firstDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 }); // the hash is stripped once honoured
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -4381,7 +4417,8 @@ try {
    demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
    one dose in the window as close to certain as a seeded draw gets - so
    every link stays visible, and the last one is still today's or
-   yesterday's, nowhere near needing a batch past /doses' first thirty. */
+   yesterday's, nowhere near needing a batch past /care/doses' first
+   thirty. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
   const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
@@ -4390,15 +4427,15 @@ try {
   await fillDate(page, '#clinician-summary-start', dateInputValueFromEpochDay(todayEpochDay() - 3));
   await page.keyboard.press('Escape');
   await page.waitForSelector('[data-sheet]', { state: 'detached', timeout: 8000 });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const lastDoseLink = page.locator('a[href^="/doses#"]').last();
+  const lastDoseLink = page.locator('a[href^="/care/doses#"]').last();
   const href = await lastDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await lastDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 });
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -4630,17 +4667,13 @@ try {
    Handles, not headings: every step is a `data-list-row` click and a URL
    wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
 try {
-  // Health > Care > Changes you've noticed > Side effects.
+  // Health > Care > Changes you've noticed, which carries side effects on
+  // the same axis and the same list now (ticket 13) - there is no row left
+  // to tap for them, and no second screen to back out of.
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
   await page.locator('[data-list-row="effects"]').click();
-  await page.waitForURL('**/practice/personal-effects');
-  await page.locator('[data-list-row="side-effects"]').click();
-  await page.waitForURL('**/health/side-effects');
-
-  // Back out the way in, which is what the host's own `back` names.
-  await page.locator('[data-screen-back]').click();
   await page.waitForURL('**/practice/personal-effects');
 
   // ... and the other change hanging off the same screen.
@@ -5143,7 +5176,7 @@ try {
    every other flow in this file reads a 440px screen. */
 try {
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
@@ -5923,15 +5956,17 @@ try {
      explicit opt-in switch in Settings, and an active testosterone
      episode, which surfaces it with the switch back off. */
   /* No step on /more any more: phase 9 carpet ticket 16 took the cycle row
-     off the hub entirely and hosted it under the side effects screen, so
-     "the hub does not name it" is now structural and an absence check there
-     would pass whatever this gate did. What is left to walk is the surface
-     that does name it behind the gate, and `all-cycle-events` is a handle
-     this flow goes on to wait for - so its absence here means something
-     (ADR-0029, and a deleted handle cannot assert it is gone). */
-  await fresh('/health/side-effects');
+     off the hub entirely and hosted it under the side effects screen -
+     ticket 13 moved it again, onto the merged changes screen, with the rest
+     of what that screen drew - so "the hub does not name it" is now
+     structural and an absence check there would pass whatever this gate
+     did. What is left to walk is the surface that does name it behind the
+     gate, and `all-cycle-events` is a handle this flow goes on to wait for -
+     so its absence here means something (ADR-0029, and a deleted handle
+     cannot assert it is gone). */
+  await fresh('/practice/personal-effects');
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
-    throw new Error('side effects named the cycle log with no testosterone and no opt-in');
+    throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
   }
   if (await page.locator('[data-cycle-events-link]').count()) {
     throw new Error('regimen linked the cycle log without a testosterone episode');
@@ -5956,7 +5991,7 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // Back off, so the next flow starts from the default and the testosterone
@@ -5976,7 +6011,7 @@ try {
      is for, asking nothing of preferences. The regimen screen links the
      log while the episode runs, and stops again once it is ended - cycle
      cessation belongs to the timeline that caused it. */
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -5988,7 +6023,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
 
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
@@ -5998,14 +6033,14 @@ try {
     d.setDate(d.getDate() - n);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().click(); // text-under-test: the drug I just typed
   await page.waitForSelector('#regimen-end');
   await fillDate(page, '#regimen-end', daysAgoIso(1));
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
   ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
 } catch (e) { fail('cycle tracking testosterone', e); }
@@ -6055,7 +6090,7 @@ try {
   await page.locator('[data-nav-fab]').click();
 
   // Add an active estradiol regimen episode starting today
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -6081,7 +6116,7 @@ try {
   });
 
   // Move the anchor episode to 400 days ago (>12 months)
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]').first().click();
   await page.waitForSelector('#regimen-start');
   await fillDate(page, '#regimen-start', localIso(400));

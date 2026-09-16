@@ -437,8 +437,8 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('dose-panel');
     expect(tile.attrs).toEqual({ 'data-dose-panel-tile': true });
     expect(tile.value).toBe('Estradiol patch');
-    expect(tile.href).toBe('/doses');
-    expect(tile.action?.href).toBe('/doses?add=1');
+    expect(tile.href).toBe('/care/doses');
+    expect(tile.action?.href).toBe('/care/doses?add=1');
   });
 
   /* Phase 11 ticket 03: the panel is the dose's one home on Today, so it
@@ -588,7 +588,7 @@ describe('what each tile says', () => {
     expect(tile.attrs).toEqual({ 'data-patch-schedule-tile': true });
     expect(tile.value).toBe('Estradiol patch');
     expect(tile.note).toBe('100 mcg · patch');
-    expect(tile.action?.href).toBe('/doses?add=1');
+    expect(tile.action?.href).toBe('/care/doses?add=1');
   });
 
   it('the voice benchmark nudge counts the days and links the recorder', () => {

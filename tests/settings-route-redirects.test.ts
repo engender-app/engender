@@ -40,6 +40,19 @@
    see. It is an ordinary stub now, so the address is held to the same rule
    as the other twenty-seven.
 
+   Phase 11 ticket 09 (ADR-0084) moves the medication module the same way:
+   regimen, labs and the hormone curve get their own `/care/*` address, the
+   stock editor's old screen and the deleted exposure screen both redirect
+   to `/care` itself rather than to a stub for something that no longer
+   exists, and `/doses` joins the dose log under `/care/doses` too.
+
+   Phase 11 all-four-doors ticket 13 adds `health/side-effects`, on the same
+   pattern ticket 61 set for `body/sizes`: side effects merged onto
+   /practice/personal-effects rather than moving to a screen of their own,
+   so the old screen's address is a stub now, and `settings/side-effects`
+   is repointed at the merged screen directly rather than at that stub -
+   one hop, not two.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -49,13 +62,31 @@ import { isRedirect } from '@sveltejs/kit';
 import { describe, expect, it } from 'vitest';
 
 const REDIRECTS: [string, () => unknown, string][] = [
+  /* Ticket 09 (ADR-0084): the medication module moves off Settings and off
+     /doses onto Care's own address - the five old addresses, and /doses
+     itself, are the six this ticket's stubs cover. */
+  ['settings/regimen', () => import('../src/routes/settings/regimen/+page.ts'), '/care/regimen'],
+  ['settings/labs', () => import('../src/routes/settings/labs/+page.ts'), '/care/labs'],
+  ['settings/hormone-curve', () => import('../src/routes/settings/hormone-curve/+page.ts'), '/care/curve'],
+  ['settings/stock', () => import('../src/routes/settings/stock/+page.ts'), '/care'],
+  ['settings/exposure', () => import('../src/routes/settings/exposure/+page.ts'), '/care'],
+  ['doses', () => import('../src/routes/doses/+page.ts'), '/care/doses'],
   ['settings/measurements', () => import('../src/routes/settings/measurements/+page.ts'), '/body/measurements'],
   ['settings/sizes', () => import('../src/routes/settings/sizes/+page.ts'), '/body/measurements'],
   ['body/sizes', () => import('../src/routes/body/sizes/+page.ts'), '/body/measurements'],
   ['settings/hair-progress', () => import('../src/routes/settings/hair-progress/+page.ts'), '/body/hair-progress'],
   ['settings/hair-removal', () => import('../src/routes/settings/hair-removal/+page.ts'), '/body/hair-removal'],
   ['settings/cycle-events', () => import('../src/routes/settings/cycle-events/+page.ts'), '/health/cycle-events'],
-  ['settings/side-effects', () => import('../src/routes/settings/side-effects/+page.ts'), '/health/side-effects'],
+  [
+    'settings/side-effects',
+    () => import('../src/routes/settings/side-effects/+page.ts'),
+    '/practice/personal-effects'
+  ],
+  [
+    'health/side-effects',
+    () => import('../src/routes/health/side-effects/+page.ts'),
+    '/practice/personal-effects'
+  ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
   [

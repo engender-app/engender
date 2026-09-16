@@ -48,6 +48,7 @@ describe('activeTabKey', () => {
   it('lights settings for settings and more', () => {
     expect(activeTabKey('/settings')).toBe('settings');
     expect(activeTabKey('/settings/regimen')).toBe('settings');
+    expect(activeTabKey('/care/regimen')).toBe('settings');
     expect(activeTabKey('/more')).toBe('settings');
   });
 
@@ -72,6 +73,9 @@ describe('activeTabKey', () => {
 
   it('lights settings for doses, even though its route sits outside /settings', () => {
     expect(activeTabKey('/doses')).toBe('settings');
+    expect(activeTabKey('/care/doses')).toBe('settings');
+    expect(activeTabKey('/care/labs')).toBe('settings');
+    expect(activeTabKey('/care/curve')).toBe('settings');
   });
 
   /* Features ticket 33: the 23 hub-row screens moved off /settings/<slug>

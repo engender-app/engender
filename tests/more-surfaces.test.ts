@@ -18,7 +18,7 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const more = read('src/routes/more/+page.svelte');
 const markup = more.replace(/<script[\s\S]*?<\/script>/g, '');
-const sideEffects = read('src/routes/health/side-effects/+page.svelte');
+const personalEffects = read('src/routes/practice/personal-effects/+page.svelte');
 
 describe('what the More hub is built from', () => {
   it('takes its surfaces from the kit and draws no card or list-group of its own', () => {
@@ -85,15 +85,16 @@ describe('what the More hub is built from', () => {
   });
 
   it('asks nothing about cycle tracking, since it draws no cycle row (ADR-0043)', () => {
-    /* The row is hosted by /health/side-effects now (ticket 16), which was
-       already gating its own cycle block on `cycleTrackingVisible`. ADR-0043's
-       decision is unchanged and stronger for it: the hub cannot show a cycle
-       prompt at all, rather than showing one behind a rule it had to fetch an
-       episode list to evaluate. */
+    /* The row is hosted by /practice/personal-effects now (ticket 16 put it on
+       /health/side-effects, ticket 13 moved it again with the rest of what
+       that screen drew), which was already gating its own cycle block on
+       `cycleTrackingVisible`. ADR-0043's decision is unchanged and stronger
+       for it: the hub cannot show a cycle prompt at all, rather than showing
+       one behind a rule it had to fetch an episode list to evaluate. */
     expect(more).not.toContain('cycleTracking');
     expect(more).not.toMatch(/cycleShown/);
-    expect(sideEffects).toContain("from '$lib/data/cycleTracking'");
-    expect(sideEffects).toContain('cycleTrackingVisible');
+    expect(personalEffects).toContain("from '$lib/data/cycleTracking'");
+    expect(personalEffects).toContain('cycleTrackingVisible');
   });
 
   it('issues three live reads for twenty rows, not one per row', () => {
@@ -206,7 +207,14 @@ describe('every row the hub carries', () => {
      Redesign ticket 62 took `words` off outright, and it is the first row to
      go without its screen going anywhere else: the reading it opened draws
      on the Look back door itself now, so there is nothing left for a row to
-     point at. `stats` stopped being a host with it. Twenty-two rows now. */
+     point at. `stats` stopped being a host with it. Twenty-two rows then.
+
+     Phase 11 all-four-doors ticket 13 folded `side-effects` into `effects`
+     rather than moving it: side effects finish and read on the same screen
+     and the same axis as the changes somebody was hoping for now, so there
+     is one row where there were two, and `cycle-events` moved with it -
+     `effects` hosts it, not `side-effects`, which is not a host at all any
+     more. Twenty-one rows now. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
@@ -226,9 +234,8 @@ describe('every row the hub carries', () => {
     ['voice', 'mic', '/media/voice/memos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
     ['effects', 'eye', '/practice/personal-effects', 'care', 'read'],
-    ['side-effects', 'zap', '/health/side-effects', 'effects', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
-    ['cycle-events', 'calendar', '/health/cycle-events', 'side-effects', 'read'],
+    ['cycle-events', 'calendar', '/health/cycle-events', 'effects', 'read'],
     ['dilation', 'flask', '/health/dilation', 'surgery', 'read']
   ];
 
@@ -255,12 +262,14 @@ describe('every row the hub carries', () => {
        both a second copy of the icon and href and a row no `hidden` flag can
        reach.
 
-       `side-effects` is the one exception, named in `HUB_ROW_HOSTS`: its
+       `cycle-events` is the one exception, held by key rather than by host
+       now that ticket 13 gave it the same host as `hair-progress`: its
        way-in row is inside a block that screen gates on
        `cycleTrackingVisible`, carries copy of its own, and fronts the one
        area no `hidden` flag can reach at all (ADR-0043). It is held to the
-       href instead. */
-    const BY_HAND = new Set(['side-effects']);
+       href instead, and `HostedRows.svelte` excludes it by key so the two
+       rows sharing `effects` do not collide. */
+    const BY_HAND = new Set(['cycle-events']);
 
     for (const [key, , href, home] of EXPECTED) {
       if ((HUB_GROUP_KEYS as readonly string[]).includes(home)) continue;
@@ -268,7 +277,7 @@ describe('every row the hub carries', () => {
       expect(host, `${key} names ${home}, which hosts nothing`).toBeTruthy();
       const source = read(`src/routes${host}/+page.svelte`);
 
-      if (BY_HAND.has(home)) {
+      if (BY_HAND.has(key)) {
         expect(source, `${host} does not link to ${key}`).toContain(href);
         continue;
       }

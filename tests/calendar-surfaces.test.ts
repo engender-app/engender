@@ -199,7 +199,7 @@ describe('the heat map', () => {
   });
 
   it('keeps the legend for the ramp it explains, and drops it where the faces are', () => {
-    /* kit/MoodYear.svelte made this call first and says why: the faces are
+    /* kit/YearRows.svelte (then MoodYear) made this call first and says why: the faces are
        the same five a person picks a mood from every day, so naming them
        under the grid is the app explaining itself to its reader. */
     expect(markupOf(heatMap)).toMatch(/\{#if !isMood\}[\s\S]*?data-cal-legend/);
@@ -223,7 +223,7 @@ describe('the heat map', () => {
     // not. Both come from one place so the calendar and /stats cannot word a
     // day differently.
     expect(heatMap).toContain('spreadNote(');
-    expect(read('src/routes/stats/+page.svelte')).toContain('spreadNote(');
+    expect(read('src/lib/components/readings/DayByDayReading.svelte')).toContain('spreadNote(');
     expect(read('src/lib/data/wrappedDisplay.ts')).toMatch(/spreadNote[\s\S]*?nativeValue\(metric/);
   });
 
