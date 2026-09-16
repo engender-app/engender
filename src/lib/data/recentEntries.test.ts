@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type { Entry } from './types.ts';
-import { entryDayGroups, entryMarks } from './recentEntries.ts';
+import { entryDayGroups, entryMarks, recentDayHeadings } from './recentEntries.ts';
+import { epochDayFromLocalDate } from './epochDay.ts';
 
 /** Only the three fields the grouping reads. */
 function entry(id: number, epochDay: number): Entry {
@@ -21,6 +22,29 @@ test('groups a day\'s entries under that day, in the order the read returned the
 
 test('is empty for an empty read', () => {
   assert.deepEqual(entryDayGroups([]), []);
+});
+
+test('a heading opens the first day, and again wherever the month changes', () => {
+  const aug31 = epochDayFromLocalDate(new Date(2026, 7, 31));
+  const aug15 = epochDayFromLocalDate(new Date(2026, 7, 15));
+  const jul20 = epochDayFromLocalDate(new Date(2026, 6, 20));
+  const groups = entryDayGroups([entry(1, aug31), entry(2, aug15), entry(3, jul20)]);
+  const headed = recentDayHeadings(groups);
+  assert.deepEqual(
+    headed.map((g) => [g.epochDay, g.monthHeading]),
+    [
+      [aug31, { year: 2026, month: 7 }],
+      [aug15, undefined],
+      [jul20, { year: 2026, month: 6 }]
+    ]
+  );
+});
+
+test('is empty for an empty read, and grouping is untouched by the headings', () => {
+  assert.deepEqual(recentDayHeadings([]), []);
+  const groups = entryDayGroups([entry(1, epochDayFromLocalDate(new Date(2026, 7, 1)))]);
+  const [headed] = recentDayHeadings(groups);
+  assert.deepEqual(headed.entries, groups[0].entries);
 });
 
 test('an entry\'s marks are the media it carries, in drawing order', () => {

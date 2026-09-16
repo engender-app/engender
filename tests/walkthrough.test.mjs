@@ -476,16 +476,17 @@ try {
   ok('the month opens and closes, and the metric picker works in both states');
 } catch (e) { fail('the month expansion', e); }
 
-/* 4b. What the Journal door leads with: the entries, uncapped, and the week
-       strip under them. Both moved here off Home (redesign ticket 10). */
+/* 4b. What the Journal door leads with: the entries, uncapped, and a control
+       that grows them (redesign ticket 10; the week strip that used to sit
+       under them was ticket 18's own duplicate and left with it). */
 try {
   await fresh('/calendar');
   await page.waitForSelector('[data-day-card]');
   const days = await page.locator('[data-day-card]').count();
   if (days < 2) throw new Error(`the door drew ${days} day(s) of entries`);
-  await page.waitForSelector('[data-week-strip]');
   await page.waitForSelector('[data-entry-card]');
-  ok('the Journal door leads with the entries and carries the week strip');
+  await page.waitForSelector('[data-recent-days-more]');
+  ok('the Journal door leads with the entries and grows them on a tap');
 } catch (e) { fail('the Journal door blocks', e); }
 
 /* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
@@ -575,11 +576,12 @@ try {
   await page.locator('[data-pinned-row]').first().click();
   await page.waitForURL('**' + pinnedRows[0].href);
 
-  /* Nothing that left is unreachable, route by route: the week strip and
-     the entries on the Journal door, and the milestones - rail and list on
-     one screen since redesign ticket 43 - from the Transition door. */
+  /* Nothing that left is unreachable, route by route: the entries on the
+     Journal door (the week strip itself is gone, ticket 18 - it drew the
+     same seven days the door already does), and the milestones - rail and
+     list on one screen since redesign ticket 43 - from the Transition
+     door. */
   await fresh('/calendar');
-  await page.waitForSelector('[data-week-strip]');
   await page.waitForSelector('[data-entry-card]');
   await fresh('/more');
   await page.locator('[data-list-row="milestones"]').click();
@@ -956,7 +958,9 @@ try {
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
   if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
-  if (!(await page.locator('[data-notice="search-idle"]').count())) throw new Error('clearing did not bring back the idle hint');
+  // The idle Notice this waited on is gone (ticket 18): the opening state
+  // is real content now, named as a whole by `data-search-idle`.
+  if (!(await page.locator('[data-search-idle]').count())) throw new Error('clearing did not bring back the opening state');
 
   ok('clearing the query clears the results well inside the debounce interval, not after it');
 } catch (e) { fail('clearing search does not wait out the debounce', e); }
@@ -967,7 +971,12 @@ try {
    itself onto a signature-memoized copy of it - the run-count claim about
    *why* is proved against the real journal in the browser tier
    (live-reads-probe.svelte.ts); what this proves is that the run still
-   shows the entries a person searched for. */
+   shows the entries a person searched for.
+
+   Ticket 18 retired the list screen this used to reach the saved question
+   through (`/search/questions`, now a redirect stub): the same question is
+   a chip on search's own opening state instead, so this clears the query
+   back to idle and taps the chip rather than following a link to a list. */
 try {
   await fresh('/search');
   await page.locator('#q').fill('hopeful');
@@ -979,9 +988,10 @@ try {
   await page.locator('[data-saved-question-save-confirm]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
 
-  await page.locator('a[href="/search/questions"]').click();
+  await page.locator('#q').fill('');
+  await page.waitForSelector('[data-saved-question-chip]');
   // text-under-test: the name is this test's own fixture data, not app copy.
-  const row = page.locator('[data-saved-question]').filter({ hasText: 'ticket15 saved question' }); // text-under-test
+  const row = page.locator('[data-saved-question-chip]').filter({ hasText: 'ticket15 saved question' }); // text-under-test
   await row.waitFor();
   await row.click();
   await page.waitForSelector('[data-entry-card]');
@@ -4134,11 +4144,12 @@ try {
     ['/settings/reminders', 'reminders-empty'],
     // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
     // starred entries, saved questions, an attached document, a second
-    // procedure) - the first three read straight off their own empty-state
-    // markers the same way as every route above.
+    // procedure) - three of the five read straight off their own empty-state
+    // markers the same way as every route above; the starred and saved-
+    // question gaps moved with ticket 18 (below - neither address renders an
+    // empty-state marker of its own any more, both being folded into
+    // /search's own opening state and filters).
     ['/doubt/comfort', 'comfort-list-empty'],
-    ['/search/starred', 'starred-empty'],
-    ['/search/questions', 'saved-questions-empty'],
     ['/media/documents', 'documents-empty']
   ];
   for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
@@ -4146,6 +4157,20 @@ try {
     if (await page.locator(`[data-notice="${emptyKey}"]`).count()) {
       throw new Error(`${route} still shows its empty state (${emptyKey}) after filling every feature`);
     }
+  }
+
+  /* The starred and saved-question gaps (ticket 18): `/search/starred` and
+     `/search/questions` redirect into `/search` now, so what proves the
+     fixture closed them is real content on arrival rather than an absent
+     empty-state marker - a starred entry or photo for the first, a saved-
+     question chip for the second. */
+  await page.goto(BASE + '/search?starred=1', { waitUntil: 'networkidle' });
+  if (!(await page.locator('[data-entry-card], [data-starred-photos]').count())) {
+    throw new Error('/search?starred=1 shows nothing starred after filling every feature');
+  }
+  await page.goto(BASE + '/search?questions=1', { waitUntil: 'networkidle' });
+  if (!(await page.locator('[data-saved-question-chip]').count())) {
+    throw new Error('/search?questions=1 shows no saved question after filling every feature');
   }
 
   /* The other two of the audit's five gaps aren't caught by an empty-state

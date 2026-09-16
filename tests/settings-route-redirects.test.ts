@@ -142,7 +142,13 @@ const REDIRECTS: [string, () => unknown, string][] = [
      rows on `/doubt` itself do not come through here: they point straight at
      the destination (safeSpaceWays.test.ts holds that). */
   ['doubt/moments', () => import('../src/routes/doubt/moments/+page.ts'), '/transition/letters'],
-  ['doubt/readings', () => import('../src/routes/doubt/readings/+page.ts'), '/stats']
+  ['doubt/readings', () => import('../src/routes/doubt/readings/+page.ts'), '/stats'],
+  /* Phase 11 all-four-doors ticket 18: the starred shelf and the saved-
+     questions list both stopped being screens of their own and became
+     search's own opening state / filter sheet - the query string carries
+     which one a stale link meant. */
+  ['search/starred', () => import('../src/routes/search/starred/+page.ts'), '/search?starred=1'],
+  ['search/questions', () => import('../src/routes/search/questions/+page.ts'), '/search?questions=1']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {
