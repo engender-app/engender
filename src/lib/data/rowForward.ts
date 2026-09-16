@@ -30,9 +30,11 @@
    already owns.
 
    **Nothing here ranks.** A row states the one fact nearest its own reason
-   for existing; no row is urgent, late or due, and nothing is coloured by
-   how far off it is (ADR-0012). The rows keep their registry order
-   (ADR-0073) - this module never reorders anything. */
+   for existing, and no row is urgent, late or due: the app ranks nothing
+   centrally (ADR-0073), so the rows keep their registry order and this
+   module never reorders anything. Nothing is coloured by how far off a fact
+   is either, which is ADR-0012's rule about what colour may encode - it is
+   for a normalized value on a scale, never for a distance in time. */
 
 import { recoveryDay } from './recoveryDay';
 import type { Appointment, Measurement, Milestone, Procedure, Tryout, WearKind } from './types';

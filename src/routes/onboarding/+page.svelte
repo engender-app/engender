@@ -819,6 +819,10 @@
                     <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
                     <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
                       {#each section.rows as row (row.spec.key)}
+                        <!-- The clock handed to `hubRowLine` is inert here: these rows are
+                             drawn from an empty reading, so none of them can be counting
+                             up and the one line that reads a clock is unreachable. Same
+                             case as `HostedRows.svelte`. -->
                         <ListRow
                           key={`area-${row.spec.key}`}
                           icon={row.spec.icon}
