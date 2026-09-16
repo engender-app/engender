@@ -9,13 +9,10 @@
      registers no archive section, and deletes nothing. `/media/voice/memos`
      redirects here.
 
-     A memo is entry content: this component owns no records, registers no
-     archive section, and deletes nothing (that stays the entry editor's
-     job, out of scope here). It reads back `journal.voice.inJournal()`,
-     built for ticket 25's voice compare picker and never called until
-     ticket 11 - that comparison was cut from the voice screen before it
-     shipped (ticket 09's own note), leaving the query with no caller until
-     the memo browser gave it one.
+     It reads back `journal.voice.inJournal()`, built for ticket 25's voice
+     compare picker and never called until ticket 11 - that comparison was
+     cut from the voice screen before it shipped (ticket 09's own note),
+     leaving the query with no caller until the memo browser gave it one.
 
      Playback is VoicePlayer's own transport (ticket 46), which is the app's
      rather than the browser's. It cannot sit inside the row's own link to
