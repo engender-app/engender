@@ -175,6 +175,20 @@
   margin: var(--space-2) 0 0;
 }
 
+/* A footnote against a table, and the mark that points at it (ticket 11).
+   Unlike `.dossier-truncate-note` this one prints: what it says is a fact
+   about the rows a clinician is reading, not a note about what the screen
+   is hiding from them. */
+.dossier-footnote {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  margin: var(--space-2) 0 0;
+}
+
+.dossier-footnote-mark {
+  color: var(--text-2);
+}
+
 .dossier-disclaimer {
   font-size: var(--text-xs);
   color: var(--text-2);

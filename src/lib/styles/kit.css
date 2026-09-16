@@ -460,6 +460,31 @@
   cursor: pointer;
 }
 
+/* A row action whose meaning no glyph carries says it in words instead
+   (ListRow's own `text`). The square becomes a pill wide enough for them,
+   still at the row's full height, so the target only ever grows. */
+.kit-row-act.has-text {
+  width: auto;
+  min-width: var(--touch-target);
+  grid-auto-flow: column;
+  gap: var(--space-1);
+  padding-inline: var(--space-3);
+}
+
+/* The words are drawn as a chip rather than as bare text: an icon button
+   reads as a control from its glyph, and a word at the end of a row that is
+   already three lines of words does not. --r-block is the app's one corner
+   (phase 10, rule 5), and the outline is what every other pressable surface
+   in the kit uses - no shadow, which this kit does not have. */
+.kit-row-act-text {
+  padding: 4px 10px;
+  border: 1px solid var(--outline);
+  border-radius: var(--r-block);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
 /* ---------- the filter line ----------
 
    A label and one control, sitting on the page rather than in a card:

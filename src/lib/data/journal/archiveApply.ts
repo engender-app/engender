@@ -843,9 +843,21 @@ export async function applyDoseSchedules({ driver, journal, ts }: Restoring): Pr
     episodesWithSchedule.add(schedule.episodeId);
 
     const result = await driver.run(
-      `INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [schedule.id, episodeId, schedule.recurrenceKind, schedule.everyNDays, schedule.dosesPerDay, ts]
+      `INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day,
+                                  auto_log_from_epoch_day, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        schedule.id,
+        episodeId,
+        schedule.recurrenceKind,
+        schedule.everyNDays,
+        schedule.dosesPerDay,
+        // `?? null` because an archive from before ticket 11 has no such
+        // field: a restored schedule is switched off until the person says
+        // otherwise on this device.
+        schedule.autoLogFromEpochDay ?? null,
+        ts
+      ]
     );
     const scheduleId = result.lastInsertRowid;
 

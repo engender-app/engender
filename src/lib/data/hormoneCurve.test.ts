@@ -40,6 +40,7 @@ function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'im' |
     dose: 5,
     doseUnit: 'mg',
     status: 'taken',
+    source: 'person',
     scheduled: null,
     drug: null,
     route: 'im',
