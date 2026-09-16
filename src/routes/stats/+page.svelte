@@ -88,10 +88,12 @@
   import { precedingWindow, compareStretchQuery } from '$lib/data/compareStretch';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
+  import { recapDimChange } from '$lib/data/recapDisplay';
   import {
     correlationBarRows,
     nativeAmount,
     nativeValue,
+    signedValue,
     spreadNote,
     type CorrelationBarInput
   } from '$lib/data/wrappedDisplay';
@@ -236,11 +238,11 @@
   let from = $derived(span?.start ?? defaultSpan(today, today).start);
   let to = $derived(span?.end ?? today);
   let range = $derived(to - from + 1);
-  /* `span` itself before the rail has answered, so the two look-back rows
-     below - reached whether or not a real span exists yet - hand the body
-     map and compare the same `from`/`to` every chart on this screen is
-     already reading. */
-  let resolvedSpan = $derived<Span>(span ?? { start: from, end: to });
+  /* `from`/`to` as a `Span` object, for the two look-back rows below: they
+     are reached whether or not a real span exists yet, the same as every
+     chart on this screen, and want the pair spanRangeQuery/compareStretchQuery
+     take rather than the two loose numbers. */
+  let resolvedSpan = $derived<Span>({ start: from, end: to });
 
   /* The span, written once under the title with its length (DIRECTION.md
      rule 7). Years only where they carry information: the start's when it
@@ -459,20 +461,34 @@
   let correlationCards = $derived(correlationCardsQuery.rows);
 
   /* ---------------------------------------------------------------------
-     The recap, for two things at once (ADR-0056).
+     The recap, for three things at once (ADR-0056).
 
      `entryCount` is the floor every summary panel on this screen is held to
      - WRAPPED_ENTRY_FLOOR, the same bar a retrospective clears before the
-     app offers one - and `topTags` is the donut's whole data source. One
-     read answers both, which is why the screen pays for a recap rather than
-     counting entries itself: nothing here folds a figure the module that
-     owns it does not already produce (ADR-0010). */
+     app offers one - `topTags` is the donut's whole data source, and
+     `biggestDimensionChange` feeds the span's facts below (redesign ticket
+     05). One read answers all three, which is why the screen pays for a
+     recap rather than counting entries itself: nothing here folds a figure
+     the module that owns it does not already produce (ADR-0010). */
   let recapQuery = liveQuery((j) => j.stats.recap(from, to));
   let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
   /* Under the floor and while the read is in flight both read as "not
      enough", and the difference is carried by the skeleton the ReadGate
      draws rather than by a second empty state. */
   let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+
+  /* The span's facts (redesign ticket 05, the ticket's own headline: "zero
+     facts in the first viewport"). Wrapped's own three-line shape
+     (WrappedCompact.svelte, recapDisplay.ts's naming step), with one
+     deliberate difference: wrapped's second line is always mood, and this
+     one is whichever scale the person has active - the same preference the
+     day-by-day chart and the merged tag card above already shade by - so
+     the door's first number is never a scale nobody keeps. `scaleRows`
+     already carries every metric's own native average (ticket 11's own
+     "Each scale, this period" card); this looks up the shown one rather
+     than reading a second time. */
+  let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);
+  let activeScaleRow = $derived(scaleRows.find((row) => row.key === shown.key));
 
   /* Share by tag, the donut's first consumer anywhere in the tree - the case
      ADR-0058 named when it minted the form and left unbuilt. Tags have no
@@ -788,6 +804,45 @@
         {/if}
       </div>
     </div>
+
+    <!-- The span's facts (redesign ticket 05: "zero facts in the first
+         viewport" was the whole-app audit's own finding 1). Wrapped's own
+         three-line shape, directly under the rail and before any card - the
+         first number on the door used to be four cards down, in Each
+         scale, this period. `enoughEntries` is the one floor every summary
+         panel here shares; under it the thin-body line above already says
+         why there is nothing to open, so this draws nothing rather than a
+         second "not enough" message for the same span. -->
+    {#if recapQuery.loading}
+      <Skeleton variant="line" count={3} />
+    {:else if enoughEntries}
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
+        <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
+          {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
+        </ListRow>
+        {#if activeScaleRow?.value}
+          <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
+            {#snippet trailing()}<b class="wrapped-figure-value">{activeScaleRow.value}</b>{/snippet}
+          </ListRow>
+        {/if}
+        {#if dimChange}
+          <ListRow
+            static
+            data-lookback-fact
+            title={m.wrapped_scale_arc()}
+            subtitle={m.wrapped_scale_arc_body({
+              name: dimChange.name,
+              from: String(Math.round(dimChange.from)),
+              to: String(Math.round(dimChange.to))
+            })}
+          >
+            {#snippet trailing()}
+              <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
+            {/snippet}
+          </ListRow>
+        {/if}
+      </ListCard>
+    {/if}
 
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, on this surface

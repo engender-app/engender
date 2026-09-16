@@ -120,6 +120,52 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin" data-lookback-thin>\s*\{m\.wrapped_thin_body\(/);
   });
 
+  /* The whole-app audit's own finding 1: "zero facts in the first
+     viewport" - the door used to lead with six ways out and no number
+     about the span. Wrapped's own three-line shape, directly under the
+     rail's own line and before the era offer or the tile grid, neither of
+     which is a card either but both of which are what "before any card"
+     has to mean here: the first real card is the cross-journal section
+     below. */
+  it('puts the span\'s facts directly under the rail, before the tile grid', () => {
+    const railLine = stats.indexOf('class="lookback-line"');
+    const facts = stats.indexOf('data-lookback-fact');
+    const eraOffer = stats.indexOf('data-era-offer');
+    const tileGrid = stats.indexOf('<TileGrid');
+    expect(railLine).toBeGreaterThan(-1);
+    expect(facts).toBeGreaterThan(railLine);
+    expect(facts).toBeLessThan(eraOffer);
+    expect(facts).toBeLessThan(tileGrid);
+  });
+
+  /* Wrapped's second line is always mood (WrappedCompact.svelte); this
+     one is deliberately not, so the door's first number is never a scale
+     nobody keeps. `activeScaleRow` is `scaleRows`'s own entry for
+     `shown.key`, the same stored preference the day-by-day chart and the
+     merged tag card already shade by. */
+  it('shows the active scale\'s average, not always mood', () => {
+    expect(stats).toContain(
+      'let activeScaleRow = $derived(scaleRows.find((row) => row.key === shown.key));'
+    );
+    expect(stats).toContain('m.lookback_facts_average({ name: shown.name })');
+  });
+
+  /* Same source, same naming step wrapped uses (recapDisplay.ts's
+     recapDimChange) - one read answers the door's own retrospective link,
+     the entry count and the scale that moved furthest all at once
+     (ADR-0056, ADR-0010). */
+  it('reads entries and the scale that moved furthest off the one recap read', () => {
+    expect(stats).toContain('import { recapDimChange } from \'$lib/data/recapDisplay\';');
+    expect(stats).toContain(
+      'let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);'
+    );
+    expect(stats).toContain('{m.wrapped_scale_arc()}');
+  });
+
+  it('draws no facts under the floor, where the thin-body line already says why', () => {
+    expect(stats).toMatch(/\{#if recapQuery\.loading\}\s*<Skeleton variant="line" count=\{3\} \/>\s*\{:else if enoughEntries\}\s*<ListCard/);
+  });
+
   it('reads every ranged chart over the span, not over today', () => {
     for (const read of ['j.stats.recap(from, to)', 'j.stats.tagShare(from, to)', 'j.stats.daySpread(shown.key, from, to)', 'j.correlationCards.getCards(from, to)']) {
       expect(stats).toContain(read);
@@ -146,5 +192,16 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     for (const key of ['body-map', 'compare']) {
       expect(stats).toContain(`key="${key}"`);
     }
+  });
+
+  /* Redesign ticket 05: both rows in the list take the span rather than
+     opening on their own empty or default state. `resolvedSpan` is
+     `from`/`to` as the `Span` object the two query-builders take -
+     compareStretch.test.ts already proves precedingWindow/compareStretchQuery
+     mint the right query for any span; this is the one line that hands
+     them Look back's own. */
+  it('hands both look-back rows the resolved span, not an empty query', () => {
+    expect(stats).toContain('href={`/body-map${spanRangeQuery(resolvedSpan)}`}');
+    expect(stats).toContain('href={compareStretchQuery(resolvedSpan, precedingWindow(resolvedSpan))}');
   });
 });
