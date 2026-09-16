@@ -16,7 +16,7 @@
    Run: VITE_DEMO=1 npm run build first, then
         node tests/visit-gallery.mjs --tag after --out <dir> */
 import { preview } from 'vite';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
@@ -162,6 +162,13 @@ for (const theme of ['light', 'dark']) {
   }
   await bare.close();
 }
+
+/* Merged rather than written fresh, because the two tags run as two
+   processes against two builds and the sign-off page wants one table. */
+const heightsPath = resolve(outDir, 'heights.json');
+const existing = await readFile(heightsPath, 'utf8').then(JSON.parse, () => ({}));
+for (const { name, height } of measured) existing[name] = height;
+await writeFile(heightsPath, `${JSON.stringify(existing, null, 2)}\n`);
 
 console.log(`\n${measured.length} shots in ${outDir}`);
 for (const { name, height } of measured) {

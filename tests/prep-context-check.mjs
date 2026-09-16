@@ -112,13 +112,15 @@ try {
   /* The headings are the screen's areas, and emptying one area's list must
      not reorder or rename the others. */
   check('the first heading does not move with the rows', withList[0] === emptied[0]);
+  /* Both verbs survive an empty list, which is the half ticket 12 moved out
+     from behind a gate. The room used to be hidden here on the theory that
+     it would have nothing in it; it opens on its own empty state instead,
+     whose action is the way back to this screen, and a verb that comes and
+     goes with the list is a screen changing shape under somebody. */
   check(
-    'an empty list does not offer the room, which would have nothing in it',
-    (await page.locator('[data-list-row="in-the-room"]').count()) === 0
+    'an empty list still offers the room, which opens on its own empty state',
+    (await page.locator('[data-list-row="in-the-room"]').count()) === 1
   );
-  /* And the verb that is not about the list stays, which is the half ticket
-     12 moved out from behind the gate: a clinician summary is worth reaching
-     whether or not anything has been typed. */
   check(
     'an empty list keeps the summary row, which the list has nothing to do with',
     (await page.locator('[data-list-row="clinician-summary"]').count()) === 1
