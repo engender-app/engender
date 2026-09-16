@@ -33,13 +33,14 @@ import type {
   WearSession
 } from './types';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
-import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePauseOn } from './doseSchedule';
+import { adherence, expectedAmountOn, expectedSlots, isDailySchedule, pauseCoversDay as isDosePauseOn } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { spanCoversDay } from './span';
 import { binderCueShowing, hoursMinutesSecondsOf } from './journal/wearSessions';
 import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
+import { nextExpectedSlot } from './careSpine';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
 import type { AppointmentDayRecord } from './journal/appointments';
@@ -524,7 +525,7 @@ export interface HomeTileActions {
   snooze: (kind: LiveTileKind) => void;
 }
 
-/** The four display formats, as callbacks: every one of them reaches
+/** The five display formats, as callbacks: every one of them reaches
     paraglide through `$lib`, which the Node tier cannot resolve. */
 /* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
    cross-checks against it (AU-09 test-only review). */
@@ -533,6 +534,12 @@ export interface HomeTileFormat {
   fullDay: (epochDay: number) => string;
   /** A day and a short month - when a pause ends. */
   shortDay: (epochDay: number) => string;
+  /** A weekday and a date - "Monday 21 September" - which is how the agenda
+      band on the same screen writes a day still to come. Its own format
+      rather than the band's `agendaWhen`, which says "Today" and "Tomorrow"
+      for the two nearest days: the dose panel puts its day inside a
+      sentence ("Next ..."), and today has a sentence of its own. */
+  weekdayDay: (epochDay: number) => string;
   /** A wall-clock time - when a wear session started. */
   time: (timestamp: number) => string;
   /** A hair removal area's own name. */
@@ -570,6 +577,44 @@ interface TileGate {
     `LIVE_TILE_TIER`'s to say and `composeHomeTiles` stamps on - so no
     builder can disagree with the table the ordering reads. */
 type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
+
+/** Whether Today's dose panel accounts for every dose slot the agenda could
+    draw, which is what the screen withholds the `doseSlot` kind on
+    (agendaReads.ts, phase 11 ticket 03).
+
+    The panel states one drug - `activeEpisodesAt`'s first - while
+    `dayAhead`'s `doseSlot` section reads every active episode, so the
+    question is not how many regimens are running but how many of them put a
+    row on the band. That section skips an episode with no schedule and one
+    on a daily schedule (ADR-0067: a daily slot marks every day a screen can
+    draw, which is wallpaper), so an everyday pill beside an injection on a
+    rhythm earns no rows at all and the panel still stands for the whole of
+    what is drawn. This is the demo journal's own shape, and taking the
+    count of running regimens instead put both of the injection's rows back
+    beside the panel that already stated them.
+
+    What is refused is the case that would hide something: a second regimen
+    that does earn rows of its own, which the panel never names. Then the
+    band keeps every row and the cost is one drug stated twice - the
+    direction ADR-0074 already errs in rather than state one drug's
+    arrangement under another's name. */
+export function dosePanelCoversEveryRegimen(
+  tiles: readonly HomeTile[],
+  episodes: readonly RegimenEpisode[],
+  schedules: readonly DoseSchedule[],
+  nowMs: number
+): boolean {
+  if (!tiles.some((tile) => tile.key === 'dose-panel')) return false;
+  const active = activeEpisodesAt(episodes, nowMs);
+  const marking = active.filter((episode) => {
+    const schedule = schedules.find((s) => s.episodeId === episode.id);
+    return schedule !== undefined && !isDailySchedule(schedule);
+  });
+  /* `active[0]` is the episode the panel names (the builder below). A lone
+     marking episode that is not that one would be a drug the panel does not
+     stand for, so it is refused the same as two. */
+  return marking.length === 0 || (marking.length === 1 && marking[0].id === active[0].id);
+}
 
 /** Home's grid: the twelve kinds, gated, in `LIVE_TILE_ORDER`, with nothing
     dropped for being twelfth. A `Record` keyed by `LiveTileKind` rather
@@ -626,12 +671,40 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       if (!gate.enabled || gate.snoozed) return null;
       const active = activeEpisodesAt(reads.episodes, nowMs);
       if (active.length === 0) return null;
+      const episode = active[0];
+      /* When the next one falls (phase 11 ticket 03). The panel is the
+         dose's one home on Today now - the agenda withholds its `doseSlot`
+         rows while this tile is up (agendaReads.ts) - so the day the
+         schedule expects is stated here or nowhere.
+
+         `nextExpectedSlot` rather than the raw slot list, so a dose already
+         logged against today moves the reading on to the following slot
+         instead of leaving the tile saying a dose is due that the person
+         has just taken. Doses are narrowed to this episode the way the
+         patch tile narrows them, since `todayDoses` is the whole day's log
+         and a second concurrent regimen's dose must not answer for this
+         one. A regimen with no schedule on it has no next day to state and
+         the line is simply absent - the panel is still the way in to the
+         log sheet. */
+      const schedule = reads.schedules.find((s) => s.episodeId === episode.id) ?? null;
+      const ownDoses = reads.todayDoses.filter(
+        (dose) => attributeDose(reads.episodes, dose).episode?.id === episode.id
+      );
+      const ownPauses = reads.dosePauses.filter((pause) => pause.episodeId === episode.id);
+      const next = schedule
+        ? nextExpectedSlot(schedule, episode.startEpochDay, ownDoses, ownPauses, today)
+        : null;
       return {
         key: 'dose-panel',
         tileKey: 'dose-panel',
         attrs: { 'data-dose-panel-tile': true },
         title: m.tile_dose_title(),
-        value: active[0].drug,
+        value: episode.drug,
+        note: !next
+          ? undefined
+          : next.epochDay === today
+            ? m.tile_dose_next_today()
+            : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) }),
         href: '/doses',
         action: {
           icon: 'plus',
