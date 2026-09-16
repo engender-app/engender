@@ -11,9 +11,19 @@
    palette cross product is palette-contrast.test.ts's job, not a sign-off
    page's.
 
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/ticket-09-sign-off-gallery.mjs [--out /abs/path] */
+   Before and after (lookback-05-gallery.mjs's own precedent: `--tag`
+   picks which selectors and routes this ticket moved things between).
+   Before, there is no `.care-regimen-block` wrapper yet - just the bare
+   drug-name anchor with none of the lines this ticket added - and the
+   stock editor is the whole of `/settings/stock`, not a sheet. Run against
+   each build separately, from that build's own checkout as the cwd (vite's
+   preview({ root }) serves the cwd's build):
+
+     cd <before-checkout> && VITE_DEMO=1 npm run build
+     node <this-repo>/tests/ticket-09-sign-off-gallery.mjs --tag before --out /abs/dir
+
+     cd <after-checkout> && VITE_DEMO=1 npm run build
+     node <this-repo>/tests/ticket-09-sign-off-gallery.mjs --tag after --out /abs/dir */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -26,7 +36,8 @@ const flag = (name, fallback) => {
   const at = args.indexOf(`--${name}`);
   return at >= 0 ? args[at + 1] : fallback;
 };
-const outDir = resolve(flag('out', resolve(here, '../.claude/ticket-09-sign-off-shots')));
+const tag = flag('tag', 'after');
+const outDir = resolve(flag('out', resolve(here, '../.claude/ticket-09-sign-off-shots')), tag);
 
 await mkdir(outDir, { recursive: true });
 const app = await preview({ preview: { port: 0 } });
@@ -94,20 +105,30 @@ async function shootEl(name, selector, extra = 16) {
   await shootBox(name, box, extra);
 }
 
+async function shootViewport(name) {
+  await strip();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${outDir}/${name}.png` });
+  shots.push(name);
+  process.stdout.write(`  ${name}\n`);
+}
+
 /* The regimen block and the Hormones card sit far apart on the real page
    (an "Other regimens" list and a mood chart fall between them), so each
    gets its own crop rather than one union box that would sweep in
    everything between - "show only what changed", not the page between two
-   changed spots. */
+   changed spots. Before this ticket there is no `.care-regimen-block`
+   wrapper - the anchor is the whole of it. */
 async function shootRegimenBlock(name) {
-  const box = await page.evaluate(() => {
-    const el = document.querySelector('[data-care-regimen]')?.closest('.care-regimen-block');
+  const box = await page.evaluate((wantBlock) => {
+    const anchor = document.querySelector('[data-care-regimen]');
+    const el = wantBlock ? anchor?.closest('.care-regimen-block') : anchor;
     if (!el) return null;
     el.scrollIntoView({ block: 'center' });
     const r = el.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
-  });
-  if (!box) throw new Error('.care-regimen-block not found');
+  }, tag === 'after');
+  if (!box) throw new Error('regimen row/block not found');
   await shootBox(name, box);
 }
 
@@ -156,16 +177,24 @@ for (const theme of ['light', 'dark']) {
   await shootRegimenBlock(`regimen-block-${theme}`);
   await shootHormonesCard(`hormones-card-${theme}`);
 
-  // The stock sheet, opened from the regimen block's own line - the same
-  // fact as the spine's runOut mark, stated as a sentence instead of a
-  // date on the axis.
-  await page.locator('[data-care-regimen-stock]').click();
-  await page.waitForSelector('[data-sheet]');
-  await page.waitForTimeout(300);
-  await shootEl(`stock-sheet-${theme}`, '[data-sheet]');
+  if (tag === 'before') {
+    /* The stock editor's whole screen - what /settings/stock still is on
+       this checkout, before ADR-0084 folds it into a sheet off Care. */
+    await settle('/settings/stock');
+    await shootViewport(`stock-screen-${theme}`);
+  } else {
+    // The stock sheet, opened from the regimen block's own line - the same
+    // fact as the spine's runOut mark, stated as a sentence instead of a
+    // date on the axis.
+    await settle('/care');
+    await page.locator('[data-care-regimen-stock]').click();
+    await page.waitForSelector('[data-sheet]');
+    await page.waitForTimeout(300);
+    await shootEl(`stock-sheet-${theme}`, '[data-sheet]');
+  }
 }
 
-await writeFile(`${outDir}/manifest.json`, JSON.stringify({ shots, errors }, null, 2));
+await writeFile(`${outDir}/manifest.json`, JSON.stringify({ tag, shots, errors }, null, 2));
 await page.close();
 await browser.close();
 await app.close();
