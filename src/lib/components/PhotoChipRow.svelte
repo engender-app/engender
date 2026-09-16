@@ -51,27 +51,20 @@
 {/if}
 
 <style>
-  /* One line that scrolls rather than a wrapping block: six chips at the
-     Polish spellings are wider than 390px, and a filter row that grows to
-     two lines moves the grid under it every time the journal gains a
-     source. `.search-chips` wraps for the opposite reason - its chips are
-     a record of what somebody typed, and all of them have to be visible at
-     once. */
+  /* Wraps, the way `.search-chips` does (screens.css). One scrolling line
+     was the first shape, taken from the reference, and at 390px it put
+     Surgery and Video off the right edge with nothing saying they were
+     there - six chips in English are already wider than the screen and the
+     Polish spellings are wider again. A second line costs one row of
+     height once; a chip nobody can see is a filter nobody can reach. */
   .photo-chips {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
-    overflow-x: auto;
-    scrollbar-width: none;
-    /* The pill's 6px hit-area overhang (.tag-chip::after, components.css)
-       is clipped by the scroller otherwise, taking a third of the target
-       with it. */
+    /* The pill's own 6px hit-area overhang (.tag-chip::after,
+       components.css) needs room above and below, or two wrapped rows'
+       targets meet. */
     padding: 6px 0;
     margin-bottom: var(--space-2);
-  }
-  .photo-chips::-webkit-scrollbar {
-    display: none;
-  }
-  .photo-chips .tag-chip {
-    flex: none;
   }
 </style>
