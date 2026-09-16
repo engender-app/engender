@@ -12,6 +12,12 @@
    palette cross product is palette-contrast.test.ts's job, not a sign-off
    page's.
 
+   Also enforces the ticket's own two pixel claims rather than only
+   asserting them in a commit message: the milestone screen's dark full
+   height stays under 1100px, and the roadmap's "N steps left" line lands
+   within 400px. A non-zero exit means one of those regressed, not just a
+   missing shot.
+
    After only. The "before" for all four is what main still draws today -
    no bands on the rail, the list and the caveat both open by default, no
    Eras row in Settings - and needs no separate build to show, since it is
@@ -24,6 +30,14 @@ import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium } from './browser-harness.mjs';
+
+/* The ticket's own two pixel claims - "at most 1100px" for the milestone
+   screen's dark full capture, "1 step left" within 400px on the roadmap -
+   measured here rather than only asserted in a commit message, since a
+   crop stops at whichever selector it's told to and would happily "pass"
+   at any height. */
+const MILESTONES_MAX_HEIGHT_PX = 1100;
+const ROADMAP_STEPS_LEFT_MAX_TOP_PX = 400;
 
 const outDir = resolve(process.argv[2] ?? '.claude/ticket-16-sign-off-shots');
 
@@ -131,6 +145,16 @@ for (const theme of ['light', 'dark']) {
   //    the screen opens on now.
   await settle('/transition/milestones');
   await page.waitForSelector('[data-milestone-rail]');
+  if (theme === 'dark') {
+    // The demo bar sits in normal document flow, not fixed - measuring
+    // before stripping it would count its own height as the screen's.
+    await strip();
+    const fullHeight = await page.evaluate(() => document.querySelector('[data-app-scroll-region]').scrollHeight);
+    if (fullHeight > MILESTONES_MAX_HEIGHT_PX) {
+      errors.push(`milestones screen is ${fullHeight}px tall, over the ${MILESTONES_MAX_HEIGHT_PX}px ceiling`);
+    }
+    console.log(`  milestones full height (dark): ${fullHeight}px`);
+  }
   await crop(`milestones-opens-${theme}`, '[data-screen-header]', '[data-ms-log-toggle]');
 
   // 2. The list, opened - proves the disclosure still holds the same rows
@@ -143,6 +167,17 @@ for (const theme of ['light', 'dark']) {
   //    within the first viewport.
   await settle('/transition/roadmap');
   await page.waitForSelector('[data-roadmap-here]', { timeout: 10000 }).catch(() => {});
+  await strip();
+  const stepsLeftTop = await page.evaluate(() => {
+    const el = document.querySelector('[data-roadmap-here]');
+    return el ? el.getBoundingClientRect().bottom : null;
+  });
+  if (stepsLeftTop === null) {
+    errors.push(`roadmap (${theme}): [data-roadmap-here] never rendered`);
+  } else if (stepsLeftTop > ROADMAP_STEPS_LEFT_MAX_TOP_PX) {
+    errors.push(`roadmap "N steps left" (${theme}) sits at ${Math.round(stepsLeftTop)}px, past the ${ROADMAP_STEPS_LEFT_MAX_TOP_PX}px ceiling`);
+  }
+  console.log(`  roadmap "steps left" bottom edge (${theme}): ${stepsLeftTop === null ? 'missing' : Math.round(stepsLeftTop) + 'px'}`);
   await crop(`roadmap-opens-${theme}`, '[data-screen-header]', '[data-roadmap-here], [data-roadmap-pack-toggle]@-1');
 
   // 4. The caveat, opened - the same Poland notice and marker/not-advice
