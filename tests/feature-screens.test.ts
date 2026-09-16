@@ -126,7 +126,13 @@ const REACHED_FROM_INSIDE = [
      a plain row on Care and from appointment prep, never from the hub.
      Still built on the kit, so it stays on this list for the reason the
      note above it gives. */
-  'health/clinician-summary'
+  'health/clinician-summary',
+  /* One reading of the Look back door on a screen of its own (phase 11
+     ticket 07): seven readings share the route, each reached from its
+     tile on /stats and from nowhere in the hub. Built on the kit and holds
+     a loading state on the recap it reads for the floor, so it stays on
+     this list for the reason the note above it gives. */
+  'stats/[reading]'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -174,7 +180,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(21);
+    expect(REACHED_FROM_INSIDE.length).toBe(22);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

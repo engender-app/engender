@@ -69,7 +69,7 @@ export function metricStandings(
   });
 }
 
-interface MoodDay {
+export interface MoodDay {
   /** 1 to 5 on the mood ramp (ADR-0025). */
   step: number;
   count: number;

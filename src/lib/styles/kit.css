@@ -1971,7 +1971,7 @@ button.kit-strip-day .kit-strip-cell {
    a control, but a surface *followed* by a skeleton keeps skeleton's own
    --space-5 rule above. Stamping it [data-kit-surface] would hand that pair
    to the two-surface rule instead, which is a different number. */
-:is(.segmented, .stats-caption, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
+:is(.segmented, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
   + :is([data-kit-surface], .skeleton-stack) {
   margin-top: var(--space-5);
 }
@@ -2772,20 +2772,17 @@ button.kit-strip-day .kit-strip-cell {
   text-align: right;
 }
 
-/* --- a year of moods ---
+/* --- the year, a day at a time ---
 
-   Three rows per month, eleven columns, and the month named above its own
-   block rather than beside it.
+   Twelve rows of up to 31 cells, a row per month (phase 11 ticket 07). It
+   was three rows of 27px faces per month, which is why the block above the
+   figures on /wrapped/year ran to 1900px and 145 svgs; a shaded cell wants
+   no size a face does, so a month is one row and the year is one screen.
 
-   Four sizes before this one, each moved for a reason, and the reason is the
-   same every time: a cell is square, so how big a face gets is decided by
-   how many of them share a row. Fifty-three week columns overflowed a 390px
-   card at 5px. Twelve rows of 31 fitted at 11px - big enough for a colour,
-   and a colour is what ADR-0025 warns about, since the ramp's steps are
-   literal hexes chosen to be sat on and on the dark theme they are all dark.
-   Two rows of sixteen reached 17px, beside a gutter and then without one,
-   which was nearly enough to read. Three rows of eleven is 27px, which is
-   inside the size ticket 31 tuned the faces to be legible at. */
+   `--year-columns` is the widest month, from the data (yearRows.ts), so
+   every row shares one grid and February simply stops short - a true thing
+   about February and not a gap to fill. The cell is whatever a 31st of the
+   row's width is, square, with a 2px corner (rule 5's smallest). */
 .kit-year {
   display: grid;
   gap: var(--space-1);
@@ -2800,52 +2797,20 @@ button.kit-strip-day .kit-strip-cell {
 
 .kit-year-rows {
   display: grid;
-  /* Eleven, so a 31-day month is three rows and a short month simply stops -
-     which is true of February and not a gap to fill.
-
-     Sixteen columns capped the cell at 17px however much gutter was given
-     back, because the cell is square and the width is what it has: the only
-     thing that makes a face bigger is fewer of them per row. Eleven puts it
-     near 27px, which is comfortably inside the size ticket 31 tuned the
-     faces to be read at.
-
-     That 27px was tuned against a ~340px mobile card. `1fr` columns divide
-     whatever width the card actually has, and at desktop's wider column
-     (screens.css) eleven of them run past 50px each - well outside the size
-     the faces were tuned to, and past what MoodYear.svelte's own `CELL`
-     constant draws them at, so an empty cell's outline (sized to the track)
-     and a logged day's face (sized to the constant) stopped matching
-     (Alicja, 2026-08-27: "month by month must be much smaller... empty
-     days should be the same size as the icons"). Capped at the tuned size
-     instead of left to the card's own width.
-
-     Fixing the count at eleven traded one mismatch for another: the same
-     desktop-width card that made a stretched cell too big now made a
-     327px grid of fixed 27px cells sit in it with the rest of the card
-     empty (Alicja, 2026-08-28: "month by month only looks good on
-     phone... on web it's weak"). `auto-fill` keeps the cell fixed at 27px
-     and asks the width for a column count instead of the other way round,
-     so a phone-width card still gets eleven and a desktop one gets as many
-     as its own width holds - full width either way, same cell either
-     width. */
-  grid-template-columns: repeat(auto-fill, 27px);
-  gap: 3px;
+  grid-template-columns: repeat(var(--year-columns, 31), minmax(0, 1fr));
+  gap: 2px;
 }
 
 .kit-year-cell {
-  display: grid;
-  place-items: center;
+  display: block;
   aspect-ratio: 1;
+  border-radius: 2px;
 }
 
-/* A day nobody logged is not a day at the bottom of the scale, so it is an
-   outline and never a face. */
+/* A day nobody logged is the empty end of the ramp, held as a shape by the
+   same inward hairline an empty calendar cell has, so a quiet month reads as
+   a row of days rather than as nothing. */
 .kit-year-cell.is-empty {
-  border-radius: 50%;
-  /* An outline drawn inward rather than an inset box-shadow: the kit
-     separates with a line and never with a shadow, and a ring that happens
-     to be spelled `box-shadow` is still spelled `box-shadow`. Inward, so the
-     cell keeps its square box and the grid stays on its columns. */
   outline: 1px solid var(--hairline);
   outline-offset: -1px;
 }
