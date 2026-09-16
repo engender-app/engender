@@ -63,12 +63,12 @@ describe('what Home is built from', () => {
 
   it('hands each area its own named stripe, and the log strip the one that is always a colour', () => {
     /* Roles run colours-before-shades, so index 0 is the only one guaranteed
-       chromatic across all 8 palettes; the log strip's write shapes are icon
-       squares of the stripe, and a square of trans's white band on a white
-       page is not a control (redesign ticket 13). The rest is wiring: each
-       area is handed its own entry rather than a number. */
+       chromatic across all 8 palettes, and the mood row is drawn in the
+       stripe it lands on - trans's white band on a white page is not a
+       control (redesign ticket 13). The rest is wiring: each area is handed
+       its own entry rather than a number. */
     expect(HOME_AREA_ROLE.log).toBe(0);
-    const log = markup.match(/<div class="home-log"[^>]*>/s)?.[0];
+    const log = markup.match(/<div data-home-log[^>]*>/s)?.[0];
     expect(log).toBeDefined();
     expect(log).toContain('AREA_ROLE.log');
     // A day block is a block, so the agenda resolves through the chromatic
@@ -106,13 +106,14 @@ describe('what Home is built from', () => {
 });
 
 describe('what spec 08 took off Home', () => {
-  it('draws the tally as two shapes of the log strip and nowhere else, and quick add still carries it', () => {
-    /* Spec 08 took the two tally buttons off Home and phase 10 (spec story
-       12) put the tally back as two of the log strip's write shapes, beside
-       the mood pick rather than above it. The fan keeps its own pair. */
-    expect((markup.match(/tally_misgendered/g) ?? []).length).toBe(1);
-    expect((markup.match(/tally_correctly_gendered/g) ?? []).length).toBe(1);
-    expect(markup).toMatch(/data-home-log-shape="tally-misgendered"[\s\S]{0,300}m\.tally_misgendered\(\)/);
+  it('draws the tally nowhere on Home, and quick add carries it', () => {
+    /* Spec 08 took the two tally buttons off Home; phase 10 put them back as
+       two of the log strip's write shapes; phase 11 ticket 03 took them off
+       again, because the strip's four squares were a strict subset of the
+       fan sitting forty pixels below them. The fan keeps its own pair, and
+       it is the only place on this screen a tally is offered now. */
+    expect(markup).not.toContain('tally_misgendered');
+    expect(markup).not.toContain('tally_correctly_gendered');
     expect(read('src/lib/components/QuickAdd.svelte')).toContain('tally-misgendered');
     expect(read('src/lib/components/QuickAdd.svelte')).toContain('tally-correctly_gendered');
   });
@@ -286,9 +287,14 @@ describe('what spec 08 took off Home', () => {
   });
 
   it('leads with what is running and what is coming, and asks how you feel after', () => {
-    /* The order the ticket exists for: the today tier, the agenda, the
-       notices with their dates in their own copy, then the log strip with
-       the mood pick in it - never the mood pick first. */
+    /* The order the ticket exists for: the today tier, the agenda, then the
+       log strip with the mood pick in it - never the mood pick first.
+
+       The three notices moved below the strip in phase 11 ticket 03. They
+       used to sit between the agenda and the strip, which put them under
+       "Coming up" to the eye: rule 1 makes a heading name everything down
+       to the next rule, so a person read their month as a dose and a nag
+       about backups. */
     const at = (needle: string) => {
       const i = markup.indexOf(needle);
       expect(i, needle).toBeGreaterThan(-1);
@@ -305,16 +311,21 @@ describe('what spec 08 took off Home', () => {
     const pinned = at('data-home-pinned');
     const start = at('data-getting-started');
     expect(today).toBeLessThan(agenda);
-    expect(agenda).toBeLessThan(backup);
+    expect(agenda).toBeLessThan(log);
+    expect(log).toBeLessThan(moods);
+    expect(moods).toBeLessThan(backup);
     expect(backup).toBeLessThan(stock);
     expect(stock).toBeLessThan(debrief);
-    expect(debrief).toBeLessThan(log);
-    expect(log).toBeLessThan(moods);
-    expect(moods).toBeLessThan(waiting);
+    expect(debrief).toBeLessThan(waiting);
     expect(waiting).toBeLessThan(pinned);
     expect(pinned).toBeLessThan(start);
-    // And the mood row is inside the log strip, one write shape among the others.
-    expect(markup).toMatch(/<div class="home-log"[\s\S]*?<MoodChips[\s\S]*?data-home-log-shape/);
+    // Nothing draws between "Coming up"'s heading and the strip's but agenda
+    // rows: the notices are below the faces now, under no heading of their own.
+    const band = markup.slice(agenda, log);
+    for (const stray of ['data-backup-notice', 'data-stock-notice', 'data-debrief-offer'])
+      expect(band, stray).not.toContain(stray);
+    // And the mood row is what the log strip holds, on its own.
+    expect(markup).toMatch(/<div data-home-log[\s\S]*?<MoodChips/);
   });
 
   it('draws the agenda from the one projection and adds no mark, route or word of its own', () => {
@@ -323,7 +334,9 @@ describe('what spec 08 took off Home', () => {
        icon and title are the day view's. Disguise is answered inside the
        read, before either fetch runs. */
     expect(home).toContain("from '$lib/data/agendaReads'");
-    expect(home).toContain('readAgenda({ dayAhead: j.dayAhead, doses: j.doses }, today, prefs.disguise, shownAgendaKinds(prefs))');
+    expect(home).toMatch(
+      /readAgenda\(\s*\{ dayAhead: j\.dayAhead, doses: j\.doses \},\s*today,\s*prefs\.disguise,\s*shownAgendaKinds\(prefs\),\s*dosePanelShowing\s*\)/
+    );
     expect(home).toContain('dayAheadMarkLabel(item.kind)');
     expect(home).toContain('passedSlotSentence(');
     expect(home).not.toContain('DAY_AHEAD_ROUTES');
@@ -357,21 +370,22 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toContain('class="rows-divide" transition:disclose={panel}');
   });
 
-  it('keeps every write shape the centre fan offers, together, and touches the fan itself not at all', () => {
-    /* Spec stories 11 to 13: the mood pick is one shape among the others a
-       tap can start, and the fan is unchanged. The strip's shapes are the
-       fan's four resolvable targets under the fan's own words; a backdated
-       entry needs a date first and stays the fan's sheet. */
-    const shapes = [...markup.matchAll(/data-home-log-shape="([^"]+)"/g)].map((m) => m[1]);
-    expect(shapes).toEqual(['dose', 'tally-misgendered', 'tally-correctly_gendered', 'wear']);
+  it('leaves every write shape to the centre fan, and touches the fan itself not at all', () => {
+    /* Phase 11 ticket 03. The strip drew a dose, both tallies and a wear
+       session as icon squares, and every one of them was a row of the fan
+       forty pixels below it - the strip's own comment said so. So the
+       squares went, the fan is untouched, and the five faces are all the
+       strip has left. */
+    expect(markup).not.toContain('data-home-log-shape');
     const fan = read('src/lib/components/QuickAdd.svelte');
-    for (const shape of shapes) expect(fan).toContain(`data-choose="${shape}"`);
+    for (const shape of ['dose', 'tally-misgendered', 'tally-correctly_gendered', 'wear'])
+      expect(fan).toContain(`data-choose="${shape}"`);
     for (const key of ['doses_empty_action', 'tally_misgendered', 'tally_correctly_gendered', 'wear_session_start_action', 'wear_session_stop_action']) {
-      expect(home).toContain(`m.${key}()`);
+      expect(home).not.toContain(`m.${key}()`);
       expect(fan).toContain(`m.${key}()`);
     }
-    // The running session is read off the tiles, not asked for again.
-    expect(home).toContain("tile.key === 'wear-timer'");
+    // And the wear timer is nobody's business here but the tile's own.
+    expect(home).not.toContain("tile.key === 'wear-timer'");
   });
 
   it('gives the live tiles grid its own role', () => {
@@ -446,7 +460,6 @@ describe('the handles the walkthrough grips', () => {
     'data-agenda-item',
     'data-home-agenda-fold',
     'data-home-log',
-    'data-home-log-shape',
     'data-home-pinned',
     'data-pinned-row',
     'data-backup-notice',

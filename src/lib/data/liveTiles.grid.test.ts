@@ -186,6 +186,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
          string would hide behind a locale. */
       fullDay: (epochDay) => `full:${epochDay}`,
       shortDay: (epochDay) => `short:${epochDay}`,
+      weekdayDay: (epochDay) => `weekday:${epochDay}`,
       time: (timestamp) => `time:${timestamp}`,
       hairRemovalArea: (area) => `area:${area}`
     }
@@ -414,9 +415,27 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('dose-panel');
     expect(tile.attrs).toEqual({ 'data-dose-panel-tile': true });
     expect(tile.value).toBe('Estradiol patch');
-    expect(tile.note).toBeUndefined();
     expect(tile.href).toBe('/doses');
     expect(tile.action?.href).toBe('/doses?add=1');
+  });
+
+  /* Phase 11 ticket 03: the panel is the dose's one home on Today, so it
+     has to say when the next one falls - the agenda's doseSlot row is
+     withheld while the panel is up (agendaReads.ts) and there is nowhere
+     else on the screen the day is stated. The fixture's schedule falls
+     every three days from fifteen days ago, which lands on today. */
+  it('the dose panel says a dose the day expects is today', () => {
+    expect(tileNamed('dose-panel')!.note).toBe(m.tile_dose_next_today());
+  });
+
+  it('the dose panel names the next day once today has been logged', () => {
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['todayDoses'];
+    const tile = tileNamed('dose-panel', { reads: { todayDoses: logged } })!;
+    expect(tile.note).toBe(m.tile_dose_next({ date: `weekday:${TODAY + 3}` }));
+  });
+
+  it('a regimen with no schedule gets a panel with no forward line', () => {
+    expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
   });
 
   it('the surgery countdown reads the nearest procedure and carries no control', () => {

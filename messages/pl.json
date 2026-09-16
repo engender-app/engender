@@ -2129,6 +2129,8 @@
   "tile_wear_sub": "Pokazuje, jak długo trwa rozpoczęta sesja noszenia.",
   "tile_dose_title": "Panel dawek",
   "tile_dose_sub": "Pokazuje skrót do zapisania dawki, gdy kuracja jest aktywna.",
+  "tile_dose_next": "Następna: {date}",
+  "tile_dose_next_today": "Dawka dzisiaj",
   "tile_letter_title": "Gotowy list",
   "tile_letter_sub": "Pokazuje się, gdy list z kapsuły czasu można już przeczytać.",
   "tile_letter_dismiss_action": "Ukryj przypomnienie",
@@ -3819,7 +3821,24 @@
   "calendar_handoff_share": "Udostępnij",
   "agenda_passed_dose": "Zaplanowana dawka na {date}",
   "home_agenda_heading": "Nadchodzi",
-  "home_log_heading": "Zapisz coś",
+  "agenda_more": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Jeszcze {count} w tym miesiącu",
+        "countPlural=few": "Jeszcze {count} w tym miesiącu",
+        "countPlural=many": "Jeszcze {count} w tym miesiącu",
+        "countPlural=other": "Jeszcze {count} w tym miesiącu"
+      }
+    }
+  ],
+  "home_log_heading": "Jak dziś?",
   "home_pinned_heading": "Przypięte",
   "home_pinned_edit": "Ułóż tę listę",
   "home_pinned_edit_empty": "Przypnij tu coś",
