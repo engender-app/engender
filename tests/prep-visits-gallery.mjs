@@ -102,7 +102,7 @@ const named = (name) => {
 };
 
 async function emptyTheList(page) {
-  await goto(page, '/health/appointment-prep');
+  await goto(page, '/health/appointments');
   await clearPrepList(page);
 }
 
@@ -134,7 +134,7 @@ for (const lang of ['en', 'pl']) {
     await setLook(page, named('trans'), theme);
     await clearAppointments(page);
     await setLanguage(page, lang);
-    await goto(page, '/health/appointment-prep');
+    await goto(page, '/health/appointments');
     await page.waitForTimeout(SETTLED);
     await shoot(page, `prep-1-nothing-booked-${tag}`);
     await page.close();
@@ -156,8 +156,10 @@ for (const lang of ['en', 'pl']) {
     await shoot(page, `prep-2-empty-list-${tag}`);
 
     // 3. And the everyday state, with the list back.
-    await goto(page, '/health/appointment-prep');
-    await page.locator('[data-add]').click();
+    await goto(page, '/health/appointments');
+    /* The prep list's own add (ticket 12): `[data-add]` in the header books
+       an appointment, which is what `bookAhead` above uses it for. */
+    await page.locator('[data-add-prep]').click();
     await page.waitForSelector('#appointment-prep-input');
     await page.fill('#appointment-prep-input', lang === 'pl' ? 'Zapytać o dawkę' : 'Ask about the dose');
     await page.locator('[data-save-appointment-item]').click();
