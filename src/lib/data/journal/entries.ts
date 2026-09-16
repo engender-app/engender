@@ -253,6 +253,12 @@ export interface EntriesArea {
       and this is one `COUNT(*)` over the one table. Entries rather than the
       days they fall on - a day carrying three of them is three. */
   countAll(): Promise<number>;
+  /** How many distinct days hold an untrashed entry, over all of the
+      journal's history (ticket 18). What `recentDays` grows against: the
+      door reads that a `recentDays(limit)` returned fewer days than asked
+      for, and this is the exact count that a "N more days" control needs
+      instead - the difference between the two is never a guess. */
+  countDistinctDays(): Promise<number>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -1260,6 +1266,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     async countAll() {
       const rows = await driver.query<{ n: number }>(
         'SELECT COUNT(*) AS n FROM entry WHERE trashed_at IS NULL'
+      );
+      return rows[0].n;
+    },
+
+    async countDistinctDays() {
+      const rows = await driver.query<{ n: number }>(
+        'SELECT COUNT(DISTINCT epoch_day) AS n FROM entry WHERE trashed_at IS NULL'
       );
       return rows[0].n;
     },

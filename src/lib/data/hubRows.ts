@@ -318,16 +318,25 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* `curve` rather than the `mic` it shared with the voice memos. What is
-       behind this row is a line over takes; what is behind the memos row is a
-       recording. */
+    /* `curve` still, from when this fronted the benchmark alone: a line over
+       takes is still most of what is behind the row, and the recordings
+       ticket 17 folded in here keep `mic` on the screen's own Recordings
+       tab rather than taking the row's icon with them. */
     key: 'voice-benchmark',
     icon: 'curve',
-    href: '/practice/voice?tab=record',
+    /* No `?tab=record`: the flow's own tab is already the screen's default,
+       so the two addresses opened on the same tab (ticket 17). */
+    href: '/practice/voice',
     home: 'transition',
     /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
-       together - but only the benchmarks have a last write, since a practice
-       take is sealed until the day after it was taken. */
+       together - but only the benchmarks have a last write here, since a
+       practice take is sealed until the day after it was taken. The
+       recordings the Media group's own `voice` row used to front (ticket 17
+       folded that row's screen into this one, as the Recordings tab) have no
+       archive section of their own to register either (ADR-0036: a memo is
+       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the
+       second, non-registry read this row alone asks, and `rowLine` folds it
+       in below. */
     areas: ['voiceBenchmarks', 'voicePracticeTakes'],
     finishes: 'voice',
     line: 'read'
@@ -402,22 +411,17 @@ const ROWS = [
 
   // --- Media ---------------------------------------------------------------
   {
-    /* Both of these front content that travels inside an entry or a
-       milestone rather than a stream of its own, so neither has a section in
-       the archive to ask about and neither can carry a reading. What they get
-       instead is a line saying what is in them. */
+    /* Fronts content that travels inside an entry rather than a stream of
+       its own, so it has no section in the archive to ask about and cannot
+       carry a reading. What it gets instead is a line saying what is in it.
+
+       Voice memos shared this shape and this group until ticket 17 folded
+       their browse screen into the voice screen's own Recordings tab -
+       `/media/voice/memos` redirects there now, and what fronts a
+       recording on the hub is `voice-benchmark`'s row on Transition. */
     key: 'photos',
     icon: 'image',
     href: '/media/photos',
-    home: 'media',
-    areas: [],
-    finishes: null,
-    line: 'written'
-  },
-  {
-    key: 'voice',
-    icon: 'mic',
-    href: '/media/voice/memos',
     home: 'media',
     areas: [],
     finishes: null,
@@ -674,6 +678,19 @@ export interface HubReading {
       question is a compile error rather than a door that quietly goes back
       to reporting gaps. */
   forward: RowForwardMap;
+  /** The most recent voice memo, at or before today, or null where there is
+      none - `voice-benchmark`'s own second read (ticket 17).
+
+      Not in `lastWrites`: a memo is entry content with no archive section
+      of its own (ADR-0036), so it has no `LastWriteKey` to be registered
+      under, the same reason `voicePracticeTakes` opts out of the registry
+      rather than joining it with a made-up one. This is the one row that
+      also asks a fact the registry cannot answer, so it is its own field
+      rather than a `LastWriteKey` that would misrepresent what memos are.
+      Optional, and read with `?? null`, so a caller that has not asked this
+      question yet (every existing `HubReading` literal, every test) keeps
+      compiling rather than being forced to state "nothing landed" by hand. */
+  voiceMemoLastWriteEpochDay?: number | null;
 }
 
 /** The day a row's group ended, or null while it has not. A row fronting two
@@ -741,6 +758,15 @@ const hasForward = (key: string): key is RowForwardKey => FORWARD_KEYS.has(key);
 
     **Then the reading it always had**, unchanged: what was last written,
     worded as an observation once a whole quiet window has passed. */
+/** The later of two nullable days, or null where neither has one - `voice-
+    benchmark`'s own fold of a registry read and its second, non-registry
+    read (the field's own doc on `HubReading`). */
+function laterEpochDay(a: number | null, b: number | null): number | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.max(a, b);
+}
+
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
@@ -752,7 +778,15 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
 
   if (spec.line === 'written') return { kind: 'no-stream' };
 
-  const epochDay = latestWrite(rowReads(spec), reading.lastWrites);
+  const registryEpochDay = latestWrite(rowReads(spec), reading.lastWrites);
+  /* `voice-benchmark` alone also asks its second, non-registry read (the
+     field's own doc on `HubReading`) and reports whichever of the two is
+     later - a recording since the row's own last write is exactly the
+     "later of a benchmark and a recording" ticket 17 asks for. */
+  const epochDay =
+    spec.key === 'voice-benchmark'
+      ? laterEpochDay(registryEpochDay, reading.voiceMemoLastWriteEpochDay ?? null)
+      : registryEpochDay;
   if (epochDay === null) return { kind: 'not-yet' };
 
   const daysAgo = reading.todayEpochDay - epochDay;

@@ -192,6 +192,34 @@ try {
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
 
+/* 2a2. a new entry can be starred before its first save (ticket 18). The
+   star used to live in the header, drawn only `{#if existing}` - a brand
+   new entry had nowhere to star at all. It is on the save bar now for
+   both, and `toggleStarred` only flips the local flag until the entry has
+   an id; `saveEntry` applies it once `upsertEntry` hands one back. This
+   proves the whole round trip: pressed before save, still pressed on the
+   saved entry reopened. */
+try {
+  await fresh('/');
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-mood="4"]').click();
+  await page.locator('#ed-note').fill('ticket18 starred before save');
+
+  await page.locator('[data-save-star]').click();
+  await page.waitForSelector('[data-save-star][aria-pressed="true"]');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-entry-note]').filter({ hasText: 'ticket18 starred before save' }).click(); // text-under-test: this test's own fixture note, not app copy
+  await page.waitForSelector('[data-save-star][aria-pressed="true"]');
+
+  ok('a new entry can be starred before its first save, and the star lands once it has an id');
+} catch (e) { fail('star before save', e); }
+
 /* 2b. mood-only save nudges, via the full editor. Ticket 13 gives the
    quick-log entry point its own unconditional scale prompt instead (see
    flow 24), so this preference's remaining domain is a mood-only save
@@ -476,16 +504,17 @@ try {
   ok('the month opens and closes, and the metric picker works in both states');
 } catch (e) { fail('the month expansion', e); }
 
-/* 4b. What the Journal door leads with: the entries, uncapped, and the week
-       strip under them. Both moved here off Home (redesign ticket 10). */
+/* 4b. What the Journal door leads with: the entries, uncapped, and a control
+       that grows them (redesign ticket 10; the week strip that used to sit
+       under them was ticket 18's own duplicate and left with it). */
 try {
   await fresh('/calendar');
   await page.waitForSelector('[data-day-card]');
   const days = await page.locator('[data-day-card]').count();
   if (days < 2) throw new Error(`the door drew ${days} day(s) of entries`);
-  await page.waitForSelector('[data-week-strip]');
   await page.waitForSelector('[data-entry-card]');
-  ok('the Journal door leads with the entries and carries the week strip');
+  await page.waitForSelector('[data-recent-days-more]');
+  ok('the Journal door leads with the entries and grows them on a tap');
 } catch (e) { fail('the Journal door blocks', e); }
 
 /* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
@@ -575,11 +604,12 @@ try {
   await page.locator('[data-pinned-row]').first().click();
   await page.waitForURL('**' + pinnedRows[0].href);
 
-  /* Nothing that left is unreachable, route by route: the week strip and
-     the entries on the Journal door, and the milestones - rail and list on
-     one screen since redesign ticket 43 - from the Transition door. */
+  /* Nothing that left is unreachable, route by route: the entries on the
+     Journal door (the week strip itself is gone, ticket 18 - it drew the
+     same seven days the door already does), and the milestones - rail and
+     list on one screen since redesign ticket 43 - from the Transition
+     door. */
   await fresh('/calendar');
-  await page.waitForSelector('[data-week-strip]');
   await page.waitForSelector('[data-entry-card]');
   await fresh('/more');
   await page.locator('[data-list-row="milestones"]').click();
@@ -956,7 +986,9 @@ try {
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
   if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
-  if (!(await page.locator('[data-notice="search-idle"]').count())) throw new Error('clearing did not bring back the idle hint');
+  // The idle Notice this waited on is gone (ticket 18): the opening state
+  // is real content now, named as a whole by `data-search-idle`.
+  if (!(await page.locator('[data-search-idle]').count())) throw new Error('clearing did not bring back the opening state');
 
   ok('clearing the query clears the results well inside the debounce interval, not after it');
 } catch (e) { fail('clearing search does not wait out the debounce', e); }
@@ -967,7 +999,12 @@ try {
    itself onto a signature-memoized copy of it - the run-count claim about
    *why* is proved against the real journal in the browser tier
    (live-reads-probe.svelte.ts); what this proves is that the run still
-   shows the entries a person searched for. */
+   shows the entries a person searched for.
+
+   Ticket 18 retired the list screen this used to reach the saved question
+   through (`/search/questions`, now a redirect stub): the same question is
+   a chip on search's own opening state instead, so this clears the query
+   back to idle and taps the chip rather than following a link to a list. */
 try {
   await fresh('/search');
   await page.locator('#q').fill('hopeful');
@@ -979,15 +1016,47 @@ try {
   await page.locator('[data-saved-question-save-confirm]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
 
-  await page.locator('a[href="/search/questions"]').click();
+  await page.locator('#q').fill('');
+  await page.waitForSelector('[data-saved-question-chip]');
   // text-under-test: the name is this test's own fixture data, not app copy.
-  const row = page.locator('[data-saved-question]').filter({ hasText: 'ticket15 saved question' }); // text-under-test
+  const row = page.locator('[data-saved-question-chip]').filter({ hasText: 'ticket15 saved question' }); // text-under-test
   await row.waitFor();
   await row.click();
   await page.waitForSelector('[data-entry-card]');
 
   ok('a saved question runs and shows entries, the same read /search itself made');
 } catch (e) { fail('saved question runs', e); }
+
+/* 5g. search opens with something: the opening state's tag chips and this
+   device's own recent searches both run a search on a tap (ticket 18).
+   `fresh()` clears localStorage, which is where recentSearches.ts keeps
+   its history - this device's memory, not the journal's - so this flow
+   makes its own recent search rather than assuming an earlier flow's
+   survived the reset. */
+try {
+  await fresh('/search');
+  await page.waitForSelector('[data-search-idle]');
+
+  await page.waitForSelector('[data-idle-tag-chip]');
+  await page.locator('[data-idle-tag-chip]').first().click();
+  await page.waitForSelector('[data-active-filter-chip]');
+
+  await page.locator('[data-filter-clear]').click();
+  await page.waitForSelector('[data-search-idle]');
+
+  await page.locator('#q').fill('hopeful');
+  await page.waitForSelector('[data-entry-card]');
+  await page.locator('#q').fill('');
+  await page.waitForSelector('[data-search-idle]');
+
+  await page.waitForSelector('[data-recent-search-row]');
+  const term = await page.locator('[data-recent-search-row]').first().innerText();
+  await page.locator('[data-recent-search-row]').first().click();
+  await page.waitForFunction((t) => document.querySelector('#q')?.value === t, term.trim());
+  await page.waitForSelector('[data-entry-card], [data-search-count]');
+
+  ok('search opens with tag chips and recent searches, and tapping either runs the search');
+} catch (e) { fail('search opening state', e); }
 
 /* 6. stats range + value list.
 
@@ -4115,7 +4184,7 @@ try {
     ['/practice/personal-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
     ['/health/dilation', 'dilation-schedule-empty'],
-    ['/health/appointment-prep', 'appointment-prep-empty'],
+    ['/health/appointments', 'appointment-prep-empty'],
     ['/transition/milestones', 'milestones-empty'],
     ['/transition/letters', 'letters-empty'],
     ['/transition/tryouts', 'tryouts-empty'],
@@ -4134,11 +4203,12 @@ try {
     ['/settings/reminders', 'reminders-empty'],
     // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
     // starred entries, saved questions, an attached document, a second
-    // procedure) - the first three read straight off their own empty-state
-    // markers the same way as every route above.
+    // procedure) - three of the five read straight off their own empty-state
+    // markers the same way as every route above; the starred and saved-
+    // question gaps moved with ticket 18 (below - neither address renders an
+    // empty-state marker of its own any more, both being folded into
+    // /search's own opening state and filters).
     ['/doubt/comfort', 'comfort-list-empty'],
-    ['/search/starred', 'starred-empty'],
-    ['/search/questions', 'saved-questions-empty'],
     ['/media/documents', 'documents-empty']
   ];
   for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
@@ -4146,6 +4216,20 @@ try {
     if (await page.locator(`[data-notice="${emptyKey}"]`).count()) {
       throw new Error(`${route} still shows its empty state (${emptyKey}) after filling every feature`);
     }
+  }
+
+  /* The starred and saved-question gaps (ticket 18): `/search/starred` and
+     `/search/questions` redirect into `/search` now, so what proves the
+     fixture closed them is real content on arrival rather than an absent
+     empty-state marker - a starred entry or photo for the first, a saved-
+     question chip for the second. */
+  await page.goto(BASE + '/search?starred=1', { waitUntil: 'networkidle' });
+  if (!(await page.locator('[data-entry-card], [data-starred-photos]').count())) {
+    throw new Error('/search?starred=1 shows nothing starred after filling every feature');
+  }
+  await page.goto(BASE + '/search?questions=1', { waitUntil: 'networkidle' });
+  if (!(await page.locator('[data-saved-question-chip]').count())) {
+    throw new Error('/search?questions=1 shows no saved question after filling every feature');
   }
 
   /* The other two of the audit's five gaps aren't caught by an empty-state
@@ -4241,16 +4325,19 @@ try {
   }
   await page.locator('[data-benchmark-delta]').waitFor();
 
-  /* The metric reference (phase 8 features ticket 27). Reached from a
-     figure in the app, and there is no figure to press here: a benchmark
-     needs a microphone this browser does not have, so the link itself is
-     asserted in the browser tier against a mounted list
-     (tests/browser-tier/voice-metrics-probe.ts). What only a built app can
-     say is that the route boots at all - `/doses` sticks at "booting" in a
-     production build while every test in the node tier passes - so this
-     walks to it by URL and reads what it drew. */
+  /* The metric reference (phase 8 features ticket 27), a sheet over the
+     voice screen since phase 11 ticket 17 rather than a screen of its own.
+     Reached from a figure in the app, and there is no figure to press
+     here: a benchmark needs a microphone this browser does not have, so
+     the link itself is asserted in the browser tier against a mounted
+     list (tests/browser-tier/voice-metrics-probe.ts). What only a built
+     app can say is that the route boots at all - `/doses` sticks at
+     "booting" in a production build while every test in the node tier
+     passes - so this walks to the old address by URL, which redirects to
+     `/practice/voice?metric=pitch` and opens the sheet there, and reads
+     what it drew. */
   await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-metric="pitch"]');
+  await page.waitForSelector('[data-sheet] [data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
   if (explained !== 7) {
     throw new Error(`the metric reference explains ${explained} figures, not seven`);
@@ -4614,15 +4701,14 @@ try {
   if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
     throw new Error('a row with only a last write stopped reporting it');
   }
-  // Photos, voice memos and documents live together now, and Body keeps the
-  // rest. Documents joined in phase 8 features ticket 52.
+  // Photos and documents live together now, and Body keeps the rest.
+  // Documents joined in phase 8 features ticket 52; voice memos left in
+  // phase 11 ticket 17, folded into the voice screen's own Recordings tab.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,voice,documents') {
-    throw new Error(
-      `the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, voice memos and documents`
-    );
+  if (mediaRows.join(',') !== 'photos,documents') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and documents`);
   }
 
   /* An area declared finished leaves its group for the finished set, keeps
@@ -5674,11 +5760,17 @@ try {
   const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
-  /* The room's field and back control (carpet 27): a visit today puts the
-     room's row on this screen. Opened from here, back's fallback and its
-     actual destination are the same URL, which proves the field and the
-     control exist but nothing about smartBack - a plain link to the
-     fallback would pass this identically. */
+  /* The room's field and back control (carpet 27): the verb row opens it and
+     its own back returns here.
+
+     Phase 11 all-four-doors ticket 12 took the second way in with it. The
+     room used to be offered by the prep list as well, and pressing back from
+     there was what told smartBack apart from a hardcoded link to
+     /health/appointments; the prep list is a section of this screen now, so
+     the room has exactly one entry point and that distinction is no longer
+     observable from the app at all. What is left to walk is what the room
+     owes its reader either way - a field, one back control, and a return to
+     the screen it was opened from. */
   await page.locator('[data-list-row="in-the-room"]').click();
   await page.waitForSelector('[data-in-the-room]');
   if ((await page.locator('[data-screen-back]').count()) !== 1) {
@@ -5694,29 +5786,11 @@ try {
   await page.waitForURL('**/health/appointments');
   await page.waitForSelector('[data-appointment]');
 
-  /* The appointment-prep list also opens the room, on any day (its own
-     comment), and it is not the fallback - so pressing back from there is
-     what actually tells smartBack apart from a bare link to
-     /health/appointments. This is the shape the ticket's own motivating
-     bug was: a hardcoded destination that is not where the screen was
-     opened from. */
+  /* The stale address still lands on the visit, one hop (ADR-0036). */
   await page.goto(BASE + '/health/appointment-prep', { waitUntil: 'networkidle' });
+  await page.waitForURL('**/health/appointments');
   await booted();
-  if (!(await page.locator('[data-list-row="in-the-room"]').count())) {
-    await page.click('[data-add]');
-    await page.waitForSelector('#appointment-prep-input');
-    await page.fill('#appointment-prep-input', 'ask about the referral');
-    await page.click('[data-save-appointment-item]');
-    await page.waitForSelector('[data-list-row="in-the-room"]');
-  }
-  await page.click('[data-list-row="in-the-room"]');
-  await page.waitForSelector('[data-in-the-room]');
-  await page.click('[data-screen-back]');
-  await page.waitForURL('**/health/appointment-prep');
-  await page.waitForSelector('[data-list-row="in-the-room"]');
-
-  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
-  await booted();
+  await page.waitForSelector('[data-appointment-item]');
 
   /* Editing opens on what is stored, and the kind just used is offered as a
      chip - the only suggestion the app is entitled to make, since nothing
@@ -5806,13 +5880,16 @@ try {
      first of them rather than assuming a position: the standing list is
      whatever the demo jump and the flows above have left on it, and this
      one appends to the end of it. */
-  await fresh('/health/appointment-prep');
+  await fresh('/health/appointments');
 
   const ASKED = 'ask about the dose';
   const REFERRAL = 'ask about the referral';
   let questionCount = await page.locator('[data-appointment-item]').count();
   for (const question of [ASKED, REFERRAL]) {
-    await page.click('[data-add]');
+    /* The prep list's own add, beside its heading - `[data-add]` in the
+       screen header books an appointment (ticket 12 put both on one
+       screen). */
+    await page.click('[data-add-prep]');
     await page.waitForSelector('#appointment-prep-input');
     await page.fill('#appointment-prep-input', question);
     await page.click('[data-save-appointment-item]');
@@ -5827,19 +5904,17 @@ try {
     );
   }
 
-  /* The way in from the list, on any day. Also the control case for the
-     chromeless check below: the bar has to be here first, or its absence
-     in the room proves nothing. */
+  /* The way in, offered once there is a question to read. Also the control
+     case for the chromeless check below: the bar has to be here first, or
+     its absence in the room proves nothing. */
   if (!(await page.locator('[data-app-nav]').count())) {
-    throw new Error('the prep list has no tab bar, so losing one in the room would say nothing');
+    throw new Error('the visit screen has no tab bar, so losing one in the room would say nothing');
   }
   await page.waitForSelector('[data-list-row="in-the-room"]');
 
   /* A visit today, so the room has an appointment to attribute answers to.
      The date field opens on today already, so saving without touching it is
      what books one for this morning. */
-  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
-  await booted();
   const appointmentsBefore = await page.locator('[data-appointment]').count();
   await page.click('[data-add]');
   await page.waitForSelector('#appointment-kind');
@@ -5851,7 +5926,6 @@ try {
     { timeout: 8000 }
   );
 
-  // The second way in: from the appointment, on its day.
   await page.waitForSelector('[data-list-row="in-the-room"]', { timeout: 8000 });
   await page.click('[data-list-row="in-the-room"]');
   await page.waitForSelector('[data-in-the-room]', { timeout: 8000 });

@@ -581,6 +581,19 @@ test('recentDays on an empty journal is empty rather than an error', async () =>
   assert.deepEqual(await journal.entries.recentDays(5), []);
 });
 
+test('countDistinctDays counts days, not entries, and ignores trash', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.entries.countDistinctDays(), 0);
+
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 10, mood: 1 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 20, mood: 2 });
+  const id = await journal.entries.upsertEntry({ epochDay: 102, mood: 3 });
+  assert.equal(await journal.entries.countDistinctDays(), 2);
+
+  await journal.entries.deleteEntry(id);
+  assert.equal(await journal.entries.countDistinctDays(), 1);
+});
+
 test('entriesWithTag reads newest first, up to the limit, by key or by uuid', async () => {
   const { journal } = await journalWithBuiltIns();
   const custom = await journal.tags.addTag('gender', 'voice practice');

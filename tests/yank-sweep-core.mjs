@@ -923,8 +923,7 @@ const HYDRATION_SCENES = [
   { name: 'measurements', at: '/body/measurements', is: 'measurements over time and sizes' },
   /* Health group */
   { name: 'care', at: '/care', is: 'the care dashboard' },
-  { name: 'appointment-prep', at: '/health/appointment-prep', is: 'appointment prep questions' },
-  { name: 'appointments', at: '/health/appointments', is: 'the appointment list' },
+  { name: 'appointments', at: '/health/appointments', is: 'the visit, its prep list and the ones behind you' },
   { name: 'in-the-room', at: '/health/appointments/in-the-room', is: 'the in-the-room card' },
   { name: 'clinician-summary', at: '/health/clinician-summary', is: 'the printable summary' },
   { name: 'cycle-events', at: '/health/cycle-events', is: 'cycle events' },
