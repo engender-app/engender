@@ -1366,8 +1366,6 @@
   "dilation_session_delete_sheet": "Delete session",
   "dilation_session_delete_q": "Delete the session logged for {date}?",
   "dilation_session_delete_hint": "This cannot be undone.",
-  "dilation_chart_title": "Sessions since surgery",
-  "dilation_chart_aria": "Dilation sessions, by day since surgery",
   "ph_measurements_title": "Measurements",
   "labs_time_label": "Draw time (optional)",
   "labs_provider_label": "Lab (optional)",

@@ -1408,8 +1408,6 @@
   "dilation_session_delete_sheet": "Usuń sesję",
   "dilation_session_delete_q": "Usunąć zapisaną sesję ({date})?",
   "dilation_session_delete_hint": "Tego nie da się cofnąć.",
-  "dilation_chart_title": "Sesje od operacji",
-  "dilation_chart_aria": "Sesje rozszerzania według dnia od operacji",
   "ph_measurements_title": "Pomiary",
   "labs_time_label": "Godzina pobrania (opcjonalnie)",
   "labs_provider_label": "Laboratorium (opcjonalnie)",
