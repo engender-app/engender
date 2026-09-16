@@ -7,8 +7,20 @@
   let {
     value = null,
     compact = false,
+    bar = false,
     onPick,
-  }: { value?: number | null; compact?: boolean; onPick: (v: number | null) => void } = $props();
+  }: {
+    value?: number | null;
+    compact?: boolean;
+    /** The row at the save bar's height (phase 11 ticket 19): 32px faces
+        with no label under them - the name stays on each face's aria-label -
+        so five moods, the star and Save share one 48px line. The faces keep
+        their motion (ADR-0077); only the lift is shorter, since a face on the
+        window's bottom edge has the whole screen above it to rise into and
+        34px read as leaving the bar. */
+    bar?: boolean;
+    onPick: (v: number | null) => void;
+  } = $props();
 
   let moods = $derived([1, 2, 3, 4, 5].map((v) => ({ value: v, label: moodName(v) })));
 
@@ -31,7 +43,7 @@
   }
 </script>
 
-<div class="mood-picker" class:is-compact={compact} role="radiogroup" aria-label={m.mood()}>
+<div class="mood-picker" class:is-compact={compact} class:is-bar={bar} role="radiogroup" aria-label={m.mood()}>
   <div
     class="mood-row"
     role="presentation"
@@ -51,9 +63,32 @@
         style:--mood-mag={magnifier.moodScale[i]}
         onclick={() => choose(i)}
       >
-        <MoodFace step={mood.value} size={44} alive gaze={magnifier.moodGaze[i]} />
-        <span class="mood-label">{mood.label}</span>
+        <MoodFace step={mood.value} size={bar ? 32 : 44} alive gaze={magnifier.moodGaze[i]} />
+        {#if !bar}
+          <span class="mood-label">{mood.label}</span>
+        {/if}
       </button>
     {/each}
   </div>
 </div>
+
+<style>
+  /* The bar form's own geometry; the faces' drawing, ring and magnifier are
+     components.css's and are untouched. Scoped here rather than in the
+     shared sheet because this row is the one consumer of the form. */
+  .mood-picker.is-bar .mood-row {
+    justify-content: flex-start;
+    gap: 0;
+    --mood-lift: 16px;
+  }
+  .mood-picker.is-bar .mood-btn {
+    flex: 0 0 auto;
+    gap: 0;
+    padding: var(--space-2) 2px;
+  }
+  /* The picked face's 1.18 scale on a 32px face is 38px, inside the bar's
+     48px line, so the row never grows the bar. */
+  .mood-picker.is-bar .mood-btn.is-selected :global(.mood-face) {
+    transform: scale(1.18);
+  }
+</style>

@@ -90,6 +90,17 @@ async function openNewestEntry() {
   await booted();
 }
 
+/* Phase 11 ticket 19: the editor's structured sections - mode, gender,
+   tags, body map, photos, voice, video - sit behind a chip row under the
+   note and open one at a time, so a flow that reaches into one opens its
+   chip first. Idempotent: a chip already open is left open. */
+async function openSection(section) {
+  const chip = page.locator(`[data-section-chip="${section}"]`);
+  await chip.waitFor();
+  if ((await chip.getAttribute('aria-expanded')) !== 'true') await chip.click();
+  await page.waitForSelector(`[data-editor-section="${section}"]`);
+}
+
 async function expectNoHorizontalOverflow(selector) {
   const overflow = await page.locator(selector).evaluate((node) => ({
     scrollWidth: node.scrollWidth,
@@ -178,6 +189,7 @@ try {
   await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-mood="5"]').click();
+  await openSection('tags');
   await page.locator('[data-tag="g-soc-eu"]').click();
   await page.locator('#ed-note').fill('Playwright wrote this entry.');
   await page.locator('[data-save]').click();
@@ -316,6 +328,7 @@ try {
 /* 3. slider keyboard interaction */
 try {
   await fresh('/entry/new/today');
+  await openSection('gender');
   const thumb = page.locator('[data-slider]').first();
   await thumb.focus();
   // A number, not "anything but the unset marker": comparing against the
@@ -358,6 +371,7 @@ try {
    path. */
 try {
   await fresh('/entry/new/today');
+  await openSection('gender');
   await page.waitForSelector('[data-slider]');
   const values = () =>
     page.locator('[data-slider]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-valuenow')));
@@ -1636,6 +1650,7 @@ try {
   // And it reaches the entry screen like any built-in.
   await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
   await booted();
+  await openSection('gender');
   const names = await page.locator('[data-dim-name]').allTextContents();
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
   ok('a custom scale previews, saves ticked, and appears like a built-in');
@@ -2634,6 +2649,7 @@ try {
      claim the checklist makes. */
   await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
   await booted();
+  await openSection('gender');
   const drawn = await page.locator('[data-dim-name]').count();
   if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
 
@@ -2674,6 +2690,7 @@ try {
   await page.keyboard.press('Escape');
   await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
   await booted();
+  await openSection('gender');
   await page.waitForSelector('[data-no-scales]');
   if (await page.locator('[data-dim-name]').count()) {
     throw new Error('the editor drew a scale with none ticked');
@@ -2919,6 +2936,7 @@ try {
 /* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
 try {
   await fresh('/entry/new/today');
+  await openSection('tags');
   await page.waitForSelector('[data-tag="g-soc-eu"]:has-text("social euphoria")'); // text-under-test: the English label
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
@@ -2928,6 +2946,8 @@ try {
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await openSection('tags');
   await page.waitForSelector('[data-tag="g-soc-eu"]:has-text("euforia społeczna")', { timeout: 8000 }); // text-under-test: the Polish translation
   if (await page.locator('[data-tag="g-soc-eu"]', { hasText: 'social euphoria' }).count()) { // text-under-test: the stale English label
     throw new Error('English label survived the language switch');
@@ -3369,6 +3389,7 @@ try {
    .svelte-kit/output/client/service-worker.js. */
 try {
   await fresh('/entry/new/today');
+  await openSection('tags');
   const dysphoriaGroup = page.locator('[data-tag-group="dysphoria_type"]');
   await dysphoriaGroup.waitFor();
   const labels = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());
@@ -3417,6 +3438,7 @@ try {
   });
   await page.goto(BASE + `/entry/new/${tomorrow}`, { waitUntil: 'networkidle' });
   await booted();
+  await openSection('tags');
   const afterHide = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());
   if (afterHide.includes('existential')) throw new Error('hidden dysphoria type still offered');
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
@@ -3472,6 +3494,7 @@ try {
   // own, regardless of the day's mood average.
   await fresh(`/entry/new/${sixMonthsAgo}`);
   await page.locator('[data-mood="1"]').click();
+  await openSection('tags');
   await page.locator('[data-tag="g-euphoria"]').click();
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
@@ -3632,6 +3655,7 @@ try {
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
   await openNewestEntry();
+  await openSection('gender');
   await page.waitForSelector('[data-dim-value]');
   // Asserted as "is this a number", not against the unset marker's wording:
   // that marker is ordinary UI copy and changed once already (ticket 31).
@@ -3655,6 +3679,7 @@ try {
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
   await openNewestEntry();
+  await openSection('gender');
   await page.waitForSelector('[data-dim-value]');
   const values = await page.locator('[data-dim-value]').allTextContents();
   if (values.some((v) => Number.isFinite(Number(v.trim())))) {
@@ -6879,6 +6904,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
+  await openSection('photos');
 
   /* Skip leaves the override unset, so the photo inherits this entry's own
      day - exactly the behaviour ticket 02's scope note describes and ticket
@@ -6940,6 +6966,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
+  await openSection('photos');
   const zoomPhoto = await tinyPhoto(page, '#c94f7c');
   page.once('filechooser', (chooser) => chooser.setFiles({ name: 'zoom.png', mimeType: 'image/png', buffer: zoomPhoto }));
   await page.locator('[data-add-photo]').click();

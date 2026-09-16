@@ -10,9 +10,17 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 describe('Entry Editor Unified Logging Hub structure and guards', () => {
   const editor = read('src/lib/components/EntryEditor.svelte');
 
-  it('discloses contextual sections between Note and Body Map', () => {
+  it('discloses contextual sections after the chip row and its sections, before the save bar', () => {
+    /* Phase 11 ticket 19 put the note first and folded every structured
+       question - body map included - into a chip row under it. The cards
+       are offers rather than questions (ADR-0044), so they take no chip and
+       sit where they did relative to the foot: after whatever the person
+       opened, before Save. Until that ticket this asserted "between Note
+       and Body Map"; body map is now a chip's section above the cards. */
     const notePos = editor.indexOf('name="note"');
-    const bodyMapPos = editor.indexOf('text={m.body_map_label()}');
+    const chipsPos = editor.indexOf('data-editor-chips');
+    const bodyMapPos = editor.indexOf('data-editor-section="body"');
+    const saveBarPos = editor.indexOf('<SaveBar>');
     const tryoutPos = editor.indexOf('data-contextual="tryout-felt-sense"');
     const dosePos = editor.indexOf('data-contextual="dose-quick-log"');
     const recoveryPos = editor.indexOf('data-contextual="procedure-recovery"');
@@ -20,22 +28,30 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     const cyclePos = editor.indexOf('data-contextual="cycle-event"');
 
     expect(notePos).toBeGreaterThan(0);
-    expect(bodyMapPos).toBeGreaterThan(notePos);
+    expect(chipsPos).toBeGreaterThan(notePos);
+    expect(bodyMapPos).toBeGreaterThan(chipsPos);
+    expect(saveBarPos).toBeGreaterThan(bodyMapPos);
 
-    expect(tryoutPos).toBeGreaterThan(notePos);
-    expect(tryoutPos).toBeLessThan(bodyMapPos);
+    for (const pos of [tryoutPos, dosePos, recoveryPos, hrtPos, cyclePos]) {
+      expect(pos).toBeGreaterThan(bodyMapPos);
+      expect(pos).toBeLessThan(saveBarPos);
+    }
+  });
 
-    expect(dosePos).toBeGreaterThan(notePos);
-    expect(dosePos).toBeLessThan(bodyMapPos);
-
-    expect(recoveryPos).toBeGreaterThan(notePos);
-    expect(recoveryPos).toBeLessThan(bodyMapPos);
-
-    expect(hrtPos).toBeGreaterThan(notePos);
-    expect(hrtPos).toBeLessThan(bodyMapPos);
-
-    expect(cyclePos).toBeGreaterThan(notePos);
-    expect(cyclePos).toBeLessThan(bodyMapPos);
+  it('every section the editor asked before ticket 19 is reachable from a chip', () => {
+    for (const section of ['mode', 'gender', 'tags', 'body', 'photos', 'voice', 'video']) {
+      expect(editor).toContain(`data-section-chip={section}`);
+      expect(editor).toContain(`data-editor-section="${section}"`);
+    }
+    /* The mood faces and Save share the sticky bar, and an unmet mood is
+       stated on the button rather than toasted after the tap. */
+    const saveBarPos = editor.indexOf('<SaveBar>');
+    const saveBarEnd = editor.indexOf('</SaveBar>', saveBarPos);
+    const moodsPos = editor.indexOf('<MoodPicker bar');
+    expect(moodsPos).toBeGreaterThan(saveBarPos);
+    expect(moodsPos).toBeLessThan(saveBarEnd);
+    expect(editor).toContain('m.entry_pick_mood_to_save()');
+    expect(editor).not.toContain('toast(m.entry_needs_mood())');
   });
 
   it('guards contextual sections behind device preferences and domain conditions', () => {
