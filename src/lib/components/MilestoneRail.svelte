@@ -29,22 +29,54 @@
      other area of the app follows (DIRECTION.md). A future milestone is the
      same mark drawn hollow, which is the one place here where colour
      carries a meaning - and it is a fact about time, not a judgement, so
-     ADR-0012 has nothing to say about it. */
+     ADR-0012 has nothing to say about it.
+
+     ## Era bands (redesign ticket 16)
+
+     Eras left Transition's own hub row for Settings (ADR-0084: spent on
+     seven other screens, created on exactly one), and this rail is the one
+     place left under Transition where an era is still drawn - a low layer
+     behind the marks rather than a row of its own.
+
+     The rail has no continuous day-to-pixel scale the way the Look back
+     rail's does: the long empty stretches are compressed to one gap row,
+     so a band cannot be positioned by interpolating a day into a pixel.
+     `timelineEraBands` anchors it to whichever rows actually exist instead
+     - the first row an era's span touches to the last - and this component
+     measures those rows the way anything else on the page is measured,
+     through their own elements rather than a scale. An era with no row
+     inside it (swept entirely into a compressed gap between two milestones
+     that both fall outside it) draws no band; there is nothing on the rail
+     for it to run behind.
+
+     The colour is `theme/roles.ts`'s `eraBandRoles` - the same cycle the
+     Look back rail's own era bands use, so the two rails agree on which
+     stripe a given era gets. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { timelineItems } from '$lib/data/timelineItems';
+  import { timelineEraBands } from '$lib/data/timelineEraBands';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
-  import type { Milestone } from '$lib/data/types';
+  import type { Era, Milestone } from '$lib/data/types';
   import { collapse } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
   import PhotoThumb from './PhotoThumb.svelte';
 
-  let { milestones, onOpen }: { milestones: Milestone[]; onOpen: (milestone: Milestone) => void } =
-    $props();
+  let {
+    milestones,
+    eras,
+    onOpen,
+    onOpenEra
+  }: {
+    milestones: Milestone[];
+    eras: readonly Era[];
+    onOpen: (milestone: Milestone) => void;
+    onOpenEra: (eraId: string) => void;
+  } = $props();
 
   let today = $derived(todayEpochDay());
   let items = $derived(timelineItems(milestones, today));
@@ -58,13 +90,96 @@
 
   const gapLabel = (fromEpochDay: number, toEpochDay: number) =>
     fmtDuration(calendarDuration(fromEpochDay, toEpochDay));
+
+  /* Era bands: which rows each era covers (pure, tested), and the pixels
+     that turns into (this component's own job, since it depends on what
+     actually rendered). */
+  let eraBandRanges = $derived(timelineEraBands(items, eras, today));
+  let bandRoles = $derived(eraBandRoles(activeFlag.roles));
+
+  let rail = $state<HTMLElement | undefined>();
+  /** One element per row of `items`, in the same order, bound from the
+      `{#each}` below regardless of which of the three shapes that row
+      takes - the only thing a band needs from a row is where it sits. */
+  let itemEls = $state<(HTMLElement | undefined)[]>([]);
+
+  interface BandRect {
+    id: string;
+    name: string;
+    top: number;
+    height: number;
+    role: Role | undefined;
+  }
+
+  let bandRects = $state<BandRect[]>([]);
+
+  function measureBands() {
+    const el = rail;
+    if (!el) {
+      bandRects = [];
+      return;
+    }
+    const railTop = el.getBoundingClientRect().top;
+    const next: BandRect[] = [];
+    eraBandRanges.forEach((band, index) => {
+      const first = itemEls[band.startIndex];
+      const last = itemEls[band.endIndex];
+      if (!first || !last) return;
+      const a = first.getBoundingClientRect();
+      const b = last.getBoundingClientRect();
+      next.push({
+        id: band.id,
+        name: band.name,
+        top: a.top - railTop,
+        height: b.bottom - a.top,
+        role: roleAt(bandRoles, index)
+      });
+    });
+    bandRects = next;
+  }
+
+  /* Re-measured whenever the rows or the eras themselves change, and on
+     any resize of the rail - a locale whose row text wraps to a second
+     line changes every row's height, and with it every band under it. */
+  $effect(() => {
+    eraBandRanges;
+    itemEls;
+    measureBands();
+  });
+  $effect(() => {
+    if (!rail) return;
+    const el = rail;
+    const observer = new ResizeObserver(() => measureBands());
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
 </script>
 
 <!-- One role for the whole rail rather than one per item: the rail is a
      single area of the screen, and a colour per milestone would make the
      palette a sequence of unrelated marks. -->
-<div class="timeline" data-milestone-rail {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-  {#each items as item (item.id)}
+<div class="timeline" data-milestone-rail bind:this={rail} {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+  <!-- The low layer redesign ticket 16 adds: one band per era with a row
+       inside it, behind the axis and the marks (DOM order alone puts it
+       there - `.timeline::before` is painted first, these next, the rows
+       themselves last). Each is a button rather than a link, the same
+       reason the milestone rows below are: it opens a sheet on this
+       screen's own address, not a destination. -->
+  {#each bandRects as band (band.id)}
+    <button
+      type="button"
+      class="tl-era-band"
+      data-tl-era={band.id}
+      style:top="{band.top}px"
+      style:height="{band.height}px"
+      aria-label={m.era_band_open_aria({ name: band.name })}
+      onclick={() => onOpenEra(band.id)}
+      {...roleAttrs(band.role)}
+    >
+      <span class="tl-era-name">{band.name}</span>
+    </button>
+  {/each}
+  {#each items as item, index (item.id)}
     <!-- Adding or deleting a milestone changes the rail under the person's
          hands, and a mark that cuts in or out in one frame is the yank the
          standing clause forbids. `collapse` gives the height back over the
@@ -73,7 +188,7 @@
          arrival is the field blind's, not twenty marks each playing their
          own over the top of it. -->
     {#if item.kind === 'today'}
-      <div class="tl-item tl-today" data-tl-today transition:collapse|global>
+      <div class="tl-item tl-today" data-tl-today bind:this={itemEls[index]} transition:collapse|global>
         <span class="tl-dot is-today"></span>
         <p class="tl-here">{m.tl_you_are_here()}</p>
       </div>
@@ -85,6 +200,7 @@
       <div
         class="tl-gap"
         data-tl-gap
+        bind:this={itemEls[index]}
         aria-label={m.tl_gap_aria({ duration: label })}
         transition:collapse|global
       >
@@ -96,6 +212,7 @@
         class="tl-item"
         class:is-future={item.future}
         data-tl-item={item.milestone.id}
+        bind:this={itemEls[index]}
         transition:collapse|global
       >
         <span class="tl-dot"></span>
@@ -162,6 +279,42 @@
     width: 2px;
     border-radius: 1px;
     background: color-mix(in oklab, var(--role-draw) 60%, var(--bg));
+  }
+
+  /* An era's band (redesign ticket 16): the same gutter the axis and the
+     dots share, wide enough to sit under both, top and height set from the
+     rows it measures. Every band wears an edge, the reason SpanTimeline's
+     own bands do - a black or white flag leaves no other way for two
+     adjacent bands to read as separate objects. */
+  .tl-era-band {
+    position: absolute;
+    left: 0;
+    width: 20px;
+    box-sizing: border-box;
+    display: block;
+    padding: var(--space-1) 0;
+    margin: 0;
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    background: var(--role-draw);
+    color: var(--role-fill-ink);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* Read top to bottom with the timeline itself, at the band's own left
+     edge - the one label a short band still has room for, however few rows
+     it covers. */
+  .tl-era-name {
+    display: block;
+    writing-mode: vertical-rl;
+    margin: 0 auto;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 100%;
   }
 
   .tl-item {

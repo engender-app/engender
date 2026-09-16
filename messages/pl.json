@@ -3487,6 +3487,7 @@
   "era_delete_sheet": "Usuń erę",
   "era_delete_q": "Usunąć „{name}”? Dni zostają, nazwa znika.",
   "era_start_here": "Zacznij tu erę",
+  "era_band_open_aria": "Otwórz {name}",
   "words_group_by_label": "Grupuj według",
   "words_mode_presentation": "Tryb",
   "words_mode_era": "Era",
