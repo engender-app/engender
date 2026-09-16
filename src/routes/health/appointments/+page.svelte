@@ -140,23 +140,25 @@
     ].filter((part): part is string => part !== undefined);
   }
 
-  /** What the opening block says under the kind: where it is and when, with
-      the journey named where the kind has not already said it. The gap is a
-      line of its own above this, so it is not repeated here.
+  /** The day the opening block states: the weekday, and no year.
 
-      The weekday, and no year. The weekday is what somebody checks a booking
-      against ("is that the Saturday I am away?") and the year is the one part
-      of the date this block does not need, because the line above it already
-      says how far off the day is. The rows in the lists below keep the full
-      date: nothing there states a gap, so nothing there can leave the year
-      out. */
+      The weekday is what somebody checks a booking against ("is that the
+      Tuesday I am away?"). The year is the one part of the date this block
+      does not need, because the line above it already says how far off the
+      day is. The rows in the lists below keep the full date: nothing there
+      states a gap, so nothing there can leave the year out. */
+  const leadDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+
+  /** Where the opening block's visit is, with the journey named where the
+      kind has not already said it - or nothing, on a visit with neither.
+
+      Its own line rather than joined to the day above it. At 390px the two
+      together run four characters past the block and wrap, which leaves one
+      word of the date alone on a second line; two lines by construction read
+      as place then day rather than as an accident. */
   function leadWhere(appointment: Appointment): string {
     const journey = appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined;
-    return [
-      appointment.place ?? undefined,
-      appointment.kind && journey ? journey : undefined,
-      fmtDay(appointment.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })
-    ]
+    return [appointment.place ?? undefined, appointment.kind && journey ? journey : undefined]
       .filter((part): part is string => part !== undefined)
       .join(' · ');
   }
@@ -288,7 +290,8 @@
           >
             <span class="visit-lead-kind">{titleOf(nextVisit)}</span>
             <span class="visit-lead-gap" data-visit-gap>{gapLabel(nextVisit.epochDay)}</span>
-            <span class="visit-lead-where">{leadWhere(nextVisit)}</span>
+            <span class="visit-lead-when">{leadDay(nextVisit.epochDay)}</span>
+            {#if leadWhere(nextVisit)}<span class="visit-lead-where">{leadWhere(nextVisit)}</span>{/if}
           </button>
         {:else}
           <!-- Nothing booked is an ordinary state, not an empty journal: the
@@ -469,7 +472,7 @@
                 data-visit-debrief-offer=""
                 icon="book"
                 title={m.debrief_offer_title()}
-                subtitle={[m.debrief_offer_write(), dayShort(appointment.epochDay)]}
+                subtitle={[dayShort(appointment.epochDay), m.debrief_offer_write()]}
                 href={`/entry/new/today?debriefFor=${appointment.id}`}
                 action={{
                   icon: 'x',
@@ -677,6 +680,7 @@
      (--role-fill-ink), and fading that ink is how a contrast floor gets
      lost on the palettes whose band is light. Size carries the hierarchy
      instead. */
+  .visit-lead-when,
   .visit-lead-where {
     font-size: var(--text-sm);
   }
