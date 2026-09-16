@@ -2,15 +2,17 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   careSpine,
-  chooseRailEpisode,
   lastLoggedDoseDay,
   MIN_LABEL_GAP,
   nextExpectedSlot,
+  railEpisodes,
   scheduleDoseFacts,
   SPINE_BACK_DAYS,
   SPINE_FORWARD_DAYS,
   SPINE_MIN_BACK_DAYS,
-  SPINE_MIN_FORWARD_DAYS
+  SPINE_MIN_FORWARD_DAYS,
+  type CareSpine,
+  type LaneFacts
 } from './careSpine';
 import { startOfDayTimestamp } from './epochDay';
 import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
@@ -33,12 +35,25 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
   };
 }
 
-const NO_FACTS = {
-  lastDoseEpochDay: null,
-  nextDoseEpochDay: null,
-  labDrawEpochDay: null,
-  runOutEpochDay: null
-};
+/** One lane's own three days, all absent unless the test says otherwise. */
+function lane(overrides: Partial<LaneFacts> = {}): LaneFacts {
+  return {
+    episodeId: 'ep-1',
+    drug: 'estradiol',
+    lastDoseEpochDay: null,
+    nextDoseEpochDay: null,
+    runOutEpochDay: null,
+    ...overrides
+  };
+}
+
+/** The one-drug spine most of these tests are about: a single lane, and
+    whatever lab draw the case needs. */
+function oneLane(own: Partial<LaneFacts>, labDrawEpochDay: number | null = null, todayEpochDay = TODAY) {
+  return careSpine({ labDrawEpochDay, lanes: [lane(own)] }, todayEpochDay);
+}
+
+const NO_FACTS = { labDrawEpochDay: null, lanes: [lane()] };
 
 function dose(epochDay: number, overrides: Partial<DoseEvent> = {}): DoseEvent {
   return {
@@ -67,8 +82,11 @@ function schedule(overrides: Partial<DoseSchedule> = {}): DoseSchedule {
   } as DoseSchedule;
 }
 
-const markOf = (spine: NonNullable<ReturnType<typeof careSpine>>, kind: string) =>
-  spine.marks.find((mark) => mark.kind === kind);
+/** Every mark on the rail, shared and per lane alike - what the old
+    single-lane `spine.marks` was. */
+const allMarks = (spine: CareSpine) => [...spine.shared, ...spine.lanes.flatMap((l) => l.marks)];
+
+const markOf = (spine: CareSpine, kind: string) => allMarks(spine).find((mark) => mark.kind === kind);
 
 /* The rail exists or it does not */
 
@@ -77,44 +95,65 @@ test('today alone is not a rail', () => {
 });
 
 test('one other mark beside today is a rail', () => {
-  const spine = careSpine({ ...NO_FACTS, nextDoseEpochDay: TODAY + 3 }, TODAY);
+  const spine = oneLane({ nextDoseEpochDay: TODAY + 3 });
   assert.ok(spine);
   assert.deepEqual(
-    spine.marks.map((mark) => mark.kind),
-    ['today', 'nextDose']
+    spine.shared.map((mark) => mark.kind),
+    ['today']
+  );
+  assert.deepEqual(
+    spine.lanes.map((l) => l.marks.map((mark) => mark.kind)),
+    [['nextDose']]
   );
 });
 
-test('marks read left to right in time order', () => {
+test('a lane with nothing logged against it yet draws no line', () => {
   const spine = careSpine(
     {
-      lastDoseEpochDay: TODAY - 5,
-      nextDoseEpochDay: TODAY + 2,
-      labDrawEpochDay: TODAY - 20,
-      runOutEpochDay: TODAY + 24
+      labDrawEpochDay: TODAY - 9,
+      lanes: [lane({ episodeId: 'ep-1', nextDoseEpochDay: TODAY + 2 }), lane({ episodeId: 'ep-2', drug: 'Sertraline' })]
     },
     TODAY
   );
   assert.ok(spine);
   assert.deepEqual(
-    spine.marks.map((mark) => mark.kind),
-    ['labDraw', 'lastDose', 'today', 'nextDose', 'runOut']
+    spine.lanes.map((l) => l.episodeId),
+    ['ep-1'],
+    'a running regimen with no last dose, next dose or run-out has no mark to put on a line'
   );
-  const positions = spine.marks.map((mark) => mark.position);
-  assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+});
+
+test('marks read left to right in time order', () => {
+  const spine = oneLane(
+    { lastDoseEpochDay: TODAY - 5, nextDoseEpochDay: TODAY + 2, runOutEpochDay: TODAY + 24 },
+    TODAY - 20
+  );
+  assert.ok(spine);
+  assert.deepEqual(
+    spine.shared.map((mark) => mark.kind),
+    ['labDraw', 'today']
+  );
+  assert.deepEqual(
+    spine.lanes[0].marks.map((mark) => mark.kind),
+    ['lastDose', 'nextDose', 'runOut']
+  );
+  for (const marks of [spine.shared, spine.lanes[0].marks]) {
+    const positions = marks.map((mark) => mark.position);
+    assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+  }
 });
 
 /* What the rail spans */
 
 test('the rail always reaches at least a fortnight either side of today', () => {
-  const spine = careSpine({ ...NO_FACTS, nextDoseEpochDay: TODAY + 1 }, TODAY);
+  const spine = oneLane({ nextDoseEpochDay: TODAY + 1 });
   assert.ok(spine);
   assert.equal(spine.fromEpochDay, TODAY - SPINE_MIN_BACK_DAYS);
   assert.equal(spine.toEpochDay, TODAY + SPINE_MIN_FORWARD_DAYS);
 });
 
 test('a mark past the fortnight stretches the rail to it, and lands on its end', () => {
-  const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 40, labDrawEpochDay: TODAY - 30 }, TODAY);
+  const spine = oneLane({ runOutEpochDay: TODAY + 40 }, TODAY - 30);
   assert.ok(spine);
   assert.equal(spine.fromEpochDay, TODAY - 30);
   assert.equal(spine.toEpochDay, TODAY + 40);
@@ -123,10 +162,7 @@ test('a mark past the fortnight stretches the rail to it, and lands on its end',
 });
 
 test('a mark past the rail sits at the end it was clamped to, and says so', () => {
-  const spine = careSpine(
-    { ...NO_FACTS, labDrawEpochDay: TODAY - 400, runOutEpochDay: TODAY + 900 },
-    TODAY
-  );
+  const spine = oneLane({ runOutEpochDay: TODAY + 900 }, TODAY - 400);
   assert.ok(spine);
   assert.equal(spine.fromEpochDay, TODAY - SPINE_BACK_DAYS);
   assert.equal(spine.toEpochDay, TODAY + SPINE_FORWARD_DAYS);
@@ -142,22 +178,47 @@ test('a mark past the rail sits at the end it was clamped to, and says so', () =
 });
 
 test('a mark inside the rail is not beyond it', () => {
-  const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 10 }, TODAY);
+  const spine = oneLane({ runOutEpochDay: TODAY + 10 });
   assert.ok(spine);
   assert.equal(markOf(spine, 'runOut')?.beyondSpan, false);
   assert.equal(markOf(spine, 'today')?.beyondSpan, false);
 });
 
 test('today sits at the middle of the rail whatever the marks are', () => {
-  for (const facts of [
-    { ...NO_FACTS, runOutEpochDay: TODAY + 100 },
-    { ...NO_FACTS, labDrawEpochDay: TODAY - 55 },
-    { lastDoseEpochDay: TODAY - 3, nextDoseEpochDay: TODAY + 4, labDrawEpochDay: TODAY - 200, runOutEpochDay: TODAY + 9 }
-  ]) {
-    const spine = careSpine(facts, TODAY);
+  const spines = [
+    oneLane({ runOutEpochDay: TODAY + 100 }),
+    oneLane({}, TODAY - 55),
+    oneLane({ lastDoseEpochDay: TODAY - 3, nextDoseEpochDay: TODAY + 4, runOutEpochDay: TODAY + 9 }, TODAY - 200)
+  ];
+  for (const spine of spines) {
     assert.ok(spine);
     assert.equal(markOf(spine, 'today')?.position, 0.5);
   }
+});
+
+/* One day axis, whatever a lane's own days are: two lanes are only
+   comparable if the same distance along the rail means the same day on
+   both. */
+
+test('every lane is placed against one span, taken across all of them', () => {
+  const spine = careSpine(
+    {
+      labDrawEpochDay: null,
+      lanes: [
+        lane({ episodeId: 'ep-1', nextDoseEpochDay: TODAY + 2 }),
+        lane({ episodeId: 'ep-2', drug: 'Progesterone', nextDoseEpochDay: TODAY + 2, runOutEpochDay: TODAY + 60 })
+      ]
+    },
+    TODAY
+  );
+  assert.ok(spine);
+  assert.equal(spine.toEpochDay, TODAY + 60, 'the far run-out on the second lane opens the span for both');
+  const [first, second] = spine.lanes;
+  assert.equal(
+    first.marks.find((m) => m.kind === 'nextDose')?.position,
+    second.marks.find((m) => m.kind === 'nextDose')?.position,
+    'the same day is the same distance along on both lanes'
+  );
 });
 
 /* The rail's scale is the square root of the distance from today, not the
@@ -167,7 +228,7 @@ test('today sits at the middle of the rail whatever the marks are', () => {
    order, so nothing on the line is ever drawn out of sequence, and every
    caption prints its own date. */
 test('a day twice as far from today sits less than twice as far along', () => {
-  const spine = careSpine({ ...NO_FACTS, nextDoseEpochDay: TODAY + 4, runOutEpochDay: TODAY + 16 }, TODAY);
+  const spine = oneLane({ nextDoseEpochDay: TODAY + 4, runOutEpochDay: TODAY + 16 });
   assert.ok(spine);
   const near = (markOf(spine, 'nextDose')?.position ?? 0) - 0.5;
   const far = (markOf(spine, 'runOut')?.position ?? 0) - 0.5;
@@ -176,49 +237,53 @@ test('a day twice as far from today sits less than twice as far along', () => {
 });
 
 test('the scale never reorders two marks', () => {
-  const spine = careSpine(
-    { lastDoseEpochDay: TODAY - 1, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: TODAY - 40, runOutEpochDay: TODAY + 2 },
-    TODAY
+  const spine = oneLane(
+    { lastDoseEpochDay: TODAY - 1, nextDoseEpochDay: TODAY + 1, runOutEpochDay: TODAY + 2 },
+    TODAY - 40
   );
   assert.ok(spine);
-  const positions = spine.marks.map((mark) => mark.position);
+  const positions = spine.lanes[0].marks.map((mark) => mark.position);
   assert.deepEqual([...positions].sort((a, b) => a - b), positions);
 });
 
-/* Labels that would collide take the second lane */
+/* Labels that would collide take the next row down, inside their own lane */
 
-test('marks far apart all sit in the near lane', () => {
-  const spine = careSpine({ lastDoseEpochDay: TODAY - 30, nextDoseEpochDay: TODAY + 30, labDrawEpochDay: null, runOutEpochDay: null }, TODAY);
+test('marks far apart all sit in the near row', () => {
+  const spine = oneLane({ lastDoseEpochDay: TODAY - 30, nextDoseEpochDay: TODAY + 30 });
   assert.ok(spine);
   assert.deepEqual(
-    spine.marks.map((mark) => mark.lane),
+    allMarks(spine).map((mark) => mark.labelRow),
     [0, 0, 0]
   );
 });
 
-test('a mark crowding the one before it drops to the far lane', () => {
-  const spine = careSpine(
-    { lastDoseEpochDay: TODAY - 1, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: null, runOutEpochDay: TODAY + 30 },
-    TODAY
-  );
+test('a mark crowding the one before it drops to the next row down', () => {
+  const spine = oneLane({ lastDoseEpochDay: TODAY - 1, nextDoseEpochDay: TODAY + 1, runOutEpochDay: TODAY + 30 });
   assert.ok(spine);
-  const lanes = new Map(spine.marks.map((mark) => [mark.kind, mark.lane]));
-  assert.notEqual(lanes.get('lastDose'), lanes.get('today'));
-  assert.notEqual(lanes.get('today'), lanes.get('nextDose'));
+  const rows = new Map(spine.lanes[0].marks.map((mark) => [mark.kind, mark.labelRow]));
+  assert.notEqual(rows.get('lastDose'), rows.get('nextDose'));
 });
 
-test('marks on the same day each get a lane of their own', () => {
-  const spine = careSpine(
-    { lastDoseEpochDay: TODAY, nextDoseEpochDay: null, labDrawEpochDay: TODAY, runOutEpochDay: TODAY + 20 },
-    TODAY
-  );
+test("a lane's own labels never collide with the rail's shared ones", () => {
+  /* The case the one-lane spine spent a whole label row on: today and a
+     dose the next day. The two now head different rows of the card - today
+     labels the rail once, the lane's captions hang under its own line - so
+     neither is pushed out for the other. */
+  const spine = oneLane({ nextDoseEpochDay: TODAY + 1 });
   assert.ok(spine);
-  const onToday = spine.marks.filter((mark) => mark.epochDay === TODAY);
-  assert.equal(onToday.length, 3);
+  assert.equal(markOf(spine, 'today')?.labelRow, 0);
+  assert.equal(markOf(spine, 'nextDose')?.labelRow, 0);
+});
+
+test('marks on the same day in one lane each get a row of their own', () => {
+  const spine = oneLane({ lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY, runOutEpochDay: TODAY + 20 });
+  assert.ok(spine);
+  const onToday = spine.lanes[0].marks.filter((mark) => mark.epochDay === TODAY);
+  assert.equal(onToday.length, 2);
   assert.deepEqual(
-    onToday.map((mark) => mark.lane).sort(),
-    [0, 1, 2],
-    'three captions at one point need three lanes; two would print one over another'
+    onToday.map((mark) => mark.labelRow).sort(),
+    [0, 1],
+    'two captions at one point need two rows; one would print over the other'
   );
 });
 
@@ -226,28 +291,138 @@ test('marks on the same day each get a lane of their own', () => {
    run-out three weeks out. On a linear scale all three crowded into the last
    quarter of the rail and the captions printed on top of each other. */
 test('a dose today, one tomorrow and a run-out weeks out all stay readable', () => {
-  const spine = careSpine(
-    { lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: TODAY - 70, runOutEpochDay: TODAY + 20 },
-    TODAY
+  const spine = oneLane(
+    { lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1, runOutEpochDay: TODAY + 20 },
+    TODAY - 70
   );
   assert.ok(spine);
-  const byLane = new Map<number, number[]>();
-  for (const mark of spine.marks) byLane.set(mark.lane, [...(byLane.get(mark.lane) ?? []), mark.position]);
-  for (const [lane, positions] of byLane) {
-    for (let i = 1; i < positions.length; i++) {
-      assert.ok(positions[i] - positions[i - 1] >= MIN_LABEL_GAP, `lane ${lane} has two captions too close together`);
+  for (const marks of [spine.shared, ...spine.lanes.map((l) => l.marks)]) {
+    const byRow = new Map<number, number[]>();
+    for (const mark of marks) byRow.set(mark.labelRow, [...(byRow.get(mark.labelRow) ?? []), mark.position]);
+    for (const [row, positions] of byRow) {
+      for (let i = 1; i < positions.length; i++) {
+        assert.ok(positions[i] - positions[i - 1] >= MIN_LABEL_GAP, `row ${row} has two captions too close together`);
+      }
     }
   }
 });
 
-test('every lane from 0 up is used, so the rail is never taller than it needs', () => {
+test('every row from 0 up is used, so a lane is never taller than it needs', () => {
+  const spine = oneLane(
+    { lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1, runOutEpochDay: TODAY + 20 },
+    TODAY - 70
+  );
+  assert.ok(spine);
+  const rows = [...new Set(spine.lanes[0].marks.map((mark) => mark.labelRow))].sort((a, b) => a - b);
+  assert.deepEqual(rows, rows.map((_, i) => i));
+});
+
+/* Three running drugs: three lanes of their own marks, one set of shared
+   ones (phase 11 ticket 10) */
+
+test('three running episodes draw three lanes with their own last, next and run-out', () => {
   const spine = careSpine(
-    { lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: TODAY - 70, runOutEpochDay: TODAY + 20 },
+    {
+      labDrawEpochDay: TODAY - 71,
+      lanes: [
+        lane({
+          episodeId: 'ep-e',
+          drug: 'Estradiol valerate',
+          lastDoseEpochDay: TODAY - 2,
+          nextDoseEpochDay: TODAY + 5,
+          runOutEpochDay: TODAY + 21
+        }),
+        lane({
+          episodeId: 'ep-p',
+          drug: 'Progesterone',
+          lastDoseEpochDay: TODAY - 1,
+          nextDoseEpochDay: TODAY,
+          runOutEpochDay: TODAY + 40
+        }),
+        lane({ episodeId: 'ep-s', drug: 'Sertraline', lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1 })
+      ]
+    },
     TODAY
   );
   assert.ok(spine);
-  const lanes = [...new Set(spine.marks.map((mark) => mark.lane))].sort((a, b) => a - b);
-  assert.deepEqual(lanes, lanes.map((_, i) => i));
+
+  assert.deepEqual(
+    spine.shared.map((mark) => mark.kind),
+    ['labDraw', 'today'],
+    'today and the draw are drawn once for the whole rail, not once per lane'
+  );
+  assert.deepEqual(
+    spine.lanes.map((l) => [l.episodeId, l.drug, l.marks.map((mark) => mark.kind)]),
+    [
+      ['ep-e', 'Estradiol valerate', ['lastDose', 'nextDose', 'runOut']],
+      ['ep-p', 'Progesterone', ['lastDose', 'nextDose', 'runOut']],
+      ['ep-s', 'Sertraline', ['lastDose', 'nextDose']]
+    ],
+    'each lane carries its own three readings, and only the ones it has'
+  );
+  assert.equal(spine.lanes[1].marks.find((m) => m.kind === 'nextDose')?.position, 0.5, "one lane's next dose is today");
+});
+
+test('one episode yields one lane, over the same span and positions as three would give it', () => {
+  const own = {
+    episodeId: 'ep-e',
+    drug: 'Estradiol valerate',
+    lastDoseEpochDay: TODAY - 2,
+    nextDoseEpochDay: TODAY + 5,
+    runOutEpochDay: TODAY + 21
+  };
+  const alone = careSpine({ labDrawEpochDay: TODAY - 71, lanes: [lane(own)] }, TODAY);
+  assert.ok(alone);
+  assert.equal(alone.lanes.length, 1);
+  assert.equal(alone.fromEpochDay, TODAY - SPINE_BACK_DAYS);
+  assert.deepEqual(
+    alone.lanes[0].marks.map((mark) => [mark.kind, mark.labelRow]),
+    [
+      ['lastDose', 0],
+      ['nextDose', 1],
+      ['runOut', 0]
+    ],
+    'a lone lane resolves its own crowding exactly as one of three does'
+  );
+});
+
+/* Which order the lanes are drawn in (phase 11 ticket 10) */
+
+test('every running episode gets a lane, curve drugs first', () => {
+  const curve = episode({ id: 'ep-curve', drug: 'estradiol', startEpochDay: TODAY - 10 });
+  const other = episode({ id: 'ep-other', drug: 'sertraline', startEpochDay: TODAY - 300 });
+  assert.deepEqual(
+    railEpisodes([other, curve]).map((e) => e.id),
+    ['ep-curve', 'ep-other']
+  );
+});
+
+test('two curve episodes both get a lane rather than cancelling each other out', () => {
+  const first = episode({ id: 'ep-1', drug: 'estradiol', startEpochDay: TODAY - 400 });
+  const second = episode({ id: 'ep-2', drug: 'testosterone', startEpochDay: TODAY - 40 });
+  assert.deepEqual(
+    railEpisodes([second, first]).map((e) => e.id),
+    ['ep-1', 'ep-2'],
+    'the older of the two curve drugs is drawn first; neither is primary'
+  );
+});
+
+test('one active episode of any drug is one lane', () => {
+  const solo = episode({ drug: 'sertraline' });
+  assert.deepEqual(railEpisodes([solo]), [solo]);
+});
+
+test('no active episode is no lane', () => {
+  assert.deepEqual(railEpisodes([]), []);
+});
+
+test('lanes of the same class read oldest first', () => {
+  const young = episode({ id: 'ep-young', drug: 'Sertraline', startEpochDay: TODAY - 50 });
+  const old = episode({ id: 'ep-old', drug: 'Progesterone', startEpochDay: TODAY - 300 });
+  assert.deepEqual(
+    railEpisodes([young, old]).map((e) => e.id),
+    ['ep-old', 'ep-young']
+  );
 });
 
 /* The two facts the rail reads off the dose log */
@@ -295,39 +470,6 @@ test('a rhythm whose next slot is past the rail has no next slot to show', () =>
     TODAY
   );
   assert.equal(slot, null);
-});
-
-/* Which of several active episodes draws the rail (ticket 38) */
-
-test('one active episode of any drug always wins the rail', () => {
-  const solo = episode({ drug: 'sertraline' });
-  assert.deepEqual(chooseRailEpisode([solo]), { rail: solo, others: [], ambiguous: false });
-});
-
-test('no active episode leaves nothing to draw', () => {
-  assert.deepEqual(chooseRailEpisode([]), { rail: null, others: [], ambiguous: false });
-});
-
-test('a curve drug alongside an unrelated one wins the rail; the other falls to its own row', () => {
-  const curve = episode({ id: 'ep-curve', drug: 'estradiol' });
-  const other = episode({ id: 'ep-other', drug: 'sertraline' });
-  assert.deepEqual(chooseRailEpisode([curve, other]), { rail: curve, others: [other], ambiguous: false });
-});
-
-test('two concurrent curve episodes are genuinely ambiguous', () => {
-  const first = episode({ id: 'ep-1', drug: 'estradiol' });
-  const second = episode({ id: 'ep-2', drug: 'testosterone' });
-  assert.deepEqual(chooseRailEpisode([first, second]), { rail: null, others: [first, second], ambiguous: true });
-});
-
-test('an ambiguous pair of curve episodes still lets an unrelated third row through', () => {
-  const first = episode({ id: 'ep-1', drug: 'estradiol' });
-  const second = episode({ id: 'ep-2', drug: 'testosterone' });
-  const other = episode({ id: 'ep-3', drug: 'sertraline' });
-  const result = chooseRailEpisode([first, second, other]);
-  assert.equal(result.rail, null);
-  assert.equal(result.ambiguous, true);
-  assert.deepEqual(result.others, [first, second, other]);
 });
 
 /* One episode's own last and next dose, scoped so an unrelated concurrent
