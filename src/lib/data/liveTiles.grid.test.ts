@@ -447,20 +447,37 @@ describe('what each tile says', () => {
      prevent rather than to cause. */
   describe('what the dose panel accounts for', () => {
     const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', startEpochDay: TODAY - 8 };
+    const dailyFor = (episodeId: string): DoseSchedule => ({
+      id: `sched-${episodeId}`,
+      episodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      dosesPerDay: 1,
+      doseAmounts: null
+    });
+    const weeklyFor = (episodeId: string): DoseSchedule => ({ ...dailyFor(episodeId), recurrence: { kind: 'everyNDays', everyNDays: 4 } });
+    const covers = (over?: Overrides) => {
+      const grid = input(over);
+      return dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, grid.reads.schedules, NOW);
+    };
 
     it('covers the whole kind while one regimen is running', () => {
-      const grid = input();
-      expect(dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, NOW)).toBe(true);
+      expect(covers()).toBe(true);
     });
 
-    it('covers nothing extra while two regimens are running', () => {
-      const grid = input({ reads: { episodes: [episode, second] } });
-      expect(dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, NOW)).toBe(false);
+    /* A daily schedule earns no forward mark (ADR-0067), so a second
+       regimen taken every day puts no row on the band for the panel to be
+       standing in front of. This is the demo journal's own shape: an
+       injection on a rhythm beside an everyday pill. */
+    it('still covers it while a second regimen is taken daily', () => {
+      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, dailyFor('ep-2')] } })).toBe(true);
+    });
+
+    it('covers nothing while a second regimen earns marks of its own', () => {
+      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, weeklyFor('ep-2')] } })).toBe(false);
     });
 
     it('covers nothing when the panel is switched off', () => {
-      const grid = input({ enabled: { ...allOn(true), 'dose-panel': false } });
-      expect(dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, NOW)).toBe(false);
+      expect(covers({ enabled: { ...allOn(true), 'dose-panel': false } })).toBe(false);
     });
   });
 

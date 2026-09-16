@@ -33,7 +33,7 @@ import type {
   WearSession
 } from './types';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
-import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePauseOn } from './doseSchedule';
+import { adherence, expectedAmountOn, expectedSlots, isDailySchedule, pauseCoversDay as isDosePauseOn } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { spanCoversDay } from './span';
@@ -582,23 +582,38 @@ type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
     draw, which is what the screen withholds the `doseSlot` kind on
     (agendaReads.ts, phase 11 ticket 03).
 
-    Two conditions, and the second is the one worth writing down. The panel
-    states one drug - `activeEpisodesAt`'s first - while `dayAhead`'s
-    `doseSlot` section reads *every* active episode, so on two concurrent
-    regimens the panel stands for one of them and the band's rows for both.
-    Withholding there would take a drug the panel never names off the screen
-    altogether, which is the failure the withholding exists to prevent, not
-    to cause. So two running regimens keep their rows, and the cost is that
-    one drug is stated twice - the direction ADR-0074 already errs in when
-    it would otherwise state one drug's arrangement under another's name. */
+    The panel states one drug - `activeEpisodesAt`'s first - while
+    `dayAhead`'s `doseSlot` section reads every active episode, so the
+    question is not how many regimens are running but how many of them put a
+    row on the band. That section skips an episode with no schedule and one
+    on a daily schedule (ADR-0067: a daily slot marks every day a screen can
+    draw, which is wallpaper), so an everyday pill beside an injection on a
+    rhythm earns no rows at all and the panel still stands for the whole of
+    what is drawn. This is the demo journal's own shape, and taking the
+    count of running regimens instead put both of the injection's rows back
+    beside the panel that already stated them.
+
+    What is refused is the case that would hide something: a second regimen
+    that does earn rows of its own, which the panel never names. Then the
+    band keeps every row and the cost is one drug stated twice - the
+    direction ADR-0074 already errs in rather than state one drug's
+    arrangement under another's name. */
 export function dosePanelCoversEveryRegimen(
   tiles: readonly HomeTile[],
   episodes: readonly RegimenEpisode[],
+  schedules: readonly DoseSchedule[],
   nowMs: number
 ): boolean {
-  return (
-    tiles.some((tile) => tile.key === 'dose-panel') && activeEpisodesAt(episodes, nowMs).length === 1
-  );
+  if (!tiles.some((tile) => tile.key === 'dose-panel')) return false;
+  const active = activeEpisodesAt(episodes, nowMs);
+  const marking = active.filter((episode) => {
+    const schedule = schedules.find((s) => s.episodeId === episode.id);
+    return schedule !== undefined && !isDailySchedule(schedule);
+  });
+  /* `active[0]` is the episode the panel names (the builder below). A lone
+     marking episode that is not that one would be a drug the panel does not
+     stand for, so it is refused the same as two. */
+  return marking.length === 0 || (marking.length === 1 && marking[0].id === active[0].id);
 }
 
 /** Home's grid: the twelve kinds, gated, in `LIVE_TILE_ORDER`, with nothing
