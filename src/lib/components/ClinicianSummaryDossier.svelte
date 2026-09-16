@@ -154,7 +154,7 @@
               {#each dossier.regimen.current as ep, i (ep.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>
-                    <a class="dossier-row-link" href={`/settings/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
+                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
                     {#if ep.ester}<span class="muted small">({ep.ester})</span>{/if}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
@@ -192,7 +192,7 @@
               {#each pastEpisodes as ep, i (ep.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>
-                    <a class="dossier-row-link" href={`/settings/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
+                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
                       ? ` (${ep.ester})`
                       : ''}
                   </td>
@@ -233,7 +233,7 @@
                   <td class="num">{dayShort(doseDay)}</td>
                   <td class="num">{fmtTime(dose.timestamp)}</td>
                   <td class="num">
-                    <a class="dossier-row-link" href={`/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
+                    <a class="dossier-row-link" href={`/care/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
                     {#if dose.drug}<span class="muted small">· {dose.drug}</span>{/if}
                   </td>
                   <td>{routeLabel(dose.route)}</td>

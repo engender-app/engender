@@ -245,7 +245,7 @@
      nothing for has already done the thing it would be asking for, and saying
      so again would put the limit on them rather than on this screen. -->
 {#snippet doseLogAction()}
-  <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
+  <a class="btn btn-soft" href="/care/doses"><span>{m.curve_empty_action()}</span></a>
 {/snippet}
 
 <!-- What one mark stands for, and the way out to it (phase 8 features ticket
@@ -305,7 +305,7 @@
       role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
       title={m.curve_empty_title()}
       text={m.curve_empty_body()}
-      action={futile ? undefined : { label: m.curve_empty_action(), primary: true, href: '/doses' }}
+      action={futile ? undefined : { label: m.curve_empty_action(), primary: true, href: '/care/doses' }}
     />
     {#if futile}
       <p class="muted small curve-note" data-no-curve-note>

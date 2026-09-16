@@ -8,9 +8,9 @@
    The registry side - which tables each read declares - is covered in
    writes.test.ts, and this is the other end of the same claim.
 
-   The query is the one the screen makes, copied verbatim from
-   settings/stock, so this fails if that screen's read stops resolving what
-   it reads. The audit's other defect was settings/streak-goal, which phase 8
+   The query is the one the screen makes, copied verbatim from Care's own
+   stock sheet, so this fails if that read stops resolving what it reads.
+   The audit's other defect was settings/streak-goal, which phase 8
    UX ticket 01 deleted along with the streak. Rune-bearing, hence the
    .svelte.ts name: the plugin in browser-tier.vite.config.ts compiles
    this. */
@@ -97,7 +97,7 @@ async function run() {
   let feltSenseQuery!: LiveQuery<Map<string, number>>;
 
   $effect.root(() => {
-    // settings/stock's own read, counting its runs: what the screen shows is
+    // Care's own stock-sheet read, counting its runs: what the screen shows is
     // a projected date, and what this has to catch is the read happening
     // again at all.
     projectionQuery = liveQuery(async (j) => {

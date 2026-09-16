@@ -362,7 +362,7 @@
 
   function logDose() {
     close();
-    goto('/doses?add=1');
+    goto('/care/doses?add=1');
   }
 
   function logEffects() {

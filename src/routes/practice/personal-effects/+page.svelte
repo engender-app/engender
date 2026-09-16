@@ -271,7 +271,7 @@
           role={roleAt(activeFlag.roles, 0)}
           title={m.effects_no_regimen_title()}
           text={m.effects_no_regimen_body()}
-          action={{ label: m.effects_no_regimen_action(), primary: true, href: '/settings/regimen' }}
+          action={{ label: m.effects_no_regimen_action(), primary: true, href: '/care/regimen' }}
         />
       </div>
     {/if}

@@ -45,13 +45,14 @@ const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {};
     the part of this list the hub cannot supply. */
 const REACHED_FROM_INSIDE = [
   /* Four screens stopped being hub rows in phase 5 deepening ticket 07 -
-     labs, regimen, hormone-curve and doses sit behind the `/care` row now -
+     labs, regimen, hormone-curve and doses sit behind the `/care` row now,
+     and ticket 09 (ADR-0084) moved their own addresses under `/care/*` too -
      and they are still feature screens, still built on the kit, so they stay
      on this list. */
-  'settings/labs',
-  'settings/regimen',
-  'settings/hormone-curve',
-  'doses',
+  'care/labs',
+  'care/regimen',
+  'care/curve',
+  'care/doses',
   'transition/tryouts/[id]',
   /* The metric reference (phase 8 features ticket 27): reached only from a
      figure on the voice screen, never from the hub, which is ADR-0060's
@@ -72,8 +73,6 @@ const REACHED_FROM_INSIDE = [
      list for the reason the note above the list gives - a screen that is
      not here escapes every assertion in it. */
   'coming-back',
-  'settings/stock',
-  'settings/exposure',
   'media/photos/export',
   /* The appointment prep list stopped being a hub row in phase 8 features
      ticket 57: the row it had is the appointments row now, and prep is
@@ -237,8 +236,8 @@ describe('what a first-run journal sees', () => {
       catalogue, resources is a bundled directory and entry templates
       reconciles every `ENTRY_TEMPLATES` built-in on every boot (the
       screen's own header comment), so none of the three can be empty; the
-      clinician summary and the exposure counters state their emptiness
-      per section rather than per screen. */
+      clinician summary states its emptiness per section rather than per
+      screen. */
   const WITH_EMPTY_STATE = ROUTES.filter(
     (route) =>
       ![
@@ -246,7 +245,6 @@ describe('what a first-run journal sees', () => {
         'practice/resources',
         'settings/entry-templates',
         'health/clinician-summary',
-        'settings/exposure',
         /* The metric reference explains a fixed table of seven figures
            compiled into the bundle (data/voice/metrics.ts), so it has no
            empty state for the same reason the bundled directory has
@@ -434,7 +432,7 @@ describe('no medical framing and no interpreted values', () => {
        paragraph, the band's own legend, and the pill on the heading of
        every curve the research does not support a fit for. The scope line
        is explicit that this screen must keep saying so. */
-    const source = sourceOf.get('settings/hormone-curve')!;
+    const source = sourceOf.get('care/curve')!;
     for (const key of ['curve_intro', 'curve_legend_band', 'curve_qual_notice']) {
       expect(source, key).toContain(`m.${key}()`);
     }
