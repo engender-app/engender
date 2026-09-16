@@ -49,7 +49,8 @@ body {
    here to save a selector would have broken the one thing the ADR is for.
 
    Deliberately not extended to every other place a `note` prop shows up
-   (WrappedYear's figure captions, BarRows' and Tile's own `note` slots):
+   (WrappedYear's figure captions, BarRows', PairedDots' and Tile's own
+   `note` slots):
    those are computed summaries the app wrote, not something the person
    typed, and belong with the rest of the app's chrome. */
 :is(
