@@ -81,7 +81,6 @@
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
   import { collapse, disclose, markSlotReplacement } from '$lib/motion/reveal';
-  import { drumIn, drumOut } from '$lib/motion/drum';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   /* A fold's label changes under a standing button - "Ready letter, Active
@@ -251,15 +250,35 @@
      the person's switches over the five kinds (ticket 05), applied to the
      marks before the projection so a kind switched off is not what pushes
      a row into the fold. Its fold is ADR-0039's shape at the agenda's own
-     cap, disclosed in place and never a route. */
+     cap, disclosed in place and never a route.
+
+     Phase 11 ticket 03: a `doseSlot` row is withheld while the dose panel
+     is up, because the panel now carries the next slot's own day and the
+     two together were the same medication stated twice. Read off the
+     composed grid through a `$derived` boolean rather than inside the
+     query's run: `liveTiles.tiles` is rebuilt on every tick of the wear
+     timer's clock, so a run tracking the list itself would re-issue the
+     whole forward read once a second. A boolean only wakes the query when
+     it flips. */
+  let dosePanelShowing = $derived(liveTiles.tiles.some((tile) => tile.key === 'dose-panel'));
   let agendaQuery = liveQuery((j) =>
-    readAgenda({ dayAhead: j.dayAhead, doses: j.doses }, today, prefs.disguise, shownAgendaKinds(prefs))
+    readAgenda(
+      { dayAhead: j.dayAhead, doses: j.doses },
+      today,
+      prefs.disguise,
+      shownAgendaKinds(prefs),
+      dosePanelShowing
+    )
   );
   let agenda = $derived(agendaQuery.value ?? null);
   let agendaExpanded = $state(false);
-  /* The two fold labels, keyed in the markup so a change crosses (labelFade). */
+  /* The two fold labels, keyed in the markup so a change crosses (labelFade).
+     The agenda's says what stretch of time it is holding rather than only
+     how many rows (ticket 03): the window is a month now, and "3 more"
+     over a band whose visible rows are all this week reads as three more
+     this week. */
   let agendaFoldLabel = $derived(
-    agendaExpanded ? m.home_tiles_fewer() : m.list_more({ count: agenda?.folded.length ?? 0 })
+    agendaExpanded ? m.home_tiles_fewer() : m.agenda_more({ count: agenda?.folded.length ?? 0 })
   );
   let tilesFoldLabel = $derived(tilesExpanded ? m.home_tiles_fewer() : foldLabel);
   let agendaRows = $derived(agenda ? (agendaExpanded ? [...agenda.shown, ...agenda.folded] : agenda.shown) : []);
@@ -269,8 +288,12 @@
   function agendaWhen(epochDay: number): string {
     if (epochDay === today) return m.today();
     if (epochDay === today + 1) return m.tomorrow();
-    return fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+    return weekdayDay(epochDay);
   }
+  /** The same day without the two near-day words, which is what the dose
+      panel puts inside "Next ..." (liveTiles.svelte.ts hands it the same
+      format for that reason). */
+  const weekdayDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
   const shortWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'short' });
   const dayNumber = (epochDay: number) => fmtDay(epochDay, { day: 'numeric' });
   const fullDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -301,66 +324,6 @@
      nothing about a page somebody edited on Tuesday should still be in
      edit mode on Wednesday. */
   let editing = $state(false);
-
-  /* The write shapes a tap can start, beside the mood pick (spec stories
-     11 and 12): the four resolvable targets the centre fan offers, with the
-     same words, going the same places and making the same writes
-     (QuickAdd.svelte). The fan is untouched - it is the fastest way to log
-     from anywhere - and this is the same set at rest on the screen, so the
-     mood pick is one shape among them rather than the screen's opening
-     question. Two of the fan's rows are not here on purpose: "another day"
-     needs a date before it can go anywhere and stays the fan's sheet, and
-     the effects row is a nudge to a screen, not a write. A dose goes
-     to its own screen with the add sheet open, because a dose has a drug
-     and an amount to choose; a tally and a wear session resolve in place,
-     because neither has anything left to choose, and each says so with the
-     save toast rather than a screen.
-
-     Whether a session is running is read off the tiles rather than asked
-     again: the wear timer is a live tile of the today tier, and its Stop is
-     the same write, so the strip's shape borrows the tile's own action when
-     one is up. Starting repeats the kind logged last, as the fan does, and
-     asks for it at the tap rather than subscribing. */
-  let runningWear = $derived(liveTiles.tiles.find((tile) => tile.key === 'wear-timer') ?? null);
-
-  /* The strip answers a tap (redesign ticket 19; DIRECTION.md rule 10). A
-     tally resolves in place, so the state change it makes - today's count
-     of that kind going up by one - is shown where the tap landed: the
-     glyph rises out of the square and the new count rises in under it
-     ($lib/motion/drum), holds long enough to be read, and the glyph comes
-     back the same way. The count is read back after the write rather than
-     kept here, since the journal is the one that knows it (Mobbin: Life
-     Reset shows the logged amount on the card that took the tap, Garmin
-     Connect writes "Coffee: 2" under the row). The wear shape's glyph
-     changes the same way when a session starts or stops, and its label
-     crosses over --dur-fast, which is the one exception ADR-0078 makes for
-     a label changing under a standing control. `TALLY_SHOWN_MS` is how
-     long a number stays legible, not a motion token: under reduced motion
-     the faces cut and the count is still shown for the same time. */
-  const TALLY_SHOWN_MS = 1100;
-  let tallyShown = $state<Partial<Record<TallyKind, number>>>({});
-  const tallyTimers: Partial<Record<TallyKind, ReturnType<typeof setTimeout>>> = {};
-  async function logTally(kind: TallyKind) {
-    const day = todayEpochDay();
-    await journal.tally.log({ epochDay: day, kind });
-    toast(m.quick_saved());
-    const events = await journal.tally.getEventsOnDay(day);
-    tallyShown = { ...tallyShown, [kind]: events.filter((event) => event.kind === kind).length };
-    clearTimeout(tallyTimers[kind]);
-    tallyTimers[kind] = setTimeout(() => {
-      const { [kind]: _, ...rest } = tallyShown;
-      tallyShown = rest;
-    }, TALLY_SHOWN_MS);
-  }
-  async function toggleWear(e: MouseEvent) {
-    if (runningWear?.action?.onclick) {
-      runningWear.action.onclick(e);
-      return;
-    }
-    const kind = (await journal.wearSessions.latestKind()) ?? 'binder';
-    await journal.wearSessions.upsertSession({ kind, startTimestamp: Date.now(), durationMs: null });
-    toast(m.quick_saved());
-  }
 
   /* Getting started (Alicja, 2026-09-04). Day one is a screen with nothing
      on it once the placeholders are gone, and "write an entry" is the only
@@ -540,22 +503,6 @@
   <span class="home-agenda-day" class:is-passed={passed} aria-hidden="true">
     <span class="home-agenda-wd">{shortWeekday(epochDay)}</span>
     <span class="home-agenda-dn">{dayNumber(epochDay)}</span>
-  </span>
-{/snippet}
-
-<!-- A tally square's face: the glyph, or for a moment after a tap the count
-     the tap made, each rising through the block (redesign ticket 19). The
-     count is a number on a block at the display size, so it is large text
-     and legal on every stripe (DIRECTION.md rule 11); the label under the
-     square keeps saying what the square is. -->
-{#snippet tallyFace(kind: TallyKind, icon: string)}
-  {@const shown = tallyShown[kind]}
-  <span class="home-log-ico" data-tally-shown={shown}>
-    {#key shown ?? 'glyph'}
-      <span class="home-log-face" in:drumIn out:drumOut>
-        {#if shown === undefined}<Icon name={icon} size={22} />{:else}<span class="home-log-count">{shown}</span>{/if}
-      </span>
-    {/key}
   </span>
 {/snippet}
 
@@ -790,8 +737,27 @@
     </div>
   {/if}
 
-  <!-- No coloured side border, and no role: the flag colours the areas of
-       the journal, and this is the app talking about itself. -->
+  <!-- The log strip: the five faces, and now nothing else (phase 11 ticket
+       03). It carried four icon squares as well - a dose, both tallies and
+       a wear session - and every one of them was already a row of the
+       quick-add fan sitting forty pixels below it, so the strip was a copy
+       of the fan taking 260px of the first screen. The faces stay because
+       a mood is the one write that makes today's entry and the habit a
+       daily check-in has should not get worse; the heading says what they
+       do rather than naming the strip. It draws under disguise too, every
+       role fallen to the accent, so the thin app still writes. -->
+  <SectionHeading text={m.home_log_heading()} />
+  <div data-home-log {...roleAttrs(roleAt(activeFlag.roles, HOME_AREA_ROLE.log))}>
+    <MoodChips onPick={onQuickLog} />
+  </div>
+
+  <!-- The notices, below the strip since phase 11 ticket 03. They used to
+       sit between the agenda and the strip, which put them inside "Coming
+       up" to the eye: rule 1 makes a heading name everything down to the
+       next rule, so a person read their month as a dose and a nag about
+       backups. Under no heading of their own, and with no coloured side
+       border and no role - the flag colours the areas of the journal, and
+       this is the app talking about itself. -->
   {#if showBackupNotice}
     <Notice
       icon="download"
@@ -848,52 +814,6 @@
       data-debrief-offer=""
     />
   {/if}
-
-  <!-- The log strip: every write shape a tap can start, in one place, and
-       the mood pick one of them (spec stories 10 to 12). The faces first,
-       because a mood is the one that makes today's entry and the habit a
-       daily check-in has should not get worse; then the four shapes the
-       centre fan offers, as icon squares of the strip's stripe on the page,
-       flush between the row's own hairlines. It draws under disguise too,
-       every role fallen to the accent, so the thin app still writes. -->
-  <SectionHeading text={m.home_log_heading()} />
-  <div class="home-log" data-home-log {...roleAttrs(roleAt(activeFlag.roles, HOME_AREA_ROLE.log))}>
-    <MoodChips onPick={onQuickLog} />
-    <div class="home-log-shapes" role="group" aria-label={m.quick_add_title()}>
-      <a class="home-log-shape press" href="/doses?add=1" data-home-log-shape="dose">
-        <span class="home-log-ico"><Icon name="clock" size={22} /></span>
-        <span class="home-log-label">{m.doses_empty_action()}</span>
-      </a>
-      <button type="button" class="home-log-shape press" data-home-log-shape="tally-misgendered" onclick={() => void logTally('misgendered')}>
-        {@render tallyFace('misgendered', 'x')}
-        <span class="home-log-label">{m.tally_misgendered()}</span>
-      </button>
-      <button type="button" class="home-log-shape press" data-home-log-shape="tally-correctly_gendered" onclick={() => void logTally('correctly_gendered')}>
-        {@render tallyFace('correctly_gendered', 'check')}
-        <span class="home-log-label">{m.tally_correctly_gendered()}</span>
-      </button>
-      <!-- One shape, two things, and the label says which - the fan's own
-           rule. The glyph changes with it: a running session is a thing to
-           stop, and `timeline` is the app's mark for something measured
-           between two moments. -->
-      <button
-        type="button"
-        class="home-log-shape press"
-        data-home-log-shape="wear"
-        data-wear-running={runningWear ? '' : undefined}
-        onclick={(e) => void toggleWear(e)}
-      >
-        <span class="home-log-ico">
-          {#key runningWear ? 'stop' : 'timeline'}
-            <span class="home-log-face" in:drumIn out:drumOut><Icon name={runningWear ? 'stop' : 'timeline'} size={22} /></span>
-          {/key}
-        </span>
-        <span class="home-log-label home-log-label-cross">
-          {#key runningWear ? 'stop' : 'start'}<span transition:labelFade>{runningWear ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>{/key}
-        </span>
-      </button>
-    </div>
-  </div>
 
   <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
        UX ticket 01) - the moment weight as a card, the dormant weight as a
@@ -1522,101 +1442,4 @@
     color: var(--text-2);
   }
 
-  /* The log strip: the mood row's own hairlines above and below it, then
-     the four shapes under a hairline of their own, so the whole strip is
-     one flush surface between two lines with one line through it (rule 4).
-     The row is a grid that packs as many shapes as fit at 64px and no
-     fewer than two, so at 320px the four sit in a row, and at 195px - 200%
-     zoom on a 390px phone - they go two by two rather than shrinking their
-     targets. */
-  .home-log {
-    display: grid;
-  }
-  .home-log > :global(.kit-moods) {
-    border-bottom: 0;
-  }
-  .home-log-shapes {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
-    gap: var(--space-2);
-    padding: var(--space-3) 0;
-    border-top: 1px solid var(--hairline);
-    border-bottom: 1px solid var(--hairline);
-  }
-  /* A shape is a column - the square, then its words - and the whole
-     column is the target, which clears the floor by the square alone. The
-     words sit on the page at the caption size in the secondary ink, the
-     way the faces' names do beside them. Two lines are reserved for them
-     whether a label needs one or two, so "Correctly gendered" wrapping does
-     not leave the other three squares standing on a shorter column. */
-  .home-log-shape {
-    display: grid;
-    grid-template-rows: auto 2.4em;
-    justify-items: center;
-    align-content: start;
-    gap: var(--space-2);
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: var(--space-1) 0;
-    border: 0;
-    background: none;
-    color: var(--text-2);
-    font: inherit;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    line-height: 1.2;
-    text-align: center;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  /* The square: a block of the strip's stripe with the glyph in the ink
-     proven on it, the row icon's own recipe at the touch floor's size. It
-     clips: the faces that pass through it ($lib/motion/drum) are covered
-     by its own edges, which is what makes the drum a drum. */
-  .home-log-ico {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: var(--touch-target);
-    height: var(--touch-target);
-    overflow: hidden;
-    background: var(--role-draw);
-    color: var(--role-fill-ink);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-  }
-  /* A face fills the square, so the outgoing and the incoming stand on the
-     same spot while one leaves and the other arrives. */
-  .home-log-face {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-  }
-  /* The count, at the size a number on a block is written (rule 2): large
-     text, so every stripe carries it at 3:1. */
-  .home-log-count {
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    font-weight: var(--weight-display);
-    letter-spacing: var(--display-track);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  /* The wear label's two words stand on one cell while they cross, the
-     fold label's own trick, so the column keeps its width. */
-  .home-log-label-cross {
-    display: grid;
-    justify-items: center;
-  }
-  .home-log-label-cross > span {
-    grid-area: 1 / 1;
-  }
-  /* Hyphenated at 320px rather than cut mid-word: "Misgendered" is wider
-     than a 64px column, and a break with no hyphen read as two words. */
-  .home-log-label {
-    max-width: 100%;
-    hyphens: auto;
-    overflow-wrap: anywhere;
-  }
 </style>

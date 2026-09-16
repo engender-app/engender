@@ -192,6 +192,10 @@ export function homeTiles(
       format: {
         fullDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
         shortDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short' }),
+        /* The agenda band's own day format, so the dose panel's next slot
+           and the rows under "Coming up" write a day the same way on the
+           one screen that draws both. */
+        weekdayDay: (epochDay) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' }),
         time: (timestamp) => fmtTime(timestamp),
         hairRemovalArea: hairRemovalAreaName
       }
