@@ -57,14 +57,29 @@ import type { DayAheadMark, DayAheadMarkKind } from './journal/dayAhead';
 import { DAY_AHEAD_ROUTES } from './journal/dayAheadRoutes';
 import type { DoseScheduleComparison } from './journal/doses';
 
-/** How many days the agenda covers, today counted as one of them, and how
-    many the week behind holds for the passed slot. Seven is the week a
-    person can hold in their head.
+/** How many days the agenda covers, today counted as one of them.
+
+    Thirty as of phase 11 ticket 03, seven before it. Seven was chosen to
+    match Home's week strip, which left Home in phase 10's ticket 13, and it
+    cost the band the things a person most wants a month's notice of: on the
+    demo journal the endocrinologist twelve days out never reached this
+    screen although the app knew the date. What keeps a month from being a
+    wall is `AGENDA_CAP` and the fold under it, not the width of the window
+    - so the window widened and neither of those moved.
 
     Not read off `weekStripDayCount`, which is a responsive count of cells a
     strip has room for rather than a stretch of time, and which leaves Home
-    in this phase's ticket 13 anyway. */
-export const AGENDA_DAYS = 7;
+    in phase 10's ticket 13 anyway. */
+export const AGENDA_DAYS = 30;
+
+/** How many days behind today the passed slot is looked for in, its own
+    constant since phase 11 ticket 03 rather than `AGENDA_DAYS` read
+    backwards. The forward window is a stretch of things to know about in
+    advance and widens with the app's ambition for it; the passed slot is
+    one recent fact, and a slot that went by a month ago is not the same
+    kind of news as last Tuesday's. Seven is still the week a person can
+    hold in their head. */
+export const AGENDA_PASSED_DAYS = 7;
 
 /** The first `AGENDA_CAP` at their own weight, the rest folded. Three
     because a first screen that opens on four dated rows is a list rather
@@ -135,11 +150,11 @@ export function agendaWindow(todayEpochDay: number): { fromEpochDay: number; toE
   return { fromEpochDay: todayEpochDay, toEpochDay: todayEpochDay + AGENDA_DAYS - 1 };
 }
 
-/** The window the passed slot is looked for in: the same many days, ending
-    yesterday. Today's slot has not passed - the person has all day - and
-    Home's own dose panel is what asks about it. */
+/** The window the passed slot is looked for in: `AGENDA_PASSED_DAYS` days
+    ending yesterday. Today's slot has not passed - the person has all day -
+    and Home's own dose panel is what asks about it. */
 export function agendaPassedWindow(todayEpochDay: number): { fromEpochDay: number; toEpochDay: number } {
-  return { fromEpochDay: todayEpochDay - AGENDA_DAYS, toEpochDay: todayEpochDay - 1 };
+  return { fromEpochDay: todayEpochDay - AGENDA_PASSED_DAYS, toEpochDay: todayEpochDay - 1 };
 }
 
 /** The most recent slot that went by with nothing logged against it, or
