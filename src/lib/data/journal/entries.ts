@@ -201,7 +201,14 @@ export interface EntriesArea {
       just the general one). Not folded into entriesWithTag itself: that
       one is also the stats screen's tag-insight query, for an arbitrary
       tag, and starred entries have no business surfacing there. */
-  counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
+  counterevidencePool(
+    tagIds: readonly string[],
+    limit: number,
+    /** Both ends inclusive. Look back's affirming-themes reading asks
+        over the door's span (phase 11 ticket 07); Safe space's own
+        surfaces still ask over the whole journal and pass nothing. */
+    span?: { from: number; to: number }
+  ): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
       body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
@@ -931,7 +938,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return hydrate(rows);
     },
 
-    async counterevidencePool(tagIds, limit) {
+    async counterevidencePool(tagIds, limit, span) {
       // EXISTS rather than a JOIN: a starred entry carrying several other
       // tags would otherwise arrive once per tag row, since the tag match
       // itself has to live in the WHERE clause (an entry need not carry
@@ -949,6 +956,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL
+           ${span ? 'AND e.epoch_day BETWEEN ? AND ?' : ''}
            AND (
              e.starred = 1
              OR EXISTS (
@@ -962,7 +970,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
            )
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [...tagIds, GOOD_DAY_REGION_EUPHORIA_FLOOR, limit]
+        [...(span ? [span.from, span.to] : []), ...tagIds, GOOD_DAY_REGION_EUPHORIA_FLOOR, limit]
       );
       return hydrate(rows);
     },
