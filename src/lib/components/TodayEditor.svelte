@@ -7,14 +7,21 @@
      feature: the app ranks nothing centrally and infers nothing, so the
      only way Today becomes theirs is a surface where they say so.
 
-     One edit mode, three things in it, in the order somebody works through
-     them: the rows they have, the rows they could add, and the kinds of
-     dated thing the agenda is allowed to draw. Then the two exits - back to
-     the default set, and done. There is no per-row menu and no second
-     reset (the ticket's own scope), and nothing here sorts, scores,
-     suggests or highlights: every rule about what the arrangement becomes
+     One edit mode, four things in it, in the order somebody works through
+     them: the rows they have, the rows they could add, the tiles Today may
+     put above them, and the kinds of dated thing the agenda is allowed to
+     draw. Then the two exits - back to the default set, and done.
+
+     There is no per-row menu and no second reset (the ticket's own scope),
+     and nothing here sorts, scores, suggests or highlights: every rule about what the arrangement becomes
      is `pinnedRows.ts`'s, and this file only says which gesture calls
      which of them.
+
+     The tiles joined in phase 11 ticket 04. They were switched at
+     /settings/live-tiles, which is two taps and a screen away from the row
+     directly under them, so one front page was curated in two places - the
+     tell, as the ticket puts it, that tiles and pins are one system. Same
+     preferences, same registry, no migration: only the switches moved.
 
      **Why it is not a screen.** The rows being arranged are the rows on
      Today, so the arrangement happens where they are - the surface grows
@@ -56,6 +63,9 @@
   } from '$lib/data/pinnedRows';
   import type { HubReading, HubRowKey } from '$lib/data/hubRows';
   import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from '$lib/data/journal/dayAhead';
+  import { LIVE_TILE_DRAW_ORDER, LIVE_TILE_PREF_KEY, type LiveTileKind } from '$lib/data/liveTiles';
+  import { PREFERENCE_DEFAULTS } from '$lib/data/prefs/catalogue';
+  import { UNPROMPTED_ROWS } from '$lib/unprompted/registry';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { regroupSteps, type CellBox } from '$lib/motion/regroup';
   import { maskHeight } from '$lib/motion/reveal';
@@ -131,10 +141,26 @@
     prefs.agendaKinds = withAgendaKind(prefs, kind, on);
   }
 
+  /* The tiles' own titles, off the registry that already names them for
+     every other surface - the switch here and the tile on the page have to
+     be the same words, and the registry is where that is declared once. */
+  const TILE_TITLE = new Map(UNPROMPTED_ROWS.map((row) => [row.key, row.title]));
+
+  function toggleTile(kind: LiveTileKind, on: boolean) {
+    prefs[LIVE_TILE_PREF_KEY[kind]] = on;
+  }
+
   /** Back to what onboarding was told, which is null rather than a list:
       an arrangement written back as the default set would be a set nobody
       chose, and the next answer to onboarding's question would not reach
-      it. The switches go with it - one edit mode, one reset.
+      it. The switches go with it, both kinds - one edit mode, one reset.
+
+      The tiles come back from `PREFERENCE_DEFAULTS` rather than from a
+      null, because each of the thirteen is its own boolean in the catalogue
+      and has no unset state to resolve. Read from that file rather than
+      written as `true` thirteen times: what the app ships with is that
+      file's to say, and a default changed there would otherwise leave this
+      one handing back the old answer.
 
       Behind a question, unlike every other write on this surface. The rest
       are each one row and each undone by one tap; this is the only one that
@@ -150,6 +176,10 @@
     resetAsked = false;
     prefs.pinnedRows = null;
     prefs.agendaKinds = null;
+    for (const kind of LIVE_TILE_DRAW_ORDER) {
+      const key = LIVE_TILE_PREF_KEY[kind];
+      prefs[key] = PREFERENCE_DEFAULTS[key];
+    }
   }
 
   /* ---------- the drag ---------- */
@@ -413,6 +443,37 @@
       </ListCard>
     </div>
   {/if}
+
+  <!-- The tiles, in the order Home draws them: the three bands outside and
+       the kinds inside each one (`LIVE_TILE_DRAW_ORDER`), so the list reads
+       down the page the way the page does rather than alphabetically or in
+       the order the tiles were written. No icon on the row, unlike the pins
+       and the agenda kinds above: a tile has none on Today either, and
+       inventing thirteen of them here would name each tile a second way in
+       the one place both names would be read at once.
+
+       Every kind, including one whose area is hidden or finished. The
+       switch means "never show me this kind" rather than "hide the instance
+       that is true today" (ADR-0039's amendment), so it answers a different
+       question from the area's own state, and a list that dropped rows
+       would make somebody turn an area back on to find the switch they came
+       for. -->
+  <SectionHeading text={m.home_edit_tiles_heading()} />
+  <p class="today-editor-hint">{m.home_edit_tiles_hint()}</p>
+  <ListCard {role}>
+    {#each LIVE_TILE_DRAW_ORDER as kind (kind)}
+      {@const title = TILE_TITLE.get(kind)?.() ?? kind}
+      <ListRow static key={kind} {title} data-edit-tile={kind}>
+        {#snippet trailing()}
+          <Switch
+            checked={prefs[LIVE_TILE_PREF_KEY[kind]]}
+            label={title}
+            onChange={(on) => toggleTile(kind, on)}
+          />
+        {/snippet}
+      </ListRow>
+    {/each}
+  </ListCard>
 
   <!-- The agenda's five kinds (ADR-0067), each named the way the agenda
        itself names it, so a switch says exactly which rows it stops. A
