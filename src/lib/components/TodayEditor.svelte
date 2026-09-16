@@ -470,21 +470,23 @@
        for. -->
   <SectionHeading text={m.home_edit_tiles_heading()} />
   <p class="today-editor-hint">{m.home_edit_tiles_hint()}</p>
-  <ListCard {role}>
-    {#each LIVE_TILE_DRAW_ORDER as kind (kind)}
-      {@const label = TILE_LABEL.get(kind)}
-      {@const title = label?.title() ?? kind}
-      <ListRow static key={kind} {title} subtitle={label?.line?.()} data-edit-tile={kind}>
-        {#snippet trailing()}
-          <Switch
-            checked={prefs[LIVE_TILE_PREF_KEY[kind]]}
-            label={title}
-            onChange={(on) => toggleTile(kind, on)}
-          />
-        {/snippet}
-      </ListRow>
-    {/each}
-  </ListCard>
+  <div class="today-editor-tiles">
+    <ListCard {role}>
+      {#each LIVE_TILE_DRAW_ORDER as kind (kind)}
+        {@const label = TILE_LABEL.get(kind)}
+        {@const title = label?.title() ?? kind}
+        <ListRow static key={kind} {title} subtitle={label?.line?.()} data-edit-tile={kind}>
+          {#snippet trailing()}
+            <Switch
+              checked={prefs[LIVE_TILE_PREF_KEY[kind]]}
+              label={title}
+              onChange={(on) => toggleTile(kind, on)}
+            />
+          {/snippet}
+        </ListRow>
+      {/each}
+    </ListCard>
+  </div>
 
   <!-- The agenda's five kinds (ADR-0067), each named the way the agenda
        itself names it, so a switch says exactly which rows it stops. A
@@ -595,6 +597,26 @@
     }
 
     .today-editor-list :global(.kit-row-trail) {
+      margin-left: auto;
+    }
+  }
+
+  /* The same 260px rule the pinned list above keeps, for the same reason
+     and against a word this list actually broke: at 195px (200% zoom on a
+     390px phone) the title column left beside a 48px switch is about 107px
+     and "Appointment today" set solid is wider, so it broke into
+     "Appointme" and a stranded "nt today". Wrapped, the text has the row's
+     whole width and the switch sits under it at the trailing edge. */
+  @media (max-width: 260px) {
+    .today-editor-tiles :global(.kit-row) {
+      flex-wrap: wrap;
+    }
+
+    .today-editor-tiles :global(.kit-row-text) {
+      flex-basis: 100%;
+    }
+
+    .today-editor-tiles :global(.kit-row-trail) {
       margin-left: auto;
     }
   }
