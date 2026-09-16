@@ -44,6 +44,7 @@
     markLetterGreeted,
     markLetterRead
   } from '$lib/data/letterStatus';
+  import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Letter } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -103,11 +104,10 @@
       .filter((letter) => isLetterSealed(letter, today))
       .sort((a, b) => a.unlockEpochDay - b.unlockEpochDay || a.epochDay - b.epochDay)
   );
-  let opened = $derived(
-    letters
-      .filter((letter) => !isLetterSealed(letter, today))
-      .sort((a, b) => b.unlockEpochDay - a.unlockEpochDay || b.epochDay - a.epochDay)
-  );
+  /* `safeSpaceLetters` rather than the same filter and sort written out
+     again: it is the ordering the folded screen read its letters through,
+     and this section is where that screen's readers land now. */
+  let opened = $derived(safeSpaceLetters(letters, today));
 
   async function saveLetter() {
     const trimmed = text.trim();
