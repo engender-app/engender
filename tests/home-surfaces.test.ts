@@ -417,14 +417,19 @@ describe('what spec 08 took off Home', () => {
        The rail was a row on the Look back door between ticket 13 and
        redesign ticket 43, which merged it into the milestones screen. So
        the route it used to be linked at is gone from both screens, and
-       what carries it is the registered Transition row. */
+       what carries it is the registered Transition row.
+
+       WeekStrip.svelte itself is gone too now (ticket 18): the calendar
+       drew the exact same seven days twice, once collapsed atop the door
+       and once as this component underneath it, and only the growing
+       "Earlier entries" read stayed. */
     expect(markup).not.toContain('<WeekStrip');
     expect(markup).not.toContain('<DayCard');
     expect(markup).not.toContain('<MilestoneCard');
     expect(home).not.toContain('recentDays(');
     expect(markup).not.toContain('href="/timeline"');
     const calendar = read('src/routes/calendar/+page.svelte');
-    expect(calendar).toContain('<WeekStrip');
+    expect(calendar).not.toContain('<WeekStrip');
     expect(calendar).toContain('recentDays(');
     expect(read('src/routes/stats/+page.svelte')).not.toContain('href="/timeline"');
     expect(read('src/routes/transition/milestones/+page.svelte')).toContain('<MilestoneRail');

@@ -72,24 +72,54 @@
      *Tags, moods, has-note and has-photo are entry-only.* They are entry
      fields, and no other area has them. The filter sheet states it rather
      than leaving somebody to infer it from a letter that ignored the mood
-     they picked. */
+     they picked.
+
+     **Ticket 18: one front door, and something before a keystroke.** The
+     starred shelf and the saved-questions list were their own routes,
+     `/search/starred` and `/search/questions`, each reachable from its own
+     icon in this screen's own header - two doors to shelves this screen
+     already had the read for. Starred is a filter now (`EntrySearchFilters`
+     already carried it, "reached from search"), so it is a toggle in the
+     sheet below rather than a screen elsewhere, and the starred photo grid
+     that page also drew moves in beside it, shown whenever the toggle is on.
+     The two old routes redirect here with the filter already applied
+     (`?starred=1`, `?questions=1`) so a bookmark still lands somewhere real.
+
+     Saved questions keep their own run (`/search/questions/[id]`, unmoved -
+     rename and delete live there, on the one question being looked at) but
+     lose their list screen: a chip row on this screen's opening state links
+     straight to a run instead, the same discovery a person reaching for
+     "what did I search before" actually wants.
+
+     And that opening state is the other half: before this ticket, an empty
+     box and two sentences was what a 268-entry journal offered before a
+     single character. The tag registry and this device's own recent
+     searches were already there to offer instead - `searchQuery.ts`'s tag
+     matching and `journal.stats.tagShare` for what "most-used" means, and
+     `recentSearches.ts` for what "recent" means, since a search's own
+     history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
-  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
+  import { listRecentSearches, recordRecentSearch } from '$lib/data/recentSearches';
   import { savedQuestionInputOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { fmtDay } from '$lib/data/dates';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
@@ -117,6 +147,10 @@
   let endDate = $state('');
   let hasNote = $state(false);
   let hasPhoto = $state(false);
+  /* On by default when the address itself asks for it - ticket 18's
+     `/search/starred` redirect stub, so a stale bookmark still lands on
+     the shelf it pointed at rather than on a bare, unfiltered screen. */
+  let starredOnly = $state(page.url.searchParams.has('starred'));
   /* Saving a question keeps the query and every filter that is on, never
      today's results (ticket 06's own acceptance criterion: a saved
      question is read the same way an ad hoc search is, not frozen). */
@@ -158,6 +192,7 @@
     endDate = '';
     hasNote = false;
     hasPhoto = false;
+    starredOnly = false;
   };
 
   let filters = $derived.by<EntrySearchFilters>(() => {
@@ -170,6 +205,7 @@
     if (endEpochDay != null) out.endEpochDay = endEpochDay;
     if (hasNote) out.hasNote = true;
     if (hasPhoto) out.hasPhoto = true;
+    if (starredOnly) out.starred = true;
     return out;
   });
   let hasStructuredCriteria = $derived(
@@ -178,7 +214,8 @@
       !!startDate ||
       !!endDate ||
       hasNote ||
-      hasPhoto
+      hasPhoto ||
+      starredOnly
   );
   /* The typed query, waited out (phase 8 audit ticket 15). The two
      liveQuery closures below read `debouncedQuery`, never `query` itself:
@@ -199,6 +236,8 @@
     }
     const timer = setTimeout(() => {
       debouncedQuery = typed;
+      recordRecentSearch(typed);
+      recentSearchList = listRecentSearches();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   });
@@ -309,12 +348,29 @@
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, debouncedQuery));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
-  /* One count over both reads. Stating the entries' total alone while five
-     letters sat underneath it would be the screen describing half of what it
+  /* The starred shelf's photo half (ticket 18: `/search/starred` folded
+     in). Gated on the toggle rather than always read - a search screen
+     nobody asked the starred question of has no business paying for this
+     query every render. Unbounded, the same as the old shelf's own read:
+     self-limiting by how much a person actually stars, not by how large
+     the journal is (ADR-0004's concern is a per-render bound, not a floor
+     under every read). */
+  let starredPhotosQuery = liveList((j) => (starredOnly ? j.photoLibrary.starred() : Promise.resolve([])));
+  let starredPhotos = $derived(starredPhotosQuery.rows);
+
+  async function unstarPhoto(id: string) {
+    await journal.photos.setStarred(id, false);
+  }
+
+  /* One count over both reads, and the starred photo grid when that filter
+     is on - stating the entries' total alone while five letters or a row of
+     photos sat underneath it would be the screen describing part of what it
      found. */
-  let foundTotal = $derived(total + elsewhereResults.total);
+  let foundTotal = $derived(total + elsewhereResults.total + (starredOnly ? starredPhotos.length : 0));
   let loading = $derived(search.loading || elsewhere.loading);
-  let foundNothing = $derived(hits.length === 0 && hitRows.length === 0);
+  let foundNothing = $derived(
+    hits.length === 0 && hitRows.length === 0 && (!starredOnly || starredPhotos.length === 0)
+  );
 
   /* One area of colour on this screen, and it is the days. Role 0, the only
      index guaranteed to be a colour on all 8 palettes, since a screen with a
@@ -354,20 +410,44 @@
     }
     if (hasNote) chips.push({ key: 'has-note', label: m.search_filter_has_note(), remove: () => (hasNote = false) });
     if (hasPhoto) chips.push({ key: 'has-photo', label: m.search_filter_has_photo(), remove: () => (hasPhoto = false) });
+    if (starredOnly) chips.push({ key: 'starred', label: m.search_filter_starred(), remove: () => (starredOnly = false) });
     return chips;
   });
   let todayInput = $derived(dateInputValueFromEpochDay(todayEpochDay()));
+
+  /* What the opening state offers before a character is typed (ticket 18):
+     the eight most-used tags, the saved questions that exist, and this
+     device's own last five searches. All three are read regardless of
+     `hasCriteria` - cheap, bounded reads a person is about to want the
+     moment they clear the field again. */
+  const POPULAR_TAG_COUNT = 8;
+  let tagShareQuery = liveList((j) => j.stats.tagShare(FIRST_EPOCH_DAY, todayEpochDay()));
+  let popularTags = $derived(
+    tagShareQuery.rows
+      .map((t) => vocabulary.tag(t.id))
+      .filter((t) => t != null)
+      .slice(0, POPULAR_TAG_COUNT)
+  );
+
+  let savedQuestionsQuery = liveList((j) => j.savedQuestions.getSavedQuestions());
+  let savedQuestions = $derived(savedQuestionsQuery.rows);
+
+  let recentSearchList = $state<string[]>(typeof window !== 'undefined' ? listRecentSearches() : []);
+
+  function runRecentSearch(term: string) {
+    query = term;
+    debouncedQuery = term;
+  }
 </script>
 
 <div class="screen" data-screen>
   <ScreenHeader title={m.search()} screen="search" back="/calendar">
     {#snippet actions()}
-      <a class="icon-btn" href="/search/starred" aria-label={m.starred_shelf_open()}>
-        <Icon name="star" />
-      </a>
-      <a class="icon-btn" href="/search/questions" aria-label={m.saved_questions_open()}>
-        <Icon name="bookmark" />
-      </a>
+      <!-- Starred and saved questions left this header with ticket 18:
+           both are reachable from this screen's own body now (the
+           filter sheet's Starred toggle, the opening state's saved-
+           question chips), not from a second door beside the filter
+           icon. -->
       <button
         class="icon-btn"
         aria-label={m.search_filters()}
@@ -438,25 +518,76 @@
 
   <div aria-live="polite">
     {#if !hasCriteria}
-      <!-- Nothing typed yet, so the screen says what it can find rather than
-           drawing an empty result area. -->
-      <Notice icon="search" key="search-idle" text={m.search_try()} />
-      <!-- Out only, and matching the notice above it: the notice collapses
-           through its own `disclose` while this line vanished in a single
-           frame beside it, so the pair left in two different ways at once
-           (the other half of ticket 99 item 14). -->
-      <p class="search-hint" out:disclose>{m.search_hint()}</p>
+      <!-- Nothing typed yet, so the screen opens with something rather than
+           drawing an empty result area (ticket 18): the hint says what can
+           be searched, and what follows is real, tappable content instead
+           of a suggested example. `data-search-idle` names the whole
+           state, not any one row inside it - what the walkthrough waits to
+           see gone once typing starts, and back once the field clears. -->
+      <div data-search-idle out:disclose>
+        <p class="search-hint">{m.search_hint()}</p>
+
+        {#if savedQuestions.length}
+          <p class="search-filter-label">{m.saved_questions_title()}</p>
+          <div class="tag-row" role="group" aria-label={m.saved_questions_title()}>
+            {#each savedQuestions as question (question.id)}
+              <a class="tag-chip press" data-saved-question-chip={question.id} href="/search/questions/{question.id}">
+                <Icon name="bookmark" size={14} />{question.name}
+              </a>
+            {/each}
+          </div>
+        {/if}
+
+        {#if popularTags.length}
+          <p class="search-filter-label">{m.search_filter_tags_label()}</p>
+          <div class="tag-row" role="group" aria-label={m.search_filter_tags_label()}>
+            {#each popularTags as tag (tag.id)}
+              <button class="tag-chip press" data-idle-tag-chip={tag.id} onclick={() => toggleTag(tag.id)}>
+                {tag.label}
+              </button>
+            {/each}
+          </div>
+        {/if}
+
+        {#if recentSearchList.length}
+          <p class="search-filter-label">{m.search_recent_label()}</p>
+          <ListCard {role}>
+            {#each recentSearchList as term (term)}
+              <ListRow key={term} icon="search" title={term} data-recent-search-row onclick={() => runRecentSearch(term)} />
+            {/each}
+          </ListCard>
+        {/if}
+      </div>
     {:else if loading}
       <Skeleton variant="card" count={3} />
     {:else if !foundNothing}
       <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 
+      {#if starredOnly && starredPhotos.length}
+        <!-- Ported from the old /search/starred (ticket 18): the same grid,
+             the same unstar affordance, shown now under this screen's own
+             Starred toggle instead of behind a second door. -->
+        <SectionHeading text={m.starred_shelf_photos_label()} />
+        <div class="photo-grid" data-starred-photos>
+          {#each starredPhotos as p (p.id)}
+            <div class="starred-photo-cell">
+              <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
+              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+              <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
+                <Icon name="star" size={16} cls="is-starred" />
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+
       {#if hits.length}
         <!-- The heading appears only when something else was found too. Over
              a screen of nothing but day cards it would be a name for the
              only thing there is, which is the framework DayRecords.svelte
-             refuses for the same reason. -->
-        {#if hitRows.length}
+             refuses for the same reason - photos count as something else
+             now too. -->
+        {#if hitRows.length || (starredOnly && starredPhotos.length)}
           <SectionHeading text={m.search_entries_heading()} />
         {/if}
         <EntryDays {groups} {role} {marginNotesByEntry} />
@@ -559,6 +690,19 @@
         onclick={() => (hasPhoto = !hasPhoto)}
       >
         {m.search_filter_has_photo()}
+      </button>
+      <!-- The starred shelf's one door now (ticket 18): `/search/starred`
+           redirects here with this already on. Entry-only like the three
+           beside it - a starred photo is the photo library's own read
+           (photoLibrary.starred, below), not this filter's. -->
+      <button
+        class="tag-chip press"
+        class:is-selected={starredOnly}
+        aria-pressed={starredOnly}
+        data-filter-starred
+        onclick={() => (starredOnly = !starredOnly)}
+      >
+        {m.search_filter_starred()}
       </button>
     </div>
   </Sheet>
