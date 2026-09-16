@@ -192,6 +192,34 @@ try {
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
 
+/* 2a2. a new entry can be starred before its first save (ticket 18). The
+   star used to live in the header, drawn only `{#if existing}` - a brand
+   new entry had nowhere to star at all. It is on the save bar now for
+   both, and `toggleStarred` only flips the local flag until the entry has
+   an id; `saveEntry` applies it once `upsertEntry` hands one back. This
+   proves the whole round trip: pressed before save, still pressed on the
+   saved entry reopened. */
+try {
+  await fresh('/');
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-mood="4"]').click();
+  await page.locator('#ed-note').fill('ticket18 starred before save');
+
+  await page.locator('[data-save-star]').click();
+  await page.waitForSelector('[data-save-star][aria-pressed="true"]');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-entry-note]').filter({ hasText: 'ticket18 starred before save' }).click(); // text-under-test: this test's own fixture note, not app copy
+  await page.waitForSelector('[data-save-star][aria-pressed="true"]');
+
+  ok('a new entry can be starred before its first save, and the star lands once it has an id');
+} catch (e) { fail('star before save', e); }
+
 /* 2b. mood-only save nudges, via the full editor. Ticket 13 gives the
    quick-log entry point its own unconditional scale prompt instead (see
    flow 24), so this preference's remaining domain is a mood-only save
