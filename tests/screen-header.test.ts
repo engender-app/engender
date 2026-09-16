@@ -24,13 +24,14 @@ const svelteFiles = globSync('src/**/*.svelte', { cwd: root });
 
    /settings/lock left this list with ticket 53: the app-lock gate it framed
    is retired, and its replacement is a chromeless gate the layout renders
-   rather than a route. */
+   rather than a route. /settings/live-tiles left it with phase 11 ticket
+   04: a redirect is a `+page.ts` stub now and has no component at all, so
+   there is nothing here to exempt. */
 const WITHOUT = new Map([
   ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
   ['src/routes/entry/new/[day]/+page.svelte', 'renders EntryEditor, which carries the header'],
-  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow'],
-  ['src/routes/settings/live-tiles/+page.svelte', 'redirects to /settings/notifications and renders nothing (deepening ticket 09)']
+  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow']
 ]);
 
 describe('every screen gets its header from one component', () => {

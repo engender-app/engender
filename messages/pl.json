@@ -2123,11 +2123,12 @@
   "entry_day_count": "{count} tego dnia",
   "entry_no_note": "Brak notatki",
   "tags_group_aria": "tagi: {group}",
-  "notif_title": "Kafelki i powiadomienia",
-  "notif_sub": "Co ekran główny może sam pokazać, i co może trafić na telefon.",
-  "notif_col_home": "Start",
+  "notif_title": "Komunikaty i powiadomienia",
+  "notif_sub": "Co aplikacja może powiedzieć sama z siebie, i co może trafić na telefon.",
+  "notif_col_show": "Pokazuj",
   "notif_col_notify": "Powiadamiaj",
-  "notif_home_toggle_aria": "{name}, ekran główny",
+  "notif_show_toggle_aria": "{name}, pokazuj w aplikacji",
+  "notif_prompts_heading": "Podpowiedzi w aplikacji",
   "notif_notify_toggle_aria": "{name}, powiadomienia",
   "notif_reminders_sub": "O godzinie ustawionej w danym przypomnieniu.",
   "notif_check_in_sub": "O godzinie codziennego pytania, w dni bez wpisu.",
@@ -2772,7 +2773,7 @@
   "roadmap_milestone_prompt_title": "Dodać „{goal}” jako kamień milowy na osi czasu?",
   "roadmap_milestone_prompt_add": "Dodaj kamień milowy",
   "roadmap_milestone_sync_title": "Podpowiedzi kamieni milowych z mapy",
-  "roadmap_milestone_sync_sub": "Pytaj o dodanie odhaczonych kroków z mapy jako kamieni milowych",
+  "roadmap_milestone_sync_sub": "Pytaj o dodanie odhaczonych kroków z mapy jako kamieni milowych.",
   "pj_open": "Zrób kolaż albo film poklatkowy",
   "pj_title": "Kolaż i film poklatkowy",
   "pj_range_title": "Które zdjęcia",
@@ -3573,6 +3574,45 @@
   "clinician_summary_section_finished_areas": "Co zostało zakończone",
   "clinician_summary_finished_areas_empty": "Nic nie jest oznaczone jako zakończone.",
   "clinician_summary_part_finished_areas": "Co zostało zakończone",
+  "clinician_summary_settings_range": "{start} do {end}",
+  "clinician_summary_settings_sections": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} sekcja",
+        "nPlural=other": "{n} sekcji",
+        "nPlural=few": "{n} sekcje",
+        "nPlural=many": "{n} sekcji"
+      }
+    }
+  ],
+  "clinician_summary_settings_drugs": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} lek",
+        "nPlural=other": "{n} leków",
+        "nPlural=few": "{n} leki",
+        "nPlural=many": "{n} leków"
+      }
+    }
+  ],
+  "clinician_summary_settings_row": "{range}, {sections}, {drugs}. Zmień",
+  "clinician_summary_settings_row_no_drugs": "{range}, {sections}. Zmień",
+  "clinician_summary_settings_title": "Ustawienia",
+  "clinician_summary_section_truncated": "i jeszcze {count}, wszystkie w wersji do druku",
   "area_finish_table_area": "Nazwa",
   "area_finish_table_ended": "Zakończono",
   "area_finish_offer_dismiss_sub": "Aplikacja nie zapyta o to ponownie.",
@@ -3878,10 +3918,12 @@
   "home_edit_add_heading": "Dodaj pozycję",
   "home_edit_add": "Przypnij: {row}",
   "home_edit_agenda_heading": "Co widać w Nadchodzi",
+  "home_edit_tiles_heading": "Kafelki",
+  "home_edit_tiles_hint": "Każdy pojawia się wtedy, kiedy jest o czym mówić.",
   "home_edit_done": "Gotowe",
   "home_edit_reset": "Wróć do domyślnego zestawu",
   "home_edit_reset_question": "Wrócić do domyślnego zestawu?",
-  "home_edit_reset_hint": "Ułożona kolejność przepada, a wszystkie rodzaje wpisów w Nadchodzi wracają. Nic nie zostaje usunięte - te ekrany dalej są na swoim miejscu.",
+  "home_edit_reset_hint": "Przypięte pozycje wracają do domyślnego zestawu, więc to, co zdjęte, wraca, a to, co dodane, znika, i wracają wszystkie kafelki oraz rodzaje wpisów w Nadchodzi. Nic nie zostaje usunięte: te ekrany dalej są na swoim miejscu.",
   "tomorrow": "Jutro",
   "surgery_unit_post_op": [
     {

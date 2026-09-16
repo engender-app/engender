@@ -13,12 +13,16 @@
    message catalogue for the same reason the More hub's HubRow is: the
    swatch names translate with everything else.
 
-   Two views, one list. `/settings/live-tiles` is the surfaces view and
-   draws every row with a `surface`; `/settings/notifications` is the
-   notifications view and draws every row with a `notify`. Someone asking
-   "stop buzzing my phone" and someone asking "stop putting things on my
-   home screen" are different people in different moments, which is why
-   there are two views and only one list behind them.
+   One list, read by the surfaces that arrange what is on it. Deepening
+   ticket 09 merged the two views this list was written for into
+   `/settings/notifications`, and phase 11 ticket 04 took the thirteen live
+   tiles off that screen again and onto Today's own editor, which is the
+   page they draw on: a front page curated in two places is two curation
+   surfaces for one screen. So a `surface` row is switched either in the
+   editor (`isLiveTileKind`) or on that screen, and every `notify` row is
+   switched on that screen. Someone asking "stop buzzing my phone" and
+   someone asking "stop showing me this" are still different people in
+   different moments; what changed is where the second one is standing.
 
    A row switches its kind off for good, never one true instance (a running
    session cannot be hidden while it runs) - ADR-0039's amendment holds the
@@ -144,9 +148,10 @@ export interface UnpromptedRow {
       it either. Nothing changed as a result of this check - see ticket 35's
       Outcome. */
   area: HideableArea | null;
-  /** Present when this kind has a row on the surfaces view
-      (`/settings/live-tiles`), carrying the preference that switch writes
-      and the subtitle saying what it puts in front of you. Absent is "shows
+  /** Present when this kind shows something in the app of its own, carrying
+      the preference its switch writes and the subtitle saying what it puts
+      in front of you. The switch is in Today's editor for a live tile and on
+      `/settings/notifications` for everything else (ticket 04). Absent is "shows
       nothing in the app of its own": the four producers ticket 04 folded in
       all fire and none surfaces. */
   surface?: { subtitle: () => string; prefKey: BooleanPrefKey };
