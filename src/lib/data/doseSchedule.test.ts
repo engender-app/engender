@@ -8,6 +8,9 @@ import {
   APPLICATION_SITES,
   INJECTION_SITES,
   adherence,
+  autoLogRoute,
+  autoLogSlots,
+  canAutoLog,
   expectedAmountOn,
   expectedSlots,
   isDailySchedule,
@@ -24,13 +27,15 @@ import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount 
 const schedule = (
   everyNDays: number,
   dosesPerDay: number,
-  doseAmounts: DoseScheduleAmount[] | null = null
+  doseAmounts: DoseScheduleAmount[] | null = null,
+  autoLogFromEpochDay: number | null = null
 ): DoseSchedule => ({
   id: 's1',
   episodeId: 'e1',
   recurrence: { kind: 'everyNDays', everyNDays },
   dosesPerDay,
-  doseAmounts
+  doseAmounts,
+  autoLogFromEpochDay
 });
 
 const weekdaySchedule = (weekdays: number[], dosesPerDay = 1, doseAmounts: DoseScheduleAmount[] | null = null): DoseSchedule => ({
@@ -38,7 +43,8 @@ const weekdaySchedule = (weekdays: number[], dosesPerDay = 1, doseAmounts: DoseS
   episodeId: 'e1',
   recurrence: { kind: 'weekdays', weekdays },
   dosesPerDay,
-  doseAmounts
+  doseAmounts,
+  autoLogFromEpochDay: null
 });
 
 const pause = (startEpochDay: number, endEpochDay: number | null): DosePause => ({
@@ -544,4 +550,111 @@ test('nearestOpenSlotDistance caps its search to maxRadiusDays even when the sch
 
 test('nearestOpenSlotDistance treats a paused day as not open: the next slot past the pause counts instead', () => {
   assert.equal(nearestOpenSlotDistance(schedule(1, 1), 100, [], [pause(100, 100)], 100, 30), 1);
+});
+
+/* The auto-log walk (phase 11 ticket 11). Every case is a schedule switched
+   on at a day, a today, and what the log already holds. */
+
+const autoLogging = (everyNDays: number, dosesPerDay: number, fromEpochDay: number): DoseSchedule =>
+  schedule(everyNDays, dosesPerDay, null, fromEpochDay);
+
+const days = (slots: ReturnType<typeof autoLogSlots>): number[] => slots.map((s) => s.slot.epochDay);
+
+test('autoLogSlots writes nothing for a schedule with the switch off', () => {
+  assert.deepEqual(autoLogSlots(schedule(1, 1), 90, [], [], 100), []);
+});
+
+test('autoLogSlots stops at yesterday: today is still the person\'s own to log', () => {
+  assert.deepEqual(days(autoLogSlots(autoLogging(1, 1, 97), 90, [], [], 100)), [97, 98, 99]);
+});
+
+test('autoLogSlots writes nothing before the day the switch went on', () => {
+  /* Daily since day 90, switched on at 98: days 90-97 stay as they were. */
+  assert.deepEqual(days(autoLogSlots(autoLogging(1, 1, 98), 90, [], [], 100)), [98, 99]);
+});
+
+test('autoLogSlots never reaches before the episode either, however far back the switch day is', () => {
+  assert.deepEqual(days(autoLogSlots(autoLogging(1, 1, 50), 98, [], [], 100)), [98, 99]);
+});
+
+test('autoLogSlots leaves a slot alone once a dose is logged against it', () => {
+  assert.deepEqual(days(autoLogSlots(autoLogging(1, 1, 97), 90, [dose(98, 9)], [], 100)), [97, 99]);
+});
+
+test('autoLogSlots fills a twice-daily day\'s second slot when only the first was logged by hand', () => {
+  const slots = autoLogSlots(autoLogging(1, 2, 98), 90, [dose(98, 9)], [], 100);
+  assert.deepEqual(
+    slots.map((s) => [s.slot.epochDay, s.slot.indexInDay]),
+    [
+      [98, 1],
+      [99, 0],
+      [99, 1]
+    ]
+  );
+});
+
+test('autoLogSlots writes nothing for a day a pause covers', () => {
+  assert.deepEqual(days(autoLogSlots(autoLogging(1, 1, 96), 90, [], [pause(97, 98)], 100)), [96, 99]);
+});
+
+test('autoLogSlots writes each slot once across repeated runs: the dose it wrote fills the slot', () => {
+  const first = autoLogSlots(autoLogging(1, 1, 97), 90, [], [], 100);
+  assert.deepEqual(days(first), [97, 98, 99]);
+  const written = first.map((s, i) => ({ ...dose(s.slot.epochDay, 12), id: `auto-${i}`, timestamp: s.timestamp }));
+  assert.deepEqual(autoLogSlots(autoLogging(1, 1, 97), 90, written, [], 100), []);
+});
+
+test('autoLogSlots times a once-daily slot at noon and a twice-daily day at noon and evening', () => {
+  const [midday] = autoLogSlots(autoLogging(1, 1, 99), 90, [], [], 100);
+  assert.equal(midday.timestamp, startOfDayTimestamp(99) + 12 * 3600000);
+
+  const twice = autoLogSlots(autoLogging(1, 2, 99), 90, [], [], 100);
+  assert.deepEqual(
+    twice.map((s) => s.timestamp - startOfDayTimestamp(99)),
+    [12 * 3600000, 20 * 3600000]
+  );
+});
+
+test('autoLogSlots spreads a three-a-day schedule across the same window rather than stacking two at once', () => {
+  const thrice = autoLogSlots(autoLogging(1, 3, 99), 90, [], [], 100);
+  assert.deepEqual(
+    thrice.map((s) => s.timestamp - startOfDayTimestamp(99)),
+    [12 * 3600000, 16 * 3600000, 20 * 3600000]
+  );
+});
+
+test('autoLogSlots carries the schedule\'s own amount for the slot, so an alternating cycle stays in phase', () => {
+  const alternating = schedule(1, 1, [{ dose: 2, doseUnit: 'mg' }, { dose: 1, doseUnit: 'mg' }], 98);
+  assert.deepEqual(
+    autoLogSlots(alternating, 90, [], [], 100).map((s) => s.slot.amount?.dose),
+    [2, 1]
+  );
+});
+
+test('autoLogSlots writes nothing when the switch went on today', () => {
+  assert.deepEqual(autoLogSlots(autoLogging(1, 1, 100), 90, [], [], 100), []);
+});
+
+test('autoLogRoute reads the route this episode\'s own doses already use', () => {
+  const injection: DoseEvent = { ...dose(98, 9), route: 'im', injectionSite: null, vehicle: 'oil' } as DoseEvent;
+  assert.equal(autoLogRoute('anything at all', [injection]), 'im');
+});
+
+test('autoLogRoute takes the most recent dose, not the first one, when the route changed', () => {
+  const older: DoseEvent = { ...dose(90, 9), route: 'im', injectionSite: null, vehicle: 'oil' } as DoseEvent;
+  assert.equal(autoLogRoute('', [older, dose(99, 9)]), 'oral');
+});
+
+test('autoLogRoute falls back to the episode\'s own words when nothing is logged yet', () => {
+  assert.equal(autoLogRoute('IM, ventrogluteal', []), 'im');
+  assert.equal(autoLogRoute('domięśniowo', []), null);
+});
+
+test('canAutoLog refuses a schedule with no amount, no rhythm, or no route to write', () => {
+  const amounts = [{ dose: 2, doseUnit: 'mg' }];
+  assert.equal(canAutoLog(schedule(1, 1, amounts), 'oral', []), true);
+  assert.equal(canAutoLog(schedule(1, 1, null), 'oral', []), false);
+  assert.equal(canAutoLog(schedule(1, 0, amounts), 'oral', []), false);
+  assert.equal(canAutoLog(weekdaySchedule([], 1, amounts), 'oral', []), false);
+  assert.equal(canAutoLog(schedule(1, 1, amounts), 'whatever the pharmacist said', []), false);
 });

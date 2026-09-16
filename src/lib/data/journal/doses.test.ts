@@ -5,7 +5,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { attributeDose } from '../regimenEpisode.ts';
-import { startOfDayTimestamp } from '../epochDay.ts';
+import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import type { Journal } from './journal.ts';
 
@@ -47,6 +47,7 @@ test('an injection carries a site and a vehicle, and round-trips both', async ()
     injectionSite: 'ventrogluteal-left',
     vehicle: 'oil',
     status: 'taken',
+    source: 'person',
     scheduled: null,
     drug: null
   });
@@ -71,6 +72,7 @@ test('a patch carries an application site and no vehicle', async () => {
     'id',
     'route',
     'scheduled',
+    'source',
     'status',
     'timestamp'
   ]);
@@ -251,17 +253,19 @@ test('a schedule belongs to an episode, one per episode, and an update replaces 
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 2,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   assert.deepEqual(await journal.doses.getSchedules(), [
-    { id, episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 2, doseAmounts: null }
+    { id, episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 2, doseAmounts: null, autoLogFromEpochDay: null }
   ]);
 
   await journal.doses.upsertSchedule({
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 14 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   const schedules = await journal.doses.getSchedules();
   assert.equal(schedules.length, 1, 'one schedule per episode');
@@ -275,7 +279,8 @@ test('a schedule against an unknown episode is refused', async () => {
       episodeId: 'nope',
       recurrence: { kind: 'everyNDays', everyNDays: 1 },
       dosesPerDay: 1,
-      doseAmounts: null
+      doseAmounts: null,
+      autoLogFromEpochDay: null
     }),
     /unknown regimen episode/
   );
@@ -289,7 +294,8 @@ test('a weekday schedule round-trips its weekdays, and switching shape drops the
     episodeId,
     recurrence: { kind: 'weekdays', weekdays: [3, 0] },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   const [schedule] = await journal.doses.getSchedules();
   // Read back sorted, not in write order: the set is what matters, not the
@@ -299,14 +305,16 @@ test('a weekday schedule round-trips its weekdays, and switching shape drops the
     episodeId,
     recurrence: { kind: 'weekdays', weekdays: [0, 3] },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
 
   await journal.doses.upsertSchedule({
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 7 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   const [switched] = await journal.doses.getSchedules();
   assert.deepEqual(switched.recurrence, { kind: 'everyNDays', everyNDays: 7 });
@@ -323,7 +331,8 @@ test('doseAmounts round-trips in cycle order, and is null again once cleared', a
     doseAmounts: [
       { dose: 2, doseUnit: 'mg' },
       { dose: 1, doseUnit: 'mg' }
-    ]
+    ],
+    autoLogFromEpochDay: null
   });
   const [withAmounts] = await journal.doses.getSchedules();
   assert.deepEqual(withAmounts.doseAmounts, [
@@ -335,7 +344,8 @@ test('doseAmounts round-trips in cycle order, and is null again once cleared', a
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   const [cleared] = await journal.doses.getSchedules();
   assert.equal(cleared.doseAmounts, null);
@@ -414,7 +424,8 @@ test('the comparison is the active episode’s schedule against the doses attrib
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   await takeOral(journal, 19001);
   await takeOral(journal, 19002);
@@ -445,7 +456,8 @@ test('an earlier episode’s doses are not compared against the active one’s s
     episodeId: currentId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   await takeOral(journal, 19000);
   await takeOral(journal, 19003);
@@ -470,7 +482,8 @@ test('only the active episode’s own pauses suppress its slots', async () => {
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
   await journal.doses.upsertPause({ episodeId, startEpochDay: 19002, endEpochDay: 19003, reason: 'planned' });
   await journal.doses.upsertPause({ episodeId: otherId, startEpochDay: 19000, endEpochDay: null, reason: 'planned' });
@@ -493,7 +506,8 @@ test('two episodes in effect on the last day of the range leave nothing to compa
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
 
   const result = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003 });
@@ -509,7 +523,8 @@ test('a drug names which of several active episodes the comparison picks (ticket
     episodeId: estradiolId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
 
   const estradiolResult = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003, drug: 'estradiol' });
@@ -531,7 +546,8 @@ test('a drug matching no active episode falls back to the ordinary rule (ticket 
     episodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: null
+    doseAmounts: null,
+    autoLogFromEpochDay: null
   });
 
   const result = await journal.doses.getComparison({
@@ -658,4 +674,178 @@ test('countConsumingDosesByDrug refuses overlapping ranges and backwards ones', 
     () => journal.doses.countConsumingDosesByDrug([{ fromEpochDay: 110, toEpochDay: 100 }]),
     /runs backwards/
   );
+});
+
+/* Auto-logging (phase 11 ticket 11, ADR-0086). The slot walk itself is
+   doseSchedule.test.ts's; what these cover is the area around it - which
+   schedules it visits, what the rows it writes say, and that running it
+   again writes nothing. */
+
+async function autoLogging(
+  journal: Journal,
+  {
+    startEpochDay,
+    fromEpochDay,
+    endEpochDay = null,
+    route = 'oral',
+    everyNDays = 1
+  }: {
+    startEpochDay: number;
+    fromEpochDay: number | null;
+    endEpochDay?: number | null;
+    route?: string;
+    everyNDays?: number;
+  }
+): Promise<string> {
+  const episodeId = await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route,
+    interval: 'daily',
+    startEpochDay,
+    endEpochDay,
+    endReason: null
+  });
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 3, doseUnit: 'mg' }],
+    autoLogFromEpochDay: fromEpochDay
+  });
+  return episodeId;
+}
+
+test('an auto-logged dose is taken, carries the schedule as its source, and takes the slot amount', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098 });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+
+  const doses = await journal.doses.getDoses(19000, 19100);
+  assert.deepEqual(
+    doses.map((dose) => [dose.status, dose.source, dose.dose, dose.doseUnit, dose.route]),
+    [
+      ['taken', 'schedule', 3, 'mg', 'oral'],
+      ['taken', 'schedule', 3, 'mg', 'oral']
+    ]
+  );
+});
+
+test('the auto-log pass writes nothing twice: the doses it wrote fill the slots it would write again', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098 });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 0);
+  assert.equal((await journal.doses.getDoses(19000, 19100)).length, 2);
+});
+
+test('the auto-log pass leaves a schedule with the switch off alone', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: null });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 0);
+  assert.deepEqual(await journal.doses.getDoses(19000, 19100), []);
+});
+
+test('the auto-log pass stops at the day the episode ended', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19090, endEpochDay: 19092 });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 3);
+  const doses = await journal.doses.getDoses(19000, 19100);
+  assert.deepEqual(doses.map((dose) => epochDayFromTimestamp(dose.timestamp)), [19090, 19091, 19092]);
+});
+
+test('the auto-log pass writes nothing for an episode whose route it cannot record', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098, route: 'domięśniowo' });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 0);
+});
+
+test('the auto-log pass follows the route the episode\'s own doses already use', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19098, route: 'domięśniowo', everyNDays: 7 });
+  await journal.doses.upsertDose({
+    timestamp: at(19091, 9),
+    route: 'im',
+    dose: 3,
+    doseUnit: 'mg',
+    injectionSite: 'thigh-left',
+    vehicle: 'oil'
+  });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 1);
+  const [, written] = await journal.doses.getDoses(19000, 19100);
+  assert.equal(written.route, 'im');
+  assert.equal(written.source, 'schedule');
+  // Where the injection went is the person's own to say; nothing is invented.
+  assert.equal('injectionSite' in written ? written.injectionSite : 'missing', null);
+});
+
+test('a dose the person logged by hand keeps its slot, and the pass fills the rest', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19097 });
+  await journal.doses.upsertDose({ timestamp: at(19098, 7), route: 'oral', dose: 9, doseUnit: 'mg' });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+  const doses = await journal.doses.getDoses(19000, 19100);
+  assert.deepEqual(
+    doses.map((dose) => [epochDayFromTimestamp(dose.timestamp), dose.source, dose.dose]),
+    [
+      [19097, 'schedule', 3],
+      [19098, 'person', 9],
+      [19099, 'schedule', 3]
+    ]
+  );
+});
+
+test('a paused day is not auto-logged: a break somebody declared is not a dose they took', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19097 });
+  await journal.doses.upsertPause({ episodeId, startEpochDay: 19098, endEpochDay: 19098, reason: 'planned' });
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100), 2);
+  const doses = await journal.doses.getDoses(19000, 19100);
+  assert.deepEqual(doses.map((dose) => epochDayFromTimestamp(dose.timestamp)), [19097, 19099]);
+});
+
+test('marking an auto-logged dose skipped keeps it saying where it came from', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19099 });
+  await journal.doses.autoLogDueDoses(19100);
+
+  const [written] = await journal.doses.getDoses(19000, 19100);
+  await journal.doses.upsertDose({
+    id: written.id,
+    timestamp: written.timestamp,
+    route: 'oral',
+    dose: written.dose,
+    doseUnit: written.doseUnit,
+    status: 'skipped',
+    source: 'schedule'
+  });
+
+  const [flipped] = await journal.doses.getDoses(19000, 19100);
+  assert.equal(flipped.status, 'skipped');
+  assert.equal(flipped.source, 'schedule');
+});
+
+test('a schedule round-trips the day auto-logging went on, and null again once it is off', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19050 });
+  assert.equal((await journal.doses.getSchedules())[0].autoLogFromEpochDay, 19050);
+
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 3, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
+  });
+  assert.equal((await journal.doses.getSchedules())[0].autoLogFromEpochDay, null);
 });

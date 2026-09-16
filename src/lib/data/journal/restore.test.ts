@@ -143,7 +143,7 @@ async function populated() {
     provider: 'Diagnostyka'
   });
 
-  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null });
+  const schedule = await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
   const dosePause = await journal.doses.upsertPause({
     episodeId: episode,
     startEpochDay: 19100,
@@ -362,7 +362,7 @@ test('a dose log travels with its schedule and pauses, still hung off the right 
   assert.equal(dose.route === 'im' ? dose.vehicle : null, 'oil');
 
   assert.deepEqual(await target.journal.doses.getSchedules(), [
-    { id: source.schedule, episodeId: source.episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null }
+    { id: source.schedule, episodeId: source.episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null }
   ]);
   assert.deepEqual(await target.journal.doses.getPauses(), [
     { id: source.dosePause, episodeId: source.episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' }
@@ -389,7 +389,8 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
     doseAmounts: [
       { dose: 2, doseUnit: 'mg' },
       { dose: 1, doseUnit: 'mg' }
-    ]
+    ],
+    autoLogFromEpochDay: null
   });
 
   const target = await device();
@@ -1085,4 +1086,27 @@ test('verifyArchive reports every file it drains', async () => {
   assert.equal(seen.length, snapshot.files.length);
   assert.equal(seen[seen.length - 1].done, snapshot.files.length);
   assert.equal(seen[0].total, snapshot.files.length);
+});
+
+test('an archive from before auto-logging reads its doses as the person\'s own, and its schedules as off', async () => {
+  /* A real snapshot with the two ticket-11 fields deleted from it - which is
+     exactly the shape an archive written by an earlier build has, and the
+     one case worth its own test rather than leaving to the golden fixture:
+     a restore that guessed `autoLogFromEpochDay` wrong would start writing
+     doses on somebody's behalf on a device where they never asked for it. */
+  const source = await populated();
+  const target = await device();
+
+  const contents = await exported(source.journal);
+  for (const dose of contents.journal.doseEvents) {
+    delete (dose as Partial<(typeof contents.journal.doseEvents)[number]>).source;
+  }
+  for (const schedule of contents.journal.doseSchedules) {
+    delete (schedule as Partial<(typeof contents.journal.doseSchedules)[number]>).autoLogFromEpochDay;
+  }
+  await target.journal.archive.replace(contents);
+
+  const [dose] = await target.journal.doses.getDoses(19000, 20500);
+  assert.equal(dose.source, 'person');
+  assert.equal((await target.journal.doses.getSchedules())[0].autoLogFromEpochDay, null);
 });

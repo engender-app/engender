@@ -883,7 +883,12 @@ const SECTIONS = [
       scheduled_dose: 'scheduledDose',
       scheduled_route: 'scheduledRoute',
       scheduled_timestamp: 'scheduledTimestamp',
-      drug: { field: 'drug', whenAbsent: null }
+      drug: { field: 'drug', whenAbsent: null },
+      /* `whenAbsent: 'person'`, not null: an archive written before ticket
+         11 carries no source at all, and every row in one was logged by
+         hand, because nothing else could write a dose then. The column's
+         own default says the same thing (schema v82). */
+      source: { field: 'source', whenAbsent: 'person' }
     }
   }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just

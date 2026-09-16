@@ -24,6 +24,7 @@ import type {
   DoseSchedule,
   DoseScheduleAmount,
   DoseScheduleRecurrence,
+  DoseSource,
   DoseStatus,
   InjectionVehicle,
   RegimenEpisode,
@@ -31,6 +32,8 @@ import type {
 } from '../types';
 import {
   adherence,
+  autoLogRoute,
+  autoLogSlots,
   expectedSlots,
   isInjectionDose,
   isTopicalDose,
@@ -50,6 +53,10 @@ interface DoseInputFields {
   doseUnit: string;
   /** Defaults to `taken`. */
   status?: DoseStatus;
+  /** Who wrote it. Defaults to `person`: everything but the auto-log pass
+      below is a person logging a dose, and a caller that forgets the field
+      must not accidentally claim a schedule said so. */
+  source?: DoseSource;
   /** `changed` doses only. */
   scheduled?: ScheduledDose | null;
   /** Which drug this dose was, in its own words (phase 5 ticket 38).
@@ -70,13 +77,28 @@ interface DoseInputFields {
 export type DoseEventInput =
   | (DoseInputFields & { route: 'oral' | 'sublingual' })
   | (DoseInputFields & { route: 'im' | 'sc'; injectionSite: InjectionSiteKey; vehicle: InjectionVehicle })
-  | (DoseInputFields & { route: 'patch' | 'gel'; applicationSite: ApplicationSiteKey });
+  | (DoseInputFields & { route: 'patch' | 'gel'; applicationSite: ApplicationSiteKey })
+  /* A fourth arm for the dose a schedule writes on the person's behalf
+     (ticket 11), discriminated by `source` rather than by route. It carries
+     no site and no vehicle for any route: where an injection went is a
+     choice made at the time and nothing the app can infer, so the row says
+     the dose happened and leaves the site unknown - exactly the state
+     DoseEvent's nullable site already admits on the way out (types.ts).
+     Relaxing the three arms above would have let a person's own injection be
+     saved with no site, which is what their strictness exists to stop. */
+  | (DoseInputFields & { route: DoseRoute; source: 'schedule' });
 
 interface DoseScheduleInput {
   episodeId: string;
   recurrence: DoseScheduleRecurrence;
   dosesPerDay: number;
   doseAmounts: DoseScheduleAmount[] | null;
+  /** The day auto-logging went on, or null for off (types.ts). Required
+      rather than optional, so the schedule editor's save carries the switch
+      the same way it carries every other field - an omitted flag that
+      silently turned the instruction off would be the worst of the two
+      directions to get wrong. */
+  autoLogFromEpochDay: number | null;
 }
 
 type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
@@ -157,6 +179,23 @@ export interface DosesArea {
       none of them, the comparison falls back to its original rule: the sole
       active episode, or `multipleEpisodes` when more than one qualifies. */
   getComparison(params: { fromEpochDay: number; toEpochDay: number; drug?: string }): Promise<DoseScheduleComparison>;
+  /** Writes one `taken` dose per slot every auto-logging schedule still
+      owes, oldest first, and answers how many it wrote (phase 11 ticket 11,
+      ADR-0086).
+
+      The standing instruction, not an inference: nothing is written unless
+      the person switched the schedule on, nothing before the day they did,
+      nothing for today (that day is still theirs to log), nothing a pause
+      covers, nothing past the day the episode ended, and nothing into a slot
+      that already holds a dose - which is also what makes running this twice
+      write once. Every row it writes carries `source: 'schedule'`, so the
+      log, the dossier and the archive can all say where it came from and the
+      person can correct any of them.
+
+      Idempotent and safe to call whenever: boot runs it, and it is cheap on
+      a journal with no auto-logging schedule at all, which is every journal
+      until somebody asks for one. */
+  autoLogDueDoses(todayEpochDay: number): Promise<number>;
   /** The day of the most recent dose at or before `todayEpochDay`, or null
       if there is none (phase 8 features ticket 03, lastWrite.ts). The table
       stores a `timestamp`, not an `epoch_day`, so the bound is the start of
@@ -208,6 +247,7 @@ type DoseRow = {
   scheduled_route: string | null;
   scheduled_timestamp: number | null;
   drug: string | null;
+  source: string;
 };
 
 const scheduledOf = (row: DoseRow): ScheduledDose | null =>
@@ -225,6 +265,7 @@ function toDoseEvent(row: DoseRow): DoseEvent {
     dose: row.dose,
     doseUnit: row.dose_unit,
     status: row.status as DoseStatus,
+    source: row.source as DoseSource,
     scheduled: scheduledOf(row),
     drug: row.drug
   };
@@ -252,24 +293,34 @@ function toDoseEvent(row: DoseRow): DoseEvent {
 }
 
 /** The columns a dose's route does and does not fill. Written from the
-    input's own arm, so a dose edited from IM to oral loses its site and
-    vehicle instead of keeping ones the new route has no meaning for. */
-function routeColumns(input: DoseEventInput): {
+    route, so a dose edited from IM to oral loses its site and vehicle
+    instead of keeping ones the new route has no meaning for.
+
+    Takes the fields structurally rather than `DoseEventInput` itself: the
+    schedule's own arm carries none of the three, and a union narrowed on
+    route would have no site to read there. Every arm of `DoseEventInput`
+    satisfies this shape, so nothing at the call site changes. */
+function routeColumns(input: {
+  route: DoseRoute;
+  injectionSite?: InjectionSiteKey;
+  vehicle?: InjectionVehicle;
+  applicationSite?: ApplicationSiteKey;
+}): {
   injectionSite: string | null;
   vehicle: string | null;
   applicationSite: string | null;
 } {
   if (isInjectionDose(input)) {
-    return { injectionSite: input.injectionSite, vehicle: input.vehicle, applicationSite: null };
+    return { injectionSite: input.injectionSite ?? null, vehicle: input.vehicle ?? null, applicationSite: null };
   }
   if (isTopicalDose(input)) {
-    return { injectionSite: null, vehicle: null, applicationSite: input.applicationSite };
+    return { injectionSite: null, vehicle: null, applicationSite: input.applicationSite ?? null };
   }
   return { injectionSite: null, vehicle: null, applicationSite: null };
 }
 
 const DOSE_COLUMNS = `uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-                      status, scheduled_dose, scheduled_route, scheduled_timestamp, drug`;
+                      status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, source`;
 
 export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): DosesArea {
   /** An episode's rowid, by its travelling uuid. Refused here rather than
@@ -400,6 +451,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         scheduled?.route ?? null,
         scheduled?.timestamp ?? null,
         input.drug ?? null,
+        input.source ?? 'person',
         now()
       ];
 
@@ -408,7 +460,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
           `UPDATE dose_event
               SET timestamp = ?, route = ?, dose = ?, dose_unit = ?, injection_site = ?, vehicle = ?,
                   application_site = ?, status = ?, scheduled_dose = ?, scheduled_route = ?,
-                  scheduled_timestamp = ?, drug = ?, updated_at = ?
+                  scheduled_timestamp = ?, drug = ?, source = ?, updated_at = ?
             WHERE uuid = ?`,
           [...values, input.id]
         );
@@ -419,8 +471,9 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       const uuid = mintUuid();
       await driver.run(
         `INSERT INTO dose_event (timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-                                 status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, updated_at, uuid)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                 status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, source,
+                                 updated_at, uuid)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [...values, uuid]
       );
       return uuid;
@@ -428,6 +481,68 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
 
     async deleteDose(id) {
       await driver.run('DELETE FROM dose_event WHERE uuid = ?', [id]);
+    },
+
+    async autoLogDueDoses(todayEpochDay) {
+      const schedules = (await area.getSchedules()).filter((schedule) => schedule.autoLogFromEpochDay !== null);
+      if (schedules.length === 0) return 0;
+
+      const [episodes, pauses] = await Promise.all([regimen.getEpisodes(), area.getPauses()]);
+      let written = 0;
+
+      for (const schedule of schedules) {
+        const episode = episodes.find((candidate) => candidate.id === schedule.episodeId);
+        // The schedule hangs off the episode by foreign key, so this cannot
+        // miss - it is here to narrow, not to guard.
+        if (!episode) continue;
+
+        const from = Math.max(schedule.autoLogFromEpochDay as number, episode.startEpochDay);
+        /* Yesterday, or the day the episode ended, whichever came first. An
+           ended episode expects nothing after its last day, and expectedSlots
+           has no end to stop at - it is anchored on the start and runs
+           forward - so the clamp is here, where the episode is in hand. */
+        const until = Math.min(todayEpochDay - 1, episode.endEpochDay ?? todayEpochDay - 1);
+        if (until < from) continue;
+
+        /* The episode's whole dose history, not just the walk's own range:
+           the route an auto-logged dose is written with comes from the doses
+           the person already logged (autoLogRoute), and those are mostly
+           from before the day they switched the schedule on. The extra rows
+           cost a read the slot walk then ignores - anything outside its
+           range has no slot to sit in.
+
+           Only this episode's own, attributed the way getComparison
+           attributes them: a concurrent episode's dose must not fill this
+           one's slot, and a dose logged under an episode that has since been
+           backdated away is not this one's either. */
+        const logged = await area.getDoses(episode.startEpochDay, until);
+        const ownDoses = logged.filter((dose) => attributeDose(episodes, dose).episode?.id === episode.id);
+        const route = autoLogRoute(episode.route, ownDoses);
+        if (!route) continue;
+
+        const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
+        const slots = autoLogSlots(schedule, episode.startEpochDay, ownDoses, ownPauses, until + 1);
+
+        for (const { slot, timestamp } of slots) {
+          /* The schedule's own amount for this slot, so an alternating cycle
+             is written in phase. The episode's figure only where the schedule
+             tracks none, which the switch's own gate (canAutoLog) already
+             refuses - kept as the fallback rather than a throw because an
+             amount removed after the switch went on would otherwise fail the
+             whole pass. */
+          const amount = slot.amount ?? { dose: episode.dose, doseUnit: episode.doseUnit };
+          await area.upsertDose({
+            timestamp,
+            route,
+            dose: amount.dose,
+            doseUnit: amount.doseUnit,
+            source: 'schedule'
+          });
+          written++;
+        }
+      }
+
+      return written;
     },
 
     async lastWriteEpochDay(todayEpochDay) {
@@ -447,8 +562,10 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         recurrence_kind: string;
         every_n_days: number | null;
         doses_per_day: number;
+        auto_log_from_epoch_day: number | null;
       }>(
-        `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day
+        `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day,
+                s.auto_log_from_epoch_day
            FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
           ORDER BY s.id`
       );
@@ -462,7 +579,8 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
               // The v38 CHECK guarantees every_n_days is set for this arm.
               : { kind: 'everyNDays' as const, everyNDays: row.every_n_days as number },
           dosesPerDay: row.doses_per_day,
-          doseAmounts: await doseAmountsOf(row.id)
+          doseAmounts: await doseAmountsOf(row.id),
+          autoLogFromEpochDay: row.auto_log_from_epoch_day
         }))
       );
     },
@@ -488,16 +606,20 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         let uuid: string;
         if (existing.length > 0) {
           await driver.run(
-            'UPDATE dose_schedule SET recurrence_kind = ?, every_n_days = ?, doses_per_day = ?, updated_at = ? WHERE episode_id = ?',
-            [input.recurrence.kind, everyNDays, input.dosesPerDay, now(), episodeId]
+            `UPDATE dose_schedule SET recurrence_kind = ?, every_n_days = ?, doses_per_day = ?,
+                    auto_log_from_epoch_day = ?, updated_at = ?
+              WHERE episode_id = ?`,
+            [input.recurrence.kind, everyNDays, input.dosesPerDay, input.autoLogFromEpochDay, now(), episodeId]
           );
           scheduleRowId = existing[0].id;
           uuid = existing[0].uuid;
         } else {
           uuid = mintUuid();
           const result = await driver.run(
-            'INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [uuid, episodeId, input.recurrence.kind, everyNDays, input.dosesPerDay, now()]
+            `INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day,
+                                        auto_log_from_epoch_day, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [uuid, episodeId, input.recurrence.kind, everyNDays, input.dosesPerDay, input.autoLogFromEpochDay, now()]
           );
           scheduleRowId = result.lastInsertRowid;
         }
