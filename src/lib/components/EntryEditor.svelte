@@ -1389,11 +1389,7 @@
         disabled={saving}
         onclick={saveEntry}
       >
-        {#if moodMissing}
-          <span>{m.entry_pick_mood_to_save()}</span>
-        {:else}
-          <Icon name="check" size={20} /><span>{m.save_entry()}</span>
-        {/if}
+        <span>{moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
     </div>
   </SaveBar>
@@ -1541,10 +1537,15 @@
   .editor-save-row {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
   .editor-save-row .icon-btn { flex: none; }
-  .editor-save-row .btn { flex: 1; }
+  /* 116px at 390 (350 less 170 of faces, 48 of star, two 8px gaps), so
+     the label takes 8px of side padding rather than .btn's 24: "Save
+     entry" measures 79 in Nunito 16/750 and "Zapisz wpis" 81, and the
+     check icon that rode beside them on every other primary is 28 more
+     than the line has. The faces say what this bar is; the tick did not. */
+  .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
 
   /* The line under a heading that needs one. A hint is the area's own second
      sentence rather than a caption on a field, so it sits at the page's
@@ -1654,11 +1655,15 @@
      magnifier's lift paint outside the row, which is why nothing here
      clips. */
   .editor-save-moods { flex: none; }
+  /* "Pick a mood to save" is two lines in 100px - "Pick a mood" is 77 at
+     14px, "Wybierz nastrój," 97 at 13px - so the unmet label sets at 13
+     and asks the browser to balance the break. */
   .editor-save-row .btn.is-unmet {
-    padding-inline: var(--space-3);
-    font-size: var(--text-sm);
+    font-size: 0.8125rem;
+    font-weight: var(--weight-medium);
     line-height: 1.2;
     text-align: center;
+    text-wrap: balance;
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */

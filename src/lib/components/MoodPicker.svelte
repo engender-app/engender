@@ -84,7 +84,9 @@
   .mood-picker.is-bar .mood-btn {
     flex: 0 0 auto;
     gap: 0;
-    padding: var(--space-2) 2px;
+    /* 34px a face, 170 for the five: what leaves Save 116px on a 390px
+       bar beside a 48px star, the width its label needs on one line. */
+    padding: var(--space-2) 1px;
   }
   /* The picked face's 1.18 scale on a 32px face is 38px, inside the bar's
      48px line, so the row never grows the bar. */
