@@ -4454,9 +4454,30 @@ try {
   if ((await page.locator('[data-list-row="milestones"][data-hub-line="next"]').count()) === 0) {
     throw new Error('the milestones row reports a gap rather than the milestone ahead of it');
   }
-  /* A span running now, which wins over both. */
-  if ((await page.locator('[data-list-row="tryouts"][data-hub-line="running"]').count()) === 0) {
-    throw new Error('the tryouts row does not say which tryout is running');
+  /* A span running now, which wins over both. All seven rows the ticket
+     names are asserted rather than a sample of them: the one row whose
+     forward fact comes from a different seed file than the rest
+     (`appointments`, whose standalone rows are the persona's from
+     `journal-seed.ts` rather than `fullFixture.ts`'s consults) is exactly
+     the one a sample would have missed. */
+  /* Wear is deliberately not in this list. It has a session running on a
+     fresh fill, but the wear editor is walked further up and stops it, so by
+     the time the hub is read the row has a last write and nothing running.
+     Its running line is covered by `rowForward.test.ts`, and the walk below
+     still proves the order over it - "finished" outranking whatever it
+     drew. */
+  for (const [key, kind] of [
+    ['tryouts', 'running'],
+    ['surgery', 'running'],
+    ['appointments', 'next'],
+    ['letters', 'next']
+  ]) {
+    if ((await page.locator(`[data-list-row="${key}"][data-hub-line="${kind}"]`).count()) === 0) {
+      const drew = await page
+        .locator(`[data-list-row="${key}"]`)
+        .getAttribute('data-hub-line');
+      throw new Error(`the ${key} row drew "${drew}" rather than "${kind}"`);
+    }
   }
   /* And a row with nothing either way still says what is behind it. */
   if ((await page.locator('[data-list-row="roadmap"][data-hub-line="no-stream"]').count()) === 0) {
