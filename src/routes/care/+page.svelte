@@ -1328,6 +1328,15 @@
     transform: translateX(calc(var(--care-at) * 100%));
     transition: transform var(--dur-med) var(--ease-out);
     pointer-events: none;
+    /* A deep row's stem reaches back past every row between it and the line,
+       so a shallow neighbour close in x - a day or two apart is well inside
+       a caption's width - sits behind that stem unless shallower always
+       wins. Here rather than on the caption inside, and that is the whole
+       point: the transform above makes each mark its own stacking context,
+       so a z-index within one never compares against another's and the
+       marks paint in document order instead - which put the next dose's
+       stem straight through the last dose's date (Alicja, on the render). */
+    z-index: calc(10 - var(--care-row));
   }
   /* The inner box is what is centred on the mark, and what presses. */
   .care-at-inner {
@@ -1341,11 +1350,6 @@
     flex-direction: column;
     align-items: center;
     pointer-events: auto;
-    /* A deep row's stem reaches back past every row between it and the line,
-       so a shallow neighbour close in x - a day or two apart is well inside
-       a caption's width - sits behind that stem unless shallower always
-       wins. */
-    z-index: calc(10 - var(--care-row));
     /* The caption is around 48px wide and the tick is 2px, so the target is
        the caption's own box: it stays at the floor whatever the tick looks
        like. */
