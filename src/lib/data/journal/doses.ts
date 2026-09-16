@@ -542,6 +542,15 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
             route,
             dose: amount.dose,
             doseUnit: amount.doseUnit,
+            /* The episode's drug, written onto the row rather than left for
+               attribution to resolve. A dose logged by hand can leave it
+               null because the person was looking at one screen for one
+               drug; this one is written unattended, and on a journal with
+               two episodes running at once `attributeDose` has no way to
+               tell which schedule wrote it - the row would read "more than
+               one regimen was active: drug not recorded" for ever. Which is
+               exactly the tie `drug` exists to break (types.ts). */
+            drug: episode.drug,
             source: 'schedule'
           });
           written++;

@@ -222,6 +222,17 @@
     return dose.status === 'skipped' ? m.dose_from_schedule_skipped() : m.dose_from_schedule();
   };
 
+  /** Which episode the app put this dose under, as the row says it. Named
+      here because an auto-logged row states it on its own second line
+      rather than at its trailing edge, and the two must not word it
+      differently. */
+  const attributionLabel = (attribution: ReturnType<typeof attributeDose>): string =>
+    attribution.episode
+      ? m.doses_under_episode({ drug: attribution.episode.drug })
+      : attribution.ambiguous
+        ? m.doses_ambiguous_episode()
+        : m.doses_no_episode();
+
   /** Whether this row offers the one-tap correction: an auto-logged dose
       that has not already been corrected, inside its window. */
   const offersSkip = (dose: DoseEvent): boolean =>
@@ -678,7 +689,12 @@
                 icon="clock"
                 title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
                 subtitle={[
-                  [whenOf(dose), site, isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '']
+                  [
+                    whenOf(dose),
+                    site,
+                    isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
+                    sourceNote ? attributionLabel(attribution) : ''
+                  ]
                     .filter(Boolean)
                     .join(' · '),
                   sourceNote
@@ -687,7 +703,15 @@
                 onclick={() => openEditor(dose)}
                 action={offersSkip(dose)
                   ? {
-                      text: m.dose_from_schedule_skip_action(),
+                      /* The app's own word for the status this sets, not a
+                         sentence: a dose row already carries an amount, a
+                         route, a time, where it came from and which episode
+                         it is under, and a four-word button at 390px left
+                         the title wrapping one character to a line. The
+                         accessible name is the whole sentence, which is
+                         what a control read out of its row needs and what a
+                         control sitting in one does not. */
+                      text: statusLabel('skipped'),
                       label: m.dose_from_schedule_skip_action(),
                       attrs: { 'data-dose-skip': dose.id },
                       onclick: () => skipAutoLoggedDose(dose)
@@ -701,23 +725,21 @@
                        what a schedule had asked for. All three are about the
                        record rather than about the dose.
 
-                       An auto-logged dose the person has marked skipped says
-                       so on its second line instead, in one sentence with
-                       where it came from - so the chip would be the same
-                       word twice. -->
+                       An auto-logged row says the first two on its second
+                       line instead, in one sentence with where it came from.
+                       Partly because "skipped" beside "skipped, was logged
+                       from your schedule" is the same word twice - and
+                       partly because that row carries a control at this
+                       trailing edge, and a 390px row cannot hold an icon, a
+                       dose, an episode name and a button. Measured: the
+                       title had 78px to wrap "100 mg · Oral" in. -->
                   <span class="dose-trail">
                     {#if dose.status !== 'taken' && !sourceNote}
                       <span class="dose-status">{statusLabel(dose.status)}</span>
                     {/if}
-                    <span>
-                      {#if attribution.episode}
-                        {m.doses_under_episode({ drug: attribution.episode.drug })}
-                      {:else if attribution.ambiguous}
-                        {m.doses_ambiguous_episode()}
-                      {:else}
-                        {m.doses_no_episode()}
-                      {/if}
-                    </span>
+                    {#if !sourceNote}
+                      <span>{attributionLabel(attribution)}</span>
+                    {/if}
                     {#if dose.scheduled}
                       <span>
                         {m.dose_scheduled_legend()}: {dose.scheduled.dose}
@@ -1249,6 +1271,8 @@
     max-width: 12rem;
     line-height: 1.25;
   }
+
+
 
   .dose-status {
     padding: 2px 8px;

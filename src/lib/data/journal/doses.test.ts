@@ -841,3 +841,17 @@ test('a schedule round-trips the day auto-logging went on, and null again once i
   });
   assert.equal((await journal.doses.getSchedules())[0].autoLogFromEpochDay, null);
 });
+
+test('an auto-logged dose names its episode\'s drug, so two regimens at once stay told apart', async () => {
+  /* A dose logged by hand can leave `drug` null because the person was on
+     one screen for one drug. This one is written unattended, and
+     attribution has nothing else to go on (phase 11 ticket 11). */
+  const { journal } = await journalWithBuiltIns();
+  await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19099 });
+  await episode(journal, 19000, 'spironolactone');
+
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 1);
+  const [written] = await journal.doses.getDoses(19000, 19100);
+  assert.equal(written.drug, 'estradiol');
+  assert.equal(attributeDose(await journal.regimen.getEpisodes(), written).episode?.drug, 'estradiol');
+});

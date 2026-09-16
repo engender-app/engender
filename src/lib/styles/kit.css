@@ -471,8 +471,17 @@
   padding-inline: var(--space-3);
 }
 
+/* The words are drawn as a chip rather than as bare text: an icon button
+   reads as a control from its glyph, and a word at the end of a row that is
+   already three lines of words does not. --r-block is the app's one corner
+   (phase 10, rule 5), and the outline is what every other pressable surface
+   in the kit uses - no shadow, which this kit does not have. */
 .kit-row-act-text {
+  padding: 4px 10px;
+  border: 1px solid var(--outline);
+  border-radius: var(--r-block);
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
