@@ -334,6 +334,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // A bare `COUNT(*)` over the entry table and nothing else: Home's
       // count line and Safe Space's total both key on it.
       countAll: ['entry'],
+      // A bare `COUNT(DISTINCT epoch_day)`: the Journal door's "Earlier
+      // entries" control keys on it, the same as countAll above.
+      countDistinctDays: ['entry'],
       // Note, day and presentation only - the word-frequency fold's own
       // read (phase 8 features ticket 14), not the hydrated shape.
       noteEntries: ['entry']

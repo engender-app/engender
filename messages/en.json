@@ -178,10 +178,27 @@
   "search_placeholder": "Search the whole journal…",
   "search_hint": "Notes, tags, letters, questions, anything with words in it. With or without diacritics: “lozko” finds “łóżko”.",
   "list_more": "Show {count} more",
+  "list_more_days": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Show {count} more day",
+        "countPlural=other": "Show {count} more days"
+      }
+    }
+  ],
   "search_try": "Try “euphoria”, a tag like “therapy”, or a word from a letter you wrote.",
+  "search_recent_label": "Recent searches",
   "search_filters": "Filters",
   "search_filter_moods_aria": "Mood filters",
   "search_filter_tags_label": "Tags",
+  "search_filter_starred": "Starred",
   "search_filter_start_label": "From day",
   "search_filter_end_label": "To day",
   "search_filter_has_note": "Has note",

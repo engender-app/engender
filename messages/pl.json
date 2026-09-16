@@ -198,10 +198,29 @@
       }
     }
   ],
+  "list_more_days": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Pokaż jeszcze {count} dzień",
+        "countPlural=few": "Pokaż kolejne {count} dni",
+        "countPlural=many": "Pokaż kolejne {count} dni",
+        "countPlural=other": "Pokaż kolejne {count} dni"
+      }
+    }
+  ],
   "search_try": "Spróbuj „euforia”, tagu „terapia” albo słowa z listu do siebie.",
+  "search_recent_label": "Ostatnie wyszukiwania",
   "search_filters": "Filtry",
   "search_filter_moods_aria": "Filtry nastroju",
   "search_filter_tags_label": "Tagi",
+  "search_filter_starred": "Ulubione",
   "search_filter_start_label": "Od dnia",
   "search_filter_end_label": "Do dnia",
   "search_filter_has_note": "Ma notatkę",

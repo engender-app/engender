@@ -27,11 +27,15 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 /** The markup half: a string inside a script block may be anything. */
 const markupOf = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
 
+/* `starred` left this map with ticket 18: `/search/starred` stopped being a
+   screen of its own and redirects into `/search`'s own `?starred=1` filter,
+   so every rule below that used to hold it to the same shape as `search`
+   now holds `search` alone - the starred read moved into that file's own
+   markup, which the rule already covers there. */
 const SCREENS = {
   calendar: 'src/routes/calendar/+page.svelte',
   day: 'src/routes/day/[day]/+page.svelte',
   search: 'src/routes/search/+page.svelte',
-  starred: 'src/routes/search/starred/+page.svelte',
   entry: 'src/routes/entry/[id]/+page.svelte',
   entryNew: 'src/routes/entry/new/[day]/+page.svelte'
 } as const;
@@ -65,7 +69,7 @@ describe('what the six screens are built from', () => {
     /* activeFlag.svelte.ts: the shell publishes the flag in the same effect
        that stamps the palette, because anything reading it for itself races
        that stamp and silently draws the previous palette. */
-    for (const path of [SCREENS.calendar, SCREENS.day, SCREENS.search, SCREENS.starred]) {
+    for (const path of [SCREENS.calendar, SCREENS.day, SCREENS.search]) {
       expect(read(path), path).toContain("from '$lib/theme/activeFlag.svelte'");
       expect(read(path), path).not.toContain('readFlagRoles(');
     }
@@ -357,9 +361,10 @@ describe('search', () => {
        was. Since deepening ticket 24 the screen also searches every other
        area that holds text, so the same rule now means the sum: stating the
        entries' total alone over a screen that also found five letters would
-       be the screen describing half of what it found. */
+       be the screen describing half of what it found. Ticket 18 folds a
+       third count in, the starred photo grid, when that filter is on. */
     expect(search).toContain('countSearchMatches');
-    expect(search).toMatch(/foundTotal = \$derived\(total \+ elsewhereResults\.total\)/);
+    expect(search).toMatch(/foundTotal = \$derived\(total \+ elsewhereResults\.total \+ \(starredOnly/);
     expect(search).toContain('results_count({ count: foundTotal })');
   });
 
@@ -416,8 +421,7 @@ describe('the handles the walkthrough grips', () => {
     for (const [name, path] of Object.entries({
       calendar: SCREENS.calendar,
       day: SCREENS.day,
-      search: SCREENS.search,
-      starred: SCREENS.starred
+      search: SCREENS.search
     })) {
       expect(markupOf(read(path)), name).toMatch(/screen="[a-z-]+"/);
     }
@@ -431,17 +435,16 @@ describe('the handles the walkthrough grips', () => {
        (ADR-0029) - so the walkthrough grips one handle on both screens
        rather than whichever of two the screen happened to use. */
     /* The day screen draws it one component deep since deepening ticket 21,
-       the same shape search and the starred shelf already had: the route owns
-       the read and the gate, DayRecords.svelte owns the composition. */
+       the same shape search (and, until ticket 18 folded it in, the
+       starred shelf) already had: the route owns the read and the gate,
+       DayRecords.svelte owns the composition. */
     expect(markupOf(read(SCREENS.day))).toContain('<DayRecordsView');
     expect(markupOf(read('src/lib/components/DayRecords.svelte'))).toContain('<DayEntry');
-    /* Search and the starred shelf draw the same run of days through one
-       journal-connected caller rather than eighteen identical lines each. */
-    for (const path of [SCREENS.search, SCREENS.starred]) {
-      expect(markupOf(read(path)), path).toContain('<EntryDays');
-    }
+    /* Search draws its run of days through the same journal-connected
+       caller rather than eighteen identical lines of its own. */
+    expect(markupOf(read(SCREENS.search))).toContain('<EntryDays');
     expect(markupOf(read('src/lib/components/EntryDays.svelte'))).toContain('<DayEntry');
-    for (const path of [SCREENS.day, SCREENS.search, SCREENS.starred]) {
+    for (const path of [SCREENS.day, SCREENS.search]) {
       expect(markupOf(read(path)), path).not.toContain('data-day-entry-row');
     }
     expect(read('tests/walkthrough.test.mjs')).not.toContain('data-day-entry-row');
@@ -507,8 +510,7 @@ describe('loading states, since all six read entry data', () => {
        alone, and the gate's emptiness test moved with it. The rule the name
        is here for is unchanged. */
     ['day', SCREENS.day, /<ReadGate\s+read=\{everythingLogged\}/],
-    ['search', SCREENS.search, /<Skeleton/],
-    ['starred', SCREENS.starred, /<Skeleton/]
+    ['search', SCREENS.search, /<Skeleton/]
   ])('%s waits with a skeleton', (_name, path, waits) => {
     expect(markupOf(read(path))).toMatch(waits);
   });
@@ -527,7 +529,13 @@ describe('loading states, since all six read entry data', () => {
     const calendar = read(SCREENS.calendar);
     // Cached entry presence prevents month controls and heatmap popping in after mount
     expect(calendar).toContain('engender-has-entries');
-    // Week strip waits on recent entries query to prevent downward teleport
-    expect(calendar).toMatch(/\{#if hasEntries && !recent\.loading\}/);
+    /* The week-strip guard this test used to hold `!recent.loading` to is
+       gone with the strip itself (ticket 18): there is nothing left
+       drawing the same seven days a second time to teleport under the
+       first. "Earlier entries" reads off moreDaysRemaining, which is 0 -
+       hidden, not wrong - until both of its own reads settle, the same
+       shape the deleted guard had. */
+    expect(calendar).toContain('moreDaysRemaining');
+    expect(calendar).not.toContain('WeekStrip');
   });
 });
