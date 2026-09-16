@@ -42,6 +42,11 @@
    to `/care` itself rather than to a stub for something that no longer
    exists, and `/doses` joins the dose log under `/care/doses` too.
 
+   Phase 11 ticket 16 (ADR-0084) runs the same reversal as ticket 51's two:
+   eras is a reference area, so it moves onto Settings rather than off it.
+   The `settings/eras` entry above is gone - that is the real screen now -
+   and `transition/eras` carries the stub instead, pointing back in.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -83,7 +88,6 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/roadmap', () => import('../src/routes/settings/roadmap/+page.ts'), '/transition/roadmap'],
   ['settings/letters', () => import('../src/routes/settings/letters/+page.ts'), '/transition/letters'],
   ['settings/tryouts', () => import('../src/routes/settings/tryouts/+page.ts'), '/transition/tryouts'],
-  ['settings/eras', () => import('../src/routes/settings/eras/+page.ts'), '/transition/eras'],
   ['settings/voice', () => import('../src/routes/settings/voice/+page.ts'), '/practice/voice?tab=record'],
   ['settings/wear', () => import('../src/routes/settings/wear/+page.ts'), '/practice/wear'],
   [
@@ -107,6 +111,7 @@ const REDIRECTS: [string, () => unknown, string][] = [
     '/settings/entry-templates'
   ],
   ['transition/words', () => import('../src/routes/transition/words/+page.ts'), '/stats'],
+  ['transition/eras', () => import('../src/routes/transition/eras/+page.ts'), '/settings/eras'],
   ['settings/live-tiles', () => import('../src/routes/settings/live-tiles/+page.ts'), '/settings/notifications']
 ];
 
