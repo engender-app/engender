@@ -1000,11 +1000,11 @@ try {
 } catch (e) { fail('saved question runs', e); }
 
 /* 5g. search opens with something: the opening state's tag chips and this
-   device's own recent searches both run a search on a tap (ticket 18). The
-   recent-search row relies on earlier flows in this same file having
-   already typed something and let it debounce - a fresh browsing context
-   with no history of its own would show no rows, which is the point: the
-   row is this device's memory, not the journal's. */
+   device's own recent searches both run a search on a tap (ticket 18).
+   `fresh()` clears localStorage, which is where recentSearches.ts keeps
+   its history - this device's memory, not the journal's - so this flow
+   makes its own recent search rather than assuming an earlier flow's
+   survived the reset. */
 try {
   await fresh('/search');
   await page.waitForSelector('[data-search-idle]');
@@ -1014,6 +1014,11 @@ try {
   await page.waitForSelector('[data-active-filter-chip]');
 
   await page.locator('[data-filter-clear]').click();
+  await page.waitForSelector('[data-search-idle]');
+
+  await page.locator('#q').fill('hopeful');
+  await page.waitForSelector('[data-entry-card]');
+  await page.locator('#q').fill('');
   await page.waitForSelector('[data-search-idle]');
 
   await page.waitForSelector('[data-recent-search-row]');
