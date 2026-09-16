@@ -328,13 +328,18 @@ try {
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
   await home();
-  /* Guarded: the demo's first-run jump no longer lands on a journal under
-     five entries on every fixture, and getting started is gated on that
-     count. A missing scene is worth saying; a failed run is not. */
+  /* Getting started is gated on a journal under five entries, so its
+     presence is how this scene knows the jump actually landed on one. It
+     stopped landing at some point before this ticket, and the crop was
+     coming back as the seeded journal under a day-one caption - a shot
+     that says the opposite of what it claims. Reported rather than
+     mislabelled: the scene is a real gap in the sign-off set until the
+     jump is fixed, and the run says so. */
   if (await page.locator('[data-getting-started]').count()) {
     await cropTop('day-one-trans-light', ['[data-getting-started]'], 20, 'Day one: the field, the faces, the default pinned set and getting started. No empty agenda, no placeholder.');
   } else {
-    await cropTop('day-one-trans-light', ['[data-home-pinned]'], 20, 'A fresh journal: the field, the faces and the default pinned set. No empty agenda, no placeholder.');
+    const entries = await page.locator('[data-home-hello]').textContent();
+    errors.push(`day-one-trans-light: the first-run jump did not land on a fresh journal (${(entries ?? '').trim()}), so day one was not shot`);
   }
 
   /* 8. Disguise. */
