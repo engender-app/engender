@@ -118,10 +118,6 @@
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
-  /* Only the way into the room reads this: the room takes the questions one
-     per screen, so with none there is nothing for the row to open onto but
-     its own empty state (ticket 71). */
-  let hasQuestions = $derived(items.length > 0);
 
   const titleOf = (appointment: Appointment) =>
     appointment.kind ??
@@ -413,19 +409,20 @@
   <SectionHeading text={m.appointments_verbs_heading()} />
   <div class="screen-part">
     <ListCard role={roleAt(activeFlag.roles, 2)}>
-      {#if hasQuestions}
-        <!-- Opens its own height when the first question lands, rather than
-             shoving the row under it down a line (ADR-0078). -->
-        <div transition:collapse>
-          <ListRow
-            key="in-the-room"
-            icon="bookmark"
-            title={m.in_the_room_title()}
-            subtitle={m.in_the_room_row_sub()}
-            href="/health/appointments/in-the-room"
-          />
-        </div>
-      {/if}
+      <!-- Always, which is the merge of two gates that disagreed. The prep
+           list drew this row only once a question existed (ticket 71) and
+           the appointments screen drew it only on the day of a visit (ticket
+           60); on one screen either gate hides a verb the other would have
+           shown, and this ticket asks for two verbs rather than however many
+           the state allows. The room owns the empty case itself - it opens
+           on `in-the-room-empty`, whose action is the way back here. -->
+      <ListRow
+        key="in-the-room"
+        icon="bookmark"
+        title={m.in_the_room_title()}
+        subtitle={m.in_the_room_row_sub()}
+        href="/health/appointments/in-the-room"
+      />
       <ListRow
         key="clinician-summary"
         icon="share"
