@@ -4241,16 +4241,19 @@ try {
   }
   await page.locator('[data-benchmark-delta]').waitFor();
 
-  /* The metric reference (phase 8 features ticket 27). Reached from a
-     figure in the app, and there is no figure to press here: a benchmark
-     needs a microphone this browser does not have, so the link itself is
-     asserted in the browser tier against a mounted list
-     (tests/browser-tier/voice-metrics-probe.ts). What only a built app can
-     say is that the route boots at all - `/doses` sticks at "booting" in a
-     production build while every test in the node tier passes - so this
-     walks to it by URL and reads what it drew. */
+  /* The metric reference (phase 8 features ticket 27), a sheet over the
+     voice screen since phase 11 ticket 17 rather than a screen of its own.
+     Reached from a figure in the app, and there is no figure to press
+     here: a benchmark needs a microphone this browser does not have, so
+     the link itself is asserted in the browser tier against a mounted
+     list (tests/browser-tier/voice-metrics-probe.ts). What only a built
+     app can say is that the route boots at all - `/doses` sticks at
+     "booting" in a production build while every test in the node tier
+     passes - so this walks to the old address by URL, which redirects to
+     `/practice/voice?metric=pitch` and opens the sheet there, and reads
+     what it drew. */
   await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-metric="pitch"]');
+  await page.waitForSelector('[data-sheet] [data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
   if (explained !== 7) {
     throw new Error(`the metric reference explains ${explained} figures, not seven`);

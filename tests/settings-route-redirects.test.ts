@@ -58,6 +58,14 @@
    The `settings/eras` entry above is gone - that is the real screen now -
    and `transition/eras` carries the stub instead, pointing back in.
 
+   Phase 11 ticket 17 folds the memo browser and the metric reference into
+   the voice screen's own Recordings tab and its own sheet: `media/voice/
+   memos` and `practice/voice/metrics` both join this table as stubs for
+   addresses that used to be real screens, and `settings/voice/memos` and
+   `settings/voice/metrics` are repointed straight at the final
+   destinations rather than at the other two stubs - one hop, not two,
+   ticket 61's own rule.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -127,7 +135,16 @@ const REDIRECTS: [string, () => unknown, string][] = [
     () => import('../src/routes/media/voice/memos/+page.ts'),
     '/practice/voice?tab=recordings'
   ],
-  ['settings/voice/metrics', () => import('../src/routes/settings/voice/metrics/+page.ts'), '/practice/voice/metrics'],
+  [
+    'settings/voice/metrics',
+    () => import('../src/routes/settings/voice/metrics/+page.ts'),
+    '/practice/voice?metric=pitch'
+  ],
+  [
+    'practice/voice/metrics',
+    () => import('../src/routes/practice/voice/metrics/+page.ts'),
+    '/practice/voice?metric=pitch'
+  ],
   ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones'],
   [
     'transition/presentations',
