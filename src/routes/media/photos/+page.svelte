@@ -64,8 +64,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade } from '$lib/motion/reveal';
-  import { measureCells, pinnedOut, travelCells } from '$lib/motion/narrow';
+  import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
   import { isReducedMotion } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -165,6 +164,17 @@
   }
 
   let gridEl = $state<HTMLElement>();
+
+  /* Whether the grid has been painted once. A tile that comes with the grid
+     gets no entrance of its own, because the skeleton is already fading out
+     over it (ReadGate, tests/feature-screens.test.ts); a tile that arrives
+     afterwards - a chip widening, a photograph added while this screen is
+     open - fades in. The effect runs after the flush that created those
+     first tiles, so they read false and everything later reads true. */
+  let painted = $state(false);
+  $effect(() => {
+    if (gridEl) painted = true;
+  });
 
   /** Narrowing by a chip, as one move rather than a repaint: measure where
       the tiles stand, change the query, then walk the survivors back to
@@ -316,7 +326,7 @@
         <div class="photo-library">
           <div class="photo-grid" bind:this={gridEl}>
             {#each shown as p (p.id)}
-              <div class="photo-cell-wrap" data-photo-key={p.id} in:crossfade out:pinnedOut>
+              <div class="photo-cell-wrap" data-photo-key={p.id} data-photo-source={p.source} in:tileIn={{ when: painted }} out:pinnedOut>
                 {#if p.source === 'video'}
                   <!-- A note plays rather than being picked, and its tile
                        draws no still: the bytes are up to 10MiB apiece
