@@ -168,7 +168,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'zap',
       title: effect.name,
       subtitle: severityName(effect.severity) ?? undefined,
-      href: '/health/side-effects'
+      href: '/practice/personal-effects'
     })),
 
   personalEffects: (day) =>

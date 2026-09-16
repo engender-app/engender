@@ -13,6 +13,7 @@ const change = (key: string, firstNoticedEpochDay: number, extra: Partial<Notice
   label: key,
   direction: 'feminizing',
   firstNoticedEpochDay,
+  kind: 'personal-effect',
   ...extra
 });
 
@@ -143,5 +144,26 @@ describe('the ticks the axis is read against', () => {
       expect(tick.position).toBeGreaterThanOrEqual(0);
       expect(tick.position).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('the two kinds of mark (ticket 13)', () => {
+  test('a side effect carries its own kind and severity onto its mark', () => {
+    const axis = noticedAxis(
+      [change('a', 100, { kind: 'side-effect', severity: 'moderate' })],
+      0,
+      400
+    );
+    expect(axis.marks[0].kind).toBe('side-effect');
+    expect(axis.marks[0].severity).toBe('moderate');
+  });
+
+  test('the two kinds share the same line and the same collision rule', () => {
+    const axis = noticedAxis(
+      [change('a', 100, { kind: 'personal-effect' }), change('b', 104, { kind: 'side-effect' })],
+      0,
+      730
+    );
+    expect(axis.marks.map((mark) => mark.lane)).toEqual([0, 1]);
   });
 });
