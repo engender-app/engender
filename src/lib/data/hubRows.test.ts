@@ -184,7 +184,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('fourteen rows can report a reading and seven never can', () => {
+test('thirteen rows can report a reading and seven never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -193,10 +193,13 @@ test('fourteen rows can report a reading and seven never can', () => {
   // off the registry entirely. Ten until ticket 59 deleted the
   // clinician-summary row outright rather than hosting it, and fourteen
   // since redesign ticket 61 folded the size log into the measurements row.
-  // The written eight are nine less `words`, which redesign ticket 62 took
-  // off with the screen it opened, and seven since redesign ticket 16 took
-  // `eras` - also 'written' - off the same way.
-  assert.equal(reads.length, 14);
+  // Thirteen since ticket 13 folded `side-effects` - a 'read' row - into
+  // `effects` rather than giving it a row of its own; the written eight
+  // are untouched by that one. The written eight are nine less `words`,
+  // which redesign ticket 62 took off with the screen it opened, and seven
+  // since redesign ticket 16 took `eras` - also 'written' - off the same
+  // way.
+  assert.equal(reads.length, 13);
   assert.equal(HUB_ROWS.length - reads.length, 7);
 });
 
@@ -267,6 +270,24 @@ test('an empty half does not drag a row backwards', () => {
   /* Somebody can log hair stages for two years and never photograph one, and
      an empty half is not a quiet half - `groupLastWrite`'s own reasoning. */
   const line = rowLine(spec('hair-progress'), reading({ lastWrites: { hairStages: TODAY - 2, hairPhotos: null } }));
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
+});
+
+test('the merged effects row reports whichever half was written last, as hair-progress does (ticket 13)', () => {
+  const line = rowLine(
+    spec('effects'),
+    reading({ lastWrites: { personalEffects: TODAY - 40, sideEffects: TODAY - 4 } })
+  );
+
+  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 4, daysAgo: 4 });
+});
+
+test('a side effect logged alone does not drag the effects row backwards', () => {
+  const line = rowLine(
+    spec('effects'),
+    reading({ lastWrites: { personalEffects: null, sideEffects: TODAY - 2 } })
+  );
 
   assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
 });
@@ -529,12 +550,12 @@ test('a hidden area takes a hosted row out of its host, the way it took it off t
      `hubSections` any more, so nothing on the hub can answer for it.
      `HostedRows.svelte` applies exactly this filter over the area record. */
   const hosted = rowsHostedBy('effects').map((row) => row.key);
-  assert.deepEqual(hosted, ['side-effects', 'hair-progress']);
+  assert.deepEqual(hosted, ['hair-progress', 'cycle-events']);
 
   const left = rowsHostedBy('effects')
-    .filter((row) => !rowHidden(row, { sideEffects: hidden }))
+    .filter((row) => !rowHidden(row, { hairStages: hidden, hairPhotos: hidden }))
     .map((row) => row.key);
-  assert.deepEqual(left, ['hair-progress']);
+  assert.deepEqual(left, ['cycle-events']);
 
   /* Both sections behind hair progress, or the row stays - the same
      every-section rule the hub applies. */
@@ -550,14 +571,20 @@ test('a hosted row states the day its area ended, since the hub no longer can', 
      assembled last-write call for a date the next screen opens on. */
   const noReads = { todayEpochDay: TODAY, lastWrites: {}, states: {}, forward: {} };
 
-  assert.deepEqual(rowLine(spec('effects'), { ...noReads, states: { personalEffects: finished(TODAY - 90) } }), {
-    kind: 'finished',
-    epochDay: TODAY - 90
-  });
-  assert.deepEqual(rowLine(spec('side-effects'), { ...noReads, states: { sideEffects: suspended(TODAY - 5) } }), {
-    kind: 'suspended',
-    epochDay: TODAY - 5
-  });
+  assert.deepEqual(
+    rowLine(spec('effects'), {
+      ...noReads,
+      states: { personalEffects: finished(TODAY - 90), sideEffects: finished(TODAY - 90) }
+    }),
+    { kind: 'finished', epochDay: TODAY - 90 }
+  );
+  assert.deepEqual(
+    rowLine(spec('effects'), {
+      ...noReads,
+      states: { personalEffects: suspended(TODAY - 5), sideEffects: suspended(TODAY - 5) }
+    }),
+    { kind: 'suspended', epochDay: TODAY - 5 }
+  );
   assert.equal(rowLine(spec('dilation'), noReads).kind, 'not-yet');
 });
 
@@ -582,7 +609,7 @@ test('a hosted row is not on the hub at all, and its screen is named (ticket 16)
   }
   assert.deepEqual(
     HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['effects', 'side-effects', 'hair-progress', 'cycle-events', 'dilation']
+    ['effects', 'hair-progress', 'cycle-events', 'dilation']
   );
 });
 

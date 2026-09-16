@@ -10,9 +10,15 @@
 
   let {
     text,
+    id,
     action
   }: {
     text: string;
+    /** An anchor for the area this names, when something links into the
+        middle of a screen (phase 11 ticket 15: Safe space's way down lands
+        on the letters screen's Open section). Omitted everywhere else - a
+        heading needs no id to name an area, only to be addressed by one. */
+    id?: string;
     /** A control for the area as a whole, right-aligned on the heading's own
         line: a link out of it, an add button, or a state the whole area
         carries (the roadmap's "not my path" per track). Not a row's control
@@ -24,7 +30,7 @@
   } = $props();
 </script>
 
-<div class="kit-heading" data-section-heading>
+<div class="kit-heading" data-section-heading {id}>
   <h2>{text}</h2>
   {#if action}{@render action()}{/if}
 </div>

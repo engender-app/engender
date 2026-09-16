@@ -43,16 +43,20 @@
        here as a named special case beside it; ticket 16 hosted the cycle row
        on /health/side-effects, which was already asking that question for
        the cycle block it draws, so the gate is that screen's alone and this
-       file has no special case left.
+       file has no special case left. Ticket 13 moved the cycle block again,
+       onto /practice/personal-effects with the rest of what side effects
+       screen drew - the gate travelled with it rather than being restated.
      - the finished group, and the day it shows.
 
    Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
    `home` is one of the hub's groups or one of the screens in `HUB_ROW_HOSTS`,
-   and five of the twenty-one now name a screen. This file stays the
-   registry for all of them either way, which is the point of holding the
-   field here rather than deleting the rows that left: `finishes` still has to
-   be claimed by exactly one row and the last-write registry still has to be
-   fronted or opted out of. A row that moved screens moved one field.
+   and four of the twenty now name a screen - five until ticket 13 folded
+   `side-effects` into `effects` rather than moving it to a new home. This
+   file stays the registry for all of them either way, which is the point of
+   holding the field here rather than deleting the rows that left: `finishes`
+   still has to be claimed by exactly one row and the last-write registry
+   still has to be fronted or opted out of. A row that moved screens moved
+   one field.
 
    `statsAreas.ts` used to read a card's icon and route off a row the same
    way, as a second enumeration of areas beside this one. Phase 10 redesign
@@ -120,19 +124,30 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     plain row Settings writes out itself. Redesign ticket 62 took the words
     row off outright - the reading draws on the Look back door itself now
     (`WordsReading.svelte`), so there is no second screen for a row to open,
-    and `stats` stopped being a host with it. Four hosts for five rows now,
-    keyed by the row key of the screen that hosts them where there is one and
-    by the tab otherwise. What this map is for is naming the one screen that
-    owes each row its link, which is what `more-surfaces.test.ts` holds them
-    to - a hosted row whose host forgot it is a screen nothing reaches.
+    and `stats` stopped being a host with it.
 
-    Four of the five are drawn by `HostedRows.svelte`, which reads
+    A third route took a fourth off, and it is the one that shrank the host
+    map itself rather than just a row in it. Phase 11 all-four-doors ticket
+    13 put side effects on the same axis and the same screen as the changes
+    somebody was hoping for (rule 16's new strip-versus-axis paragraph): the
+    `side-effects` row is not hosted anywhere any more because it is not a
+    screen of its own to link to, and `/health/side-effects` is a redirect
+    stub. Three hosts for four rows now, keyed by the row key of the screen
+    that hosts them where there is one and by the tab otherwise. What this
+    map is for is naming the one screen that owes each row its link, which is
+    what `more-surfaces.test.ts` holds them to - a hosted row whose host
+    forgot it is a screen nothing reaches.
+
+    Three of the four are drawn by `HostedRows.svelte`, which reads
     `rowsHostedBy` below. `cycle-events` is the exception and stays written by
-    hand on /health/side-effects: it sits inside a block that screen already
-    gates on `cycleTrackingVisible`, its way-in row carries copy about the
-    chart behind it rather than the standing line, and `cycleEvents` is the
-    one area no `hidden` flag can reach (ADR-0043), so the rule the component
-    exists to apply has nothing to do there.
+    hand, now on /practice/personal-effects (it moved there with the rest of
+    what /health/side-effects drew): it sits inside a block that screen
+    already gates on `cycleTrackingVisible`, its way-in row carries copy
+    about the chart behind it rather than the standing line, and
+    `cycleEvents` is the one area no `hidden` flag can reach (ADR-0043), so
+    the rule the component exists to apply has nothing to do there -
+    `HostedRows.svelte` excludes it by key for the same reason, now that it
+    shares a host with a row the component does draw.
 
     Eras never was one of the seven - it kept a plain row in the Transition
     group until redesign ticket 16 (ADR-0084) found it a reference area too,
@@ -142,7 +157,6 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 export const HUB_ROW_HOSTS = {
   care: '/care',
   effects: '/practice/personal-effects',
-  'side-effects': '/health/side-effects',
   surgery: '/health/surgery'
 } as const;
 
@@ -445,27 +459,20 @@ const ROWS = [
 
        Under /care because a change you noticed is what a regimen is for.
        The hormones list above it says what is going in; this says what
-       came of it. */
+       came of it.
+
+       Two sections, one row, since ticket 13: a side effect and a change you
+       were hoping for are both something you noticed after starting a
+       regimen, and having them as sibling top-level rows made the reader
+       classify their own symptom before they could write it down. The row
+       reports whichever half was written last (`groupLastWrite`'s own
+       reasoning), the way `hair-progress` already does for its own two. */
     key: 'effects',
     icon: 'eye',
     href: '/practice/personal-effects',
     home: 'care',
-    areas: ['personalEffects'],
+    areas: ['personalEffects', 'sideEffects'],
     finishes: 'effects',
-    line: 'read'
-  },
-  {
-    /* Under the changes screen, which is the distinction the two used to
-       leave to the person: a side effect and a change you were hoping for
-       are both something you noticed after starting a regimen, and having
-       them as sibling top-level rows made the reader classify their own
-       symptom before they could write it down. */
-    key: 'side-effects',
-    icon: 'zap',
-    href: '/health/side-effects',
-    home: 'effects',
-    areas: ['sideEffects'],
-    finishes: 'side-effects',
     line: 'read'
   },
   {
@@ -489,14 +496,16 @@ const ROWS = [
        outside `HideableArea` is what stops this file reversing it.
 
        Ticket 16 took the row off the hub, and the gate went with it rather
-       than being weakened: /health/side-effects already drew a cycle block
-       behind `cycleTrackingVisible`, and that block's own way in is now the
-       only one. So the decision ADR-0043 made is kept in one place instead
-       of two, and the hub cannot show a cycle prompt at all. */
+       than being weakened: /health/side-effects drew a cycle block behind
+       `cycleTrackingVisible`, and that block's own way in was the only one.
+       Ticket 13 moved the block again, onto /practice/personal-effects with
+       the rest of what that screen drew, so this row's home moved with it -
+       the gate itself is untouched, and the hub still cannot show a cycle
+       prompt at all. */
     key: 'cycle-events',
     icon: 'calendar',
     href: '/health/cycle-events',
-    home: 'side-effects',
+    home: 'effects',
     areas: ['cycleEvents'],
     finishes: null,
     line: 'read'
@@ -808,16 +817,18 @@ export function hubSections(reading: HubReading): HubSection[] {
     the order its groups draw them, then the rows drawn on a screen of their
     own (phase 10 redesign ticket 15).
 
-    All twenty-one of them - twenty-five until redesign ticket 51 moved
+    All twenty of them - twenty-five until redesign ticket 51 moved
     modes and entry templates off the registry entirely and into Settings
     (ADR-0084), twenty-four until ticket 59 deleted the clinician-summary
     row outright rather than hosting it, since it fronts no area,
     twenty-three until ticket 62 took the words row off with the screen it
-    opened, and twenty-two until ticket 16 took eras off the same way. The
-    five hosted rows still here are not on this screen and are
-    still areas of this app: somebody looking for dilation or hair progress
-    looks for them here, and leaving them out would make the one index with
-    a search box the one place they cannot be found. A match draws the row the registry declares -
+    opened, twenty-one until ticket 13 folded `side-effects` into `effects`
+    rather than giving it a row of its own, and twenty until ticket 16
+    took eras off the same way ticket 62 did. The four hosted rows still
+    here are not on this screen and are still areas of this app: somebody
+    looking for dilation or hair progress looks for them here, and leaving
+    them out would make the one index with a search box the one place they
+    cannot be found. A match draws the row the registry declares -
     the same row its host screen draws - and following it lands on the
     area's own screen rather than on the host.
 
@@ -853,10 +864,10 @@ export function hubSections(reading: HubReading): HubSection[] {
     `cycleEvents` is outside `HideableArea` precisely so that nothing here
     can reverse the decision, and the row's *positive* gate - an active
     testosterone regimen or an explicit opt-in - belongs to
-    /health/side-effects, which is the only screen that asks. A search that
-    answered "Cycle events" to somebody the app has decided not to ask about
-    cycles would put that prompt back on the hub through the box, which is
-    exactly what ticket 16 took off it.
+    /practice/personal-effects, which is the only screen that asks. A search
+    that answered "Cycle events" to somebody the app has decided not to ask
+    about cycles would put that prompt back on the hub through the box, which
+    is exactly what ticket 16 took off it.
 
     Named here rather than left to fall out of a rule, because every rule
     that would exclude it also excludes something that should be found: the
@@ -920,10 +931,9 @@ export function hubSectionRoleIndex(key: HubSection['key']): number {
     sites: what a host owes its rows is the same thing the hub owes them -
     a row goes when every area behind it is hidden, and states the day the
     person said it ended. `HostedRows.svelte` reads this and applies
-    `rowHidden` and `rowLine` over the area record, so the rule lives once.
-
-    Empty for a host whose only row is written by hand (`side-effects`), which
-    is a host with nothing to render rather than a mistake. */
+    `rowHidden` and `rowLine` over the area record, so the rule lives once -
+    except for `cycle-events`, which that component excludes by key and
+    /practice/personal-effects draws by hand instead (ADR-0043). */
 export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
   return HUB_ROWS.filter((row) => row.home === host);
 }

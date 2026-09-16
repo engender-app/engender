@@ -327,7 +327,6 @@
   "hub_sub_hair_progress": "A published scale, and photos from the same spot",
   "hub_sub_hair_removal": "Electrolysis and laser sessions",
   "hub_sub_cycle_events": "Cycle days against your regimen history",
-  "hub_sub_side_effects": "What you notice, and how strong it is",
   "hub_sub_surgery": "Consults, the date, and healing",
   "hub_sub_dilation": "Your schedule, and the sessions against it",
   "hub_sub_milestones": "The days that mattered, with their dates",
@@ -1559,7 +1558,6 @@
   "exposure_route_days_title": "Days on each route",
   "exposure_days_count": "{days} days",
   "exposure_regimen_days_title": "Time on each regimen",
-  "side_effects_intro": "What you notice, when you notice it. No grading and no advice.",
   "side_effect_add_aria": "Log a side effect",
   "side_effect_empty_title": "Nothing logged yet",
   "side_effect_empty_body": "Log a side effect when you notice one.",
@@ -1602,6 +1600,7 @@
   "severity_4": "pronounced",
   "severity_5": "severe",
   "effects_timeline": "Changes you've noticed",
+  "effects_timeline_subtitle": "What you noticed after starting, hoped for or not, and when. No grading and no advice.",
   "effects_intro": "Mark the day you first noticed each change. Where the literature gives a typical timing since your regimen began, it shows as a shaded band, from the table for your regimen's own hormone: the feminizing one for estradiol, the masculinizing one for testosterone. A change with no band is one the tables are quiet about.",
   "effects_source": "The shaded bands come from the Endocrine Society's 2017 clinical practice guideline (Hembree et al.) and GenderGP's HRT timeline tables, which cite WPATH Standards of Care v7. Every other effect below is named by the source noted underneath it, with no band: a guide naming a change is not the same claim as a guideline naming its timing.",
   "effect_variability_notice": "No evidence shows that age, body type, ethnicity or family appearance reliably predicts how someone responds to hormone therapy, with one likely exception: voice deepening in people on testosterone. The bands here describe the literature. They are not a schedule for your own body.",
@@ -1615,6 +1614,7 @@
   "effects_axis_calendar": "By calendar month. There's no regimen logged yet, so there's nothing to count months from.",
   "effects_axis_empty": "Nothing marked yet. Mark a change below and it lands on this line.",
   "effects_axis_mark_aria": "{name}, first noticed {date}",
+  "effects_axis_mark_aria_severity": "{name}, first noticed {date}, {severity}",
   "effects_axis_summary": [
     {
       "declarations": [
@@ -2286,56 +2286,20 @@
   "safe_space_title": "Safe space",
   "safe_space_moments_title": "Letters and photos",
   "safe_space_moments_sub": "Unlocked letters, starred photos",
-  "safe_space_moments_empty_title": "Nothing put aside yet",
-  "safe_space_moments_empty_body": "A letter to open later, or a photo you star, will be waiting here.",
   "safe_space_comfort_sub": "Who to text, which walk, which song",
-  "safe_space_evidence_sub": "Tagged entries, and what you saved",
-  "safe_space_readings_sub": "Written so far, and the past 30 days",
-  "safe_space_readings_empty_title": "Nothing written yet",
-  "safe_space_readings_empty_body": "Once there are entries, this is where the count and the past 30 days go.",
+  "safe_space_evidence_sub": "The days you named yourself",
+  "safe_space_readings_sub": "On Look back, with the rest of your readings",
+  "safe_space_readings_row_title": "How the good days fell",
   "safe_space_breathing_desc": "Box breathing to help ground yourself.",
   "safe_space_breathing_start": "Begin breathing",
   "safe_space_breathing_pause": "Pause",
   "safe_space_breathing_inhale": "Inhale",
   "safe_space_breathing_hold": "Hold",
   "safe_space_breathing_exhale": "Exhale",
-  "safe_space_stats_title": "From your journal",
-  "safe_space_stat_evidence_title": "Good moments",
-  "safe_space_stat_evidence_note": "In your history",
-  "safe_space_counterevidence_title": "From your own history",
-  "safe_space_counterevidence_sub": "Entries you tagged as euphoria, with high-euphoria body regions, or starred.",
-  "safe_space_letters_intro": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "A letter you sealed for yourself, now open.",
-        "countPlural=other": "Letters you sealed for yourself, now open."
-      }
-    }
-  ],
-  "safe_space_letters_all": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "See the other letter",
-        "countPlural=other": "See the other {count} letters"
-      }
-    }
-  ],
+  "safe_space_counterevidence_title": "Good moments",
+  "safe_space_counterevidence_sub": "Days you tagged as good, and days you starred.",
+  "safe_space_evidence_see_all": "See all {count}",
   "safe_space_photos_intro": "Photos you starred.",
-  "safe_space_chart_timeline_title": "Past 30 days",
   "safe_space_chart_themes_title": "Affirming themes",
   "safe_space_no_themes": "No tagged moments in the pool yet.",
   "comfort_list_title": "Things that help",
@@ -3667,8 +3631,6 @@
   "home_count_since": "{entries} since {date}",
   "home_tiles_more": "{names} and {count} more",
   "home_tiles_fewer": "Show fewer",
-  "safe_space_stat_written_title": "Entries written",
-  "safe_space_stat_written_note": "In your whole journal",
   "tile_pause_value": "Nothing to catch up on",
   "home_start_title": "Getting started",
   "home_start_intro": "A few things worth setting up early. They all wait if you would rather just write.",

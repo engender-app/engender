@@ -36,7 +36,23 @@
      tap opens that change's sheet - the same sheet its row in the list
      opens. Which makes the accessible name the whole of what a screen
      reader gets from here, since the drawing itself is decoration; the list
-     under it writes every one of these dates out in text. */
+     under it writes every one of these dates out in text.
+
+     Ticket 13 put a second kind of mark on this line: a side effect,
+     alongside the personal effect this always drew. Told apart by shape
+     rather than by colour (ADR-0012 again, and the AC this ticket wrote for
+     itself) - a personal effect fills its dot in its direction's role, a
+     side effect draws the same dot hollow in `--text-2` (`MilestoneRail`'s
+     ring technique for "this has not happened yet", reused here for "this
+     is the other kind", but in the axis's own neutral ink rather than the
+     role: every side effect carries the 'other' direction, which on trans
+     is the flag's white band, and a ring that thin in a role this pale
+     read as gone on the light theme - see the mark's own CSS). `open` reads
+     which sheet to hand a tap to off the mark's own `kind`, since a side
+     effect's key is
+     its own record id and a personal effect's is a catalogue key - two
+     namespaces that happen never to collide, but the kind is what a caller
+     should be trusting, not the shape of the key. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import {
@@ -44,7 +60,7 @@
     effectDirectionLabel,
     type EffectDirection
   } from '$lib/data/effectDirections';
-  import { noticedAxis, type NoticedChange } from '$lib/data/noticedAxis';
+  import { noticedAxis, type NoticedChange, type NoticedChangeKind } from '$lib/data/noticedAxis';
   import { crossfade, wipe } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -64,7 +80,7 @@
         none - which the axis draws rather than refuses. */
     anchorEpochDay: number | null;
     todayEpochDay: number;
-    onOpen: (key: string) => void;
+    onOpen: (key: string, kind: NoticedChangeKind) => void;
   } = $props();
 
   let axis = $derived(noticedAxis(changes, anchorEpochDay, todayEpochDay));
@@ -137,10 +153,20 @@
   /* Hoisted out of the markup the way CurveMarkers hoists its own: a
      message call with an object argument inside `{...}` is the shape
      kit-surfaces.test.ts's copy regex misreads, and it is worth staying out
-     of that trap everywhere. */
-  const markLabel = (mark: { label: string; firstNoticedEpochDay: number }) =>
-    m.effects_axis_mark_aria({ name: mark.label, date: longDay(mark.firstNoticedEpochDay) });
-  const open = (key: string) => () => onOpen(key);
+     of that trap everywhere.
+
+     The severity word draws into the label rather than as a size or a hue
+     (ticket 13, ADR-0012) - present only on a side effect that carries one,
+     since a personal effect's marker has no severity to say. */
+  const markLabel = (mark: { label: string; firstNoticedEpochDay: number; severity?: string | null }) =>
+    mark.severity
+      ? m.effects_axis_mark_aria_severity({
+          name: mark.label,
+          date: longDay(mark.firstNoticedEpochDay),
+          severity: mark.severity
+        })
+      : m.effects_axis_mark_aria({ name: mark.label, date: longDay(mark.firstNoticedEpochDay) });
+  const open = (mark: { key: string; kind: NoticedChangeKind }) => () => onOpen(mark.key, mark.kind);
 
   const tickLabel = (monthsSinceOnset: number | null, epochDay: number) =>
     monthsSinceOnset === null ? fmtDay(epochDay, { month: 'short' }) : String(monthsSinceOnset);
@@ -166,10 +192,11 @@
       <button
         class="na-mark"
         data-noticed-mark={mark.key}
+        data-kind={mark.kind}
         style:--at={mark.position}
         style:--lane={mark.lane}
         aria-label={markLabel(mark)}
-        onclick={open(mark.key)}
+        onclick={open(mark)}
         transition:crossfade|global
         {...roleAttrs(roleFor(mark.direction))}
       ></button>
@@ -320,6 +347,25 @@
     margin: -5px 0 0 -5px;
     border-radius: 50%;
     background: var(--role-draw, var(--accent));
+  }
+
+  /* A side effect is the same dot hollow - `MilestoneRail`'s own ring for
+     "the other kind of mark", but drawn in `--text-2` rather than in
+     `--role-draw`. Every side effect carries the 'other' direction, which
+     on trans is the flag's own white band - a role a filled dot can take
+     undiluted (`--role-draw` owes no ratio, `roles.ts`'s own reasoning for
+     "a lone mark"), but a 2px ring of it is close enough to `--bg` on the
+     light theme to disappear (Alicja, on this ticket's sign-off render:
+     "hollow ones in light mode is invisible"). `--text-2` is the stem's own
+     colour (`.na-mark::after`, below), already held to a contrast floor
+     against `--bg` in both themes, so the ring reads as the stem extended
+     into a circle rather than as a shade of whichever role a side effect
+     happens to carry - kind is a shape signal now, fully independent of
+     the per-direction colour, which is the stronger reading of "never
+     colour alone" anyway. */
+  .na-mark[data-kind='side-effect']::before {
+    background: var(--bg);
+    box-shadow: inset 0 0 0 2px var(--text-2);
   }
 
   /* The stem back down to the line, so a mark three lanes up is still read

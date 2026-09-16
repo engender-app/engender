@@ -86,7 +86,7 @@ const AREA_ROWS: Record<
     label: () => m.appointment_prep_title(),
     href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointment-prep')
   },
-  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/health/side-effects' },
+  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/practice/personal-effects' },
   /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
      travels with the hit for exactly this (textSearch.ts): with one, the hit
      opens that tryout, which is where its history is read; without one, the

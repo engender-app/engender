@@ -317,7 +317,7 @@
             icon="zap"
             title={effect.name}
             subtitle={[severityName(effect.severity), dayShort(effect.epochDay)]}
-            href="/health/side-effects"
+            href="/practice/personal-effects"
           />
         {/each}
       </ListCard>

@@ -29,6 +29,10 @@
    /stats. Its ignore list stayed behind as a reference area, which is the
    real screen at /settings/words now, so that stub is gone too.
 
+   Phase 11 ticket 15 adds two more that never lived under /settings either:
+   /doubt/moments and /doubt/readings, folded into /transition/letters and
+   /stats. Same rule, same shape of stub.
+
    Phase 11 ticket 04 brings in the last one that was doing this by hand.
    Deepening ticket 09 had merged the live-tiles screen into
    /settings/notifications and left a client-side `replaceRoute` in a
@@ -41,6 +45,13 @@
    stock editor's old screen and the deleted exposure screen both redirect
    to `/care` itself rather than to a stub for something that no longer
    exists, and `/doses` joins the dose log under `/care/doses` too.
+
+   Phase 11 all-four-doors ticket 13 adds `health/side-effects`, on the same
+   pattern ticket 61 set for `body/sizes`: side effects merged onto
+   /practice/personal-effects rather than moving to a screen of their own,
+   so the old screen's address is a stub now, and `settings/side-effects`
+   is repointed at the merged screen directly rather than at that stub -
+   one hop, not two.
 
    Phase 11 ticket 16 (ADR-0084) runs the same reversal as ticket 51's two:
    eras is a reference area, so it moves onto Settings rather than off it.
@@ -71,7 +82,16 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/hair-progress', () => import('../src/routes/settings/hair-progress/+page.ts'), '/body/hair-progress'],
   ['settings/hair-removal', () => import('../src/routes/settings/hair-removal/+page.ts'), '/body/hair-removal'],
   ['settings/cycle-events', () => import('../src/routes/settings/cycle-events/+page.ts'), '/health/cycle-events'],
-  ['settings/side-effects', () => import('../src/routes/settings/side-effects/+page.ts'), '/health/side-effects'],
+  [
+    'settings/side-effects',
+    () => import('../src/routes/settings/side-effects/+page.ts'),
+    '/practice/personal-effects'
+  ],
+  [
+    'health/side-effects',
+    () => import('../src/routes/health/side-effects/+page.ts'),
+    '/practice/personal-effects'
+  ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
   [
@@ -112,7 +132,17 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ],
   ['transition/words', () => import('../src/routes/transition/words/+page.ts'), '/stats'],
   ['transition/eras', () => import('../src/routes/transition/eras/+page.ts'), '/settings/eras'],
-  ['settings/live-tiles', () => import('../src/routes/settings/live-tiles/+page.ts'), '/settings/notifications']
+  ['settings/live-tiles', () => import('../src/routes/settings/live-tiles/+page.ts'), '/settings/notifications'],
+  /* Phase 11 ticket 15: two of Safe space's ways down stopped being screens
+     of their own. "Letters and photos" was showing the same unlocked letters
+     the letters screen shows in its Open section, one door apart, and the
+     readings were a Look back page sitting on the Safe space door. Same rule
+     as every stub above - a bookmark, a shared link or a person who typed
+     the address lands one call away from what they were reaching for. The
+     rows on `/doubt` itself do not come through here: they point straight at
+     the destination (safeSpaceWays.test.ts holds that). */
+  ['doubt/moments', () => import('../src/routes/doubt/moments/+page.ts'), '/transition/letters'],
+  ['doubt/readings', () => import('../src/routes/doubt/readings/+page.ts'), '/stats']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {

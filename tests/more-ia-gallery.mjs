@@ -95,7 +95,7 @@ for (const theme of ['light', 'dark']) {
   for (const [name, path, waitFor] of [
     ['01-more', '/more', '[data-hub-section="support"]'],
     ['02-care', '/care', '[data-list-row="effects"]'],
-    ['03-changes', '/practice/personal-effects', '[data-list-row="side-effects"]'],
+    ['03-changes', '/practice/personal-effects', '[data-side-effect]'],
     ['04-surgery', '/health/surgery', '[data-list-row="dilation"]'],
     ['05-stats-look-back', '/stats', '[data-list-row="words"]'],
     ['06-settings', '/settings', '[data-list-row="entry-templates"]']
