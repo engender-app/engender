@@ -110,7 +110,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       // A dose that was skipped or changed is not the dose the schedule
       // expected, and the row would otherwise read as though it were.
       subtitle: dose.status === 'taken' ? undefined : statusLabel(dose.status),
-      href: '/doses'
+      href: '/care/doses'
     })),
 
   labResults: (day) =>
@@ -120,7 +120,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       // The analyte in the person's own words and their own unit
       // (ADR-0026), with no range, no reading and no colour beside it.
       title: `${result.analyte} ${result.value} ${result.unit}`,
-      href: '/settings/labs'
+      href: '/care/labs'
     })),
 
   /* The median pitch and nothing read into it (PRODUCT.md:109): a
@@ -168,7 +168,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'zap',
       title: effect.name,
       subtitle: severityName(effect.severity) ?? undefined,
-      href: '/health/side-effects'
+      href: '/practice/personal-effects'
     })),
 
   personalEffects: (day) =>

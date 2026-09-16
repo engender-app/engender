@@ -59,6 +59,14 @@
    `goto`. Named here so the next reader finds the reason rather than the
    gap.
 
+   **Neither is the "name this stretch" offer on Look back (redesign
+   ticket 48).** It dismisses rather than declines - there is no pending
+   write for a "not now" to close out - and its "yes" is the same
+   goto-and-let-the-editor-save shape as "start an era here" above, just
+   with two dates handed over instead of one (`/stats`'s `era-offer`,
+   `/settings/eras`'s `end` query parameter). What is registered here is
+   never an offer whose only action is a link.
+
    ## Differences between them, documented rather than flattened
 
    **The tryout offer has two ways to say yes.** Adopting always closes the

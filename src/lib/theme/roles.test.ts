@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { HOME_AREA_ROLE, roleAt } from './roles.ts';
+import { eraBandRoles, HOME_AREA_ROLE, roleAt } from './roles.ts';
 
 describe('roleAt', () => {
   const roles = ['a', 'b', 'c'].map((stripe) => ({
@@ -24,6 +24,21 @@ describe('roleAt', () => {
   });
 });
 
+describe('eraBandRoles', () => {
+  const role = (stripe: string) => ({ stripe, ink: stripe, mark: stripe, paired: stripe, heat: [] });
+
+  it('cycles over the flag colours where there are two or more', () => {
+    const roles = [role('#2E3192'), role('#EC008C'), role('#FFFFFF')];
+    expect(eraBandRoles(roles).map((r) => r.stripe)).toEqual(['#2E3192', '#EC008C']);
+  });
+
+  it("adds a flag's own shades in behind its one colour, so a second era is not the same stripe again", () => {
+    // agender's shape: one chromatic stripe, two achromatic shades.
+    const roles = [role('#000000'), role('#B8B8B8'), role('#00FF00')];
+    expect(eraBandRoles(roles).map((r) => r.stripe)).toEqual(['#00FF00', '#000000', '#B8B8B8']);
+  });
+});
+
 describe("Home's area colours", () => {
   const indices = Object.values(HOME_AREA_ROLE);
 
@@ -39,8 +54,16 @@ describe("Home's area colours", () => {
   it('shares role 1 across tile areas and preserves section roles', () => {
     expect(HOME_AREA_ROLE.liveTiles).toBe(1);
     expect(HOME_AREA_ROLE.lookBack).toBe(1);
-    expect(HOME_AREA_ROLE.milestones).toBe(2);
+    expect(HOME_AREA_ROLE.agenda).toBe(2);
     expect(HOME_AREA_ROLE.days).toBe(3);
+    expect(HOME_AREA_ROLE.pinned).toBe(3);
+  });
+
+  it('gives the log strip the same guaranteed colour as the week strip', () => {
+    /* Its write shapes are icon squares, a block of the stripe; on trans
+       the white band would make a white square on a white page (redesign
+       ticket 13). */
+    expect(HOME_AREA_ROLE.log).toBe(0);
   });
 
   it('numbers the four distinct section roles contiguously from the strip', () => {

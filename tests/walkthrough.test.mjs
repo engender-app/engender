@@ -12,27 +12,14 @@
    #demo-jump control), then serves that build. */
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
+import { tinyPhoto } from './photo-fixture.mjs';
 
 const { ok, fail, finish } = createReporter();
 
 const server = await preview({ preview: { port: 0 } });
 const address = server.httpServer.address();
-
-/* The date fields are DatePickers on flatpickr now: the visible field is
-   flatpickr's altInput and the ISO value lives on the hidden original, so
-   typing into the field is not how a date gets set. The picker instance
-   hangs off the element; setDate with fireChange runs the same onChange a
-   real pick runs. */
-async function fillDate(page, selector, iso) {
-  await page.evaluate(([sel, v]) => {
-    const el = document.querySelector(sel);
-    const fp = el?._flatpickr ?? el?.flatpickr;
-    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
-    fp.setDate(v, true);
-  }, [selector, iso]);
-}
 
 const BASE = `http://localhost:${address.port}`;
 
@@ -86,6 +73,21 @@ async function typePin(digits) {
 async function sessionPassphrase() {
   await page.locator('#session-passphrase').fill('demo');
   await page.locator('[data-session-submit]').click();
+}
+
+/* The entry written last, found on the day view rather than on Home: Home
+   draws no entries since redesign ticket 13, and the day view lists every
+   one of today's. Ids are minted in order (ADR-0002), so the largest is the
+   newest whatever order the list draws them in. */
+async function openNewestEntry() {
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-entry-card]');
+  const hrefs = await page.locator('[data-entry-card]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('href')));
+  const ids = hrefs.map((h) => Number(/\/entry\/(\d+)/.exec(h ?? '')?.[1])).filter(Number.isFinite);
+  if (!ids.length) throw new Error('no entry link on the day view');
+  await page.goto(BASE + `/entry/${Math.max(...ids)}`, { waitUntil: 'networkidle' });
+  await booted();
 }
 
 async function expectNoHorizontalOverflow(selector) {
@@ -144,15 +146,23 @@ function parseCsv(text) {
 
 /* 1. quick log */
 try {
-  await fresh('/');
+  /* The entries are counted on the Journal door, which is where they draw
+     since redesign tickets 10 and 13; Home's mood pick is one shape of its
+     log strip and still one tap from landing. */
+  await fresh('/calendar');
+  await page.waitForSelector('[data-entry-card]');
   const beforeCards = await page.locator('[data-entry-card]').count();
-  await page.locator('[data-mood="4"]').click();
+  await page.locator('[data-nav-item="home"]').first().click();
+  await page.waitForSelector('[data-home-log] [data-mood="4"]');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
   await page.waitForSelector('#ed-note');
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
   await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-home-log]');
+  await page.locator('[data-nav-item="calendar"]').first().click();
   await page.waitForSelector('[data-entry-card]');
   const afterCards = await page.locator('[data-entry-card]').count();
-  if (afterCards !== beforeCards) throw new Error(`home entry count changed: ${beforeCards} -> ${afterCards}`);
+  if (afterCards !== beforeCards) throw new Error(`entry count changed: ${beforeCards} -> ${afterCards}`);
   ok('home quick mood opens an unsaved seeded editor');
 } catch (e) { fail('quick log', e); }
 
@@ -171,9 +181,14 @@ try {
   await page.locator('[data-tag="g-soc-eu"]').click();
   await page.locator('#ed-note').fill('Playwright wrote this entry.');
   await page.locator('[data-save]').click();
+  /* The save lands on Today, which draws no entries since redesign ticket
+     13; the day view is where today's are read back. */
+  await page.waitForSelector('[data-home-log]');
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('[data-entry-note]');
-  const note = await page.locator('[data-entry-note]').first().textContent();
-  if (!note.includes('Playwright')) throw new Error('new entry not first');
+  const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!notes.some((note) => note.includes('Playwright'))) throw new Error('new entry not on today');
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
 
@@ -184,16 +199,30 @@ try {
    leaves alone. */
 try {
   await fresh('/');
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
-  const nudgeSwitch = page.locator('[data-entry-nudges] [role="switch"]');
+  /* The switch is on /settings/notifications since phase 11 ticket 04, with
+     the three other prompts that used to float under no heading in
+     Settings' Tracking section. Reached through the row rather than by a
+     deep link, which is also what proves Settings still reaches it, and
+     opened inside `setNudges` rather than once before it: the flow goes to
+     the editor and back between the two calls, so a locator bound to a
+     screen it has since left is what the old shape left behind. */
+  const openPrompts = async () => {
+    await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+    await booted();
+    await page.locator('[data-list-row="notifications"]').click();
+    await page.waitForFunction(() => location.pathname === '/settings/notifications');
+    await page.waitForSelector('[data-prompt="entry-nudges"]');
+  };
+  const nudgeSwitch = page.locator('[data-prompt="entry-nudges"] [role="switch"]');
   const setNudges = async (enabled) => {
     const expected = enabled ? 'true' : 'false';
+    await openPrompts();
     await nudgeSwitch.scrollIntoViewIfNeeded();
     if ((await nudgeSwitch.getAttribute('aria-checked')) !== expected) {
       await nudgeSwitch.click();
       await page.waitForFunction(
-        (want) => document.querySelector('[data-entry-nudges] [role="switch"]')?.getAttribute('aria-checked') === want,
+        (want) =>
+          document.querySelector('[data-prompt="entry-nudges"] [role="switch"]')?.getAttribute('aria-checked') === want,
         expected
       );
     }
@@ -225,8 +254,6 @@ try {
     throw new Error('nudge action missing while nudges are enabled');
   }
 
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
   await setNudges(false);
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
@@ -401,30 +428,329 @@ try {
   ok('entry to entry remounts the editor rather than reusing stale params');
 } catch (e) { fail('entry to entry', e); }
 
-/* 4. calendar → day → add another */
+/* 4. calendar → open the month → day → add another. The Journal door opens
+      on the month folded to a strip (redesign ticket 10), whose cells are
+      not links: 7px is not a tap target. So the flow starts by opening it,
+      which is also the check that the control does. */
 try {
   await fresh('/calendar');
+  await page.locator('[data-cal-open]').click();
+  await page.waitForSelector('[data-hm-cell-filled]');
   await page.locator('[data-hm-cell-filled]').first().click();
   await page.waitForSelector('[data-entry-card]');
   await page.locator('[data-add]').click();
   await page.waitForSelector('#ed-note');
-  ok('calendar → day detail → add another');
+  ok('calendar → open the month → day detail → add another');
 } catch (e) { fail('calendar flow', e); }
 
-/* 4b. day detail keeps entries separate and shows no day average */
+/* 4a. And the month closes again, with the metric picker working in both
+       states. The strip and the grid are one set of cells in two layouts, so
+       what says which state the screen is in is the grid's own class and the
+       control's aria-expanded - and what says the picker still works is the
+       month recolouring under a different metric while folded. */
+try {
+  await fresh('/calendar');
+  const compact = () => page.evaluate(() => !!document.querySelector('[data-cal-month-state="strip"]'));
+  if (!(await compact())) throw new Error('the month did not open folded to a strip');
+  const options = await page.locator('#calendar-metric option').evaluateAll((els) => els.map((e) => e.value));
+  const other = options.find((v) => v !== 'mood');
+  if (!other) throw new Error('the metric picker offered nothing but mood');
+  await page.selectOption('#calendar-metric', other);
+  await page.waitForFunction(
+    (want) => document.getElementById('calendar-metric')?.value === want,
+    other
+  );
+  if (!(await compact())) throw new Error('picking a metric opened the month');
+
+  await page.locator('[data-cal-open]').click();
+  await page.waitForSelector('[data-cal-month-state="grid"]');
+  if ((await page.locator('[data-cal-open]').getAttribute('aria-expanded')) !== 'true') {
+    throw new Error('the control did not say the month was open');
+  }
+  await page.selectOption('#calendar-metric', 'mood');
+  await page.waitForFunction(() => document.getElementById('calendar-metric')?.value === 'mood');
+  if (await compact()) throw new Error('picking a metric closed the month');
+
+  await page.locator('[data-cal-open]').click();
+  await page.waitForSelector('[data-cal-month-state="strip"]');
+  ok('the month opens and closes, and the metric picker works in both states');
+} catch (e) { fail('the month expansion', e); }
+
+/* 4b. What the Journal door leads with: the entries, uncapped, and the week
+       strip under them. Both moved here off Home (redesign ticket 10). */
+try {
+  await fresh('/calendar');
+  await page.waitForSelector('[data-day-card]');
+  const days = await page.locator('[data-day-card]').count();
+  if (days < 2) throw new Error(`the door drew ${days} day(s) of entries`);
+  await page.waitForSelector('[data-week-strip]');
+  await page.waitForSelector('[data-entry-card]');
+  ok('the Journal door leads with the entries and carries the week strip');
+} catch (e) { fail('the Journal door blocks', e); }
+
+/* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
+   ADR-0074). The dated things lead, the mood pick is one write shape of
+   the log strip, the pinned rows draw with their readings, and each
+   section that left this screen is reachable on the door that hosts it.
+   An appointment three days out is written first, since the demo persona's
+   own dated things all fall past the agenda's week. Early in the walk, while
+   the journal is still the persona's: later flows finish areas and change
+   modes, and this one is about the screen, not about their leftovers. */
+try {
+  const AGENDA_KIND = 'agenda-13';
+  await fresh('/health/appointments');
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  const inThreeDays = new Date();
+  inThreeDays.setDate(inThreeDays.getDate() + 3);
+  await page.$eval('#appointment-date', (input, value) => input._flatpickr.setDate(value, true), inThreeDays.toISOString().slice(0, 10));
+  await page.fill('#appointment-kind', AGENDA_KIND);
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { timeout: 8000 }); // text-under-test
+
+  /* The agenda leads. The appointment is a row of it, its own screen is
+     one tap away, and the whole band sits above the log strip - which is
+     the ticket's one sentence: what is coming before how you feel. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-agenda]');
+  await page.waitForSelector('[data-agenda-item="appointment"]');
+  const order = await page.evaluate(() => ({
+    agenda: document.querySelector('[data-home-agenda]').getBoundingClientRect().top,
+    log: document.querySelector('[data-home-log]').getBoundingClientRect().top,
+    moods: document.querySelector('[data-mood-chips]').getBoundingClientRect().top
+  }));
+  if (!(order.agenda < order.log && order.log <= order.moods)) {
+    throw new Error('the agenda does not lead the log strip: ' + JSON.stringify(order));
+  }
+  /* Phase 11 ticket 03: the strip is the five faces and nothing else. The
+     four squares it used to carry - a dose, both tallies and a wear session
+     - were a strict subset of the quick-add fan forty pixels below them, so
+     the count of controls in the strip is the assertion, not the absence of
+     a handle that no longer exists anywhere to be greped for. */
+  const strip = await page.evaluate(() => ({
+    faces: document.querySelectorAll('[data-home-log] [data-mood]').length,
+    controls: document.querySelectorAll('[data-home-log] a, [data-home-log] button').length
+  }));
+  if (strip.faces !== 5 || strip.controls !== 5) {
+    throw new Error('the log strip is not the five faces alone: ' + JSON.stringify(strip));
+  }
+  /* And the notices are below the faces, so nothing but agenda rows sits
+     between "Coming up" and the strip (rule 1). */
+  const noticeBelow = await page.evaluate(() => {
+    const backup = document.querySelector('[data-backup-notice]');
+    if (!backup) return true;
+    return backup.getBoundingClientRect().top > document.querySelector('[data-home-log]').getBoundingClientRect().top;
+  });
+  if (!noticeBelow) throw new Error('a notice still draws inside "Coming up"');
+  await page.locator('[data-agenda-item="appointment"]').first().click();
+  await page.waitForURL('**/health/appointments');
+
+  /* A mood from the strip is still one tap from landing, and lands in the
+     editor the way it always did. */
+  await fresh('/');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-home-log]');
+
+  /* A tally is the fan's now, and it still resolves in place: the save
+     toast is what says the write came back, and Home is still Home. */
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan-target="mood-3"]');
+  await page.locator('[data-choose="tally-misgendered"]').click();
+  await page.waitForSelector('[data-toast]');
+  if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the fan left Home: ' + page.url());
+
+  /* The pinned rows: the default set resolves for a journal that never
+     answered onboarding's question, each row opens its own screen, and the
+     row reads the same line the Transition door gives it. */
+  await page.waitForSelector('[data-pinned-row]');
+  const pinnedRows = await page.locator('[data-pinned-row]').evaluateAll((nodes) =>
+    nodes.map((n) => ({ key: n.getAttribute('data-pinned-row'), line: n.getAttribute('data-hub-line'), href: n.getAttribute('href') }))
+  );
+  if (pinnedRows.length < 1 || pinnedRows.some((row) => !row.href || !row.line)) {
+    throw new Error('a pinned row has no screen or no line: ' + JSON.stringify(pinnedRows));
+  }
+  await page.locator('[data-pinned-row]').first().click();
+  await page.waitForURL('**' + pinnedRows[0].href);
+
+  /* Nothing that left is unreachable, route by route: the week strip and
+     the entries on the Journal door, and the milestones - rail and list on
+     one screen since redesign ticket 43 - from the Transition door. */
+  await fresh('/calendar');
+  await page.waitForSelector('[data-week-strip]');
+  await page.waitForSelector('[data-entry-card]');
+  await fresh('/more');
+  await page.locator('[data-list-row="milestones"]').click();
+  await page.waitForURL('**/transition/milestones');
+  await page.waitForSelector('[data-milestone-rail]');
+
+  /* Under disguise: no agenda and no sun, and every control left on the
+     screen still works - asserted on the log strip that replaces the band
+     rather than on a handle that is gone. */
+  await fresh('/settings');
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-log]');
+  await page.waitForSelector('[data-pinned-row]');
+  if (await page.locator('[data-home-agenda]').count()) throw new Error('the agenda drew under disguise');
+  if (await page.locator('[data-flag-sun]').count()) throw new Error('the sun drew under disguise');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-home-log]');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
+  await page.keyboard.press('Escape');
+
+  /* The appointment this flow wrote goes with it. */
+  await fresh('/health/appointments');
+  await page.locator('[data-appointment]', { hasText: AGENDA_KIND }).click(); // text-under-test
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { state: 'detached', timeout: 8000 }); // text-under-test
+  ok('today faces forward: the agenda leads with the notices below it, a row opens its screen, the strip logs a mood and the fan a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
+} catch (e) { fail('today faces forward', e); }
+
+/* Editing Today (phase 10 redesign ticket 14; ADR-0073, ADR-0067,
+   ADR-0043). The last row of the pinned block opens the edit mode, a row
+   is added from the registry, moved with the keyboard, kept across a
+   reload, and the reset puts the default set and the five switches back.
+   Right after the flow that reads the pinned rows, and for the same
+   reason: this is about the screen while the journal is still the
+   persona's. */
+try {
+  await fresh('/');
+  await page.waitForSelector('[data-edit-today]');
+  const tileOnToday = await page.locator('[data-live-tile]').first().getAttribute('data-live-tile');
+  await page.locator('[data-edit-today]').click();
+  await page.waitForSelector('[data-today-editor]');
+
+  /* A bad-hour row is pinnable and off until asked for: the counterevidence
+     check is in the add list, not on the front page. */
+  if (await page.locator('[data-pinned-row="doubt"]').count()) {
+    throw new Error('the counterevidence check is pinned before anybody asked for it');
+  }
+  /* And the cycle log is not offered cold - ADR-0043's gate is closed for a
+     persona with no testosterone regimen and no opt-in. */
+  if (await page.locator('[data-edit-add="cycle-events"]').count()) {
+    throw new Error('the add list offered the cycle log with its own gate shut');
+  }
+
+  await page.locator('[data-edit-add="doubt"]').click();
+  await page.waitForSelector('[data-edit-pinned-row="doubt"]');
+  const addedLast = await page.locator('[data-edit-pinned-row]').evaluateAll((nodes) =>
+    nodes.map((n) => n.getAttribute('data-edit-pinned-row'))
+  );
+  if (addedLast[addedLast.length - 1] !== 'doubt') {
+    throw new Error('a row added did not land at the end: ' + JSON.stringify(addedLast));
+  }
+
+  /* The drag's keyboard equivalent: one place up per press, and the handle
+     keeps the focus so a second press moves the same row again. */
+  await page.locator('[data-edit-grip="doubt"]').focus();
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => {
+    const keys = [...document.querySelectorAll('[data-edit-pinned-row]')].map((n) => n.getAttribute('data-edit-pinned-row'));
+    return keys[keys.length - 2] === 'doubt';
+  }, null, { timeout: 8000 });
+
+  /* A kind switched off stays off, which is the whole reason it is a switch
+     rather than a dismissal. */
+  await page.locator('[data-edit-kind="doseSlot"] [role="switch"]').click();
+  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
+
+  /* The tiles, here since phase 11 ticket 04 rather than two taps away
+     under Settings. Whichever tile the persona is actually being shown,
+     rather than a named one: which of the thirteen qualifies is the
+     persona's business and changes with the fixture, and what this flow is
+     about is that the switch beside the pins takes it off the page it is
+     on. In place, with the editor still open - that is the acceptance. */
+  if (!tileOnToday) throw new Error('Today drew no live tile to switch off');
+  const tileSwitch = page.locator(`[data-edit-tile="${tileOnToday}"] [role="switch"]`);
+  await tileSwitch.scrollIntoViewIfNeeded();
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { state: 'detached', timeout: 8000 });
+
+  /* And back on by the same switch, which is the other half of the
+     acceptance and not the same path as the reset below: one is a write to
+     one preference, the other is thirteen written from the catalogue. */
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { timeout: 8000 });
+  await tileSwitch.click();
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
+
+  await page.locator('[data-edit-done]').click();
+  await page.waitForSelector('[data-pinned-row="doubt"]');
+
+  /* It survives a reload, which is the stronger half of the ticket's
+     "survives a reload and a lock". A reload re-opens the journal and
+     reads the preference back; the lock does not - `lockNow`
+     (stores/lock.svelte.ts) clears one flag and the same mounted app comes
+     back with the same store behind it, so a lock has nothing to lose.
+     Flow 18 is where the gate itself is exercised. */
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-pinned-row="doubt"]');
+  const afterReload = await page.locator('[data-pinned-row]').evaluateAll((nodes) =>
+    nodes.map((n) => n.getAttribute('data-pinned-row'))
+  );
+  if (afterReload[afterReload.length - 2] !== 'doubt') {
+    throw new Error('the arrangement did not survive a reload: ' + JSON.stringify(afterReload));
+  }
+
+  /* Removing takes it off the front page, and the reset puts the default
+     set and the switches back - one edit mode, one reset. */
+  await page.locator('[data-edit-today]').click();
+  await page.waitForSelector('[data-today-editor]');
+  /* The switch is still off after the reload, which is the difference
+     between a switch and a dismissal. */
+  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
+  /* And so is the tile, for the same reason. */
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
+  await page.locator('[data-edit-unpin="doubt"]').click();
+  await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
+  await page.locator('[data-edit-reset]').click();
+  /* The one write on this surface that is behind a question, because it is
+     the one that throws away work somebody did. */
+  await page.waitForSelector('[data-confirm-edit-reset]');
+  await page.locator('[data-confirm-edit-reset]').click();
+  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="true"]');
+  /* One reset, every switch: the tile comes back with the agenda kind. */
+  await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
+  await page.locator('[data-edit-done]').click();
+  await page.waitForSelector('[data-pinned-row]');
+  await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`);
+  if (await page.locator('[data-pinned-row="doubt"]').count()) {
+    throw new Error('the reset left a row the default set does not hold');
+  }
+  ok('editing Today: the last row opens the edit mode, a row is added, moved with the keyboard and kept across a reload, a tile is switched off and leaves the page in place, and the reset restores the default set and every switch');
+} catch (e) { fail('editing Today', e); }
+
+/* 4c. day detail keeps entries separate and shows no day average */
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="2"]').click();
   await page.locator('#ed-note').fill('Day detail proof A');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-mood="5"]').click();
   await page.locator('#ed-note').fill('Day detail proof B');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
@@ -448,7 +774,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Margin note proof entry');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
@@ -517,7 +843,7 @@ try {
   await page.locator('[data-mood="5"]').click();
   await page.locator('#ed-note').fill(NOTE_HIGH);
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-card]');
+  await page.waitForSelector('[data-home-log]');
 
   await fresh('/search');
   /* The filters are a sheet since ticket 22, so setting one and reading the
@@ -665,45 +991,70 @@ try {
 
 /* 6. stats range + value list.
 
-   The handles moved with ticket 23's rebuild: the range is the shared
-   Segmented control's, the period is the header's subtitle rather than half
-   of its title, the values open from their own control instead of by
-   pressing a chart, and a tag insight is a bar rather than a list row. The
-   values control itself went in ticket 99 item 26; what it used to open is
-   a hidden list now. */
+   The handles moved with ticket 23's rebuild: the period is the header's
+   subtitle rather than half of its title, the values open from their own
+   control instead of by pressing a chart, and a tag insight is a bar rather
+   than a list row. The values control itself went in ticket 99 item 26;
+   what it used to open is a hidden list now. Redesign ticket 11 replaced
+   the segmented range with the span on the rail: the range is whatever the
+   two handles bound, so the flow widens the span from the keyboard - ten
+   steps back on the start handle - and reads the subtitle change with it. */
 try {
   await fresh('/stats');
-  await page.locator('[data-segment="90"]').click();
-  const period = await page.locator('[data-screen-subtitle]').textContent();
-  if (!period.includes('90')) throw new Error('period: ' + period);
-  /* The values are a visually hidden list on the screen itself since ticket
-     99 item 26 removed the "All values" link and its sheet - no control to
-     press, and the numbers still there in text for anything that reads the
-     page rather than looks at it. Counted rather than clicked, since a
-     hidden node cannot be interacted with. */
+  await page.waitForSelector('[data-span-handle="start"]');
+  /* The line naming the span sits under the rail since ticket 06, and
+     counts as the handles move. */
+  const spanBefore = await page.locator('[data-span-state-line]').textContent();
+  await page.locator('[data-span-handle="start"]').focus();
+  await page.keyboard.press('Shift+ArrowLeft');
+  await page.waitForFunction(
+    (was) => document.querySelector('[data-span-state-line]')?.textContent !== was,
+    spanBefore
+  );
+  const period = await page.locator('[data-span-state-line]').textContent();
+  if (!/\d/.test(period ?? '')) throw new Error('the state line carries no span: ' + period);
+  const spanStart = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-start'));
+  const spanEnd = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-end'));
+  if (!(spanEnd > spanStart)) throw new Error(`the span is not a span: ${spanStart}..${spanEnd}`);
+  /* The tiles re-read on the settled span a beat after the last key. */
+  await page.waitForTimeout(600);
+  /* The door is a grid of readings now (phase 11 ticket 07): every tile
+     states a figure and opens a screen carrying the span it was read at,
+     so the address on each tile names the two days the rail shows. */
+  const tiles = page.locator('[data-reading-grid] [data-reading]');
+  if (!(await tiles.count())) throw new Error('the door draws no reading tiles');
+  const hrefs = await tiles.evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+  const startIso = await page.evaluate((day) => new Date(day * 86400000).toISOString().slice(0, 10), spanStart);
+  for (const href of hrefs) {
+    if (!/[?&]from=\d{4}-\d{2}-\d{2}|[?&]aStart=\d{4}-\d{2}-\d{2}/.test(href ?? '')) {
+      throw new Error('a tile opens without the span: ' + href);
+    }
+  }
+  if (!hrefs.some((h) => h?.includes(startIso))) throw new Error(`no tile carries the span's start ${startIso}: ${hrefs.join(' ')}`);
+  /* Day by day opens at the span: the chart with its picker, the scales
+     card under it, and the series still readable as text - a visually
+     hidden list since ticket 99 item 26 removed the "All values" link. */
+  await page.locator('[data-reading="day-by-day"]').click();
+  await page.waitForURL('**/stats/day-by-day?**');
+  await page.waitForSelector('[data-chart-card="day-by-day"]');
   if (!(await page.locator('[data-values-list] li').count())) {
     throw new Error('the stats series is no longer readable as text');
   }
-  /* Tag insights name a built-in tag, so a blank label means the key never
-     got resolved. */
-  const insight = await page
-    .locator('[data-chart-card="tag-insights"] [data-bar-name]')
-    .first()
-    .textContent();
-  if (!insight?.trim()) throw new Error('tag insight has no label');
   /* Every scale gets a bar, including one nothing was logged against. */
   if (!(await page.locator('[data-chart-card="scales"] [data-bar-row]').count())) {
     throw new Error('no scale bars drawn');
   }
-  /* Five mood steps, always. The columns this used to count became one
-     ordered strip (phase 8 UX ticket 04, ADR-0058) and the rule survived
-     the change of form intact: the sequence is what is being read, so a
-     step nothing landed on holds its place at zero width rather than
-     sliding the rest under the wrong part of the scale. */
+  /* How the days fell: five mood steps, always - a step nothing landed on
+     holds its place at zero width rather than sliding the rest under the
+     wrong part of the scale. */
+  await fresh('/stats');
+  await page.locator('[data-reading="days"]').click();
+  await page.waitForURL('**/stats/days?**');
+  await page.waitForSelector('[data-strip-step]');
   if ((await page.locator('[data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
-  ok('stats range, value list, named tag insights and the scale bars');
+  ok('stats: the span drives every tile, day by day and the days open at the span');
 } catch (e) { fail('stats', e); }
 
 /* 6a. a tag insight's sheet holds the same set the row's own count named
@@ -712,12 +1063,15 @@ try {
    against the number of entry cards the sheet actually opened, so the two
    cannot drift apart again without failing here. */
 try {
-  await fresh('/stats');
-  const bar = page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first();
+  /* The merged tag card is a reading of its own since phase 11 ticket 07,
+     and draws as paired dots (redesign ticket 05): the row's note names
+     its scale first and then its count. */
+  await fresh('/stats/tags');
+  const bar = page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first();
   await bar.waitFor();
-  const note = await bar.locator('[data-bar-note]').textContent();
-  const claimed = Number((note ?? '').match(/\d+/)?.[0]);
-  if (!claimed) throw new Error('tag insight row has no entry count: ' + note);
+  const note = await bar.locator('[data-paired-note]').textContent();
+  const claimed = Number((note ?? '').match(/(\d+) /)?.[1]);
+  if (!claimed) throw new Error('tag row has no entry count: ' + note);
 
   await bar.click();
   await page.waitForSelector('[data-sheet]');
@@ -744,8 +1098,9 @@ try {
    for it to be the ends of. Both are asserted on the resting state after the
    pick rather than on anything mid-tween. */
 try {
-  await fresh('/stats');
+  await fresh('/stats/day-by-day');
   const card = page.locator('[data-chart-card="day-by-day"]');
+  await card.waitFor();
   if (!(await card.locator('[data-chart-scale]').count())) {
     throw new Error('one scale should print its value gutter');
   }
@@ -759,7 +1114,12 @@ try {
   await card.locator('[data-chart-legend]').waitFor();
   const named = await card.locator('[data-chart-legend]').textContent();
   if (!named?.trim()) throw new Error('the legend names neither line');
-  if (await card.locator('[data-chart-scale]').count()) {
+  /* Kept mounted rather than removed for a second scale (see
+     AreaChart.svelte's own note on `.kit-area-scale` / ticket 99 item 25):
+     taking the column out of the DOM moved the plot and caused a yank, so
+     it stays and is hidden with `visibility` instead. The gutter's numbers
+     still have to be gone, which is a visibility question, not a DOM one. */
+  if (!(await card.locator('[data-chart-scale]').isHidden())) {
     throw new Error('two scales should print no value gutter');
   }
   /* And back off again, which is the picker's own first option: the
@@ -783,8 +1143,8 @@ try {
    pure function; what this proves is that the tap still arrives, which is
    the half a table cannot answer. */
 try {
-  await fresh('/stats');
-  await page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first().click();
+  await fresh('/stats/tags');
+  await page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first().click();
   /* The sheet, and then the entries in it: the read behind them is its own
      query, so the card can arrive a frame after the sheet does. */
   await page.waitForSelector('[data-sheet] [data-entry-card]');
@@ -817,8 +1177,10 @@ try {
    rather than assumed, since a length past the persona's span draws nothing
    to wait for. */
 try {
-  await fresh('/stats');
-  const card = page.locator('[data-chart-card="custom-interval"]');
+  /* On Care since redesign ticket 05, as the merged interval card's own
+     control. */
+  await fresh('/care');
+  const card = page.locator('[data-chart-card="interval-mood"]');
   const field = page.locator('#custom-interval-length');
 
   await field.fill('');
@@ -830,9 +1192,16 @@ try {
 
 /* 6b. ticket 18's three view-only screens: chronological milestones with
    a compressed gap, thumbnail-backed photo comparison with both sides
-   step-able, and the on-demand recap sequence with its Rive fallback. */
+   step-able, and the on-demand recap sequence with its Rive fallback.
+
+   The first of them is no longer a screen: redesign ticket 43 merged the
+   rail into /transition/milestones and left /timeline as a 307. Loading
+   the old address is how the redirect is proved end to end - the rail's
+   own handles have to answer on the screen it lands on. */
 try {
   await fresh('/timeline');
+  await page.waitForURL('**/transition/milestones');
+  await page.waitForSelector('[data-milestone-rail]');
   const milestoneNames = await page.locator('[data-tl-name]').allTextContents();
   const expectedMilestones = [
     'Coming out to my parents',
@@ -857,17 +1226,36 @@ try {
   // The mode control is a segmented Browse/Compare now (ticket 11), matching
   // the voice screen's own tabs - not the primary button this used to be.
   await page.locator('[data-segment="compare"]').click();
-  const sides = page.locator('[data-compare-side]');
+  /* One frame with a draggable divider, not two thumbnails side by side
+     (redesign ticket 55). Both dates are pinned to the frame's own corners,
+     and the four earlier/later controls move each side through the
+     journey. The demo persona's photos have stored files, so this is the
+     wipe rather than its side-by-side fallback. */
+  await page.waitForSelector('[data-photo-wipe]');
   const gap = await page.locator('[data-compare-gap]').textContent();
-  if ((await sides.count()) !== 2 || !gap?.includes('apart')) throw new Error('compare dates or gap missing');
-  const leftDate = page.locator('[data-compare-side="left"] [data-compare-date]');
-  const rightDate = page.locator('[data-compare-side="right"] [data-compare-date]');
+  if ((await page.locator('[data-wipe-date]').count()) !== 2 || !gap?.includes('apart')) {
+    throw new Error('compare dates or gap missing');
+  }
+  if (await page.locator('[data-wipe-fallback]').count()) {
+    throw new Error('the wipe fell back to side by side with two stored photographs');
+  }
+  const leftDate = page.locator('[data-wipe-date="left"]');
+  const rightDate = page.locator('[data-wipe-date="right"]');
   const leftBefore = await leftDate.textContent();
-  await page.locator('[data-compare-side="left"]').getByRole('button', { name: 'Later photo' }).click();
+  await page.locator('[data-wipe-forward="left"]').click();
   if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
   const rightBefore = await rightDate.textContent();
-  await page.locator('[data-compare-side="right"]').getByRole('button', { name: 'Later photo' }).click();
+  await page.locator('[data-wipe-forward="right"]').click();
   if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
+
+  // The divider is a slider a keyboard can drive, and End takes it to the
+  // far edge without a pointer anywhere near it.
+  const handle = page.locator('[data-wipe-handle]');
+  const startedAt = await handle.getAttribute('aria-valuenow');
+  await handle.press('End');
+  if ((await handle.getAttribute('aria-valuenow')) === startedAt) {
+    throw new Error('the divider did not move on a key press');
+  }
 
   /* The on-demand recap this flow used to step through is gone (ticket 23,
      spec 07): its period picker is a wrapped, and what used to be a
@@ -883,12 +1271,31 @@ try {
   if (await page.getByRole('button', { name: /share|export/i }).count()) {
     throw new Error('a picked range is not shareable, since the share card is built from a cadence');
   }
-  ok('timeline, progress-photo compare and the wrapped range that replaced recap');
+
+  /* Redesign ticket 11: a span pointed at on the Look back door's rail is
+     read at the same URL the picker writes for those two days - proven by
+     opening it from the rail, then typing the same query, and comparing what
+     the two renders say. The door opens on the last thirty days, which the
+     persona clears. */
+  await fresh('/stats');
+  await page.waitForSelector('[data-lookback-read]');
+  const spanHref = await page.locator('[data-lookback-read]').getAttribute('href');
+  if (!/^\/wrapped\/range\?named=custom&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/.test(spanHref ?? '')) {
+    throw new Error('the span opens at ' + spanHref);
+  }
+  await page.locator('[data-lookback-read]').click();
+  await page.waitForSelector('[data-wrapped-stats]');
+  const fromRail = await page.locator('[data-wrapped-stats]').textContent();
+  await fresh(spanHref);
+  await page.waitForSelector('[data-wrapped-stats]');
+  const fromPicker = await page.locator('[data-wrapped-stats]').textContent();
+  if (fromRail !== fromPicker) throw new Error('the rail and the picker read two different wrappeds for one span');
+  ok('timeline, progress-photo compare, the wrapped range that replaced recap, and the span read from the rail');
 } catch (e) { fail('ticket 18 view-only screens', e); }
 
 /* 6c. lab result CRUD and per-analyte chart */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
      charted feature screens onto the chart kit, and the handle moved with
      the component the way ticket 24's list-row handles did. */
@@ -926,7 +1333,7 @@ try {
    this step is about the pg/mL/pmol/L merge, not about which analyte opens
    the screen. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-segment="estradiol"]').click();
   /* The "+" sheet now prefills from whichever analyte is on screen (ticket
      37), so the add below has to happen after the switch has actually
@@ -975,7 +1382,7 @@ try {
    mocked recognizer would prove the wiring works without proving the sheet
    that wiring lives in ever opens. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -1034,7 +1441,7 @@ try {
    engine to read, so unlike 6e this does not depend on what Tesseract makes
    of rendered text. */
 try {
-  await fresh('/settings/labs');
+  await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
@@ -1054,6 +1461,16 @@ try {
   await fresh('/settings');
   await page.locator('[data-palette-pick="pansexual"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'pansexual');
+  /* The door's field follows the palette (redesign ticket 07): activeFlag
+     publishes the flag's second colour and its ink on <html> beside the
+     roles. Pansexual's is its yellow, which carries the near-black ink. */
+  const field = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return [style.getPropertyValue('--field').trim(), style.getPropertyValue('--field-ink').trim()];
+  });
+  if (field[0].toUpperCase() !== '#FFD800' || field[1] !== '#101820') {
+    throw new Error(`field tokens after the switch: ${field.join(' / ')}`);
+  }
   ok('palette switch recolours app');
 } catch (e) { fail('palette', e); }
 
@@ -1082,7 +1499,7 @@ try {
 try {
   await fresh('/settings');
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
@@ -1260,8 +1677,11 @@ try {
      that is where a second copy of today shows up. Both, rather than the
      day alone: the pair is what says the duplication is neither on Home nor
      behind it. */
+  /* The Journal door, since the recent entries left Home (redesign
+     tickets 10 and 13): it is the everyday list a duplicate would show up
+     on now. */
   const homeCards = async () => {
-    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
     await booted();
     await page.waitForSelector('[data-entry-card]');
     return page.locator('[data-entry-card]').count();
@@ -1322,7 +1742,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill(NOTE);
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-card]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
   await booted();
@@ -1395,8 +1815,9 @@ try {
 } catch (e) { fail('plain export', e); }
 
 
-/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26: seven steps -
-   welcome, name, flag, scales, lock, check-in, finish) */
+/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
+   redesign tickets 22, 31 and 32: nine steps - welcome, name, flag, scales,
+   areas, lock, permissions, disguise, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1474,19 +1895,114 @@ try {
   // set this screen chose rather than the one it started with.
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
-  await page.locator('[data-next]').click(); // scales -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
+  await page.locator('[data-next]').click(); // scales -> areas
 
-  /* Ticket 46: the persona premise this step answers is that it defaults
-     the daily nudge on. It doesn't - confirmed here at the switch itself,
-     not only by never touching it below. */
-  if ((await page.getByRole('switch', { name: 'Daily check-in' }).getAttribute('aria-checked')) === 'true') {
-    throw new Error('daily check-in switched itself on by default');
+  /* Ticket 22: the hub's own groups and rows, met once here and once more on
+     the hub - the same headings the More screen draws, in the same order. */
+  /* Support and Media are left off this step (Alicja, sign-off): neither is
+     something a person tracks. */
+  /* Steps, not Transition, since redesign ticket 15 renamed the group in the
+     one place both surfaces read it from (`hubLabels.ts`): a group called
+     Transition inside a door called Transition said nothing. */
+  /* A caption rather than a section heading since redesign ticket 33: a
+     step has one heading and it is the question (DIRECTION.md rule 12), so a
+     group inside a list is named by 15/600 in the secondary ink - the same
+     drawing the permissions step already used for its two groups. */
+  const areaHeadings = (await page.locator('[data-setup-caption]').allTextContents()).map((t) => t.trim());
+  if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
+    throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  await page.locator('[data-next]').click(); // check-in -> finish
+  // The default four arrive ticked and nothing else does (measurements,
+  // care, milestones, tryouts - pinnedRows.ts's own default set).
+  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
+  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  for (const key of ['measurements', 'care', 'milestones', 'tryouts']) {
+    if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
+      throw new Error(`${key} is not part of the default set on arrival`);
+    }
+  }
+
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+
+  // Untick a default and tick something outside it, so what is stored is a
+  // set this screen chose rather than the one it started with (the same
+  // proof the scales step makes above).
+  await page.locator('[data-list-row="area-care"]').click();
+  await page.locator('[data-list-row="area-eras"]').click();
+  await page.locator('[data-next]').click(); // areas -> lock
+  await page.locator('[data-next]').click(); // lock -> permissions
+
+  /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
+     step that names everything the app can ask this device for. Four rows
+     it can ask about and a second group it never asks about, and on the web
+     the two Android-only rows say so rather than offering a dead button. */
+  await page.waitForSelector('[data-permission-list]');
+  const grantable = await page.locator('[data-grant]').evaluateAll((els) =>
+    els.map((el) => el.dataset.grant)
+  );
+  if (grantable.join() !== 'microphone,camera') {
+    throw new Error('the web build should offer only the two prompts it has: ' + grantable.join());
+  }
+  for (const key of ['notifications', 'exactAlarms']) {
+    const row = page.locator(`[data-permission="${key}"]`);
+    if ((await row.count()) !== 1) throw new Error(`the ${key} row is missing from the list`);
+    if ((await row.getAttribute('data-permission-state')) !== 'unavailable') {
+      throw new Error(`${key} should read as unavailable on the web`);
+    }
+    const trailing = await row.textContent();
+    if (!trailing.includes('Android only')) {
+      throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
+    }
+  }
+  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
+      throw new Error(`the ${key} row is missing from the no-permission group`);
+    }
+  }
+  for (const key of ['backupFolder', 'batteryOptimisation']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
+      throw new Error(`the web build has no ${key} and should not list one`);
+    }
+  }
+  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
+    throw new Error('the list does not end on the fact that there is no internet permission');
+  }
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+
+  /* Skippable like every other step, and skipping grants nothing - which is
+     the only thing there is to check, since nothing here is stored. */
+  if ((await page.locator('[data-skip-step]').count()) !== 1) {
+    throw new Error('the permissions step carries no Skip');
+  }
+
+  await page.locator('[data-next]').click(); // permissions -> disguise
+
+  /* Ticket 32: setup's last question, and the one answer that is not
+     applied where it is given. The switch arrives off, the row carries the
+     platform's own consequence, and the preview under it names what the
+     launcher would show. Nothing about the app has changed by reaching the
+     step - the tab is still the app's own, which is asserted on Home
+     below, after a skip. */
+  const disguiseSwitch = page.getByRole('switch', { name: 'Disguise app' });
+  if ((await disguiseSwitch.getAttribute('aria-checked')) === 'true') {
+    throw new Error('the disguise step arrived already switched on');
+  }
+  const disguiseReason = await page.locator('[data-list-row="disguise"]').textContent();
+  if (!/browser tab|launcher/.test(disguiseReason)) {
+    throw new Error('the disguise row says nothing about what changes: ' + JSON.stringify(disguiseReason));
+  }
+  const previewName = await page.locator('[data-disguise-name]').textContent();
+  if (previewName !== 'Notes') throw new Error('the disguise preview names: ' + previewName);
+
+  /* Skipped rather than answered, which is this flow's half of the AC: a
+     skip leaves the stored value alone. The toggled-on half is 13c. */
+  await page.locator('[data-skip-step]').click(); // disguise skipped -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
+  if ((await page.title()) === 'Notes') {
+    throw new Error('skipping the disguise step disguised the app anyway');
+  }
   const greet = await page.locator('[data-home-hello]').textContent();
   if (!greet.includes('Ola')) throw new Error('greeting: ' + greet);
   if (await page.evaluate(() => document.documentElement.dataset.palette) !== 'nonbinary') {
@@ -1499,6 +2015,139 @@ try {
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
 
+/* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
+   (phase 10 redesign ticket 33, DIRECTION.md rule 14).
+
+   Rule 14's own text hands this measurement to this ticket: before it, setup
+   was a plain column inside the app's one scroll region, so a step with nine
+   rows on it carried the question and the foot off the top of the window -
+   571px of overflow on the permissions step and 964 on the areas step,
+   measured on ticket 31. What holds it now is a fixed frame with one
+   scrolling region inside it, and the only way to know that is still true
+   next month is to measure it here.
+
+   Two reads per step, because they answer different questions. The app's
+   scroll region says the screen did not grow past the window. `.screen-setup`
+   says the frame inside it did not either - it is `overflow: clip`, which
+   draws nothing and still reports what it is hiding, so a step that stopped
+   fitting would clip its own foot in silence rather than scroll. The answers'
+   own region is deliberately not asserted: it is the one thing on a step that
+   may scroll, and on the long steps it does. */
+try {
+  /* The demo bar is 239px of review chrome at 390 wide and is not in the
+     build anybody installs, so it is hidden for this flow: measuring the
+     frame against two thirds of a window would be measuring the bar.
+
+     Re-injected after every navigation, because a style tag belongs to the
+     document that held it and `fresh()` replaces that document. Injected
+     once and read later, the flow measured the frame with the bar back on
+     and called a 452px clip at 320x568 a defect in the step. */
+  const hideBar = () =>
+    page.addStyleTag({
+      content:
+        '.demo-bar{display:none !important}' +
+        'body.has-demo-bar{display:block !important;height:auto !important}'
+    });
+  const STEP_SIZES = [
+    { width: 320, height: 568 },
+    { width: 360, height: 640 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    /* A raised keyboard, which is what rule 14 stands in for by shortening
+       the window rather than by opening a keyboard nothing here has. */
+    { width: 390, height: 360 }
+  ];
+  const STEP_TAPS = 8; // nine steps, eight Continues
+  for (const size of STEP_SIZES) {
+    await page.setViewportSize(size);
+    await fresh('/');
+    await hideBar();
+    await page.locator('#demo-jump').evaluate((el) => {
+      el.value = 'first-run';
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForSelector('[data-next]');
+    for (let step = 0; step <= STEP_TAPS; step++) {
+      /* The edge and the answers both settle on --dur-slow; a step measured
+         mid-travel is measuring a transform rather than a frame. */
+      await page.waitForTimeout(500);
+      const read = await page.evaluate(() => {
+        const region = document.querySelector('[data-app-scroll-region]');
+        const screen = document.querySelector('[data-setup-frame]');
+        const foot = document.querySelector('[data-setup-foot]');
+        return {
+          question: document.querySelector('[data-setup-question]')?.textContent?.trim() ?? '',
+          region: region ? region.scrollHeight - region.clientHeight : 0,
+          screen: screen ? screen.scrollHeight - screen.clientHeight : 0,
+          footBottom: Math.round(foot?.getBoundingClientRect().bottom ?? 0),
+          window: window.innerHeight
+        };
+      });
+      const where = `${size.width}x${size.height} step ${step + 1} (${read.question})`;
+      /* Every control on the step, against --touch-target. The short form
+         is where this bites: rule 14 asked for the foot's second line at
+         40px and 40 is under Android's 48dp floor, which is the stricter of
+         the two platforms this ships on. Measured rather than reasoned about
+         because the frame gives the foot whatever the field and the answers
+         leave it. */
+      const small = await page.evaluate(() => {
+        const floor = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--touch-target')
+        );
+        const inFrame = '[data-setup-frame] ';
+        return [...document.querySelectorAll(`${inFrame}button, ${inFrame}a, ${inFrame}input`)]
+          .filter((el) => el.offsetParent !== null && el.type !== 'hidden')
+          .map((el) => {
+            const box = el.getBoundingClientRect();
+            return {
+              what: el.textContent?.trim().slice(0, 20) || el.id || el.tagName,
+              w: Math.round(box.width),
+              h: Math.round(box.height)
+            };
+          })
+          .filter((c) => c.w > 0 && c.h > 0 && Math.min(c.w, c.h) < floor - 0.5);
+      });
+      if (small.length) {
+        throw new Error(`under the touch floor at ${where}: ${JSON.stringify(small)}`);
+      }
+      /* A few pixels of tolerance, and only here: the field's height is the
+         sun's reach at this step, which is `175px` times a fraction, so the
+         frame's content height is fractional and `scrollHeight` is an
+         integer. Measured at 360x640 on the areas step, that rounding is
+         2px. It cannot hide a misfit - the ones this rule exists for were
+         571px on the permissions step and 964 on the areas step. */
+      const rounding = 4;
+      if (read.region > rounding) throw new Error(`the screen scrolls at ${where}: ${read.region}px`);
+      if (read.screen > rounding) throw new Error(`the frame is clipped at ${where}: ${read.screen}px`);
+      if (read.footBottom > read.window + 1) {
+        throw new Error(`the foot is off the window at ${where}: ${read.footBottom} of ${read.window}`);
+      }
+      /* The name step with the window at 360: rule 14 asks for the control
+         the keyboard is for to be on screen, not merely for the step to
+         fit. */
+      if (step === 1) {
+        const input = await page.locator('#ob-name').evaluate((el) => {
+          const box = el.getBoundingClientRect();
+          return { top: Math.round(box.top), bottom: Math.round(box.bottom) };
+        });
+        if (input.bottom > read.window || input.top < 0) {
+          throw new Error(`the name field is off the window at ${where}: ${JSON.stringify(input)}`);
+        }
+        await page.locator('#ob-name').fill('Ola');
+      }
+      if (step < STEP_TAPS) await page.locator('[data-next]').click();
+    }
+    /* Out of setup rather than left standing in it, so the next size starts
+       from the same place this one did. */
+    await page.locator('[data-finish]').click();
+    await page.waitForSelector('[data-home-hello]');
+  }
+  /* Nothing to put back: the next flow's own `fresh()` replaces the
+     document this one styled. */
+  await page.setViewportSize({ width: 390, height: 844 });
+  ok('no step of setup scrolls and no control is under the touch floor, at 320/360/390/430 wide and with the window at 360');
+} catch (e) { fail('setup no-scroll', e); }
+
 /* 13a. every step can be left, and leaving keeps what was chosen so far
    (phase 5 ticket 26) */
 try {
@@ -1508,7 +2157,7 @@ try {
   await page.waitForSelector('[data-next]');
   await page.locator('[data-next]').click(); // welcome -> name
   await page.locator('#ob-name').fill('Sam');
-  /* Out from the second step, four steps short of the finish. The name that
+  /* Out from the second step, five steps short of the finish. The name that
      had been typed is kept, because leaving is not the same as cancelling. */
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
@@ -1551,6 +2200,310 @@ try {
   await page.waitForSelector('[data-home-hello]');
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
+
+/* 13c. a first run that restores (phase 10 redesign ticket 36).
+
+   The whole path a person on a new phone takes: say on the welcome that you
+   already have a backup, hand over the file and its password, and get the
+   journal back without being asked to invent a life you already have.
+
+   The archive is a real one, exported through the export screen a moment
+   earlier, because a fixture would prove the screen wires up and not that a
+   journal survives the round trip. It is a small one on purpose: what a
+   whole demo journal survives is flow 11b's question, and asking it twice
+   costs this suite a second full export and restore of every photo the
+   earlier flows imported. Here the journal is emptied first and given one
+   entry and one flag, so what has to come back is nameable - the note, and
+   the palette, which is a portable preference (ADR-0003) and therefore also
+   the proof that the flag step was rightly not asked. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+
+  /* Every wait in this flow says what it was waiting for. The reporter
+     prints one line per failure, and "waitForFunction: Timeout 30000ms" on a
+     flow with nine of them names none of them - which cost this ticket two
+     eight-minute runs to find out. */
+  const waitingFor = async (what, run) => {
+    try {
+      await run();
+    } catch (error) {
+      throw new Error(`${what}: ${String(error.message ?? error).split('\n')[0]}`);
+    }
+  };
+
+  /* An empty journal is what a new phone is, and the jump is what makes
+     one. Out of setup first, so the entry can be written. */
+  const emptyFirstRun = async () => {
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await booted();
+    await page.selectOption('#demo-jump', 'first-run');
+    await waitingFor('the welcome after the first-run jump', () =>
+      page.waitForSelector('[data-restore-start]')
+    );
+  };
+  await emptyFirstRun();
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await waitingFor('the palette picker on Settings', () =>
+    page.waitForSelector('[data-palette-pick="lesbian"]')
+  );
+  await page.locator('[data-palette-pick="lesbian"]').click();
+  await waitingFor('the flag turning lesbian before the export', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
+  );
+
+  /* Through the FAB, whose fan seeds the mood, so this needs no mood control
+     of its own - the editor's and Home's log strip both answer to
+     `[data-mood]` and picking between them is flow 2's problem, not this
+     flow's. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('#ed-note').fill('The entry that came back.');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+
+  await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('#exp-pass').fill('walkthrough');
+  await page.locator('[data-export]').click();
+  const [archive] = await Promise.all([
+    page.waitForEvent('download', { timeout: 120000 }),
+    page.locator('[data-confirm-export]').click()
+  ]);
+  /* The bytes with the name spelled out, not the download's own path: what
+     `path()` returns is a Playwright temp file whose basename is a random
+     id, so `setFiles(path)` hands the picker a file called something like
+     `abc123` and the block on screen never draws the name this flow is
+     waiting for. The archive is one entry, so carrying it in memory is
+     nothing. */
+  const archiveBytes = await readFile(await archive.path());
+
+  /* Emptied again, and the flag put back to something the archive will have
+     to overwrite, so a palette reading lesbian at the end can only have come
+     out of the file. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="trans"]').click();
+  await waitingFor('the flag going back to trans before the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
+  await emptyFirstRun();
+
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+
+  /* The refusal first, on the file that is not an archive, because this is
+     the ticket where being wrong loses somebody's journal: what has to hold
+     is that a refused archive says so and leaves the person on the step with
+     the way back still there, not that the happy path works. The handle is
+     the kind, matching the Settings screen's own - the walkthrough grips a
+     kind, never a sentence in one language. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'not-a-backup.ttbackup',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from('this is not an archive')
+    })
+  );
+  await page.locator('[data-restore-pick]').click();
+  await waitingFor('the block drawing the refused file', () =>
+    page.waitForFunction(() =>
+      document.querySelector('[data-restore-file]')?.textContent.includes('not-a-backup')
+    )
+  );
+  await page.locator('#ob-restore-pass').fill('walkthrough');
+  await page.locator('[data-restore-check]').click();
+  await waitingFor('the refusal on the status line', () =>
+    page.waitForSelector('[data-restore-error="not-an-archive"]')
+  );
+  if (await page.locator('[data-finish]').count()) {
+    throw new Error('a refused archive was let through to the finish');
+  }
+
+  /* And the real one over the top of it, which is also the check that a
+     second pick clears the first one's refusal. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: archive.suggestedFilename(),
+      mimeType: 'application/octet-stream',
+      buffer: archiveBytes
+    })
+  );
+  await page.locator('[data-restore-pick]').click();
+  await waitingFor(`the block drawing ${archive.suggestedFilename()}`, () =>
+    page.waitForFunction(
+      (name) => document.querySelector('[data-restore-file]')?.textContent.includes(name),
+      archive.suggestedFilename()
+    )
+  );
+  await page.locator('#ob-restore-pass').fill('walkthrough');
+  await page.locator('[data-restore-check]').click();
+
+  /* Three steps between the restore and the finish, and all three are about
+     this device rather than about the journal (steps.ts's restoreSteps): the
+     access mode, whose key an archive password is not; the permissions list,
+     whose answers live in the OS; and disguise, which is a preference but a
+     device-local one. Nothing the archive answers is asked again: no name
+     field, no flag picker, no scales, no areas. */
+  await waitingFor('the access mode step after the check', () =>
+    page.waitForSelector('[data-next]', { timeout: 120000 })
+  );
+  if (await page.locator('#ob-name').count()) throw new Error('setup asked for a name the archive carries');
+  if (await page.locator('[data-palette-pick]').count()) {
+    throw new Error('setup asked for a flag the archive carries');
+  }
+  await page.locator('[data-next]').click(); // access mode -> permissions
+  /* The permissions step is in this flow because it stores no preference,
+     so no archive can have answered it (steps.ts). It arrived here with
+     ticket 31 and needed no edit to restoreSteps() - only this click. */
+  await waitingFor('the permissions step', () => page.waitForSelector('[data-permission-list]'));
+  await page.locator('[data-next]').click(); // permissions -> disguise
+  /* And disguise, for the same reason: it stores a preference, but a
+     device-local one, so no archive answered it either (ticket 32). Left
+     off, which is what skipping it would also mean. */
+  await waitingFor('the disguise step', () => page.waitForSelector('[data-list-row="disguise"]'));
+  await page.locator('[data-next]').click(); // disguise -> finish
+  await waitingFor('the finish', () => page.waitForSelector('[data-finish]'));
+
+  await page.locator('[data-finish]').click();
+  await waitingFor('Home, after the restore ran', () =>
+    page.waitForSelector('[data-home-hello]', { timeout: 120000 })
+  );
+  await heldOnHome('the restore was undone by a late navigation');
+
+  /* The entry is back, in the journal, and the flag is back with it - which
+     is the settings half of ADR-0003 and the reason the flag step was never
+     asked. Nothing from setup overwrote either: on this flow the steps that
+     would have are the ones restoreSteps() dropped. */
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await waitingFor("today's entries, after the restore", () =>
+    page.waitForSelector('[data-entry-note]', { timeout: 30000 })
+  );
+  const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!notes.some((note) => note.includes('The entry that came back'))) {
+    throw new Error(`the restored journal has no entry from the archive: ${JSON.stringify(notes)}`);
+  }
+  const palette = await page.evaluate(() => document.documentElement.dataset.palette);
+  if (palette !== 'lesbian') {
+    throw new Error(`the archive's own flag did not come back with it: ${palette}`);
+  }
+  /* And the flag put back, because the restore left this journal on the
+     archive's palette and the flows after this one read colours off the
+     document. A flow that changes the palette puts it back, which is the
+     rule 13b0 above already follows. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="trans"]').click();
+  await waitingFor('the flag going back to trans after the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
+
+  ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
+} catch (e) { fail('onboarding restore', e); }
+
+/* 13d. and the way back out of it: a restore that is given up on leaves the
+   person on the welcome as somebody new, with the whole flow ahead of them
+   and nothing written. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+  await page.locator('[data-restore-abandon]').click();
+
+  /* Back on the welcome, and it is the ordinary welcome: the second action
+     is offered again, and the step after it is the name step rather than the
+     access mode, which is what says the flow is the full one. */
+  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.waitForSelector('#ob-name');
+
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+  ok('giving up on a restore leaves setup running as a new person');
+} catch (e) { fail('onboarding restore abandoned', e); }
+
+/* 13b1. turning the disguise on during setup leaves a finished install
+   rather than a setup that died halfway (redesign ticket 32, ADR-0079).
+
+   The web half of the ticket's acceptance. On Android the alias flip closes
+   the app and the proof is that the journal opens after the restart; there
+   is no restart here, so what this can show is the other half of the same
+   claim - the disguise is in force, every answer was written, and the first
+   run is over rather than waiting at step one. complete()'s ordering is
+   held to in the Node tier (onboarding/complete.test.ts) and on a device. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.locator('#ob-name').fill('Kit');
+  await page.locator('[data-next]').click(); // name -> flag
+  await page.locator('[data-next]').click(); // flag -> scales
+  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // areas -> lock
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
+
+  /* Held, not applied: the tab is still the app's own with the switch on,
+     because the answer is written by complete() and by nothing before it.
+     This is the assertion that would fail if the step ever wrote straight
+     through to `prefs.disguise` - which on Android would close the app
+     mid-setup and is the reason the step is last. */
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForSelector('[data-disguise-preview][data-on="true"]');
+  if ((await page.title()) === 'Notes') {
+    throw new Error('the disguise applied itself on the step rather than at the finish');
+  }
+
+  await page.locator('[data-next]').click(); // disguise -> finish
+  await page.locator('[data-finish]').click();
+
+  /* Both halves of "a finished install", in the order they matter. The
+     disguise is in force, and the app is on Home under it rather than back
+     at step one. */
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  await page.waitForSelector('[data-home-hello]');
+  const disguisedGreet = await page.locator('[data-home-hello]').textContent();
+  if (!disguisedGreet.includes('Kit')) {
+    throw new Error('the name answered before the disguise did not survive it: ' + disguisedGreet);
+  }
+  await heldOnHome('finishing setup with the disguise on came back to setup');
+
+  /* And it survives a reload, which is the closest a browser gets to the
+     restart Android does for free: `onboarded` and `disguise` both came off
+     SQLite this time rather than out of the page that wrote them. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  if (await page.locator('[data-next]').count()) {
+    throw new Error('a disguised finish left the first run unfinished');
+  }
+  if ((await page.title()) !== 'Notes') {
+    throw new Error('the disguise did not survive a reload: ' + (await page.title()));
+  }
+
+  /* Off again, or every flow after this one meets a disguised app - the same
+     courtesy flow 18 pays after its own toggle. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title !== 'Notes', null, { timeout: 8000 });
+  await page.keyboard.press('Escape');
+  ok('turning the disguise on during setup finishes the first run under it');
+} catch (e) { fail('onboarding disguise', e); }
 
 /* 13b. the settings scales sheet is the same list onboarding drew, and a
    tick is the change - there is no confirm on the sheet and never was
@@ -1629,12 +2582,14 @@ try {
   await page.locator('[data-mood="4"]').click();
   await page.locator('[data-save]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-chart-picker="home-metric"]');
-  await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
+  /* The metric picker left Home with the week strip (redesign tickets 10
+     and 13); the Journal door's is the one that shades the days now. */
+  await page.waitForSelector('[data-chart-picker="calendar-metric"]');
+  await page.locator('[data-chart-picker="calendar-metric"]').selectOption('femininity');
   await page.waitForFunction(
-    () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
+    () => document.querySelector('[data-chart-picker="calendar-metric"]')?.value === 'femininity'
   );
 
   /* Untick everything, and the editor says what it is rather than leaving
@@ -1658,10 +2613,10 @@ try {
   /* And Home is back on mood rather than still coloured by a scale its own
      picker no longer offers. Read off the picker, which is where the two
      would visibly disagree. */
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-chart-picker="home-metric"]');
-  const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
+  await page.waitForSelector('[data-chart-picker="calendar-metric"]');
+  const metric = await page.locator('[data-chart-picker="calendar-metric"]').inputValue();
   if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
   ok('settings scales sheet ticks through to the editor, empty included');
 } catch (e) { fail('settings scales sheet', e); }
@@ -1685,9 +2640,17 @@ try {
     throw new Error('the scales step made Continue wait for something');
   }
   // Untouched, then skipped: the stored default has to survive both.
-  await page.locator('[data-skip-step]').click(); // scales -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
-  await page.locator('[data-next]').click(); // check-in -> finish
+  await page.locator('[data-skip-step]').click(); // scales -> areas
+
+  /* Ticket 22's own version of the same proof: the default four arrive
+     ticked, and skipping leaves `onboardingAreas` null rather than storing
+     the default. */
+  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
+  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  await page.locator('[data-skip-step]').click(); // areas -> lock
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
+  await page.locator('[data-next]').click(); // disguise -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
@@ -1712,6 +2675,87 @@ try {
   if (!railVisible || navVisible) throw new Error(`rail:${railVisible} nav:${navVisible}`);
   ok('desktop rail via container query');
 } catch (e) { fail('desktop', e); }
+
+/* 14a. Today's gear reaches Settings, and no other screen's header carries
+   one (ticket 09). Mobile width, then back to desktop for 14b and for step
+   15, which follows expecting the wide viewport. */
+try {
+  await page.setViewportSize({ width: 440, height: 940 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok("Today's gear reaches Settings");
+
+  /* Rule 7's chrome case, the phone half (carpet 25). The screen arrives on
+     a field like every other screen in the app, and it shows a back
+     control, because the gear that led here is in Today's foot. Both are
+     read as painted rather than as attached: the whole finding this closes
+     was a screen whose header was in the DOM and drew nothing. */
+  if (!(await page.locator('[data-field-blind]').first().isVisible()))
+    throw new Error('/settings draws no field on the phone');
+  if (!(await page.locator('[data-screen-back]').isVisible()))
+    throw new Error('/settings draws no back control on the phone');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL((url) => new URL(url).pathname === '/');
+  ok("/settings on the phone: the field, and back to Today");
+
+  /* The rail's chrome is expected everywhere (ADR-0076); what "no other
+     screen header does" actually means is ScreenHeader's own root, which
+     every deep screen and every door but Today renders. `attached`, not
+     the default `visible`: More's header has a hidden title and nothing
+     else to hold, so it collapses to nothing on screen (ADR-0075) - true
+     of its content, not of whether a link exists in the DOM. */
+  for (const path of ['/calendar', '/stats', '/more']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-screen-header]', { state: 'attached' });
+    const inHeader = await page.locator('[data-screen-header] a[href="/settings"]').count();
+    if (inHeader) throw new Error(`${path}'s header links to /settings`);
+  }
+  ok('no other screen header links to Settings');
+} catch (e) { fail('home gear settings', e); }
+
+/* 14a-zoom. The gear is reachable, not just visible, at 200% zoom on a
+   320px-class phone - the pre-existing 195px check (ticket 23) only holds
+   the hello line and the sun's layout, never clicks the gear itself. */
+try {
+  await page.setViewportSize({ width: 195, height: 700 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('the gear opens Settings at 195px (200% zoom on a 390px phone)');
+} catch (e) { fail('home gear settings at 200% zoom', e); }
+
+/* 14b. the rail's fifth row reaches Settings too, set apart from the four
+   doors (ticket 09). */
+try {
+  await page.setViewportSize({ width: 1400, height: 980 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  const doorCount = await page.locator('[data-rail-item]').count();
+  if (doorCount !== 4) throw new Error(`rail has ${doorCount} doors, not 4`);
+  await page.locator('[data-rail-settings]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('rail settings row reaches Settings, four doors stay four');
+
+  /* Rule 7's chrome case, the desktop half (carpet 25): the same field, and
+     no back control, because the way in is a row in the rail and there is
+     nothing behind it to go back to. The control is dropped by
+     components.css inside this shell's own container query, the same way
+     the bottom bar is, so it stays in the markup and `display: none` is
+     what takes it out of the paint, the tab order and the accessibility
+     tree - which is why this counts visible matches rather than attached
+     ones. */
+  if (!(await page.locator('[data-field-blind]').first().isVisible()))
+    throw new Error('/settings draws no field in the 1024px shell');
+  const backOnDesktop = await page.locator('[data-screen-back]:visible').count();
+  if (backOnDesktop) throw new Error('/settings draws a back control in the 1024px shell');
+  ok('/settings in the 1024px shell: the field, and no back control');
+} catch (e) { fail('rail settings row', e); }
 
 /* 15. reminders web note at desktop */
 try {
@@ -1810,7 +2854,7 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
 
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */
@@ -1844,9 +2888,56 @@ try {
      serve leaves the flag in the tab and no attribute check would notice. */
   const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
   if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
+  /* Ticket 08: the fourth tab is the one thing in the bar disguise still
+     touches - it reverts to More rather than staying Transition. */
+  const fourthTabLabel = () => page.locator('[data-nav-item="settings"] [data-nav-label]').textContent();
+  if ((await fourthTabLabel()) !== 'More') throw new Error('fourth tab while disguised: ' + (await fourthTabLabel()));
+
+  /* The field under disguise (redesign ticket 23, ADR-0075): the shell
+     publishes --surface-2 and --text in place of the flag's colour and its
+     ink, and the sun is absent. Read off Home, where the field is painted,
+     rather than off the tokens: a token nothing paints proves nothing. The
+     expected colours come from a probe element wearing the two tokens, so
+     the check follows the palette rather than naming a hex. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-field]');
+  const disguisedField = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--surface-2)';
+    probe.style.color = 'var(--text)';
+    document.body.append(probe);
+    const want = getComputedStyle(probe);
+    const field = document.querySelector('[data-home-field]');
+    /* The colour off the blind, the ink off the box. The field paints
+       nothing since redesign ticket 28: its colour is a block a window tall
+       hanging inside it whose bottom edge is a clip, which is what lets the
+       edge move without the box being resized. Read off the box, the
+       background has been `rgba(0, 0, 0, 0)` ever since - so this flow was
+       failing on a true statement about the wrong element. */
+    const got = getComputedStyle(field);
+    const paint = getComputedStyle(field.querySelector('[data-field-blind]'));
+    const out = {
+      background: paint.backgroundColor,
+      surface2: want.backgroundColor,
+      ink: got.color,
+      text: want.color,
+      suns: document.querySelectorAll('[data-flag-sun]').length
+    };
+    probe.remove();
+    return out;
+  });
+  if (disguisedField.background !== disguisedField.surface2 || disguisedField.ink !== disguisedField.text) {
+    throw new Error('the field under disguise is not the neutral pair: ' + JSON.stringify(disguisedField));
+  }
+  if (disguisedField.suns !== 0) throw new Error('the sun drew under disguise');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
+  if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
   await page.getByRole('switch', { name: 'Quick exit' }).click();
@@ -1912,7 +3003,12 @@ try {
     Array.from({ length: 40 }, (_, i) => `Paragraph ${i + 1} of something long enough to have a middle to be in.`).join('\n\n')
   );
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-card]');
+  await page.waitForSelector('[data-home-log]');
+  /* Read on the entry's own screen: Home draws no entries since redesign
+     ticket 13, and the day view is where today's are. The newest is the
+     one just written. */
+  await openNewestEntry();
+  await page.waitForSelector('[data-screen-back]');
 
   const reading = page.url();
   const readingAt = await page.evaluate(async () => {
@@ -1936,12 +3032,11 @@ try {
   /* Nothing in the lock path navigates, and this is the half of D5 the app
      does honour: the way back is the screen you were on. */
   if (page.url() !== reading) throw new Error(`quick exit moved the URL: ${reading} -> ${page.url()}`);
-  if (await page.locator('[data-entry-card]').count()) {
+  if (await page.locator('[data-screen-back]').count()) {
     throw new Error('the route is still mounted under the lock screen, so its queries are still running');
   }
-
   await sessionPassphrase();
-  await page.waitForSelector('[data-entry-card]');
+  await page.waitForSelector('[data-screen-back]');
   const returnedTo = await page.evaluate(() => document.querySelector('[data-app-scroll-region]').scrollTop);
   if (returnedTo !== 0) throw new Error('unlocking landed part-way down the screen rather than at its top: ' + returnedTo);
   if (page.url() !== reading) throw new Error(`unlocking moved the URL: ${reading} -> ${page.url()}`);
@@ -2098,11 +3193,19 @@ try {
   if ((await june.locator('[data-year-cell]').count()) !== 30) {
     throw new Error('June should be thirty cells, one per day');
   }
-  /* The five entries this flow wrote landed in June, and a day that carried a
-     mood draws the picker's own face rather than an empty outline. */
-  if ((await june.locator('[data-year-cell] svg').count()) < 5) {
-    throw new Error('the month the entries went into drew no moods');
+  /* The five entries this flow wrote landed in June, and a day that carried
+     a value is a shaded cell rather than an empty one (phase 11 ticket 07:
+     a shaded row per month on the active scale's ramp, no face per day). */
+  if ((await june.locator('[data-year-cell]:not([data-year-step="0"])').count()) < 5) {
+    throw new Error('the month the entries went into shaded no days');
   }
+  /* No svg per day: the whole months card draws at most a handful. */
+  const monthSvgs = await page.locator('[data-chart-card="wrapped-months"] svg').count();
+  if (monthSvgs > 13) throw new Error(`the year draws ${monthSvgs} svgs; a face per day is back`);
+  /* The year's figures come before the months (finding 7 of the audit). */
+  const figuresTop = await page.locator('[data-wrapped-figure]').first().evaluate((el) => el.getBoundingClientRect().top);
+  const monthsTop = await page.locator('[data-chart-card="wrapped-months"]').evaluate((el) => el.getBoundingClientRect().top);
+  if (!(figuresTop < monthsTop)) throw new Error('the year still draws its grid before its figures');
   const yearCells = page.locator('[data-chart-card="wrapped-months"] [data-year-cell]');
   const dayCount = await page.evaluate(() => {
     const year = new Date().getFullYear() - 1;
@@ -2143,11 +3246,12 @@ try {
     throw new Error('an unknown cadence still drew a switcher');
   }
 
-  /* Home offers exactly one card, for whichever cadence is freshest today,
-     and it links to that cadence's screen. */
-  await fresh('/');
+  /* The Look back door offers exactly one card, for whichever cadence is
+     freshest today, and it links to that cadence's screen (the card moved
+     off Home with redesign ticket 11). */
+  await fresh('/stats');
   const card = page.locator('[data-wrapped-card]');
-  if ((await card.count()) !== 1) throw new Error('Home should offer one wrapped card, found ' + (await card.count()));
+  if ((await card.count()) !== 1) throw new Error('Look back should offer one wrapped card, found ' + (await card.count()));
   const href = await card.getAttribute('href');
   if (!/^\/wrapped\/(week|month|year)$/.test(href ?? '')) throw new Error('the card links to ' + href);
   await card.click();
@@ -2165,7 +3269,7 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
   await fresh('/wrapped/week');
   if (await page.locator('[data-wrapped-stats], [data-wrapped-cover]').count()) {
@@ -2177,9 +3281,9 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (!(await page.locator('[data-wrapped-card]').count())) throw new Error('the card did not come back');
-  ok('wrapped: Home card, both presentations, the entry floor and the toggle');
+  ok('wrapped: the Look back card, both presentations, the entry floor and the toggle');
 } catch (e) { fail('wrapped', e); }
 
 /* 21. typed dysphoria and euphoria logging (phase 4 features ticket 02): all
@@ -2233,7 +3337,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
   await page.locator('[data-tag-hide="dt-existential"]').click();
@@ -2316,11 +3420,18 @@ try {
     throw new Error('the chart that cannot draw over one day is back');
   }
 
-  await fresh('/');
+  /* The card draws on the Look back door since redesign ticket 11. */
+  await fresh('/stats');
   const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
   const card = page.locator('[data-on-this-day-card]');
-  if ((await card.count()) !== 1) throw new Error('Home should offer the on-this-day card now, found ' + (await card.count()));
+  if ((await card.count()) !== 1) throw new Error('Look back should offer the on-this-day card now, found ' + (await card.count()));
+  /* The tile opens the day in place under the pair (phase 11 ticket 07):
+     the block discloses on the door, and the URL stays. */
   await card.click();
+  await page.waitForSelector('[data-lookback-day] [data-lookback]');
+  if (!page.url().endsWith('/stats')) throw new Error('opening on-this-day left the door for ' + page.url());
+  /* And the route still answers, for the notification deep link. */
+  await fresh('/on-this-day');
   await page.waitForSelector('[data-lookback]');
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
@@ -2331,7 +3442,7 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="on-this-day"]');
   await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (await page.locator('[data-on-this-day-card]').count()) throw new Error('the card survived the toggle');
   if ((await page.locator('[data-wrapped-card]').count()) !== hadWrappedCard) {
     throw new Error("turning on-this-day off changed wrapped's own card");
@@ -2346,7 +3457,7 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="on-this-day"]');
   await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (!(await page.locator('[data-on-this-day-card]').count())) throw new Error('the card did not come back');
 
   ok('on-this-day: the good-day rule, the Home card, and its own Settings toggle');
@@ -2384,9 +3495,12 @@ try {
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
 
   await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('[data-entry-note]');
-  const saved = await page.locator('[data-entry-note]').first().textContent();
-  if (!saved.includes('Killed mid-edit')) throw new Error('the resumed draft did not save');
+  const saved = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!saved.some((note) => note.includes('Killed mid-edit'))) throw new Error('the resumed draft did not save');
 
   /* Saving unmounts the editor, which clears the mirror (onDestroy), so a
      later, unrelated new entry must not inherit anything from this one. */
@@ -2448,7 +3562,7 @@ try {
   await page.locator('[data-qld-add]').click();
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
-  await page.locator('[data-entry-card]').first().click();
+  await openNewestEntry();
   await page.waitForSelector('[data-dim-value]');
   // Asserted as "is this a number", not against the unset marker's wording:
   // that marker is ordinary UI copy and changed once already (ticket 31).
@@ -2471,7 +3585,7 @@ try {
   await page.locator('[data-qld-skip]').click();
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
-  await page.locator('[data-entry-card]').first().click();
+  await openNewestEntry();
   await page.waitForSelector('[data-dim-value]');
   const values = await page.locator('[data-dim-value]').allTextContents();
   if (values.some((v) => Number.isFinite(Number(v.trim())))) {
@@ -2545,6 +3659,10 @@ try {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }
 
+  // Redesign ticket 16 collapsed the pack's own caveat behind this toggle,
+  // closed by default - the two checks below read what it discloses.
+  await page.locator('[data-roadmap-pack-toggle]').click();
+  await page.waitForSelector('[data-roadmap-pack-details]');
   if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown'); // text-under-test: the caveat itself
   if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown'); // text-under-test: the review note itself
 
@@ -2552,13 +3670,23 @@ try {
   const before = await boxes.count();
   if (before < 30) throw new Error('the Polish pack rendered only ' + before + ' goals');
 
+  /* Ticket 54: every track's rows stay mounted (`[data-goal]` above counts
+     all of them, hidden or not), but only the current track's panel is in
+     front, and it opens on Social - nothing is ticked yet, so it is the
+     first live track in the pack's own order. A click on a row in another
+     track needs that track's own segment first. */
+  await page.locator('[data-segment="legal"]').click();
+
   const target = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target.click(); // unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
 
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-goal][data-status="checked"]');
+  // 'attached' rather than the default 'visible': Social remains the current
+  // track after the reload (it is still all-unchecked), so the goal this
+  // just checked sits in a panel that is not the one in front.
+  await page.waitForSelector('[data-goal][data-status="checked"]', { state: 'attached' });
   const stillChecked = await page.locator('[data-goal][data-status="checked"]').count();
   if (stillChecked !== 1) throw new Error('after a reload ' + stillChecked + ' goals read as checked');
 
@@ -2571,6 +3699,8 @@ try {
   const requested = [];
   page.on('request', (request) => requested.push(request.url()));
 
+  await page.locator('[data-segment="legal"]').click(); // the reload above remounted on Social
+
   const target2 = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target2.click(); // checked -> not-my-path
   await page.waitForFunction(
@@ -2582,6 +3712,7 @@ try {
 
   await target2.click(); // not-my-path -> unchecked, leaving zero checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 0);
+  await page.locator('[data-segment="medical"]').click(); // the last `[data-goal]` in DOM order is medical's
   await page.locator('[data-goal]').last().click(); // a different goal, unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
 
@@ -2710,7 +3841,7 @@ try {
    - the disambiguation this ticket exists to force before a dose can be
    drawn into the wrong drug's curve. */
 try {
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
 
   const addOwnEpisode = async (drug, dose, unit) => {
     await page.click('[data-add]');
@@ -2739,7 +3870,7 @@ try {
     throw new Error('both concurrently active episodes should read Current, not just the latest one');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 2) {
     throw new Error('logging a dose with two active episodes should prompt for which drug it was');
@@ -2765,7 +3896,7 @@ try {
 
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   const localDateInput = (daysAgo = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -2795,7 +3926,7 @@ try {
     throw new Error('ending the estradiol episode should not touch spironolactone, which is still active');
   }
 
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   if ((await page.locator('[data-dose-drug]').count()) !== 0) {
     throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
@@ -2813,16 +3944,16 @@ try {
 try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
-    '/settings/security', '/settings/tags', '/settings/trash', '/settings/reminders',
+    '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
-    '/settings/journaling-pause', '/media/photos',
+    '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
-    '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
+    '/body/hair-removal', '/care/labs', '/care/regimen', '/care/curve',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
-    '/transition/roadmap', '/transition/letters', '/transition/tryouts', '/transition/presentations',
-    '/transition/eras',
+    '/transition/roadmap', '/transition/letters', '/transition/tryouts',
+    '/settings/eras',
     '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
@@ -2834,6 +3965,44 @@ try {
   ok(`all ${SETTINGS_AREA_ROUTES.length} settings-area routes still answer at their own address`);
 } catch (e) {
   fail('More hub route characterization', e);
+}
+
+/* The permissions list has a permanent home (phase 10 redesign ticket 31).
+   Setup's step says every one of these can be granted later, and the only
+   thing that makes that sentence true is a screen in Settings drawing the
+   same list from the same component - so what this checks is that the row
+   is there, that it leads somewhere, and that what it leads to is the same
+   rows under the same reasons, not a second list saying something close. */
+try {
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('a[href="/settings/permissions"]').click();
+  await page.waitForSelector('[data-permission-list]');
+  await page.waitForFunction(() => location.pathname === '/settings/permissions');
+
+  const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
+    els.map((el) => el.dataset.permission)
+  );
+  const expected = [
+    'notifications',
+    'exactAlarms',
+    'microphone',
+    'camera',
+    'takePhoto',
+    'pickFile',
+    'print',
+    'clipboard',
+    'biometric'
+  ];
+  if (onScreen.join() !== expected.join()) {
+    throw new Error('the settings screen draws a different list: ' + onScreen.join());
+  }
+  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
+    throw new Error('the settings screen drops the no-internet line');
+  }
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+  ok('the permissions list has a permanent home in Settings, drawn from the same component');
+} catch (e) {
+  fail('permissions in Settings', e);
 }
 
 /* Carpet ticket 14: the measurements screen's capture-protocol notice is one
@@ -2871,6 +4040,50 @@ try {
   fail('measurements protocol notice dedup and dismiss persistence', e);
 }
 
+/* Ticket 135: a demo-bar state jump is a journal clear and a reseed through
+   the worker, and the persona's seed writes presentations before the
+   entries that name them. A second jump starting inside the first deletes
+   those presentations between the two steps, so `upsertEntry` refuses the
+   entry that names one and the seed stops there - `unknown presentation` in
+   the page, and a journal holding whatever the persona had got to. The
+   sweep did this on every run, because it waited for `[data-home-hello]`
+   and Home was already on screen when it clicked.
+
+   Dispatched rather than clicked, so what refuses the second jump is the
+   bar's own guard and not Playwright waiting for the button to come back. */
+try {
+  await fresh('/');
+  const before = errors.length;
+  await page.click('[data-reset-demo]');
+  await page.waitForSelector('[data-demo-busy]', { timeout: 5000 });
+  await page.locator('[data-fill-every-feature]').dispatchEvent('click');
+  await page.waitForSelector('[data-demo-busy]', { state: 'detached', timeout: 60000 });
+  await booted();
+  if (new URL(page.url()).pathname !== '/') {
+    throw new Error(`the overlapping jump ran anyway: ${page.url()}`);
+  }
+  const interrupted = errors.slice(before).filter((e) => /unknown presentation/.test(e));
+  if (interrupted.length) throw new Error(`the seed was interrupted: ${interrupted[0]}`);
+
+  /* And the third kind of hub line, walked here because this is where the
+     journal is the persona alone: a reading row with nothing written in it
+     says so. It used to be walked further down, on "Fill every feature",
+     while that seed left the voice benchmark empty; redesign ticket 42 gave
+     the fixture six benchmarks, because every reading on the compare tab is
+     a reading against the person's own earlier takes and one take shows
+     none of it. The two lines it is told apart from are still walked under
+     that seed, where a row with writes in it can have them. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-list-row="voice-benchmark"][data-hub-line="not-yet"]', {
+    timeout: 8000
+  });
+
+  ok('the demo bar refuses a second state jump while one is still writing, and a reading row with nothing in it says so');
+} catch (e) {
+  fail('demo bar state jump overlap', e);
+}
+
 /* Phase 5 ticket 36: the persona alone leaves most of the More hub in its
    empty state, which is why this ticket exists - a review pass through
    those screens was "a tour of empty states with a few exceptions"
@@ -2887,36 +4100,87 @@ try {
 
   const NOT_EMPTY_ROUTES = [
     ['/body/measurements', 'measurements-empty'],
-    ['/body/sizes', 'sizes-empty'],
+    // Both halves of the merged screen (redesign ticket 61) - the size log
+    // keeps its own empty-state marker under the same roof.
+    ['/body/measurements', 'sizes-empty'],
     ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
-    ['/settings/labs', 'labs-empty'],
-    ['/settings/regimen', 'regimen-empty'],
-    ['/settings/hormone-curve', 'curve-empty'],
-    ['/doses', 'doses-empty'],
+    ['/care/labs', 'labs-empty'],
+    ['/care/regimen', 'regimen-empty'],
+    ['/care/curve', 'curve-empty'],
+    ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
-    ['/health/side-effects', 'side-effects-empty'],
+    // The merged screen (ticket 13) - side effects keep their own
+    // empty-state marker under the same roof as the changes axis.
+    ['/practice/personal-effects', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
     ['/health/dilation', 'dilation-schedule-empty'],
     ['/health/appointment-prep', 'appointment-prep-empty'],
     ['/transition/milestones', 'milestones-empty'],
     ['/transition/letters', 'letters-empty'],
     ['/transition/tryouts', 'tryouts-empty'],
-    /* `/practice/voice` was on this list for its memo picker's own
-       `voice-empty` notice. Phase 8 features ticket 09 moved memos off the
-       screen (ticket 11 gives them their own) and nothing in either demo
-       seed writes a benchmark, so the notice this asserted the absence of
-       no longer exists anywhere - which would have made the check pass for
-       free rather than fail. The voice screen's own walk is below. */
+    /* `/practice/voice` is not on this list, and still is not now that the
+       fixture writes benchmarks (redesign ticket 42): its remaining empty
+       notice belongs to the compare tab, and the route opens on the record
+       tab, so a check here would pass without ever reaching the thing it is
+       about. The voice screen's own walk is below and asks the compare tab
+       directly. */
     ['/practice/wear', 'wear-empty'],
-    ['/settings/stock', 'stock-empty'],
-    ['/settings/reminders', 'reminders-empty']
+    /* `/settings/stock` is not on this list any more (ticket 09, ADR-0084):
+       the stock editor is a sheet off Care's own regimen block now, closed
+       by default, so a bare page load of `/care` never renders its
+       `care-stock-empty` marker either way - the check above would pass
+       without the sheet ever having been opened. */
+    ['/settings/reminders', 'reminders-empty'],
+    // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
+    // starred entries, saved questions, an attached document, a second
+    // procedure) - the first three read straight off their own empty-state
+    // markers the same way as every route above.
+    ['/doubt/comfort', 'comfort-list-empty'],
+    ['/search/starred', 'starred-empty'],
+    ['/search/questions', 'saved-questions-empty'],
+    ['/media/documents', 'documents-empty']
   ];
   for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
     if (await page.locator(`[data-notice="${emptyKey}"]`).count()) {
       throw new Error(`${route} still shows its empty state (${emptyKey}) after filling every feature`);
     }
+  }
+
+  /* The other two of the audit's five gaps aren't caught by an empty-state
+     marker: the letters-and-photos surface already had unlocked letters to
+     show before this ticket, so its own Notice was never the empty one -
+     the gap was the photo half specifically. And /health/surgery already
+     showed its one archived procedure - the gap was a second, running one
+     beside it.
+
+     The photo half reads on /transition/letters since phase 11 ticket 15,
+     which absorbed the screen that used to draw it. */
+  await page.goto(BASE + '/transition/letters', { waitUntil: 'networkidle' });
+  await page
+    .locator('[data-safe-space-photos] > *')
+    .first()
+    .waitFor({ timeout: 10000 })
+    .catch(() => {});
+  if ((await page.locator('[data-safe-space-photos] > *').count()) === 0) {
+    throw new Error('the letters screen shows no starred photo after filling every feature');
+  }
+
+  await page.goto(BASE + '/media/documents', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-documents-group="procedure"]').count()) === 0) {
+    throw new Error('the documents screen draws no group linked to a procedure after filling every feature');
+  }
+
+  await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-procedure-card]').count()) < 2) {
+    throw new Error('the surgery index shows fewer than two procedures after filling every feature');
+  }
+  if ((await page.locator('[data-phase="archived"]').count()) === 0) {
+    throw new Error('the surgery index has no archived procedure after filling every feature');
+  }
+  if ((await page.locator('[data-procedure-card][data-phase]:not([data-phase="archived"])').count()) === 0) {
+    throw new Error('the surgery index has no still-running procedure beside the archived one');
   }
 
   /* The voice screen's three tabs (phase 8 features ticket 09): each one
@@ -2937,10 +4201,45 @@ try {
     throw new Error('the practise tab offers no way to start');
   }
   await page.locator('[data-segment="compare"]').click();
-  await page.waitForSelector('[data-notice="voice-benchmark-empty"]');
-  if ((await page.locator('[data-comfort-band]').count()) !== 0) {
-    throw new Error('the compare tab still shows the practise tab\'s comfort row');
+  await page.waitForSelector('[data-voice-cell]');
+  /* Waited on rather than counted: the tab swap is a state change and rule
+     10 makes it move, so the row on its way out is in the tree for a frame
+     or two after the incoming tab's first row is. What the walk is about is
+     that it goes, not which frame it goes on. */
+  await page.locator('[data-comfort-band]').waitFor({ state: 'detached', timeout: 5000 });
+
+  /* Redesign ticket 42. The fixture writes six benchmarks now, so what this
+     tab shows is the list rather than its empty notice - and the two things
+     that ticket changed here are only true of a built app with a history in
+     it: every picking row states that take's pitch, and two picked takes
+     draw one figure with both reads on it rather than two stacked plots.
+
+     The pair is picked by clicking two rows, which is what a person does;
+     the step buttons and the delta list underneath are unchanged and
+     covered where they were. */
+  const picking = page.locator('[data-voice-cell]');
+  const cells = await picking.count();
+  if (cells < 2) {
+    throw new Error(`the compare tab lists ${cells} benchmarks, too few to pick a pair from`);
   }
+  if ((await page.locator('[data-voice-cell] [data-voice-row-pitch]').count()) !== cells) {
+    throw new Error('a picking row states no pitch, so the list is not a reading of the series');
+  }
+  await picking.nth(0).locator('[aria-pressed]').click();
+  await picking.nth(cells - 1).locator('[aria-pressed]').click();
+  await page.locator('[data-compare]').click();
+  await page.waitForSelector('[data-vc-pair]');
+  if ((await page.locator('[data-pitch-pair] [data-pair-outline]').count()) !== 2) {
+    throw new Error('the pair view does not draw both reads on one axis');
+  }
+  /* Gripped on a handle that is still alive in src - the trace polyline the
+     record summary draws - rather than on the one the removed component
+     carried, which would make this absence check pass for having nothing to
+     find (tests/walkthrough-handles-exist.test.ts). */
+  if ((await page.locator('[data-pitch-trace]').count()) !== 0) {
+    throw new Error('the pair view still draws each take its own time plot');
+  }
+  await page.locator('[data-benchmark-delta]').waitFor();
 
   /* The metric reference (phase 8 features ticket 27). Reached from a
      figure in the app, and there is no figure to press here: a benchmark
@@ -3004,60 +4303,68 @@ try {
   fail('fill every feature', e);
 }
 
-/* Ticket 66, ADR-0069: a long log renders a batch at a time and grows as it
-   is scrolled, so the scroll bar on the web build stays a size somebody can
-   use. Here rather than in the browser tier, which already covers the
-   component against a synthetic list: what this adds is that the wear log's
-   own rows are the ones being batched, over the journal "Fill every feature"
-   leaves, which holds more than one batch of completed sessions.
+/* Phase 10 redesign ticket 44: the wear log is a week at a time, drawn as
+   a strip with the running session under it, so it can never be long
+   enough to need batching and the BatchedList check that used to live here
+   has moved to the dose log alone (below, which is the other screen ticket
+   67 adopted it onto and still a full log).
 
-   The control is what is pressed rather than the scroll, deliberately - a
-   scroll far enough to bring the next batch is a geometry this file has no
-   way to assert went far enough, and the control is on the screen either
-   way (it is what a keyboard reaches). */
+   What this asserts instead is the compression itself, over the journal
+   "Fill every feature" leaves - which holds a year of wear sessions, well
+   over a page of them: that the strip is there, that it holds one week,
+   and that no row on the screen falls outside the week the strip is
+   drawing. */
 try {
   await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
-  const wearRows = () => page.locator('[data-wear-session]').count();
-  const onArrival = await wearRows();
-  if (onArrival !== 30) throw new Error(`the wear log rendered ${onArrival} rows on arrival, not one batch of 30`);
+  await page.waitForSelector('[data-week-cell]', { timeout: 8000 });
+  const cells = await page.locator('[data-week-cell]').count();
+  if (cells !== 7) throw new Error(`the wear strip drew ${cells} days, not a week`);
 
-  await page.waitForSelector('[data-batched-more="wear-sessions"]', { timeout: 8000 });
-  await page.locator('[data-batched-more="wear-sessions"]').click();
+  const days = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-week-cell]')].map((el) => Number(el.dataset.weekCell))
+  );
+  const rows = await page.locator('[data-wear-session]').count();
+  if (rows > 7 * 4) throw new Error(`the wear log rendered ${rows} rows for one week`);
+
+  /* Paging back moves the strip and the rows under it together, which is
+     the whole reason the page is bound out of the component. */
+  await page.locator('[data-strip-earlier]').click();
   await page.waitForFunction(
-    () => document.querySelectorAll('[data-wear-session]').length > 30,
-    null,
+    (first) => Number(document.querySelector('[data-week-cell]').dataset.weekCell) < first,
+    days[0],
     { timeout: 8000 }
   );
-  ok('the wear log arrives as one batch of thirty, and the control at the end of it brings more');
+  ok('the wear log opens on one week as a strip, and paging back moves the week under it');
 } catch (e) {
-  fail('wear log renders in batches', e);
+  fail('wear log is a week at a time', e);
 }
 
 /* Ticket 67 acceptance: the dose log and the regimen screen each arrive
-   with one batch rendered, not the whole log - the wear log's own check
-   above, for the other two screens ticket 67 adopts BatchedList onto.
+   with one batch rendered, not the whole log. This was the wear log's own
+   check until ticket 44 made that screen a week at a time; the dose log is
+   the full log BatchedList is proved against now.
    The regimen screen's demo data never exceeds thirty episodes, so a row
    count there cannot tell "batched, under one batch" from "never
    batched" apart - `[data-batched-list]` is BatchedList's own wrapper, so
    its presence is what actually proves the adoption on a screen a count
    can't. */
 try {
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   const onArrival = await page.locator('[data-dose]').count();
   if (onArrival !== 30) throw new Error(`the dose log rendered ${onArrival} rows on arrival, not one batch of 30`);
   if ((await page.locator('[data-batched-list="doses"]').count()) !== 1) {
     throw new Error('the dose log is not wrapped in BatchedList');
   }
-  ok('the dose log arrives with one batch of thirty, same as the wear log');
+  ok('the dose log arrives with one batch of thirty');
 } catch (e) {
   fail('dose log arrives batched', e);
 }
 
 try {
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
   if ((await page.locator('[data-batched-list="episodes"]').count()) !== 1) {
     throw new Error('the regimen episode list is not wrapped in BatchedList');
@@ -3076,15 +4383,15 @@ try {
    is guaranteed to sit past the dose log's own newest-first first batch. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const firstDoseLink = page.locator('a[href^="/care/doses#"]').first();
   const href = await firstDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await firstDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 }); // the hash is stripped once honoured
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -3104,18 +4411,35 @@ try {
 /* Ticket 67 acceptance: "the same link to a record inside the first batch
    behaves as it does today". The dossier's dosage log reads oldest first,
    so its last row is the most recent dose - always within the log's own
-   newest-first first batch - and following it must not expand anything. */
+   newest-first first batch - and following it must not expand anything.
+
+   Ticket 08 truncates the preview to twelve rows a table, and the demo
+   persona's default 90-day range logs doses daily on two drugs, well past
+   that floor - so the range's own last row is now `.dossier-row-overflow`,
+   invisible on screen. Narrowed to the last four days from the controls
+   sheet, both daily drugs keep the row count under the floor and the
+   demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
+   one dose in the window as close to certain as a seeded draw gets - so
+   every link stays visible, and the last one is still today's or
+   yesterday's, nowhere near needing a batch past /care/doses' first
+   thirty. */
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
-  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+  const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
+  await page.click('[data-settings-row]');
+  await page.waitForSelector('[data-sheet]');
+  await fillDate(page, '#clinician-summary-start', dateInputValueFromEpochDay(todayEpochDay() - 3));
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached', timeout: 8000 });
+  await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
 
-  const lastDoseLink = page.locator('a[href^="/doses#"]').last();
+  const lastDoseLink = page.locator('a[href^="/care/doses#"]').last();
   const href = await lastDoseLink.getAttribute('href');
   if (!href) throw new Error('no dose link found in the clinician summary');
-  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+  const doseId = decodeURIComponent(href.slice('/care/doses#'.length));
 
   await lastDoseLink.click();
-  await page.waitForURL(BASE + '/doses', { timeout: 8000 });
+  await page.waitForURL(BASE + '/care/doses', { timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   const renderedDoseRows = await page.locator('[data-dose]').count();
@@ -3218,29 +4542,78 @@ try {
    most areas - a hub row's line is a read of the journal and there is nothing
    to read on the persona alone.
 
-   Three kinds of line, and the third is the one only a real journal can show.
-   A row whose areas hold a write states when. A row that fronts no dated
-   stream states what is behind it instead, whatever the journal holds. And a
-   reading row with nothing written yet states the same thing - walked on the
-   voice benchmark, since neither demo seed writes one (the note above this
-   block's own voice step says so) while "Fill every feature" writes something
-   in every other reading row.
+   Seven kinds of line since phase 11 all-four-doors ticket 02, and the walk
+   covers the ones only a real journal can show. A row with something running
+   says so, a row with a dated future says that, the Body row states its last
+   value, a row with neither states its last write, and a row that fronts no
+   dated stream and has nothing ahead states what is behind it instead. All
+   five are walked here, on a journal where every feature has been filled.
+
+   The order is what this actually proves, and it is why the finished walk
+   below uses the wear row in particular: that row has a session running on
+   this seed, so "finished" winning over it is the choice rule holding at the
+   top of `rowLine` rather than a row that had nothing to say anyway.
+
+   The sixth kind - a reading row with nothing written yet - is walked further
+   up, on the persona alone: "Fill every feature" now writes into every
+   reading row there is, the voice benchmark included (redesign ticket 42), so
+   there is no longer an empty one to point at under this seed.
 
    Handles, never wording or structure (ADR-0029). Each row carries
-   `data-hub-line` naming which kind it drew, so the three are told apart by
-   that rather than by the copy, which a rewording would let pass for free, or
-   by the kit's `.kit-row-sub` class, which is structure. */
+   `data-hub-line` naming which kind it drew, so they are told apart by that
+   rather than by the copy, which a rewording would let pass for free, or by
+   the kit's `.kit-row-sub` class, which is structure. */
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="last"]', { timeout: 8000 });
+  /* The Body row states the value it holds rather than the age of it, which
+     is the one row with neither a span nor a date (ticket 02). */
+  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="value"]', { timeout: 8000 });
 
-  if ((await page.locator('[data-list-row="care"][data-hub-line="no-stream"]').count()) === 0) {
-    throw new Error('the care row states nothing about what is behind it');
+  /* Care fronts no archive section at all, so before this ticket it could
+     only ever say what was behind it. It states its next dose and its
+     run-out day now, which is the forward fact beating `no-stream`. */
+  if ((await page.locator('[data-list-row="care"][data-hub-line="next"]').count()) === 0) {
+    throw new Error('the care row says nothing about the next dose or the run-out day');
   }
-  if ((await page.locator('[data-list-row="voice-benchmark"][data-hub-line="not-yet"]').count()) === 0) {
-    throw new Error('a reading row with nothing written in it does not say what is behind it');
+  /* A dated future on a row that also has a stale last write. The milestones
+     row is the one the audit named: it said "Nothing logged for 1 year 4
+     months" over a screen showing a hearing sixteen days out. */
+  if ((await page.locator('[data-list-row="milestones"][data-hub-line="next"]').count()) === 0) {
+    throw new Error('the milestones row reports a gap rather than the milestone ahead of it');
   }
-
+  /* A span running now, which wins over both. All seven rows the ticket
+     names are asserted rather than a sample of them: the one row whose
+     forward fact comes from a different seed file than the rest
+     (`appointments`, whose standalone rows are the persona's from
+     `journal-seed.ts` rather than `fullFixture.ts`'s consults) is exactly
+     the one a sample would have missed. */
+  /* Wear is deliberately not in this list. It has a session running on a
+     fresh fill, but the wear editor is walked further up and stops it, so by
+     the time the hub is read the row has a last write and nothing running.
+     Its running line is covered by `rowForward.test.ts`, and the walk below
+     still proves the order over it - "finished" outranking whatever it
+     drew. */
+  for (const [key, kind] of [
+    ['tryouts', 'running'],
+    ['surgery', 'running'],
+    ['appointments', 'next'],
+    ['letters', 'next']
+  ]) {
+    if ((await page.locator(`[data-list-row="${key}"][data-hub-line="${kind}"]`).count()) === 0) {
+      const drew = await page
+        .locator(`[data-list-row="${key}"]`)
+        .getAttribute('data-hub-line');
+      throw new Error(`the ${key} row drew "${drew}" rather than "${kind}"`);
+    }
+  }
+  /* And a row with nothing either way still says what is behind it. */
+  if ((await page.locator('[data-list-row="roadmap"][data-hub-line="no-stream"]').count()) === 0) {
+    throw new Error('a row with no reading and nothing ahead stopped stating what is behind it');
+  }
+  /* A row whose last write is all it has reads exactly as it did before. */
+  if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
+    throw new Error('a row with only a last write stopped reporting it');
+  }
   // Photos, voice memos and documents live together now, and Body keeps the
   // rest. Documents joined in phase 8 features ticket 52.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
@@ -3283,7 +4656,7 @@ try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { timeout: 8000 });
 
-  ok('the More hub reads its own data: a reading where there is a write, what is behind the row where there is no stream and where nothing is written yet, and a finished area moving out of its group and back');
+  ok('the More hub reads its own data: what is running, what is next, the last value, a reading where there is only a write, what is behind the row where there is neither, and a finished area moving out of its group and back over a session that is still running');
 } catch (e) {
   fail('the hub reads its own data', e);
 }
@@ -3298,17 +4671,13 @@ try {
    Handles, not headings: every step is a `data-list-row` click and a URL
    wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
 try {
-  // Health > Care > Changes you've noticed > Side effects.
+  // Health > Care > Changes you've noticed, which carries side effects on
+  // the same axis and the same list now (ticket 13) - there is no row left
+  // to tap for them, and no second screen to back out of.
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
   await page.locator('[data-list-row="effects"]').click();
-  await page.waitForURL('**/practice/personal-effects');
-  await page.locator('[data-list-row="side-effects"]').click();
-  await page.waitForURL('**/health/side-effects');
-
-  // Back out the way in, which is what the host's own `back` names.
-  await page.locator('[data-screen-back]').click();
   await page.waitForURL('**/practice/personal-effects');
 
   // ... and the other change hanging off the same screen.
@@ -3322,14 +4691,24 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Words moved to Stats, templates to Settings, and neither is on the hub.
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  // Modes, entry templates and the words the reading skips are Settings
+  // rows now (redesign tickets 51 and 62, ADR-0084), never on the hub at
+  // all. Words has no row anywhere any more - the reading draws on Look
+  // back itself - so the old address is walked as a redirect instead.
+  await page.goto(BASE + '/transition/words', { waitUntil: 'networkidle' });
+  await page.waitForURL('**/stats');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="words"]').click();
-  await page.waitForURL('**/transition/words');
+  await page.waitForURL('**/settings/words');
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="entry-templates"]').click();
-  await page.waitForURL('**/practice/entry-templates');
+  await page.waitForURL('**/settings/entry-templates');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="presentations"]').click();
+  await page.waitForURL('**/settings/presentations');
 
   /* Safe space and Support and resources are one group now, and the hub
      draws no Practice heading at all. Asserted on the section handle rather
@@ -3349,6 +4728,91 @@ try {
   ok('the reorganised hub: every row that left it is reachable from the screen that hosts it, and Support replaced Practice');
 } catch (e) {
   fail('the reorganised hub tree', e);
+}
+
+/* Cutting through the door with the search box in its field (phase 10
+   redesign ticket 15). Twenty-seven rows is only a list somebody can get
+   through if a word narrows it, and what a word reaches is both halves of
+   what is behind the door: the areas by name, and the records inside them.
+
+   The queries are chosen for what the demo persona actually holds rather
+   than for what reads well - "wear" names an area, "endo" is inside a
+   consult and a reminder - and both halves are asserted by their handles,
+   never by the copy (ADR-0029). */
+try {
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-hub-index] [data-list-row="measurements"]', { timeout: 8000 });
+
+  // The row that used to point at preferences, and the pointer with it, are
+  // gone from this door for good (ADR-0036; tickets 09 and 15).
+  if (await page.locator('[data-list-row="settings"]').count()) {
+    throw new Error('the fourth door still holds a Settings row');
+  }
+
+  // An area, by part of its name. The grouped index gives way to the matches.
+  await page.locator('[data-hub-search]').fill('wear');
+  await page.waitForSelector('[data-hub-results] [data-list-row="wear"]', { timeout: 8000 });
+  /* Detached rather than absent on the next frame: the index gives its
+     height back on the way out (DIRECTION.md rule 10), so it is still in the
+     document while it does, and waiting for it to go is also what proves the
+     collapse finishes rather than stalling. */
+  await page.waitForSelector('[data-hub-index]', { state: 'detached', timeout: 8000 });
+  if (await page.locator('[data-hub-results] [data-list-row="measurements"]').count()) {
+    throw new Error('a row nothing matched is in the results');
+  }
+
+  // ... and it is still the row it was: one tap to its own screen.
+  await page.locator('[data-hub-results] [data-list-row="wear"]').click();
+  await page.waitForURL('**/practice/wear');
+
+  /* A row this door does not draw. Seven areas are drawn on a screen of
+     their own (phase 9 carpet ticket 16) and this is the only index with a
+     box in it, so a name reaches all twenty-seven; the row says which screen
+     hosts it, and following it lands on the area, not on the host. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('dilation');
+  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="surgery"]', {
+    timeout: 8000
+  });
+  await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
+  await page.waitForURL('**/health/dilation');
+
+  /* ADR-0043 through the box: the one row whose existence is a screen's call
+     and not the registry's cannot be typed into being. The demo persona has
+     no testosterone regimen and has not opted in, so nothing here may
+     answer "cycle events" - and the query is one that does match, since
+     `cycleEvents` records exist in the seed and the record half finds them
+     under their own area's name. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('cycle');
+  await page.waitForTimeout(1200);
+  if (await page.locator('[data-list-row="cycle-events"]').count()) {
+    throw new Error('the cycle row can be searched into existence (ADR-0043)');
+  }
+
+  // A record inside an area, which is the registry's read rather than this
+  // screen's (textSearch.ts). The hit goes where the record is.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('endo');
+  await page.waitForSelector('[data-search-hit]', { timeout: 8000 });
+  const hit = page.locator('[data-search-hit]').first();
+  const hitArea = await hit.getAttribute('data-search-hit');
+  await hit.click();
+  await page.waitForURL((url) => !url.pathname.endsWith('/more'), { timeout: 8000 });
+
+  // Nothing matched says so, once, rather than drawing an empty list.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('qqzzxx');
+  await page.waitForSelector('[data-notice="hub-search-none"]', { timeout: 8000 });
+
+  // And an empty box is the door at rest again.
+  await page.locator('[data-hub-search]').fill('');
+  await page.waitForSelector('[data-hub-index] [data-hub-section="media"]', { timeout: 8000 });
+  await page.waitForSelector('[data-hub-results]', { state: 'detached', timeout: 8000 });
+
+  ok(`the Transition door's search: an area by name reaches its screen, a record hit in ${hitArea} reaches where it lives, nothing found says so, and an empty box is the grouped list again`);
+} catch (e) {
+  fail("the Transition door's search", e);
 }
 
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
@@ -3394,7 +4858,7 @@ try {
 
   /* Closing the running wear session: the end day is picked, never assumed,
      so the confirm is refused until the field has one. */
-  await page.locator('[data-coming-back-item="wear-session"] [data-notice-action]').click();
+  await page.locator('[data-coming-back-yes="wear-session"]').click();
   await page.waitForSelector('[data-coming-back-wear-confirm]');
   if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
     throw new Error('the wear session could be closed without naming the day it ended');
@@ -3419,7 +4883,7 @@ try {
   }
 
   // And a no takes the row away without writing anything.
-  await page.locator('[data-coming-back-item="dose"] [data-notice-dismiss]').click();
+  await page.locator('[data-coming-back-no="dose"]').click();
   await page.waitForSelector('[data-coming-back-item="dose"]', { state: 'detached' });
 
   /* The moment is over. Home is where a return is noticed, so this is the
@@ -3448,39 +4912,58 @@ try {
   fail('coming back', e);
 }
 
-/* Phase 8 features ticket 21: Safe Space lists the unlocked letters, and
-   the row is a preview that hands over to the whole letter rather than the
-   letter itself. Both halves are the decision the ticket asked to be
-   written down, so both are walked - a row that reads back nothing, or a
-   tap that lands anywhere but the letter's own text, is the failure this
-   catches and no unit test can.
+/* Phase 8 features ticket 21, rewalked for phase 11 ticket 15: Safe Space's
+   way down to what a person put aside for themselves lands on the letters
+   screen's Open section, and that section holds the open letters and the
+   starred photographs both. The two halves that matter are the tap - a way
+   down that lands anywhere but the Open section is the failure this catches
+   and no unit test can - and the photographs actually being drawn there,
+   which is the half that moved.
 
-   After "fill every feature", which is what puts unlocked letters in the
-   journal at all - the persona alone writes none, and the section is
-   absent then on purpose. */
+   After "fill every feature", which is what puts unlocked letters and
+   starred photos in the journal at all - the persona alone writes no
+   letters, and the section is absent then on purpose. */
 try {
+  /* Through the row rather than straight to the route (redesign ticket 47,
+     repointed by ticket 15): the tap is the half of this that could break
+     without any unit test noticing. */
   await fresh('/doubt');
-  const letterRows = page.locator('[data-list-row="letter-preview"]');
-  const shown = await letterRows.count();
-  if (shown === 0) {
-    throw new Error('Safe Space showed no unlocked letters with a journal that has two');
-  }
-  const preview = (await letterRows.first().innerText()).trim();
-  if (preview === '') {
-    throw new Error('a letter row on Safe Space carried no text at all');
+  await page.locator('[data-list-row="moments"]').click();
+  await page.waitForURL('**/transition/letters**');
+  if (!page.url().includes('#opened')) {
+    throw new Error(`Safe Space's way down landed on ${page.url()}, not the Open section`);
   }
 
-  await letterRows.first().click();
+  const openSection = page.locator('#opened');
+  await openSection.waitFor({ timeout: 10000 });
+
+  const openLetters = page.locator('[data-letter-open]');
+  await openLetters.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const shown = await openLetters.count();
+  if (shown === 0) {
+    throw new Error('the Open section showed no unlocked letters with a journal that has two');
+  }
+
+  /* The photo half specifically, which is what ticket 15 moved here. The
+     grid resolves after the letters do, so it is waited for rather than
+     counted on the frame the section appeared. */
+  const photos = page.locator('[data-safe-space-photos] > *');
+  await photos.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const photoCount = await photos.count();
+  if (photoCount === 0) {
+    throw new Error('the Open section drew no starred photograph after filling every feature');
+  }
+
+  await openLetters.first().click();
   await page.waitForSelector('[data-letter-text]');
   const whole = (await page.locator('[data-letter-text]').innerText()).trim();
   if (whole === '') {
-    throw new Error('the letter opened from Safe Space had no text on it');
-  }
-  if (!page.url().includes('/transition/letters/')) {
-    throw new Error(`a letter row on Safe Space went to ${page.url()} instead of the letter`);
+    throw new Error('the letter opened from the Open section had no text on it');
   }
 
-  ok(`Safe Space lists ${shown} unlocked letter(s), and a row opens the whole letter`);
+  ok(
+    `Safe Space's way down lands on the Open section, which holds ${shown} unlocked letter(s) and ${photoCount} starred photo(s), and a card opens the whole letter`
+  );
 } catch (e) {
   fail('safe space letters', e);
 }
@@ -3550,14 +5033,15 @@ try {
     return values;
   };
 
-  /* The full-fixture tryouts sort newest-start-first (tryouts.ts's own
-     ORDER BY), so the pronoun tryout - started `today - 100`, still
-     open - is always the second row: 'layered look' (today - 40, closed),
-     then this one, then 'Alex' (today - 120, closed). Picked by position
-     rather than its label, which is arbitrary demo content and not what
-     this flow is testing. */
+  /* The pronoun tryout - started `today - 100`, still open - is the only
+     one of the three the fixture leaves running, so it is the whole of the
+     screen's Running now section (redesign ticket 53 split the screen by
+     that fact). This used to be `nth(1)` of one flat list, which was the
+     same record picked by its position in a newest-start-first order.
+     Picked by what it is rather than by its label, which is arbitrary demo
+     content and not what this flow is testing. */
   await page.goto(BASE + '/transition/tryouts', { waitUntil: 'networkidle' });
-  await page.locator('[data-tryout] a').nth(1).click();
+  await page.locator('[data-running] [data-tryout] a').first().click();
   await page.waitForSelector('[data-screen-header]');
 
   const tryoutNotice = page.locator('[data-notice="tryout-compare"]');
@@ -3696,7 +5180,7 @@ try {
    every other flow in this file reads a 440px screen. */
 try {
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
@@ -3811,6 +5295,51 @@ try {
   await page.setViewportSize({ width: 440, height: 940 });
 }
 
+/* Today's header at what 200% zoom leaves of a 390px phone (redesign
+   ticket 23, DIRECTION.md rule 7). The old header reserved the sun's full
+   350px beside the hello line, which at 195px is more than the screen, and
+   Playwright read the line as hidden: zero width. The foot under the field
+   has no sun beside it, so the line has its width back, and the sun draws
+   at 0.6 so the wordmark in the field's corner is clear of it. */
+try {
+  await page.setViewportSize({ width: 195, height: 844 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  const zoomed = await page.evaluate(() => {
+    const box = (sel) => document.querySelector(sel).getBoundingClientRect();
+    const hello = box('[data-home-hello]');
+    const hero = box('[data-home-hero]');
+    const field = box('[data-home-field]');
+    const sun = document.querySelector('[data-flag-sun]');
+    /* The outermost ring's box, as drawn: the ring is a disc translated by
+       half its size to centre on the corner and scaled by --sun-scale on
+       the point, so its left edge is the corner minus the drawn radius. */
+    const ring = sun?.firstElementChild?.getBoundingClientRect();
+    return {
+      helloWidth: hello.width,
+      helloBelowField: hello.top >= field.bottom,
+      heroInField: hero.bottom <= field.bottom && hero.left >= field.left,
+      sunScale: getComputedStyle(sun).transform,
+      ringWidth: ring ? ring.width : null
+    };
+  });
+  /* The line's column at 195px is the screen minus the inset, the gear and
+     the gap, about 95px; what the old header gave it was 0. */
+  if (!(zoomed.helloWidth > 40)) throw new Error('the hello line has no width at 195px: ' + JSON.stringify(zoomed));
+  if (!zoomed.helloBelowField) throw new Error('the hello line sits on the field: ' + JSON.stringify(zoomed));
+  if (!zoomed.heroInField) throw new Error('the wordmark left the field: ' + JSON.stringify(zoomed));
+  /* scale(0.6) on a 0x0 point is the matrix (0.6, 0, 0, 0.6, 0, 0). */
+  if (!/^matrix\(0\.6, 0, 0, 0\.6, 0, 0\)$/.test(zoomed.sunScale)) {
+    throw new Error('the sun is not drawn at 0.6 below 240px: ' + JSON.stringify(zoomed));
+  }
+  ok('at 195px the hello line has width, the wordmark stays in the field and the sun draws at 0.6');
+} catch (e) {
+  fail('the field at 200% zoom', e);
+} finally {
+  await page.setViewportSize({ width: 440, height: 940 });
+}
+
 /* Eras (phase 6 ticket 01, ADR-0049). Two things worth walking that no unit
    test reaches: leaving a bound open is a choice on screen rather than an
    empty field, and a collision is answered inside the sheet - a sentence
@@ -3820,14 +5349,28 @@ try {
    After "Fill every feature" rather than on a first-run journal, because the
    line saying what an open bound comes to is computed against the journal's
    own first and last entry: on an empty journal there is nothing to clamp to
-   and the line is correctly absent. The demo seeds no era of its own, so
-   this flow still starts from the empty state and authors both of them. */
+   and the line is correctly absent. The persona seeds eras of its own
+   (redesign ticket 48, "Before HRT"; ticket 62 added two more that cover
+   entries, so the words reading has something to weigh) - checked for, then
+   cleared, all of them, so the rest of this flow keeps testing "all of it"
+   and "earlier still" against the empty slate they were written against:
+   "all of it" is both bounds left open, which is the one era that would
+   collide with *any* other era on the overlap check (`eras.ts`'s
+   `spansOverlap` returns true whenever neither side can prove non-overlap,
+   and an era with both bounds null can never prove either side). */
 try {
-  await page.goto(BASE + '/transition/eras', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
   await booted();
-  if ((await page.locator('[data-notice="eras-empty"]').count()) === 0) {
-    throw new Error('a journal with no eras should show its empty state');
+  const startingRows = await page.locator('[data-era]').innerText();
+  if (!startingRows.includes('Before HRT')) {
+    throw new Error(`the persona's own era should already be here, got: ${startingRows}`);
   }
+  while (await page.locator('[data-era]').count()) {
+    await page.click('[data-era]');
+    await page.click('[data-delete-era]');
+    await page.click('[data-confirm-delete-era]');
+  }
+  await page.waitForSelector('[data-notice="eras-empty"]');
 
   // Both bounds left alone. An era with neither is the case that has to save
   // without a date being entered anywhere.
@@ -3890,6 +5433,69 @@ try {
   ok('eras: an open bound is a choice, a collision is answered in the sheet, and deleting is not blocked');
 } catch (e) {
   fail('eras', e);
+}
+
+/* The span offer (redesign ticket 48): dragging or tapping a span on Look
+   back's rail offers to name it, once, on the rail itself - never a Today
+   notice or a tile. Two things worth walking that a unit test cannot reach
+   from here: the offer really does stop coming back once dismissed for a
+   span the person keeps returning to, and the link it opens really does
+   carry the settled span's own two days into the era editor rather than a
+   default. `eraOfferDue`'s own overlap arithmetic (lookBackSpan.test.ts) is
+   what decides *whether* a span counts as handled; this only proves the
+   screen wires that decision to the DOM. */
+try {
+  const { dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
+
+  // Dismissing the offer stops it coming back for the same span.
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  const mark = page.locator('[data-span-milestone]').first();
+  await mark.waitFor();
+  await mark.click();
+  await page.waitForSelector('[data-era-offer]');
+  if (!(await page.locator('[data-era-offer-confirm]').count())) {
+    throw new Error('the era offer has no way to name it');
+  }
+  await page.locator('[data-era-offer-dismiss]').click();
+  await page.waitForSelector('[data-era-offer]', { state: 'detached' });
+  await mark.click();
+  await page.waitForTimeout(600);
+  if (await page.locator('[data-era-offer]').count()) {
+    throw new Error('a span already dismissed raised the offer again');
+  }
+
+  // Naming it opens the era editor with the settled span's own two dates,
+  // read off the rail rather than assumed, since which milestone this demo
+  // build happens to draw first is not this flow's concern.
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  await mark.waitFor();
+  await mark.click();
+  await page.waitForSelector('[data-era-offer]');
+  const settled = await page.locator('[data-span-timeline]').evaluate((el) => ({
+    start: Number(el.dataset.spanStart),
+    end: Number(el.dataset.spanEnd)
+  }));
+  await page.locator('[data-era-offer-confirm]').click();
+  await page.waitForURL('**/settings/eras?**');
+  await page.waitForSelector('#era-name');
+  const gotStart = await page.locator('input[name="era-start"]').inputValue();
+  const gotEnd = await page.locator('input[name="era-end"]').inputValue();
+  const wantStart = dateInputValueFromEpochDay(settled.start);
+  const wantEnd = dateInputValueFromEpochDay(settled.end);
+  if (gotStart !== wantStart || gotEnd !== wantEnd) {
+    throw new Error(`the era editor opened with the wrong dates: got ${gotStart}..${gotEnd}, wanted ${wantStart}..${wantEnd}`);
+  }
+  if (new URL(page.url()).search) throw new Error('the query parameters that opened the era editor were never stripped');
+
+  // Cancelled rather than saved, so this leaves no era behind for later flows.
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
+  ok('span offer: dismissing stops it, and naming a span opens the editor with its own two dates');
+} catch (e) {
+  fail('span offer', e);
 }
 
 /* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
@@ -4068,6 +5674,50 @@ try {
   const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
+  /* The room's field and back control (carpet 27): a visit today puts the
+     room's row on this screen. Opened from here, back's fallback and its
+     actual destination are the same URL, which proves the field and the
+     control exist but nothing about smartBack - a plain link to the
+     fallback would pass this identically. */
+  await page.locator('[data-list-row="in-the-room"]').click();
+  await page.waitForSelector('[data-in-the-room]');
+  if ((await page.locator('[data-screen-back]').count()) !== 1) {
+    throw new Error('the room has no back control');
+  }
+  const roomField = page.locator('[data-field-blind]');
+  const roomFieldBox = await roomField.boundingBox();
+  const appRootBox = await page.locator('[data-app-root]').boundingBox();
+  if (!roomFieldBox || !appRootBox || roomFieldBox.width < appRootBox.width * 0.9) {
+    throw new Error('the room has no field under its header');
+  }
+  await page.click('[data-screen-back]');
+  await page.waitForURL('**/health/appointments');
+  await page.waitForSelector('[data-appointment]');
+
+  /* The appointment-prep list also opens the room, on any day (its own
+     comment), and it is not the fallback - so pressing back from there is
+     what actually tells smartBack apart from a bare link to
+     /health/appointments. This is the shape the ticket's own motivating
+     bug was: a hardcoded destination that is not where the screen was
+     opened from. */
+  await page.goto(BASE + '/health/appointment-prep', { waitUntil: 'networkidle' });
+  await booted();
+  if (!(await page.locator('[data-list-row="in-the-room"]').count())) {
+    await page.click('[data-add]');
+    await page.waitForSelector('#appointment-prep-input');
+    await page.fill('#appointment-prep-input', 'ask about the referral');
+    await page.click('[data-save-appointment-item]');
+    await page.waitForSelector('[data-list-row="in-the-room"]');
+  }
+  await page.click('[data-list-row="in-the-room"]');
+  await page.waitForSelector('[data-in-the-room]');
+  await page.click('[data-screen-back]');
+  await page.waitForURL('**/health/appointment-prep');
+  await page.waitForSelector('[data-list-row="in-the-room"]');
+
+  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
+  await booted();
+
   /* Editing opens on what is stored, and the kind just used is offered as a
      chip - the only suggestion the app is entitled to make, since nothing
      ships in either language. Tapping one fills the field rather than
@@ -4097,6 +5747,55 @@ try {
   );
   ok('appointments: written, suggested from your own previous kinds, edited and deleted');
 } catch (e) { fail('the appointment record', e); }
+
+try {
+  /* The calendar handoff (phase 10 redesign ticket 18, ADR-0067): the
+     sheet's default title stays neutral until the person changes it, and
+     an edited title and a typed time both reach the file that gets
+     shared. Runs against the appointment surface; the surgery date and a
+     letter's unlock day share this same component rather than a second
+     implementation. */
+  await fresh('/health/appointments');
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  await page.fill('#appointment-kind', 'ginekolog');
+  await fillDate(page, '#appointment-date', '2026-11-03');
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("ginekolog")', { timeout: 8000 }); // text-under-test
+  await page.locator('[data-appointment]', { hasText: 'ginekolog' }).click(); // text-under-test
+
+  await page.waitForSelector('[data-add-to-calendar]');
+  await page.click('[data-add-to-calendar]');
+  await page.waitForSelector('#calendar-handoff-title');
+  const defaultTitle = await page.inputValue('#calendar-handoff-title');
+  if (!defaultTitle || /ginekolog/i.test(defaultTitle)) {
+    throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
+  }
+  await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
+  await page.fill('#calendar-handoff-time', '09:15');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-share-to-calendar]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.ics')) {
+    throw new Error(`the calendar handoff is not named as an .ics file: ${download.suggestedFilename()}`);
+  }
+  const ics = await readFile(await download.path(), 'utf8');
+  if (!ics.includes('SUMMARY:Wizyta u lekarza')) {
+    throw new Error('the shared file does not carry the edited title');
+  }
+  if (!ics.includes('DTSTART:20261103T091500')) {
+    throw new Error('the shared file does not carry the day and time that were set');
+  }
+
+  // The editor sheet stayed open behind the handoff sheet the whole time -
+  // this is cleanup, not a fresh open.
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  ok('calendar handoff: the default title stays neutral, an edited title and time reach the shared file');
+} catch (e) { fail('the calendar handoff', e); }
 
 try {
   /* In the room (phase 8 features ticket 60): the standing prep list read
@@ -4261,24 +5960,30 @@ try {
      explicit opt-in switch in Settings, and an active testosterone
      episode, which surfaces it with the switch back off. */
   /* No step on /more any more: phase 9 carpet ticket 16 took the cycle row
-     off the hub entirely and hosted it under the side effects screen, so
-     "the hub does not name it" is now structural and an absence check there
-     would pass whatever this gate did. What is left to walk is the surface
-     that does name it behind the gate, and `all-cycle-events` is a handle
-     this flow goes on to wait for - so its absence here means something
-     (ADR-0029, and a deleted handle cannot assert it is gone). */
-  await fresh('/health/side-effects');
+     off the hub entirely and hosted it under the side effects screen -
+     ticket 13 moved it again, onto the merged changes screen, with the rest
+     of what that screen drew - so "the hub does not name it" is now
+     structural and an absence check there would pass whatever this gate
+     did. What is left to walk is the surface that does name it behind the
+     gate, and `all-cycle-events` is a handle this flow goes on to wait for -
+     so its absence here means something (ADR-0029, and a deleted handle
+     cannot assert it is gone). */
+  await fresh('/practice/personal-effects');
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
-    throw new Error('side effects named the cycle log with no testosterone and no opt-in');
+    throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
   }
   if (await page.locator('[data-cycle-events-link]').count()) {
     throw new Error('regimen linked the cycle log without a testosterone episode');
   }
 
   // The direct URL still answers, records intact - hiding a row never
-  // closes a screen (ADR-0043).
+  // closes a screen (ADR-0043). `data-cycle-event` only names a row inside
+  // the strip's current week now (phase 10 redesign ticket 56), and the
+  // fixture's events land roughly monthly, so a week can hold none by
+  // chance; `data-cycle-events-today` is the row the non-empty branch
+  // always draws regardless of which week that is.
   await page.goto(BASE + '/health/cycle-events', { waitUntil: 'networkidle' });
-  if ((await page.locator('[data-cycle-event]').count()) === 0) {
+  if ((await page.locator('[data-cycle-events-today]').count()) === 0) {
     throw new Error('the cycle log lost its records behind the hidden row');
   }
 
@@ -4290,7 +5995,7 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // Back off, so the next flow starts from the default and the testosterone
@@ -4310,7 +6015,7 @@ try {
      is for, asking nothing of preferences. The regimen screen links the
      log while the episode runs, and stops again once it is ended - cycle
      cessation belongs to the timeline that caused it. */
-  await fresh('/settings/regimen');
+  await fresh('/care/regimen');
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -4322,7 +6027,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
 
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
@@ -4332,14 +6037,14 @@ try {
     d.setDate(d.getDate() - n);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().click(); // text-under-test: the drug I just typed
   await page.waitForSelector('#regimen-end');
   await fillDate(page, '#regimen-end', daysAgoIso(1));
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
   ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
 } catch (e) { fail('cycle tracking testosterone', e); }
@@ -4358,14 +6063,38 @@ try {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
+  /* Back to the bare persona, which alone gives the "no regimen yet" this
+     flow needs (demo-persona-has-no-doses-or-procedures): by this point in
+     the suite "Fill every feature" has been running since around flow 100,
+     and its own estradiol episode started 500 days ago - long past every
+     literature onset window. isHrtOnsetWindowCurrent anchors on the
+     earliest episode in the whole journal, not the newest (see its own doc
+     comment and personalEffectWindow.test.ts's "goes quiet once the
+     anchoring episode has ended"), so an episode this flow adds afterward
+     can never become current while that one is still on record - correct,
+     tested app behavior this flow is not the place to relitigate. Nothing
+     later in this file reads regimen, dose, hormone-curve or injection-map
+     state, so resetting here does not cost any flow after it. */
+  await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
+  await page.click('[data-reset-demo]');
+  await page.waitForURL(BASE + '/');
+  await booted();
+
   await openQuickAdd();
   if ((await page.locator('[data-choose="effects"]').count()) > 0) {
     throw new Error('effects row was present with no regimen logged');
   }
-  await page.locator('[data-quick-add]').click();
+  /* The FAB itself, not the scrim behind the fan (`[data-quick-add]`): the
+     scrim covers the whole screen but the fan cards sit above it, so a
+     click at the scrim's own center - where Playwright aims by default -
+     lands on a card instead and never reaches the scrim. The FAB is the
+     control that opened the fan and closes it the same way (see its own
+     comment in AppNav.svelte), which is also the real dismiss gesture the
+     rest of this flow already uses below. */
+  await page.locator('[data-nav-fab]').click();
 
   // Add an active estradiol regimen episode starting today
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -4383,12 +6112,15 @@ try {
   await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
   await page.locator('[data-choose="effects"]').click();
   await page.waitForFunction(() => window.location.pathname === '/practice/personal-effects', null, { timeout: 8000 });
-  if ((await page.locator('[data-fan]').count()) > 0) {
+  /* Detached rather than an instant count (see flow 18's own note): the
+     fan's cards carry their own out:fanOut transition, so a plain count
+     right after the tap can still catch it mid-fade. */
+  await page.waitForSelector('[data-fan]', { state: 'detached', timeout: 2000 }).catch(() => {
     throw new Error('the fan remained open after tapping effects');
-  }
+  });
 
   // Move the anchor episode to 400 days ago (>12 months)
-  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]').first().click();
   await page.waitForSelector('#regimen-start');
   await fillDate(page, '#regimen-start', localIso(400));
@@ -4402,9 +6134,52 @@ try {
   if ((await page.locator('[data-choose="effects"]').count()) > 0) {
     throw new Error('effects row was still present after onset window had passed');
   }
-  await page.locator('[data-quick-add]').click();
+  await page.locator('[data-nav-fab]').click();
 
   ok('quick add: personal effects nudge appears only during onset window and navigates to /practice/personal-effects');
+
+  /* The axis at the top of "changes you've noticed" (phase 10 redesign
+     ticket 57). It runs on the journal this flow has just left behind - a
+     bare persona with one estradiol episode 400 days ago and nothing marked
+     against it - which is why it sits inside this flow rather than in one of
+     its own: a later flow would have to rebuild that journal to get an empty
+     line to start from.
+
+     What only a browser can answer here: that a mark drawn on the axis opens
+     the same sheet the row below it opens, and that clearing the marker takes
+     the mark off the line. The arithmetic behind the positions is
+     noticedAxis.test.ts's. */
+  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-noticed-axis]');
+  if ((await page.locator('[data-noticed-mark]').count()) !== 0) {
+    throw new Error('the axis drew a mark on a journal with nothing marked');
+  }
+
+  await page.locator('[data-effect-group="feminizing::body_shape"] [aria-expanded]').first().click();
+  const effectRow = page.locator('[data-list-row="breast_development"]');
+  await effectRow.waitFor();
+  /* Read rather than written down: the name is catalogue copy, and a
+     walkthrough that spells it out fails the day it is reworded. */
+  const effectName = (await effectRow.locator('[data-row-title]').first().textContent()).trim();
+  await effectRow.click();
+  await page.waitForSelector('#effect-date');
+  await fillDate(page, '#effect-date', localIso(120));
+  await page.click('[data-save-effect]');
+  await page.waitForSelector('[data-noticed-mark="breast_development"]', { timeout: 8000 });
+
+  const mark = page.locator('[data-noticed-mark="breast_development"]');
+  const markLabel = await mark.getAttribute('aria-label');
+  if (!markLabel || !markLabel.includes(effectName)) {
+    throw new Error(`the mark announced itself as "${markLabel}", which does not name ${effectName}`);
+  }
+
+  // The drawing is a way into the record, not only a picture of it.
+  await mark.click();
+  await page.waitForSelector('[data-clear-effect]', { timeout: 8000 });
+  await page.click('[data-clear-effect]');
+  await page.waitForSelector('[data-noticed-mark="breast_development"]', { state: 'detached', timeout: 8000 });
+
+  ok('personal effects: a change marked from the list lands on the axis, and its mark opens the editor again');
 } catch (e) { fail('quick add effects nudge', e); }
 
 
@@ -4638,14 +6413,27 @@ try {
      walkthrough edit. registry.test.ts owns the list; what this holds is
      that the screen drew the registry rather than nothing. */
   const tiles = await page.locator('[data-live-tile]').count();
-  if (tiles < 3) throw new Error('the Home column drew ' + tiles + ' rows');
+  if (tiles < 3) throw new Error('the show column drew ' + tiles + ' rows');
   for (const key of ['wrapped', 'on-this-day', 'stock-notice']) {
     if (!(await page.locator(`[data-live-tile="${key}"]`).count())) {
-      throw new Error(key + ' is missing from the Home column');
+      throw new Error(key + ' is missing from the show column');
+    }
+  }
+  /* And Today's own thirteen are not here any more (phase 11 ticket 04):
+     a live tile is arranged in the editor on the page it draws on. */
+  for (const key of ['dose-panel', 'wear-timer']) {
+    if (await page.locator(`[data-live-tile="${key}"]`).count()) {
+      throw new Error(key + ' is still switched here as well as in Today\'s editor');
+    }
+  }
+  /* The four prompts that came off Settings' Tracking section. */
+  for (const key of ['entry-nudges', 'guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+    if (!(await page.locator(`[data-prompt="${key}"]`).count())) {
+      throw new Error('the ' + key + ' prompt did not arrive with the rest');
     }
   }
 
-  ok('one screen over one registry: notify column absent on web, Home column still whole');
+  ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the four prompts are under their heading');
 } catch (e) { fail('the unprompted registry view', e); }
 
 /* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
@@ -4893,6 +6681,9 @@ try {
   await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
 
+  // Ticket 54: only the current track's panel starts in front; medical's
+  // own add-goal button needs its segment shown first.
+  await page.locator('[data-segment="medical"]').click();
   await page.locator('[data-add-goal="medical"]').click();
   await page.getByPlaceholder('Your step').fill('Get the referal reissued');
   await page.getByRole('button', { name: 'Add goal' }).click();
@@ -4942,6 +6733,7 @@ try {
   // The goal's sheet lists it, and the confirmation counts it before it goes.
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   await booted();
+  await page.locator('[data-segment="medical"]').click();
   await page.locator(`[data-open-goal="${goalId}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.locator('[data-delete-goal]').click();
@@ -4982,6 +6774,7 @@ try {
      rendered proves nothing. */
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   await booted();
+  await page.locator('[data-segment="medical"]').click();
   await page.locator('[data-open-goal="pl-medical-keep-opinions"]').click();
   await page.waitForSelector('[data-goal-sheet-status="pl-medical-keep-opinions"]');
   if (await page.locator('[data-save-goal]').count()) throw new Error('a built-in goal offers a way to reword it');
@@ -4989,6 +6782,234 @@ try {
 
   ok('a custom goal is reworded from its sheet, deleting it unfiles the paper filed against it without destroying it, and a built-in goal has neither control');
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
+
+/* redesign ticket 17: a photo's day, asked for on import and editable
+   afterwards (ADR-0015 - the file's own capture date is never read). Backend
+   and screens shipped earlier as ticket 47; this proves the ask, the skip
+   and the after-the-fact edit through the real screens rather than assuming
+   the wiring still holds after the token/direction passes (tickets 07/22/23)
+   repainted every surface it renders on.
+
+   Placed before the access-mode/recovery-key tests below for the same
+   reason those order themselves the way they do (see the recovery key
+   comment just past this block): the last of them leaves the journal on
+   device-bound access, whose unlock is a WebAuthn PRF ceremony a headless
+   Chromium page never resolves - a fresh() after it hangs boot rather than
+   reaching Home, which showed up here first only because this ticket's
+   tests were the first ever appended after it. */
+try {
+  const skipPhoto = await tinyPhoto(page, '#c94f7c');
+  const datedPhoto = await tinyPhoto(page, '#2b6cb0');
+
+  await fresh('/');
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+
+  /* Skip leaves the override unset, so the photo inherits this entry's own
+     day - exactly the behaviour ticket 02's scope note describes and ticket
+     47 shipped before this ticket's tokens ever touched the sheet. */
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'skip.png', mimeType: 'image/png', buffer: skipPhoto }));
+  await page.locator('[data-add-photo]').click();
+  await page.waitForSelector('[data-photo-day-skip]');
+  await page.locator('[data-photo-day-skip]').click();
+  await page.waitForSelector('[data-photo-day-skip]', { state: 'detached' });
+
+  /* A day given at import, well outside the demo journal's own span so the
+     cell it lands on cannot be mistaken for anything already there. */
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'dated.png', mimeType: 'image/png', buffer: datedPhoto }));
+  await page.locator('[data-add-photo]').click();
+  await page.waitForSelector('[data-photo-day-save]');
+  await fillDate(page, '#entry-photo-day-prompt', '1994-03-15');
+  await page.locator('[data-photo-day-save]').click();
+  await page.waitForSelector('[data-photo-day-save]', { state: 'detached' });
+
+  await page.locator('#ed-note').fill('Playwright dated this photo.');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  /* The gallery orders by the photo's own day (ticket 02's acceptance), not
+     the day it was imported on - 1994 only shows up here if that held. */
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-cell]');
+  const datedCell = page.locator('[data-photo-cell][aria-label*="1994"]');
+  await datedCell.waitFor();
+  if (!(await datedCell.getAttribute('aria-label')).includes('March')) {
+    throw new Error(`the picked day did not land on the photo: ${await datedCell.getAttribute('aria-label')}`);
+  }
+
+  /* Editable afterwards, from the one place a photo's own day is shown: the
+     calendar affordance on its cell, prefilled with what was just set. */
+  await datedCell.locator('xpath=../button[@data-photo-edit-day]').click();
+  await page.waitForSelector('[data-photo-day-edit-save]');
+  const prefilled = await page.evaluate(() => {
+    const el = document.querySelector('#photo-day-edit');
+    const fp = el?._flatpickr ?? el?.flatpickr;
+    return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d');
+  });
+  if (prefilled !== '1994-03-15') throw new Error(`the edit sheet did not prefill the photo's day: ${prefilled}`);
+
+  await fillDate(page, '#photo-day-edit', '1994-04-20');
+  await page.locator('[data-photo-day-edit-save]').click();
+  await page.waitForSelector('[data-photo-day-edit-save]', { state: 'detached' });
+  await page.waitForSelector('[data-photo-cell][aria-label*="1994"]');
+  const movedLabel = await page.locator('[data-photo-cell][aria-label*="1994"]').getAttribute('aria-label');
+  if (!movedLabel.includes('April')) throw new Error(`editing the day afterwards did not move the photo: ${movedLabel}`);
+
+  ok("import asks for a photo's day, a skip leaves the entry's own, and the day is editable afterwards from the gallery");
+} catch (e) { fail("a photo's day, on screen", e); }
+
+try {
+  await page.setViewportSize({ width: 195, height: 844 });
+  await fresh('/');
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  const zoomPhoto = await tinyPhoto(page, '#c94f7c');
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'zoom.png', mimeType: 'image/png', buffer: zoomPhoto }));
+  await page.locator('[data-add-photo]').click();
+  await page.waitForSelector('[data-photo-day-save]');
+  await expectNoHorizontalOverflow('[data-sheet]');
+  const saveBox = await page.locator('[data-photo-day-save]').boundingBox();
+  const skipBox = await page.locator('[data-photo-day-skip]').boundingBox();
+  if (saveBox.x + saveBox.width > 195) throw new Error(`Save sits outside the 195px viewport: ${JSON.stringify(saveBox)}`);
+  if (skipBox.x + skipBox.width > 195) throw new Error(`Skip sits outside the 195px viewport: ${JSON.stringify(skipBox)}`);
+  await page.locator('[data-photo-day-skip]').click();
+  await page.waitForSelector('[data-photo-day-skip]', { state: 'detached' });
+
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-cell]');
+  await page.locator('[data-photo-cell]').first().locator('xpath=../button[@data-photo-edit-day]').click();
+  await page.waitForSelector('[data-photo-day-edit-save]');
+  await expectNoHorizontalOverflow('[data-sheet]');
+  const editSaveBox = await page.locator('[data-photo-day-edit-save]').boundingBox();
+  if (editSaveBox.x + editSaveBox.width > 195) {
+    throw new Error(`the edit sheet's Save sits outside the 195px viewport: ${JSON.stringify(editSaveBox)}`);
+  }
+  await page.locator('[data-photo-day-edit-save]').click();
+
+  ok('both photo-day sheets stay inside the viewport and operable at what 200% zoom leaves of a 390px phone');
+} catch (e) { fail("the photo-day sheets at 200% zoom", e); }
+finally {
+  await page.setViewportSize({ width: 440, height: 940 });
+}
+
+/* The photo library (phase 11 ticket 14): one grid over all six tables that
+   hold a photograph, and the wipe over any two of them.
+
+   On the full fixture, which is the only journal that has all six - the
+   persona writes entry and milestone photographs only, which is why the
+   flow near the top of this file sees no chip row and should not.
+
+   Gripped by `data-photo-source` rather than by the words on the tiles
+   (ADR-0029). One assertion does read a label, because the label carrying
+   the source is the thing the ticket asks for and a handle cannot say
+   whether it says anything. */
+try {
+  /* Seeded here rather than relying on the "Fill every feature" run near the
+     top of this file: everything between the two - an archive round trip, a
+     Daylio import, the discard flows - replaces the journal, so by this
+     point it holds the persona's entry and milestone photographs alone. */
+  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  await booted();
+  await page.click('[data-fill-every-feature]');
+  await page.waitForURL('**/more');
+  await booted();
+
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-key]');
+
+  const sourcesOn = async () =>
+    page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
+  const everySource = await sourcesOn();
+  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']) {
+    if (!everySource.includes(source)) {
+      throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
+    }
+  }
+
+  /* "Every photo in your journal" as a number the screen can be held to:
+     what it counts above the grid is what the grid draws. */
+  const stated = (await page.locator('[data-photo-count]').textContent()).match(/\d+/);
+  if (!stated || Number(stated[0]) !== everySource.length) {
+    throw new Error(`the count says ${stated?.[0]} over a grid of ${everySource.length}`);
+  }
+
+  const removalLabel = await page
+    .locator('[data-photo-source="hairRemoval"] [data-photo-cell]')
+    .first()
+    .getAttribute('aria-label');
+  if (!removalLabel?.includes('Hair removal')) {
+    throw new Error(`a tile does not say where its photograph came from: ${removalLabel}`);
+  }
+
+  // The chip row, and what one chip leaves on screen.
+  const drawnChips = await page
+    .locator('[data-photo-chip]')
+    .evaluateAll((chips) => chips.map((chip) => chip.dataset.photoChip));
+  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'])) {
+    throw new Error(`the chip row is not the six this journal has: ${JSON.stringify(drawnChips)}`);
+  }
+  await page.locator('[data-photo-chip="hair"]').click();
+  /* Waited out rather than counted down: a narrowed-away tile is pinned out
+     of the flow and fades, so it is still in the DOM for the length of its
+     own outro (motion/narrow.ts) and a count taken too early catches it. */
+  await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
+  const narrowed = await sourcesOn();
+  if (narrowed.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+    throw new Error(`Hair left something else on screen: ${JSON.stringify([...new Set(narrowed)])}`);
+  }
+  if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
+
+  // Two photographs from two different tables, which is the comparison
+  // neither the hair screen nor the surgery screen can offer.
+  await page.locator('[data-photo-source="hair"] [data-photo-cell]').first().click();
+  await page.locator('[data-photo-chip="everything"]').click();
+  await page.waitForSelector('[data-photo-source="procedure"]');
+  await page.locator('[data-photo-source="procedure"] [data-photo-cell]').first().click();
+  await page.locator('[data-segment="compare"]').click();
+  await page.waitForSelector('[data-photo-wipe]');
+  if ((await page.locator('[data-wipe-date]').count()) !== 2) {
+    throw new Error('the wipe inside the library did not open on two photographs');
+  }
+  /* Out of the wipe by its own control rather than by the segmented pair,
+     which the compare view does not draw - it is a screen with a back arrow
+     and this button, not a tab. */
+  await page.locator('[data-photos-back-to-all]').click();
+  await page.waitForSelector('[data-photo-key]');
+
+  // A video note plays rather than being picked.
+  await page.locator('[data-photo-video]').first().click();
+  await page.waitForSelector('[data-sheet] video');
+
+  ok('the photo library holds all six sources, says where each came from, narrows by chip and wipes across tables');
+} catch (e) { fail('the photo library', e); }
+
+/* The same chips over the export grid, so "Hair" alone can be made into a
+   collage. Video notes are never in it: a collage decodes every frame as a
+   photograph (journey-render.ts). */
+try {
+  await page.goto(BASE + '/media/photos/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-key]');
+  if (await page.locator('[data-photo-source="video"]').count()) {
+    throw new Error('a video note reached the export grid');
+  }
+  await page.locator('[data-photo-chip="hair"]').click();
+  await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
+  const exportSources = await page
+    .locator('[data-photo-source]')
+    .evaluateAll((cells) => [...new Set(cells.map((cell) => cell.dataset.photoSource))]);
+  if (exportSources.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+    throw new Error(`the export grid did not narrow: ${JSON.stringify(exportSources)}`);
+  }
+  if (!(await page.locator('[data-generate]').count())) throw new Error('the narrowed export cannot be made');
+
+  ok('the journey export reads the library, narrows by the same chips and leaves video notes out');
+} catch (e) { fail('the export grid narrowed by source', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
@@ -5093,6 +7114,13 @@ try {
     throw new Error('a biometrics toggle rendered on a build with no Android platform behind it');
   }
 
+  /* Screen capture (screen-capture-guard/01) is Android-only for the same
+     reason: FLAG_SECURE has no web equivalent, so the row must not exist
+     here rather than offer a toggle that does nothing. */
+  if (await page.getByRole('switch', { name: 'Screen capture' }).count()) {
+    throw new Error('a screen-capture toggle rendered on a build with no Android platform behind it');
+  }
+
   /* Changing access mode (ticket 53). The demo journal opens under a
      passphrase, so the module offers the other two and marks this one as
      current - which is also the assertion that it reads the mode off the
@@ -5122,6 +7150,31 @@ try {
     throw new Error('the PIN screen does not state the wall-clock figure: ' + pinConsequence);
   }
   await page.waitForSelector('[data-access-export-note]');
+
+  /* Ticket 30 split choosing a mode from typing its secret into two
+     screens. "Pick another way" first, to prove the consequence screen
+     really returns to the bare list rather than only ever moving forward. */
+  await page.locator('[data-access-back]').click();
+  await page.waitForSelector('[data-access-modes]');
+  await page.locator('[data-list-row="pin"]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+
+  await page.locator('[data-access-continue]').click();
+  await page.waitForSelector('[data-access-secret="pin"]');
+
+  /* A mismatch on the second entry, which has to land back on "choose four
+     digits" rather than some third state - and back from the secret screen
+     has to return to the consequence screen with PIN still the chosen mode,
+     not to the bare list (ticket 30). */
+  await typePin('1234');
+  await typePin('4321');
+  const mismatch = await page.locator('[data-access-status]').innerText();
+  if (mismatch.trim() === '') throw new Error('a mismatched PIN confirmation said nothing');
+
+  await page.locator('[data-access-secret-back]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+  await page.locator('[data-access-continue]').click();
+  await page.waitForSelector('[data-access-secret="pin"]');
 
   await typePin('1234');
   await typePin('1234');
@@ -5186,8 +7239,10 @@ try {
      current now, so the module must have stopped offering it and must say so.
      This is the last thing the suite does, so the journal is left in PIN mode
      deliberately - see the note at the top of this flow. */
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   if (!/PIN/i.test(await page.locator('[data-list-row="access-mode"]').innerText())) {
     throw new Error('the security row does not name PIN as the mode');
@@ -5238,8 +7293,10 @@ try {
   await booted();
   await page.waitForSelector('[data-home-hello]');
 
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
   await page.locator('a[href="/settings/recovery-key"]').click();
@@ -5344,6 +7401,7 @@ try {
 
   ok('a written key opens a journal whose PIN is gone, is refused when mistyped, and owes a new access mode before the app comes back');
 } catch (e) { fail('the recovery key at the gate', e); }
+
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 

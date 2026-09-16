@@ -15,9 +15,14 @@
    (ADR-0008: JPEG, 2048px on the long edge), which is all the export ever
    consumes - there is no original left to go back to (ADR-0015). */
 
-import type { DatedPhoto } from '../journal/photos';
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 import { nameSlug } from '../fold';
+
+/** A dated photograph, whichever table it came from. Structural rather than
+    `DatedPhoto` since phase 11 ticket 14 put the library's own shape behind
+    the export grid: everything below is about days and ids, the same
+    widening compare-state.ts already made for the wipe. */
+type Dated = { id: string; epochDay: number };
 
 /** The two things a journey can be exported as. A collage is one composed
     image, a timelapse a video of the same photos in the same order. */
@@ -36,18 +41,18 @@ interface JourneyRange {
     in order, and filtering preserves it. Both ends of the range are
     inclusive, because both ends are days a person picked in a date field
     and would expect to see included. */
-export function journeySelection(
-  photos: DatedPhoto[],
+export function journeySelection<TPhoto extends Dated>(
+  photos: TPhoto[],
   range: JourneyRange,
   excluded: string[]
-): DatedPhoto[] {
+): TPhoto[] {
   const off = new Set(excluded);
   return photos.filter((p) => p.epochDay >= range.start && p.epochDay <= range.end && !off.has(p.id));
 }
 
 /** The range that spans every photo there is, which is what the picker
     opens on, or null when there are no photos to span. */
-export function journeyRangeBounds(photos: DatedPhoto[]): JourneyRange | null {
+export function journeyRangeBounds(photos: Dated[]): JourneyRange | null {
   if (photos.length === 0) return null;
   const days = photos.map((p) => p.epochDay);
   return { start: Math.min(...days), end: Math.max(...days) };

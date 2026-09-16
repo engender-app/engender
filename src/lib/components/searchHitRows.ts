@@ -86,7 +86,7 @@ const AREA_ROWS: Record<
     label: () => m.appointment_prep_title(),
     href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointment-prep')
   },
-  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/health/side-effects' },
+  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/practice/personal-effects' },
   /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
      travels with the hit for exactly this (textSearch.ts): with one, the hit
      opens that tryout, which is where its history is read; without one, the
@@ -97,8 +97,8 @@ const AREA_ROWS: Record<
     href: (hit) => (hit.context ? `${TRYOUTS}/${hit.context}` : MILESTONES)
   },
   tryouts: { icon: 'tag', label: () => m.tryout_title(), href: (hit) => `${TRYOUTS}/${hit.id}` },
-  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/transition/presentations' },
-  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/transition/eras' },
+  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/settings/presentations' },
+  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { icon: 'globe', label: () => m.roadmap_title(), href: () => '/transition/roadmap' },
   affirmations: {
     icon: 'sparkle',
@@ -109,7 +109,7 @@ const AREA_ROWS: Record<
      piece of paper somebody is looking for, and its own screen is the only
      place the page image is drawn at all (ADR-0065). */
   documents: { icon: 'documents', label: () => m.documents_title(), href: (hit) => `/media/documents/${hit.id}` },
-  labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/settings/labs' },
+  labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/care/labs' },
   sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
   taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/health/dilation' },
   wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/practice/wear' },
@@ -122,8 +122,12 @@ const AREA_ROWS: Record<
     label: () => m.hair_removal(),
     href: () => '/body/hair-removal'
   },
-  regimenEpisodes: { icon: 'timeline', label: () => m.regimen(), href: () => '/settings/regimen' },
-  medicationStock: { icon: 'package', label: () => m.stock_title(), href: () => '/settings/stock' },
+  regimenEpisodes: { icon: 'timeline', label: () => m.regimen(), href: () => '/care/regimen' },
+  /* No screen of its own to deep-link into any more - the stock editor is
+     a sheet off Care's own regimen block (ticket 09, ADR-0084) - so a hit
+     lands on Care itself rather than on a stub that would bounce it there
+     a second time. */
+  medicationStock: { icon: 'package', label: () => m.stock_title(), href: () => '/care' },
   reminders: { icon: 'bell', label: () => m.reminders(), href: () => '/settings/reminders' },
   /* A margin note has no screen of its own - it opens the entry it
      annotates, and `date` on the row is already that entry's own day

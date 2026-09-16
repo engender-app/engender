@@ -1,13 +1,13 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_name": "enGender",
-  "nav_home": "Home",
   "nav_calendar": "Calendar",
-  "nav_stats": "Stats",
   "nav_settings": "Settings",
   "nav_more": "More",
+  "nav_journal": "Journal",
+  "nav_lookback": "Look back",
+  "nav_transition": "Transition",
   "hello": "Hi",
-  "how_feeling": "How are you feeling?",
   "new_entry": "New entry",
   "new_entry_when": "When is this entry for? A day can hold more than one entry.",
   "quick_add_title": "Quick add",
@@ -16,7 +16,6 @@
   "add_details": "Add details",
   "recent_entries": "Recent entries",
   "milestones": "Milestones",
-  "timeline": "Timeline",
   "recent_days": "Recent days",
   "coloured_by": "coloured by",
   "mood": "Mood",
@@ -63,6 +62,12 @@
   "video_not_a_video": "That file isn’t a video.",
   "video_too_long": "A video note is up to 30 seconds. Pick a shorter one, or record it here.",
   "video_too_large": "That video is too large to store, and it couldn’t be made smaller.",
+  "mt_play": "Play",
+  "mt_pause": "Pause",
+  "mt_position": "Position",
+  "mt_position_read": "{at} of {of}",
+  "mt_full": "Full screen",
+  "mt_leave_full": "Leave full screen",
   "gender_label": "Gender",
   "gender_hint": "However it feels right now. There are no wrong answers.",
   "quick_log_dims_title": "Log your scales too?",
@@ -86,8 +91,6 @@
   "body_region_track_hair_staging": "Hair staging",
   "body_region_empty_title": "No records for this area yet",
   "body_region_empty_body": "Log an entry, measurement, or treatment for this region to track somatic changes over time.",
-  "body_region_inspect_button": "Inspect region",
-  "body_region_inspect_aria": "Inspect somatic breakdown for {region}",
   "body_region_avg_dysphoria": "Avg dysphoria: {value}",
   "body_region_avg_euphoria": "Avg euphoria: {value}",
   "body_region_session_item": "{method} • pain {pain}/5",
@@ -130,13 +133,13 @@
   "dismiss": "Dismiss",
   "empty_home_title": "Your story starts with one entry",
   "empty_home_body": "Log how today felt. A mood is enough, and you can add more later.",
-  "home_milestones_empty_title": "No milestones yet",
-  "home_milestones_empty_body": "Add a coming-out date, a start date, or anything else worth marking.",
   "colour_days_by": "Colour days by",
   "metric_note": "The same colour choice drives the calendar heat-map.",
   "prev_month": "Previous month",
   "prev_year": "Previous year",
   "cal_jump_month": "Jump to month",
+  "cal_open_month": "Open the whole month",
+  "cal_close_month": "Close the month",
   "next_month": "Next month",
   "next_year": "Next year",
   "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries. A day ahead with a small mark has something coming up; tap it to see what.",
@@ -243,20 +246,19 @@
   "chart_annotation_regimen_end_reason": "{span}, {reason}",
   "chart_annotations_more": "{names}, and {count} more",
   "chart_annotations_and_more": "and {count} more",
-  "tag_insights": "Tag insights",
   "tag_insights_of": "Tags and {metric}",
+  "stats_tags_moved": "Tags, and how a scale moved",
   "insights_note": "Observations, not conclusions. Tags with fewer than 3 entries in range are hidden.",
-  "insights_empty": "Not enough tagged entries in this range yet.",
-  "correlation_cards_title": "What shows up together",
   "correlation_cards_empty": "Not enough logged data yet to show a pattern.",
   "correlation_card_dose_day": "dose day",
   "interval_mood_title": "Mood between injections",
   "interval_mood_explainer": "Every gap between two injections laid over the others, so day 1 is an injection day and the last is the day before the next one. Where your moods fell across that cycle, not where they should.",
   "interval_mood_empty": "Not enough logged data yet to show a pattern.",
   "interval_mood_chart_aria": "Mood between injections, {count} points, day {from} to day {to}.",
-  "custom_interval_title": "Mood by a custom interval length",
-  "custom_interval_length_label": "Interval length (days)",
-  "custom_interval_empty": "Not enough logged data yet to show a pattern.",
+  "care_interval_all_history": "Reads your whole journal, not just what's on the rail above.",
+  "care_interval_fold_prefix": "Fold by",
+  "care_interval_fold_unit": "days",
+  "care_interval_fold_label": "Interval length in days",
   "custom_interval_chart_aria": "Mood folded by a {days}-day interval, {count} points, day {from} to day {to}.",
   "chart_axis_label": "Read by",
   "chart_axis_calendar": "Date",
@@ -274,8 +276,14 @@
   "avg_of": "avg of {count}",
   "day_spread": "from {low} to {high}",
   "body_map_title": "Body map",
-  "body_map_sub": "track one spot's dysphoria and euphoria over time",
+  "body_map_sub": "Track one spot's dysphoria and euphoria over time.",
   "body_map_mode_filter_all": "All",
+  "body_region_reading_aria": "{region}: {axis} {value} out of 100",
+  "body_region_reading_mixed_aria": "{region}: {axis} {value} out of 100, and readings the other way too",
+  "body_region_reading_none_aria": "{region}: nothing logged in this range",
+  "body_map_elsewhere": "Elsewhere",
+  "body_map_reading_heading": "{region}, over this range",
+  "body_map_inspect_row": "Everything logged for this region",
   "back": "Back",
   "done": "Done",
   "settings_appearance": "Appearance",
@@ -283,21 +291,42 @@
   "settings_privacy": "Privacy & data",
   "hub_group_body": "Body",
   "hub_group_health": "Health",
-  "hub_group_transition": "Transition",
+  "hub_group_transition": "Steps",
   "hub_group_support": "Support",
   "hub_group_media": "Media",
   "hub_group_finished": "Tracking that ended",
-  "hub_settings_row_sub": "Appearance, tracking, privacy and data",
+  "hub_screen_title": "Body, health, steps, support and media",
+  "hub_search_placeholder": "Search what you track",
+  "hub_search_clear": "Clear the search",
   "hub_line_today": "Logged today",
   "hub_line_last": "Last logged {gap} ago",
   "hub_line_quiet": "Nothing logged for {gap}",
+  "hub_line_next_milestone": "{name} in {gap}",
+  "hub_line_next_milestone_today": "{name} today",
+  "hub_line_next_letter": "Opens in {gap}",
+  "hub_line_next_letter_several": "Next one opens in {gap}",
+  "hub_line_next_letter_today": "Opens today",
+  "hub_line_next_letter_today_several": "One opens today",
+  "hub_line_next_appointment": "{kind} in {gap}",
+  "hub_line_next_appointment_today": "{kind} today",
+  "hub_line_next_visit": "Appointment in {gap}",
+  "hub_line_next_visit_today": "Appointment today",
+  "hub_line_next_consult": "Consult in {gap}",
+  "hub_line_next_consult_today": "Consult today",
+  "hub_line_next_surgery": "Surgery in {gap}",
+  "hub_line_next_surgery_today": "Surgery today",
+  "hub_line_post_op": "Day {days} post-op",
+  "hub_line_running_wear": "{what}, {duration}",
+  "hub_line_running_tryout": "Trying {label}, day {day}",
+  "hub_line_care_dose_and_stock": "Next dose {when}, runs out {date}",
+  "hub_line_run_out": "Runs out {date}",
+  "hub_line_value": "{what}, {gap} ago",
+  "hub_line_value_today": "{what}, today",
   "hub_sub_care": "Doses, labs, the curve and what's left in the drawer",
-  "hub_sub_measurements": "Your own numbers, in your own units",
-  "hub_sub_sizes": "What you bought, and how it fit",
+  "hub_sub_measurements": "Your own numbers, and what size you wear",
   "hub_sub_hair_progress": "A published scale, and photos from the same spot",
   "hub_sub_hair_removal": "Electrolysis and laser sessions",
   "hub_sub_cycle_events": "Cycle days against your regimen history",
-  "hub_sub_side_effects": "What you notice, and how strong it is",
   "hub_sub_surgery": "Consults, the date, and healing",
   "hub_sub_dilation": "Your schedule, and the sessions against it",
   "hub_sub_milestones": "The days that mattered, with their dates",
@@ -305,12 +334,10 @@
   "hub_sub_voice_benchmark": "A passage read aloud, and the figures from it",
   "hub_sub_wear": "Wear time, live or filled in afterwards",
   "hub_sub_effects": "The day you first noticed each change",
-  "hub_sub_clinician_summary": "One page to hand over",
   "hub_sub_roadmap": "The steps you plan to take",
   "hub_sub_letters": "Written now, to open on a day you pick",
   "hub_sub_presentations": "The ways you show up",
   "hub_sub_eras": "Stretches of time you've named",
-  "hub_sub_words": "The words your notes keep using",
   "hub_sub_doubt": "For the days you aren't sure",
   "hub_sub_entry_templates": "Ready-made shapes for an entry",
   "hub_sub_resources": "Places to go outside this app",
@@ -321,17 +348,31 @@
   "care_rail_empty": "Nothing to put on the line yet. A dose, a lab result or a stock count draws the first mark.",
   "care_regimen_sub": "{dose} {unit}, {interval}",
   "care_regimen_several": "More than one regimen is running",
+  "care_regimen_dose_total": "{total} {unit} {route} in the last {days} days",
   "care_mark_last_dose": "Last dose",
   "care_mark_today": "Today",
   "care_mark_next_dose": "Next dose",
   "care_mark_lab_draw": "Lab draw",
   "care_mark_run_out": "Runs out",
+  "care_mark_reorder_by": "Reorder day",
   "care_mark_aria": "{what}, {when}",
   "care_mark_off_rail_aria": "{what}, {when}, outside the range this line shows",
   "care_group_hormones": "Hormones",
-  "care_group_other_regimens": "Other regimens",
-  "care_other_last_dose": "Last dose {when}",
-  "care_other_next_dose": "Next dose {when}",
+  "care_regimen_dose": "{dose} {unit}",
+  "care_regimen_dose_route": "{dose} {unit}, {route}",
+  "care_last_dose": "Last dose {when}",
+  "care_next_dose": "Next dose {when}",
+  "care_log_dose": "Log a dose",
+  "care_lane_mark_aria": "{what}, {when}, {drug}",
+  "care_lane_mark_off_rail_aria": "{what}, {when}, {drug}, outside the range this line shows",
+  "care_row_labs": "{analyte} {value} {unit}, {when}",
+  "care_curve_rising": "Rising",
+  "care_curve_level": "Level",
+  "care_curve_falling": "Falling",
+  "care_row_curve_reading": "{direction}, day {day} of {span}",
+  "care_row_summary": "{start} to today, {sections}",
+  "care_row_stock": "{drug}, {left}",
+  "care_row_stock_none": "Nothing counted yet",
   "colour_palette": "Colour palette",
   "theme": "Theme",
   "theme_system": "System",
@@ -357,7 +398,11 @@
   "reminders_web_sub": "reminders need the Android app",
   "progress_photos": "Progress photos",
   "lab_results": "Lab results",
-  "body_measurements": "Body measurements",
+  "measurements_and_sizes": "Measurements and sizes",
+  "measurement_span_start": "Start",
+  "measurement_span_current": "Current",
+  "measurement_span_change": "Change",
+  "size_change_line": "{from} in {fromDate}, {to} since {toDate}",
   "settings_measurement_unit_title": "Measurement units",
   "settings_measurement_unit_sub": "what body measurement charts convert every reading to",
   "size_log": "Sizes & fit",
@@ -427,6 +472,51 @@
       "match": {
         "nPlural=one": "{n} day",
         "nPlural=other": "{n} days"
+      }
+    }
+  ],
+  "unit_years": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "year",
+        "nPlural=other": "years"
+      }
+    }
+  ],
+  "unit_months": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "month",
+        "nPlural=other": "months"
+      }
+    }
+  ],
+  "unit_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day",
+        "nPlural=other": "days"
       }
     }
   ],
@@ -546,6 +636,7 @@
   "tpl_entry_proud_moment": "Proud moment",
   "tpl_entry_appointment_debrief": "Appointment debrief",
   "entry_templates_title": "Templates",
+  "entry_templates_manage": "manage",
   "entry_templates_intro": "Fill in your own to skip the blank page. Built-in ones are yours to edit or hide.",
   "entry_templates_add": "Add template",
   "entry_template_new_sheet": "New template",
@@ -600,23 +691,73 @@
   "ob_welcome_def": "en·gen·der /ɪnˈdʒendə(r)/ v.: to bring into being.",
   "ob_welcome_body": "A diary for moods, gender feelings, tags and photos. A bad day can make everything look worse than it is. Your entries remember how it really was. All of it stays on this device. No account, no cloud, no tracking.",
   "ob_start_setup": "Let’s set it up",
+  "ob_have_backup": "I already have a backup",
+  "ob_restore_title": "Where is your backup?",
+  "ob_restore_body": "A journal only comes back from a backup file you exported.",
+  "ob_restore_check": "Check this backup",
+  "ob_restore_new_instead": "Set up as new instead",
+  "ob_restore_done_title": "Your backup is ready",
+  "ob_restore_done_body": "Your journal goes in when you tap below. Nothing on this device has been written yet.",
+  "ob_restore_finish": "Put my journal back",
+  "ob_restore_running": "Putting your journal back…",
+  "ob_restore_start_again": "Start again",
   "ob_name_title": "What should the app call you?",
   "ob_name_body": "Only used to greet you. It never leaves this device, and you can skip it.",
   "ob_name_placeholder": "Your name",
   "ob_flag_title": "Which flag?",
-  "ob_flag_body": "It colours the whole app, and the sun in the corner is drawn from its own stripes. Change it any time in Settings.",
+  "ob_flag_body": "It colours the whole app, and you can change it any time in Settings.",
   "ob_track_title": "How do you want to track gender?",
   "ob_track_body": "Tick the scales you want when you log. You can change this any time in Settings.",
+  "ob_areas_title": "What do you want to keep track of?",
+  "ob_areas_body": "Tick what you want on the front page when you open the app.",
   "ob_lock_title": "Lock when you leave?",
-  "ob_lock_body": "The app can lock itself the moment it goes to the background, so a glance at your phone in a pocket or on a desk shows nothing. Getting back in asks for whatever opens your journal. You chose that a moment ago and can change it in Settings.",
-  "ob_checkin_title": "A nudge each day?",
-  "ob_checkin_body": "One notification asking how today was, skipped on days you have already written. Off is fine too, and the same switch is in Settings.",
+  "ob_lock_body": "So a glance at your phone in a pocket or on a desk shows nothing.",
+  "ob_perms_title": "What the app can ask for",
+  "ob_perms_body": "None of this is needed to write an entry, and any of it can be turned on later in Settings.",
+  "ob_disguise_title": "Look like something else?",
+  "ob_disguise_body": "Outside the app, it can wear a different name and icon. The switch stays in Settings.",
+  "perms_screen_title": "Permissions",
+  "settings_permissions_row": "Permissions",
+  "settings_permissions_sub": "What the app can ask this device for",
+  "perms_group_ask": "Permissions it can hold",
+  "perms_group_no_ask": "No permission needed",
+  "perms_no_internet": "The app has no internet permission at all, so nothing it holds can leave this device over a network.",
+  "perms_allow": "Allow",
+  "perms_allowed": "Allowed",
+  "perms_open_settings": "Open settings",
+  "perms_android_only": "Android only",
+  "perms_browser_blocked": "Browser blocked",
+  "perms_note_browser_holds": "Change it in the browser's own site settings.",
+  "perms_allow_aria": "Allow {thing}",
+  "perms_settings_aria": "Open the system settings for {thing}",
+  "perm_notifications": "Notifications",
+  "perm_notifications_why": "How a reminder or the daily check-in reaches you.",
+  "perm_exact_alarms": "Exact timing",
+  "perm_exact_alarms_why": "A reminder rings at the minute you set.",
+  "perm_microphone": "Microphone",
+  "perm_microphone_why": "Voice notes, and reading your pitch.",
+  "perm_camera": "Camera",
+  "perm_camera_why": "Video notes.",
+  "perm_take_photo": "Taking a photo",
+  "perm_take_photo_why": "The system camera hands back that one picture.",
+  "perm_pick_file": "Picking a photo or a file",
+  "perm_pick_file_why": "The picker hands over one file. The app never sees the rest.",
+  "perm_backup_folder": "The backup folder",
+  "perm_backup_folder_why": "Chosen once, and backups go there and nowhere else.",
+  "perm_print": "Printing",
+  "perm_print_why": "The system print dialog decides where the page goes.",
+  "perm_clipboard": "The clipboard",
+  "perm_clipboard_why": "The recovery key, marked sensitive so Android clears it after a minute.",
+  "perm_clipboard_why_web": "The recovery key. A browser cannot clear it afterwards.",
+  "perm_battery": "Battery optimisation",
+  "perm_battery_why": "A link on the reminders screen, so a reminder still fires while the phone sleeps.",
+  "perm_biometric": "Your fingerprint or face",
+  "perm_biometric_why": "Checked by the system, never by the app. All the app learns is whether it matched.",
   "ob_done_title": "You’re all set",
   "ob_done_title_named": "You’re all set, {name}",
   "ob_done_body": "One short entry a day is plenty. Everything you write stays here, with you.",
   "pin_choose_title": "Choose a PIN",
   "pin_again_title": "Type it once more",
-  "pin_greeting": "Hi",
   "pin_greeting_named": "Hi, {name}",
   "pin_confirm_body": "The same four digits again, so a slip of the thumb doesn’t lock you out.",
   "pin_progress": "PIN progress: {typed} of {total} digits",
@@ -632,7 +773,6 @@
   "reset_failed": "Could not reset the app. Try again, or close and reopen it first.",
   "lock_auto_note": "Locks automatically when the app goes to background.",
   "lock_quick_exit_note": "Two-finger swipe down locks instantly.",
-  "pp_unlock_title": "Welcome back",
   "pp_unlock_body": "Enter your journal passphrase to decrypt your journal.",
   "pp_label_setup": "Passphrase",
   "pp_label_unlock": "Journal passphrase",
@@ -677,7 +817,6 @@
   "dbr_open_reset": "Start over on this device",
   "pp_change_wrong_current": "The current passphrase is not right.",
   "pp_changed_toast": "Passphrase changed. Update it in your password manager too.",
-  "ak_unlock_title": "Unlock your journal",
   "ak_unlock_body": "Your journal is encrypted. Android is holding the key and hands it over once it knows it is you.",
   "ak_unlock_action": "Unlock",
   "ak_unlocking": "Waiting for Android…",
@@ -712,6 +851,7 @@
   "boot_restore_action": "Put the previous journal back",
   "boot_restore_running": "Putting it back…",
   "boot_restore_failed": "That did not work. The copy is still on the device.",
+  "boot_retry_action": "Try opening again",
   "quick_exit_back": "Back to the app",
   "nav_main": "Main",
   "skip_to_content": "Skip to content",
@@ -907,6 +1047,8 @@
   "bio_ask_boot_body": "Your device's own lock opens your journal every time the app starts, whichever lock that is for you. Saying yes opens it the moment you arrive. Saying no leaves the same lock behind a button you tap first.",
   "bio_ask_boot_yes": "Open automatically",
   "bio_ask_boot_no": "Ask me each time",
+  "screen_capture_title": "Screen capture",
+  "screen_capture_sub": "lets this device screenshot or record the app",
   "settings_disguise_on": "disguised as “Notes”",
   "settings_backup_age": "last backup {days} ago",
   "settings_backup_none": "no backup yet",
@@ -925,7 +1067,7 @@
   "disguise_app_sub_web": "the browser tab shows a neutral “Notes” title and icon, and the app installs under that name",
   "disguise_preview_android": "how the app appears in your launcher",
   "disguise_preview_web": "how the tab appears",
-  "disguise_installed_note": "If you have already installed this app, the name and icon on your home screen change when your browser next refreshes them. Browsers do that on their own schedule, so it may take a while.",
+  "disguise_installed_note": "An icon already on your home screen changes when your browser next refreshes it, on its own schedule.",
   "disguise_android_gap_note": "Android still shows the app’s real name in Settings, on its app-info screen, and in the widget picker.",
   "decoy_search": "Search notes",
   "decoy_note_groceries_title": "Groceries",
@@ -943,6 +1085,17 @@
   "quick_exit_sub_web": "two-finger swipe down blanks the tab and locks instantly",
   "quick_exit_no_lock": "with no PIN or passphrase it only blanks the screen",
   "ms_intro": "Days that matter. Past ones come back as anniversaries, and future ones count down on Home.",
+  "ms_log_heading": "Every milestone",
+  "ms_log_heading_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} milestone",
+        "countPlural=other": "{count} milestones"
+      }
+    }
+  ],
   "ms_add_heading": "Add a milestone",
   "ms_shuffle": "Shuffle suggestions",
   "ms_own_title": "Create your own",
@@ -1115,7 +1268,7 @@
   "labs_preferred_units_title": "Preferred units",
   "labs_preferred_units_intro": "Pick one default unit per analyte. Existing results stay as logged.",
   "labs_preferred_units_source_default": "Use source unit",
-  "measurements_intro": "Your own numbers, in whatever unit you measure in. No BMI, no guesses about body composition.",
+  "measurements_intro": "Your own numbers, in whatever unit you measure in, and the sizes you wear. No BMI, no guesses about body composition.",
   "measurement_type_label": "Type",
   "measurement_type_waist": "Waist",
   "measurement_type_hips": "Hips",
@@ -1154,7 +1307,6 @@
   "measurement_type_new_label": "Name",
   "measurement_type_new_placeholder": "e.g. Shoulders",
   "measurement_type_add": "Add type",
-  "size_log_intro": "What you bought, and how it fit.",
   "size_log_add_aria": "Log a size",
   "size_log_empty_title": "Nothing logged yet",
   "size_log_empty_body": "Log a size whenever you buy something: category, size, brand and how it fit.",
@@ -1267,6 +1419,7 @@
   "doses": "Dose log",
   "doses_row_sub": "Every dose, and how it sits against the schedule",
   "doses_intro": "Each dose is filed under whichever regimen episode was in effect when it was taken. Correct a dose's date and it moves to the episode that really covered it.",
+  "doses_attribution_disclosure": "How doses are matched to a regimen",
   "doses_add_aria": "Log",
   "doses_empty_title": "No doses logged yet",
   "doses_empty_body": "Log a dose and it shows up here, under the regimen episode that was in effect that day.",
@@ -1356,6 +1509,13 @@
   "pause_reason_accidental": "Accidental",
   "regimen_schedule_legend": "Schedule",
   "regimen_schedule_hint": "How often this episode expects a dose. Slots are counted from its start date, so editing this does not shift them.",
+  "regimen_auto_log_label": "Log doses from this schedule for me",
+  "regimen_auto_log_hint": "Each expected dose is written down as taken at its usual time, unless you log it yourself or mark it skipped. You can undo any of them.",
+  "dose_from_schedule": "logged from your schedule",
+  "dose_from_schedule_skipped": "skipped, was logged from your schedule",
+  "dose_from_schedule_skip_action": "I skipped this",
+  "tile_dose_auto_logged_yesterday": "Yesterday's dose was logged for you",
+  "clinician_summary_auto_logged_legend": "logged from a schedule, not confirmed by hand",
   "regimen_schedule_kind_label": "Recurrence",
   "regimen_schedule_kind_every_days": "Fixed interval",
   "regimen_schedule_kind_weekdays": "Weekdays",
@@ -1378,11 +1538,7 @@
   "regimen_pause_ongoing": "still going",
   "regimen_doses_link": "Dose log",
   "regimen_stock_link": "Medication stock",
-  "regimen_stock_link_sub": "How much is left, and when it's projected to run out",
-  "regimen_exposure_link": "Cumulative exposure",
-  "regimen_exposure_link_sub": "Dose totals, days on each route, time on each regimen",
   "stock_title": "Medication stock",
-  "stock_intro": "How much is left of each drug, and when it's due to run out, both worked out from what you've logged.",
   "stock_excluded_note": "Doses left out of every projection above because more than one regimen was active and this app couldn't tell which drug they were: {count}.",
   "stock_add_aria": "Add medication stock",
   "stock_empty_title": "No stock tracked yet",
@@ -1400,6 +1556,9 @@
   "stock_quantity_placeholder": "e.g. 10",
   "stock_unit_label": "Unit",
   "stock_unit_placeholder": "e.g. vials, pills",
+  "stock_lead_time_label": "Lead time (days)",
+  "stock_lead_time_placeholder": "e.g. 21",
+  "stock_lead_time_hint": "How long a restock usually takes. Leave empty if you don't know.",
   "stock_date_label": "As of",
   "stock_save": "Save stock",
   "stock_delete_action": "Stop tracking {drug}",
@@ -1417,19 +1576,10 @@
   "stock_window_until": "Window until {date}",
   "stock_window_past": "Past its window since {date}",
   "exposure_title": "Cumulative exposure",
-  "exposure_intro": "Totals from your dose log and regimen history. No target ranges, no comparisons.",
-  "exposure_range_group": "Range",
   "exposure_dose_totals_title": "Dose totals",
-  "exposure_dose_totals_empty": "No doses logged in this range.",
-  "exposure_excluded_note": "Doses left out of the totals above because more than one regimen was active and this app couldn't tell which drug they were: {count}.",
-  "exposure_dose_total_sub": "{route} · {total} {unit} total",
   "exposure_route_days_title": "Days on each route",
-  "exposure_route_days_empty": "No regimen history in this range.",
   "exposure_days_count": "{days} days",
   "exposure_regimen_days_title": "Time on each regimen",
-  "exposure_regimen_days_empty": "No regimen history in this range.",
-  "exposure_regimen_days_sub": "{dose} {unit} · {route}",
-  "side_effects_intro": "What you notice, when you notice it. No grading and no advice.",
   "side_effect_add_aria": "Log a side effect",
   "side_effect_empty_title": "Nothing logged yet",
   "side_effect_empty_body": "Log a side effect when you notice one.",
@@ -1472,15 +1622,37 @@
   "severity_4": "pronounced",
   "severity_5": "severe",
   "effects_timeline": "Changes you've noticed",
+  "effects_timeline_subtitle": "What you noticed after starting, hoped for or not, and when. No grading and no advice.",
   "effects_intro": "Mark the day you first noticed each change. Where the literature gives a typical timing since your regimen began, it shows as a shaded band, from the table for your regimen's own hormone: the feminizing one for estradiol, the masculinizing one for testosterone. A change with no band is one the tables are quiet about.",
   "effects_source": "The shaded bands come from the Endocrine Society's 2017 clinical practice guideline (Hembree et al.) and GenderGP's HRT timeline tables, which cite WPATH Standards of Care v7. Every other effect below is named by the source noted underneath it, with no band: a guide naming a change is not the same claim as a guideline naming its timing.",
   "effect_variability_notice": "No evidence shows that age, body type, ethnicity or family appearance reliably predicts how someone responds to hormone therapy, with one likely exception: voice deepening in people on testosterone. The bands here describe the literature. They are not a schedule for your own body.",
   "effects_no_regimen_title": "No regimen logged yet",
-  "effects_no_regimen_body": "This timeline anchors against the day your regimen began. Log a regimen episode first, and it'll pick it up from there.",
+  "effects_no_regimen_body": "Without one, the line above counts calendar months. Log a regimen episode and it'll count the months from the day you started instead.",
   "effects_no_regimen_action": "Go to regimen",
   "effects_direction_feminizing": "Feminizing",
   "effects_direction_masculinizing": "Masculinizing",
   "effects_direction_other": "Not tied to a direction",
+  "effects_axis_onset": "Months since your regimen began, {date}.",
+  "effects_axis_calendar": "By calendar month. There's no regimen logged yet, so there's nothing to count months from.",
+  "effects_axis_empty": "Nothing marked yet. Mark a change below and it lands on this line.",
+  "effects_axis_mark_aria": "{name}, first noticed {date}",
+  "effects_axis_mark_aria_severity": "{name}, first noticed {date}, {severity}",
+  "effects_axis_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input date",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} change noticed, on {date}.",
+        "countPlural=other": "{count} changes noticed, the last on {date}."
+      }
+    }
+  ],
   "effect_group_count": [
     {
       "declarations": [
@@ -1714,18 +1886,58 @@
   "ph_compare": "Compare",
   "ph_tab_browse": "Browse",
   "ph_tab_compare": "Compare",
-  "ph_earlier": "Earlier photo",
-  "ph_later": "Later photo",
-  "ph_from_entry": "journal entry",
   "ph_back_to_all": "Back to all photos",
   "ph_compare_reset": "One selected photo is no longer available. Pick two anchors again.",
-  "ph_pick_two": "Every photo in your journal, oldest first. Select two to compare.",
+  "ph_pick_two": "Select two to compare.",
   "ph_one_selected": "One selected. Pick a second to compare.",
   "ph_two_selected": "Two selected.",
   "ph_cell_aria": "Photo from {date}",
   "ph_empty_title": "No photos yet",
   "ph_empty_body": "Photos you attach to entries and milestones gather here, and one day “then vs now” will be worth it.",
   "ph_edit_day": "Edit day",
+  "ph_chips_label": "Show",
+  "ph_chip_everything": "Everything",
+  "ph_chip_body": "Body",
+  "ph_chip_hair": "Hair",
+  "ph_chip_tryouts": "Tryouts",
+  "ph_chip_surgery": "Surgery",
+  "ph_chip_video": "Video",
+  "ph_source_entry": "Entry",
+  "ph_source_milestone": "Milestone",
+  "ph_source_hair": "Hair",
+  "ph_source_hair_removal": "Hair removal",
+  "ph_source_tryout": "Tryout",
+  "ph_source_procedure": "Surgery",
+  "ph_source_video": "Video note",
+  "ph_cell_aria_sourced": "{source}, {date}",
+  "ph_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} photo",
+        "countPlural=other": "{count} photos"
+      }
+    }
+  ],
+  "ph_years_label": "Jump to a year",
+  "ph_year_jump": "Jump to {year}",
+  "ph_video_open": "Play the video note from {date}",
+  "ph_video_title": "Video note",
+  "ph_video_grid_hint": "A video note plays, and is not one of the two a comparison takes.",
+  "photo_wipe_handle": "Comparison divider",
+  "photo_wipe_value": "{percent}% from the earlier photo",
+  "photo_wipe_earlier_back": "Earlier photo: one further back",
+  "photo_wipe_earlier_forward": "Earlier photo: one further on",
+  "photo_wipe_later_back": "Later photo: one further back",
+  "photo_wipe_later_forward": "Later photo: one further on",
+  "photo_wipe_crop": "These two photos are different shapes. Both are cropped to the frame from the middle, and neither is stretched.",
+  "photo_wipe_no_file": "One of these two has no stored file, so they are side by side rather than under one divider.",
   "photo_day_label": "Day",
   "photo_day_edit_title": "Photo day",
   "photo_day_edit_hint": "Changes which day this photo shows on. It stays on the same entry or milestone.",
@@ -1836,14 +2048,9 @@
   "prov_view_stock": "View stock",
   "prov_reminder_wear": "Set from a wear session you logged.",
   "prov_view_wear_log": "View wear log",
-  "tl_intro": "Your milestones so far, and what’s ahead.",
   "tl_you_are_here": "today, you are here",
   "tl_gap_aria": "{duration} without milestones, compressed",
   "tl_gap_label": "{duration} compressed",
-  "tl_add_aria": "Add a milestone",
-  "tl_empty_title": "No milestones yet",
-  "tl_empty_body": "Add the days that matter and the shape of your own timeline appears.",
-  "tl_empty_action": "Add a milestone",
   "home_anniv_years": "{name}, {years} ago today. That day mattered. So does this one.",
   "home_anniv_today": "{name} is today. That day matters.",
   "recap_tags_title": "Top tags",
@@ -1862,7 +2069,7 @@
   "recap_open_range": "An ongoing window, held in your own words.",
   "recap_tags_none_range": "No tags in this range.",
   "compare_title": "Compare periods",
-  "compare_sub": "put two ranges side by side",
+  "compare_sub": "Put two ranges side by side.",
   "compare_period_a_label": "Period A",
   "compare_period_b_label": "Period B",
   "compare_start_label": "{period}: start day",
@@ -1926,11 +2133,12 @@
   "entry_day_count": "{count} that day",
   "entry_no_note": "No note was added",
   "tags_group_aria": "{group} tags",
-  "notif_title": "Live tiles and notifications",
-  "notif_sub": "What Home may put in front of you, and what may reach your phone.",
-  "notif_col_home": "Home",
+  "notif_title": "Notices and notifications",
+  "notif_sub": "What the app may say without being asked, and what may reach your phone.",
+  "notif_col_show": "Show",
   "notif_col_notify": "Notify",
-  "notif_home_toggle_aria": "{name}, Home",
+  "notif_show_toggle_aria": "{name}, show in the app",
+  "notif_prompts_heading": "Prompts in the app",
   "notif_notify_toggle_aria": "{name}, notifications",
   "notif_reminders_sub": "At the time each reminder is set for.",
   "notif_check_in_sub": "At your check-in time, on days with nothing logged yet.",
@@ -1952,6 +2160,8 @@
   "tile_wear_sub": "Shows how long the current wear session has been running.",
   "tile_dose_title": "Dose panel",
   "tile_dose_sub": "Shows a shortcut for logging a dose while a regimen is active.",
+  "tile_dose_next": "Next {date}",
+  "tile_dose_next_today": "A dose today",
   "tile_letter_title": "Ready letter",
   "tile_letter_sub": "Shows when a time-capsule letter has become readable.",
   "tile_letter_dismiss_action": "Dismiss reminder",
@@ -1971,7 +2181,9 @@
   "tile_stock_title": "Stock running low",
   "tile_stock_sub": "Warns when medication stock is projected to run out.",
   "notice_stock_low_title": "Medication running low",
-  "notice_stock_low_body": "Your supply of {drug} is estimated to last {days} more days.",
+  "notice_stock_reorder_title": "Time to reorder",
+  "notice_stock_reorder_body": "Order more {drug} by {date}.",
+  "notice_stock_projected_body": "Your supply of {drug} is projected to run out around {date}.",
   "notice_stock_out_body": "Your supply of {drug} is estimated to have run out.",
   "notice_stock_manage": "Manage stock",
   "notice_stock_dismiss_action": "Dismiss stock reminder",
@@ -2094,50 +2306,22 @@
   "doubt_snapshot_delete_hint": "This cannot be undone.",
   "doubt_snapshot_delete": "Delete",
   "safe_space_title": "Safe space",
-  "safe_space_calm_title": "Take a breath",
+  "safe_space_moments_title": "Letters and photos",
+  "safe_space_moments_sub": "Unlocked letters, starred photos",
+  "safe_space_comfort_sub": "Who to text, which walk, which song",
+  "safe_space_evidence_sub": "The days you named yourself",
+  "safe_space_readings_sub": "On Look back, with the rest of your readings",
+  "safe_space_readings_row_title": "How the good days fell",
   "safe_space_breathing_desc": "Box breathing to help ground yourself.",
   "safe_space_breathing_start": "Begin breathing",
   "safe_space_breathing_pause": "Pause",
   "safe_space_breathing_inhale": "Inhale",
   "safe_space_breathing_hold": "Hold",
   "safe_space_breathing_exhale": "Exhale",
-  "safe_space_stats_title": "From your journal",
-  "safe_space_stat_evidence_title": "Good moments",
-  "safe_space_stat_evidence_note": "In your history",
-  "safe_space_counterevidence_title": "From your own history",
-  "safe_space_counterevidence_sub": "Entries you tagged as euphoria, with high-euphoria body regions, or starred.",
-  "safe_space_letters_intro": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "A letter you sealed for yourself, now open.",
-        "countPlural=other": "Letters you sealed for yourself, now open."
-      }
-    }
-  ],
-  "safe_space_letters_all": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "See the other letter",
-        "countPlural=other": "See the other {count} letters"
-      }
-    }
-  ],
+  "safe_space_counterevidence_title": "Good moments",
+  "safe_space_counterevidence_sub": "Days you tagged as good, and days you starred.",
+  "safe_space_evidence_see_all": "See all {count}",
   "safe_space_photos_intro": "Photos you starred.",
-  "safe_space_chart_timeline_title": "Past 30 days",
   "safe_space_chart_themes_title": "Affirming themes",
   "safe_space_no_themes": "No tagged moments in the pool yet.",
   "comfort_list_title": "Things that help",
@@ -2219,14 +2403,70 @@
   "tryout_adopt_update_profile_name": "Update profile name in app to \"{name}\"",
   "tryout_adopt_confirm_add": "Add milestone and adopt",
   "tryout_adopt_without_milestone": "Adopt without milestone",
+  "tryout_running_heading": "Running now",
+  "tryout_ended_heading": "Ended",
+  "tryout_unit_days_trying": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day trying",
+        "nPlural=other": "days trying"
+      }
+    }
+  ],
+  "tryout_ran_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} day",
+        "nPlural=other": "{n} days"
+      }
+    }
+  ],
+  "tryout_felt_count": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} felt-sense reading",
+        "nPlural=other": "{n} felt-sense readings"
+      }
+    }
+  ],
+  "tryout_felt_latest": "last on {day}",
+  "tryout_felt_none": "No felt sense recorded yet",
+  "tryout_feeling_today": "How it felt today",
+  "tryout_feeling_today_title": "How has it felt today?",
   "letters_title": "Time-capsule letters",
-  "letters_intro": "Write to your future self and pick a milestone or date to open it on. Nothing unlocks early, not even for you.",
+  "letters_intro": "Nothing unlocks early, not even for you.",
   "letters_compose_title": "Write a letter",
   "letters_compose_placeholder": "Dear future me...",
   "letters_unlock_label": "Unlock on",
   "letters_save": "Seal it away",
-  "letters_yours_title": "Your letters",
+  "letters_waiting_title": "Waiting",
+  "letters_opened_title": "Open",
   "letters_sealed_title": "Sealed",
+  "letters_ready_title": "Ready",
+  "letters_arrival_title": "A letter opens today",
+  "letters_arrival_open": "Open it",
+  "letters_close": "Close the letter",
   "letters_sealed_until": "Opens {date}",
   "letters_empty_title": "No letters yet",
   "letters_empty_body": "Write one above, and it will wait here until its unlock day.",
@@ -2329,6 +2569,7 @@
   "clinician_summary_include_note": "Choose which sections appear in the printed clinical dossier.",
   "clinician_summary_drugs_title": "Drugs included",
   "clinician_summary_drugs_note": "Turn a drug off to leave it out of the regimen, dose log and exposure sections below.",
+  "clinician_summary_preview_title": "Preview",
   "clinician_summary_part_demographics": "Patient profile",
   "clinician_summary_part_regimen": "Regimen and dosage history",
   "clinician_summary_part_exposure": "Cumulative exposure",
@@ -2356,7 +2597,7 @@
   "clinician_summary_prep_pending": "To discuss",
   "clinician_summary_prep_done": "Discussed",
   "resources_title": "Support and resources",
-  "resources_row_sub": "Trans organisations and helplines, kept in the app",
+  "resources_row_sub": "Helplines and organisations",
   "resources_intro": "Numbers and addresses worth having when there is no way to look them up. Nothing here is fetched, so this screen works with no signal.",
   "resources_group_pl": "Poland",
   "resources_group_int": "English language",
@@ -2379,9 +2620,26 @@
   "resources_int_wpath_soc8": "The internationally recognised clinical standard for trans and non-binary care, including low-dose and non-binary approaches to hormone therapy. Free to read, and backed by extensive citations.",
   "resources_pl_zaimki": "Gender neutral Polish: pronoun forms, neutral nouns, and a card to share the ones you use.",
   "roadmap_title": "Transition roadmap",
+  "roadmap_pack_details_toggle": "What this pack is, and what it is not",
   "roadmap_intro": "Four tracks, and you tick each one off separately. The order inside a track is how the procedure usually runs rather than a rule, and nothing here blocks anything else.",
   "roadmap_not_advice": "This describes what the procedure involves. It is not legal advice and none of it is about your particular case.",
   "roadmap_reviewed_on": "Content checked against its sources: {date}.",
+  "roadmap_track_switch_label": "Track",
+  "roadmap_track_steps_left": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} step left",
+        "nPlural=other": "{n} steps left"
+      }
+    }
+  ],
   "roadmap_track_social": "Social",
   "roadmap_track_legal": "Legal",
   "roadmap_track_presentational": "Presentation",
@@ -2476,7 +2734,7 @@
   "roadmap_milestone_prompt_title": "Add \"{goal}\" as a milestone on your timeline?",
   "roadmap_milestone_prompt_add": "Add milestone",
   "roadmap_milestone_sync_title": "Roadmap milestone prompts",
-  "roadmap_milestone_sync_sub": "Prompt to add ticked roadmap goals as timeline milestones",
+  "roadmap_milestone_sync_sub": "Prompt to add ticked roadmap goals as timeline milestones.",
   "pj_open": "Make a collage or timelapse",
   "pj_title": "Collage and timelapse",
   "pj_range_title": "Which photos",
@@ -2639,12 +2897,30 @@
   "surgery_name_placeholder": "e.g. top surgery",
   "surgery_date_label": "Surgery date",
   "surgery_date_none": "no date set",
+  "surgery_kind_label": "Kind",
+  "surgery_kind_sheet": "Procedure kind",
+  "surgery_kind_change": "Change",
+  "surgery_kind_dilation_toggle_label": "This recovery includes dilation",
+  "procedure_kind_vaginoplasty": "Vaginoplasty",
+  "procedure_kind_vulvoplasty": "Vulvoplasty",
+  "procedure_kind_orchiectomy": "Orchiectomy",
+  "procedure_kind_breast_augmentation": "Breast augmentation",
+  "procedure_kind_facial_feminization": "Facial feminization surgery",
+  "procedure_kind_tracheal_shave": "Tracheal shave",
+  "procedure_kind_voice_surgery": "Voice surgery",
+  "procedure_kind_chest_reconstruction": "Chest reconstruction",
+  "procedure_kind_hysterectomy": "Hysterectomy",
+  "procedure_kind_oophorectomy": "Oophorectomy",
+  "procedure_kind_phalloplasty": "Phalloplasty",
+  "procedure_kind_metoidioplasty": "Metoidioplasty",
+  "procedure_kind_body_contouring": "Body contouring",
+  "procedure_kind_hair_transplant": "Hair transplant",
+  "procedure_kind_custom": "Custom",
   "surgery_save": "Save",
   "surgery_delete": "Delete",
   "surgery_delete_sheet": "Delete procedure",
   "surgery_delete_q": "Delete {name}?",
   "surgery_delete_hint": "Its consult dates, recovery notes, photos and checklist go with it. This cannot be undone.",
-  "surgery_row_aria": "Open {name}",
   "surgery_day_unscheduled": "No surgery date yet",
   "surgery_set_date": "Set the date",
   "surgery_day_upcoming": "{days} to go",
@@ -2690,7 +2966,6 @@
   "surgery_phase_recovery": "Recovery",
   "surgery_phase_archived": "Archived",
   "surgery_post_op_day": "Post-Op Day {days}",
-  "surgery_countdown_badge": "{days} to go",
   "surgery_consult_questions_title": "Consult questions & notes",
   "surgery_prep_checklist_title": "Preparation & insurance",
   "surgery_clearance_checklist_title": "Clearance & packing list",
@@ -2745,7 +3020,6 @@
   "journal_book_part_dysphoria_euphoria_tags": "Dysphoria/euphoria tags",
   "journal_book_empty": "Nothing to print for this range.",
   "journal_book_range": "{from} to {to}",
-  "stats_range_sub": "last {days} days",
   "stats_day_by_day": "Day by day",
   "stats_scales_now": "Each scale, this period",
   "stats_mood_days": "Days at each mood",
@@ -2753,17 +3027,38 @@
   "stats_compare_label": "Second scale",
   "stats_compare_none": "No second scale",
   "stats_compare_empty": "Nothing logged on that scale in this range.",
-  "stats_look_back": "Look back",
-  "stats_group_cross": "Across your journal",
+  "lookback_read_span": "Wrapped for this span",
+  "lookback_facts_average": "Average {name}",
+  "lookback_handle_start": "Span start",
+  "lookback_handle_end": "Span end",
+  "lookback_era_aria": "Select the era {name}",
+  "lookback_empty_title": "Nothing behind you yet",
+  "lookback_empty_body": "The timeline starts with your first entry, milestone or era.",
+  "lookback_era_offer_title": "Name this stretch?",
+  "lookback_era_offer_body": "An era with these dates, ready for the calendar, wrapped and compare to read.",
+  "lookback_era_offer_confirm": "Name it",
+  "lookback_era_offer_dismiss": "Not now",
+  "lookback_legend_group": "What this rail draws",
+  "lookback_legend_eras": "Eras",
+  "lookback_legend_regimen": "Regimen",
+  "lookback_legend_tryouts": "Tryouts",
+  "lookback_legend_surgery": "Surgery",
+  "lookback_band_aria": "Select the stretch {name}, {from} to {to}",
+  "lookback_mark_aria": "Select the stretch ending on {name}",
+  "lookback_drag_hint": "Drag the ends to choose a stretch",
   "stats_tag_share": "What you write about",
   "stats_tag_share_rest": "Everything else",
   "stats_tag_share_note": "tag uses in range",
   "stats_highest_days": "Highest days",
   "stats_highest_days_note": "Tap a day to open it.",
-  "stats_all_history": "Reads your whole journal, not the range above.",
+  "stats_readings_group": "Readings",
+  "stats_reading_days": "How the days fell",
+  "stats_reading_unknown_title": "No such reading",
+  "stats_reading_unknown_body": "The readings are on Look back. Pick one there.",
+  "lookback_compare_before": "the stretch before",
+  "count_times": "{count}×",
   "interval_day_n": "Day {n}",
   "wrapped_cadence_range": "Range",
-  "wrapped_range_title": "Any range",
   "scales_none_ticked": "None ticked",
   "scale_custom_note": "Your own scale, from {low} to {high}.",
   "scales_change": "change",
@@ -2798,6 +3093,10 @@
   "am_export_note": "This mode ties the journal to this device, so an encrypted export is the only copy that would survive losing it.",
   "am_confirm_passphrase": "Use this passphrase",
   "am_confirm_device": "Use this device",
+  "am_mode_unlocked": "Unlocked",
+  "am_mode_unlocked_sub": "encrypted on disk, opens with no prompt",
+  "am_unlocked_detail": "The journal stays encrypted on disk and tied to this device, but asks for nothing before opening. Anyone who has the unlocked phone can open it. If the phone is lost or reset, nothing you know can bring the journal back.",
+  "am_confirm_unlocked": "Keep unlocked",
   "am_setup_failed": "That did not work. Try again, or pick another way.",
   "am_changed_toast": "Changed. Your journal opens that way from now on.",
   "am_change_failed": "Could not change it. Your journal still opens the way it did.",
@@ -2861,6 +3160,7 @@
   "rkr_body": "Your recovery key opened the journal. The way you used to open it still will not work, so choose one you have now. Your recovery key keeps working either way, and you can replace or remove it in Settings.",
   "rko_title": "Make a recovery key?",
   "rko_body_web": "Nothing about this mode can be recovered from something you know. If this browser clears its data, or the profile goes, the journal goes with it. A recovery key is 25 characters you keep somewhere else, and it is the only thing that would open the journal after that.",
+  "rko_body_android": "Nothing about this mode can be recovered from something you know. If this phone is lost, or the app's data is cleared, the journal goes with it. A recovery key is 25 characters you keep somewhere else, and it is the only thing that would open the journal after that.",
   "rko_make": "Make one now",
   "rko_skip": "Not now",
   "dbr_recovery_offer": "If you made a recovery key, this is what it is for.",
@@ -2888,6 +3188,7 @@
   "vb_passage_own_clear": "Back to the app's passage",
   "vb_passage_own_in_use": "Your own passage",
   "vb_record": "Record",
+  "vb_reading_covered": "Read so far",
   "vb_stop": "Stop",
   "vb_again": "Record again",
   "vb_vowel_hint": "Say \"ah\" and hold it for three seconds, one steady note. Only this step repeats if it does not come out.",
@@ -2896,7 +3197,6 @@
   "vb_vowel_skip": "Skip the note",
   "vb_vowel_start": "Start the three seconds",
   "vb_gauge_run": "Held for {seconds}s",
-  "vb_hearing_label": "What the microphone is picking up",
   "vb_hearing_silent": "Nothing is coming through yet.",
   "vb_gauge_label_steady": "How steady this note is, in semitones",
   "vb_fail_clipping": "Further from the microphone.",
@@ -2915,6 +3215,11 @@
   "vb_room": "Voice above the room",
   "vb_scale": "Formant scale",
   "vb_not_measured": "Not measured",
+  "vb_history_run": "Your last {count} takes.",
+  "vb_history_first": "Your first take, so there is nothing behind it yet.",
+  "vb_history_other_passage": "The first reading of this passage.",
+  "vb_history_other_setup": "The first reading on this setup.",
+  "vb_history_unread": "No earlier reading of this one.",
   "vb_hz": "{value} Hz",
   "vb_hz_range": "{low} to {high} Hz",
   "vb_semitones": "{value} semitones",
@@ -3016,7 +3321,7 @@
   "vm_rate_studied": "Rate is well studied in speech science and hardly studied as a cue to how a voice is gendered. No adult norm split by sex for a read passage was found in either language.",
   "vm_rate_typical": "No dependable typical range exists, and this app's own two passages could not share one anyway. The English passage is 98 words averaging about 1.32 syllables each and the Polish 82 words averaging 1.74, so reading both at exactly the same speed gives about 222 words a minute in English and 172 in Polish. A shared band would report every Polish reader as slow.",
   "vm_rate_cannot": "It cannot be set beside anybody else's number, or beside your own from a different passage. Words a minute is a fact about the words as much as about the speech.",
-  "vm_rate_tier": "Yours against your own earlier takes of the same passage. Editing your own passage starts a new series, and this is the figure that matters for most.",
+  "vm_rate_tier": "Yours against your own earlier takes of the same passage. Editing your own passage starts a new series, and this is the figure that matters for most. A few early rates are missing: a take that stopped part-way through stored a rate too fast to be real, and those are left out rather than drawn.",
   "vm_resonance_measures": "Two of the resonances of your vocal tract, measured on the held note: the first two peaks that the shape of your throat, mouth and tongue puts into the sound. They are what makes one vowel sound different from another.",
   "vm_resonance_how": "Linear prediction over the steady middle of the held note, which estimates where the tract resonates from the sound itself rather than measuring the tract.",
   "vm_resonance_changes": "The length and the shape of the vocal tract. Length is anatomy and feminising hormones do not change it (WPATH Standards of Care, Version 8). Tongue and lip position move these two a great deal, and raising the larynx shortens the tract a little, which is what voice training works on.",
@@ -3039,6 +3344,7 @@
   "vm_scale_cannot": "It cannot reach the thing that matters most about resonance either. That needs the third and fourth resonances, and a phone microphone cannot measure them.",
   "vm_scale_tier": "Yours against your own earlier takes on the same phone. Fitting three vowels together steadies the number against one take's own noise, but it still moves for equipment reasons that have nothing to do with your voice.",
   "presentation_label": "Mode",
+  "presentations_manage": "manage",
   "presentations_title": "Modes",
   "presentations_intro": "A name and a colour for how you're presenting. Nothing else.",
   "presentations_empty_title": "No modes yet.",
@@ -3084,17 +3390,36 @@
   "era_delete_sheet": "Delete era",
   "era_delete_q": "Delete “{name}”? The days stay, the name goes.",
   "era_start_here": "Start an era here",
-  "words_title": "Words",
-  "words_sub": "How often each word shows up in your notes.",
+  "era_band_open_aria": "Open {name}",
   "words_group_by_label": "Group by",
   "words_mode_presentation": "Mode",
   "words_mode_era": "Era",
   "words_pl_caveat": "Polish word forms are counted separately by case, so a word used often in different forms is undercounted here.",
   "words_empty": "No notes with words yet.",
-  "words_group_empty": "No words for this group yet.",
-  "words_ignore_aria": "Ignore {word}",
   "words_unignore_aria": "Stop ignoring {word}",
   "words_ignored_title": "Ignored words",
+  "words_reading_title": "Words that stand out",
+  "words_reading_note": "Sized by how much more often each word turns up here than across the rest of your journal.",
+  "words_reading_empty": "Nothing stands out here yet. These notes use the same words as the rest of the journal.",
+  "words_reading_needs_stretch": "Name an era, or add a mode, and the words you use there show up here.",
+  "words_ignore_action": "Stop counting this word",
+  "words_ignored_sub": "Words this reading skips.",
+  "words_ignored_empty": "No words are being skipped.",
+  "words_times": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} time",
+        "nPlural=other": "{n} times"
+      }
+    }
+  ],
   "stats_constellation": "Two scales at once",
   "constellation_x_label": "Across",
   "constellation_y_label": "Up",
@@ -3185,6 +3510,41 @@
   "clinician_summary_section_finished_areas": "Tracking that ended",
   "clinician_summary_finished_areas_empty": "Nothing is marked as finished.",
   "clinician_summary_part_finished_areas": "Tracking that ended",
+  "clinician_summary_settings_range": "{start} to {end}",
+  "clinician_summary_settings_sections": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} section",
+        "nPlural=other": "{n} sections"
+      }
+    }
+  ],
+  "clinician_summary_settings_drugs": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} drug",
+        "nPlural=other": "{n} drugs"
+      }
+    }
+  ],
+  "clinician_summary_settings_row": "{range}, {sections}, {drugs}. Change",
+  "clinician_summary_settings_row_no_drugs": "{range}, {sections}. Change",
+  "clinician_summary_settings_title": "Settings",
+  "clinician_summary_section_truncated": "and {count} more, all in the printed copy",
   "area_finish_table_area": "Tracking",
   "area_finish_table_ended": "Ended",
   "area_finish_offer_dismiss_sub": "The app won't ask about this again.",
@@ -3200,6 +3560,21 @@
   "area_suspend_confirm": "Pause it",
   "area_suspend_cancel": "Not yet",
   "vm_empty_title": "No recordings yet",
+  "vm_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} recording, {total} in all",
+        "countPlural=other": "{count} recordings, {total} in all"
+      }
+    }
+  ],
   "vm_empty_body": "Voice memos you record inside an entry gather here, browsable in one place without having to remember which day you made them.",
   "vm_open_entry_aria": "Open the entry from {date}",
   "saved_questions_open": "Saved questions",
@@ -3251,7 +3626,7 @@
   "margin_note_delete_q": "Delete this note? The entry stays exactly as you wrote it.",
   "margin_note_delete": "Delete",
   "coming_back_title": "Waiting for you",
-  "coming_back_intro": "The app held on to these while you were elsewhere. Take what you want and leave the rest.",
+  "coming_back_intro": "Take what you want, leave the rest.",
   "coming_back_done_action": "Done for now",
   "coming_back_empty_body": "The app is not holding anything for you right now.",
   "coming_back_letter_title": "A letter you can read",
@@ -3279,8 +3654,6 @@
   "home_count_since": "{entries} since {date}",
   "home_tiles_more": "{names} and {count} more",
   "home_tiles_fewer": "Show fewer",
-  "safe_space_stat_written_title": "Entries written",
-  "safe_space_stat_written_note": "In your whole journal",
   "tile_pause_value": "Nothing to catch up on",
   "home_start_title": "Getting started",
   "home_start_intro": "A few things worth setting up early. They all wait if you would rather just write.",
@@ -3325,6 +3698,23 @@
   "documents_empty_title": "No paper here yet",
   "documents_empty_body": "Photograph a page, say what it is and what day it is from. It is stored encrypted, like everything else.",
   "documents_empty_action": "Add a document",
+  "documents_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} document · {size}",
+        "countPlural=other": "{count} documents · {size}"
+      }
+    }
+  ],
+  "document_kind_pdf": "PDF",
+  "document_kind_image": "Photo",
   "document_new_sheet": "Name this document",
   "document_title_label": "What it is",
   "document_title_placeholder": "Psychiatric opinion",
@@ -3412,5 +3802,89 @@
   "daylio_running_rows": "Writing the entries in…",
   "exp_running_packing": "Packing your journal…",
   "exp_auto_running_writing": "Saving to the backup folder…",
-  "pj_running": "Drawing your journey…"
+  "pj_running": "Drawing your journey…",
+  "calendar_event_appointment_title": "Appointment",
+  "calendar_event_surgery_title": "Procedure",
+  "calendar_event_letter_unlock_title": "Letter",
+  "calendar_handoff_button": "Add to calendar",
+  "calendar_handoff_disclosure": "Whoever can see this calendar sees the title below.",
+  "calendar_handoff_title_label": "Title",
+  "calendar_handoff_time_label": "Time (optional)",
+  "calendar_handoff_share": "Share",
+  "agenda_passed_dose": "A scheduled dose on {date}",
+  "home_agenda_heading": "Coming up",
+  "agenda_more": "{count} more this month",
+  "home_log_heading": "How is today?",
+  "home_pinned_heading": "Pinned",
+  "home_pinned_edit": "Arrange these rows",
+  "home_pinned_edit_empty": "Pin a row here",
+  "home_edit_heading": "Arranging Today",
+  "home_edit_hint": "Drag a row by its handle, or move it with the arrow keys.",
+  "home_edit_unpin": "Unpin {row}",
+  "home_edit_move": "Move {row}",
+  "home_edit_none": "Nothing pinned. Anything you add below shows up here.",
+  "home_edit_add_heading": "Add a row",
+  "home_edit_add": "Pin {row}",
+  "home_edit_agenda_heading": "What the agenda shows",
+  "home_edit_tiles_heading": "Live tiles",
+  "home_edit_tiles_hint": "Each one appears when there is something to say.",
+  "home_edit_done": "Done",
+  "home_edit_reset": "Back to the default set",
+  "home_edit_reset_question": "Go back to the default set?",
+  "home_edit_reset_hint": "The pinned rows go back to the default set, so a row you took off comes back and a row you added goes, and every tile and agenda kind comes back on. Nothing is deleted: those screens are still in their own place.",
+  "tomorrow": "Tomorrow",
+  "surgery_unit_post_op": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day post-op",
+        "nPlural=other": "days post-op"
+      }
+    }
+  ],
+  "surgery_unit_to_go": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day to go",
+        "nPlural=other": "days to go"
+      }
+    }
+  ],
+  "surgery_reading_no_date": "No date yet",
+  "surgery_photo_day": "Day {days}",
+  "surgery_photo_more": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} more",
+        "nPlural=other": "{n} more"
+      }
+    }
+  ],
+  "strip_week_range": "{from} to {to}",
+  "strip_week_earlier": "The week before",
+  "strip_week_later": "The week after",
+  "strip_day_state": "{day}: {state}",
+  "dilation_nothing_expected": "Nothing expected",
+  "strip_day_today_state": "Today, {state}",
+  "strip_week_nothing": "Nothing this week"
 }

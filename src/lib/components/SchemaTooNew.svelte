@@ -16,7 +16,7 @@
 
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
 
   let looking = $state(false);
   let nothingNewer = $state(false);
@@ -37,8 +37,8 @@
   }
 </script>
 
-<GateScreen icon="alert" tone="alert" title={m.boot_schema_too_new_title()}>
-  <p class={gateBodyClass(m.boot_schema_too_new_body())} data-schema-too-new>{m.boot_schema_too_new_body()}</p>
+<GateScreen title={m.boot_schema_too_new_title()}>
+  <p class="gate-body" data-schema-too-new>{m.boot_schema_too_new_body()}</p>
   <div class="gate-actions">
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
@@ -46,7 +46,7 @@
     {#if nothingNewer}
       <!-- SF-004: this result used to appear with no announcement - a
            silent content swap for anyone not looking at the screen. -->
-      <p class="gate-body is-small" role="status" data-nothing-newer>
+      <p class="gate-body" role="status" data-nothing-newer>
         {m.boot_schema_too_new_still_old()}
       </p>
     {/if}

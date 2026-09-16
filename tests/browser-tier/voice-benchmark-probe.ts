@@ -27,7 +27,7 @@ import { analysePassage } from '../../src/lib/audio/benchmark.ts';
 import { DEFAULT_PITCH_AXIS, axisFraction } from '../../src/lib/audio/bands.ts';
 import { decodePitchTrack } from '../../src/lib/audio/track.ts';
 import type { PitchFrame } from '../../src/lib/audio/pitch.ts';
-import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '../../src/lib/audio/quality.ts';
+import { VOWEL_GATE, passageGate, type QualityGate, type QualityReport } from '../../src/lib/audio/quality.ts';
 import { captureChainOfStream, openMicrophone } from '../../src/lib/stores/voiceRecording.ts';
 import { installFakeMicrophone } from '../fake-microphone.mjs';
 import { ANALYSIS_SAMPLE_RATE, startTake } from '../../src/lib/stores/voiceBenchmark.ts';
@@ -94,9 +94,9 @@ function drawnFigure(frames: readonly PitchFrame[], report: QualityReport) {
 const NAME = 'voice-benchmark-probe';
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function take(kind: 'steady' | 'loud' | 'wobble', seconds: number, checks: readonly QualityCheck[]) {
+async function take(kind: 'steady' | 'loud' | 'wobble', seconds: number, gate: QualityGate) {
   const microphone = installFakeMicrophone(kind);
-  const session = await startTake(checks);
+  const session = await startTake(gate);
   if (typeof session === 'string') throw new Error(`the microphone refused: ${session}`);
   if (session === null) throw new Error('the take was cancelled with no signal passed');
 
@@ -162,11 +162,16 @@ async function run() {
   // First, while the real getUserMedia is still in place (see openedChains).
   const chains = await openedChains();
 
-  // A steady take, long enough to clear the gate's length floor twice over.
-  const steady = await take('steady', 4, PASSAGE_CHECKS);
-  const analysed = analysePassage(steady.samples, ANALYSIS_SAMPLE_RATE, 100);
+  /* A steady take, long enough to clear the gate's reading floor twice over.
+     The word count is the oscillator's own rather than a whole passage's:
+     the floor scales with it (ticket 41), so 20 English words asks for 1.66s
+     of voice and four seconds of tone answers it with room to spare, where
+     a hundred words would ask for more than the take is long. */
+  const PROBE_WORDS = 20;
+  const steady = await take('steady', 4, passageGate(PROBE_WORDS, 'en'));
+  const analysed = analysePassage(steady.samples, ANALYSIS_SAMPLE_RATE, PROBE_WORDS, 'en');
 
-  const loud = await take('loud', 2, VOWEL_CHECKS);
+  const loud = await take('loud', 2, VOWEL_GATE);
 
   /* The figure, over the frames the live gauge actually saw. */
   const figure = drawnFigure(steady.frames, steady.live);

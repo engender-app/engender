@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { DocumentTargetKind, EpisodeEndReason, WearKind } from '../types';
+import type { DocumentTargetKind, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
@@ -96,7 +96,7 @@ export interface ArchiveEntry {
       against a built-in table, so restore.ts writes it back unvalidated -
       the same forward-compatible treatment lab_result.analyte already
       gets. */
-  bodyRegions: Record<string, ArchiveBodyRegionFeeling>;
+  bodyRegions: Record<string, number>;
   /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Same
       no-format-version-step reasoning as ArchivePhoto.starred. */
   starred: boolean;
@@ -154,20 +154,6 @@ export interface ArchiveAffirmation {
   text: string;
   builtIn: boolean;
   hidden: boolean;
-}
-
-/** A region's two independent intensities on one entry (phase 5 ticket
-    31). Was a bare number, meaning distress only, and is now a pair so a
-    region that felt good can travel at all. No format version step, the
-    same reasoning ArchivePhoto.starred gives: no release has shipped, so
-    no archive in existence carries the old shape.
-
-    Written out here rather than aliased to BodyRegionFeeling for this
-    file's standing reason - a rename in the app must not silently change
-    what a backup looks like. */
-interface ArchiveBodyRegionFeeling {
-  dysphoria: number | null;
-  euphoria: number | null;
 }
 
 export interface ArchiveBodyRegion {
@@ -457,7 +443,13 @@ interface ArchiveProcedureConsult {
     Nor are its consults, since ticket 57: those are appointments, and they
     travel in the `appointments` section naming this procedure. `consults`
     survives as an optional field only so an older archive parses - see
-    `ArchiveProcedureConsult` above. */
+    `ArchiveProcedureConsult` above.
+
+    `kind` and `dilationOptIn` are phase 9 carpet ticket 17. Both are
+    optional only so an archive written before this ticket parses -
+    applying one reads an absent `kind` as `custom` and an absent
+    `dilationOptIn` as false, the same defaults `upsertProcedure` gives a
+    write that names neither. */
 export interface ArchiveProcedure {
   id: string;
   name: string;
@@ -466,6 +458,8 @@ export interface ArchiveProcedure {
   consults?: ArchiveProcedureConsult[];
   notes: string;
   photos: ArchiveProcedurePhoto[];
+  kind?: ProcedureKind;
+  dilationOptIn?: boolean;
 }
 
 /** One appointment (phase 8 features ticket 57, ADR-0066). Its own section
@@ -643,6 +637,10 @@ interface ArchiveDoseEvent {
       existed, read as null the same way any other field a pre-ticket
       build never wrote is. */
   drug: string | null;
+  /** Who wrote the row - 'person' or 'schedule' (phase 11 ticket 11,
+      ADR-0086). Absent on an archive from before auto-logging existed, read
+      back as 'person', which is what every row in one was. */
+  source: string;
 }
 
 /** Named by the episode's travelling uuid, not its rowid: the rowid means
@@ -664,6 +662,11 @@ export interface ArchiveDoseSchedule {
   weekdays: number[] | null;
   dosesPerDay: number;
   doseAmounts: { dose: number; doseUnit: string }[] | null;
+  /** The day auto-logging went on, or null for off (phase 11 ticket 11,
+      ADR-0086). Absent on an archive from before the switch existed, read
+      back as null, which is off - importing a journal must never start
+      writing doses on the person's behalf without them saying so. */
+  autoLogFromEpochDay: number | null;
 }
 
 export interface ArchiveDosePause {
@@ -780,6 +783,9 @@ interface ArchiveMedicationStock {
   openedEpochDay: number | null;
   inUseWindowDays: number | null;
   inUseEndEpochDay: number | null;
+  /** How many days a restock takes (redesign phase 10 ticket 01). Absent on
+      an archive written before this ticket, read as null the same way. */
+  leadTimeDays: number | null;
 }
 
 /** A wear session as it travels (phase 5 ticket 04). No reminder-handoff

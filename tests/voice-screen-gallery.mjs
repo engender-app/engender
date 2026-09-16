@@ -79,8 +79,14 @@ async function shoot(page, name) {
        it where the viewport's bottom edge was - over content it sits below
        on a real screen. Measured on a 390x844 viewport: the last thing in
        the body clears the bar by 36px, so there is nothing hidden behind
-       it and nothing to fix but the photograph. */
-    for (const el of document.querySelectorAll('.editor-savebar, [class*="app-nav"], nav')) {
+       it and nothing to fix but the photograph.
+
+       Carpet 26 took the foot out of the column, so it is `static` now and
+       this loop passes over it; the floating bar is still what this is
+       for. The foot is named rather than dropped from the list because the
+       reason it is here - a pinned thing in a full-page capture - is a
+       property of the shot and not of the foot's own position. */
+    for (const el of document.querySelectorAll('[data-app-savebar], [class*="app-nav"], nav')) {
       if (getComputedStyle(el).position !== 'static') el.style.position = 'static';
     }
   });

@@ -187,6 +187,21 @@ describe('assembleClinicianDossier', () => {
 
     expect(dossier.regimen!.current).toHaveLength(1);
   });
+
+  /* Ticket 08 reserved an `autoLogged` field here for ticket 11 to fill;
+     ticket 11 put `source` on the dose itself instead, so what the row
+     carries is the journal's own answer and the dossier adds nothing. */
+  it('carries each dose\'s source, so the print can mark the ones a schedule wrote', async () => {
+    const dossier = await assembleClinicianDossier(journal, {
+      fromEpochDay: 19000,
+      toEpochDay: 19010
+    });
+
+    expect(dossier.regimen!.doses.length).toBeGreaterThan(0);
+    for (const dose of dossier.regimen!.doses) {
+      expect(dose.source).toBe('person');
+    }
+  });
 });
 
 describe('regimenDrugNames', () => {

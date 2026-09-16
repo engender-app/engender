@@ -30,13 +30,12 @@
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import { annotationsInRange, type ChartAnnotationSource } from '$lib/charts/annotations';
-  import { readFlagFill, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { flagBarRole, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
   import { PALETTES } from '../palettes.mjs';
 
   let palette = $state('trans');
   let theme = $state('dark');
   let roles = $state<Role[]>([]);
-  let flagFill = $state('none');
   let mood = $state<number | null>(4);
   let dismissed = $state(false);
 
@@ -107,7 +106,6 @@
 
   function readRoles() {
     roles = readFlagRoles();
-    flagFill = readFlagFill();
   }
 
   /* ?measure=1 runs the chart's re-tween against a transform-and-opacity
@@ -253,7 +251,7 @@
   </DayCard>
 
   <p class="gallery-note">Tile grid, two-up, the flag under the number</p>
-  <TileGrid role={roleAt(roles, 1)} {flagFill}>
+  <TileGrid role={roleAt(roles, 1)} bar={flagBarRole(roles, roleAt(roles, 1))}>
     <Tile key="onthisday" title="On this day" value="3" note="entries a year ago" href="#a" />
     <Tile key="wrapped" title="This month" value="21" note="days logged" href="#b" />
   </TileGrid>
@@ -347,6 +345,37 @@
         { key: 'femininity', name: 'Femininity', value: '64', amount: 64 },
         { key: 'voice', name: 'Voice', value: '41', amount: 41 },
         { key: 'social', name: 'Social confidence', note: '9 days', value: '22', amount: 22 }
+      ]}
+    />
+  </ChartCard>
+
+  <!-- Carpet ticket 20: the leader floor. Same rows a thin, early journal
+       draws on a 0-to-100 dimension - one tag with almost every entry,
+       the rest with one or two - so the smallest three bars stay a
+       readable length instead of the sliver `leader` used to draw. -->
+  <ChartCard heading="Tag insights, thin journal" kind="bars" role={roleAt(roles, 1)}>
+    <BarRows
+      rows={[
+        { key: 'a', name: 'Coming out', value: '90', amount: 90 },
+        { key: 'b', name: 'Voice practice', value: '12', amount: 12 },
+        { key: 'c', name: 'Makeup', value: '8', amount: 8 },
+        { key: 'd', name: 'Binding', value: '4', amount: 4 },
+        { key: 'e', name: 'Therapy', value: '2', amount: 2 },
+        { key: 'f', name: 'Shopping', value: '1', amount: 1 }
+      ]}
+    />
+  </ChartCard>
+
+  <!-- Same card, mood's own 1-to-5 scale: deltas this close together were
+       never near the floor, so this is the "unchanged" half of the same
+       ticket's acceptance criteria. -->
+  <ChartCard heading="Tag insights, mood scale" kind="bars" role={roleAt(roles, 1)}>
+    <BarRows
+      rows={[
+        { key: 'a', name: 'Coming out', value: '1.0', amount: 1.0 },
+        { key: 'b', name: 'Voice practice', value: '0.7', amount: 0.7 },
+        { key: 'c', name: 'Makeup', value: '0.5', amount: 0.5 },
+        { key: 'd', name: 'Binding', value: '0.3', amount: 0.3 }
       ]}
     />
   </ChartCard>

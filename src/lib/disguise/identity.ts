@@ -31,6 +31,15 @@ export function appWordmark(disguised: boolean, appName: string): string {
   return disguised ? DECOY_NAME : appName;
 }
 
+/** The fourth tab's label (ticket 08). Undisguised it names the whole
+    subject the hub holds; disguised, everything the bar says stays as
+    neutral as the rest of it already is, so it reverts to the generic word
+    instead. Both strings are the caller's own catalogue lookups - this only
+    picks between them, same shape as `appWordmark`. */
+export function hubTabLabel(disguised: boolean, hubLabel: string, subjectLabel: string): string {
+  return disguised ? hubLabel : subjectLabel;
+}
+
 interface TabState {
   disguised: boolean;
   /** Quick exit is holding the tab over the app. */

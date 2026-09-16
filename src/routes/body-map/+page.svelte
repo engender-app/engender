@@ -12,12 +12,28 @@
      heading names the reading instead, one per card, which is also the
      honest shape for two things the screen never adds up.
 
-     Tapping any hotspot on the 2D anatomical map, tapping any region chip,
-     or tapping the inspect button opens the multi-track somatic inspector sheet. */
+     Redesign ticket 40 turned the figure into the reading. One region could
+     be chosen four ways here - a hotspot, a chip, the picker in the first
+     chart card's header, and an inspect button beside it - and all four
+     opened the inspector sheet, so the map could not be browsed at all:
+     every tap left the screen. Now exactly one control selects, a tap only
+     says which region the charts describe, and the sheet is one explicit
+     row under them.
+
+     Redesign ticket 05 took the screen's own 7d-to-365d range picker off
+     it: the only way here is Look back's list, at the same span/query
+     shape /wrapped/range already reads (spanRangeQuery), so the range
+     picker on this side would only ever disagree with the one the person
+     just dragged. A direct visit with no query still gets a window - the
+     door's own default of the last thirty days - rather than an empty
+     screen. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { DEFAULT_SPAN_DAYS } from '$lib/data/lookBackSpan';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
+  import { plotDaySeriesGroup, type AxisPlot, type DayAxis } from '$lib/charts/dayAxis';
+  import { PLOT_HEIGHT } from '$lib/charts/geometry';
   import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import {
     dayAxisEnds,
@@ -31,16 +47,14 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import Icon from '$lib/components/Icon.svelte';
+  import BodyRegionMap from '$lib/components/BodyRegionMap.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import BodyRegionInspectorSheet from '$lib/components/BodyRegionInspectorSheet.svelte';
-
-  const RANGES = [7, 14, 30, 90, 180, 365];
-  let range = $state(30);
 
   /* Undefined is the unfiltered view (ADR-0048, ticket 18) - every entry,
      with and without a presentation, byte for byte what this screen showed
@@ -67,15 +81,22 @@
 
   let inspectorOpen = $state(false);
 
-  function openInspector(regId: string) {
-    region = regId;
-    inspectorOpen = true;
-  }
-
   // Same inclusive-range rule as the stats screen (ticket 10): the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(todayEpochDay());
+
+  /* The span, reached from Look back (redesign ticket 05) at the same query
+     /wrapped/range reads (stats/+page.svelte's spanRangeQuery) - this screen
+     only ever wants the two dates out of it. A direct visit with no query,
+     or one that fails to parse, falls back to the door's own default
+     window: the last DEFAULT_SPAN_DAYS days ending today. */
+  let queryFrom = $derived(epochDayFromDateInputValue(page.url.searchParams.get('from') ?? ''));
+  let queryTo = $derived(epochDayFromDateInputValue(page.url.searchParams.get('to') ?? ''));
+  let hasSpan = $derived(queryFrom !== null && queryTo !== null && queryFrom <= queryTo);
+  let spanFrom = $derived(hasSpan ? (queryFrom as number) : today - DEFAULT_SPAN_DAYS + 1);
+  let spanTo = $derived(hasSpan ? (queryTo as number) : today);
+  let spanDays = $derived(spanTo - spanFrom + 1);
 
   /* Which axis the two charts are read on (ticket 16). Both take the same
      one: they are one region's two readings and a person switches axis to
@@ -85,33 +106,32 @@
   const readAxis = dayAxisState(() => today);
 
   /* A re-keyed axis reads the whole journal and says so, which is the same
-     call the two interval cards on /stats make: the question needs every
-     interval and every day either side of a surgery available, and the
-     range picker above would otherwise hand it a slice near today that
-     answers nothing. So the range control is swapped out rather than left
-     to sit there doing nothing. */
-  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : today - range + 1);
+     call Care's own interval folds make: the question needs every interval
+     and every day either side of a surgery available, and the span above
+     would otherwise hand it a slice that answers nothing. So the note below
+     swaps in instead of the span quietly doing nothing. */
+  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : spanFrom);
 
-  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today, modeFilter));
-  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today, modeFilter));
+  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, spanTo, modeFilter));
+  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, spanTo, modeFilter));
   /* Both axes of one region over one range, so both take the same
      annotations (ticket 23) - and neither takes any on a re-keyed axis.
      An annotation is a calendar date and a position is not one: several
      calendar days collapse onto one position under the repeating rule, so
      a mark drawn there would claim a coincidence the data does not carry. */
   let annotationsQuery = liveList((j) =>
-    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, today, today)
+    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, spanTo, today)
   );
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
   /* One call for both series, so they fold onto one width and the two
      cards' axes cannot disagree ($lib/charts/dayAxis). */
-  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, range));
+  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, spanDays));
   let plottedDysphoria = $derived(plotted[0]);
   let plottedEuphoria = $derived(plotted[1]);
 
-  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, today));
+  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, spanTo));
 
   /* A screen reader is told which axis a reading is on, and only when it is
      not the one every chart starts on: ", read by Date" on the calendar
@@ -121,68 +141,32 @@
   const withAxis = (reading: string) =>
     readAxis.keying ? m.chart_axis_reading_aria({ reading, axis: axisName }) : reading;
 
-  const HOTSPOTS: { region: string; top: number; left: number }[] = [
-    { region: 'hairline', top: 7, left: 50 },
-    { region: 'face_jaw', top: 15, left: 50 },
-    { region: 'voice_throat', top: 24, left: 50 },
-    { region: 'shoulders', top: 32, left: 24 },
-    { region: 'chest', top: 38, left: 50 },
-    { region: 'hips_waist', top: 48, left: 50 },
-    { region: 'genitals', top: 57, left: 50 },
-    { region: 'hands_feet', top: 88, left: 50 }
-  ];
-  let visibleHotspots = $derived(
-    HOTSPOTS.filter((spot) => regions.some((r) => r.id === spot.region))
-  );
+  /* The figure's role, which is the two chart cards' own - `/stats` gives
+     its charts area index 0 too, so the figure, the two charts here and
+     every chart over there are one colour. Under DIRECTION rule 3 a filled
+     region is a chart mark, the third of the three places colour may live. */
+  let figureRole = $derived(roleAt(activeFlag.roles, 0));
+
+  /* What the figure paints: one reading per region that has any in the
+     range, on the side it mostly sat on (stats.ts, bodyMap.ts). The same
+     range and the same presentation filter the charts below take, so the
+     figure and the charts can never disagree about which entries are in
+     view. */
+  let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, spanTo, modeFilter));
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.body_map_title()} subtitle={m.body_map_sub()} screen="body-map" back="/stats" />
 
   {#if regions.length}
-    <!-- 2D Anatomical Map with tappable hotspot buttons -->
     <div class="body-map-figure-card" data-body-map-figure>
-      <div class="body-map-container" role="group" aria-label={m.body_regions_group()}>
-        <svg class="body-map-silhouette" viewBox="0 0 100 200" aria-hidden="true" focusable="false">
-          <circle cx="50" cy="16" r="11" />
-          <rect x="33" y="29" width="34" height="59" rx="12" />
-          <rect x="19" y="34" width="12" height="52" rx="6" />
-          <rect x="69" y="34" width="12" height="52" rx="6" />
-          <rect x="32" y="82" width="36" height="16" rx="8" />
-          <rect x="34" y="94" width="14" height="52" rx="7" />
-          <rect x="52" y="94" width="14" height="52" rx="7" />
-          <rect x="35" y="144" width="12" height="44" rx="6" />
-          <rect x="53" y="144" width="12" height="44" rx="6" />
-        </svg>
-
-        {#each visibleHotspots as spot (spot.region)}
-          {@const spotName = regions.find((r) => r.id === spot.region)?.name || spot.region}
-          <button
-            type="button"
-            class="body-map-hotspot"
-            class:is-active={region === spot.region}
-            style="top:{spot.top}%;left:{spot.left}%;"
-            aria-label={m.body_region_inspect_aria({ region: spotName })}
-            data-region-hotspot={spot.region}
-            onclick={() => openInspector(spot.region)}
-          ></button>
-        {/each}
-      </div>
-
-      <!-- Quick region selector tags -->
-      <div class="body-map-chips-row" role="group" aria-label={m.body_regions_group()}>
-        {#each regions as r (r.id)}
-          <button
-            type="button"
-            class="tag-chip press"
-            class:is-selected={r.id === region}
-            data-region-chip={r.id}
-            onclick={() => openInspector(r.id)}
-          >
-            {r.name}
-          </button>
-        {/each}
-      </div>
+      <BodyRegionMap
+        {regions}
+        readings={mapQuery.rows}
+        selected={region}
+        role={figureRole}
+        onSelect={(picked) => (region = picked)}
+      />
     </div>
 
     <!-- The axis sits above the range, because it decides whether there is
@@ -205,27 +189,15 @@
         </div>
       {/if}
 
-    <!-- The range control and the whole-journal note share one slot. A
-         re-keyed axis reads all history, so the range picker has nothing
-         left to say and is swapped out rather than left sitting there
-         inert. The swap travels: a pill row and a one-line note are
-         different heights, so the slot animates its own resize, and the
-         control that is leaving fades off its own footprint instead of
-         popping (motion/reveal). -->
+    <!-- The range picker that used to sit in this slot is gone (redesign
+         ticket 05): the screen takes its span from Look back now, the same
+         way /compare takes its two. A re-keyed axis still reads all
+         history regardless of that span, so the note it says so with keeps
+         its own resize and crossfade - what used to swap out for the range
+         picker now just leaves. -->
       <div class="kit-reading-slot" use:resize>
         {#if readAxis.keying}
           <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-        {:else}
-          <div out:crossfade>
-            <Segmented
-              name={m.stats_range_group()}
-              options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-              value={String(range)}
-              onChange={(v) => (range = Number(v))}
-              compact
-              key="body-map-range"
-            />
-          </div>
         {/if}
       </div>
     </div>
@@ -247,72 +219,80 @@
       </div>
     {/if}
 
+    <!-- Which region the two charts below describe. The figure says it in
+         colour and this says it in words, which is also the equivalent the
+         shapes owe a screen reader beyond their own names. Keyed, so the
+         label eases in on a change rather than swapping in place (ticket
+         25's ease-in). -->
+    {#key region}
+      <h2 class="body-map-reading-head" in:crossfade data-body-map-heading>
+        {m.body_map_reading_heading({ region: regionName })}
+      </h2>
+    {/key}
+
+    <!-- One card's series. The two cards differ in which of the two axes
+         they draw and in which order the accessible name names them, and in
+         nothing else - the crossfade on a region change, the shared ends and
+         the annotations are one behaviour and belong in one place, not
+         transcribed twice.
+
+         Keyed on the region, so a pick crossfades the series rather than
+         re-mounting the chart. -->
+    {#snippet series(plottedSeries: AxisPlot, first: string, second: string)}
+      {#key region}
+        <div in:crossfade>
+          <AreaChart
+            scrubLabel={dayAxisScrubLabel(plottedSeries)}
+            points={plottedSeries.points}
+            min={BODY_REGION_INTENSITY_MIN}
+            max={BODY_REGION_INTENSITY_MAX}
+            from={rangeEnds.from}
+            to={rangeEnds.to}
+            annotations={annotationsQuery.rows}
+            ariaLabel={withAxis(m.body_map_chart_aria({ region: regionName, first, second }))}
+          />
+        </div>
+      {/key}
+    {/snippet}
+
+    <!-- The block reserves its height, so picking a region with less data
+         cannot shorten the page under the figure and pull the shapes up
+         from under the finger that just tapped one. Two cards, each a
+         chart at its fixed height plus its own heading and padding. -->
+    <div class="body-map-charts" style="--plot-h:{PLOT_HEIGHT}px">
     {#if dysphoriaQuery.loading || euphoriaQuery.loading}
       <Skeleton variant="block" count={2} />
     {:else}
-      <ChartCard
-        heading={m.body_region_axis_dysphoria()}
-        kind="body-dysphoria"
-        role={roleAt(activeFlag.roles, 0)}
-      >
-        {#snippet control()}
-          <div class="chart-controls-group">
-            <ChartPicker
-              key="body-region"
-              label={m.body_regions_group()}
-              value={region}
-              options={regions.map((r) => ({ value: r.id, label: r.name }))}
-              onPick={(value) => (region = value)}
-            />
-            <button
-              type="button"
-              class="btn btn-soft btn-sm inspector-trigger"
-              onclick={() => openInspector(region)}
-              aria-label={m.body_region_inspect_aria({ region: regionName })}
-              data-open-inspector
-            >
-              <Icon name="search" size={16} />
-              <span>{m.body_region_inspect_button()}</span>
-            </button>
-          </div>
-        {/snippet}
-        <AreaChart
-          scrubLabel={dayAxisScrubLabel(plottedDysphoria)}
-          points={plottedDysphoria.points}
-          min={BODY_REGION_INTENSITY_MIN}
-          max={BODY_REGION_INTENSITY_MAX}
-          from={rangeEnds.from}
-          to={rangeEnds.to}
-          annotations={annotationsQuery.rows}
-          ariaLabel={withAxis(
-            m.body_map_chart_aria({
-              region: regionName,
-              first: m.body_region_axis_dysphoria(),
-              second: m.body_region_axis_euphoria()
-            })
-          )}
-        />
+      <ChartCard heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
+        {@render series(
+          plottedDysphoria,
+          m.body_region_axis_dysphoria(),
+          m.body_region_axis_euphoria()
+        )}
       </ChartCard>
 
-      <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={roleAt(activeFlag.roles, 0)}>
-        <AreaChart
-          scrubLabel={dayAxisScrubLabel(plottedEuphoria)}
-          points={plottedEuphoria.points}
-          min={BODY_REGION_INTENSITY_MIN}
-          max={BODY_REGION_INTENSITY_MAX}
-          from={rangeEnds.from}
-          to={rangeEnds.to}
-          annotations={annotationsQuery.rows}
-          ariaLabel={withAxis(
-            m.body_map_chart_aria({
-              region: regionName,
-              first: m.body_region_axis_euphoria(),
-              second: m.body_region_axis_dysphoria()
-            })
-          )}
-        />
+      <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={figureRole}>
+        {@render series(
+          plottedEuphoria,
+          m.body_region_axis_euphoria(),
+          m.body_region_axis_dysphoria()
+        )}
       </ChartCard>
     {/if}
+    </div>
+
+    <!-- The sheet, behind one explicit row. It used to be what every tap on
+         this screen did, which is why the map could not be browsed; it is a
+         place to go now rather than the consequence of looking. -->
+    <ListCard>
+      <ListRow
+        title={m.body_map_inspect_row()}
+        subtitle={regionName}
+        icon="search"
+        key="body-region-inspector"
+        onclick={() => (inspectorOpen = true)}
+      />
+    </ListCard>
   {/if}
 
   <BodyRegionInspectorSheet
@@ -324,92 +304,63 @@
 </div>
 
 <style>
+  /* The figure's own card. The shapes are the drawing, so the card gives
+     them room and nothing else - no silhouette to sit on, because
+     whole_body is the ground now. */
   .body-map-figure-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3);
+    padding: var(--space-4) var(--space-3);
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
     margin-bottom: var(--space-3);
   }
 
-  .body-map-container {
-    position: relative;
-    width: 100%;
-    max-width: 180px;
-    aspect-ratio: 1 / 2;
-    margin: 0 auto;
+  /* Which region the charts describe. Rule 2's 17px, not a display size:
+     the screen's title is the field's, and this is a line under a figure. */
+  .body-map-reading-head {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    margin: 0 0 var(--space-2);
   }
 
-  .body-map-silhouette {
-    width: 100%;
-    height: 100%;
-    fill: var(--surface-2);
-    stroke: var(--border);
-    stroke-width: 1.5;
-  }
+  /* Reserved, so picking a region with less data cannot shorten the page
+     under the figure. Two chart cards at their own fixed height, plus the
+     gap between them - the same floor the skeleton stands in while they
+     load, which is why the swap into the real charts does not move
+     anything either. */
+  .body-map-charts {
+    /* A chart card is its plot plus its own heading and padding. The plot
+       is the kit's own number ($lib/charts/geometry), and the chrome is
+       stated in the tokens kit.css uses for it: the rule between two cards
+       and its padding, and the heading's own line box.
 
-  .body-map-hotspot {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    width: var(--touch-target);
-    height: var(--touch-target);
-    min-width: 48px;
-    min-height: 48px;
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    border-radius: 50%;
+       What this reserves is the whole block, not a card, because the two
+       cards are not the same height as each other and neither is constant -
+       an annotated series carries marks a bare one does not. Measured
+       across four regions the block holds at 388px while the cards inside
+       it go from 121+232 to 121+142, which is the point: the figure above
+       does not move when the region under it changes. */
+    --chart-card-chrome: calc(var(--space-5) + var(--space-4) + 1.25em);
+    --charts-reserve: calc(2 * (var(--plot-h) + var(--chart-card-chrome)) + var(--space-3));
+    min-height: var(--charts-reserve);
     display: flex;
-    align-items: center;
-    justify-content: center;
-    touch-action: manipulation;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
-  .body-map-hotspot::after {
-    content: '';
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid var(--accent);
-    background: var(--surface);
-    transition:
-      background var(--dur-fast) var(--ease-out),
-      transform var(--dur-fast) var(--ease-out);
-  }
+  /* The skeleton stands in the same footprint rather than its own. Two of
+     the kit's blocks came to 474px against the charts' 388, so the block
+     shrank by 86px the moment the data landed - the same jump under the
+     figure that reserving the height exists to prevent, arriving by the
+     other door.
 
-  .body-map-hotspot:hover::after {
-    transform: scale(1.2);
-    background: var(--accent-soft);
-  }
-
-  .body-map-hotspot.is-active::after {
-    background: var(--accent);
-    transform: scale(1.25);
-  }
-
-  .body-map-chips-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--space-2);
-    width: 100%;
-  }
-
-  .chart-controls-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .inspector-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
+     Stated as the reserve rather than as 100%: the block's own height is
+     auto with a floor, so a percentage on a child of it resolves to auto
+     and changes nothing, which is what the first attempt at this did.
+     `clip` rather than `hidden`, because `hidden` makes a scroll container
+     the browser will then scroll. */
+  .body-map-charts :global([data-skeleton]) {
+    height: var(--charts-reserve);
+    overflow: clip;
   }
 </style>

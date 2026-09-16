@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { screenTransition, type NavigationFacts } from './screen-transition';
+import { chromelessPath, replacesAppNavigation } from './chromeless';
 
 const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string }): NavigationFacts => ({
   type: 'link',
-  isAndroid: false,
   isChromeless: false,
   fromSheet: false,
   chromeOrigin: '',
@@ -21,20 +21,32 @@ describe('choosing a tier-2 pattern', () => {
 
   it('shares an axis going deeper inside one tab, because that is a sequence', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690' }))).toBe('shared-axis');
-    expect(screenTransition(nav({ from: '/stats', to: '/timeline' }))).toBe('shared-axis');
+    expect(screenTransition(nav({ from: '/stats', to: '/body-map' }))).toBe('shared-axis');
+    expect(screenTransition(nav({ from: '/more', to: '/care/labs' }))).toBe('shared-axis');
     // /settings borrows a tab rather than owning one (audit item 4); /more
     // already lit 'settings' a moment ago, which is what chromeOrigin
     // carries into a screen reached from it.
-    expect(
-      screenTransition(nav({ from: '/more', to: '/settings/labs', chromeOrigin: 'settings' }))
-    ).toBe('shared-axis');
+    expect(screenTransition(nav({ from: '/more', to: '/settings', chromeOrigin: 'settings' }))).toBe(
+      'shared-axis'
+    );
   });
 
   it('reads a route that lights another tab as a tab change, not a detail', () => {
-    /* /doses is reached from More's health group and lights that tab
+    /* /care/doses is reached from More's health group and lights that tab
        (active-tab.ts), so arriving from Stats crosses tabs even though
        neither path is a tab root. */
-    expect(screenTransition(nav({ from: '/stats', to: '/doses' }))).toBe('fade-through');
+    expect(screenTransition(nav({ from: '/stats', to: '/care/doses' }))).toBe('fade-through');
+  });
+
+  it('steps into the return moment and back out of it (ticket 35)', () => {
+    /* Chromeless is about the bar; it must not also mean "no movement".
+       /coming-back lights the Today tab (active-tab.ts), so arriving from
+       Home is going deeper inside one tab - which is what carries the
+       field's blind down from the sun's height to the step's. */
+    expect(screenTransition(nav({ from: '/', to: '/coming-back' }))).toBe('shared-axis');
+    expect(
+      screenTransition(nav({ from: '/coming-back', to: '/', type: 'popstate', delta: -1 }))
+    ).toBe('shared-axis-back');
   });
 
   it('reverses the axis on the way back', () => {
@@ -63,18 +75,17 @@ describe('choosing a tier-2 pattern', () => {
     );
   });
 
-  it('leaves back to Android, whose gesture has already started drawing it', () => {
+  it('animates back within a tab as shared-axis-back, avoiding abrupt cuts (ticket 102)', () => {
     expect(
       screenTransition(
-        nav({ from: '/day/20690', to: '/calendar', type: 'popstate', delta: -1, isAndroid: true })
+        nav({ from: '/day/20690', to: '/calendar', type: 'popstate', delta: -1 })
       )
-    ).toBe('none');
-  });
-
-  it('still animates forward on Android, which the gesture says nothing about', () => {
-    expect(screenTransition(nav({ from: '/calendar', to: '/day/20690', isAndroid: true }))).toBe(
-      'shared-axis'
-    );
+    ).toBe('shared-axis-back');
+    expect(
+      screenTransition(
+        nav({ from: '/settings/tags', to: '/settings', type: 'popstate', delta: -1 })
+      )
+    ).toBe('shared-axis-back');
   });
 
   it('animates nothing on a cold start, on a gate, or in place', () => {
@@ -162,20 +173,57 @@ describe('choosing a tier-2 pattern', () => {
     );
   });
 
-  it('leaves the container transform to Android going back, like every other pattern', () => {
-    /* The predictive back gesture has already started drawing where the
-       person is going, and a fixed animation on top of it is worse than
-       none. */
+  it('animates the container transform going back (ticket 102)', () => {
     expect(
       screenTransition(
-        nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1, isAndroid: true })
+        nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1 })
       )
-    ).toBe('none');
+    ).toBe('container');
   });
 
   it('treats a forward popstate as forward', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690', type: 'popstate', delta: 1 }))).toBe(
       'shared-axis'
     );
+  });
+});
+
+describe('the blind runs on every navigation the app makes (ADR-0080)', () => {
+  /* The cut list is closed. Anything not on it moves, and a route having no
+     chrome is not on it - that conflation is what made ticket 35's arrival
+     a yank. */
+  it('cuts only with nothing to come from', () => {
+    expect(screenTransition(nav({ from: null, to: '/' }))).toBe('none');
+  });
+
+  it('cuts when either side renders instead of the app', () => {
+    expect(screenTransition(nav({ from: '/', to: '/onboarding', isChromeless: true }))).toBe('none');
+    expect(screenTransition(nav({ from: '/onboarding', to: '/', isChromeless: true }))).toBe('none');
+  });
+
+  it('cuts on the same path, and between views of one screen', () => {
+    expect(screenTransition(nav({ from: '/stats', to: '/stats' }))).toBe('none');
+    expect(screenTransition(nav({ from: '/wrapped/year', to: '/wrapped/month' }))).toBe('none');
+  });
+
+  it('moves for a chromeless route the app navigated to', () => {
+    /* The invariant, stated over the predicates rather than over one route:
+       a path with no chrome that does not replace the app is a path the
+       transition must animate. `isChromeless` is the *narrower* fact, which
+       is what the layout now feeds it. */
+    for (const path of ['/coming-back']) {
+      expect(chromelessPath(path), path).toBe(true);
+      expect(replacesAppNavigation(path), path).toBe(false);
+      expect(
+        screenTransition(nav({ from: '/', to: path, isChromeless: replacesAppNavigation(path) })),
+        path
+      ).not.toBe('none');
+      expect(
+        screenTransition(
+          nav({ from: path, to: '/', type: 'popstate', delta: -1, isChromeless: replacesAppNavigation(path) })
+        ),
+        path
+      ).not.toBe('none');
+    }
   });
 });

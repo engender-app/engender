@@ -25,6 +25,7 @@
      not move at all. */
   import { m } from '$lib/paraglide/messages';
   import { decodePitchTrack } from '$lib/audio/track';
+  import { pitchDensity } from '$lib/audio/density';
   import { pitchAxis, type BandLanguage } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
@@ -71,6 +72,11 @@
   let axis = $derived(
     pitchAxis({ hz: [...(trace?.map((frame) => frame.hz) ?? []), medianHz, p10Hz, p90Hz], comfort })
   );
+
+  /** Where the read sat, off the same decoded track the trace is drawn from
+      (redesign ticket 42). One decode feeds both, and the figure is handed
+      a shape rather than a track so it stays a drawing component. */
+  let density = $derived(trace ? pitchDensity(trace, axis) : null);
 </script>
 
 <div class="vt" {...roleAttrs(role)} {...rest}>
@@ -80,6 +86,7 @@
         {axis}
         {comfort}
         {trace}
+        {density}
         span={{ lowHz: p10Hz, highHz: p90Hz }}
         {medianHz}
         tickLabel={hzLabel}

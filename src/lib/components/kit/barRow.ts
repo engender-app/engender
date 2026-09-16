@@ -42,16 +42,32 @@ function tallest(amounts: number[]): number {
   return Math.max(0, ...amounts);
 }
 
+/** Below this share, a leader bar reads as a dot rather than a length - the
+    complaint carpet ticket 20 was filed against (a tag that moved a
+    0-to-100 scale by a few points, beside one that moved it by eighty,
+    drew a sliver nobody could see). Strava's zone bars and Weather's
+    monthly-average bars answer the same shape of problem the same way: a
+    real nonzero reading always draws a visible nub, and only readings
+    below the floor are stretched to it. It is a floor and not a second
+    measure - every share at or above it is untouched, so this is a
+    guarantee about legibility, not a rule about what a bar means. Applies
+    only under `leader`: `track` rows are already a position in a known
+    range and a floor there would misstate the position. */
+const LEADER_FLOOR_SHARE = 8;
+
 /** Each row's bar length and leader flag, decided by `measure` rather than
     left for BarRows.svelte to work out. */
 export function drawBars(rows: BarRow[], measure: BarMeasure): DrawnBar[] {
   const amounts = rows.map((row) => row.amount);
   const top = measure === 'track' ? 1 : tallest(amounts);
-  return rows.map((row) => ({
-    ...row,
-    share: share(row.amount, top),
-    isLeader: measure === 'leader' && row.amount === top && top > 0
-  }));
+  return rows.map((row) => {
+    const raw = share(row.amount, top);
+    return {
+      ...row,
+      share: measure === 'leader' && raw > 0 ? Math.max(raw, LEADER_FLOOR_SHARE) : raw,
+      isLeader: measure === 'leader' && row.amount === top && top > 0
+    };
+  });
 }
 
 /** Each amount's share of the tallest amount in the set, 0-100. The same

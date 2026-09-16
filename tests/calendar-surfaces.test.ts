@@ -199,7 +199,7 @@ describe('the heat map', () => {
   });
 
   it('keeps the legend for the ramp it explains, and drops it where the faces are', () => {
-    /* kit/MoodYear.svelte made this call first and says why: the faces are
+    /* kit/YearRows.svelte (then MoodYear) made this call first and says why: the faces are
        the same five a person picks a mood from every day, so naming them
        under the grid is the app explaining itself to its reader. */
     expect(markupOf(heatMap)).toMatch(/\{#if !isMood\}[\s\S]*?data-cal-legend/);
@@ -223,7 +223,7 @@ describe('the heat map', () => {
     // not. Both come from one place so the calendar and /stats cannot word a
     // day differently.
     expect(heatMap).toContain('spreadNote(');
-    expect(read('src/routes/stats/+page.svelte')).toContain('spreadNote(');
+    expect(read('src/lib/components/readings/DayByDayReading.svelte')).toContain('spreadNote(');
     expect(read('src/lib/data/wrappedDisplay.ts')).toMatch(/spreadNote[\s\S]*?nativeValue\(metric/);
   });
 
@@ -521,5 +521,13 @@ describe('loading states, since all six read entry data', () => {
     // A month is 30 cells of known shape: there is nothing to reflow, so the
     // honest loading state is the grid itself plus aria-busy.
     expect(heatMap).toContain('aria-busy={loading}');
+  });
+
+  it('the calendar avoids hydration layout shifts on cold mount (ticket 109)', () => {
+    const calendar = read(SCREENS.calendar);
+    // Cached entry presence prevents month controls and heatmap popping in after mount
+    expect(calendar).toContain('engender-has-entries');
+    // Week strip waits on recent entries query to prevent downward teleport
+    expect(calendar).toMatch(/\{#if hasEntries && !recent\.loading\}/);
   });
 });

@@ -27,7 +27,11 @@
   import type { Milestone } from '$lib/data/types';
   import type { MilestoneStatus } from '$lib/data/milestoneStatus';
 
-  let { milestone, s, href = '/timeline' }: { milestone: Milestone; s: MilestoneStatus; href?: string } = $props();
+  /* Redesign ticket 43: the default was /timeline, which is a redirect
+     now. The rail and the list are one screen, so a card's row points at
+     it directly rather than through the stub. */
+  let { milestone, s, href = '/transition/milestones' }: { milestone: Milestone; s: MilestoneStatus; href?: string } =
+    $props();
 
   let status = $derived.by(() => {
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });

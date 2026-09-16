@@ -37,7 +37,7 @@
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
   import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
   import AccessModeSetup, { type AccessSetupMode } from './AccessModeSetup.svelte';
 
   let busy = $state(false);
@@ -64,7 +64,7 @@
   }
 </script>
 
-<GateScreen icon="shield" title={m.rkr_title()} data-post-recovery-setup>
-  <p class={gateBodyClass(m.rkr_body())} data-post-recovery-body>{m.rkr_body()}</p>
+<GateScreen title={m.rkr_title()} data-post-recovery-setup>
+  <p class="gate-body" data-post-recovery-body>{m.rkr_body()}</p>
   <AccessModeSetup purpose="recovered" current={bootState.accessMode} {busy} {error} onChoose={choose} bind:chosen />
 </GateScreen>

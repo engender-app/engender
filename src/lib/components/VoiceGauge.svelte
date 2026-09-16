@@ -39,7 +39,12 @@
                    measurement itself does: the gate counts the longest
                    unbroken run, so a take that stops really does start that
                    count again, and a bar that kept its ground would be
-                   lying about what would be stored.
+                   lying about what would be stored. Drawn only where the
+                   task is a hold, which is the vowel step and nothing else
+                   (`targetSeconds` null). Free speech had it too until
+                   redesign ticket 41, which was the same mistake the
+                   passage step's copy of it was: a hold meter under a task
+                   nobody is holding anything for.
 
      **What the absolute axis changed, and what it did not.** The trace used
      to be plotted in semitones around the median of whatever was on screen,
@@ -72,6 +77,7 @@
     DEFAULT_PITCH_AXIS,
     pitchAxis,
     semitonesFrom,
+    plainHzTicks,
     steadinessAxis,
     steadinessTicks,
     type BandLanguage,
@@ -98,8 +104,12 @@
   }: {
     frames: readonly PitchFrame[];
     report: QualityReport | null;
-    /** The continuous voicing this step is working towards. */
-    targetSeconds: number;
+    /** The continuous voicing this step is working towards, and null where
+        the task has no hold in it - free speech on the practise tab, where
+        a run meter under the trace was the hold task's readout on a task
+        that is not a hold (redesign ticket 41). Null draws no run bar and
+        prints no held stretch. */
+    targetSeconds: number | null;
     label: string;
     /** What to do differently, already in words - the readout's own text. */
     advice: string[];
@@ -120,7 +130,12 @@
     reading?: 'pitch' | 'steadiness';
     /** Whose figures the bands are (bands.ts's `bandsFor`). Read only in
         `pitch`; a steadiness figure cites nothing. */
-    language: BandLanguage;
+    /** Whose published ranges belong behind the trace, or null for none.
+        Null is not an omission: ADR-0059's rule is that bands never appear
+        without their citation, so a figure with no population to cite draws
+        neither, and both the vowel step and the reading step are that
+        figure for their own reasons (see `reading`). */
+    language: BandLanguage | null;
     languageGuessed?: boolean;
     role?: Role;
     [attribute: string]: unknown;
@@ -176,14 +191,18 @@
   let clipping = $derived(report?.failed.includes('clipping') ?? false);
 
   let runFraction = $derived(
-    report ? Math.max(0, Math.min(1, report.longestVoicedSeconds / targetSeconds)) : 0
+    report && targetSeconds !== null
+      ? Math.max(0, Math.min(1, report.longestVoicedSeconds / targetSeconds))
+      : 0
   );
 
   /** The held stretch in words, which is what carries this figure under
       either reduced-motion path: the marks stop moving, the sentence does
-      not. */
+      not. Null where there is no hold to report. */
   let heldLabel = $derived(
-    m.vb_gauge_run({ seconds: (report?.longestVoicedSeconds ?? 0).toFixed(1) })
+    targetSeconds === null
+      ? null
+      : m.vb_gauge_run({ seconds: (report?.longestVoicedSeconds ?? 0).toFixed(1) })
   );
 
   /** How far the take has wandered, as a share of what the gate allows.
@@ -202,7 +221,7 @@
 <div class="vg" {...roleAttrs(role)} {...rest}>
   <div class="vg-top">
     <span class="vg-label">{label}</span>
-    <span class="vg-held">{heldLabel}</span>
+    {#if heldLabel !== null}<span class="vg-held">{heldLabel}</span>{/if}
   </div>
 
   <PitchFigure
@@ -211,7 +230,11 @@
     trace={frames}
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
-    ticks={steadiness && heldHz !== null ? steadinessTicks(heldHz) : undefined}
+    ticks={steadiness && heldHz !== null
+      ? steadinessTicks(heldHz)
+      : language === null
+        ? plainHzTicks(axis)
+        : undefined}
     tickLabel={steadiness && heldHz !== null
       ? (hz) => semitoneLabel(semitonesFrom(heldHz, hz))
       : hzLabel}
@@ -219,9 +242,11 @@
     {languageGuessed}
   >
     {#snippet underPlot()}
-      <div class="vg-run" aria-hidden="true">
-        <span class="vg-run-fill" style="--vg-run: {runFraction}"></span>
-      </div>
+      {#if targetSeconds !== null}
+        <div class="vg-run" aria-hidden="true">
+          <span class="vg-run-fill" style="--vg-run: {runFraction}"></span>
+        </div>
+      {/if}
     {/snippet}
   </PitchFigure>
 
@@ -255,7 +280,7 @@
 
   .vg-run {
     height: 4px;
-    border-radius: 999px;
+    border-radius: 2px;
     background: var(--role-wash);
     overflow: hidden;
   }

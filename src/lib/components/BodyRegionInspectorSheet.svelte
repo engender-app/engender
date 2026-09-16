@@ -261,8 +261,8 @@
   .inspector-stat-pill {
     padding: var(--space-1) var(--space-2);
     background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
   }
@@ -277,8 +277,8 @@
     margin: 0;
     padding: var(--space-2) var(--space-3);
     background: var(--surface);
-    border: 1px dashed var(--border);
-    border-radius: var(--r-card);
+    border: 1px dashed var(--outline);
+    border-radius: var(--r-block);
   }
 
   .inspector-photos-grid {

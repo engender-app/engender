@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { clipped, mix, noise, sine } from './test-support/synth.ts';
 import { makeLiveGauge, type LiveGauge } from './live.ts';
 import { trackPitch } from './pitch.ts';
-import { VOWEL_CHECKS, assessQuality, takeSignals } from './quality.ts';
+import { VOWEL_GATE, assessQuality, takeSignals } from './quality.ts';
 
 /* The live gauge. Its whole reason to exist is that it
    computes each frame once, so what it has to prove is that feeding a take
@@ -11,7 +11,7 @@ import { VOWEL_CHECKS, assessQuality, takeSignals } from './quality.ts';
    would tell someone their take passed and the saved take would fail. */
 
 const gaugeOver = (samples: Float32Array, chunkLength: number) => {
-  const gauge = makeLiveGauge(16000, VOWEL_CHECKS);
+  const gauge = makeLiveGauge(16000, VOWEL_GATE);
   for (let at = 0; at < samples.length; at += chunkLength) {
     gauge.push(samples.subarray(at, Math.min(at + chunkLength, samples.length)));
   }
@@ -19,7 +19,7 @@ const gaugeOver = (samples: Float32Array, chunkLength: number) => {
 };
 
 const whole = (samples: Float32Array) =>
-  assessQuality(takeSignals(samples, 16000, trackPitch(samples, 16000)), VOWEL_CHECKS);
+  assessQuality(takeSignals(samples, 16000, trackPitch(samples, 16000)), VOWEL_GATE);
 
 test('a take pushed in pieces reads the same as the same take analysed whole', () => {
   const { samples } = mix(sine(190, 3, 16000, 0.4), noise(3, 16000, 0.004));
@@ -47,7 +47,7 @@ test('the chunk size the microphone happens to deliver changes nothing', () => {
 
 test('the verdict changes as the take grows, from too short to passing', () => {
   const { samples } = mix(sine(190, 3, 16000, 0.4), noise(3, 16000, 0.004));
-  const gauge = makeLiveGauge(16000, VOWEL_CHECKS);
+  const gauge = makeLiveGauge(16000, VOWEL_GATE);
 
   gauge.push(samples.subarray(0, 16000));
   assert.ok(gauge.read().failed.includes('tooShort'), 'one second in, it is not a sustained vowel yet');
@@ -58,7 +58,7 @@ test('the verdict changes as the take grows, from too short to passing', () => {
 
 test('a take that goes into the rails halfway is caught from then on', () => {
   const clean = mix(sine(190, 2, 16000, 0.4), noise(2, 16000, 0.004));
-  const gauge = makeLiveGauge(16000, VOWEL_CHECKS);
+  const gauge = makeLiveGauge(16000, VOWEL_GATE);
 
   gauge.push(clean.samples);
   assert.ok(!gauge.read().failed.includes('clipping'));
@@ -98,7 +98,7 @@ const costOf500Reads = (gauge: LiveGauge) => {
 };
 
 test('a poll costs the same at five minutes of take as at ten seconds, and keeps none of it', () => {
-  const brief = makeLiveGauge(16000, VOWEL_CHECKS);
+  const brief = makeLiveGauge(16000, VOWEL_GATE);
   pushSeconds(brief, 10);
   const short = costOf500Reads(brief);
 
@@ -106,7 +106,7 @@ test('a poll costs the same at five minutes of take as at ten seconds, and keeps
   // are this test's - and the gauge above is garbage by now, which can only
   // make the reading below smaller.
   const before = process.memoryUsage().arrayBuffers;
-  const long = makeLiveGauge(16000, VOWEL_CHECKS);
+  const long = makeLiveGauge(16000, VOWEL_GATE);
   pushSeconds(long, 300);
   const held = process.memoryUsage().arrayBuffers - before;
 

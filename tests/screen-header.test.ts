@@ -24,13 +24,14 @@ const svelteFiles = globSync('src/**/*.svelte', { cwd: root });
 
    /settings/lock left this list with ticket 53: the app-lock gate it framed
    is retired, and its replacement is a chromeless gate the layout renders
-   rather than a route. */
+   rather than a route. /settings/live-tiles left it with phase 11 ticket
+   04: a redirect is a `+page.ts` stub now and has no component at all, so
+   there is nothing here to exempt. */
 const WITHOUT = new Map([
   ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
   ['src/routes/entry/new/[day]/+page.svelte', 'renders EntryEditor, which carries the header'],
-  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow'],
-  ['src/routes/settings/live-tiles/+page.svelte', 'redirects to /settings/notifications and renders nothing (deepening ticket 09)']
+  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow']
 ]);
 
 describe('every screen gets its header from one component', () => {
@@ -85,15 +86,19 @@ describe('every screen gets its header from one component', () => {
        the header shape every other screen already has and the one 3d
        describes. A title doing two jobs was the thing to fix, not the
        repetition. */
+    /* One door's tab (the fourth) can say either of two things depending on
+       disguise (ticket 08, hubTabLabel) - both are listed, so the guard
+       still catches whichever one a header regresses to repeating. */
     const TAB_TITLES = new Map([
-      ['src/routes/calendar/+page.svelte', 'm.nav_calendar()'],
-      ['src/routes/more/+page.svelte', 'm.nav_more()']
+      ['src/routes/calendar/+page.svelte', ['m.nav_journal()']],
+      ['src/routes/more/+page.svelte', ['m.nav_more()', 'm.nav_transition()']]
     ]);
 
     const repeating: string[] = [];
-    for (const [file, tabTitle] of TAB_TITLES) {
+    for (const [file, tabTitles] of TAB_TITLES) {
       const header = read(file).match(/<ScreenHeader[^>]*\/?>/s)?.[0] ?? '';
-      if (header.includes(`title={${tabTitle}}`) && !header.includes('titleHidden')) {
+      const repeatsTab = tabTitles.some((tabTitle) => header.includes(`title={${tabTitle}}`));
+      if (repeatsTab && !header.includes('titleHidden')) {
         repeating.push(file);
       }
     }

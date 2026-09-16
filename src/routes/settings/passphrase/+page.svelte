@@ -70,7 +70,7 @@
   {#if offering}
     <RecoveryKeyOffer variant="secret-changed" onDismiss={() => goto('/settings/security')} />
   {:else}
-  <div class="card">
+  <div class="kit-panel" data-kit-surface>
     <p class="ob-text">{m.pp_change_body()}</p>
     <form class="stack-3" onsubmit={submit}>
       <div class="screen-part">

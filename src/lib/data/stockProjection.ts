@@ -90,7 +90,12 @@ export interface StockProjection {
 
 const isConsuming = (dose: DoseEvent) => dose.status !== 'skipped';
 
-const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
+/** Whether two drug names are the same drug. Exported because pairing a
+    stock entry to a regimen is the same question outside this file as in
+    it - Care pairs each running drug's lane to the stock it is counting
+    down (phase 11 ticket 10), and a second comparison written there could
+    disagree with the one the projection itself is made from. */
+export const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
 
 /** Whether `dose` counts against `stock`'s drug: taken or changed - a
     skipped dose used nothing - and attributed (regimenEpisode.ts) to this
@@ -280,6 +285,19 @@ export function projectStock(
   );
 }
 
+/** The day an order has to be placed: `runOutEpochDay` minus `leadTimeDays`
+    where a lead time is set, the run-out day itself where none is set
+    (redesign phase 10 ticket 01). Null wherever `runOutEpochDay` is null -
+    there is nothing to place an order ahead of. Kept separate from
+    `projectStockFromCounts` rather than folded into `StockProjection`, so the
+    run-out projection itself stays exactly what it was before a lead time
+    existed (ADR-0046). */
+export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: number | null): number | null {
+  if (runOutEpochDay === null) return null;
+  if (leadTimeDays === null) return runOutEpochDay;
+  return runOutEpochDay - leadTimeDays;
+}
+
 /** Threshold in days below which a medication stock triggers a low-stock notice. */
 /* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
    (AU-09 test-only review). */
@@ -370,19 +388,26 @@ export function isStockDepletingSoon(
 interface DepletingStockInfo<T = StockEntry> {
   entry: T;
   projection: StockProjection;
+  /** The day this reading is gated and sorted on: `reorderByEpochDay` where
+      a row carries one, the projection's own run-out day otherwise
+      (redesign phase 10 ticket 16). Named so a caller can print the exact
+      date it was judged against rather than recomputing a third answer. */
+  actionableEpochDay: number;
   daysRemaining: number;
 }
 
 export function depletingStocks<T extends { drug: string }>(
-  rows: readonly { entry: T; projection: StockProjection }[],
+  rows: readonly { entry: T; projection: StockProjection; reorderByEpochDay?: number | null }[],
   asOfEpochDay: number,
   thresholdDays: number = STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS
 ): DepletingStockInfo<T>[] {
   const result: DepletingStockInfo<T>[] = [];
-  for (const { entry, projection } of rows) {
-    if (isStockDepletingSoon(projection, asOfEpochDay, thresholdDays)) {
-      const daysRemaining = Math.max(0, projection.runOutEpochDay! - asOfEpochDay);
-      result.push({ entry, projection, daysRemaining });
+  for (const { entry, projection, reorderByEpochDay } of rows) {
+    const actionableEpochDay = reorderByEpochDay ?? projection.runOutEpochDay;
+    if (actionableEpochDay === null) continue;
+    if (actionableEpochDay - asOfEpochDay <= thresholdDays) {
+      const daysRemaining = Math.max(0, actionableEpochDay - asOfEpochDay);
+      result.push({ entry, projection, actionableEpochDay, daysRemaining });
     }
   }
   return result.sort((a, b) => a.daysRemaining - b.daysRemaining || a.entry.drug.localeCompare(b.entry.drug));

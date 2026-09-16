@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { colorMixOklab, contrast, luminance, toRgb } from '../src/lib/theme/colour';
+import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf } from '../src/lib/theme/colour';
+import { flagField, flagRoles } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -40,6 +41,27 @@ function moodPresetTokenMap(preset: string, theme: (typeof THEMES)[number]) {
     out[match[1]] = match[2];
   }
   return out;
+}
+
+/** A preset's five steps, in order, for a theme. */
+function moodRamp(preset: string, theme: (typeof THEMES)[number]) {
+  const tokens = moodPresetTokenMap(preset, theme);
+  return [1, 2, 3, 4, 5].map((step) => tokens[`mood-${step}`]);
+}
+
+/** Signed shorter way round the wheel, from one hue to another. */
+function hueGap(from: number, to: number) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+/** How far apart two colours are in OKLab, out of the polar readings the
+    token layer already exposes: two chromas and the angle between them are
+    a triangle, and the lightnesses are the third dimension. */
+function oklabDistance(a: string, b: string) {
+  const [ca, cb] = [chromaOf(a), chromaOf(b)];
+  const angle = (hueGap(hueOf(a), hueOf(b)) * Math.PI) / 180;
+  const flat = ca * ca + cb * cb - 2 * ca * cb * Math.cos(angle);
+  return Math.hypot(lightnessOf(a) - lightnessOf(b), Math.sqrt(Math.max(0, flat)));
 }
 
 /** The accent percentage in `--heat-N: color-mix(in oklab, var(--accent)
@@ -178,6 +200,106 @@ describe('palette contrast coverage', () => {
     }
   });
 
+  /* ADR-0077: each preset runs between two deliberately chosen hues instead
+     of tinting one, so "two colours, not one" is the claim these three hold.
+     Read on the shipped hexes, in OKLab, which is the space palettes.css
+     mixes in.
+
+     Hue distance is where the two-hue reading comes from; monotone travel is
+     what keeps it a gradient rather than a wander through a third hue the
+     ends do not sit either side of; and rising chroma is the "how much"
+     channel mood keeps whichever way the hue goes - in the dark theme it is
+     the only one it has, because the luminance ceiling there is what stops
+     the ramp descending (ADR-0077's band). */
+  it('runs every mood preset between two hues at least 60 degrees apart', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const ramp = moodRamp(preset, theme);
+        const gap = Math.abs(hueGap(hueOf(ramp[0]), hueOf(ramp[4])));
+        expect(
+          gap,
+          `${preset}/${theme} runs ${hueOf(ramp[0]).toFixed(0)} deg to ${hueOf(ramp[4]).toFixed(
+            0
+          )} deg, which is ${gap.toFixed(0)} deg of travel - one hue tinted, not two`
+        ).toBeGreaterThanOrEqual(60);
+      }
+    }
+  });
+
+  it('travels one way round the wheel, never through a third hue', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const hues = moodRamp(preset, theme).map(hueOf);
+        const whole = hueGap(hues[0], hues[4]);
+        for (let step = 1; step < 5; step++) {
+          const leg = hueGap(hues[step - 1], hues[step]);
+          expect(
+            Math.sign(leg) === Math.sign(whole) && Math.abs(leg) < Math.abs(whole),
+            `${preset}/${theme} turns back on itself between steps ${step} and ${step + 1}: ${leg.toFixed(
+              0
+            )} deg against the ramp's ${whole.toFixed(0)}`
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  /* "How much" is the other half of the ramp's job, and with the hue moving
+     it cannot be read off lightness alone: the light theme descends as it
+     saturates, and the dark theme cannot descend at all (its band is a
+     ceiling, and a gold at the bottom of it is a brown), so it holds one
+     lightness and spends chroma. What both have to be is five colours a
+     person can tell apart, which is one measurement rather than two rules -
+     the OKLab distance between neighbours. 0.031 is the smallest the shipped
+     ramps have, on teal dark's first pair. */
+  it('keeps every neighbouring pair of steps a visibly different colour', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const ramp = moodRamp(preset, theme);
+        for (let step = 1; step < 5; step++) {
+          const gap = oklabDistance(ramp[step - 1], ramp[step]);
+          expect(
+            gap,
+            `${preset}/${theme} steps ${step} and ${step + 1} are ${gap.toFixed(
+              3
+            )} apart in OKLab (${ramp[step - 1]} and ${ramp[step]})`
+          ).toBeGreaterThanOrEqual(0.025);
+        }
+      }
+    }
+  });
+
+  it('ends far more saturated than it starts, whichever theme is on', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const ramp = moodRamp(preset, theme);
+        const ratio = chromaOf(ramp[4]) / chromaOf(ramp[0]);
+        expect(
+          ratio,
+          `${preset}/${theme} only gains ${ratio.toFixed(2)}x chroma from step 1 to step 5`
+        ).toBeGreaterThanOrEqual(1.5);
+      }
+    }
+  });
+
+  /* The one hue pair the app may not draw, ADR-0012 and palettes.css's own
+     header rule: red to green is the judgment scale, and mood is the metric
+     most likely to be handed one by a well-meaning edit. Both ends are
+     checked, either way round. */
+  it('never runs a preset from red to green', () => {
+    const red = (h: number) => h < 45 || h > 340;
+    const green = (h: number) => h > 120 && h < 180;
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const [first, , , , last] = moodRamp(preset, theme).map(hueOf);
+        expect(
+          (red(first) && green(last)) || (green(first) && red(last)),
+          `${preset}/${theme} runs ${first.toFixed(0)} deg to ${last.toFixed(0)} deg, which is a red-green scale`
+        ).toBe(false);
+      }
+    }
+  });
+
   /* Ticket 17: --accent is the heat ramp's top step as well as the app's
      one accent, so it is sized to be sat on, not to be read as text. On
      trans light it measured 4.10:1 against --surface-2 and 4.38:1 against
@@ -217,6 +339,142 @@ describe('palette contrast coverage', () => {
           expect(
             ratio,
             `${palette}/${theme} heat-${step} (${heat[step]}) vs on-heat-${step} (${onHeat[step]}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+});
+
+/* The phase 10 direction's two enumerations (redesign ticket 07,
+   DIRECTION.md rule 11). Both are computed on the exact hexes, never read
+   off a render. */
+describe('the field and the fills (phase 10)', () => {
+  function stripesOf(palette: string): string[] {
+    const raw = /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`));
+    if (!raw) throw new Error(`No --motif-stripes for ${palette}`);
+    return raw[1].split(',').map((s) => s.trim());
+  }
+
+  /* The table DIRECTION.md prints under "Contrast, measured": the flag's
+     second colour, its ink, and the ratio to two places. Only large text
+     sits on the field, which answers to 3:1; nonbinary's 4.41 is why. */
+  const FIELD: Record<string, [string, string, number]> = {
+    trans: ['#F5A9B8', '#101820', 9.59],
+    nonbinary: ['#9C59D1', '#FFFFFF', 4.41],
+    genderfluid: ['#C011D7', '#FFFFFF', 4.88],
+    bisexual: ['#0038A8', '#FFFFFF', 9.85],
+    lesbian: ['#FF9A56', '#101820', 8.53],
+    pansexual: ['#FFD800', '#101820', 12.85],
+    rainbow: ['#004CFF', '#FFFFFF', 6.04],
+    agender: ['#B9F484', '#101820', 13.92]
+  };
+
+  it("takes the field from the flag's inner bands, never its outermost, and inks it to 3:1", () => {
+    for (const palette of PALETTES) {
+      const field = flagField(stripesOf(palette), palette)!;
+      const stripes = stripesOf(palette).map((s) => s.toUpperCase());
+      expect(field.hex.toUpperCase(), palette).not.toBe(stripes[0]);
+      expect(stripes.slice(1, -1), `${palette}: the field is one of the flag's inner bands`).toContain(
+        field.hex.toUpperCase()
+      );
+      expect(field.ratio, `${palette}: ${field.ink} on ${field.hex}`).toBeGreaterThanOrEqual(3);
+      const [hex, ink, ratio] = FIELD[palette];
+      expect([field.hex, field.ink, Number(field.ratio.toFixed(2))], palette).toEqual([hex, ink, ratio]);
+    }
+  });
+
+  /* Two flags name their own band (Alicja, 2026-09-07: the rainbow on the
+     ticket 06 renders, bisexual on ticket 23's); the other six fall to the
+     rule. Without the name each would take the rule's answer, which is what
+     the first expectation of each pair pins. */
+  it('names the rainbow blue and the bisexual dark blue, and lets the other six fall to the rule', () => {
+    expect(flagField(stripesOf('rainbow'))!.hex).toBe('#FF8C00');
+    expect(flagField(stripesOf('rainbow'), 'rainbow')!.hex).toBe('#004CFF');
+    expect(flagField(stripesOf('bisexual'))!.hex).toBe('#9B4F96');
+    expect(flagField(stripesOf('bisexual'), 'bisexual')!.hex).toBe('#0038A8');
+    expect(flagField([])).toBeUndefined();
+  });
+
+  /* Small text on a fill: a day bar's 13px date and a tag's 12px label sit
+     on --role-draw in --role-fill-ink, and a day card can be handed any
+     role index (on-this-day colours each year in turn), so every stripe of
+     every flag has to carry that ink at 4.5:1 on both themes - not only the
+     two indices Home happens to use. The ink is the one roles.ts computes
+     for the heat ramp's deepest step, which is the stripe undiluted. */
+  /* The voice figure's own two claims (redesign ticket 42).
+
+     The pitch value sits on a block of the stripe at 19px bold, which is
+     large text and answers to 3:1 - the floor rule 11 states, and the one
+     every flag clears with nonbinary's 4.41 as the worst of the eight. It
+     is the same ink and the same block the picking rows carry.
+
+     The density is a chart mark, so it takes the stripe undiluted and owes
+     no ratio at all: `kit.css`'s own note records why, in Alicja's words
+     from 2026-08-25 about what a contrast floor did to nonbinary's yellow.
+     What is asserted here instead is that it cannot quietly become a second,
+     floored colour - the shape is the trace's colour exactly - and the
+     measured worst case is pinned so that a change to either the wash or
+     the stripe list shows up as a number rather than as nothing.
+
+     Measured, both themes, every chromatic role of every flag: the outline
+     against the 18 per cent band wash, against the 9 per cent middle band,
+     and against the bare surface between them. The worst of all three is
+     nonbinary's yellow on the light theme at 1.13:1 against its own band -
+     the same 1.16:1 the pitch trace has always had against the surface, and
+     the flag-colour rule working rather than a regression. */
+  it('draws the density in the flag colour itself, never a floored one', () => {
+    let worst = { ratio: 99, where: '' };
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const roles = flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']]);
+        for (const role of roles.filter((r) => chromaOf(r.stripe) >= 0.04)) {
+          for (const [what, ground] of [
+            ['the band wash', colorMixOklab(role.stripe, 18, t.surface)],
+            ['the middle band', colorMixOklab(role.stripe, 9, t.surface)],
+            ['the bare surface', t.surface]
+          ] as const) {
+            const ratio = contrast(role.stripe, ground);
+            if (ratio < worst.ratio) {
+              worst = { ratio, where: `${palette}/${theme}: ${role.stripe} on ${what} (${ground})` };
+            }
+          }
+        }
+      }
+    }
+    expect(Number(worst.ratio.toFixed(2)), worst.where).toBe(1.13);
+    expect(worst.where).toContain('nonbinary/light');
+  });
+
+  it('inks the pitch value block to rule 11\'s large-text floor on every flag', () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        for (const role of flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']])) {
+          const ink = role.heat[role.heat.length - 1].ink;
+          const ratio = contrast(ink, role.stripe);
+          expect(
+            ratio,
+            `${palette}/${theme}: the pitch value ${ink} on ${role.stripe} has ${ratio.toFixed(2)}:1`
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
+  it('keeps small text in the fill ink readable on every stripe of every flag, both themes', () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const roles = flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']]);
+        expect(roles.length).toBeGreaterThanOrEqual(3);
+        for (const role of roles) {
+          const ink = role.heat[role.heat.length - 1].ink;
+          const ratio = contrast(ink, role.stripe);
+          expect(
+            ratio,
+            `${palette}/${theme}: ${ink} on ${role.stripe} has ${ratio.toFixed(2)}:1`
           ).toBeGreaterThanOrEqual(4.5);
         }
       }

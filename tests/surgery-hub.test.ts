@@ -23,9 +23,13 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(cardCode).toContain('data-procedure-card');
     expect(cardCode).toContain('data-phase');
     expect(cardCode).toContain('data-phase-pill');
-    expect(cardCode).toContain('proc-phase-icon');
     expect(cardCode).toContain('data-linked-milestone');
     expect(cardCode).toContain('data-edit-procedure');
+    // Ticket 52: the reading is the number on the card and the journey is
+    // the rail beside it, so both are hooks a probe can find.
+    expect(cardCode).toContain('data-procedure-reading');
+    expect(cardCode).toContain('data-procedure-strip');
+    expect(cardCode).toContain('ProcedurePhaseRail');
   });
 
   it('surgery page implements all 4 active lifecycle sections and prompt for milestone on surgery day', () => {

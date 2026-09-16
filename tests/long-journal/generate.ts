@@ -34,7 +34,7 @@
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
-import type { BodyRegionFeeling, TryoutKind } from '../../src/lib/data/types.ts';
+import type { TryoutKind } from '../../src/lib/data/types.ts';
 import type { InjectionSiteKey } from '../../src/lib/data/doseSchedule.ts';
 import { startOfDayTimestamp, weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
 import { activeEpisodesAt } from '../../src/lib/data/regimenEpisode.ts';
@@ -412,16 +412,17 @@ export async function generateLongJournal(
       const attachRecordings = random() < 0.005 ? [demoAudioBytes(random)] : undefined;
       if (attachRecordings) summary.voiceRecordings++;
 
-      // A body region on roughly one entry in six, its euphoria clearing
-      // GOOD_DAY_REGION_EUPHORIA_FLOOR about half the time - a mix, not an
-      // always-true or always-false clause.
-      const bodyRegions: Record<string, BodyRegionFeeling> = {};
+      // A body region on roughly one entry in six, its value clearing
+      // GOOD_DAY_REGION_EUPHORIA_FLOOR (as a slider position: 75 or above)
+      // about half the time - a mix, not an always-true or always-false
+      // clause. A region is one value on the shared 0-100 scale now
+      // (ticket 39, ADR-0081), so this picks a side rather than rolling
+      // each axis independently; 50 itself (the midpoint) never comes up.
+      const bodyRegions: Record<string, number> = {};
       if (random() < 0.16) {
         const clearsFloor = random() < 0.5;
-        bodyRegions[pick(BODY_REGION_KEYS)] = {
-          euphoria: clearsFloor ? between(50, 100) : between(0, 49),
-          dysphoria: random() < 0.5 ? between(0, 100) : null
-        };
+        const value = clearsFloor ? between(75, 100) : random() < 0.5 ? between(51, 74) : between(0, 49);
+        bodyRegions[pick(BODY_REGION_KEYS)] = value;
         if (clearsFloor) summary.regionEuphoriaEntries++;
       }
 
@@ -515,7 +516,8 @@ export async function generateLongJournal(
     episodeId,
     recurrence: { kind: 'weekdays', weekdays: REGIMEN_WEEKDAYS },
     dosesPerDay: 1,
-    doseAmounts: REGIMEN_DOSE_AMOUNTS
+    doseAmounts: REGIMEN_DOSE_AMOUNTS,
+    autoLogFromEpochDay: null
   });
   for (let day = regimenStartEpochDay; day <= lastEpochDay; day++) {
     if (!REGIMEN_WEEKDAYS.includes(weekdayOfEpochDay(day))) continue;
@@ -555,7 +557,8 @@ export async function generateLongJournal(
     episodeId: secondEpisodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 100, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   for (let day = secondEpisodeStartEpochDay; day <= secondEpisodeEndEpochDay; day++) {
     if (random() < 0.08) continue;
@@ -592,7 +595,8 @@ export async function generateLongJournal(
     episodeId: thirdEpisodeId,
     recurrence: { kind: 'weekdays', weekdays: [0] },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   let injectionCount = 0;
   for (let day = thirdEpisodeStartEpochDay; day <= lastEpochDay; day++) {

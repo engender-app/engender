@@ -21,9 +21,10 @@
    at that rate and the stored file is decoded back to it. The recording
    itself is untouched - the bytes are whatever MediaRecorder produced. */
 
+import { decodeToMono } from '$lib/audio/decode';
 import { makeLiveGauge, type LiveGauge } from '$lib/audio/live';
 import type { PitchFrame } from '$lib/audio/pitch';
-import type { QualityCheck, QualityReport } from '$lib/audio/quality';
+import type { QualityGate, QualityReport } from '$lib/audio/quality';
 import { captureChainOfStream, openMicrophone, recordStream, type MicRefusal } from './voiceRecording';
 
 /** Formants under 4 kHz need 8 kHz of bandwidth; 16 kHz is the standard
@@ -65,24 +66,10 @@ export interface TakeSession {
   discard(): Promise<void>;
 }
 
-/** Decodes recorded audio to mono samples at the analysis rate. The
-    OfflineAudioContext's own rate is what does the resampling, so there is
-    no resampler in this tree to get wrong. */
-async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
-  // A one-frame context: it is never rendered, it is only the decoder's
-  // target rate. `slice()` because decodeAudioData detaches the buffer it is
-  // given, and these bytes are also what gets stored.
-  const context = new OfflineAudioContext(1, 1, ANALYSIS_SAMPLE_RATE);
-  const decoded = await context.decodeAudioData(bytes.slice().buffer as ArrayBuffer);
-  if (decoded.numberOfChannels === 1) return decoded.getChannelData(0);
-
-  const mixed = new Float32Array(decoded.length);
-  for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
-    const data = decoded.getChannelData(channel);
-    for (let i = 0; i < mixed.length; i++) mixed[i] += data[i] / decoded.numberOfChannels;
-  }
-  return mixed;
-}
+/** Decodes recorded audio to mono samples at the analysis rate. The decode
+    itself is audio/decode.ts, shared with the waveform's bars (ticket 46);
+    the rate is this file's. */
+const decodeTake = (bytes: Uint8Array) => decodeToMono(bytes, ANALYSIS_SAMPLE_RATE);
 
 /** Opens the microphone and starts a take, or says why it could not. The
     refusal is returned rather than announced: the recording screen holds a
@@ -95,7 +82,7 @@ async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
     already opened and returns null instead of a session nothing will ever
     read; both call sites hang their own `AbortController` on `onDestroy`. */
 export async function startTake(
-  checks: readonly QualityCheck[],
+  gate: QualityGate,
   signal?: AbortSignal
 ): Promise<TakeSession | MicRefusal | null> {
   // Unprocessed: a benchmark measures the microphone's own answer, not the
@@ -119,7 +106,7 @@ export async function startTake(
   analyser.fftSize = ANALYSER_FFT_SIZE;
   context.createMediaStreamSource(stream).connect(analyser);
 
-  const gauge: LiveGauge = makeLiveGauge(ANALYSIS_SAMPLE_RATE, checks);
+  const gauge: LiveGauge = makeLiveGauge(ANALYSIS_SAMPLE_RATE, gate);
   const latest = new Float32Array(analyser.fftSize);
   let lastPollAt = context.currentTime;
 

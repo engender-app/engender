@@ -22,12 +22,15 @@ import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
 import { demoPhoto } from './journal-seed';
 import { demoNow } from './demoClock';
-import { demoAudioBytes } from '../demoAudioBytes';
+import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
+import { encodePitchTrack } from '../../audio/track';
+import { percentileOfSorted } from '../../audio/series';
+import { acceptDocumentFile } from '../documents/accept';
 
 function rng(seed: number) {
   return function () {
@@ -65,7 +68,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     episodeId: estradiolEpisodeId,
     recurrence: { kind: 'weekdays', weekdays: [0] },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   const injectionSites = ['thigh-left', 'thigh-right', 'deltoid-left', 'deltoid-right', 'ventrogluteal-left', 'ventrogluteal-right'] as const;
   let injectionCount = 0;
@@ -101,7 +105,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     episodeId: progesteroneEpisodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 100, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   for (let day = progesteroneStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -136,7 +141,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     episodeId: sertralineEpisodeId,
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
-    doseAmounts: [{ dose: 50, doseUnit: 'mg' }]
+    doseAmounts: [{ dose: 50, doseUnit: 'mg' }],
+    autoLogFromEpochDay: null
   });
   for (let day = sertralineStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -170,12 +176,28 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 200, value: 31, unit: 'in' });
   await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 40, value: 30, unit: 'in' });
 
+  /* One scale per category rather than one pool for all eight. A shuffle
+     across every size in the app puts "34" and "XS" in the same pair of
+     trousers, which the size log wore quietly and the change line
+     (redesign ticket 61) states out loud - so a demo of a screen whose
+     point is that it makes a statement was making a nonsense one. */
+  const SIZE_SCALE: Record<(typeof GARMENT_CATEGORIES)[number], string[]> = {
+    shirts: ['XS', 'S', 'M', 'L'],
+    pants: ['28', '30', '32', '34'],
+    dresses: ['6', '8', '10', '12'],
+    skirts: ['XS', 'S', 'M', 'L'],
+    bras: ['32A', '34A', '34B', '36B'],
+    underwear: ['XS', 'S', 'M', 'L'],
+    shoes: ['38', '39', '40', '41'],
+    outerwear: ['S', 'M', 'L', 'XL']
+  };
   for (let day = trackingStart; day <= today; day++) {
     if (r() < 0.97) continue;
+    const category = pick(GARMENT_CATEGORIES);
     await journal.sizeRecords.upsertRecord({
       epochDay: day,
-      category: pick(GARMENT_CATEGORIES),
-      size: pick(['XS', 'S', 'M', 'L', '32', '34', '36', '8', '10']),
+      category,
+      size: pick(SIZE_SCALE[category]),
       brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
       fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
     });
@@ -205,10 +227,22 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   let hairPhotoCount = 0;
   for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
     await journal.hairProgress.upsertStage({ epochDay: day, scale: 'norwood_hamilton', stage: hairStages[i % hairStages.length] });
-    if (r() < 0.4) {
-      await journal.hairProgress.addPhoto(day, await demoPhoto(4000 + hairPhotoCount));
-      hairPhotoCount++;
-    }
+    /* One photograph per staging, not a 40% roll. The roll was seeded, so
+       it came up the same way every time and that way was never: the demo
+       journal had stagings and no fixed-position photographs at all, which
+       is the one thing this screen's photo half exists for and the whole
+       of what redesign ticket 55 put a wipe over. This loop only runs a
+       handful of times - 60 to 140 days a step over the tracked period -
+       so anything less than every staging leaves too few to compare.
+
+       The roll it used to be gated on is still drawn and thrown away, so
+       everything seeded after this loop lands exactly where it always did.
+       Dropping the draw instead would shift the whole rest of the demo
+       journal - hair removal, tryouts, procedures - for a change that is
+       about this screen. */
+    r();
+    await journal.hairProgress.addPhoto(day, await demoPhoto(4000 + hairPhotoCount));
+    hairPhotoCount++;
   }
 
   let hairRemovalPhotoCount = 0;
@@ -244,6 +278,16 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.letters.addLetter({ epochDay: today - 20, text: 'For the day the court hearing is scheduled.', unlockEpochDay: today + 45 });
   await journal.letters.addLetter({ epochDay: today - 3, text: 'For five years from now.', unlockEpochDay: today + 1800 });
 
+  /* Two breaks from journaling, both finished and both well behind the
+     persona's entry window so they never collide with the days it writes.
+     This is the one feature the module's own header list did not cover and
+     nothing else seeds, so every reading of a pause - Home's tile, the
+     chart's band, the Look back rail's own lane - captured empty in every
+     review anyone had run (found on ticket 06, the same gap the door audit
+     found for eras). */
+  await journal.journalingPauses.upsertPause({ startEpochDay: today - 330, endEpochDay: today - 300 });
+  await journal.journalingPauses.upsertPause({ startEpochDay: today - 210, endEpochDay: today - 195 });
+
   // Tryouts: dated inside the persona's own 150-day entry window, so the
   // detail route has real entries to read back by date overlap.
   const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'garment' | 'makeup' | 'presentation_step'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
@@ -260,13 +304,34 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       endEpochDay: spec.endEpochDay
     });
     await journal.tryouts.addPhoto(tryoutId, spec.startEpochDay + 5, await demoPhoto(6000 + spec.startEpochDay));
-    await journal.feltSense.add({ tryoutId }, { epochDay: spec.startEpochDay + 3, mood: between(2, 5) });
+    /* Readings across the tryout's own span rather than one at its start.
+       A single reading is a single mark, which is honest and is also the
+       one shape the tryouts index cannot be reviewed against (ticket 53) -
+       the screen draws how a tryout has felt over time, and every tryout
+       in the fixture having exactly one reading left that undrawable.
+       Every twelfth day, so a hundred-day tryout gets nine marks rather
+       than a line of them. */
+    const lastFeltDay = spec.endEpochDay ?? today;
+    for (let day = spec.startEpochDay + 3; day <= lastFeltDay; day += 12) {
+      await journal.feltSense.add({ tryoutId }, { epochDay: day, mood: between(1, 5) });
+    }
   }
 
   // Personal effects: several feminizing markers, plus one non-default
   // category switched on so its disclosure group has something in it too.
   await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter((_, i) => i % 3 === 0);
+  /* Written out rather than stepped, because the axis at the top of that
+     screen (ticket 57) has two shapes to show and an even 45-day step only
+     ever produced one of them: four of these land inside three weeks and
+     stack into lanes, and the rest stand alone with months between them.
+     Which days go to which effect is not arbitrary - only the effects in an
+     enabled category are drawn, and with the seed's own categories that is
+     entries 0, 1, 2, 3, 5, 10, 11 and 12, so the cluster is theirs and the
+     five under a category this seed leaves off take the days between. Past
+     the end of the list the old step takes over, so a catalogue that grows
+     still seeds a marker for everything it offers. */
+  const noticedDays = [18, 61, 143, 149, 152, 158, 200, 210, 220, 230, 165, 371, 470];
   for (const [i, type] of effectTypes.entries()) {
     /* Clamped to the seed's own last day. The unclamped progression runs
        past it - 30 + 45 * 11 is 495 days into a 500-day run, so the twelfth
@@ -278,7 +343,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
        seed exists to create. */
     await journal.personalEffects.upsertMarker({
       effect: type.key,
-      firstNoticedEpochDay: Math.min(today, estradiolStart + 30 + i * 45)
+      firstNoticedEpochDay: Math.min(today, estradiolStart + (noticedDays[i] ?? 30 + i * 45))
     });
   }
 
@@ -324,11 +389,14 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   }
 
   // Surgery: one procedure, dated in the past, with consults, notes and a
-  // recovery checklist.
+  // recovery checklist. `kind` defaults to `custom`, and the dilation gate
+  // only reads a `custom` procedure's own opt-in (ticket 17), so this needs
+  // it set to be the seed the surgery-journey and dilation screens read.
   const procedureId = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: today - 400,
-    notes: 'Double incision, drains out on day 5.'
+    notes: 'Double incision, drains out on day 5.',
+    dilationOptIn: true
   });
   await journal.procedures.addConsult(procedureId, today - 460);
   await journal.procedures.addConsult(procedureId, today - 420);
@@ -336,6 +404,31 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     await journal.procedures.addChecklistItem(procedureId, item);
   }
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
+
+  // A document attached to the procedure, kind PDF - so documentGroups.ts
+  // has a group to draw beside the persona's own unlinked referral, and the
+  // PDF thumbnail path (rather than a photo document's) has something to
+  // render. acceptDocumentFile is the real picker path, not a hand-built
+  // StoredPdf, so this exercises exactly what a person importing a scan
+  // hits - a page pdf.js could fail to render only costs the thumbnail
+  // (renderPdfThumbnail swallows that itself), never the document.
+  const preOpClearanceId = await journal.documents.addDocument(
+    { epochDay: today - 405, title: 'Pre-op clearance' },
+    await acceptDocumentFile(demoDocumentPdf('Cleared for surgery.'))
+  );
+  await journal.documents.setDocumentTarget(preOpClearanceId, { kind: 'procedure', id: procedureId });
+
+  // A second procedure, still ahead of its surgery date with a consult
+  // already behind it - `open` (ProcedureRecoveryCard.svelte) is everything
+  // but the archived phase, so this is what puts a full-size, still-running
+  // rail beside the first procedure's collapsed, archived one.
+  const secondProcedureId = await journal.procedures.upsertProcedure({
+    name: 'facial feminization surgery',
+    kind: 'facial_feminization',
+    surgeryEpochDay: today + 60,
+    notes: 'Consult went well, surgeon proposed a date.'
+  });
+  await journal.procedures.addConsult(secondProcedureId, today - 10);
 
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
   for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
@@ -362,6 +455,27 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     inUseEndEpochDay: today + 60
   });
 
+  /* Voice benchmarks. Six takes across ten months, because every reading
+     on the compare tab is a reading against the person's own earlier takes
+     and one benchmark shows none of it: the pitch density, the six
+     own-history lines, the pair comparison and the break a change of phone
+     puts in a series all need a history behind them (redesign ticket 42).
+     Without these the whole tab renders empty and nothing on it can be
+     reviewed.
+
+     The figures are computed from the generated track rather than written
+     down beside it, so the median and the p10-p90 span land where the
+     drawn shape actually puts them - a fixture whose numbers and picture
+     disagree would make every figure on this screen unreviewable. */
+  for (const take of demoBenchmarks(r, today)) {
+    await journal.voiceBenchmarks.saveBenchmark({
+      ...take,
+      passageKey: 'builtin-en',
+      passageAudio: demoAudioBytes(r),
+      vowelAudio: take.f1Hz === null ? null : demoAudioBytes(r)
+    });
+  }
+
   // Voice: two new mood-only entries carrying a recording, so the compare
   // picker has a pair to work with.
   await journal.entries.upsertEntry({
@@ -384,4 +498,216 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     bodyRegions: {},
     attachRecordings: [demoAudioBytes(r)]
   });
+
+  /* Two video notes, which ticket 01 left for this ticket to decide about
+     and ticket 14 decided in favour of: a note is in the photo library
+     now, so "Fill every feature" has to put one there or the Video chip
+     is a control nobody can review.
+
+     Arbitrary bytes rather than a recorded clip, the trade demoAudioBytes
+     already makes for a voice recording and for the same reason: nothing
+     decodes a note to draw its tile (the library draws a glyph, not a
+     still frame), and encoding real WebM here would mean running
+     MediaRecorder for the length of the clip on every reset. A reviewer
+     who taps play gets a player with nothing to play, exactly as they do
+     for the persona's recordings.
+
+     Its own stream rather than the fixture's `r`, because 4000 draws per
+     note would shift every roll made after this point: nothing is rolled
+     below here today, and a fixture whose contents depend on that staying
+     true is a trap for whoever adds the next block. */
+  const videoRandom = rng(4242);
+  for (const back of [11, 95]) {
+    await journal.entries.upsertEntry({
+      epochDay: today - back,
+      timestamp: now - back * 86_400_000,
+      mood: 4,
+      note: '',
+      dims: {},
+      tags: [],
+      bodyRegions: {},
+      attachVideos: [demoVideoBytes(videoRandom)]
+    });
+  }
+
+  // Comfort list: who to text, which walk, which song - the editor's own
+  // register (comfort_list_item_placeholder).
+  for (const text of ['Text Ola', 'Walk by the river', 'Rewatch Steven Universe', 'Call my sister']) {
+    await journal.comfortItems.addItem(text);
+  }
+
+  /* Two starred entries. The recent one is a guaranteed day (`back <= 22`
+     in buildEntries is always written); the older one has no guaranteed
+     day, so this reads whatever the persona's sparse previous-year loop
+     actually wrote rather than naming a day and hoping - the roll that
+     loop makes is real (demo-fixture-seeded-rolls-can-yield-nothing), so a
+     named day could easily have written nothing. */
+  const recentEntry = (await journal.entries.entriesForDay(today - 5))[0];
+  if (recentEntry) await journal.entries.setEntryStarred(recentEntry.id, true);
+  const olderEntries = (await journal.entries.recentDays(900)).filter((e) => e.epochDay <= today - 150);
+  const goodOldEntry = [...olderEntries].sort((a, b) => (b.mood ?? 0) - (a.mood ?? 0))[0];
+  if (goodOldEntry) {
+    await journal.entries.setEntryStarred(goodOldEntry.id, true);
+    // A note added on rereading - the day is when she looked back, not the
+    // entry's own day (ADR-0010).
+    await journal.marginNotes.add({
+      entryId: goodOldEntry.id,
+      epochDay: today,
+      text: 'Reading this again - I remember exactly how nervous I was.'
+    });
+  }
+
+  // Two starred photos: one off an entry, one off a milestone, so both
+  // halves of "Letters and photos" draw something (milestoneName is null
+  // for an entry-owned photo, DatedPhoto's own convention).
+  const journalPhotos = await journal.photos.inJournal();
+  const entryPhoto = journalPhotos.find((p) => p.milestoneName === null);
+  if (entryPhoto) await journal.photos.setStarred(entryPhoto.id, true);
+  const milestonePhoto = journalPhotos.find((p) => p.milestoneName !== null);
+  if (milestonePhoto) await journal.photos.setStarred(milestonePhoto.id, true);
+
+  // Saved questions: a query plus its filters, the shape the search
+  // screen keeps past closing (savedQuestionQuery.ts). The tag filter is
+  // guaranteed hits - g-soc-eu is written across dozens of the persona's
+  // own entries - the free-text one is a real search she might keep
+  // without needing to be guaranteed anything.
+  await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Good days',
+    queryText: '',
+    tagIds: ['g-soc-eu'],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+  await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Laser progress',
+    queryText: 'laser',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+
+  // One custom entry template, alongside whatever built-ins ship.
+  await journal.entryTemplates.addEntryTemplate({
+    name: 'Hard day',
+    tags: ['g-body-dys', 'e-anxious'],
+    dims: { euphoria_dysphoria: 20 },
+    noteScaffold: 'What was hard today: ',
+    presentationId: null
+  });
+
+  // One ignored word - "voice" shows up constantly (voice practice, voice
+  // workshop, the voice tag) without saying anything about a given day.
+  await journal.wordIgnore.setWordIgnored('voice', true);
+
+  // One voice practice take, distinct from the benchmarks above - a
+  // practice session has nothing to compare it against (voicePracticeTakes.ts).
+  await journal.voicePracticeTakes.addTake({
+    epochDay: today - 5,
+    minHz: 142,
+    maxHz: 214,
+    medianHz: 168,
+    feltSense: 4
+  });
+
+  // One custom affirmation line, beside the built-in pool.
+  await journal.affirmations.addLine('en', 'I get to move at my own pace.');
+}
+
+/** A minimal, valid one-page PDF (phase 11 ticket 01), built the same way
+    tests/pdf-fixture.mjs is - independently, since src/ cannot import from
+    tests/: precise object offsets are what make this a file pdf.js will
+    actually open, not just a header with bytes after it. */
+function demoDocumentPdf(text: string): Uint8Array {
+  const objects: string[] = [];
+  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objects[2] = '<< /Type /Pages /Kids [4 0 R] /Count 1 >>';
+  objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  const stream = `BT /F1 24 Tf 60 760 Td (${text}) Tj ET`;
+  objects[4] =
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>';
+  objects[5] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  for (let id = 1; id < objects.length; id++) {
+    offsets[id] = pdf.length;
+    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+  }
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for (let id = 1; id < objects.length; id++) pdf += `${String(offsets[id]).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+
+  const bytes = new Uint8Array(pdf.length);
+  for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
+/** The six benchmarks above, as figures.
+
+    One phone for the first four and another for the last two, so the
+    compare tab shows what a change of equipment does to a series: the pitch
+    figures carry on and the resonance ones stop, which is ADR-0061's rule
+    and the one thing about this screen that cannot be seen without a break
+    in the data.
+
+    The oldest take held no vowel, so its resonance, room and scale figures
+    are absent - the "not measured" arm every one of those blocks has and
+    which otherwise never renders. */
+function demoBenchmarks(r: () => number, today: number) {
+  const CHAINS = [
+    'Pixel 7|Microphone|ec=off ns=off agc=off',
+    'Pixel 10a|Microphone|ec=off ns=off agc=off'
+  ];
+  // Ten months of work, oldest first, with the median drifting up through
+  // it the way a year of practice does.
+  const days = [today - 302, today - 244, today - 171, today - 118, today - 57, today - 9];
+  const medians = [148, 154, 163, 172, 181, 189];
+
+  return days.map((epochDay, at) => {
+    const frames = demoPitchFrames(r, medians[at]);
+    const sorted = [...frames].sort((a, b) => a - b);
+    const medianHz = percentileOfSorted(sorted, 0.5);
+    let squared = 0;
+    for (const hz of frames) squared += (12 * Math.log2(hz / medianHz)) ** 2;
+    const vowel = at > 0;
+
+    return {
+      epochDay,
+      f0MedianHz: medianHz,
+      f0P10Hz: percentileOfSorted(sorted, 0.1),
+      f0P90Hz: percentileOfSorted(sorted, 0.9),
+      semitoneSd: Math.sqrt(squared / frames.length),
+      wordsPerMinute: 132 + Math.round(r() * 16),
+      f1Hz: vowel ? 604 + Math.round(r() * 40) : null,
+      f2Hz: vowel ? 1712 + Math.round(r() * 90) : null,
+      snrDb: vowel ? 21 + Math.round(r() * 8) : null,
+      resonanceScale: vowel ? 1.02 + r() * 0.1 : null,
+      pitchTrack: encodePitchTrack(frames),
+      captureChain: CHAINS[at < 4 ? 0 : 1]
+    };
+  });
+}
+
+/** One take's stored track: thirty seconds at the stored four points a
+    second, wandering around a median the way read speech does, with the
+    occasional dip a sentence ends on. Deterministic, off the fixture's own
+    generator. */
+function demoPitchFrames(r: () => number, medianHz: number): number[] {
+  const points: number[] = [];
+  let semitones = 0;
+  for (let at = 0; at < 120; at++) {
+    // A slow wander with a pull back to the middle, so the read has shape
+    // without drifting off the axis over thirty seconds.
+    semitones = semitones * 0.82 + (r() - 0.5) * 2.4;
+    const ending = at % 17 === 16 ? -2.5 : 0;
+    points.push(medianHz * 2 ** ((semitones + ending) / 12));
+  }
+  return points;
 }

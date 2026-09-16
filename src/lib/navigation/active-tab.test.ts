@@ -16,9 +16,8 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/search')).toBe('calendar');
   });
 
-  it('lights stats for stats, timeline and every wrapped view', () => {
+  it('lights stats for stats and every wrapped view', () => {
     expect(activeTabKey('/stats')).toBe('stats');
-    expect(activeTabKey('/timeline')).toBe('stats');
     expect(activeTabKey('/wrapped')).toBe('stats');
     /* The arbitrary range recap used to own is a wrapped now (phase 5 UX
        ticket 23, spec 07), so the tab it lights comes from the /wrapped
@@ -35,8 +34,20 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/recap')).toBe(activeTabKey('/nothing-here'));
   });
 
+  /* Redesign ticket 43: /timeline is a redirect to /transition/milestones
+     now, and the two have to light the same tab. They did not - the rail
+     was Look back's and the list is the Transition door's - so a person
+     opening an old link would have watched the tab indicator travel from
+     Look back to Transition while the redirect landed. The old address
+     keeps working and lights where it now leads. */
+  it('lights the same tab for the old timeline address as for the screen it redirects to', () => {
+    expect(activeTabKey('/timeline')).toBe('settings');
+    expect(activeTabKey('/timeline')).toBe(activeTabKey('/transition/milestones'));
+  });
+
   it('lights more, but borrows its origin for settings chrome (audit item 4)', () => {
     expect(activeTabKey('/more')).toBe('settings');
+    expect(activeTabKey('/care/regimen')).toBe('settings');
     /* Settings is chrome (ADR-0076), reached from a persistent gear rather
        than a tab of its own - lighting the fourth tab for it read as
        having left whichever tab the gear was pressed from. With nothing
@@ -49,12 +60,28 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/settings/access-mode', 'calendar')).toBe('calendar');
   });
 
-  it('lights stats for the word ignore list, wherever the URL that reaches it moved from', () => {
-    // /settings/words redirects here (ADR-0036); it configures Look back's
-    // own reading (ticket 62), not a fourth-door area, so it is carved out
-    // ahead of the general /transition prefix and takes no chrome origin.
-    expect(activeTabKey('/transition/words')).toBe('stats');
-    expect(activeTabKey('/transition/words', 'settings')).toBe('stats');
+  /* Redesign ticket 51 (ADR-0084) hosted these three under Settings without
+     making them preferences - a mode, a template and an era are the fourth
+     door's own reference data, just filed at a different address now, so
+     they keep the fixed tab their hub rows used to light rather than
+     borrowing whatever the editor's "manage"/"change" link happened to be
+     opened from. */
+  it('lights settings for the reference areas Settings hosts, whatever the chrome origin', () => {
+    expect(activeTabKey('/settings/presentations')).toBe('settings');
+    expect(activeTabKey('/settings/entry-templates')).toBe('settings');
+    expect(activeTabKey('/settings/eras')).toBe('settings');
+    expect(activeTabKey('/settings/presentations', 'calendar')).toBe('settings');
+  });
+
+  /* Redesign ticket 05: the ignore list's reading draws on Look back
+     (redesign ticket 62's words card), not on Settings, so the tab under
+     the person's finger should match where that reading lives rather than
+     where the manager screen happens to sit in the address space. Checked
+     ahead of the chrome-origin borrow above, so an origin never overrides
+     it either. */
+  it('lights stats for settings/words, whose reading draws on Look back', () => {
+    expect(activeTabKey('/settings/words')).toBe('stats');
+    expect(activeTabKey('/settings/words', 'settings')).toBe('stats');
   });
 
   it('lights stats for the body map, comparison view, tally and on-this-day', () => {
@@ -70,6 +97,9 @@ describe('activeTabKey', () => {
 
   it('lights settings for doses, even though its route sits outside /settings', () => {
     expect(activeTabKey('/doses')).toBe('settings');
+    expect(activeTabKey('/care/doses')).toBe('settings');
+    expect(activeTabKey('/care/labs')).toBe('settings');
+    expect(activeTabKey('/care/curve')).toBe('settings');
   });
 
   /* Features ticket 33: the 23 hub-row screens moved off /settings/<slug>

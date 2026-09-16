@@ -7,6 +7,7 @@ import {
   isStockNoticeSnoozed,
   projectEveryStock,
   projectStock,
+  reorderByEpochDay,
   snoozeStockNotice,
   STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS,
   TRAILING_WINDOW_DAYS,
@@ -41,6 +42,7 @@ function dose(epochDay: number, overrides: Partial<DoseEvent> = {}): DoseEvent {
     dose: 4,
     doseUnit: 'mg',
     status: 'taken',
+    source: 'person',
     scheduled: null,
     route: 'im',
     injectionSite: null,
@@ -65,6 +67,25 @@ test('a skipped dose consumes nothing', () => {
   const projection = projectStock(stock, doses, [episode()], DAY_0 + 5);
 
   assert.equal(projection.remaining, 9);
+});
+
+test('an auto-logged dose consumes exactly as a hand-logged one does, and a corrected one consumes nothing', () => {
+  /* Phase 11 ticket 11: the projection asks what happened, and a dose a
+     schedule wrote on the person's standing instruction happened. Marking
+     one skipped takes it back out, the same way any skipped dose is out. */
+  const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
+  const written = [dose(DAY_0 + 1, { source: 'schedule' }), dose(DAY_0 + 3, { source: 'schedule' })];
+
+  assert.equal(projectStock(stock, written, [episode()], DAY_0 + 5).remaining, 8);
+  assert.equal(
+    projectStock(
+      stock,
+      [written[0], dose(DAY_0 + 3, { source: 'schedule', status: 'skipped' })],
+      [episode()],
+      DAY_0 + 5
+    ).remaining,
+    9
+  );
 });
 
 test('a changed dose still consumes: it was taken, just not as scheduled', () => {
@@ -315,8 +336,45 @@ test('depletingStocks filters and sorts by urgency', () => {
   assert.equal(depleting.length, 2);
   assert.equal(depleting[0].entry.drug, 'estradiol valerate');
   assert.equal(depleting[0].daysRemaining, 2);
+  assert.equal(depleting[0].actionableEpochDay, asOf + 2);
   assert.equal(depleting[1].entry.drug, 'progesterone');
   assert.equal(depleting[1].daysRemaining, 5);
+});
+
+test('depletingStocks gates and sorts on reorderByEpochDay when a row carries one, not the run-out day', () => {
+  const asOf = DAY_0 + 10;
+  const items = [
+    {
+      // Run-out is 50 days out, ample by itself - but a 45-day lead time
+      // pulls the reorder day inside the window, which is the whole point
+      // of ticket 16.
+      entry: { id: 's-lead', drug: 'estradiol valerate', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
+      reorderByEpochDay: asOf + 5
+    },
+    {
+      // Run-out is 5 days out, which would ordinarily be the more urgent
+      // one - but it carries no lead time, so its own run-out day stands.
+      entry: { id: 's-plain', drug: 'progesterone', quantity: 20, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 5, dailyRate: 1, runOutEpochDay: asOf + 5, excludedDoses: 0 },
+      reorderByEpochDay: null
+    },
+    {
+      // Well outside the threshold either way.
+      entry: { id: 's-ample', drug: 'spironolactone', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
+      reorderByEpochDay: asOf + 50
+    }
+  ];
+
+  const depleting = depletingStocks(items, asOf);
+  assert.equal(depleting.length, 2);
+  assert.equal(depleting[0].entry.drug, 'estradiol valerate');
+  assert.equal(depleting[0].daysRemaining, 5);
+  assert.equal(depleting[0].actionableEpochDay, asOf + 5);
+  assert.equal(depleting[1].entry.drug, 'progesterone');
+  assert.equal(depleting[1].daysRemaining, 5);
+  assert.equal(depleting[1].actionableEpochDay, asOf + 5);
 });
 
 test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', () => {
@@ -425,4 +483,17 @@ test('projectEveryStock asks for ranges that tile the window exactly', async () 
 
 test('projectEveryStock answers nothing for no entries', async () => {
   assert.deepEqual(await projectEveryStock([], [ESTRADIOL], DAY_0, counterOver([])), []);
+});
+
+test('reorderByEpochDay moves the run-out day earlier by the lead time', () => {
+  assert.equal(reorderByEpochDay(DAY_0 + 20, 5), DAY_0 + 15);
+});
+
+test('reorderByEpochDay is the run-out day itself when no lead time is set', () => {
+  assert.equal(reorderByEpochDay(DAY_0 + 20, null), DAY_0 + 20);
+});
+
+test('reorderByEpochDay is null when there is no run-out day to project from, lead time or not', () => {
+  assert.equal(reorderByEpochDay(null, 5), null);
+  assert.equal(reorderByEpochDay(null, null), null);
 });

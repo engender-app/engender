@@ -105,28 +105,12 @@ export interface VideoNote {
   fileName: string;
 }
 
-/** What one entry says about one body region (phase 5 ticket 31, CONTEXT:
-    "Entry" - amended). Two independent optional intensities on the shared
-    0-100 scale (bodyMap.ts): how much the region hurt, and how good it
-    felt. Independent because both can be true of the same part on the same
-    day, and optional because saying nothing about one axis is not the same
-    as scoring it 0 - a region someone is at peace with carries a euphoria
-    and no dysphoria, which a single unsigned intensity could not express.
-
-    Never combined. There is no net, balance or score across the two, here
-    or anywhere downstream: that would be derived state (ADR-0010) and it
-    would rank one axis against the other, which is the judgment
-    docs/ui-copy.md forbids. */
-export interface BodyRegionFeeling {
-  dysphoria: number | null;
-  euphoria: number | null;
-}
-
-/** Which of a body region's two intensities something is asking for.
-    Neither is the default and neither is derived from the other; there is
-    deliberately no third value meaning "both combined", because a net
-    figure across the two would rank one axis against the other. */
-export type BodyRegionAxis = keyof BodyRegionFeeling;
+/** Which side of a body region's shared 0-100 scale (bodyMap.ts) something
+    is asking for - dysphoria below the midpoint, euphoria above it. Reads
+    stay split by side (ADR-0081) rather than netting the two into one
+    signed number: that would rank one side against the other, which is the
+    judgment docs/ui-copy.md forbids. */
+export type BodyRegionAxis = 'dysphoria' | 'euphoria';
 
 export interface Entry {
   id: number;
@@ -141,10 +125,12 @@ export interface Entry {
   videos: VideoNote[];
   /** By body-region domain id (journal/bodyRegions.ts), independent of
       dims and tags - ticket 09 does not require ticket 02's "physical"
-      dysphoria tag to be present to log a region. A region is present here
-      only when it has something to say: a feeling with both axes null is
-      dropped on save rather than stored blank. */
-  bodyRegions: Record<string, BodyRegionFeeling>;
+      dysphoria tag to be present to log a region. A region's value is one
+      position on the shared 0-100 scale (bodyMap.ts), dysphoria below the
+      midpoint and euphoria above it (ticket 39, ADR-0081); a region is
+      present here only when it has something to say, so one left at the
+      midpoint is dropped on save rather than stored blank. */
+  bodyRegions: Record<string, number>;
   /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Sits
       outside the seven-field content closure above - the same category
       the uuid/day/timestamp identity fields already are - so it never
@@ -541,6 +527,21 @@ export type InjectionVehicle = 'oil' | 'aqueous';
     but not as scheduled. */
 export type DoseStatus = 'taken' | 'skipped' | 'changed';
 
+/** Who wrote the row. `person` is every dose logged by hand and every dose
+    that existed before auto-logging did; `schedule` is one a schedule the
+    person switched on wrote on their behalf (phase 11 ticket 11, ADR-0086).
+
+    A field of its own rather than a fourth `DoseStatus`, because it answers a
+    different question: status is what happened to the dose, source is who
+    said so. A schedule-written dose can be `taken` or, once the person
+    corrects it, `skipped`, and it keeps saying where it came from either way.
+
+    The same job `autoSource` does for a Reminder (autoSource.ts), with none
+    of its shape: a reminder names which feature and which row made it because
+    the feature has to find its own row again, and nothing here ever needs to
+    go back and edit a dose it wrote. */
+export type DoseSource = 'person' | 'schedule';
+
 /** What a `changed` dose was supposed to be, kept beside what it actually
     was. Null on every other status: there is nothing to compare against
     when the dose went as planned. */
@@ -561,6 +562,7 @@ interface DoseEventFields {
   dose: number;
   doseUnit: string;
   status: DoseStatus;
+  source: DoseSource;
   scheduled: ScheduledDose | null;
   /** Which drug this dose was, in the dose's own words - optional, and null
       on almost every dose (phase 5 ticket 38). Attribution still resolves
@@ -643,6 +645,17 @@ export interface DoseSchedule {
   /** Twice-daily oral is 2. */
   dosesPerDay: number;
   doseAmounts: DoseScheduleAmount[] | null;
+  /** The day the person switched auto-logging on for this schedule, or null
+      for off - the standing instruction "assume I took it unless I say
+      otherwise" (phase 11 ticket 11, ADR-0086).
+
+      One nullable day rather than a boolean beside a day, because the pair
+      has a state that means nothing: switched on with no day to start from.
+      The day is what the walk needs anyway - nothing is ever written before
+      it, so turning the switch on does not reach back over a gap the person
+      never asked about, and turning it off and on again months later starts
+      from the second day rather than filling in the months between. */
+  autoLogFromEpochDay: number | null;
 }
 
 /** Planned is a break someone chose or a clinician directed; accidental is
@@ -1020,6 +1033,11 @@ export interface MedicationStock {
   /** As typed, or null when a window in days was typed instead - never
       derived from `inUseWindowDays`. */
   inUseEndEpochDay: number | null;
+  /** How many days a restock takes for this drug (redesign phase 10 ticket
+      01). Null is the normal state - the app assumes nothing until a person
+      types one. Feeds `reorderByEpochDay` (stockProjection.ts) alongside the
+      run-out day; never folded into the run-out projection itself. */
+  leadTimeDays: number | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
@@ -1079,6 +1097,29 @@ export interface CustomRoadmapGoal {
   status: RoadmapGoalStatus;
 }
 
+/** What kind of surgery a procedure is (phase 9 carpet ticket 17): a
+    compiled-in set of the trans surgeries the app can name, or `custom` for
+    anything else, which keeps the record's free-text `name` as its only
+    identity. The set gates which sub-modules a procedure's kind unlocks -
+    dilation reads it - and nothing else; it is not a second name and the
+    app never guesses it from what someone typed (CONTEXT.md, Surgery). */
+export type ProcedureKind =
+  | 'vaginoplasty'
+  | 'vulvoplasty'
+  | 'orchiectomy'
+  | 'breast_augmentation'
+  | 'facial_feminization'
+  | 'tracheal_shave'
+  | 'voice_surgery'
+  | 'chest_reconstruction'
+  | 'hysterectomy'
+  | 'oophorectomy'
+  | 'phalloplasty'
+  | 'metoidioplasty'
+  | 'body_contouring'
+  | 'hair_transplant'
+  | 'custom';
+
 /** One procedure someone is going through (phase 5 ticket 07, CONTEXT:
     "Procedure"): a free-text name, the consults leading up to it, a surgery
     date once there is one, and the recovery log's own notes. Several can
@@ -1088,7 +1129,13 @@ export interface CustomRoadmapGoal {
     Holds nothing derived: how far along recovery is comes from the surgery
     date and today (recoveryDay.ts, ADR-0010), and the recovery checklist is
     an ordinary **Checklist** owned by this procedure rather than a field
-    here. */
+    here.
+
+    `kind` and `dilationOptIn` are phase 9 carpet ticket 17: the name stays
+    free text and titles the record, `kind` is what the app reads. Only a
+    `custom` kind carries its own opt-in - none of the compiled-in kinds can
+    be guessed to include dilation except vaginoplasty, which the Dilation
+    gate checks by kind directly. */
 export interface Procedure {
   id: string;
   name: string;
@@ -1097,6 +1144,8 @@ export interface Procedure {
   surgeryEpochDay: number | null;
   consults: ProcedureConsult[];
   notes: string;
+  kind: ProcedureKind;
+  dilationOptIn: boolean;
 }
 
 /** One consult on the way to a procedure, as the procedure's own screen

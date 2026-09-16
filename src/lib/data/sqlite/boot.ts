@@ -7,10 +7,12 @@
      2. Open the database and run migrations (ticket 02) - this ticket's
         own job, fully implemented below.
      3. Load mirrored reference data into reactive state (ticket 08).
-     4. Purge trash past its 30-day window, then run the photo orphan sweep
-        (ticket 11; phase 5 ticket 19) - off the critical path since phase 5
-        audit ticket 02: scheduled as boot reports ready rather than waited
-        for, because no screen reads what either of them produces.
+     4. Purge trash past its 30-day window, run the photo orphan sweep
+        (ticket 11; phase 5 ticket 19), then auto-log the doses any schedule
+        the person switched on still owes (phase 11 ticket 11) - off the
+        critical path since phase 5 audit ticket 02: scheduled as boot
+        reports ready rather than waited for, because no screen reads what
+        any of them produces.
 
    Steps 1, 3 and 4 are dependency-injected no-ops until their tickets land
    - boot() still calls them in order so the shape doesn't change later,
@@ -33,11 +35,32 @@ interface BootDeps {
   loadReferenceData?: (driver: SqliteDriver) => Promise<void>;
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
-  /** When to run the two housekeeping passes, given the work to run. The app
+  /** The auto-log pass (phase 11 ticket 11, ADR-0086): each schedule the
+      person switched on gets a `taken` dose per slot it still owes, up to
+      yesterday. Last of the three, and here rather than on a clock of its
+      own, because a standing instruction has to be carried out on a device
+      that was closed for a week just as much as on one opened every day, and
+      boot is when the app finds out how long that was. */
+  autoLogDueDoses?: (driver: SqliteDriver) => Promise<void>;
+  /** When to run the housekeeping passes, given the work to run. The app
       passes an idle callback (whenIdle, ../../idle.ts); leave it out and they
       start as soon as ready is reported, which is what the probes want - the
       point is only that nothing waits for them. */
   scheduleHousekeeping?: (run: () => void) => void;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+export function isDatabaseLockedError(error: unknown): boolean {
+  if (!error) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  const pattern =
+    /database is locked|\bcode 5\b|sqlite_busy|database table is locked|SQLiteDatabaseLockedException|SQLiteBusyException|\bbusy\b/i;
+  if (pattern.test(message)) return true;
+  if (error instanceof Error && error.cause) {
+    const causeMsg = error.cause instanceof Error ? error.cause.message : String(error.cause);
+    if (pattern.test(causeMsg)) return true;
+  }
+  return false;
 }
 
 type BootResult =
@@ -45,10 +68,10 @@ type BootResult =
       phase: 'ready';
       driver: SqliteDriver;
       persistDenied: boolean;
-      /** Resolves when both housekeeping passes have finished, and never
-          rejects - a failure in either is warned about and left for the next
-          boot. Nothing in the app awaits it; the benchmarks and the tests
-          that prove the passes ran do. */
+      /** Resolves when the housekeeping passes have finished, and never
+          rejects - a failure in any of them is warned about and left for the
+          next boot. Nothing in the app awaits it; the benchmarks and the
+          tests that prove the passes ran do. */
       housekeeping: Promise<void>;
     }
   | { phase: 'error'; error: unknown };
@@ -56,41 +79,56 @@ type BootResult =
 export async function boot(deps: BootDeps): Promise<BootResult> {
   deps.applyBootPreferences?.();
 
-  let driver: SqliteDriver;
-  /* No service worker may activate over a migration in progress (ticket 04):
-     the transaction covers a failed step, but nothing covers the code being
-     replaced between two of them. Taken before createDriver() so the window
-     starts where the file is first touched. */
-  const migrating = markJournalBusy();
-  try {
-    // createDriver() itself isn't expected to be where a failure surfaces
-    // (SQLocal defers real I/O to its worker, so constructing it doesn't
-    // throw) - the try/catch is here for runMigrations()'s exec/
-    // getUserVersion calls, which are where opening the database and
-    // applying schema changes actually happen.
-    driver = deps.createDriver();
-    /* The list itself only where it is needed (phase 5 audit ticket 02): 27KB
-       of SQL text across the full schema history, which a journal already on
-       the current version has no use for. The dynamic import is what keeps it
-       out of the first-load graph, so it has to stay inside this call. */
-    await runMigrations(driver, deps.fileOps, {
-      latestVersion: LATEST_SCHEMA_VERSION,
-      load: async () => (await import('./migrations.ts')).migrations
-    });
-  } catch (error) {
-    // Migrations run before anything reads or writes app data, so a
-    // failure here means the caller must show a handled error state
-    // instead of going on to render screens over a database that isn't
-    // there (ticket 04's acceptance: not a blank screen).
-    return { phase: 'error', error };
-  } finally {
-    /* The guard ends with the migrations, not with boot(). What follows is
-       reconcileBuiltIns, which takes the guard itself on the way through the
-       journal wrapper, and the photo sweep, which only ever deletes files no
-       row references - so an update landing mid-sweep leaves orphans for the
-       next boot to reclaim, which is what its own failure path already
-       does. */
-    migrating();
+  const sleep = deps.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const maxRetries = 4;
+
+  let driver!: SqliteDriver;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    /* No service worker may activate over a migration in progress (ticket 04):
+       the transaction covers a failed step, but nothing covers the code being
+       replaced between two of them. Taken before createDriver() so the window
+       starts where the file is first touched. */
+    const migrating = markJournalBusy();
+    try {
+      // createDriver() itself isn't expected to be where a failure surfaces
+      // (SQLocal defers real I/O to its worker, so constructing it doesn't
+      // throw) - the try/catch is here for runMigrations()'s exec/
+      // getUserVersion calls, which are where opening the database and
+      // applying schema changes actually happen.
+      driver = deps.createDriver();
+      /* The list itself only where it is needed (phase 5 audit ticket 02): 27KB
+         of SQL text across the full schema history, which a journal already on
+         the current version has no use for. The dynamic import is what keeps it
+         out of the first-load graph, so it has to stay inside this call. */
+      await runMigrations(driver, deps.fileOps, {
+        latestVersion: LATEST_SCHEMA_VERSION,
+        load: async () => (await import('./migrations.ts')).migrations
+      });
+      break;
+    } catch (error) {
+      if (driver) {
+        await driver.close().catch(() => {});
+      }
+      if (attempt < maxRetries && isDatabaseLockedError(error)) {
+        const delay = Math.min(1000, 50 * Math.pow(2, attempt));
+        await sleep(delay);
+        continue;
+      }
+      // Migrations run before anything reads or writes app data, so a
+      // failure here means the caller must show a handled error state
+      // instead of going on to render screens over a database that isn't
+      // there (ticket 04's acceptance: not a blank screen).
+      return { phase: 'error', error };
+    } finally {
+      /* The guard ends with the migrations, not with boot(). What follows is
+         reconcileBuiltIns, which takes the guard itself on the way through the
+         journal wrapper, and the photo sweep, which only ever deletes files no
+         row references - so an update landing mid-sweep leaves orphans for the
+         next boot to reclaim, which is what its own failure path already
+         does. */
+      migrating();
+    }
   }
 
   const persistDenied = deps.requestPersistentStorage ? !(await deps.requestPersistentStorage()) : false;
@@ -124,9 +162,9 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
   return { phase: 'ready', driver, persistDenied, housekeeping };
 }
 
-/** Both passes, in order, each one's failure its own. A failure is a warning
-    and nothing more: the app is not withheld for either of these, since what
-    they did not finish is still there for the next boot to retry. */
+/** All three passes, in order, each one's failure its own. A failure is a
+    warning and nothing more: the app is not withheld for any of these, since
+    what they did not finish is still there for the next boot to retry. */
 async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
   try {
     await deps.purgeExpiredTrash?.(driver);
@@ -138,5 +176,11 @@ async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
     await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {
     console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
+  }
+
+  try {
+    await deps.autoLogDueDoses?.(driver);
+  } catch (error) {
+    console.warn('auto-logging doses failed; the slots stay open until the next boot', error);
   }
 }

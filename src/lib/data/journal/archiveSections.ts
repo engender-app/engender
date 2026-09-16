@@ -560,7 +560,7 @@ const SECTIONS = [
      other and both land. The alternative is dropping an incoming era that
      collides, which loses a name the person gave a stretch of their life
      with nothing on screen to say so. An overlap is visible on
-     /transition/eras and editable there, and every read stays total meanwhile
+     /settings/eras and editable there, and every read stays total meanwhile
      - `eraForDay` answers with the first era covering the day, so a day
      still resolves to at most one. */
   /* Does not travel (ticket 04's own worked case). An era carries a name
@@ -883,7 +883,12 @@ const SECTIONS = [
       scheduled_dose: 'scheduledDose',
       scheduled_route: 'scheduledRoute',
       scheduled_timestamp: 'scheduledTimestamp',
-      drug: { field: 'drug', whenAbsent: null }
+      drug: { field: 'drug', whenAbsent: null },
+      /* `whenAbsent: 'person'`, not null: an archive written before ticket
+         11 carries no source at all, and every row in one was logged by
+         hand, because nothing else could write a dose then. The column's
+         own default says the same thing (schema v82). */
+      source: { field: 'source', whenAbsent: 'person' }
     }
   }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just
@@ -940,7 +945,8 @@ const SECTIONS = [
       reminder_dismissed: { field: 'reminderDismissed', bool: true },
       opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
       in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
-      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null }
+      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
+      lead_time_days: { field: 'leadTimeDays', whenAbsent: null }
     }
   }),
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`

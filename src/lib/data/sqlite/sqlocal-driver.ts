@@ -17,11 +17,15 @@
    the driver's own exec/setUserVersion (not a separate transaction
    handle), and SQLocal serializes every call through one worker
    connection, so manual BEGIN/COMMIT/ROLLBACK composes correctly with that
-   - verified directly against a running SQLocal instance. */
+   - verified directly against a running SQLocal instance. Two of them at
+   once is what that ordering cannot compose, so they queue behind each
+   other through oneTransactionAtATime() (ticket 134), as on the two
+   drivers the app actually ships. */
 
 import { SQLocal } from 'sqlocal';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
+import { oneTransactionAtATime } from './transactor.ts';
 
 export interface WebSqlite {
   driver: SqliteDriver;
@@ -70,17 +74,11 @@ export function createWebSqlite(databasePath: string): WebSqlite {
       await sql(`PRAGMA user_version = ${version}`);
     },
 
-    async transaction<T>(fn: () => T | Promise<T>): Promise<T> {
-      await sql('BEGIN');
-      try {
-        const result = await fn();
-        await sql('COMMIT');
-        return result;
-      } catch (err) {
-        await sql('ROLLBACK');
-        throw err;
-      }
-    },
+    transaction: oneTransactionAtATime({
+      begin: async () => void (await sql('BEGIN')),
+      commit: async () => void (await sql('COMMIT')),
+      rollback: async () => void (await sql('ROLLBACK'))
+    }),
 
     async close() {
       await primary.destroy();

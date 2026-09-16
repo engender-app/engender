@@ -14,22 +14,36 @@ const TAB_ROUTES: TabRoute[] = [
      from nowhere else (ticket 10, ADR-0062, ADR-0045). */
   { key: 'home', prefixes: ['/doubt', '/coming-back'] },
   { key: 'calendar', prefixes: ['/calendar', '/day', '/search', '/entry'] },
-  /* SH-001: Timeline used to light no tab at all, which read as having left
-     the app's structure. It groups with Stats as a look-back view over the
-     same journal, rather than getting IA a new tab. A wrapped joins that
-     group for the same reason, even though Home is where it is offered
-     from. Body map, tally and compare are the same kind of look-back,
-     linked from Stats' own list. On-this-day joins for the same reason as
-     wrapped - it too is offered from Home (OnThisDayHomeCard) rather than
-     from Stats (ticket 09).
+  /* SH-001: a look-back view used to light no tab at all, which read as
+     having left the app's structure. They group with Stats rather than
+     getting IA a new tab. A wrapped joins that group even though Home is
+     where it is offered from. Body map, tally and compare are the same
+     kind of look-back, linked from Stats' own list. On-this-day joins for
+     the same reason as wrapped - it too is offered from Home
+     (OnThisDayHomeCard) rather than from Stats (ticket 09).
 
      `/recap` was in this list until phase 5 UX ticket 23 deleted the route
      (spec 07). Its period picker is a wrapped now, so every URL that used
      to land here still lights this tab - under /wrapped rather than under
-     a prefix of its own. */
+     a prefix of its own. `/timeline` was in it until redesign ticket 43
+     merged the rail into the milestones screen; it is below, with the
+     screen it redirects to. */
   {
     key: 'stats',
-    prefixes: ['/stats', '/timeline', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
+    prefixes: [
+      '/stats',
+      '/wrapped',
+      '/body-map',
+      '/tally',
+      '/compare',
+      '/on-this-day',
+      /* Its reading draws on Look back (redesign ticket 62's words card),
+         not on Settings, so this address lights the same tab that reading
+         does (redesign ticket 05) - matched here, ahead of the generic
+         `/settings` prefix below, since the first route this list matches
+         wins. */
+      '/settings/words'
+    ]
   },
   /* Doses sits outside /settings, but it is reached from More's health
      group (regimen, hormone-curve) and joins that group's tab too
@@ -41,33 +55,51 @@ const TAB_ROUTES: TabRoute[] = [
      hub rows still living at /settings/<slug> moved to their own
      HubGroupKey-named address - /settings itself stays, since the
      redirects, /settings/reminders[/...] and the hand-written
-     Appearance/Tracking/Privacy sections all remain there. */
+     Appearance/Tracking/Privacy sections all remain there.
+
+     `/timeline` is a stub redirecting to /transition/milestones (redesign
+     ticket 43), and it is listed here rather than left to the fallback so
+     that the tab the old address lights is the tab it lands on. Left with
+     Look back, where the rail used to live, the indicator would have
+     travelled one tab and back while the redirect resolved. */
   {
     key: 'settings',
-    prefixes: ['/more', '/doses', '/care', '/body', '/health', '/transition', '/practice', '/media']
+    prefixes: ['/timeline', '/more', '/doses', '/care', '/body', '/health', '/transition', '/practice', '/media']
   }
 ];
 
 /* Audit item 4: `/settings` used to sit in the table above, in the fourth
    door's own group, so opening it from Today's gear (ADR-0076 - settings
    is chrome, reached from a persistent control, not a tab) lit the fourth
-   tab and read as having left Today. Settings has no tab of its own: it
-   borrows whichever one was lit before the gear was pressed, which the
-   caller carries in `chromeOrigin` (chrome-tab-origin.ts) since this
-   function stays pure for its own tests. A fresh deep link, with nothing
-   to borrow, lights none. */
+   tab and read as having left Today. Settings itself has no tab of its
+   own: it borrows whichever one was lit before the gear was pressed,
+   which the caller carries in `chromeOrigin` (chrome-tab-origin.ts) since
+   this function stays pure for its own tests. A fresh deep link, with
+   nothing to borrow, lights none. */
 const CHROME_PREFIX = '/settings';
 
+/* Reference areas ticket 51 (ADR-0084) hosted under Settings without
+   making them preferences - a mode, a template and an era are vocabulary,
+   the same content the fourth door used to carry a row for, just filed
+   under a different address now. Chrome-borrowing them would mean the
+   editor's own "manage"/"change" links (plain `<a href>`s, not a raise)
+   surface presentations under whichever tab happened to be lit when the
+   editor was opened, which answers a different question than "where is
+   Settings' own reference data". They keep the fixed tab those hub rows
+   lit before ticket 51 moved them. */
+const SETTINGS_REFERENCE_AREA_PREFIXES = ['/settings/presentations', '/settings/entry-templates', '/settings/eras'];
+
 /* The word ignore list kept its old address (`/settings/words` redirects
-   here, ADR-0036) but never belonged to the fourth door: it configures
-   Look back's own reading (ticket 62), and its own back arrow already
-   said so before the tab bar did. Checked ahead of the general table,
-   which would otherwise catch it under `/transition`. */
-const WORDS_PREFIX = '/transition/words';
+   here, ADR-0036) but never belonged to the fourth door either: it
+   configures Look back's own reading (redesign ticket 62), and its own
+   back arrow already said so before the tab bar did. Checked ahead of
+   the general chrome check, which would otherwise borrow a tab for it. */
+const WORDS_PREFIX = '/settings/words';
 
 export function activeTabKey(path: string, chromeOrigin = ''): string {
   if (path === '/') return 'home';
   if (path.startsWith(WORDS_PREFIX)) return 'stats';
+  if (SETTINGS_REFERENCE_AREA_PREFIXES.some((prefix) => path.startsWith(prefix))) return 'settings';
   if (path.startsWith(CHROME_PREFIX)) return chromeOrigin;
   return TAB_ROUTES.find((route) => route.prefixes.some((prefix) => path.startsWith(prefix)))?.key ?? '';
 }

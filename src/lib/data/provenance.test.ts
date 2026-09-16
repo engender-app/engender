@@ -110,7 +110,7 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   assert.deepEqual(origin, {
     text: 'Kept in step with your Estradiol stock.',
     hint: "Edit it, and it's yours to manage from here on.",
-    href: '/settings/stock',
+    href: '/care',
     actionLabel: 'View stock'
   });
 });

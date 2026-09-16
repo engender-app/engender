@@ -334,7 +334,7 @@
   .kit-donut-whole {
     font-family: var(--font-display);
     font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-display);
     letter-spacing: var(--display-track);
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
@@ -378,7 +378,7 @@
     margin: -2px calc(var(--space-1) * -1);
     padding: 2px var(--space-1);
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--r-block);
     background: none;
     color: inherit;
     font: inherit;
@@ -400,7 +400,7 @@
     flex: 0 0 auto;
     width: 10px;
     height: 10px;
-    border-radius: 3px;
+    border-radius: 2px;
     border: 1px solid var(--outline);
     background: color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface-2));
   }

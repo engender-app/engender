@@ -19,8 +19,9 @@
       import '../../src/lib/styles/components.css';
       import '../../src/lib/styles/kit.css';
       import { mount } from 'svelte';
-      import MoodYear from '../../src/lib/components/kit/MoodYear.svelte';
-      import { moodYear } from '../../src/lib/charts/moodYear';
+      import YearRows from '../../src/lib/components/kit/YearRows.svelte';
+      import { yearRows } from '../../src/lib/charts/yearRows';
+      import { MOOD_RANGE, heatLevel } from '../../src/lib/data/metricRange';
       import { epochDayFromLocalDate } from '../../src/lib/data/epochDay';
 
       const YEAR = 2025;
@@ -41,12 +42,13 @@
       card.className = 'kit-chart';
       card.innerHTML = '<div class="kit-chart-head"><h3>Month by month</h3></div><div class="kit-chart-body" id="slot"></div>';
       document.getElementById('app').append(card);
-      mount(MoodYear, {
+      mount(YearRows, {
         target: document.getElementById('slot'),
         props: {
-          grid: moodYear(YEAR, days),
+          grid: yearRows(YEAR, days, (value) => heatLevel(value, MOOD_RANGE)),
           monthName: (m) => MONTHS[m],
-          dayLabel: (d, step) => `${d} ${step ?? 'none'}`
+          dayLabel: (d, value) => `${d} ${value ?? 'none'}`,
+          fillAt: (step) => `var(--heat-${step})`
         }
       });
       document.body.dataset.ready = '1';

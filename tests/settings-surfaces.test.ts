@@ -42,12 +42,24 @@ describe('what Settings is built from', () => {
     expect(settings).not.toContain("from '$lib/components/kit/Notice.svelte'");
   });
 
-  it('hides its own title, the same call the More hub makes', () => {
-    /* Alicja, on the live build: a visible "Settings" sitting directly
-       above "Appearance" is the same two-headers-stacked problem
-       DIRECTION.md 3d names for the hub, even though this screen isn't
-       itself a tab. The title stays in the document for a screen reader. */
-    expect(withoutScript).toMatch(/<ScreenHeader\s[^>]*title=\{m\.nav_settings\(\)\}[^>]*titleHidden/);
+  it("draws rule 7's chrome case: the field with its own title, and back to Today", () => {
+    /* Carpet 25. This screen hid its title from ticket 24 until now, for a
+       reason that stopped being true when the field arrived: a visible
+       "Settings" sitting on the page directly above "Appearance" was two
+       headers stacked (Alicja, 2026-08-25), and a title on the field is not
+       on the page at all - it is on a block of the flag's colour, which is
+       where every deep screen in the app puts its own. Rule 7's third case
+       decides both answers for chrome; `chrome` is how a screen asks for
+       them, and the back control it brings is hidden on the desktop by
+       components.css rather than by a second call here. */
+    const header = /<ScreenHeader[^>]*\/?>/s.exec(withoutScript)?.[0] ?? '';
+    expect(header).toContain('title={m.nav_settings()}');
+    expect(header).not.toContain('titleHidden');
+    expect(header).toContain('chrome');
+    /* Today, because the phone's gear is in Today's foot (ADR-0076). A
+       string, so ScreenHeader's smartBack answers the rail and every deep
+       link into the screen and keeps this as the fallback. */
+    expect(header).toContain('back="/"');
   });
 
   it('keeps all three hand-written sections', () => {
@@ -68,11 +80,24 @@ describe('what Settings is built from', () => {
        job is to hold a Switch would make that switch's own button a nested
        control. Those stay plain .kit-row divs. The wrapped and on-this-day
        rows moved to the unprompted registry's own screen (ticket 51, merged
-       to one screen by deepening ticket 09), which unprompted-view.test.ts
-       holds to the same rule. */
-    for (const handle of ['data-entry-nudges', 'data-guided-prompts', 'data-roadmap-milestone-sync']) {
-      const re = new RegExp(`<div class="kit-row" ${handle}>`);
-      expect(withoutScript).toMatch(re);
+       to one screen by deepening ticket 09), and the four prompt toggles
+       followed them there in phase 11 ticket 04 - unprompted-view.test.ts
+       holds all of them to the same rule. Cycle tracking is the switch row
+       this screen has left. */
+    expect(withoutScript).toMatch(/<div class="kit-row" data-cycle-tracking-toggle>/);
+  });
+
+  it('keeps no switch for a prompt the notifications screen now carries', () => {
+    /* Phase 11 ticket 04. Entry nudges, guided prompts, the binder duration
+       cue and roadmap milestone prompts floated here under no heading of
+       their own; all four are the app speaking up unasked, which is what
+       /settings/notifications is about. Left behind, each would be a second
+       switch writing the same preference. */
+    for (const gone of ['data-entry-nudges', 'data-guided-prompts', 'data-wear-duration-cue-toggle', 'data-roadmap-milestone-sync']) {
+      expect(settings).not.toContain(gone);
+    }
+    for (const pref of ['entryNudges', 'guidedPromptsEnabled', 'wearDurationCueEnabled', 'roadmapMilestoneSyncEnabled']) {
+      expect(settings).not.toContain(`prefs.${pref}`);
     }
   });
 

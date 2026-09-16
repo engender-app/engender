@@ -42,6 +42,7 @@
   import { m } from '$lib/paraglide/messages';
   import { areaPath } from '$lib/charts/areaPath';
   import {
+    PLOT_HEIGHT,
     bridgeGaps,
     gutterLabels,
     lerpSamples,
@@ -59,6 +60,7 @@
     type ChartAnnotation
   } from '$lib/charts/annotations';
   import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
+  import ChartEmpty from './ChartEmpty.svelte';
   import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
@@ -153,12 +155,18 @@
           card is the card. See Role.paired in $lib/theme/roles. */
       role?: Role;
     };
-    /** Which of `points` fall on a day logged under the chosen presentation
-        (phase 8 features ticket 17, ADR-0048), and what colour to ring
-        them in. `at` is aligned with `points` the same way `overlay.values`
-        is - the caller places, this chart only draws - because only the
-        caller knows what a position covers on a re-keyed axis
+    /** Which of `points` are marked, and what colour to ring them in. `at`
+        is aligned with `points` the same way `overlay.values` is - the
+        caller places, this chart only draws - because only the caller knows
+        what a position covers on a re-keyed axis
         ($lib/charts/presentationHighlight.ts).
+
+        Two callers: the days logged under a chosen presentation (phase 8
+        features ticket 17, ADR-0048), and the two takes picked for
+        comparison on the voice screen (redesign ticket 42), so picking a
+        pair moves every figure rather than only the pitch trend. Both are
+        the same kind of claim - these readings, out of the ones drawn - and
+        neither adds a reading.
 
         A ring around the existing dot, never a second mark: the chip
         highlights, it never adds a reading nobody logged (ADR-0030's rank,
@@ -181,7 +189,7 @@
      which is the question the value gutter is really asking. */
   let oneScale = $derived(!overlaid || overlay!.sharedScale === true);
 
-  const HEIGHT = 132;
+  const HEIGHT = PLOT_HEIGHT;
   /* Room for the ring on the latest reading and for the stroke at the top
      and bottom of the scale. */
   const PAD = 7;
@@ -701,7 +709,7 @@
     </ul>
   {/if}
 {:else}
-  <p class="kit-chart-empty">{m.not_enough_data()}</p>
+  <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
 {/if}
 
 <style>

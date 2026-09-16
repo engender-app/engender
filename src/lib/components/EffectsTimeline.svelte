@@ -270,11 +270,11 @@
     overflow: visible;
   }
   .tick-grid {
-    stroke: var(--border);
+    stroke: var(--outline);
     stroke-width: 1;
   }
   .track-baseline {
-    stroke: var(--border);
+    stroke: var(--outline);
     stroke-width: 1;
   }
   .band-onset {
@@ -313,7 +313,7 @@
   .legend-swatch {
     width: 12px;
     height: 12px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-block);
     flex: none;
   }
   .swatch-onset {

@@ -127,6 +127,36 @@ export function calendarDuration(fromEpochDay: number, toEpochDay: number): Cale
   return { years, months, days };
 }
 
+export type DurationUnit = 'years' | 'months' | 'days';
+
+export interface DurationPart {
+  n: number;
+  unit: DurationUnit;
+}
+
+/** The largest one or two units of a duration, as numbers beside their unit
+    names: 4 years 11 months, 2 years, 1 month, 12 days.
+
+    The rule itself, with no words in it. `fmtDuration` renders these as a
+    sentence and a sealed letter's card draws the same parts as numbers on
+    blocks (ticket 45), so the two can never disagree about how long a gap
+    is. Always one part or two, days included at zero - "unlocks today" is a
+    different fact from "0 days" and the caller that has to tell them apart
+    compares the days themselves.
+
+    Months never carry a remainder in days, which is `fmtDuration`'s rule
+    from phase 5 kept rather than revisited: a card carries the exact date
+    beside the countdown, so the second unit would be precision the reader
+    already has. */
+export function durationParts(d: CalendarDuration): DurationPart[] {
+  if (d.years > 0) {
+    const years: DurationPart = { n: d.years, unit: 'years' };
+    return d.months > 0 ? [years, { n: d.months, unit: 'months' }] : [years];
+  }
+  if (d.months > 0) return [{ n: d.months, unit: 'months' }];
+  return [{ n: d.days, unit: 'days' }];
+}
+
 /** A year/month/day clamped to the target month's length before becoming an
     epoch day - `new Date(2025, 1, 29)` is 1 March, a different day of a
     different month, so this is what keeps a 29 February anniversary in

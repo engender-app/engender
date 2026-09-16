@@ -19,10 +19,13 @@ import { SURFACE_ROWS, UNPROMPTED_KINDS } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import {
   HOME_TILE_CAP,
+  LIVE_TILE_DRAW_ORDER,
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
+  dosePanelCoversEveryRegimen,
+  isLiveTileKind,
   liveTilePrefKeys,
   splitHomeTiles,
   type HomeTileActions,
@@ -78,7 +81,8 @@ const schedule: DoseSchedule = {
   episodeId: 'ep-1',
   recurrence: { kind: 'everyNDays', everyNDays: 3 },
   dosesPerDay: 1,
-  doseAmounts: null
+  doseAmounts: null,
+  autoLogFromEpochDay: null
 };
 
 const procedure: Procedure = {
@@ -86,7 +90,9 @@ const procedure: Procedure = {
   name: 'Vaginoplasty',
   surgeryEpochDay: TODAY + 10,
   consults: [],
-  notes: ''
+  notes: '',
+  kind: 'vaginoplasty',
+  dilationOptIn: false
 };
 
 const letters: LetterSeal[] = [
@@ -164,6 +170,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       schedules: [schedule],
       dosePauses: [],
       todayDoses: [],
+      yesterdayDoses: [],
       latestBenchmarkEpochDay: TODAY - 20,
       journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
       latestHairRemovalSession: hairRemovalSession,
@@ -184,6 +191,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
          string would hide behind a locale. */
       fullDay: (epochDay) => `full:${epochDay}`,
       shortDay: (epochDay) => `short:${epochDay}`,
+      weekdayDay: (epochDay) => `weekday:${epochDay}`,
       time: (timestamp) => `time:${timestamp}`,
       hairRemovalArea: (area) => `area:${area}`
     }
@@ -309,6 +317,25 @@ describe('the order, and the cap', () => {
     expect(keysOf()).toEqual(TIERED);
   });
 
+  it('states that order once, for the grid and for the editor that arranges it', () => {
+    /* Phase 11 ticket 04: Today's editor lists the switches in the order
+       the grid draws them, and a second nested loop over the same two
+       lists would be a copy of the order that nothing keeps in step. So
+       `composeHomeTiles` and the editor read the same array, and this is
+       what says the array is the tiered order rather than something that
+       merely happens to agree with it today. */
+    expect([...LIVE_TILE_DRAW_ORDER]).toEqual(TIERED);
+  });
+
+  it('knows a tile kind from the rest of the registry', () => {
+    /* What the notifications screen filters its Home column by, so a kind
+       the editor now arranges is not also switchable in Settings. */
+    for (const kind of TIERED) expect(isLiveTileKind(kind)).toBe(true);
+    for (const notATile of ['stock-notice', 'wrapped', 'on-this-day', 'reminders'] as const) {
+      expect(isLiveTileKind(notATile)).toBe(false);
+    }
+  });
+
   it('keeps the order when the ones before a tile drop out', () => {
     /* Order is the policy\'s, not the reads\': with the first six of the
        tiered order gone the remaining six come out in the same relative
@@ -412,9 +439,89 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('dose-panel');
     expect(tile.attrs).toEqual({ 'data-dose-panel-tile': true });
     expect(tile.value).toBe('Estradiol patch');
-    expect(tile.note).toBeUndefined();
-    expect(tile.href).toBe('/doses');
-    expect(tile.action?.href).toBe('/doses?add=1');
+    expect(tile.href).toBe('/care/doses');
+    expect(tile.action?.href).toBe('/care/doses?add=1');
+  });
+
+  /* Phase 11 ticket 03: the panel is the dose's one home on Today, so it
+     has to say when the next one falls - the agenda's doseSlot row is
+     withheld while the panel is up (agendaReads.ts) and there is nowhere
+     else on the screen the day is stated. The fixture's schedule falls
+     every three days from fifteen days ago, which lands on today. */
+  it('the dose panel says a dose the day expects is today', () => {
+    expect(tileNamed('dose-panel')!.note).toBe(m.tile_dose_next_today());
+  });
+
+  it('the dose panel names the next day once today has been logged', () => {
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['todayDoses'];
+    const tile = tileNamed('dose-panel', { reads: { todayDoses: logged } })!;
+    expect(tile.note).toBe(m.tile_dose_next({ date: `weekday:${TODAY + 3}` }));
+  });
+
+  it('the dose panel says yesterday\'s dose was logged for you, ahead of the next day', () => {
+    /* Phase 11 ticket 11: on the morning after an auto-logged slot the fact
+       worth reading is the row written without the person, not a date they
+       can work out from their own schedule. */
+    const written = [
+      { id: 1, timestamp: NOW - 86_400_000, source: 'schedule', status: 'taken' }
+    ] as unknown as HomeTileReads['yesterdayDoses'];
+    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: written } })!.note).toBe(
+      m.tile_dose_auto_logged_yesterday()
+    );
+  });
+
+  it('a dose the person logged yesterday themselves leaves the panel\'s forward line alone', () => {
+    const byHand = [
+      { id: 1, timestamp: NOW - 86_400_000, source: 'person', status: 'taken' }
+    ] as unknown as HomeTileReads['yesterdayDoses'];
+    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: byHand } })!.note).toBe(m.tile_dose_next_today());
+  });
+
+  it('a regimen with no schedule gets a panel with no forward line', () => {
+    expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
+  });
+
+  /* What Today reads to decide whether to withhold the agenda's `doseSlot`
+     rows (agendaReads.ts). The panel names one drug - `activeEpisodesAt`'s
+     first - so it only accounts for the whole kind while that is the only
+     regimen running. With two, a row the panel does not stand for would be
+     stated nowhere at all, which is the thing the withholding exists to
+     prevent rather than to cause. */
+  describe('what the dose panel accounts for', () => {
+    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', startEpochDay: TODAY - 8 };
+    const dailyFor = (episodeId: string): DoseSchedule => ({
+      id: `sched-${episodeId}`,
+      episodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      dosesPerDay: 1,
+      doseAmounts: null,
+      autoLogFromEpochDay: null
+    });
+    const weeklyFor = (episodeId: string): DoseSchedule => ({ ...dailyFor(episodeId), recurrence: { kind: 'everyNDays', everyNDays: 4 } });
+    const covers = (over?: Overrides) => {
+      const grid = input(over);
+      return dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, grid.reads.schedules, NOW);
+    };
+
+    it('covers the whole kind while one regimen is running', () => {
+      expect(covers()).toBe(true);
+    });
+
+    /* A daily schedule earns no forward mark (ADR-0067), so a second
+       regimen taken every day puts no row on the band for the panel to be
+       standing in front of. This is the demo journal's own shape: an
+       injection on a rhythm beside an everyday pill. */
+    it('still covers it while a second regimen is taken daily', () => {
+      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, dailyFor('ep-2')] } })).toBe(true);
+    });
+
+    it('covers nothing while a second regimen earns marks of its own', () => {
+      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, weeklyFor('ep-2')] } })).toBe(false);
+    });
+
+    it('covers nothing when the panel is switched off', () => {
+      expect(covers({ enabled: { ...allOn(true), 'dose-panel': false } })).toBe(false);
+    });
   });
 
   it('the surgery countdown reads the nearest procedure and carries no control', () => {
@@ -503,7 +610,7 @@ describe('what each tile says', () => {
     expect(tile.attrs).toEqual({ 'data-patch-schedule-tile': true });
     expect(tile.value).toBe('Estradiol patch');
     expect(tile.note).toBe('100 mcg · patch');
-    expect(tile.action?.href).toBe('/doses?add=1');
+    expect(tile.action?.href).toBe('/care/doses?add=1');
   });
 
   it('the voice benchmark nudge counts the days and links the recorder', () => {

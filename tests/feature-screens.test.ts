@@ -39,21 +39,20 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
     scope. Correcting SCREENS.md is still nobody's ticket, and
     reading the routes off the hub instead of off the doc makes that
     disagreement smaller rather than pretending it is settled. */
-const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
-  doubt: 'moved onto the hub under spec 08 with the screen itself unchanged (ticket 24), so it was never rebuilt onto the kit'
-};
+const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {};
 
 /** Every screen reached only from inside another one, or from the shell -
     the part of this list the hub cannot supply. */
 const REACHED_FROM_INSIDE = [
   /* Four screens stopped being hub rows in phase 5 deepening ticket 07 -
-     labs, regimen, hormone-curve and doses sit behind the `/care` row now -
+     labs, regimen, hormone-curve and doses sit behind the `/care` row now,
+     and ticket 09 (ADR-0084) moved their own addresses under `/care/*` too -
      and they are still feature screens, still built on the kit, so they stay
      on this list. */
-  'settings/labs',
-  'settings/regimen',
-  'settings/hormone-curve',
-  'doses',
+  'care/labs',
+  'care/regimen',
+  'care/curve',
+  'care/doses',
   'transition/tryouts/[id]',
   /* The metric reference (phase 8 features ticket 27): reached only from a
      figure on the voice screen, never from the hub, which is ADR-0060's
@@ -74,8 +73,6 @@ const REACHED_FROM_INSIDE = [
      list for the reason the note above the list gives - a screen that is
      not here escapes every assertion in it. */
   'coming-back',
-  'settings/stock',
-  'settings/exposure',
   'media/photos/export',
   /* The appointment prep list stopped being a hub row in phase 8 features
      ticket 57: the row it had is the appointments row now, and prep is
@@ -92,7 +89,55 @@ const REACHED_FROM_INSIDE = [
      the prep list any time, never from the hub. On this list for the reason
      the note above it gives: chromeless is about the shell around a screen,
      and says nothing about whether the screen itself is built on the kit. */
-  'health/appointments/in-the-room'
+  'health/appointments/in-the-room',
+  /* Everything the app can ask this device for, listed in one place (phase
+     10 redesign ticket 31). Reached from a row beside security in Settings,
+     and from setup's permissions step, which draws the same component. On
+     this list for the reason the note above it gives: it is a feature screen
+     in every way this file asks about, and a screen that is not here escapes
+     every assertion in it. */
+  'settings/permissions',
+  /* The ways down from Safe space that are still screens of their own
+     (phase 10 redesign ticket 47, narrowed by phase 11 ticket 15).
+     `/doubt` opens on the breathing exercise and nothing else; everything
+     that screen used to hold below it lives one tap from a row and nowhere
+     in the hub. On this list for the reason the note above it gives - the
+     sections moved wholesale, so a screen left off would take a third of
+     Safe space out from under every assertion here at once.
+
+     `doubt/moments` and `doubt/readings` were on this list until ticket 15
+     folded them into `/transition/letters` and the Look back door. Both
+     addresses are redirect stubs now, and the screens that absorbed them
+     are already held here (the letters screen through the hub's own
+     `letters` row) - so this is two screens fewer, not two screens
+     unwatched. */
+  'doubt/comfort',
+  'doubt/evidence',
+  /* Redesign ticket 51 (ADR-0084): modes and entry templates are reference
+     areas, so both left `hubRows.ts` entirely for a plain row on Settings -
+     reached from there and from the entry editor's chip picker, never from
+     the hub. Still built on the kit, so they stay on this list for the
+     reason the note above it gives. */
+  'settings/presentations',
+  'settings/entry-templates',
+  /* Redesign ticket 62 (ADR-0084): the words reading draws on the Look back
+     door itself now, and the ignore list it used to carry stayed behind as a
+     reference area - reached from a plain row on Settings and from the
+     reading's own word sheet, never from the hub. Still built on the kit, so
+     it stays on this list for the reason the note above it gives. */
+  'settings/words',
+  /* Ticket 59: the summary is an export rather than an area, so it left
+     `hubRows.ts` entirely rather than moving to a hosted row - reached from
+     a plain row on Care and from appointment prep, never from the hub.
+     Still built on the kit, so it stays on this list for the reason the
+     note above it gives. */
+  'health/clinician-summary',
+  /* One reading of the Look back door on a screen of its own (phase 11
+     ticket 07): seven readings share the route, each reached from its
+     tile on /stats and from nowhere in the hub. Built on the kit and holds
+     a loading state on the recap it reads for the floor, so it stays on
+     this list for the reason the note above it gives. */
+  'stats/[reading]'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -102,6 +147,20 @@ const routeOf = (row: HubRow) => rowScreen(row).slice(1);
 const HUB_ROUTES = HUB_ROWS.filter((row) => !(row.key in NOT_A_FEATURE_SCREEN)).map(routeOf);
 
 const ROUTES = [...HUB_ROUTES, ...REACHED_FROM_INSIDE];
+
+/** A screen whose whole body is one shared component, and the file that
+    carries the kit on its behalf.
+
+    The grep below follows the hop rather than exempting the screen.
+    `/settings/permissions` is a ScreenHeader and `<PermissionList />`, and
+    that is the point of it: setup's permissions step draws the same
+    component, so "you can grant this later" leads to the same list rather
+    than to a second one written to look like it (phase 10 redesign ticket
+    31). A screen built that way is still on the kit; it is on the kit one
+    file along. */
+const KIT_VIA_COMPONENT: Record<string, string> = {
+  'settings/permissions': 'PermissionList'
+};
 
 const sourceOf = new Map(ROUTES.map((route) => [route, read(`src/routes/${route}/+page.svelte`)]));
 const markupOf = new Map(
@@ -116,7 +175,7 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the fourteen screens reached only from inside another', () => {
+  it('is the hub, plus the screens reached only from inside another', () => {
     /* The count that was here covered all 36 routes and had been raised ten
        times since it was written as 26, twice by two branches that each
        thought they were adding the 28th. The hub's own rows no longer need
@@ -126,7 +185,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(14);
+    expect(REACHED_FROM_INSIDE.length).toBe(20);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -154,7 +213,18 @@ describe('every feature screen', () => {
 
   it('builds every one of them out of the kit', () => {
     for (const route of ROUTES) {
-      expect(sourceOf.get(route), route).toMatch(/from '\$lib\/components\/kit\//);
+      const component = KIT_VIA_COMPONENT[route];
+      if (!component) {
+        expect(sourceOf.get(route), route).toMatch(/from '\$lib\/components\/kit\//);
+        continue;
+      }
+      /* Both halves, so the hop cannot become an exemption by accident: the
+         screen still has to be the component, and the component still has
+         to be the kit. */
+      expect(sourceOf.get(route), route).toContain(`$lib/components/${component}.svelte`);
+      expect(read(`src/lib/components/${component}.svelte`), component).toMatch(
+        /from '\$lib\/components\/kit\//
+      );
     }
   });
 
@@ -177,21 +247,39 @@ describe('what a first-run journal sees', () => {
       catalogue, resources is a bundled directory and entry templates
       reconciles every `ENTRY_TEMPLATES` built-in on every boot (the
       screen's own header comment), so none of the three can be empty; the
-      clinician summary and the exposure counters state their emptiness
-      per section rather than per screen. */
+      clinician summary states its emptiness per section rather than per
+      screen. */
   const WITH_EMPTY_STATE = ROUTES.filter(
     (route) =>
       ![
         'transition/milestones',
         'practice/resources',
-        'practice/entry-templates',
+        'settings/entry-templates',
         'health/clinician-summary',
-        'settings/exposure',
         /* The metric reference explains a fixed table of seven figures
            compiled into the bundle (data/voice/metrics.ts), so it has no
            empty state for the same reason the bundled directory has
            none. */
-        'practice/voice/metrics'
+        'practice/voice/metrics',
+        /* The return moment is a step rather than a screen (DIRECTION.md
+           rule 15, redesign ticket 35), and rule 12 forbids a notice on
+           one: a step carries a title on the field and one line under it,
+           and its empty state is that line saying the true sentence. It
+           does have an empty state and draws it as a surface - the
+           surface is the field and the line, not a Notice. */
+        'coming-back',
+        /* The permissions list is the same length on a first run as on a
+           thousandth: it describes what the app can reach, not what anybody
+           has written. There is no state in which it is empty. */
+        'settings/permissions',
+        /* Safe space itself, since redesign ticket 47. What it draws is a
+           breathing exercise and five ways down, and neither depends on
+           anything having been written: on a journal with nothing in it the
+           screen is identical, which is the point of it - the screen a
+           person reaches on their worst day is the same screen every time.
+           Its four ways down each carry their own empty state, and all four
+           are on this list. */
+        'doubt'
       ].includes(route)
   );
 
@@ -234,11 +322,25 @@ describe('what the worker is still fetching', () => {
         'transition/milestones',
         'practice/resources',
         'settings/notifications',
-        'transition/presentations',
-        'practice/entry-templates',
+        'settings/presentations',
+        'settings/entry-templates',
         // Reads no journal at all: seven figures explained, and not one of
         // the person's own numbers anywhere on it (ADR-0060).
-        'practice/voice/metrics'
+        'practice/voice/metrics',
+        /* Reads the OS rather than the journal: what the four grantable rows
+           show comes from two Capacitor plugins and, on the web, from
+           navigator.permissions. There is no query to wait on, and a
+           skeleton over a list whose rows are all known in advance would be
+           a placeholder for nothing. */
+        'settings/permissions',
+        /* Safe space reads the journal nowhere since redesign ticket 47.
+           The seven live queries it used to open with went down with the
+           sections that wanted them, and what is left - the breath and five
+           rows - is known before SQLite has answered anything. That is not
+           an omission but the point: a cold Android launch onto this route
+           paints the breath as soon as the shell is up. A skeleton here
+           would stand in for nothing. */
+        'doubt'
       ].includes(route)
   );
 
@@ -300,11 +402,15 @@ describe('the two print surfaces', () => {
     // Its own print rule: the disclaimer that only appears on paper.
     expect(source).toMatch(/@media print/);
     /* And what print hides is the app around the page, not the page. The
-       header, the range picker and the on-screen copy of the disclaimer
-       all carry `no-print`, which app.css's print block hides; the print
-       heading that replaces the header carries the range in words. */
+       header and the settings row that opens the range picker carry
+       `no-print` themselves; the range picker now lives in the controls
+       sheet (ticket 08), screen-only under the sheet's own `no-print`
+       wrap rather than its own - print-parity.test.ts holds that one.
+       The print heading that replaces the header carries the range in
+       words. */
     expect(source).toMatch(/<ScreenHeader[^>]*class="no-print"/);
-    expect(source).toMatch(/class="kit-filter cd-endpoints no-print"/);
+    expect(source).toMatch(/class="no-print settings-row-wrap"/);
+    expect(source).toMatch(/class="kit-filter cd-endpoints"/);
     expect(source).toContain('print-heading');
   });
 
@@ -322,6 +428,13 @@ describe('the two print surfaces', () => {
     const book = read('src/routes/settings/journal-book/+page.svelte');
     expect(book).toMatch(/@media print/);
   });
+
+  it('prevents hydration layout snap on cold mount of journal book (ticket 110)', () => {
+    const book = read('src/routes/settings/journal-book/+page.svelte');
+    expect(book).toMatch(/<div out:crossfade><Skeleton/);
+    expect(book).toMatch(/visibleEntries/);
+    expect(book).toMatch(/beforeprint/);
+  });
 });
 
 describe('no medical framing and no interpreted values', () => {
@@ -330,7 +443,7 @@ describe('no medical framing and no interpreted values', () => {
        paragraph, the band's own legend, and the pill on the heading of
        every curve the research does not support a fit for. The scope line
        is explicit that this screen must keep saying so. */
-    const source = sourceOf.get('settings/hormone-curve')!;
+    const source = sourceOf.get('care/curve')!;
     for (const key of ['curve_intro', 'curve_legend_band', 'curve_qual_notice']) {
       expect(source, key).toContain(`m.${key}()`);
     }
@@ -349,3 +462,24 @@ describe('no medical framing and no interpreted values', () => {
     }
   });
 });
+
+describe('transient frame render flashes and bloat prevention (ticket 114)', () => {
+  it('guarantees intrinsic minimum geometry on screen headers', () => {
+    const componentsCss = read('src/lib/styles/components.css');
+    expect(componentsCss).toMatch(/\.screen-header\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    expect(componentsCss).toMatch(/\.screen > \.screen-header > \.screen-field\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--inset-top\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    expect(componentsCss).toMatch(/\.screen-header\.is-collapsed,\s*\.screen > \.screen-header\.is-collapsed\s*\{[^}]*min-height:\s*0/);
+  });
+
+  it('stabilizes container query roots and screen column dimensions against render bloat', () => {
+    const appCss = read('src/lib/styles/app.css');
+    expect(appCss).toMatch(/\.app-viewport\s*\{[^}]*max-width:\s*100%/);
+    expect(appCss).toMatch(/\.screen\s*\{[^}]*max-width:\s*100%;[^}]*min-width:\s*0/);
+  });
+
+  it('keeps skeleton placeholders free of delayed entrance animations', () => {
+    const skeleton = read('src/lib/components/Skeleton.svelte');
+    expect(skeleton).not.toContain('stagger-in');
+  });
+});
+

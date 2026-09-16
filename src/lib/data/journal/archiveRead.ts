@@ -20,6 +20,7 @@
    through readFlatTable like any other flat area's. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import type { ProcedureKind } from '../types';
 import type {
   ArchiveAffirmation,
   ArchiveBodyRegion,
@@ -352,20 +353,13 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et
      JOIN tag t ON t.id = et.tag_id ORDER BY et.entry_id, t.id`
   );
-  const bodyRegionValues = await driver.query<{
-    entry_id: number;
-    region: string;
-    dysphoria: number | null;
-    euphoria: number | null;
-  }>('SELECT entry_id, region, dysphoria, euphoria FROM entry_body_region ORDER BY entry_id, region');
+  const bodyRegionValues = await driver.query<{ entry_id: number; region: string; value: number }>(
+    'SELECT entry_id, region, value FROM entry_body_region ORDER BY entry_id, region'
+  );
 
   const dims = groupBy(dimensionValues, (v) => v.entry_id, (v) => [v.key, v.value] as const);
   const tags = groupBy(tagLinks, (t) => t.entry_id, (t) => domainIdOf(t, 'tag'));
-  const bodyRegions = groupBy(
-    bodyRegionValues,
-    (v) => v.entry_id,
-    (v) => [v.region, { dysphoria: v.dysphoria, euphoria: v.euphoria }] as const
-  );
+  const bodyRegions = groupBy(bodyRegionValues, (v) => v.entry_id, (v) => [v.region, v.value] as const);
   const byEntry = groupBy(photos.filter((p) => p.entry_id !== null), (p) => p.entry_id!, toArchivePhoto);
   const recordingsByEntry = groupBy(recordings, (r) => r.entry_id, toArchiveVoiceRecording);
   const videosByEntry = groupBy(videos, (v) => v.entry_id, toArchiveVideoNote);
@@ -617,8 +611,10 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     name: string;
     surgery_epoch_day: number | null;
     notes: string;
+    kind: ProcedureKind;
+    dilation_opt_in: number;
   }>(
-    'SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
+    'SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
   );
   const photosById = groupBy(
     procedurePhotos,
@@ -631,7 +627,9 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     name: procedure.name,
     surgeryEpochDay: procedure.surgery_epoch_day,
     notes: procedure.notes,
-    photos: photosById.get(procedure.id) ?? []
+    photos: photosById.get(procedure.id) ?? [],
+    kind: procedure.kind,
+    dilationOptIn: procedure.dilation_opt_in !== 0
   }));
 }
 
@@ -673,8 +671,10 @@ export async function readDoseSchedules({ driver }: SectionRead): Promise<Archiv
     recurrence_kind: string;
     every_n_days: number | null;
     doses_per_day: number;
+    auto_log_from_epoch_day: number | null;
   }>(
-    `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day
+    `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day,
+            s.auto_log_from_epoch_day
        FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
       ORDER BY s.id`
   );
@@ -703,7 +703,8 @@ export async function readDoseSchedules({ driver }: SectionRead): Promise<Archiv
       everyNDays: r.every_n_days,
       weekdays: await weekdaysOf(r.id),
       dosesPerDay: r.doses_per_day,
-      doseAmounts: await doseAmountsOf(r.id)
+      doseAmounts: await doseAmountsOf(r.id),
+      autoLogFromEpochDay: r.auto_log_from_epoch_day
     }))
   );
 }

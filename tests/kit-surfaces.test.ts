@@ -129,14 +129,6 @@ describe('the surfaces', () => {
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
-      /* Two marks phase 5 UX ticket 23 added, both because an existing one
-         was answering the wrong question. MoodYear is a year of days at a
-         face each - twelve bars said where a year's shape went and a
-         retrospective wanted what the year was. PairedDots is two readings
-         of one scale with the gap between them, which is what a correlation
-         card is: bars measured every row against the longest one and made
-         six of them read as a third copy of the chart above. */
-      'MoodYear.svelte',
       /* MoodFace is deliberately not here. Ticket 31 folded the kit's face
          and the picker's into one component at src/lib/components, because
          the two were one drawing with two sets of markup and the eyes could
@@ -151,6 +143,12 @@ describe('the surfaces', () => {
          mostly-the-middle-two, and neither can five columns without the
          reader measuring them against each other. */
       'OrderedStrip.svelte',
+      /* Two positions on one scale with the gap between them: the merged
+         tag card's own mark (redesign ticket 05), and the survivor of a
+         real choice between it and bars, since a paired dot reads each row
+         against its own track rather than against the longest one in the
+         set, which is what let the merged card mix scales with no
+         normalizing of its own. */
       'PairedDots.svelte',
       /* Not a surface: a Sheet with a fixed arrangement inside it, the same
          shape ConfirmDeleteSheet is (ticket 47) - except this one owns its
@@ -166,6 +164,12 @@ describe('the surfaces', () => {
          pixels - a thumbnail row over ListCard - which is why it is a
          surface rather than "the other half of" one. */
       'PhotoSection.svelte',
+      /* Two photographs of the same body months apart, in one frame, under
+         one draggable divider (phase 10 redesign ticket 55). A surface of
+         its own: it draws a frame, two plates, two date blocks and a
+         handle, and two screens that both take fixed-position photographs
+         read it - the progress-photo comparison and hair progress. */
+      'PhotoWipe.svelte',
       /* Not a surface either, and the only kit component that draws no
          pixels of its own: the three-state gate thirty-one screens used to
          hand-write over a journal read (phase 5 audit ticket 04). It picks
@@ -173,6 +177,14 @@ describe('the surfaces', () => {
          have for a read that failed - and renders the screen's snippet for
          it. The rule it renders is readGate.ts, node-tested beside it. */
       'ReadGate.svelte',
+      /* The Look back door's readings as tiles (phase 11 ticket 07): a
+         flush tile stating one figure for the span with a chevron into its
+         own screen, and the two-column hairlined grid they sit in. In the
+         kit because the tile is a surface with a rule of its own - name in
+         the secondary ink, figure in the page's, colour only in the drawing
+         - and because nine call sites draw it. */
+      'ReadingGrid.svelte',
+      'ReadingTile.svelte',
       /* The other half of what a record-logging screen used to hand-write
          (phase 5 audit ticket 09): the editor sheet around ConfirmDeleteSheet
          above, with its new-or-edit title, its save-and-delete pair and the
@@ -182,7 +194,19 @@ describe('the surfaces', () => {
       'RecordSheet.svelte',
       'SectionHeading.svelte',
       'Tile.svelte',
-      'TileGrid.svelte'
+      'TileGrid.svelte',
+      /* One mark rather than a surface (phase 10 redesign ticket 62): words
+         whose size carries their weight, drawn on a chart card the way the
+         donut and the ordered strip are. It is in the kit rather than beside
+         the one reading that draws it because the drawing is a mark with a
+         rule of its own - five steps of the type scale, heaviest in the
+         middle - and that rule is the kind of thing this directory holds. */
+      'WordCloud.svelte',
+      /* Phase 5 UX ticket 23: a year of days, because twelve bars said
+         where a year's shape went and a retrospective wanted what the year
+         was. Phase 11 ticket 07 made the days shaded cells in twelve rows
+         rather than a face each. */
+      'YearRows.svelte'
     ]);
   });
 
@@ -313,7 +337,7 @@ describe('the charts', () => {
       const prelude = rule.split('{')[0] ?? '';
       const isAreaChart = /\.kit-area/.test(prelude);
       for (const [, token] of rule.matchAll(/var\((--[a-z0-9-]+)/g)) {
-        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display|touch)/.test(token)) continue;
+        if (/^--(space|text|radius|r-block|dur|ease|font|weight|leading|display|touch)/.test(token)) continue;
         if (isAreaChart && secondSeries.test(token)) continue;
         if (isHighlightRule.test(prelude) && token === '--highlight') continue;
         expect(token, `${token} in the chart rules`).toMatch(allowed);

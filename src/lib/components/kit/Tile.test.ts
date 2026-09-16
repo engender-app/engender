@@ -41,6 +41,19 @@ describe('Tile component contract', () => {
     expect(tileFile).toContain('navigating.to !== null');
   });
 
+  /* Phase 10 rule 3, redesign ticket 24: the note sits in a foot of page
+     colour along the bottom edge of the block, and a foot reaches the
+     block's edges. Inside .kit-tile-main it cannot: the link is one cell of
+     the tile's grid and a foot drawn in it leaves a sliver of stripe down
+     both sides. The action shape already had the note outside (ticket 99
+     item 9, for a different reason - centring); the dismiss-only shape is
+     the one this moves. */
+  it('keeps the note out of the main link on every split shape', () => {
+    const mains = [...tileFile.matchAll(/<a class="kit-tile-main press" \{href\}>([\s\S]*?)<\/a>/g)];
+    expect(mains).toHaveLength(2);
+    for (const [, body] of mains) expect(body).not.toContain('kit-tile-note');
+  });
+
   /* `|global` is not decoration. A transition is local by default and plays
      only when its own block is created or destroyed; a tile is created and
      destroyed by the caller's `{#each}`, which is a parent block, so the
@@ -49,5 +62,15 @@ describe('Tile component contract', () => {
      absence fails nothing else. */
   it('tells the transition globally, since what removes a tile is its caller', () => {
     expect(tileFile).not.toMatch(/transition:collapse=\{/);
+  });
+
+  /* Phase 10 rule 10, redesign ticket 25: a value that is a count counts up
+     on arrival and on change; every other value cuts. The number drawn is
+     the runner's, on every branch that draws one - a branch still writing
+     the prop straight would be the one tile whose number snapped. */
+  it('draws the value through the count-up on every branch', () => {
+    expect(tileFile).toContain("from '$lib/motion/countUp'");
+    expect((tileFile.match(/<span class="kit-tile-value">\{shown\}<\/span>/g) ?? []).length).toBe(3);
+    expect(tileFile).not.toMatch(/<span class="kit-tile-value">\{value\}/);
   });
 });

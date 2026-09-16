@@ -116,9 +116,12 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1200);
   await shootCard('03-femininity');
 
-  await page.locator('[data-segment="7"]').click();
+  /* The shortest span the rail's handles can make (redesign ticket 11). */
+  await page.locator('[data-span-handle="start"]').focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowLeft');
   await page.waitForTimeout(1500);
-  await shootCard('04-seven-days');
+  await shootCard('04-shortest-span');
 
   await page.close();
 }

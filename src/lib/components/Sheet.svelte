@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
   import type { Snippet } from 'svelte';
-  import { motionDuration } from '$lib/motion/tokens';
-  import { sheetRise } from '$lib/motion/navigation';
+  import { sheetRise, scrimFade } from '$lib/motion/navigation';
+  import { lockBackground, trapFocus } from './overlayLock';
 
   let {
     open = $bindable(false),
@@ -86,74 +85,56 @@
      and Tab walks in from the top. Never the first button: on the sheets
      that ask something irreversible that button is "yes", and a sheet that
      opens with "yes" under the cursor is one stray Enter from doing the
-     thing it opened to warn about (ticket 15, F22). */
+     thing it opened to warn about (ticket 15, F22).
+
+     Ticket 115: calling .focus() synchronously upon DOM attachment forces
+     layout flushes on Android Chromium before CSS transition keyframes attach,
+     teleporting the sheet from translateY(0) to translateY(travel). Defer
+     initial focus until the entrance transition settles (`introend`), with
+     preventScroll: true. */
   function focusInitial(node: HTMLElement) {
     sheetEl = node;
-    const field = node.querySelector<HTMLElement>('input, select, textarea');
-    (field ?? node).focus();
+    const applyFocus = () => {
+      if (!sheetEl || !sheetEl.isConnected) return;
+      if (sheetEl.contains(document.activeElement)) return;
+      const field = node.querySelector<HTMLElement>('input, select, textarea');
+      (field ?? node).focus({ preventScroll: true });
+    };
+
+    node.addEventListener('introend', applyFocus, { once: true });
     return () => {
+      node.removeEventListener('introend', applyFocus);
       sheetEl = null;
     };
   }
 
-  /* SF-001: every confirmation in the app is a sheet, and without this the
-     background stayed reachable behind an open dialog - Tab walked straight
-     out of it, and closing dropped focus to the document. `inert` on the app
-     shell's other children keeps assistive tech and Tab out of the
-     background regardless of how deep in that subtree the sheet itself
-     lives (the `.contains` check below skips whichever child holds it); the
-     scroll lock stops the scroll region moving underneath a sheet that does
-     not cover it edge to edge; focus returns to whatever opened the sheet on
-     close. Queries `data-app-root`/`data-app-scroll-region` rather than
-     `.app`/`.app-main` so this stays wired to the shell even if those
-     presentational class names ever change. */
-  function lockBackground(scrimNode: HTMLElement) {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const root = document.querySelector('[data-app-root]');
-    const restoreInert: HTMLElement[] = [];
-    if (root) {
-      for (const child of Array.from(root.children) as HTMLElement[]) {
-        if (child.contains(scrimNode) || child.hasAttribute('inert')) continue;
-        child.setAttribute('inert', '');
-        restoreInert.push(child);
-      }
-    }
-    const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
-    const previousOverflow = mainEl?.style.overflow ?? '';
-    if (mainEl) mainEl.style.overflow = 'hidden';
+  /* SF-001's background lock and focus trap live in overlayLock.ts now: the
+     letter arrival (redesign ticket 45) is the app's second surface that
+     covers the whole shell, and it owes the screen behind it exactly what a
+     sheet does. Their reasoning travelled with them. */
 
-    return () => {
-      restoreInert.forEach((el) => el.removeAttribute('inert'));
-      if (mainEl) mainEl.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
-    };
-  }
+  /* The scrim and the withdrawal blur it carries settle with the sheet, on
+     the sheet's own clock rather than on a duration of their own: with the
+     travel now the sheet's whole height (redesign ticket 38) a scrim that
+     finished first left the sheet still visibly moving over a page that had
+     already gone dark. Under reduced motion the sheet substitutes a
+     crossfade, so the scrim takes the same one - motionDuration() answers 0
+     there, and a scrim that cuts while the sheet fades is the same mismatch
+     the other way round.
 
-  function trapFocus(e: KeyboardEvent) {
-    if (!sheetEl) return;
-    const focusables = Array.from(
-      sheetEl.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
-    );
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }
+     The entrance and the exit are two curves now rather than one, so the
+     sheet is `in:`/`out:` rather than a bidirectional `transition:`. What
+     that costs is the reversal: a sheet closed while it is still rising
+     lands before it leaves instead of turning round where it got to. The
+     directions had to differ - only the way up runs past its mark - and a
+     sheet closed inside 380ms is a rarer thing to see than every close. */
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === 'Escape') {
       close();
     } else if (e.key === 'Tab') {
-      trapFocus(e);
+      trapFocus(sheetEl, e);
     }
   }
 </script>
@@ -162,15 +143,19 @@
 
 {#if open}
   <div
-    class="sheet-scrim scrim-withdraw is-open"
+    class="sheet-scrim"
     role="presentation"
     data-sheet-scrim
-    transition:fade={{ duration: motionDuration('--dur-med') }}
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
     }}
     {@attach lockBackground}
   >
+    <div
+      class="sheet-scrim-tint scrim-withdraw"
+      data-sheet-tint
+      transition:scrimFade
+    ></div>
     <div
       class="sheet-drag"
       role="presentation"
@@ -189,7 +174,8 @@
         aria-label={title}
         tabindex="-1"
         data-sheet
-        transition:sheetRise
+        in:sheetRise
+        out:sheetRise
         {@attach focusInitial}
       >
         <div class="sheet-handle"></div>
@@ -198,3 +184,26 @@
     </div>
   </div>
 {/if}
+
+<style>
+  /* The tint and the withdrawal ride a layer of the scrim's own rather than
+     the scrim itself, and that is redesign ticket 38 rather than tidiness:
+     an element's opacity applies to everything inside it, and the sheet is
+     inside the scrim. Fading the scrim faded the sheet with it, so a sheet
+     that had stopped fading in its own transition still arrived translucent
+     - measured on the flipbook, the list behind it legible through it
+     halfway up its travel. The fan's scrim (QuickAdd) has no such problem
+     because the fan is its sibling; a sheet's is its child.
+
+     `pointer-events: none` keeps the layer out of the way of the tap that
+     dismisses: the scrim closes on a click whose target is the scrim
+     itself, and a layer over it would be that target instead. */
+  .sheet-scrim-tint {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+       scrimFade WAAPI animation controls opacity without CSS transition interference. */
+    transition: none;
+  }
+</style>

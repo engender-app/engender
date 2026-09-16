@@ -52,9 +52,9 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     background: var(--surface-2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--outline);
     color: var(--text-2);
   }
 </style>

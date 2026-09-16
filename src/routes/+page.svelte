@@ -1,74 +1,72 @@
 <script lang="ts">
-  /* Home, rebuilt from the surface kit (phase 5 ticket 21), which is also
-     what closes spec 08 - "Home carries fewer cards".
+  /* Today (phase 10 redesign ticket 13; ADR-0067, ADR-0073, ADR-0074).
 
-     What it used to be: twelve card surfaces able to render at once, all of
-     them the same rounded box, followed by an uncapped list of entries. The
-     shape now is five named areas, each on the surface its content actually
-     wants (DIRECTION.md 2b) - the chip row for mood, two tiles for the look
-     back, a list card for milestones, the bare strip for the week, day cards
-     for entries - and two notices that only ever appear when there is
-     something to say.
+     The first screen faces forward. It used to open by asking how you feel
+     and put everything with a date on it below the fold, capped, in one
+     section; every other door in the app reads backwards, so the app had no
+     present tense. The order now is what is happening, what is coming, and
+     how to write something down: the running tier of the live tiles, then
+     the agenda (ticket 04's projection over the one forward read), then the
+     notices with their dates in their own copy, then the log strip - the
+     mood pick as one write shape among the others a tap can start - then the
+     waiting and dormant tiles, capped and folded as ADR-0039 left them, then
+     the rows the person pinned (ticket 05's resolution), then getting
+     started while the journal is young.
 
-     What left. The tally buttons, which quick add carries since ticket 18.
-     The doubt-journal card, which was an unconditional daily prompt about
-     doubt and is now a row of the More hub, one tap from the tab bar and
-     silent until asked. The wrapped and on-this-day teasers, which are the
-     two look-back tiles; each keeps its own preference gate, so silencing
-     one leaves the other alone. And the streak, which was a pill under the
-     greeting, then the caption on the week, and is gone entirely since
-     phase 8 UX ticket 01 - four surfaces were writing copy to defuse it,
-     which is a mechanic fighting the product.
+     This screen draws; it decides nothing twice. The agenda is
+     `readAgenda`'s, the pins are `pinnedRows`'s, the tiles are
+     `homeTiles`'s, and the words a mark is drawn with are the day view's
+     own (`dayAheadMarkLabel`). Nothing here adds a tile kind, a mark or a
+     notice.
 
-     Colour comes from the flag, categorically (DIRECTION.md): each area
-     takes one stripe as its own. The two conditional notices take a fixed
-     role rather than a positional one, because a notice that appears on a
-     Tuesday must not change what colour the milestones are.
+     What left with this ticket, each to the door that now draws it: the
+     week strip and the recent entries to the Journal door (ticket 10), the
+     two look-back teasers to the Look back door (ticket 11), and the
+     milestones list, whose next dates are agenda rows now and whose
+     timeline is a row on the Look back door and a screen of its own under
+     the Transition door. Earlier departures, for the record: the tally
+     buttons (quick add, ticket 18), the doubt-journal card (a hub row), and
+     the streak (phase 8 UX ticket 01).
 
-     The week strip takes role 0 rather than its place in reading order, and
-     that is the one deliberate break. $lib/theme/roles.ts orders a flag's
-     colours before its shades, so role 0 is the only index guaranteed to be
-     a colour on all 8 palettes - and the strip is the one area here where
-     the stripe is a value rather than a decoration. On trans, whose flag
-     yields three roles for four areas, reading order would have handed the
-     strip the white band, and a heat ramp from white into a white page is
-     not a ramp. Everything else takes its turn as normal.
+     Under disguise the agenda is absent - `readAgenda` returns null before
+     either read runs (ADR-0074) - the sun does not draw (ADR-0035) and the
+     field is grey; the log strip, the tiles and the pinned rows are still
+     here, so the app is thinner rather than useless.
 
-     Out of scope, and named because it is the obvious next question: live
-     reads and writes are wired already, but the integration effort ticket
-     15 excluded is not this ticket's - what is new here is the shape. */
+     Colour comes from the flag, categorically (DIRECTION.md rule 3): each
+     area takes one stripe as its own, off HOME_AREA_ROLE, where the two
+     areas out of reading order say why. The notices take none, because the
+     flag colours the areas of the journal and a notice is the app talking
+     about itself. */
   import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
-  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { ui } from '$lib/stores/ui.svelte';
+  import { fmtDay } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
-  import { entryDayGroups, entryMarks } from '$lib/data/recentEntries';
-  import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
-  import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
-  import { ui } from '$lib/stores/ui.svelte';
+  import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
+  import { roleAttrs } from '$lib/components/kit/role';
+  import { readAgenda } from '$lib/data/agendaReads';
+  import { passedSlotSentence } from '$lib/data/agenda';
+  import { fallbackReading, pinnedRows, shownAgendaKinds } from '$lib/data/pinnedRows';
+  import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
+  import { readRowForward } from '$lib/data/rowForwardReads';
+  import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
-  import MilestoneCard from '$lib/components/MilestoneCard.svelte';
-  import WeekStrip from '$lib/components/WeekStrip.svelte';
+  import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
-  import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
-  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import DayCard from '$lib/components/kit/DayCard.svelte';
-  import DayEntry from '$lib/components/kit/DayEntry.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
@@ -81,8 +79,18 @@
     isStockNoticeSnoozed,
     snoozeStockNotice
   } from '$lib/data/stockProjection';
+  import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { collapse, markSlotReplacement } from '$lib/motion/reveal';
+  import { collapse, disclose, markSlotReplacement } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+
+  /* A fold's label changes under a standing button - "Ready letter, Active
+     tryout" loses a name when a tile is closed - and words cut, as a rule
+     (ADR-0078); Alicja asked this one for "some very small animation, a
+     simple crossfade" on the round-one flipbooks (redesign ticket 25). The
+     two labels stack in one grid cell so the button keeps its width while
+     they cross, and the fade is --dur-fast, which the clamp takes to zero. */
+  const labelFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
@@ -126,14 +134,26 @@
      knows a promotion happened, so it says so before the DOM is updated -
      `$effect.pre`, which is what puts it ahead of the `{#each}` below.
 
-     Same length and a different membership is the whole test. Expanding the
-     fold changes the length, a tile's own reading changing leaves the keys
-     alone, and a dismissal with nothing left to promote shortens the list -
-     none of those are a swap. */
+     Same length, a different membership, and a list that did not grow is
+     the whole test. Expanding the fold changes the length, a tile's own
+     reading changing leaves the keys alone, and a dismissal with nothing
+     left to promote shortens the list - none of those are a swap. Nor is a
+     tile entering the list: a wear session started from the strip puts the
+     timer at the top and pushes the last shown tile into the fold, which is
+     the same length with a different membership, and reading it as a swap
+     made the new tile rise and fade out of the fold's box while its slot
+     landed whole - a 130px yank with a blank slot for two frames (Alicja,
+     redesign ticket 19's flipbooks, wear-start frames 9 and 10). A list
+     that grew has a tile arriving, and an arrival comes down from above
+     (`collapse`); the tile it displaced leaves as any tile does. */
   let shownKeys: HomeTile['key'][] = [];
+  let tileCount = 0;
   $effect.pre(() => {
     const keys = shownTiles.map((tile) => tile.key);
-    if (keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
+    const total = liveTiles.tiles.length;
+    const grew = total > tileCount;
+    tileCount = total;
+    if (!grew && keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
       /* And the box the leaving tile still occupies, which is the one thing
          only this moment knows: a frame later the promoted tile is standing
          in it. */
@@ -165,8 +185,9 @@
      place and a shape in another.
 
      Read from two places rather than one `{#each}` since phase 8 features
-     ticket 63 (ADR-0067): the today block draws above the mood pick and the
-     rest of the grid stays below it, but both still take their weight and
+     ticket 63 (ADR-0067): the today block leads the screen, above the
+     agenda, and the rest of the grid sits under the log strip (redesign
+     ticket 13), but both still take their weight and
      `data-rows` off this one table, so a tier still cannot be given a shape
      in one place and a different one where it is drawn.
 
@@ -183,8 +204,8 @@
   ] as const;
   /* Filtered off `shownTiles` rather than recomputed per block below: each
      table row above maps to exactly one of these, and the reorder is that
-     the today one is read here and drawn before the mood pick while moment
-     stays where the whole grid used to sit. */
+     the today one is read here and drawn first while moment waits under
+     the log strip. */
   let todayTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
   let momentTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
   let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
@@ -213,7 +234,111 @@
   let entryCountQuery = liveQuery((j) => j.entries.countAll());
   let journalBoundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let entryCount = $derived(entryCountQuery.value);
-  let hasEntries = $derived(entryCount == null ? null : entryCount > 0);
+
+  $effect(() => {
+    if (entryCountQuery.value != null && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('engender-has-entries', entryCountQuery.value > 0 ? '1' : '0');
+      } catch {}
+    }
+  });
+
+  /* The agenda (ticket 04, ADR-0074): one live read over the two fetches
+     `readAgenda` makes, absent rather than empty, and absent for every
+     input while disguise is on - which the read checks before it asks the
+     journal anything. Both preferences it depends on are read inside the
+     query's own run, where a change to either re-runs it: disguise, and
+     the person's switches over the five kinds (ticket 05), applied to the
+     marks before the projection so a kind switched off is not what pushes
+     a row into the fold. Its fold is ADR-0039's shape at the agenda's own
+     cap, disclosed in place and never a route.
+
+     Phase 11 ticket 03: a `doseSlot` row is withheld while the dose panel
+     accounts for every dose slot the band could draw, because the panel now
+     carries the next slot's own day and the two together were the same
+     medication stated twice. Not merely "a panel is showing": the panel
+     names one drug and the band's rows cover every running regimen, so
+     `dosePanelCoversEveryRegimen` is the grid's own answer to whether the
+     one stands for the other (liveTiles.ts).
+
+     Read off the grid through a `$derived` boolean rather than inside the
+     query's run: the grid is rebuilt on every tick of the wear timer's
+     clock, so a run tracking it would re-issue the whole forward read once
+     a second. A boolean only wakes the query when it flips. */
+  let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
+  let agendaQuery = liveQuery((j) =>
+    readAgenda(
+      { dayAhead: j.dayAhead, doses: j.doses },
+      today,
+      prefs.disguise,
+      shownAgendaKinds(prefs),
+      dosePanelCoversEveryDose
+    )
+  );
+  let agenda = $derived(agendaQuery.value ?? null);
+  let agendaExpanded = $state(false);
+  /* The two fold labels, keyed in the markup so a change crosses (labelFade).
+     The agenda's says what stretch of time it is holding rather than only
+     how many rows (ticket 03): the window is a month now, and "3 more"
+     over a band whose visible rows are all this week reads as three more
+     this week. */
+  let agendaFoldLabel = $derived(
+    agendaExpanded ? m.home_tiles_fewer() : m.agenda_more({ count: agenda?.folded.length ?? 0 })
+  );
+  let tilesFoldLabel = $derived(tilesExpanded ? m.home_tiles_fewer() : foldLabel);
+  let agendaRows = $derived(agenda ? (agendaExpanded ? [...agenda.shown, ...agenda.folded] : agenda.shown) : []);
+  /** A day written out with its weekday, which is also what the dose panel
+      puts inside "Next ..." - `liveTiles.svelte.ts` hands the grid the same
+      format so the two bands on this screen write a day the same way. */
+  const weekdayDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+  /** When a row falls: today, tomorrow, or the day written out. The mark is
+      a day and a kind and nothing else, so the day is the whole of the
+      second line. */
+  function agendaWhen(epochDay: number): string {
+    if (epochDay === today) return m.today();
+    if (epochDay === today + 1) return m.tomorrow();
+    return weekdayDay(epochDay);
+  }
+  const shortWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'short' });
+  const dayNumber = (epochDay: number) => fmtDay(epochDay, { day: 'numeric' });
+  const fullDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* The pinned rows (ticket 05, ADR-0073): the person's arrangement, or the
+     default resolved from what onboarding was told, over the same two reads
+     the Transition door makes and the same line rule, so a pinned row and
+     its hub row say the same thing about a quiet area. Both reads or
+     neither, for the hub's own reason: a finished row drawn with a reading
+     under it for a frame is a wrong state, not a partial one. The order is
+     the person's and nothing here sorts it.
+
+     Ticket 106: while queries are resolving, render with quiet standing
+     lines rather than an empty list, so the section does not expand by
+     ~300px and snap content below downward on hydration. */
+  let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
+  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
+     the same line its hub row does, so it asks the same assembled question -
+     the milestones pin said "Nothing logged for 1 year 4 months" over the
+     same journal the agenda below it was already drawing a hearing from. */
+  let forwardQuery = liveQuery((j) => readRowForward(j, today));
+  let reading = $derived(
+    lastWritesQuery.value !== undefined && areaStatesQuery.value !== undefined && forwardQuery.value !== undefined
+      ? {
+          todayEpochDay: today,
+          lastWrites: lastWritesQuery.value,
+          states: areaStatesQuery.value,
+          forward: forwardQuery.value
+        }
+      : fallbackReading(today)
+  );
+  let pinned = $derived(pinnedRows(prefs, reading));
+
+  /* Edit mode (ticket 14), which is a state of this block rather than a
+     screen of its own: the rows being arranged are these rows, so the
+     arrangement happens where they are. Off on arrival every time -
+     nothing about a page somebody edited on Tuesday should still be in
+     edit mode on Wednesday. */
+  let editing = $state(false);
 
   /* Getting started (Alicja, 2026-09-04). Day one is a screen with nothing
      on it once the placeholders are gone, and "write an entry" is the only
@@ -235,28 +360,31 @@
   let showGettingStarted = $derived(entryCount != null && entryCount < GETTING_STARTED_UNTIL);
   const GETTING_STARTED = [
     { key: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
-    { key: 'regimen', icon: 'flask', href: '/settings/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
+    { key: 'regimen', icon: 'flask', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
     { key: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
   ];
 
-  /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
-     ($lib/theme/roles.ts, where the reason the week strip is out of
-     reading order is written down). The celebration shares the
-     milestones' colour because it is about a milestone; the backup notice
-     takes none, because the flag colours the areas of the journal and
-     that one is the app talking about itself. */
-
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
-     read; the entry-shaped reads below are the ones that had to become
-     queries. */
+     read. The list itself no longer draws here - a milestone still ahead is
+     an agenda row - but the day one lands is the one authored moment below,
+     and this is the read that knows it. */
   let upcoming = $derived(upcomingMilestones(vocabulary.milestones, today));
   let landing = $derived(upcoming.find((x) => x.s.type === 'today' || x.s.isAnnivToday));
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
-  let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
+  /* Held back while the app is opening, and only then (redesign ticket 34).
+     A notice whose read answers during the unlock's transition is not drawn
+     while it arrives - the browser is painting the transition's snapshots -
+     so it is simply there in the frame the paint lifts on, with the rows
+     below it shoved down. Waiting means it arrives on a screen that has
+     stopped moving, which is where a notice opening its own height reads as
+     the change it is. Nothing about the read waits; only the appearing. */
+  let showBackupNotice = $derived(
+    backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
+  );
 
   /* The appointment debrief offer (phase 6 ticket 08, rekeyed to an
      appointment id by ticket 58, ADR-0066): the most recent past
@@ -281,14 +409,15 @@
   });
   let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
   let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
+  let stockNoticeCopy = $derived(
+    urgentDepletingStock
+      ? stockNotice(
+          urgentDepletingStock,
+          fmtDay(urgentDepletingStock.actionableEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+        )
+      : null
+  );
   let stockDismissSheetOpen = $state(false);
-
-  /* Five days, not five entries: every entry of each shown day draws, so a
-     day with more than one holds its own timeline rather than a bare count
-     over a truncated one (ux-carpet ticket 13, recentEntries.ts). */
-  const RECENT_DAYS = 5;
-  let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
-  let dayGroups = $derived(entryDayGroups(recent.rows));
 
   /* The one authored moment besides the sun: on a milestone day, opening
      Home throws a little confetti over the notice that names it. It plays
@@ -314,16 +443,6 @@
     { i: 7, x: 87, d: 0.3, r: -220 },
     { i: 8, x: 95, d: 0.05, r: 180 }
   ];
-
-  /* Which reading shades the week. The kit's own picker rather than a sheet
-     of its own: it is the heading's one control and it sits on the heading's
-     line, which is where DIRECTION.md puts a section's switch. The choice is
-     shared with the calendar's heat map, which keeps a sheet of its own
-     until ticket 22 reaches it. */
-  let metricOptions = $derived([
-    { value: 'mood', label: m.mood() },
-    ...vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))
-  ]);
 
   function onQuickLog(v: number | null) {
     if (v == null) return;
@@ -389,49 +508,90 @@
   </span>
 {/snippet}
 
+<!-- An agenda row's day as a block (rule 3): the weekday small over the day
+     number at display weight, on the stripe in the ink proven on it, where
+     a row's icon would sit. Hidden from the reader, because the row's own
+     second line says the day in full. A passed slot's block is outlined
+     rather than filled, so a thing that went by is not drawn like a thing
+     coming. -->
+{#snippet dayBlock(epochDay: number, passed: boolean)}
+  <span class="home-agenda-day" class:is-passed={passed} aria-hidden="true">
+    <span class="home-agenda-wd">{shortWeekday(epochDay)}</span>
+    <span class="home-agenda-dn">{dayNumber(epochDay)}</span>
+  </span>
+{/snippet}
+
 <div class="screen home">
   <header class="home-header" data-home-header>
-    <!-- Home-only, and never under disguise (ADR-0035) - checked on
-         prefs.disguise here rather than inside FlagSun, so the one place
-         that decides whether the sun renders at all matches every other
-         disguise gate in the app. -->
-    {#if !prefs.disguise}<FlagSun />{/if}
-    <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
-         the same module, and for the reason SCREENS.md gives: disguise
-         changes the app's name and icon app-wide, not per screen. The hero
-         is the largest text on the screen, so leaving it saying "Gender
-         Diary" while the tab, the launcher and the rail all say "Notes"
-         undoes the rest of the disguise in one line. Two sites in Settings
-         still name the app under disguise; those are ticket 24's screen. -->
-    <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
-    <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-    <!-- How much is here, and since when. The streak stood in this slot and
-         was a run that could break; this only grows. Same size and colour as
-         the greeting above it, so the header reads as name, then today, then
-         history, and none of the three is a score. Absent at zero entries,
-         where "0 entries since nothing" is a worse first screen than no
-         line at all.
+    <!-- The field (phase 10, DIRECTION.md rule 7; ADR-0075): a solid block
+         of one of the flag's colours holding two things, the sun in its top
+         right corner and the wordmark in its bottom left, under the sun's
+         reach. Nothing small sits on it; the hello line, the count and the
+         gear are in the foot below, on the page. -->
+    <div class="home-field" data-home-field>
+      <!-- The blind (redesign ticket 28), first so it paints under both the
+           sun and the wordmark: the field's colour, split off from the box
+           that measures it so the edge can be pulled to the next screen's
+           height while what is drawn on it leaves under its own animation. -->
+      <div class="field-blind" data-field-blind aria-hidden="true"></div>
+      <!-- Home-only, and never under disguise (ADR-0035) - checked on
+           prefs.disguise here rather than inside FlagSun, so the one place
+           that decides whether the sun renders at all matches every other
+           disguise gate in the app. Under disguise the field itself falls to
+           --surface-2 (activeFlag), so this block is a grey header with the
+           app's assumed name in it and nothing else. -->
+      {#if !prefs.disguise}<FlagSun />{/if}
+      <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
+           the same module, and for the reason SCREENS.md gives: disguise
+           changes the app's name and icon app-wide, not per screen. The hero
+           is the largest text on the screen, so leaving it saying "Gender
+           Diary" while the tab, the launcher and the rail all say "Notes"
+           undoes the rest of the disguise in one line. Two sites in Settings
+           still name the app under disguise; those are ticket 24's screen. -->
+      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
+    </div>
+    <!-- The foot: one line of who and when, one of how much, and the gear at
+         the line's end. On the page rather than the field because all three
+         are small type (rule 3), and because a gear in the field's corner
+         competed with the wordmark (Alicja, ticket 06 round one). -->
+    <div class="home-foot" data-home-foot>
+      <div class="home-foot-lines">
+        <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <!-- How much is here, and since when. The streak stood in this slot
+             and was a run that could break; this only grows. Same size as the
+             greeting above it, so the foot reads as today, then history, and
+             neither is a score. Absent at zero entries, where "0 entries since
+             nothing" is a worse first screen than no line at all.
 
-         A month and a year rather than a day: the flag sun reserves the
-         right of these lines, which leaves about 26 characters at 390px,
-         and the day the journal opened on is not the fact this line is
-         about. -->
-    {#if entryCount && journalBoundsQuery.value}
-      <p class="home-count" data-home-count>
-        {m.home_count_since({
-          entries: m.n_entries({ n: entryCount }),
-          date: fmtDay(journalBoundsQuery.value.firstEpochDay, { month: 'short', year: 'numeric' })
-        })}
-      </p>
-    {/if}
+             A month and a year rather than a day: the day the journal opened
+             on is not the fact this line is about. -->
+        {#if entryCount && journalBoundsQuery.value}
+          <p class="home-count" data-home-count>
+            {m.home_count_since({
+              entries: m.n_entries({ n: entryCount }),
+              date: fmtDay(journalBoundsQuery.value.firstEpochDay, { month: 'short', year: 'numeric' })
+            })}
+          </p>
+        {/if}
+      </div>
+      <!-- Preferences are chrome, not content, so they leave the fourth door
+           and live here (ticket 09, which also gives the rail its fifth item
+           and takes the Settings row out of the hub). Placed by ticket 23 as
+           part of the foot; a plain link, because an unwired control is a
+           dead control. Nothing about a gear says what the app is, so it is
+           unremarkable under disguise. -->
+      <a class="icon-btn press home-gear" href="/settings" aria-label={m.nav_settings()} data-home-gear>
+        <Icon name="settings" size={22} />
+      </a>
+    </div>
   </header>
 
   <!-- The anniversary, as one line rather than a card with a confetti loop
        falling through it. The words are the ones it always said; what went
        is the loop, because the flag sun is the whole of the app's ambient
        motion budget and a second one on the same screen spends it twice
-       (DIRECTION.md, tiers 0 and 4). It takes the milestones' own colour,
-       since that is what it is about. -->
+       (DIRECTION.md, tiers 0 and 4). It takes the agenda's colour, since a
+       milestone landing today is the agenda's own kind of fact. -->
   {#if celebrate}
     <!-- Nine pieces over the notice that says which milestone it is (Alicja,
          2026-08-25: "we want the same confetti animation when it's a
@@ -442,7 +602,7 @@
       <Notice
         icon="sparkle"
         key="celebration"
-        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}
+        role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}
         aria-live="polite"
         title={landing?.s.years
           ? m.home_anniv_years({
@@ -454,8 +614,165 @@
     </div>
   {/if}
 
-  <!-- No coloured side border, and no role: the flag colours the areas of
-       the journal, and this is the app talking about itself. -->
+  <!-- One tier's worth of tiles, in `block`'s weight and shape - shared by
+       the today location above and the moment location below (phase 8
+       features ticket 63), so the two locations cannot read the same table
+       and still draw two different shapes for it. -->
+  {#snippet tileRow(tiles: HomeTile[], block: (typeof TILE_BLOCKS)[number])}
+    {#if tiles.length > 0}
+      <TileGrid
+        role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+        bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles))}
+        data-live-tile-grid
+        data-rows={block.rows}
+      >
+        <!-- No transition declared here any more (phase 9 carpet ticket 04).
+             It used to be a slide of Home's own, on the x axis whatever the
+             layout was doing - so at the 390px floor, where this grid is one
+             tile per line, a closing tile shrank its width while its
+             neighbours were giving back height. `collapse` rides Tile itself
+             and reads the axis off the layout, which is the same rule for
+             every tile in every grid rather than this screen's guess. -->
+        {#each tiles as tile (tile.key)}
+          <Tile
+            key={tile.tileKey}
+            weight={block.weight}
+            title={tile.title}
+            value={tile.value}
+            note={tile.note}
+            href={tile.href}
+            action={tile.action}
+            dismiss={tile.dismiss}
+            {...tile.attrs}
+            data-live-tile={tile.key}
+          />
+        {/each}
+      </TileGrid>
+    {/if}
+  {/snippet}
+
+  <!-- The today tier leads Home, above the agenda (phase 8 features
+       ticket 63, ADR-0067; redesign ticket 13): what is happening now - a
+       wear session running, a dose the day expects, an appointment on the
+       date - answers before what is coming does, and both before "how are
+       you feeling". A reorder rather than a second grid: this is the same
+       today-tier row the block below used to draw in its own turn, only
+       moved. Empty, and nothing here renders at all. -->
+  {#if todayTiles.length > 0}
+    <div transition:collapse={panel}>
+      {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
+    </div>
+  {/if}
+
+  <!-- The agenda (ticket 04, ADR-0074): the week ahead as a list, since it
+       is one (rule 6), each row carrying its day as a block because a date
+       is a value (rule 3) and the kind in the day view's own words, going
+       to the screen that owns the fact. The block is always one of the
+       flag's colours (tileRoleAt, ticket 24's rule for a block): on trans
+       the agenda's slot lands on the white band, and a white day block on a
+       light page is the outline the passed slot below draws, so the two
+       would read as one. Absent rather than empty: a window
+       with nothing in it hands the screen nothing to draw, so day one and a
+       quiet week both render no heading and no card. The passed slot is
+       the one row that looks backwards, stated once with its date under
+       the words /coming-back uses, and drawn apart from the dated rows as
+       an outlined block rather than a filled one, so it cannot be read as
+       the next item on a list. -->
+  {#if agenda}
+    <div class="home-agenda" transition:collapse={panel} data-home-agenda>
+      <SectionHeading text={m.home_agenda_heading()} />
+      <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+        {#each agendaRows as item, i (item.key)}
+          {@const label = dayAheadMarkLabel(item.kind)}
+          <!-- Each row owns its height and gives it back (rule 10): a row
+               the fold discloses opens rather than appears, and one whose
+               day passes closes, the rows under it following. The day
+               block on it arrives the way every block does, clipping open
+               from its left edge, the rows of one arrival one stagger step
+               apart (redesign ticket 19): counted from the first row the
+               screen shows, or from the first row the fold lets out, so a
+               row arriving out of the fold never waits its turn behind
+               rows that were already there (ticket 25's lesson on the
+               tiles). Capped where the tiles' stagger is. -->
+          <div class="rows-divide" transition:disclose={panel} style:--row-index={Math.min(6, i < agenda.shown.length ? i : i - agenda.shown.length)}>
+            <ListRow
+              key={item.key}
+              href={item.route}
+              title={label.title}
+              subtitle={agendaWhen(item.epochDay)}
+              data-agenda-item={item.kind}
+              data-agenda-day={item.epochDay}
+            >
+              {#snippet leading()}
+                {@render dayBlock(item.epochDay, false)}
+              {/snippet}
+            </ListRow>
+          </div>
+        {/each}
+      </ListCard>
+      <!-- Its own list, not the last row of the one above: ADR-0074 gives
+           the passed slot its own shape so it can never be sorted among
+           the things coming, and a row under the same hairlines would read
+           as the next of them however its block was drawn. -->
+      {#if agenda.passed}
+        <!-- The one row that arrives and leaves on its own, when a slot's
+             day passes or the dose is logged: it opens and closes its own
+             height like every other row (redesign ticket 19). -->
+        <div transition:disclose={panel}>
+          <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+            <ListRow
+              key={agenda.passed.key}
+              href={agenda.passed.route}
+              title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
+              data-agenda-passed={agenda.passed.epochDay}
+            >
+              {#snippet leading()}
+                {@render dayBlock(agenda.passed!.epochDay, true)}
+              {/snippet}
+            </ListRow>
+          </ListCard>
+        </div>
+      {/if}
+      {#if agenda.folded.length > 0}
+        <button
+          type="button"
+          class="home-fold press"
+          data-home-agenda-fold
+          aria-expanded={agendaExpanded}
+          onclick={() => (agendaExpanded = !agendaExpanded)}
+        >
+          <span class="home-fold-mark" class:is-open={agendaExpanded} aria-hidden="true">
+            <Icon name="chevronDown" size={16} />
+          </span>
+          <span class="home-fold-text">
+            {#key agendaFoldLabel}<span transition:labelFade>{agendaFoldLabel}</span>{/key}
+          </span>
+        </button>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- The log strip: the five faces, and now nothing else (phase 11 ticket
+       03). It carried four icon squares as well - a dose, both tallies and
+       a wear session - and every one of them was already a row of the
+       quick-add fan sitting forty pixels below it, so the strip was a copy
+       of the fan taking 260px of the first screen. The faces stay because
+       a mood is the one write that makes today's entry and the habit a
+       daily check-in has should not get worse; the heading says what they
+       do rather than naming the strip. It draws under disguise too, every
+       role fallen to the accent, so the thin app still writes. -->
+  <SectionHeading text={m.home_log_heading()} />
+  <div data-home-log {...roleAttrs(roleAt(activeFlag.roles, HOME_AREA_ROLE.log))}>
+    <MoodChips onPick={onQuickLog} />
+  </div>
+
+  <!-- The notices, below the strip since phase 11 ticket 03. They used to
+       sit between the agenda and the strip, which put them inside "Coming
+       up" to the eye: rule 1 makes a heading name everything down to the
+       next rule, so a person read their month as a dose and a nag about
+       backups. Under no heading of their own, and with no coloured side
+       border and no role - the flag colours the areas of the journal, and
+       this is the app talking about itself. -->
   {#if showBackupNotice}
     <Notice
       icon="download"
@@ -469,18 +786,13 @@
     />
   {/if}
 
-  {#if showStockNotice && urgentDepletingStock}
+  {#if showStockNotice && urgentDepletingStock && stockNoticeCopy}
     <Notice
       icon="alert"
       key="stock-low"
-      title={m.notice_stock_low_title()}
-      text={urgentDepletingStock.daysRemaining <= 0
-        ? m.notice_stock_out_body({ drug: urgentDepletingStock.entry.drug })
-        : m.notice_stock_low_body({
-            drug: urgentDepletingStock.entry.drug,
-            days: String(urgentDepletingStock.daysRemaining)
-          })}
-      action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
+      title={stockNoticeCopy.title}
+      text={stockNoticeCopy.body}
+      action={{ label: m.notice_stock_manage(), href: '/care' }}
       dismiss={{
         label: m.notice_stock_dismiss_action(),
         onclick: () => {
@@ -518,63 +830,10 @@
     />
   {/if}
 
-  <!-- One tier's worth of tiles, in `block`'s weight and shape - shared by
-       the today location above and the moment location below (phase 8
-       features ticket 63), so the two locations cannot read the same table
-       and still draw two different shapes for it. -->
-  {#snippet tileRow(tiles: HomeTile[], block: (typeof TILE_BLOCKS)[number])}
-    {#if tiles.length > 0}
-      <TileGrid
-        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-        data-live-tile-grid
-        data-rows={block.rows}
-      >
-        <!-- No transition declared here any more (phase 9 carpet ticket 04).
-             It used to be a slide of Home's own, on the x axis whatever the
-             layout was doing - so at the 390px floor, where this grid is one
-             tile per line, a closing tile shrank its width while its
-             neighbours were giving back height. `collapse` rides Tile itself
-             and reads the axis off the layout, which is the same rule for
-             every tile in every grid rather than this screen's guess. -->
-        {#each tiles as tile (tile.key)}
-          <Tile
-            key={tile.tileKey}
-            weight={block.weight}
-            title={tile.title}
-            value={tile.value}
-            note={tile.note}
-            href={tile.href}
-            action={tile.action}
-            dismiss={tile.dismiss}
-            {...tile.attrs}
-            data-live-tile={tile.key}
-          />
-        {/each}
-      </TileGrid>
-    {/if}
-  {/snippet}
-
-  <!-- The today tier leads Home, above the mood pick (phase 8 features
-       ticket 63, ADR-0067): what is happening today - a wear session
-       running, a dose the day expects, an appointment on the date - answers
-       before "how are you feeling" does. A reorder rather than a second
-       grid: this is the same today-tier row the block below used to draw in
-       its own turn, only moved. Empty, and nothing here renders at all -
-       Home looks exactly as it did before this ticket. -->
-  {#if todayTiles.length > 0}
-    <div transition:collapse={panel}>
-      {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
-    </div>
-  {/if}
-
-  <SectionHeading text={m.how_feeling()} />
-  <MoodChips onPick={onQuickLog} />
-
   <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
        UX ticket 01) - the moment weight as a card, the dormant weight as a
-       quiet list row. The today tier's own row moved above the mood pick;
-       this block never draws it (phase 8 features ticket 63).
+       quiet list row. The today tier's own row leads the screen; this
+       block never draws it (phase 8 features ticket 63).
 
        Two shapes rather than the three the grid as a whole has: a moment is
        a card in the two-up grid, and a dormant nudge is a line in a list
@@ -605,7 +864,7 @@
         <Notice
           icon="heart"
           key="active-tryout-tile"
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
           title={feltSenseGapTile.title}
           text={feltSenseGapTile.note}
           action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
@@ -624,7 +883,7 @@
            thing. Its value goes with them - "40 days" is what the note
            already says. -->
       {#if quietListTiles.length > 0}
-        <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
           {#each quietListTiles as tile (tile.key)}
             <ListRow
               key={tile.tileKey}
@@ -649,148 +908,77 @@
           <span class="home-fold-mark" class:is-open={tilesExpanded} aria-hidden="true">
             <Icon name="chevronDown" size={16} />
           </span>
-          <span class="home-fold-text">{tilesExpanded ? m.home_tiles_fewer() : foldLabel}</span>
+          <span class="home-fold-text">
+            {#key tilesFoldLabel}<span transition:labelFade>{tilesFoldLabel}</span>{/key}
+          </span>
         </button>
       {/if}
     </div>
   {/if}
 
-  <!-- The two look-back tiles. Each gates itself on its own preference and
-       its own floor, which is what keeps the two halves independent:
-       turning wrapped off unmounts its tile and the recap read behind it,
-       and leaves this one's sibling exactly where it was. With neither
-       qualifying the grid has no children and so no height, and the air
-       around it belongs to its neighbours rather than to itself.
+  <!-- The pinned rows (ticket 05, ADR-0073): what the person put on their
+       front page, in their order, each with its reading and the day of it
+       or the line about what is behind it, off the same registry and the
+       same line rule as the Transition door. A pin naming a hidden area
+       resolves to nothing before it gets here.
 
-       The whole grid waits for the first entry (phase 8 UX ticket 01):
-       there is nothing to look back on, and a zero-height grid was one of
-       the four unfinished things day one used to show.
-
-       `data-tight` keeps the pair on one line at the 390px floor rather
-       than stacking (Alicja, 2026-09-04). The two of them are the same
-       offer looked at over two spans, so they read as a pair or as one
-       thing; stacked, they were two cards saying a number each. A lone
-       survivor still takes the whole row, which the grid already
-       handles. -->
-  {#if hasEntries}
-    <TileGrid
-      role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
-      flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-      data-tight
-    >
-      {#if prefs.wrappedEnabled}
-        <WrappedHomeCard />
-      {/if}
-      {#if prefs.onThisDayEnabled}
-        <OnThisDayHomeCard />
-      {/if}
-    </TileGrid>
-  {/if}
-
-  <!-- NAV-003: this section used to disappear entirely with no milestones,
-       which also meant Timeline - only linked from here - was structurally
-       unreachable exactly when its own empty state most needed to be seen.
-       So the empty row stays for anybody with a journal.
-
-       What it waits for now is the first entry (phase 8 UX ticket 01): on
-       day one the empty row is one of four unfinished things, and a
-       milestone somebody has already set is not - so a journal with
-       milestones and no entries still shows them. -->
-  {#if hasEntries || upcoming.length}
-    <SectionHeading text={m.milestones()}>
-      {#snippet action()}
-        <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
-      {/snippet}
-    </SectionHeading>
-    <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}>
-      {#if upcoming.length}
-        {#each upcoming.slice(0, 4) as x (x.m.id)}
-          <MilestoneCard milestone={x.m} s={x.s} />
-        {/each}
-      {:else}
-        <ListRow
-          href="/transition/milestones"
-          data-milestones-empty
-          chevron={false}
-          title={m.home_milestones_empty_title()}
-          subtitle={m.home_milestones_empty_body()}
+       The block is here whether or not anything is pinned, which it was not
+       before ticket 14: the last row of it is the way into the edit mode,
+       and an empty arrangement that drew no heading would have left
+       somebody who unpinned everything with no way back. With nothing
+       pinned it is the one row, and that row asks for the first pin rather
+       than repeating the heading. -->
+  <div data-home-pinned>
+    {#if editing}
+      <div transition:collapse={panel} data-home-editing>
+        <TodayEditor
+          {pinned}
+          {reading}
+          nowMs={liveTiles.nowMs}
+          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
+          onDone={() => (editing = false)}
         />
-      {/if}
-    </ListCard>
-  {/if}
-
-  <!-- The week, and the days. Both wait for the first entry (phase 8 UX
-       ticket 01): a row of grey cells and a heading over an empty list are
-       two more of day one's four placeholders, and the start-here notice
-       below is the one thing that screen owes. -->
-  {#if hasEntries}
-    <SectionHeading text={m.recent_days()}>
-      {#snippet action()}
-        <ChartPicker
-          key="home-metric"
-          label={m.colour_days_by()}
-          value={vocabulary.activeMetric}
-          options={metricOptions}
-          onPick={(value) => selectMetric(value === 'mood' ? null : value)}
-        />
-      {/snippet}
-    </SectionHeading>
-    <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
-
-    <SectionHeading text={m.recent_entries()}>
-      {#snippet action()}
-        <a class="kit-heading-action" href="/calendar">{m.nav_calendar()}</a>
-      {/snippet}
-    </SectionHeading>
-  {/if}
-  <div class="home-swap">
-    <ReadGate read={recent} variant="card" count={3}>
-      {#snippet rows()}
-        <div class="home-days">
-          {#each dayGroups as group (group.epochDay)}
-            <DayCard
-              key={String(group.epochDay)}
-              role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
-              date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
-            >
-              {#each group.entries as entry (entry.id)}
-                {@const presentation = entryPresentation(entry)}
-                <DayEntry
-                  key={String(entry.id)}
-                  href={`/entry/${entry.id}`}
-                  time={fmtTime(entry.timestamp)}
-                  mood={entry.mood}
-                  note={entry.note ?? undefined}
-                  tags={entryTags(entry)}
-                  marks={entryMarks(entry)}
-                  {presentation}
-                />
-              {/each}
-            </DayCard>
+      </div>
+    {:else}
+      <div transition:collapse={panel}>
+        <SectionHeading text={m.home_pinned_heading()} />
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
+          {#each pinned as row (row.spec.key)}
+            <div class="rows-divide" transition:disclose={panel}>
+              <ListRow
+                key={row.spec.key}
+                icon={row.spec.icon}
+                title={hubRowTitle(row.spec.key)}
+                subtitle={hubRowLine(row.spec.key, row.line, today, liveTiles.nowMs)}
+                href={row.spec.href}
+                data-pinned-row={row.spec.key}
+                data-hub-line={row.line.kind}
+              />
+            </div>
           {/each}
-        </div>
-      {/snippet}
-      {#snippet empty()}
-        <!-- Wrapped because a transition goes on an element, not a component,
-             and the empty state is the branch a first-run journal lands on -
-             it owes the same crossfade the day cards get. -->
-        <div>
-          <Notice
-            icon="book"
-            key="no-entries"
-            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
-            title={m.empty_home_title()}
-            text={m.empty_home_body()}
-            action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}
+          <!-- The way in, as the last row of the block (ticket 14). It is a
+               row rather than a control on the heading because it is the
+               next thing after the rows it edits, and it names the first
+               pin where there are none to arrange yet. -->
+          <ListRow
+            key="edit-today"
+            icon="pencil"
+            title={pinned.length > 0 ? m.home_pinned_edit() : m.home_pinned_edit_empty()}
+            chevron={false}
+            onclick={() => (editing = true)}
+            data-edit-today
           />
-        </div>
-      {/snippet}
-    </ReadGate>
+        </ListCard>
+      </div>
+    {/if}
   </div>
 
   <!-- Getting started, until the journal has five entries in it. It sits
-       under the entries rather than over them: the first move is writing
-       something, and this is what to do next, not what to do instead.
+       at the foot, under the log strip and the pinned rows: the first move
+       is writing something, and this is what to do next, not what to do
+       instead. With the agenda absent and no tile qualifying, it and the
+       two above it are the whole of day one - no empty card, no
+       placeholder grid, no skeleton (ticket 13).
 
        It takes the live tiles' stripe. Nothing else claims that colour
        while it is on screen - a journal this young has no tile qualifying -
@@ -803,7 +991,7 @@
     <div transition:collapse={panel} data-getting-started>
       <SectionHeading text={m.home_start_title()} />
       <p class="home-start-intro">{m.home_start_intro()}</p>
-      <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+      <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
         {#each GETTING_STARTED as offer (offer.key)}
           <ListRow
             key={offer.key}
@@ -929,16 +1117,25 @@
 </div>
 
 <style>
-  /* Ticket 19: widened past .screen's own horizontal padding (negative
-     margin) and padded back out to the same inset, so the flag sun's corner
-     point lands exactly on the screen's true top right corner rather than
-     the padded content edge - matching "centred exactly on the screen's top
-     right corner" (DIRECTION.md) - while the greeting text keeps its usual
+  /* The header is the field and its foot (phase 10, DIRECTION.md rule 7;
+     redesign ticket 23). The header itself is a plain block; the field
+     below it is what bleeds, clips and paints. */
+  .home-header {
+    position: relative;
+  }
+  /* The field: a solid block of the flag's second colour, published by
+     activeFlag as --field with its ink beside it (--surface-2 and --text
+     under disguise). Widened past .screen's own horizontal padding
+     (negative margin) and padded back out to the same inset, so the flag
+     sun's corner point lands exactly on the screen's true top right corner
+     rather than the padded content edge - "centred exactly on the screen's
+     top right corner" (DIRECTION.md) - while the wordmark keeps its usual
      alignment with everything below it. overflow: hidden clips the sun's
      bleed to a clean quarter instead of a scrollable overhang; min-height
-     keeps that quarter from clipping again against this header's own bottom
+     keeps that quarter from clipping again against the field's own bottom
      edge before the innermost ring finishes drawing (SUN_OUTER/2 in
-     $lib/motion/flagSun.ts).
+     $lib/motion/flagSun.ts), and is the field's height: the sun's quarter
+     plus the window inset, with the wordmark sitting at its foot.
 
      175px rather than a var(), because CSS has no way to read a TS export -
      flagSun.test.ts holds this number to SUN_OUTER/2 so the two cannot drift
@@ -946,131 +1143,122 @@
      every ring to --sun-breathe-scale (theme/base.css) at its cycle's
      midpoint, and the resting radius alone was the reserve until phase 5
      ticket 32.12 - so for part of every cycle the outermost ring grew past
-     its own room and overflow: hidden shaved it flat along this header's own
+     its own room and overflow: hidden shaved it flat along the header's own
      bottom edge. Multiplying by the same token the breathing keyframe reads
-     means the two can only ever agree. */
-  .home-header {
+     means the two can only ever agree.
+
+     The one deliberate bleed past the safe area (phase 5 ticket 18). The
+     scroll region pads every screen clear of the display cutout; the field
+     pulls itself back up by exactly that inset, so the sun's centre lands
+     on the window's true top right corner, and pads its own content back
+     down by the same amount. Decoration crosses the inset; nothing readable
+     does. */
+  .home-field {
     position: relative; z-index: 1;
-    padding: calc(var(--space-7) + var(--inset-top)) var(--space-5) var(--space-4);
-    /* The one deliberate bleed past the safe area (phase 5 ticket 18). The
-       scroll region pads every screen clear of the display cutout; this
-       header pulls itself back up by exactly that inset, so the sun's centre
-       lands on the window's true top right corner - which is what
-       DIRECTION.md asks for - and then pads its own text back down by the
-       same amount, so the greeting is as clear of the status bar as any
-       other screen's first line. Decoration crosses the inset; nothing
-       readable does. */
+    display: flex; align-items: flex-end;
+    /* The colour is the blind's, not this element's (redesign ticket 28,
+       components.css); what stays here is the box that measures it. */
+    color: var(--field-ink);
+    padding: calc(var(--space-4) + var(--inset-top)) var(--space-5) var(--space-4);
     margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
     overflow: hidden;
+    /* The same bottom corners every other field has (rule 7: "the bottom
+       corners are the one radius; the top corners meet the window's edge
+       and have none"). Home was the one door drawing them square, which
+       nothing decided - and the blind's clip carries one radius for the
+       whole app, so a square corner here would round for the length of a
+       navigation and snap back at the end of it. */
+    border-radius: 0 0 var(--r-block) var(--r-block);
     min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top));
   }
-  /* Flat, and clear of the sun.
+  /* The wordmark, in the field's bottom left corner and in the field's ink,
+     at the door-title voice (rule 2): Outfit 800, set solid, fluid between
+     1.7rem and the 48px a door's title takes. Flat: colour arrives as fill
+     and as text, never as a gradient (DIRECTION.md decision 2), and the
+     gradient this once was ran "Diary" through olive on nonbinary.
 
-     It was a gradient clipped to the letterforms, which DIRECTION.md's
-     decision 2 rules out outright - colour arrives as flat fill and as
-     coloured text, never as a gradient - and which on the nonbinary palette
-     ran the word "Diary" through olive on its way from purple to yellow.
-     The accent at 38px answers to the 3:1 large-text floor, which is what
-     --accent is already held to.
-
-     The width cap is the other half of it. The sun is 350px across and
-     centred on the top right corner, so anything running past about two
-     thirds of the screen disappears under it - which is what was happening to
-     the last two letters of the app's own name. DIRECTION.md says the
-     greeting sits clear beneath the sun; the title has to sit clear of it
-     too, and the way to do that is to stop the text rather than to move the
-     flag.
-
-     Item 20 is that promise made arithmetic. A percentage cap still let the
-     word reach into the outermost ring below about 390px: the ring's left
-     edge at the title's own height is a chord of the circle, not a
-     vertical line, and 62% of a 320px screen is past that chord by ~57px
-     (measured against the glyph edge, not the box). So the cap reserves the
-     ring's full breathing radius outright - 175px is SUN_OUTER/2, the same
-     number flagSun.test.ts pins - and the title scales under it, because a
-     word cannot wrap and a capped box it overflows is a touch again. The
-     fluid size solves the same inequality the measurements state: the word
-     is 5.05px per font-size px, the corner chord at the title's midline
-     costs the screen its radius minus ~53px of drop, and the thin
-     scrollbar takes ~12px the container query cannot see. Clamp bounds
-     keep the extremes honest: the desktop override in screens.css still
-     owns large screens, and 1.3rem is where a 320px viewport stops having
-     room for a hero at all.
-
-     :global(), because the desktop-adaptation @container block
-     (screens.css) still overrides .home-hero's font-size at 1024px+ and
-     that rule stayed put with the other screens' shared breakpoint - a
-     scoped selector here would out-specificity it with the added scope
-     class, and the desktop size would stop winning. */
-  :global(.home-hero) {
+     Under the sun's reach, by arithmetic rather than a width cap. The sun is
+     a 350px disc centred on the field's top right corner, breathing to 1.035,
+     and the field is exactly its radius tall - so at the field's bottom edge
+     the disc has no width at all, and a line of type sitting on that edge
+     meets the disc only as high as its own cap height. At 48px the wordmark
+     is 46px tall and its top is 64px from the bottom edge (16 of padding),
+     which is 117px below the corner; the disc's chord there is
+     sqrt(181^2 - 117^2) = 138px, so the word may run to 138px short of the
+     right edge. "enGender" at 48px is 242px wide (5.05px per font px), and
+     at 390px there are 252. Below 360px the sun draws at 0.82 (a 148px
+     radius, a 92px chord at that height, 228px of room for a 210px word at
+     320), and below 240px at 0.6, where the word at its 1.7rem floor sits
+     wholly under the disc. Polish takes the same word. */
+  .home-hero {
     font-family: var(--font-display);
-    font-size: clamp(1.3rem, calc(19.8cqw - 42.2px), 2.4rem); font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-    color: var(--accent);
-    max-width: min(62%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
+    font-size: clamp(1.7rem, 13cqw, 3rem);
+    font-weight: var(--weight-display);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    color: inherit;
+    margin: 0;
+    min-width: 0;
   }
-  /* The same reservation for the two quiet lines under it, which sit lower
-     where the circle is narrower but still reach into the outer ring's band
-     on a 320px screen (the date's glyph edge measured 1.4px inside it). */
+  /* Below 360px the sun draws at 0.82, below 240px (what 200% zoom leaves of
+     a 390px phone) at 0.6 (rule 7). The field keeps its height in both, so
+     the wordmark's place does not move; only the disc shrinks toward its
+     corner. The old header reserved room for the full-size sun beside the
+     hello line and collapsed that line to zero width at 195px; the foot
+     below has no sun beside it and needs no reservation. */
+  @container app (max-width: 359px) {
+    .home-field { --sun-scale: 0.82; }
+  }
+  @container app (max-width: 239px) {
+    .home-field { --sun-scale: 0.6; }
+  }
+  /* The foot: two lines of secondary text at 15/600 (rule 2) and the gear at
+     the end of the first, on the page. 12 under the field, and the gear's
+     48px box is pulled up and out by the 13px its 22px glyph sits inside,
+     so the glyph aligns with the content edge and the hello line's own
+     first line rather than floating in the middle of the foot. */
+  .home-foot {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+  }
+  .home-foot-lines { flex: 1; min-width: 0; }
   .home-hello,
   .home-count {
-    max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
-  }
-  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
-  /* The count line takes the greeting's own size, colour and weight rather
-     than a step of its own: the header is three quiet lines under a
-     wordmark, and a fourth type size in it would be the thing you notice
-     about it. Tabular numerals so the figure does not shift width as it
-     grows. */
-  .home-count {
     font-size: var(--text-sm);
-    color: var(--text-2);
-    margin: var(--space-1) 0 0;
     font-weight: var(--weight-medium);
+    margin: 0;
+  }
+  .home-hello { color: var(--text); }
+  /* The count line takes the greeting's own size and weight rather than a
+     step of its own, one shade quieter: the foot reads as today, then
+     history, and neither is a score. Tabular numerals so the figure does not
+     shift width as it grows. */
+  .home-count {
+    color: var(--text-2);
     font-variant-numeric: tabular-nums;
-    /* The sun's clearance leaves about 26 characters at 390px, so this line
-       wraps for most journals. Balanced, so it breaks after "since" rather
-       than stranding the year on a line of its own. Ignored where it is not
+    /* Balanced, so a wrapping line breaks after "since" rather than
+       stranding the year on a line of its own. Ignored where it is not
        supported, which leaves the ordinary wrap. */
     text-wrap: balance;
   }
-  /* Round 4, item 20: the gap before a Home heading was two spacings
-     stacked - the block rhythm's 12px AND the heading's own 20px
-     padding-top - and read as air, however many times one of them was
-     trimmed. Home's headings take the seam from the block margin alone:
-     padding-top 0, the 12px above them the only space. No font size is
-     touched here - the tile value that shrank gets its own fix in
-     kit.css. */
-  .home > :global(.kit-heading) { padding-top: 0; }
-
-  /* Home's vertical rhythm (phase 5 ticket 21). Written as a margin below
-     each surface rather than as a flex gap on the column, because one of
-     those surfaces renders empty on most days: the look-back grid holds two
-     tiles that each gate themselves, and a gap would charge for the space
-     twice - once before the empty grid and once after it - where a margin the
-     grid does not have costs nothing at all. So the tiles' air belongs to the
-     chip row above them and to the next heading's own padding below, and on a
-     day with neither tile the column closes up with nothing to notice.
-
-     --space-3 is the gap DIRECTION.md's decision 3 asks for: 10 to 12 rather
-     than the 16 the screens used to run at. */
-  .home > * { margin-bottom: var(--space-3); }
-  /* The heading owns no space below itself; what follows it is separated by
-     its own top margin or padding. The tiles keep their 12: it is the only
-     seam they give the heading that follows them. */
-  .home > :global(.kit-heading) { margin-bottom: 0; }
-  /* The caption belongs to the strip above it, so it sits closer than a
-     section does to the next section. */
-  .home > :global(.kit-strip) { margin-bottom: var(--space-2); }
-  /* Not `.home-swap`: unlike the tiles and the heading above, nothing
-     inside it - the skeleton, the day list, the empty notice - carries any
-     trailing space of its own, so zeroing it left the last day card sitting
-     on the scroll region's own --nav-clearance padding alone, with none of
-     Home's own rhythm stacked on top of it the way every other block gets
-     (Alicja, phase 5 ticket 99 item 9: "more space needed between the end
-     of the screen and the last entry"). */
-  .home > :last-child:not(.home-swap) { margin-bottom: 0; }
+  .home-gear {
+    flex: none;
+    color: var(--text-2);
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0 0;
+  }
+  /* On the web the field is a banner across the column with the one radius
+     on all four corners (rule 7); the outline frame Home drew around itself
+     on the web retires with it (screens.css), since the field is the
+     column's top edge now. */
+  @container app (min-width: 1024px) {
+    .home-field { border-radius: var(--r-block); }
+  }
+  /* Home ran a rhythm of its own here until this ticket - 12 between
+     blocks where every other screen has 20, and a heading with its padding
+     zeroed so its words sat on its rule. Both predate DIRECTION.md's rule 1
+     and both are gone: the screen takes `.screen > *` and `.kit-heading`
+     as written, the same three distances as every other door. */
 
   /* The authored moment: on a milestone day, arriving on Home throws a
      little confetti over the notice naming it, once.
@@ -1164,7 +1352,7 @@
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     color: var(--text-2);
     font: inherit;
     font-size: var(--text-sm);
@@ -1175,7 +1363,7 @@
   .home-fold:hover,
   .home-fold:active {
     color: var(--text);
-    border-color: var(--outline-strong);
+    border-color: var(--outline);
   }
 
   /* Tier 3, change within a screen: the mark turns to point at what it has
@@ -1196,27 +1384,78 @@
     .home-fold-mark { transition: none; }
   }
 
+  /* A grid of one cell, so the outgoing and incoming labels stand on the
+     same spot while they cross and the button keeps its width. */
   .home-fold-text {
+    display: grid;
+    min-width: 0;
+  }
+  .home-fold-text > span {
+    grid-area: 1 / 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* The line under the Getting started heading. A heading owns no space
-     below itself here (the rule above), so this carries its own seam down
-     to the card. */
+  /* The line under the Getting started heading, at the secondary size and
+     weight (rule 2). */
   .home-start-intro {
-    margin: var(--space-2) 0 var(--space-3);
+    margin: 0 0 var(--space-3);
     font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     color: var(--text-2);
   }
 
-  /* Tier 3: the skeleton crossfades into the day cards. Both children sit in
-     one grid cell so they overlap for the length of the fade - side by side
-     in the flow, the outgoing skeleton would push the content it is handing
-     over to down the page. */
-  .home-swap { display: grid; }
-  .home-swap > * { grid-area: 1 / 1; }
-  .home-days { display: grid; gap: var(--space-3); align-content: start; }
+  /* The agenda's day block: 44 wide so a two-digit day at display weight
+     has its own room, 48 tall to the row's floor. Small text on a fill,
+     which palette-contrast.test.ts holds to 4.5:1 for every stripe of every
+     flag under --role-fill-ink (the day bar's own case). The list is one
+     block of the screen; the fold under it is that block's last row and
+     sits 12 under the card rather than a full block away. */
+  .home-agenda {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .home-agenda-day {
+    flex: 0 0 auto;
+    width: 44px;
+    height: var(--touch-target);
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 1px;
+    background: var(--role-draw);
+    color: var(--role-fill-ink);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    line-height: 1;
+    /* A block arrives by clipping open from its left edge (rule 10): the
+       kit's own keyframes, at this block's size, one --stagger-step per
+       row of the arrival (--row-index, set by the list). The words beside
+       it cut, as words do. Filled both ways so the 1ms clamp ends it where
+       it rests; the -6px outset is the focus ring's, as on every block. */
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
+  }
+  .home-agenda-wd {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.02em;
+  }
+  .home-agenda-dn {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--display-track);
+    font-variant-numeric: tabular-nums;
+  }
+  /* A slot that went by: the page's own ground with the block's edge and
+     the text's ink, so it reads as the outline of a day rather than a day
+     coming. */
+  .home-agenda-day.is-passed {
+    background: var(--bg);
+    color: var(--text-2);
+  }
+
 </style>

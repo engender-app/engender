@@ -19,6 +19,7 @@
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { ConstellationReading } from '../constellationData';
+import { regionReading, type RegionSideReading, type RegionSides } from '../bodyMap';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
@@ -201,6 +202,29 @@ export interface StatsArea {
       `presentationId` is ticket 18's same filter, forwarded to
       getRegionSomaticBreakdown. */
   bodyRegionBreakdown(region: string, presentationId?: string | null): Promise<RegionSomaticBreakdown>;
+  /** What the body map paints: one reading per region that has any in the
+      range, both ends inclusive (phase 10 redesign ticket 40).
+
+      Not `bodyRegionTrend` twice per region. That answers "how did this one
+      region go over time", one point per day per axis, and the figure asks
+      the opposite question - every region at once, each collapsed to one
+      reading - so it would be two calls times however many regions somebody
+      has, which is unbounded since ticket 30 (a custom region is an
+      ordinary reference-data row). One grouped statement instead, and the
+      side rule applied to its rows in `regionReading` (bodyMap.ts).
+
+      A region with no readings in the range is **absent** rather than
+      present at zero, so the figure can draw undrawn and faintest
+      differently - the same distinction the injection map's never-used dot
+      carries. The caller has the region list; this only says which of them
+      the range has anything to say about.
+
+      `presentationId` is ticket 18's same three-state filter (ADR-0048). */
+  bodyRegionMap(
+    fromEpochDay: number,
+    toEpochDay: number,
+    presentationId?: string | null
+  ): Promise<RegionSideReading[]>;
   /** One point per day at least one completed wear session started in the
       range, oldest first, both ends inclusive - the same DayAverage shape
       as bodyRegionTrend, so a wear-time trend overlays the same chart
@@ -334,24 +358,36 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
    (bodyMap.ts), so this needs no dimension-style key resolution - just the
    entry_body_region rows for one region key.
 
-   The axis names a column rather than binding a parameter, so it is a
-   closed union and not a caller's string: nothing user-supplied reaches
-   the SQL. `IS NOT NULL` is what keeps an unlogged axis out of the average
-   entirely instead of dragging it towards zero.
+   The axis picks a range and a projection over the shared 0-100 column
+   rather than a column of its own (ticket 39, ADR-0081): the two sides no
+   longer live in separate columns, so "which axis" is a WHERE clause and a
+   SELECT expression, not a name. `axis` is still a closed union rather than
+   a caller's string, so nothing user-supplied reaches the SQL - only the
+   two literal fragments `axisFilter` hands back. The projection is
+   `sliderToFeeling`'s own arithmetic (bodyMap.ts, retired by this ticket)
+   run the same way it always was, so a value already on one side of the
+   midpoint reads back the identical intensity it did before this ticket.
 
    `presentationId` is entryPresentationFilter's three-state filter
    (ADR-0048, ticket 18), appended after the region's own parameter. */
+function axisFilter(axis: BodyRegionAxis): { where: string; select: string } {
+  return axis === 'dysphoria'
+    ? { where: 'ebr.value < 50', select: '(50 - ebr.value) * 2' }
+    : { where: 'ebr.value > 50', select: '(ebr.value - 50) * 2' };
+}
+
 function bodyRegionValues(
   region: string,
   axis: BodyRegionAxis,
   presentationId?: string | null
 ): { sql: string; params: (string | number)[] } {
   const presFilter = entryPresentationFilter(presentationId);
+  const { where, select } = axisFilter(axis);
   return {
-    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
+    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ${select} AS value
           FROM entry e
           JOIN entry_body_region ebr ON ebr.entry_id = e.id
-          WHERE ebr.region = ? AND ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL${presFilter.sql}`,
+          WHERE ebr.region = ? AND ${where} AND e.trashed_at IS NULL${presFilter.sql}`,
     params: [region, ...presFilter.params]
   };
 }
@@ -486,6 +522,48 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return getRegionSomaticBreakdown(driver, region, presentationId);
     },
 
+    async bodyRegionMap(fromEpochDay, toEpochDay, presentationId) {
+      /* Both sides in one pass over the same rows, rather than the two
+         statements `axisFilter` gives one axis at a time: the figure has to
+         know a region went both ways, and two separate reads could only tell
+         it that by being compared afterwards. The CHECK excludes the
+         midpoint from storage (schema.ts), so every row belongs to exactly
+         one of these two branches and the counts always sum to the region's
+         row count.
+
+         The projections are `axisFilter`'s own arithmetic, so a mean here
+         and a point on the chart card below are the same number on the same
+         scale. */
+      const presFilter = entryPresentationFilter(presentationId);
+      const rows = await driver.query<{
+        region: string;
+        dysphoria_count: number;
+        euphoria_count: number;
+        dysphoria_mean: number | null;
+        euphoria_mean: number | null;
+      }>(
+        `SELECT ebr.region AS region,
+                SUM(CASE WHEN ebr.value < 50 THEN 1 ELSE 0 END) AS dysphoria_count,
+                SUM(CASE WHEN ebr.value > 50 THEN 1 ELSE 0 END) AS euphoria_count,
+                AVG(CASE WHEN ebr.value < 50 THEN (50 - ebr.value) * 2 END) AS dysphoria_mean,
+                AVG(CASE WHEN ebr.value > 50 THEN (ebr.value - 50) * 2 END) AS euphoria_mean
+         FROM entry e
+         JOIN entry_body_region ebr ON ebr.entry_id = e.id
+         WHERE e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?${presFilter.sql}
+         GROUP BY ebr.region ORDER BY ebr.region`,
+        [fromEpochDay, toEpochDay, ...presFilter.params]
+      );
+      return rows.map((row) =>
+        regionReading({
+          region: row.region,
+          dysphoriaCount: row.dysphoria_count,
+          euphoriaCount: row.euphoria_count,
+          dysphoriaMean: row.dysphoria_mean,
+          euphoriaMean: row.euphoria_mean
+        } satisfies RegionSides)
+      );
+    },
+
     async wearTimeTrend(fromEpochDay, toEpochDay) {
       const rows = await driver.query<{ start_timestamp: number; duration_ms: number }>(
         `SELECT start_timestamp, duration_ms FROM wear_session
@@ -518,14 +596,15 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     },
 
     async bodyRegionReadings(axis, fromEpochDay, toEpochDay) {
-      // The axis names a column rather than binding a parameter, the same
-      // closed-union trick bodyRegionValues uses above: nothing a caller
+      // The axis picks a range and a projection, the same closed-union
+      // trick bodyRegionValues' axisFilter uses above: nothing a caller
       // supplies reaches the SQL.
+      const { where, select } = axisFilter(axis);
       const rows = await driver.query<{ region: string; entry_id: number; epoch_day: number; value: number }>(
-        `SELECT ebr.region AS region, e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
+        `SELECT ebr.region AS region, e.id AS entry_id, e.epoch_day AS epoch_day, ${select} AS value
          FROM entry e
          JOIN entry_body_region ebr ON ebr.entry_id = e.id
-         WHERE ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
+         WHERE ${where} AND e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
          ORDER BY e.epoch_day, e.id`,
         [fromEpochDay, toEpochDay]
       );
@@ -789,7 +868,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
            OR EXISTS (
              SELECT 1 FROM entry e
              JOIN entry_body_region ebr ON ebr.entry_id = e.id
-             WHERE e.epoch_day = ? AND ebr.euphoria >= ? AND e.trashed_at IS NULL
+             WHERE e.epoch_day = ? AND ebr.value >= 50 + ? / 2 AND e.trashed_at IS NULL
            ) AS good`,
         [
           epochDay,

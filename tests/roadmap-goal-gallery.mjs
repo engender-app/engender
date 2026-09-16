@@ -96,6 +96,9 @@ for (const theme of ['light', 'dark']) {
   // A custom goal of the person's own, with the typo this ticket exists to
   // let them fix.
   await settle('/transition/roadmap');
+  // Ticket 54: only the current track's panel starts in front; medical's
+  // own row and add-goal button need its segment shown first.
+  await page.locator('[data-segment="medical"]').click();
   await page.locator('[data-add-goal="medical"]').click();
   await page.getByPlaceholder('Your step').fill(GOAL);
   await page.getByRole('button', { name: 'Add goal' }).click();
@@ -126,6 +129,7 @@ for (const theme of ['light', 'dark']) {
   /* ---------- 01: the sheet as it opens. The tick, the paper filed here,
      and under those the two controls a custom goal owes. ---------- */
   await settle('/transition/roadmap');
+  await page.locator('[data-segment="medical"]').click();
   await page.locator(`[data-open-goal="${goalId}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.waitForTimeout(700);

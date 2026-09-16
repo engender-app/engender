@@ -35,6 +35,26 @@ describe('drawBars', () => {
     expect(out.map((r) => r.share)).toEqual([0, 0]);
     expect(out.every((r) => !r.isLeader)).toBe(true);
   });
+
+  it('floors a nonzero leader share that would otherwise draw as a sliver', () => {
+    const out = drawBars([row('a', 1), row('b', 100)], 'leader');
+    expect(out.map((r) => r.share)).toEqual([8, 100]);
+  });
+
+  it('leaves a share above the floor untouched', () => {
+    const out = drawBars([row('a', 2), row('b', 8)], 'leader');
+    expect(out.map((r) => r.share)).toEqual([25, 100]);
+  });
+
+  it('does not floor a zero amount even beside a floored one', () => {
+    const out = drawBars([row('a', 0), row('b', 1), row('c', 100)], 'leader');
+    expect(out.map((r) => r.share)).toEqual([0, 8, 100]);
+  });
+
+  it('does not floor a track share, which is already a position in a known range', () => {
+    const out = drawBars([row('a', 0.01), row('b', 0.9)], 'track');
+    expect(out.map((r) => r.share)).toEqual([1, 90]);
+  });
 });
 
 describe('leaderShares', () => {

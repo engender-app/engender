@@ -29,7 +29,8 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
-  import { bootState, recoveryUnlock, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
+  import { saveBar } from '$lib/stores/saveBar.svelte';
+  import { bootState, recoveryUnlock, restorePreviousJournal, retryBoot, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
@@ -45,10 +46,17 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { hoverHints } from '$lib/a11y/hoverHint';
-  import { chromelessPath } from '$lib/navigation/chromeless';
+  import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
+  import { carryBlind } from '$lib/motion/fieldBlind';
+  import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
   import { markScreenArrival } from '$lib/motion/reveal';
+
+  /* Mark screen arrival at layout script execution time so initial cold-mount
+     components rendering during boot treat their mount as part of screen
+     arrival rather than as a panel change on a settled screen (ticket 111). */
+  markScreenArrival();
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { activeTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
@@ -62,6 +70,7 @@
   import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
   import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
+  import { androidScreenCapture } from '$lib/lock/screen-capture-bridge';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -162,19 +171,24 @@
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
 
-  /* The routes that render without chrome whoever is looking at them
-     (navigation/chromeless.ts) folded together with the gate states, which
-     depend on how boot went and are this file's own. */
-  let chromeless = $derived(
+  /* What is being drawn instead of the app: the gate states, which depend
+     on how boot went and are this file's own. Held apart from the routes
+     below because two different questions are asked of it - what chrome to
+     paint, and whether a navigation happened at all
+     (navigation/chromeless.ts says why). */
+  let replacesApp = $derived(
     locked ||
       needsAccessModeAfterRecovery ||
       needsPassphrase ||
       needsAuthentication ||
       needsDeviceRecovery ||
       schemaTooNew ||
-      onboardingFirstRun ||
-      chromelessPath(path)
+      onboardingFirstRun
   );
+
+  /* Those, plus the routes that render without chrome whoever is looking at
+     them - which now includes a step the app does navigate to. */
+  let chromeless = $derived(replacesApp || chromelessPath(path));
 
   /* The other half of the exception above: onboarding is a route like any
      other, so getting there needs the same redirect the returning-user
@@ -270,16 +284,24 @@
       to: navigation.to.url.pathname,
       type: navigation.type,
       delta: navigation.delta,
-      isAndroid: isAndroid(),
-      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname),
-      /* Gathered here for the same reason `isAndroid` is: whether a sheet is
-         open over the outgoing screen is not something the two URLs can
-         answer, and screen-transition.ts stays a pure table by being told
-         rather than by looking. Read off the shell rather than plumbed down
-         from Sheet, because a navigation out of a sheet is started by
-         whatever is inside it and none of those callers know they are in
-         one. Still open at this point - the sheet unmounts with the screen
-         it belongs to, which happens inside the capture below.
+      /* `cutsInsteadOfMoving`, not `chromelessPath`: a route with no bar is
+         not therefore a route the app did not walk to. The return moment is
+         on neither list, so stepping into it and back out both move
+         (redesign ticket 35; Alicja read the cut as a yank between frames 7
+         and 8 of the empty state's flipbook) - and setup's two legs are not
+         the same question either, which is redesign ticket 33's own finding:
+         arriving is the shell redirecting because there is no app yet, and
+         leaving is the app opening. The table says which is which. */
+      isChromeless:
+        replacesApp || cutsInsteadOfMoving(navigation.from?.url.pathname ?? null, navigation.to.url.pathname),
+      /* Gathered here: whether a sheet is open over the outgoing screen is
+         not something the two URLs can answer, and screen-transition.ts
+         stays a pure table by being told rather than by looking. Read off the
+         shell rather than plumbed down from Sheet, because a navigation out
+         of a sheet is started by whatever is inside it and none of those
+         callers know they are in one. Still open at this point - the sheet
+         unmounts with the screen it belongs to, which happens inside the
+         capture below.
 
          The selector is the dialog's ARIA, not `[data-sheet]`, which is a
          walkthrough handle: ADR-0029 grants those on the terms that they
@@ -300,6 +322,22 @@
     if (pattern !== 'container') closeEntryContainer();
     if (!document.startViewTransition || pattern === 'none') return;
 
+    /* The field is a blind over the content (redesign ticket 28): named
+       before the old side is captured, handed to the incoming screen after
+       the swap, and given back when the transition is over, along with the
+       two heights and the settle it measured. On every navigation rather
+       than on the tab crossing alone - a screen with no field is the blind
+       closed to nothing rather than a case to skip - and see
+       $lib/motion/fieldBlind for why this is not a stylesheet rule. */
+    const blind = carryBlind(document, {
+      /* Setup's finish is the one navigation whose sun is the same object at
+         the same size on both sides (redesign ticket 33, rule 12): it has
+         grown one step's worth per step and arrives at Home's resting
+         scale, so it holds still inside the two snapshots while the field
+         closes around it rather than closing and opening its own rings. */
+      holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding')
+    });
+
     return new Promise((resolve) => {
       document.documentElement.dataset.nav = pattern;
       const transition = document.startViewTransition(async () => {
@@ -311,26 +349,48 @@
            left to the window: an unhandled rejection per aborted navigation
            is noise that buries a real one, and the walkthrough fails the
            whole run on it. */
-        await navigation.complete.catch(() => {});
-        /* Before the "new" side is captured, not after: a view transition
-           photographs the incoming screen the instant this callback's own
-           promise resolves, and `afterNavigate` below - the only other
-           caller of restoreScroll - fires as its own separate SvelteKit
-           lifecycle callback with no ordering promised against that
-           capture. Losing the race meant the photograph was always taken
-           at scroll 0, and the real scroll position only snapped in once
-           afterNavigate ran a moment later - on a screen with anything to
-           scroll, the fade-in's last frame and that snap landed close
-           enough together to read as one motion (Alicja, 2026-08-27, on
-           the transition roadmap: "the fade-in jumps a lot of pixels").
-           Restoring here as well as there is not a race fixed by luck -
-           this one is provably before the capture, and afterNavigate's own
-           call becomes a harmless no-op restoring the same value again. */
-        if (navigation.to) restoreScroll(navigation.to.url.pathname);
+        /* Whatever happens below, the swap has to run: it is what publishes
+           the heights and the settle, and a transition that runs without
+           them reads the blind's own fallbacks - a clip of the whole window
+           - so the field is simply absent for its length. */
+        try {
+          await navigation.complete.catch(() => {});
+          /* The outgoing page can still be in the DOM here, held by a
+             zero-length outro that cannot finish while rendering is paused,
+             and a new-side capture with two screens stacked in the scroll
+             region is a picture of the wrong layout - every door with tiles
+             snapped at the end of its transition (redesign ticket 25). See
+             $lib/motion/outgoingScreen for why waiting is not an option. */
+          dropOutgoingScreens();
+          /* Before the "new" side is captured, not after: a view transition
+             photographs the incoming screen the instant this callback's own
+             promise resolves, and `afterNavigate` below - the only other
+             caller of restoreScroll - fires as its own separate SvelteKit
+             lifecycle callback with no ordering promised against that
+             capture. Losing the race meant the photograph was always taken
+             at scroll 0, and the real scroll position only snapped in once
+             afterNavigate ran a moment later - on a screen with anything to
+             scroll, the fade-in's last frame and that snap landed close
+             enough together to read as one motion (Alicja, 2026-08-27, on
+             the transition roadmap: "the fade-in jumps a lot of pixels").
+             Restoring here as well as there is not a race fixed by luck -
+             this one is provably before the capture, and afterNavigate's own
+             call becomes a harmless no-op restoring the same value again. */
+          if (navigation.to) restoreScroll(navigation.to.url.pathname);
+        } finally {
+          /* The incoming screen has mounted and the outgoing one is gone.
+             Before the new capture, so each name is on exactly one element
+             when the browser looks, and after the scroll above, so the
+             incoming field is measured where it will be drawn. */
+          blind.swap();
+        }
       });
       void transition.finished
         .catch(() => {})
-        .finally(() => delete document.documentElement.dataset.nav);
+        .finally(() => {
+          delete document.documentElement.dataset.nav;
+          blind.release();
+        });
     });
   });
 
@@ -487,6 +547,16 @@
     }
   }
 
+  let retrying = $state(false);
+  async function retry() {
+    retrying = true;
+    try {
+      await retryBoot();
+    } finally {
+      retrying = false;
+    }
+  }
+
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
@@ -518,6 +588,7 @@
     const quietHoursEnd = prefs.quietHoursEnd;
     const disguise = prefs.disguise;
     const quickExit = prefs.quickExit;
+    const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready) return;
 
     return startAndroidPlatformSync({
@@ -535,7 +606,8 @@
         quietHoursStart,
         quietHoursEnd,
         disguise,
-        quickExit
+        quickExit,
+        allowScreenCapture
       },
       journal: {
         reminders: journal.reminders,
@@ -548,6 +620,7 @@
       androidReminders,
       androidDisguise,
       androidQuickExit,
+      androidScreenCapture,
       androidBackButton: AndroidAppPlugin,
       // Hidden built-ins and this language's custom lines are read fresh on
       // every call (phase 5 ticket 15) rather than captured once here, so a
@@ -628,6 +701,11 @@
               <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
             {/if}
           {/if}
+          <div style="margin-top:var(--space-2)">
+            <button class="btn btn-soft" data-retry-boot disabled={retrying} onclick={retry}>
+              <span>{m.boot_retry_action()}</span>
+            </button>
+          </div>
         </div>
       </div>
     {/if}
@@ -651,51 +729,68 @@
       <AppNav />
     {/if}
 
-    <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
-      {#if schemaTooNew}
-        <SchemaTooNew />
-      {:else if needsPassphrase}
-        <JournalGate />
-      {:else if needsAuthentication}
-        <AndroidKeyGate />
-      {:else if needsDeviceRecovery}
-        <DeviceBoundRecovery />
-      {:else if needsAccessModeAfterRecovery}
-        <!-- Before the lock rather than after it: a session that has just
-             been recovered has nothing for a re-entry screen to ask, since
-             the secret it would ask for is the one that failed. -->
-        <PostRecoveryAccessMode />
-      {:else if locked}
-        <!-- Instead of the route, not over it: nothing below this renders,
-             so no screen mounts and no query runs while the app is locked.
+    <!-- The scroll region and the foot a screen may ask for, stacked. The
+         box is what lets the column reserve the foot's room by layout
+         rather than by arithmetic: the foot is the region's flex sibling
+         rather than a second pinned thing inside it, so no screen can end
+         up with a control under it (carpet 26, and
+         $lib/stores/saveBar.svelte for what that cost before). It is also
+         what puts the pair beside the rail rather than under it at desktop
+         width, where `.app` itself is a row.
 
-             What that costs, decided and kept (phase 8 features ticket 49
-             item 3): the route unmounts, so component state and scroll
-             position go with it, and unlocking is not a navigation, so
-             `restoreScroll` never runs either. The app comes back at the top
-             of the screen it was on. Asked to put somebody back exactly where
-             they were reading - pass 3's D5 - the answer here is no, on
-             purpose. Not rendering the journal behind a lock screen is the
-             property the gesture exists for, and quick exit is the gesture
-             for somebody walking in: redrawing the paragraph that was just
-             hidden, a second after the passphrase is typed in front of that
-             person, is not a kindness. The URL is untouched, so what the
-             person does get back is the screen itself.
+         The landmark is on this box rather than on the scroll region
+         inside it, because the foot moved: a screen's one commitment is
+         part of the screen, and left outside <main> it would be a group of
+         controls belonging to no landmark at all. The skip link still
+         lands on the region, which is what a person wants to be put at the
+         top of. -->
+    <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
+        {#if schemaTooNew}
+          <SchemaTooNew />
+        {:else if needsPassphrase}
+          <JournalGate />
+        {:else if needsAuthentication}
+          <AndroidKeyGate />
+        {:else if needsDeviceRecovery}
+          <DeviceBoundRecovery />
+        {:else if needsAccessModeAfterRecovery}
+          <!-- Before the lock rather than after it: a session that has just
+               been recovered has nothing for a re-entry screen to ask, since
+               the secret it would ask for is the one that failed. -->
+          <PostRecoveryAccessMode />
+        {:else if locked}
+          <!-- Instead of the route, not over it: nothing below this renders,
+               so no screen mounts and no query runs while the app is locked.
 
-             A journal with no access secret at all never reaches this branch.
-             It takes `lockState.blanked` instead - an overlay above a tree
-             that stays mounted - and does keep its position, which is where
-             the original "already true, by construction" reading came from.
-             walkthrough.test.mjs flow 18 asserts the passphrase case, since
-             that is every journal this feature exists for. -->
-        <SessionUnlock mode={bootState.accessMode} />
-      {:else if redirectingToOnboarding}
-        <!-- The effect above is already navigating here; nothing renders
-             for the frame that takes, so a brand new install's first paint
-             is never whatever route the URL happened to be (ticket 54). -->
-      {:else}
-        {@render children()}
-      {/if}
+               What that costs, decided and kept (phase 8 features ticket 49
+               item 3): the route unmounts, so component state and scroll
+               position go with it, and unlocking is not a navigation, so
+               `restoreScroll` never runs either. The app comes back at the top
+               of the screen it was on. Asked to put somebody back exactly where
+               they were reading - pass 3's D5 - the answer here is no, on
+               purpose. Not rendering the journal behind a lock screen is the
+               property the gesture exists for, and quick exit is the gesture
+               for somebody walking in: redrawing the paragraph that was just
+               hidden, a second after the passphrase is typed in front of that
+               person, is not a kindness. The URL is untouched, so what the
+               person does get back is the screen itself.
+
+               A journal with no access secret at all never reaches this branch.
+               It takes `lockState.blanked` instead - an overlay above a tree
+               that stays mounted - and does keep its position, which is where
+               the original "already true, by construction" reading came from.
+               walkthrough.test.mjs flow 18 asserts the passphrase case, since
+               that is every journal this feature exists for. -->
+          <SessionUnlock mode={bootState.accessMode} />
+        {:else if redirectingToOnboarding}
+          <!-- The effect above is already navigating here; nothing renders
+               for the frame that takes, so a brand new install's first paint
+               is never whatever route the URL happened to be (ticket 54). -->
+        {:else}
+          {@render children()}
+        {/if}
+      </div>
     </main>
 
     <QuickAdd />

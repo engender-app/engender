@@ -25,21 +25,27 @@
 import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
-import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
-import { createAndroidSqlite, deleteAndroidDatabase } from '../data/sqlite/android-driver';
+import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
-import { openJournal, type PhotoFileStore } from '../data/journal/journal';
+import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
+import { todayEpochDay } from '../data/epochDay';
+import { ROUTE_OPTIONS } from '../data/vocabulary/doseLabels';
 import { hydrateReference } from '../data/live/reference.svelte';
-import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
-import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
-import { encryptedFileStore } from '../data/photos/encrypted-file-store';
+import type { ListableDirectory } from '../data/photos/opfs-file-store';
+import {
+  closeActiveDriver,
+  createJournalSqlite,
+  journalPhotoFiles,
+  setActiveDriver
+} from './journal-ports';
+
 import {
   addJournalPassphrase,
   setupJournalPassphrase,
@@ -58,7 +64,6 @@ import {
 import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import type { JournalAccessMode } from '../data/journal-access-mode';
-import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles } from './videoFiles';
 import { setVoiceFiles } from './voiceFiles';
@@ -73,7 +78,9 @@ import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
-import type { BootState } from './boot-state';
+import { bootGate, type BootState } from './boot-state';
+import { openApp } from '../motion/appOpening';
+import { ui } from './ui.svelte';
 import { performPlatformEffect } from './boot-platform';
 import {
   describeError,
@@ -91,8 +98,9 @@ let machine: BootMachine = initialBoot();
 export const bootState = $state<BootState>({ ...machine.boot });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
-    started. Synchronous on purpose: by the time a caller's dispatch returns,
-    the screen it renders has already changed. */
+    started. Synchronous but for one case: the event that ends a gate
+    publishes itself a frame later, inside a view transition, because the app
+    arriving is a movement rather than a swap ($lib/motion/appOpening). */
 function dispatch(event: BootEvent): void {
   let step;
   try {
@@ -105,8 +113,28 @@ function dispatch(event: BootEvent): void {
        says what actually happened. */
     step = reduce(machine, { type: 'boot-failed', message: describeError(error) });
   }
+  /* Asked of the state the screen is drawn from, not of the machine: this is
+     "is a gate on screen right now", and the answer after is "and it is not
+     any more", which is the whole of the condition. A gate giving way to
+     another gate is not it - a refusal is the same screen changing its mind,
+     and it moves on the field's own edge without a transition (stepBlind). */
+  const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
   machine = step.machine;
-  Object.assign(bootState, machine.boot);
+  /* Off `machine` rather than off the step it came from, so a second event
+     landing inside the frame this one is capturing cannot be undone by an
+     older answer arriving late. */
+  const publish = () => Object.assign(bootState, machine.boot);
+  if (opensApp) {
+    /* Flagged around the whole opening, not just its start: what reads it is
+       a surface deciding whether now is a moment it can arrive in
+       (ui.svelte.ts). */
+    ui.appOpening = true;
+    void openApp(publish).finally(() => (ui.appOpening = false));
+  } else publish();
+  /* Started before the publication rather than after it, which is the order
+     this always ran in for every event but the one above. Nothing in `run`
+     reads `bootState` - the machine holds what an effect needs - so the two
+     orders are the same for every effect there is. */
   for (const effect of step.effects) void run(effect);
 }
 
@@ -240,7 +268,30 @@ export async function restorePreviousJournal(): Promise<void> {
      lets go of its access handles so the next boot's worker can acquire them
      (ADR-0020's one connection per origin). */
   await openDriver?.close();
+  await closeActiveDriver();
   location.reload();
+}
+
+/** Retries the boot sequence from a failed state. If a session key is already
+    held in memory, reconnection attempts using the key directly; otherwise
+    it restarts the boot survey. */
+export async function retryBoot(): Promise<void> {
+  if (openDriver) {
+    await openDriver.close().catch(() => {});
+    openDriver = null;
+    openFileOps = null;
+  }
+  await closeActiveDriver();
+  if (sessionDataKey) {
+    dispatch({
+      type: 'key-obtained',
+      dataKey: sessionDataKey,
+      accessMode: bootState.accessMode ?? 'device-bound',
+      unlocked: true
+    });
+  } else {
+    dispatch({ type: 'started', platform: isAndroid() ? 'android' : 'web', demo: __DEMO__ });
+  }
 }
 
 export function startBoot() {
@@ -338,20 +389,26 @@ export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
     This was `submitSkipSetup` until ticket 53. Device-bound is one of the
     module's equal choices now rather than the way past a wall, and the name
     was the last place the old framing survived. */
-async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> {
+async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
-    const result = await openAndroidDataKey(androidKeystore, {
-      title: '',
-      subtitle: '',
-      cancel: '',
-      deviceCredential: false
-    });
+    const authRequired = options?.authRequired ?? true;
+    const result = await openAndroidDataKey(
+      androidKeystore,
+      {
+        title: '',
+        subtitle: '',
+        cancel: '',
+        deviceCredential: false
+      },
+      { authRequired }
+    );
     const outcome = deviceBoundSetupOutcome(result);
     /* The one place a refusal is not dispatched: this is an offer on the
        setup module, and turning it down leaves the module exactly where it
        was with an answer for the screen. */
     if (result.kind !== 'key') return outcome;
-    dispatch({ type: 'android-key-answered', result });
+    const accessMode = authRequired ? 'device-bound' : 'unlocked';
+    dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode, unlocked: true });
     return outcome;
   }
 
@@ -377,7 +434,11 @@ export async function submitAccessModeSetup(
   chosen: NonNullable<JournalAccessMode>,
   secret: string
 ): Promise<AccessModeSetupResult> {
-  if (chosen === 'device-bound') return submitDeviceBoundSetup();
+  if (chosen === 'device-bound') return submitDeviceBoundSetup({ authRequired: true });
+  if (chosen === 'unlocked') {
+    if (isAndroid()) return submitDeviceBoundSetup({ authRequired: false });
+    return submitDeviceBoundSetup();
+  }
   try {
     if (chosen === 'pin') await submitPinSetup(secret);
     else if (chosen === 'biometric') await submitBiometricSetup();
@@ -402,11 +463,25 @@ export async function submitAccessModeSetup(
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
-  if (target === 'device-bound') {
-    /* Android's Keystore bridge mints its own data key and cannot be asked
-       to wrap this one, so this direction is web-only and the settings
-       screen does not offer it on a phone. */
-    if (isAndroid()) throw new Error('changing to device-bound mode is not available on Android');
+  if (target === 'device-bound' || target === 'unlocked') {
+    if (isAndroid()) {
+      const authRequired = target === 'device-bound';
+      const hexKey = Array.from(sessionDataKey)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      const wrapped = await androidKeystore.wrap({ hexKey, authRequired });
+      if (wrapped.outcome === 'noDeviceCredential') {
+        throw new Error('device has no lock screen credentials');
+      }
+      await removeKeystoreFile();
+      dispatch({ type: 'access-mode-changed', accessMode: target });
+      recoveryUnlock.used = false;
+      await removeEveryPinBinding().catch((error) => {
+        console.warn('could not remove the PIN binding key after moving to ' + target + ' mode', error);
+      });
+      return;
+    }
+
     await addDeviceBoundJournal(sessionDataKey);
     /* The removal is awaited before the change is reported, and a failure is
        allowed to throw. Reporting first would have said "changed" while the
@@ -442,7 +517,7 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
   }
   if (isAndroid()) {
     await androidKeystore.erase().catch((error) => {
-      console.warn('could not erase the Android device-bound key after changing access mode', error);
+      console.warn('could not erase the Android keystore keys after changing access mode', error);
     });
     return;
   }
@@ -525,40 +600,20 @@ async function perform(effect: BootEffect): Promise<void> {
   }
 }
 
-/** The driver and the file store this platform opens a journal with. The last
-    place either platform is named: everything past it is ADR-0017's seam,
-    where nothing knows which one it is on. */
-function journalPorts(dataKey: Uint8Array<ArrayBuffer>): { sqlite: WebSqlite; photoFiles: PhotoFileStore } {
-  if (isAndroid()) {
-    return {
-      sqlite: createAndroidSqlite(JOURNAL_DATABASE, dataKey),
-      photoFiles: encryptedFileStore(appPrivatePhotoFiles(), dataKey)
-    };
-  }
-  return {
-    sqlite: createEncryptedWebSqlite(JOURNAL_DATABASE, dataKey),
-    // Encrypted per file under the same data key as the database (ticket
-    // 09): whole-database encryption never reaches files outside SQLite
-    // (ADR-0020).
-    photoFiles: encryptedFileStore(opfsPhotoFiles(), dataKey)
-  };
-}
-
 /** Everything both platforms do once they have a data key: the journal is
     constructed over a driver, boot() runs its sequence, and how it ended goes
     back to the reducer as an event. */
 async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  if (openDriver) {
+    await openDriver.close().catch(() => {});
+    openDriver = null;
+    openFileOps = null;
+  }
+  await closeActiveDriver();
+
   sessionDataKey = dataKey;
   announceDataKey(dataKey);
-  const { sqlite, photoFiles } = journalPorts(dataKey);
-
-  // The PRD asks for navigator.storage.persist() on first save, not on
-  // boot - but persist() is safe to call more than once and asking here
-  // covers every save path at once. Worth revisiting when the PWA ticket
-  // lands, not by adding a second call.
-  const { driver, fileOps, requestPersistentStorage } = sqlite;
-  openDriver = driver;
-  openFileOps = fileOps;
+  const photoFiles = journalPhotoFiles(dataKey);
 
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
@@ -570,22 +625,35 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   setVoiceFiles(photoFiles);
   setVideoFiles(photoFiles);
 
-  /* Attached before the migrations run, so the writes step 3 makes below -
-     reconciling built-ins - announce themselves like any other. Queries stay
-     parked until journalIsOpen(). */
-  const journal = attachJournal(openJournal(driver, photoFiles));
+  let activeSqlite: WebSqlite | null = null;
+  let journal: Journal | null = null;
 
   const result = await boot({
-    createDriver: () => driver,
-    fileOps,
-    requestPersistentStorage,
+    createDriver: () => {
+      activeSqlite = createJournalSqlite(dataKey);
+      openDriver = activeSqlite.driver;
+      openFileOps = activeSqlite.fileOps;
+      setActiveDriver(activeSqlite.driver, activeSqlite.fileOps);
+      journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
+      return activeSqlite.driver;
+    },
+    fileOps: {
+      preMigrationCopyIsUsable: () => activeSqlite!.fileOps.preMigrationCopyIsUsable(),
+      copyDatabaseFile: () => activeSqlite!.fileOps.copyDatabaseFile(),
+      restorePreMigrationCopy: () => activeSqlite!.fileOps.restorePreMigrationCopy(),
+      cleanupPreMigrationCopy: () => activeSqlite!.fileOps.cleanupPreMigrationCopy()
+    },
+    requestPersistentStorage: () =>
+      activeSqlite?.requestPersistentStorage
+        ? activeSqlite.requestPersistentStorage()
+        : Promise.resolve(true),
     // Step 3: built-ins reconcile on every boot, by key - not seed-if-empty,
     // so a journal can never end up short of one (ADR-0002; ticket 14's
     // Replace calls the same operation before an import applies). Then the
     // mirror is filled from what that left behind (ADR-0004).
     loadReferenceData: async () => {
-      await journal.reconcileBuiltIns();
-      await hydrateReference(journal);
+      await journal!.reconcileBuiltIns();
+      await hydrateReference(journal!);
     },
     /* Step 4: after the database is open and migrated, so the rows it
        compares against are the current ones (ADR-0008), and behind an idle
@@ -603,10 +671,21 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       if (reclaimed > 0) bump(tablesWrittenBy('entries', 'deleteEntry'));
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
+    /* The standing instruction, carried out (phase 11 ticket 11, ADR-0086).
+       Through the journal rather than the driver, unlike the two passes
+       above: this one is an ordinary area operation, so it takes the write
+       guard and the write recorder on the way like every other write does.
+       It announces what it wrote for the same reason the purge does - the
+       dose log and Today are live while this runs. */
+    autoLogDueDoses: async () => {
+      const written = await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
+      if (written > 0) bump(tablesWrittenBy('doses', 'autoLogDueDoses'));
+    },
     scheduleHousekeeping: whenIdle
   });
 
   if (result.phase === 'error') {
+    await closeActiveDriver();
     dispatch({ type: 'journal-open-failed', error: result.error });
     return;
   }
@@ -627,8 +706,8 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
        say it had been done, while the journal held only the oldest entries -
        the persona writes 150 days oldest-first, so what goes missing is
        exactly the recent data every screen shows. */
-    await clearJournal(journal);
-    await seedPersonaJournal(journal);
+    await clearJournal(journal!);
+    await seedPersonaJournal(journal!);
     for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
       await preferences.set(key, value);
     }
@@ -641,5 +720,5 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
      seeded entry. */
   journalIsOpen();
 
-  dispatch({ type: 'journal-opened', journal, persistDenied: result.persistDenied });
+  dispatch({ type: 'journal-opened', journal: journal!, persistDenied: result.persistDenied });
 }

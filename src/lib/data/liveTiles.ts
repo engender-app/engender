@@ -33,13 +33,14 @@ import type {
   WearSession
 } from './types';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
-import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePauseOn } from './doseSchedule';
+import { adherence, expectedAmountOn, expectedSlots, isDailySchedule, pauseCoversDay as isDosePauseOn } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { spanCoversDay } from './span';
 import { binderCueShowing, hoursMinutesSecondsOf } from './journal/wearSessions';
 import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
+import { nextExpectedSlot } from './careSpine';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
 import type { AppointmentDayRecord } from './journal/appointments';
@@ -389,6 +390,26 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
    cross-checks against it (AU-09 test-only review). */
 export const HOME_TILE_CAP = 3;
 
+/** The order Home actually draws them in: the bands outside, `LIVE_TILE_ORDER`
+    inside each one.
+
+    Derived rather than written out a second time, and read by both the grid
+    and Today's editor (phase 11 ticket 04). The editor lists one switch per
+    kind in draw order, so a hand-kept second list there would be the order
+    stated twice with nothing holding the two together - and `composeHomeTiles`
+    below walks this rather than nesting the same two loops it is made of. */
+export const LIVE_TILE_DRAW_ORDER: readonly LiveTileKind[] = HOME_TILE_TIERS.flatMap((tier) =>
+  LIVE_TILE_ORDER.filter((kind) => LIVE_TILE_TIER[kind] === tier)
+);
+
+/** Whether a registered kind is one of the grid's, which is how a screen
+    tells a tile the editor arranges from a notice or a notification it does
+    not (phase 11 ticket 04). Over the registry's own union rather than over
+    `string`, so a caller cannot ask it about a kind that does not exist. */
+export function isLiveTileKind(kind: UnpromptedKind): kind is LiveTileKind {
+  return (LIVE_TILE_ORDER as readonly UnpromptedKind[]).includes(kind);
+}
+
 type Unordered = Exclude<LiveTileKind, (typeof LIVE_TILE_ORDER)[number]>;
 type AssertNoneUnordered<Missing extends never> = Missing;
 type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
@@ -400,8 +421,9 @@ type AssertKindsAreUnprompted<K extends UnpromptedKind> = K;
 type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
 
 /** Which preference switches each tile off, taken from the registry that
-    already declares it (`/settings/live-tiles` draws its switch from the
-    same field). Exported as a function over the rows so registry.test.ts's
+    already declares it (Today's editor draws its switch from the same
+    field, and /settings/notifications draws the rest of the registry's from
+    it too). Exported as a function over the rows so registry.test.ts's
     trick works here too: the rule can be run over a shortened registry and
     seen to fail, rather than only asserted never to. */
 export function liveTilePrefKeys(rows: readonly SurfaceRow[]): Record<LiveTileKind, BooleanPrefKey> {
@@ -497,6 +519,13 @@ export interface HomeTileReads {
   schedules: readonly DoseSchedule[];
   dosePauses: readonly DosePause[];
   todayDoses: readonly DoseEvent[];
+  /** Yesterday's, read separately rather than by widening `todayDoses`
+      (phase 11 ticket 11): every other reader of that list means today by
+      it, and a yesterday row in it would answer "already logged today" for
+      the patch tile and the dose panel alike. What this is for is the one
+      sentence the panel owes on a day the app wrote a dose on the person's
+      behalf. */
+  yesterdayDoses: readonly DoseEvent[];
   latestBenchmarkEpochDay: number | null;
   journalingPauses: readonly JournalingPause[];
   latestHairRemovalSession: HairRemovalSession | null;
@@ -524,7 +553,7 @@ export interface HomeTileActions {
   snooze: (kind: LiveTileKind) => void;
 }
 
-/** The four display formats, as callbacks: every one of them reaches
+/** The five display formats, as callbacks: every one of them reaches
     paraglide through `$lib`, which the Node tier cannot resolve. */
 /* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
    cross-checks against it (AU-09 test-only review). */
@@ -533,6 +562,12 @@ export interface HomeTileFormat {
   fullDay: (epochDay: number) => string;
   /** A day and a short month - when a pause ends. */
   shortDay: (epochDay: number) => string;
+  /** A weekday and a date - "Monday 21 September" - which is how the agenda
+      band on the same screen writes a day still to come. Its own format
+      rather than the band's `agendaWhen`, which says "Today" and "Tomorrow"
+      for the two nearest days: the dose panel puts its day inside a
+      sentence ("Next ..."), and today has a sentence of its own. */
+  weekdayDay: (epochDay: number) => string;
   /** A wall-clock time - when a wear session started. */
   time: (timestamp: number) => string;
   /** A hair removal area's own name. */
@@ -570,6 +605,44 @@ interface TileGate {
     `LIVE_TILE_TIER`'s to say and `composeHomeTiles` stamps on - so no
     builder can disagree with the table the ordering reads. */
 type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
+
+/** Whether Today's dose panel accounts for every dose slot the agenda could
+    draw, which is what the screen withholds the `doseSlot` kind on
+    (agendaReads.ts, phase 11 ticket 03).
+
+    The panel states one drug - `activeEpisodesAt`'s first - while
+    `dayAhead`'s `doseSlot` section reads every active episode, so the
+    question is not how many regimens are running but how many of them put a
+    row on the band. That section skips an episode with no schedule and one
+    on a daily schedule (ADR-0067: a daily slot marks every day a screen can
+    draw, which is wallpaper), so an everyday pill beside an injection on a
+    rhythm earns no rows at all and the panel still stands for the whole of
+    what is drawn. This is the demo journal's own shape, and taking the
+    count of running regimens instead put both of the injection's rows back
+    beside the panel that already stated them.
+
+    What is refused is the case that would hide something: a second regimen
+    that does earn rows of its own, which the panel never names. Then the
+    band keeps every row and the cost is one drug stated twice - the
+    direction ADR-0074 already errs in rather than state one drug's
+    arrangement under another's name. */
+export function dosePanelCoversEveryRegimen(
+  tiles: readonly HomeTile[],
+  episodes: readonly RegimenEpisode[],
+  schedules: readonly DoseSchedule[],
+  nowMs: number
+): boolean {
+  if (!tiles.some((tile) => tile.key === 'dose-panel')) return false;
+  const active = activeEpisodesAt(episodes, nowMs);
+  const marking = active.filter((episode) => {
+    const schedule = schedules.find((s) => s.episodeId === episode.id);
+    return schedule !== undefined && !isDailySchedule(schedule);
+  });
+  /* `active[0]` is the episode the panel names (the builder below). A lone
+     marking episode that is not that one would be a drug the panel does not
+     stand for, so it is refused the same as two. */
+  return marking.length === 0 || (marking.length === 1 && marking[0].id === active[0].id);
+}
 
 /** Home's grid: the twelve kinds, gated, in `LIVE_TILE_ORDER`, with nothing
     dropped for being twelfth. A `Record` keyed by `LiveTileKind` rather
@@ -626,18 +699,58 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       if (!gate.enabled || gate.snoozed) return null;
       const active = activeEpisodesAt(reads.episodes, nowMs);
       if (active.length === 0) return null;
+      const episode = active[0];
+      /* When the next one falls (phase 11 ticket 03). The panel is the
+         dose's one home on Today now - the agenda withholds its `doseSlot`
+         rows while this tile is up (agendaReads.ts) - so the day the
+         schedule expects is stated here or nowhere.
+
+         `nextExpectedSlot` rather than the raw slot list, so a dose already
+         logged against today moves the reading on to the following slot
+         instead of leaving the tile saying a dose is due that the person
+         has just taken. Doses are narrowed to this episode the way the
+         patch tile narrows them, since `todayDoses` is the whole day's log
+         and a second concurrent regimen's dose must not answer for this
+         one. A regimen with no schedule on it has no next day to state and
+         the line is simply absent - the panel is still the way in to the
+         log sheet. */
+      const schedule = reads.schedules.find((s) => s.episodeId === episode.id) ?? null;
+      const ownDoses = reads.todayDoses.filter(
+        (dose) => attributeDose(reads.episodes, dose).episode?.id === episode.id
+      );
+      const ownPauses = reads.dosePauses.filter((pause) => pause.episodeId === episode.id);
+      const next = schedule
+        ? nextExpectedSlot(schedule, episode.startEpochDay, ownDoses, ownPauses, today)
+        : null;
+      /* What the app did on the person's behalf yesterday, which the panel
+         states ahead of the next day it expects (phase 11 ticket 11,
+         ADR-0086). Ahead, not beside: the line holds one sentence, and on
+         the morning after an auto-logged slot the fact worth reading is the
+         row that was written without them, not a date they can work out
+         from the schedule they wrote. */
+      const autoLoggedYesterday = reads.yesterdayDoses.some(
+        (dose) =>
+          dose.source === 'schedule' && attributeDose(reads.episodes, dose).episode?.id === episode.id
+      );
       return {
         key: 'dose-panel',
         tileKey: 'dose-panel',
         attrs: { 'data-dose-panel-tile': true },
         title: m.tile_dose_title(),
-        value: active[0].drug,
-        href: '/doses',
+        value: episode.drug,
+        note: autoLoggedYesterday
+          ? m.tile_dose_auto_logged_yesterday()
+          : !next
+            ? undefined
+            : next.epochDay === today
+              ? m.tile_dose_next_today()
+              : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) }),
+        href: '/care/doses',
         action: {
           icon: 'plus',
           text: m.doses_add_aria(),
           label: m.doses_add_aria(),
-          href: '/doses?add=1',
+          href: '/care/doses?add=1',
           attrs: { 'data-dose-add': '' }
         }
       };
@@ -783,12 +896,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_patch_schedule_title(),
         value: qualifying.episode.drug,
         note: `${qualifying.doseAmount} · ${qualifying.route}`,
-        href: '/doses',
+        href: '/care/doses',
         action: {
           icon: 'plus',
           text: m.tile_dose_log_action(),
           label: m.tile_dose_log_action(),
-          href: '/doses?add=1'
+          href: '/care/doses?add=1'
         },
         dismiss: dismissSnooze('patch-schedule-tile')
       };
@@ -929,10 +1042,11 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
 /** The grid, in tier order, with every qualifying tile in it.
 
-    Two loops rather than a sort: the tier bands are the outer order and
-    `LIVE_TILE_ORDER` is the order inside a band, which is exactly what
-    nesting the two lists says. Nothing is dropped here - the cap is
-    `splitHomeTiles` below, so the fold has the tiles it is folding.
+    `LIVE_TILE_DRAW_ORDER` rather than a sort or a nested pair of loops: the
+    tier bands outside and `LIVE_TILE_ORDER` inside is one order, and since
+    ticket 04 the editor lists its switches in it too. Nothing is dropped
+    here - the cap is `splitHomeTiles` below, so the fold has the tiles it is
+    folding.
 
     A tile whose area is hidden or finished never reaches its builder (phase 8
     features ticket 04). Folded into `enabled` rather than added as a third
@@ -942,13 +1056,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const builders = buildersFor(input);
   const tiles: HomeTile[] = [];
-  for (const tier of HOME_TILE_TIERS) {
-    for (const kind of LIVE_TILE_ORDER) {
-      if (LIVE_TILE_TIER[kind] !== tier) continue;
-      const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
-      const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
-      if (tile) tiles.push({ ...tile, tier });
-    }
+  for (const kind of LIVE_TILE_DRAW_ORDER) {
+    const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
+    const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
+    if (tile) tiles.push({ ...tile, tier: LIVE_TILE_TIER[kind] });
   }
   return tiles;
 }

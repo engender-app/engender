@@ -163,10 +163,16 @@ for (const theme of ['light', 'dark']) {
      still clears the five-entry floor at seven days, so the summary panels'
      own empty states are not reachable from a demo build; the node tests
      hold those branches instead. ---------- */
-  await page.locator('[data-segment="7"]').click();
+  /* The shortest span the rail's handles can make (redesign ticket 11):
+     the end handle brought back one step from today, then the start handle
+     up against it. */
+  await page.locator('[data-span-handle="start"]').focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowLeft');
   await page.waitForTimeout(1200);
-  await shoot('05-seven-days');
-  await page.locator('[data-segment="30"]').click();
+  await shoot('05-shortest-span');
+  await page.locator('[data-span-handle="start"]').focus();
+  await page.keyboard.press('Shift+ArrowLeft');
   await page.waitForTimeout(1200);
 
   await shootFrom('03-cross-area', '[data-chart-card="day-by-day"]', '[data-chart-card="custom-interval"]');

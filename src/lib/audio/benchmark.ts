@@ -12,10 +12,11 @@
 
    Pure, and node-tested: nothing here decodes audio (audio/capture.ts). */
 
+import type { BandLanguage } from './bands';
 import { trackPitch, wordsPerMinute } from './pitch';
 import { downsamplePitchTrack, encodePitchTrack } from './track';
 import { analyseFormants, type Formants } from './resonance';
-import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality, takeSignals, type QualityReport } from './quality';
+import { VOWEL_GATE, assessQuality, passageGate, takeSignals, type QualityReport } from './quality';
 
 /** The pitch figures a benchmark row stores, in the row's own terms. Null
     where the take held no voiced frame at all, which the quality report is
@@ -51,10 +52,18 @@ interface VowelTake {
 
 /** The read passage: pitch, its span, its spread, and the rate it was read
     at. `wordCount` is the passage's own, so the rate is words over the time
-    from the first voiced frame to the last (CONTEXT: "Benchmark passage"). */
-export function analysePassage(samples: Float32Array, sampleRate: number, wordCount: number): PassageTake {
+    from the first voiced frame to the last (CONTEXT: "Benchmark passage") -
+    and it is also what the length gate scales with, since how much voice a
+    read should carry is a question about how many words there were
+    (`passageGate`, redesign ticket 41). */
+export function analysePassage(
+  samples: Float32Array,
+  sampleRate: number,
+  wordCount: number,
+  language: BandLanguage
+): PassageTake {
   const track = trackPitch(samples, sampleRate);
-  const quality = assessQuality(takeSignals(samples, sampleRate, track), PASSAGE_CHECKS);
+  const quality = assessQuality(takeSignals(samples, sampleRate, track), passageGate(wordCount, language));
   const rate = wordsPerMinute(wordCount, track.spokenSeconds);
 
   return {
@@ -78,7 +87,7 @@ export function analysePassage(samples: Float32Array, sampleRate: number, wordCo
 export function analyseVowel(samples: Float32Array, sampleRate: number): VowelTake {
   const track = trackPitch(samples, sampleRate);
   return {
-    quality: assessQuality(takeSignals(samples, sampleRate, track), VOWEL_CHECKS),
+    quality: assessQuality(takeSignals(samples, sampleRate, track), VOWEL_GATE),
     formants: analyseFormants(samples, sampleRate, track)
   };
 }

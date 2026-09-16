@@ -6,6 +6,7 @@ import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.clipboard.SensitiveClipboard;
 import dev.engender.app.quickexit.QuickExitPlugin;
 import dev.engender.app.reminders.ReminderScheduler;
+import dev.engender.app.screencapture.ScreenCapturePlugin;
 
 /**
  * What this app leaves on a phone that is neither the journal nor in the
@@ -15,9 +16,10 @@ import dev.engender.app.reminders.ReminderScheduler;
  * journal - the database file and the Keystore-wrapped data key - and
  * nothing else. What survived a reset was everything the app writes
  * alongside it: the reminder titles and times, the auto-export destination
- * and its wrapped password, whether quick exit was on, and the alarms
- * themselves, which kept posting the person's own reminder titles on a
- * phone they had just wiped.
+ * and its wrapped password, whether quick exit was on, whether this device
+ * was allowed to screenshot or record the app, and the alarms themselves,
+ * which kept posting the person's own reminder titles on a phone they had
+ * just wiped.
  *
  * <p>Each store is cleared by the class that writes it rather than by a
  * list of preference file names here, so a store that moves or gains a
@@ -34,7 +36,7 @@ public final class DeviceStores {
      * as a reset the person is told went through.
      *
      * <p>Every one of them literally: a store that throws no longer takes
-     * the stores after it down with it. Two of the four can fail now that
+     * the stores after it down with it. Two of the five can fail now that
      * the reminder payload has a Keystore alias of its own (phase 5 security
      * ticket 02), and the first one to throw used to be the last one that
      * ran - so a keystore that would not delete an alias left the backup
@@ -48,6 +50,7 @@ public final class DeviceStores {
             ReminderScheduler::wipe,
             AutoExportPlugin::wipe,
             QuickExitPlugin::wipe,
+            ScreenCapturePlugin::wipe,
             SensitiveClipboard::wipe
         }) {
             try {
@@ -60,7 +63,7 @@ public final class DeviceStores {
         if (failure != null) throw failure;
     }
 
-    /** What each of the four above is, from here: one call that clears one
+    /** What each of the five above is, from here: one call that clears one
         store and says so by throwing. */
     private interface Store {
         void wipe(Context context) throws Exception;

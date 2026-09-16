@@ -266,7 +266,7 @@
 <div class="screen">
   <ScreenHeader title={detail.isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/transition/tryouts" />
 
-  <div class="editor-section">
+  <div>
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
         <Segmented

@@ -21,17 +21,43 @@
      independent channel on exactly the pairs that have only depth to go on,
      and a change of shape rather than of dimension - the only kind that
      survives being scaled down this far.
-   - Nothing leaves the disc, so no face is ever clipped by the circle it
-     sits in. */
+   - Nothing leaves the block, so no face is ever clipped by the shape it
+     sits on. The block replaced the disc in ticket 27 and the drawing grew
+     into it: one 9.4-unit span for every mouth against the 7.2 to 8.0 the
+     five used to be, eyes at 1.45 rather than 1.25 and 1.4 further apart, and
+     a 1.9-unit stroke rather than 1.6. The margin below is what a corner has
+     left after the stroke's outer edge, which is the tightest place a rounded
+     square is worse than a circle - and the only place it is. */
 
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from '../src/lib/components/moodFace';
+import { MOOD_BLOCK, MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from '../src/lib/components/moodFace';
 import { GAZE_REACH } from '../src/lib/motion/magnifier';
 import { inkPolylines } from './icon-ink';
 
 const STEPS = [1, 2, 3, 4, 5];
+
+/** Half the stroke, plus 0.4 of a unit of air. */
+const INK_MARGIN = 1.9 / 2 + 0.4;
+
+/** How far a point sits outside the block, once the block is inset by
+    `margin`: 0 or less is inside. A rounded square is the axis-aligned box
+    everywhere except its four corners, where it is a circle of the corner
+    radius - so the reading is the box's own overshoot, except inside a
+    corner's quadrant, where it is the distance from that corner's centre. */
+function outsideBlock(x: number, y: number, margin: number): number {
+  const min = MOOD_BLOCK.x + margin;
+  const max = MOOD_BLOCK.x + MOOD_BLOCK.size - margin;
+  const inset = MOOD_BLOCK.radius - margin;
+  const cornerX = x < min + inset ? min + inset : x > max - inset ? max - inset : null;
+  const cornerY = y < min + inset ? min + inset : y > max - inset ? max - inset : null;
+  if (cornerX !== null && cornerY !== null) {
+    return Math.hypot(x - cornerX, y - cornerY) - inset;
+  }
+  return Math.max(min - x, x - max, min - y, y - max);
+}
 
 const componentsCss = readFileSync(join(import.meta.dirname, '../src/lib/styles/components.css'), 'utf8');
 
@@ -107,30 +133,34 @@ describe('the five mood faces', () => {
     for (const step of [2, 3, 4]) expect(MOOD_FACES[step].lids).toBeUndefined();
   });
 
-  it('keeps every face inside its disc', () => {
+  it('keeps every face inside its block', () => {
     for (const step of STEPS) {
       const face = MOOD_FACES[step];
       const markup = `<path d="${face.mouth}"/>${face.lids ? `<path d="${face.lids}"/>` : ''}`;
       for (const line of inkPolylines(markup)) {
         for (const point of line) {
-          /* The disc is r10, and the stroke is 1.6 wide, so its outer edge
-             reaches 0.8 past the path. */
-          expect(Math.hypot(point.x - 12, point.y - 12)).toBeLessThanOrEqual(10 - 0.8);
+          expect(
+            outsideBlock(point.x, point.y, INK_MARGIN),
+            `step ${step} draws at ${point.x.toFixed(2)}, ${point.y.toFixed(2)}, outside the block`
+          ).toBeLessThanOrEqual(0);
         }
       }
     }
+    /* A dot is a fill, so what has to be inside is its rim rather than its
+       centre - hence the radius as part of the margin instead of the
+       stroke's half-width. */
     for (const eye of MOOD_EYES) {
-      expect(Math.hypot(eye.cx - 12, eye.cy - 12) + MOOD_EYE_RADIUS).toBeLessThanOrEqual(10);
+      expect(outsideBlock(eye.cx, eye.cy, MOOD_EYE_RADIUS + 0.4)).toBeLessThanOrEqual(0);
     }
   });
 
   /* The eyes move now (phase 9 carpet ticket 01): the row turns them toward
      the finger and the face turns them again on its own idle glance, and the
      two groups are nested so the offsets add. The drawing has to survive both
-     at once in both directions - an eye clipped by its own disc for the half
+     at once in both directions - an eye clipped by its own block for the half
      second a finger passes is a worse bug than a still face, because it only
      ever happens while somebody is looking straight at it. */
-  it('keeps every face inside its disc while its eyes are fully turned', () => {
+  it('keeps every face inside its block while its eyes are fully turned', () => {
     const travel = eyeTravel();
     for (const dx of [-travel.x, travel.x]) {
       for (const dy of [-travel.y, travel.y]) {
@@ -140,14 +170,14 @@ describe('the five mood faces', () => {
           for (const line of inkPolylines(`<path d="${face.lids}"/>`)) {
             for (const point of line) {
               expect(
-                Math.hypot(point.x + dx - 12, point.y + dy - 12),
-                `step ${step}'s lids leave the disc at a gaze of ${dx.toFixed(2)}, ${dy.toFixed(2)}`
-              ).toBeLessThanOrEqual(10 - 0.8);
+                outsideBlock(point.x + dx, point.y + dy, INK_MARGIN),
+                `step ${step}'s lids leave the block at a gaze of ${dx.toFixed(2)}, ${dy.toFixed(2)}`
+              ).toBeLessThanOrEqual(0);
             }
           }
         }
         for (const eye of MOOD_EYES) {
-          expect(Math.hypot(eye.cx + dx - 12, eye.cy + dy - 12) + MOOD_EYE_RADIUS).toBeLessThanOrEqual(10);
+          expect(outsideBlock(eye.cx + dx, eye.cy + dy, MOOD_EYE_RADIUS + 0.4)).toBeLessThanOrEqual(0);
         }
       }
     }
@@ -163,4 +193,24 @@ describe('the five mood faces', () => {
     expect(fallback, '--gaze-reach has no fallback in components.css').toBeTruthy();
     expect(parseFloat(fallback![1])).toBeCloseTo(GAZE_REACH, 10);
   });
+});
+
+/* Redesign ticket 19's invariant: the mood icons are byte-identical to
+   ticket 27's drawing (ADR-0077), measured against that drawing rather than
+   against whatever shipped before it. The ticket builds motion around the
+   faces and touches neither file; a hash is the only assertion that can
+   tell "unchanged" from "changed in a way every other test still passes".
+   A ticket that redraws the face on purpose updates the two hashes here in
+   the same commit and says so. */
+describe("the drawing is ticket 27's, byte for byte", () => {
+  const PINNED: Record<string, string> = {
+    'src/lib/components/moodFace.ts': '017aee0fa552cac1d3bcf09a146fbe8c85410e9d2b2019586a6a78a8de8885b2',
+    'src/lib/components/MoodFace.svelte': 'c48eab556a82ce8de021e4972c84c5812074379ce4157a1fe512c1c5c702a32a'
+  };
+  for (const [file, sha256] of Object.entries(PINNED)) {
+    it(`${file} is unchanged since redesign ticket 27 (6b78081a)`, () => {
+      const bytes = readFileSync(join(process.cwd(), file));
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(sha256);
+    });
+  }
 });

@@ -5,8 +5,10 @@
    /usr/bin/chromium-browser path. Starting the actual server each script
    drives Chromium against stays with that script - a probe-page server, a
    built-app preview server and a real dev server are different enough not
-   to share. */
+   to share. `fillDate` joined the same way (redesign ticket 17), once the
+   walkthrough and a gallery script both needed it. */
 import { chromium } from 'playwright-core';
+import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
 
@@ -32,6 +34,42 @@ export function launchPersistentChromium(userDataDir, options = {}) {
     headless: true,
     ...options,
   });
+}
+
+/** The date fields are DatePickers on flatpickr: the visible field is
+    flatpickr's altInput and the ISO value lives on the hidden original, so
+    typing into the field is not how a date gets set. The picker instance
+    hangs off the element; setDate with fireChange runs the same onChange a
+    real pick runs. */
+export async function fillDate(page, selector, iso) {
+  await page.evaluate(([sel, v]) => {
+    const el = document.querySelector(sel);
+    const fp = el?._flatpickr ?? el?.flatpickr;
+    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
+    fp.setDate(v, true);
+  }, [selector, iso]);
+}
+
+/** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
+ *  the hydration sweep, ticket 108, needed the same one for its sheet
+ *  scenes and profile prologues): the page navigated, boot waited ready,
+ *  a first run left if it was in the way, and the page-side settle
+ *  stamped - toasts gone, demo bar hidden, theme on <html> the way
+ *  +layout.svelte stamps it. */
+export async function settlePage(page, base, path, theme) {
+  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
+  if (await page.locator('[data-leave-setup]').count()) {
+    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
+    await page.waitForSelector('[data-home-hello]');
+    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  }
+  /* The demo bar is hidden rather than removed since redesign ticket 33:
+     setup's own scenes reach the flow through the demo's first-run control,
+     and a removed bar takes the control with it. Nothing measures the bar
+     either way - it is out of the frame and out of the flow. */
+  await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 }
 
 /** Collects PASS/FAIL lines in the format all three scripts already

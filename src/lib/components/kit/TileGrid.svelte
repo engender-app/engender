@@ -11,15 +11,17 @@
 
   let {
     role,
-    flagFill,
+    bar,
     children,
     ...rest
   }: {
     role?: Role;
-    /** The whole flag as a fill, from $lib/theme/roles. The tiles' numbers
-        are drawn with it; the tiles themselves keep the section's one
-        stripe, so a pair reads as one area of the screen. */
-    flagFill?: string;
+    /** The band the bar under a tight tile's value is drawn in, from
+        $lib/theme/roles' flagBarRole: another colour of the same flag, so
+        the mark reads against the block rather than into it. The whole flag
+        as a gradient was what the bar used to be, and on a block of one of
+        that flag's own colours the matching band disappeared. */
+    bar?: Role;
     children: Snippet;
     [attribute: string]: unknown;
   } = $props();
@@ -30,7 +32,7 @@
   data-kit-surface
   data-tile-grid
   {...roleAttrs(role)}
-  style:--flag-fill={flagFill}
+  style:--flag-bar={bar?.stripe}
   {...rest}
 >
   {@render children()}

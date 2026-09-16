@@ -12,8 +12,27 @@
      state through two separate reactive computations, which is a timing
      risk this ticket is not to take (ticket 16: no visual change). */
   import type { Snippet } from 'svelte';
+  import { slideMonit } from '$lib/motion/reveal';
 
   let { children }: { children: Snippet } = $props();
 </script>
 
-<p class="kit-chart-empty">{@render children()}</p>
+<p class="kit-chart-empty" transition:slideMonit>{@render children()}</p>
+
+<style>
+  /* Nothing logged in this range. It sits in the space the marks would have
+     taken rather than as a line where a chart's top edge would be, so a card
+     with no data is the same height as a card with some and a screen of them
+     does not concertina as the range changes. */
+  .kit-chart-empty {
+    display: grid;
+    place-items: center;
+    min-height: 88px;
+    margin: 0;
+    padding: var(--space-4) var(--space-2);
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    text-align: center;
+    text-wrap: balance;
+  }
+</style>

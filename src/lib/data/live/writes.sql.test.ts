@@ -246,9 +246,9 @@ beforeAll(async () => {
 
   // --- entries --------------------------------------------------------
   // One call touching every table 'entry' covers at once: dims, tags,
-  // body regions (all three shapes), a note (so entry_fts's insert has
-  // real text), an attached photo, recording and video note - which is
-  // also what makes photo/voiceRecording/videoNote's announcement real.
+  // body regions (three of them), a note (so entry_fts's insert has real
+  // text), an attached photo, recording and video note - which is also
+  // what makes photo/voiceRecording/videoNote's announcement real.
   const entryId = (await drive('entries', 'upsertEntry', () =>
     journal.entries.upsertEntry({
       epochDay: 20000,
@@ -258,9 +258,9 @@ beforeAll(async () => {
       dims: { [voice.key]: 7, femininity: 60 },
       tags: [tag2.id, tag3.id, 'e-happy'],
       bodyRegions: {
-        chest: { dysphoria: 45, euphoria: null },
-        [region.id]: { dysphoria: 30, euphoria: 55 },
-        voice_throat: { dysphoria: null, euphoria: 70 }
+        chest: 25,
+        [region.id]: 80,
+        voice_throat: 60
       },
       presentationId: femme.id,
       attachPhotos: [photo('entry')],
@@ -516,13 +516,27 @@ beforeAll(async () => {
       episodeId,
       recurrence: { kind: 'everyNDays', everyNDays: 14 },
       dosesPerDay: 1,
-      doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
+      doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+      autoLogFromEpochDay: null
     })
   );
   const dosePauseId = (await drive('doses', 'upsertPause', () =>
     journal.doses.upsertPause({ episodeId, startEpochDay: 19100, endEpochDay: null, reason: 'planned' })
   )) as string;
   await drive('doses', 'deletePause', () => journal.doses.deletePause(dosePauseId));
+  /* Auto-logging on, then the pass itself (ticket 11): the schedule is every
+     14 days on an episode anchored at 19000 and the route is `im`, so
+     asking on 19015 leaves exactly one passed slot to write. */
+  await drive('doses', 'upsertSchedule', () =>
+    journal.doses.upsertSchedule({
+      episodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 14 },
+      dosesPerDay: 1,
+      doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+      autoLogFromEpochDay: 19010
+    })
+  );
+  await drive('doses', 'autoLogDueDoses', () => journal.doses.autoLogDueDoses(19015, []));
   const secondDoseId = (await drive('doses', 'upsertDose', () =>
     journal.doses.upsertDose({ timestamp: 1_700_100_000_000, route: 'oral', dose: 100, doseUnit: 'mg' })
   )) as string;
@@ -922,6 +936,8 @@ beforeAll(async () => {
   await driveRead('milestones', 'lastWriteEpochDay', () => journal.milestones.lastWriteEpochDay(20000));
   await driveRead('photos', 'inJournal', () => journal.photos.inJournal());
   await driveRead('photos', 'starredPhotos', () => journal.photos.starredPhotos());
+  await driveRead('photoLibrary', 'inJournal', () => journal.photoLibrary.inJournal());
+  await driveRead('photoLibrary', 'starred', () => journal.photoLibrary.starred());
   await driveRead('voice', 'inJournal', () => journal.voice.inJournal());
   await driveRead('voiceBenchmarks', 'getBenchmarks', () => journal.voiceBenchmarks.getBenchmarks());
   await driveRead('voiceBenchmarks', 'getBenchmarksOnDay', () => journal.voiceBenchmarks.getBenchmarksOnDay(20060));
@@ -945,6 +961,7 @@ beforeAll(async () => {
   );
   await driveRead('measurements', 'getMeasurementTypes', () => journal.measurements.getMeasurementTypes());
   await driveRead('measurements', 'lastWriteEpochDay', () => journal.measurements.lastWriteEpochDay(20000));
+  await driveRead('measurements', 'latestMeasurement', () => journal.measurements.latestMeasurement(20000));
   await driveRead('measurements', 'countAll', () => journal.measurements.countAll());
   await driveRead('sizeRecords', 'getRecords', () => journal.sizeRecords.getRecords());
   await driveRead('sizeRecords', 'getRecordsByCategory', () => journal.sizeRecords.getRecordsByCategory('pants'));
@@ -975,6 +992,9 @@ beforeAll(async () => {
   await driveRead('exposure', 'getCounters', () => journal.exposure.getCounters(0, 30000));
   await driveRead('hormoneCurve', 'getCurves', () =>
     journal.hormoneCurve.getCurves({ fromEpochDay: 0, toEpochDay: 30000, fitToOwnLabs: false })
+  );
+  await driveRead('hormoneCurve', 'getCurveDirection', () =>
+    journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: 20000 })
   );
   await driveRead('sideEffects', 'getSideEffects', () => journal.sideEffects.getSideEffects());
   await driveRead('sideEffects', 'getSideEffectsInRange', () => journal.sideEffects.getSideEffectsInRange(0, 30000));
@@ -1045,6 +1065,7 @@ beforeAll(async () => {
   await driveRead('hairRemoval', 'getPhotos', () => journal.hairRemoval.getPhotos(hairRemovalId));
   await driveRead('procedures', 'getProcedures', () => journal.procedures.getProcedures());
   await driveRead('procedures', 'getPhotos', () => journal.procedures.getPhotos(procedureId));
+  await driveRead('procedures', 'photosByProcedure', () => journal.procedures.photosByProcedure());
   await driveRead('procedures', 'getDayRecords', () => journal.procedures.getDayRecords(19950));
   await driveRead('procedures', 'lastWriteEpochDay', () => journal.procedures.lastWriteEpochDay(20000));
   await driveRead('procedures', 'getChecklist', () => journal.procedures.getChecklist(procedureId));
@@ -1073,6 +1094,7 @@ beforeAll(async () => {
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.
   await driveRead('feltSense', 'latestDaysForTryouts', () => journal.feltSense.latestDaysForTryouts([tryoutId]));
+  await driveRead('feltSense', 'byTryout', () => journal.feltSense.byTryout());
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
@@ -1092,6 +1114,7 @@ beforeAll(async () => {
   await driveRead('stats', 'wearTimeTrend', () => journal.stats.wearTimeTrend(0, 30000));
   await driveRead('stats', 'tallyTrend', () => journal.stats.tallyTrend('misgendered', 0, 30000));
   await driveRead('stats', 'bodyRegionReadings', () => journal.stats.bodyRegionReadings('dysphoria', 19000, 21000));
+  await driveRead('stats', 'bodyRegionMap', () => journal.stats.bodyRegionMap(19000, 21000));
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
   await driveRead('stats', 'tagInsights', () => journal.stats.tagInsights('mood', 19000, 21000));

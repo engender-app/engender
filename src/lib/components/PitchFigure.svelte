@@ -71,6 +71,7 @@
      reduced-motion path. The trace is redrawn rather than transitioned. */
   import type { Snippet } from 'svelte';
   import type { PitchFrame } from '$lib/audio/pitch';
+  import { densityAt, type DensitySample } from '$lib/audio/density';
   import {
     axisFraction,
     bandEdges,
@@ -82,11 +83,16 @@
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
+  import { spread, wipe } from '$lib/motion/reveal';
+  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { untrack } from 'svelte';
 
   let {
     axis,
     trace,
     traceWeight = 2.5,
+    density = null,
+    pair = null,
     span = null,
     medianHz = null,
     comfort = null,
@@ -107,6 +113,34 @@
     /** How heavily the trace is drawn. The live gauge spends this on the
         gate's steadiness reading; a stored take has one weight. */
     traceWeight?: number;
+    /** Where the take's voiced frames sat, as a shape beside the time plot
+        on this same axis (audio/density.ts, redesign ticket 42). Null for
+        a figure with nothing to draw one from: a live take whose frames are
+        still arriving, and every benchmark from before schema v58, whose
+        frames were summarized and dropped.
+
+        Computed by whoever decoded the track rather than here, so one decode
+        feeds the trace, the shape and the marks (benchmark.ts's own note on
+        a second caller downsampling its own copy). */
+    density?: readonly DensitySample[] | null;
+    /** Two takes on one axis, back to back across a shared spine: the
+        earlier read's shape to the left of it, the later read's to the
+        right, with the cited bands running behind both (redesign ticket
+        42).
+
+        Its own prop rather than a second `density`, because it replaces the
+        time plot rather than sitting beside one. Two traces stacked is what
+        the compare view was, and two forty-second scribbles is not what
+        somebody comparing two months of work is reading; the question there
+        is where the voice sat, and that is one axis with two shapes on it.
+
+        Never a verdict (ADR-0012): one hue both sides, no arrow, nothing
+        that says which way is better. Which side is which is said in words
+        under the figure, by whoever renders it. */
+    pair?: {
+      earlier: { density: readonly DensitySample[]; medianHz: number };
+      later: { density: readonly DensitySample[]; medianHz: number };
+    } | null;
     /** The take's own p10-p90, as the row keeps it. */
     span?: { lowHz: number; highHz: number } | null;
     medianHz?: number | null;
@@ -222,6 +256,104 @@
      length so the ticks have somewhere to go. */
   const BRACKET_TICK = 8;
   const BRACKET_X = WIDTH - BRACKET_TICK - 6;
+
+  /* The density's own box. Its horizontal units are a proportion and not a
+     length, so the box is a fixed width in CSS and this viewBox never
+     stretches the shape the way the time plot's deliberately does.
+
+     The mode reaches 82 of the box's 100 units rather than all of them. A
+     shape that ends exactly on the edge reads as clipped - as if the figure
+     ran out of room rather than the voice running out of frames - and the
+     18 units of air are what say the outline is the whole of it. */
+  const DENSITY_UNITS = 100;
+  const DENSITY_MODE = 82;
+
+  /** The shape's outline, bottom of the axis upward. A polyline and not a
+      filled region: a fill in this position, against washes that are
+      themselves fills, is the one thing a mark here must not look like
+      (ADR-0059's bands are citations and this is a measurement). */
+  let densityOutline = $derived(
+    (density ?? [])
+      .map((sample) => `${(sample.weight * DENSITY_MODE).toFixed(1)},${y(sample.hz).toFixed(1)}`)
+      .join(' ')
+  );
+
+  /** How far out a mark reaches: to the outline at its own frequency, so
+      the median and the span's two ends land on the shape rather than
+      crossing it at a length of their own. */
+  const markWidth = (hz: number) => densityAt(density ?? [], hz) * DENSITY_MODE;
+
+  /* Changing which two takes are compared moves the shapes rather than
+     cutting to the new pair (rule 10: every state change moves, and a chart
+     re-ranging is named in it). Both sides always carry the same number of
+     samples - `pitchDensity` draws every shape on one bin count - so the
+     topology is identical and each bin can simply travel: its frequency, as
+     the shared axis re-ranges under it, and how wide the shape is there.
+
+     The same shape as kit/AreaChart's own re-tween, and for the same reason
+     it is here rather than in the caller: the figure owns its geometry, so
+     it owns the journey between two of them. */
+  let shownPair = $state<typeof pair>(null);
+
+  $effect(() => {
+    const next = pair;
+    const previous = untrack(() => shownPair);
+    const duration = motionDuration('--dur-slow');
+
+    /* Nothing to travel from on a first draw, nothing to travel with under
+       reduced motion, and nothing to interpolate between two shapes drawn at
+       different bin counts. The first draw's own arrival is the clip in the
+       markup, not this. */
+    const sameShape =
+      previous !== null &&
+      next !== null &&
+      previous.earlier.density.length === next.earlier.density.length &&
+      previous.later.density.length === next.later.density.length;
+    if (duration === 0 || !sameShape || next === null) {
+      shownPair = next;
+      return;
+    }
+
+    const from = previous;
+    const between = (a: DensitySample, b: DensitySample, t: number): DensitySample => ({
+      hz: a.hz + (b.hz - a.hz) * t,
+      weight: a.weight + (b.weight - a.weight) * t
+    });
+    const side = (which: 'earlier' | 'later', t: number) => ({
+      density: next[which].density.map((sample, at) => between(from[which].density[at], sample, t)),
+      medianHz:
+        from[which].medianHz + (next[which].medianHz - from[which].medianHz) * t
+    });
+
+    let frame = 0;
+    const began = performance.now();
+    const step = (now: number) => {
+      const t = EASE_OUT(Math.min(1, (now - began) / duration));
+      shownPair = { earlier: side('earlier', t), later: side('later', t) };
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  });
+
+  /* The paired box: the spine down its middle, one shape's width either
+     side of it. Both sides take the same 82 units, so the two shapes are
+     read against each other rather than against the edges they end near. */
+  const PAIR_UNITS = DENSITY_UNITS * 2;
+  const SPINE_X = DENSITY_UNITS;
+
+  /** One side of the pair, outward from the spine. `direction` is -1 for the
+      earlier take, which reads leftward, and 1 for the later one. */
+  const sidePath = (samples: readonly DensitySample[], direction: -1 | 1) =>
+    samples
+      .map(
+        (sample) =>
+          `${(SPINE_X + direction * sample.weight * DENSITY_MODE).toFixed(1)},${y(sample.hz).toFixed(1)}`
+      )
+      .join(' ');
+
+  const sideMark = (samples: readonly DensitySample[], hz: number, direction: -1 | 1) =>
+    SPINE_X + direction * densityAt(samples, hz) * DENSITY_MODE;
 </script>
 
 <div class="pf" class:is-clipping={gate?.clipping} {...roleAttrs(role)} {...rest}>
@@ -235,38 +367,82 @@
       {/each}
     </div>
 
+    <!-- The two typical ranges, each a wash in the hue over whatever is
+         behind it. Over transparency rather than mixed into the ground, so
+         that where two of them coincide the shared strip comes out at twice
+         one wash by arithmetic rather than by a third colour somebody
+         picked.
+
+         One snippet drawn into both boxes rather than one set of rects per
+         box: "the bands run across the plot and the density as one ground"
+         is a claim two copies could stop making the day one of them gains a
+         band the other does not. -->
+    {#snippet ground(width: number)}
+      {#each bands as band (band.key)}
+        {#if band.key !== 'between'}
+          <rect class="pf-band" x="0" y={band.top} {width} height={band.height} />
+        {/if}
+      {/each}
+
+      {#if middle}
+        <!-- The region between the two ranges, which on sourced figures is
+             a gap rather than an intersection: fewer speakers sit here than
+             in either range, so it is drawn at half a range's wash and
+             never more. Its two bounds are the ranges' own facing edges,
+             and they are what stop it reading as the line where two blocks
+             touch. -->
+        <g data-pitch-middle>
+          <rect class="pf-middle" x="0" y={middle.top} {width} height={middle.height} />
+          {#each [middle.top, middle.top + middle.height] as at (at)}
+            <line class="pf-middle-edge" x1="0" y1={at} x2={width} y2={at} vector-effect="non-scaling-stroke" />
+          {/each}
+        </g>
+      {/if}
+    {/snippet}
+
     <div class="pf-field">
+      {#if shownPair}
+        <!-- Two reads on one axis. The bands are behind both, so "where I
+             sat then, where I sit now, against the published figures" is
+             one reading rather than two charts and a subtraction. -->
+        <svg
+          class="pf-svg pf-pair"
+          data-pitch-pair
+          viewBox="0 0 {PAIR_UNITS} {HEIGHT}"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          in:spread|global
+        >
+          {@render ground(PAIR_UNITS)}
+
+          <line class="pf-spine" x1={SPINE_X} y1="0" x2={SPINE_X} y2={HEIGHT} vector-effect="non-scaling-stroke" />
+
+          {#each [{ side: shownPair.earlier, direction: -1 as const, which: 'earlier' }, { side: shownPair.later, direction: 1 as const, which: 'later' }] as read (read.which)}
+            <line
+              class="pf-median"
+              data-pair-median={read.which}
+              x1={SPINE_X}
+              y1={y(read.side.medianHz)}
+              x2={sideMark(read.side.density, read.side.medianHz, read.direction)}
+              y2={y(read.side.medianHz)}
+              vector-effect="non-scaling-stroke"
+            />
+            <polyline
+              class="pf-outline"
+              data-pair-outline={read.which}
+              points={sidePath(read.side.density, read.direction)}
+              vector-effect="non-scaling-stroke"
+            />
+          {/each}
+        </svg>
+      {:else}
       <svg
-        class="pf-svg"
+        class="pf-svg pf-time"
         viewBox="0 0 {WIDTH} {HEIGHT}"
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        <!-- Both typical ranges, each a wash in the hue over whatever is
-             behind it. Over transparency rather than mixed into the ground,
-             so that where two of them coincide the shared strip comes out
-             at twice one wash by arithmetic rather than by a third colour
-             somebody picked. -->
-        {#each bands as band (band.key)}
-          {#if band.key !== 'between'}
-            <rect class="pf-band" x="0" y={band.top} width={WIDTH} height={band.height} />
-          {/if}
-        {/each}
-
-        {#if middle}
-          <!-- The region between the two ranges, which on sourced figures
-               is a gap rather than an intersection: fewer speakers sit here
-               than in either range, so it is drawn at half a range's wash
-               and never more. Its two bounds are the ranges' own facing
-               edges, and they are what stop it reading as the line where
-               two blocks touch. -->
-          <g data-pitch-middle>
-            <rect class="pf-middle" x="0" y={middle.top} width={WIDTH} height={middle.height} />
-            {#each [middle.top, middle.top + middle.height] as at (at)}
-              <line class="pf-middle-edge" x1="0" y1={at} x2={WIDTH} y2={at} vector-effect="non-scaling-stroke" />
-            {/each}
-          </g>
-        {/if}
+        {@render ground(WIDTH)}
 
         {#if span}
           <!-- The take's own span: p10 to p90 and not minimum to maximum,
@@ -333,6 +509,60 @@
         {/if}
       </svg>
 
+      {#if density}
+        <!-- Where the voice spent its time, on the same Hz as the plot
+             beside it: the distribution the median and the p10-p90 span are
+             three percentiles of, which until this ticket was never drawn.
+
+             It opens from the spine outward rather than fading in, because
+             the spine is the axis and the shape is what was measured off
+             it; |global because the figure mounts inside its own {#if} and
+             a local transition would never play. -->
+        <svg
+          class="pf-svg pf-density"
+          data-pitch-density
+          viewBox="0 0 {DENSITY_UNITS} {HEIGHT}"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          in:wipe|global
+        >
+          {@render ground(DENSITY_UNITS)}
+
+          <!-- The spine: a guide at rule 9's weight, and the line every
+               mark is measured out from. -->
+          <line class="pf-spine" x1="0" y1="0" x2="0" y2={HEIGHT} vector-effect="non-scaling-stroke" />
+
+          {#if span}
+            {#each [span.highHz, span.lowHz] as edge (edge)}
+              <line
+                class="pf-span"
+                data-density-span
+                x1="0"
+                y1={y(edge)}
+                x2={markWidth(edge)}
+                y2={y(edge)}
+                vector-effect="non-scaling-stroke"
+              />
+            {/each}
+          {/if}
+
+          {#if medianHz !== null}
+            <line
+              class="pf-median"
+              data-density-median
+              x1="0"
+              y1={y(medianHz)}
+              x2={markWidth(medianHz)}
+              y2={y(medianHz)}
+              vector-effect="non-scaling-stroke"
+            />
+          {/if}
+
+          <polyline class="pf-outline" points={densityOutline} vector-effect="non-scaling-stroke" />
+        </svg>
+      {/if}
+      {/if}
+
       <!-- The frame: the level pressing on the ceiling, and the room
            crowding from below. Scaled rather than resized, so the duration
            clamp can flatten both to a cut. -->
@@ -382,13 +612,30 @@
 
   .pf-field {
     position: relative;
+    display: flex;
     flex: 1 1 auto;
     min-width: 0;
     height: 148px;
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-input);
+    border-radius: var(--r-block);
     overflow: hidden;
+  }
+
+  .pf-time {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* The shape's own box, and the one part of this figure whose width is
+     fixed. The time plot is stretched to whatever the column gives it
+     because neither of its axes is a length; the density's horizontal axis
+     is a proportion of one read, and stretching a proportion is how a
+     narrow phone would end up claiming a wider voice than a tablet. 72px is
+     about a fifth of the 390px floor's field, which leaves the trace the
+     width it needs to still be a passage. */
+  .pf-density {
+    flex: 0 0 72px;
   }
 
   .pf-svg {
@@ -453,6 +700,26 @@
   .pf-median {
     stroke: var(--role-ink);
     stroke-width: 2;
+  }
+
+  /* The shape itself: a measurement, so the stripe undiluted and at a
+     series' own weight (rule 9), with square ends and mitred joins like
+     every other series in the app. No fill - a filled region here would be
+     the one thing this figure may not draw, a region in the hue that reads
+     as somewhere to get to. */
+  .pf-outline {
+    fill: none;
+    stroke: var(--role-draw);
+    stroke-width: 2;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+  }
+
+  /* The axis the shape is measured from. A guide, so 1px in --text-2 and
+     never the series colour. */
+  .pf-spine {
+    stroke: var(--text-2);
+    stroke-width: 1;
   }
 
   .pf-comfort line {

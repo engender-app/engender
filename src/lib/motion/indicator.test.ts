@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boxesMatch, squash, stretch, type Box } from './indicator';
+import { boxesMatch, insets, leadingEdge, travel, type Box } from './indicator';
 
 const box = (x: number, y: number, w: number, h: number): Box => ({ x, y, w, h });
 
@@ -21,51 +21,77 @@ describe('boxesMatch', () => {
   });
 });
 
-describe('stretch', () => {
-  it('does not deform a pill that has not moved', () => {
-    expect(stretch(box(0, 0, 60, 48), box(0, 0, 60, 48), 'x')).toBe(1);
+describe('insets', () => {
+  /* The four numbers CSS positions the pill with. All four, rather than a
+     position and a size, because the two edges of the travelling axis are
+     what move on their own schedules - see leadingEdge below. */
+  it('measures every edge against the host it sits in', () => {
+    expect(insets(box(60, 8, 62, 48), { w: 320, h: 64 })).toEqual({
+      left: 60,
+      right: 198,
+      top: 8,
+      bottom: 8
+    });
   });
 
-  /* The point of making this a function of distance rather than a constant:
-     a hop to the next tab and a jump across the whole bar should not deform
-     by the same amount, or the deformation is a decoration rather than a
-     consequence of the travel. */
-  it('deforms further the further it travels', () => {
-    const near = stretch(box(0, 0, 60, 48), box(60, 0, 60, 48), 'x');
-    const far = stretch(box(0, 0, 60, 48), box(240, 0, 60, 48), 'x');
-    expect(near).toBeGreaterThan(1);
-    expect(far).toBeGreaterThan(near);
+  it('gives back the box it was handed', () => {
+    const at = insets(box(60, 8, 62, 48), { w: 320, h: 64 });
+    expect(at.left + 62 + at.right).toBe(320);
+    expect(at.top + 48 + at.bottom).toBe(64);
   });
 
-  it('caps how far it will deform', () => {
-    expect(stretch(box(0, 0, 60, 48), box(4000, 0, 60, 48), 'x')).toBeLessThanOrEqual(1.18);
-  });
-
-  /* The rail runs down the screen, so its travel and its stretch are both
-     on Y, measured against the pill's height rather than its width. */
-  it('measures a vertical move against the pill height', () => {
-    expect(stretch(box(0, 0, 200, 48), box(0, 48, 200, 48), 'y')).toBeCloseTo(
-      stretch(box(0, 0, 48, 200), box(48, 0, 48, 200), 'x'),
-      5
-    );
-  });
-
-  it('ignores movement across the axis it is not travelling on', () => {
-    expect(stretch(box(0, 0, 60, 48), box(0, 300, 60, 48), 'x')).toBe(1);
+  /* The rail scrolls, and a row below its fold sits past the host's own
+     height. `bottom` goes negative there rather than clamping, which is what
+     keeps the pair of insets describing the row's real position: both are
+     measured against the same padding box, whatever the scroll offset is. */
+  it('goes negative below a scrolled host rather than clamping', () => {
+    expect(insets(box(0, 700, 200, 48), { w: 200, h: 600 }).bottom).toBe(-148);
   });
 });
 
-describe('squash', () => {
-  it('leaves an undeformed pill alone', () => {
-    expect(squash(1)).toBe(1);
+describe('travel', () => {
+  it('is nothing at all when the pill has not moved', () => {
+    expect(travel(box(0, 0, 60, 48), box(0, 0, 60, 48), 'x')).toBe(0);
   });
 
-  /* Thinner as it lengthens, but not by the reciprocal: a pill that keeps
-     its area exactly reads as rubber, and this one is meant to read as
-     something with weight being carried. */
-  it('thins by less than the stretch lengthens', () => {
-    const thin = squash(1.1);
-    expect(thin).toBeLessThan(1);
-    expect(thin).toBeGreaterThan(1 / 1.1);
+  it('is signed by the direction of the move along its own axis', () => {
+    expect(travel(box(0, 0, 60, 48), box(60, 0, 60, 48), 'x')).toBe(1);
+    expect(travel(box(60, 0, 60, 48), box(0, 0, 60, 48), 'x')).toBe(-1);
+    expect(travel(box(0, 0, 200, 48), box(0, 48, 200, 48), 'y')).toBe(1);
+    expect(travel(box(0, 48, 200, 48), box(0, 0, 200, 48), 'y')).toBe(-1);
+  });
+
+  /* The rail runs down the screen and the bar across it, so a move on the
+     axis the pill is not travelling on is not a move: the bar's four tabs
+     are one row and only a relayout changes their y. */
+  it('ignores movement across the axis it is not travelling on', () => {
+    expect(travel(box(0, 0, 60, 48), box(0, 300, 60, 48), 'x')).toBe(0);
+  });
+
+  /* Sub-pixel noise, again: the same floor boxesMatch uses, so a reflow that
+     counts as the same place cannot also count as a direction of travel. */
+  it('reads a third of a pixel as standing still', () => {
+    expect(travel(box(0, 0, 60, 48), box(0.3, 0, 60, 48), 'x')).toBe(0);
+  });
+});
+
+describe('leadingEdge', () => {
+  /* Which of the axis's two insets leaves first. 'near' is left or top,
+     'far' is right or bottom, so one pair of names covers both shapes of the
+     navigation and the component maps them onto the properties. */
+  it('leads with the far edge when the pill travels toward it', () => {
+    expect(leadingEdge(1)).toBe('far');
+  });
+
+  it('leads with the near edge coming back', () => {
+    expect(leadingEdge(-1)).toBe('near');
+  });
+
+  /* A placement that is not a slide has no leading edge to stage, and the
+     component puts both edges on the same schedule when it gets null - a
+     plain move rather than a stretch. The first placement on a tab and a
+     re-measure after a rotation are both this case. */
+  it('has no leading edge when nothing travelled', () => {
+    expect(leadingEdge(0)).toBe(null);
   });
 });

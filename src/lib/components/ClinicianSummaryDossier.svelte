@@ -37,6 +37,28 @@
 
   let { dossier }: Props = $props();
 
+  /* Ticket 08: a section's table shows its first rows on screen and every
+     row in print - the preview is the page, not a scrollable assembly of
+     the whole range. Twelve was the ticket's own proposal and nothing in
+     the dossier's data pushed it either way, so it stands as written. One
+     floor for every table, applied independently, so the regimen table
+     and the dose log each truncate on their own row count rather than
+     sharing a budget - a range with three regimen episodes and ninety
+     doses prints a full regimen table and a truncated dose log, not half
+     of each. A row past the floor carries `dossier-row-overflow`
+     (clinician-print.css); the note under a truncated table carries
+     `data-dossier-truncate`, for a test to find either. */
+  const PREVIEW_ROW_FLOOR = 12;
+
+  /** The footnote marker for a dose a schedule wrote (phase 11 ticket 11).
+      A dagger rather than an asterisk, which the printed page already spends
+      on nothing else, and rather than a word in the cell: the table has six
+      columns on paper and a seventh reading "from a schedule" on one row in
+      twenty would push the rest of them narrower for the whole print. */
+  const AUTO_LOGGED_MARK = '\u2020';
+  const overflowCount = (rows: readonly unknown[]) =>
+    rows.length > PREVIEW_ROW_FLOOR ? rows.length - PREVIEW_ROW_FLOOR : 0;
+
   const today = todayEpochDay();
   const dayShort = (epochDay: number) =>
     fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -68,6 +90,12 @@
       !dossier.finishedAreas
   );
 </script>
+
+{#snippet truncateNote(hidden: number)}
+  <p class="dossier-truncate-note no-print" data-dossier-truncate>
+    {m.clinician_summary_section_truncated({ count: hidden })}
+  </p>
+{/snippet}
 
 <div class="clinician-dossier" data-clinician-dossier>
   <!-- 1. Patient Demographics & Profile -->
@@ -130,10 +158,10 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.regimen.current as ep (ep.id)}
-                <tr>
+              {#each dossier.regimen.current as ep, i (ep.id)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>
-                    <a class="dossier-row-link" href={`/settings/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
+                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
                     {#if ep.ester}<span class="muted small">({ep.ester})</span>{/if}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
@@ -145,6 +173,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.regimen.current) > 0}
+          {@render truncateNote(overflowCount(dossier.regimen.current))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_regimen_episodes_empty()}</p>
       {/if}
@@ -165,10 +196,10 @@
               </tr>
             </thead>
             <tbody>
-              {#each pastEpisodes as ep (ep.id)}
-                <tr>
+              {#each pastEpisodes as ep, i (ep.id)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>
-                    <a class="dossier-row-link" href={`/settings/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
+                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
                       ? ` (${ep.ester})`
                       : ''}
                   </td>
@@ -181,6 +212,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(pastEpisodes) > 0}
+          {@render truncateNote(overflowCount(pastEpisodes))}
+        {/if}
       {/if}
 
       <!-- Dosage Log -->
@@ -199,14 +233,14 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.regimen.doses as dose (dose.id)}
+              {#each dossier.regimen.doses as dose, i (dose.id)}
                 {@const doseDay = epochDayFromTimestamp(dose.timestamp)}
                 {@const site = siteOf(dose)}
-                <tr>
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td class="num">{dayShort(doseDay)}</td>
                   <td class="num">{fmtTime(dose.timestamp)}</td>
                   <td class="num">
-                    <a class="dossier-row-link" href={`/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
+                    <a class="dossier-row-link" href={`/care/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
                     {#if dose.drug}<span class="muted small">· {dose.drug}</span>{/if}
                   </td>
                   <td>{routeLabel(dose.route)}</td>
@@ -216,12 +250,35 @@
                       <span class="muted small">({vehicleLabel(dose.vehicle)})</span>
                     {/if}
                   </td>
-                  <td>{dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}</td>
+                  <td>
+                    {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
+                    <!-- The footnote marker for a dose a schedule wrote
+                         rather than the person (phase 11 ticket 11,
+                         ADR-0086). In the status cell, because what it
+                         qualifies is the status: "taken" on this row is the
+                         schedule's word for it. aria-hidden, with the
+                         legend under the table carrying the meaning in
+                         words - a dagger read aloud is noise. -->
+                    {#if dose.source === 'schedule'}<span
+                        class="dossier-footnote-mark"
+                        data-dose-auto-logged
+                        aria-hidden="true">{AUTO_LOGGED_MARK}</span
+                      >{/if}
+                  </td>
                 </tr>
               {/each}
             </tbody>
           </table>
         </div>
+        {#if dossier.regimen.doses.some((dose) => dose.source === 'schedule')}
+          <p class="dossier-footnote" data-dossier-auto-logged-legend>
+            {AUTO_LOGGED_MARK}
+            {m.clinician_summary_auto_logged_legend()}
+          </p>
+        {/if}
+        {#if overflowCount(dossier.regimen.doses) > 0}
+          {@render truncateNote(overflowCount(dossier.regimen.doses))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_doses_empty()}</p>
       {/if}
@@ -247,8 +304,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.exposure.doseTotals as dt (`${dt.drug}-${dt.route}-${dt.doseUnit}`)}
-                <tr>
+              {#each dossier.exposure.doseTotals as dt, i (`${dt.drug}-${dt.route}-${dt.doseUnit}`)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td><strong>{dt.drug}</strong></td>
                   <td>{routeLabel(dt.route)}</td>
                   <td class="num">{dt.total} {dt.doseUnit}</td>
@@ -257,6 +314,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.exposure.doseTotals) > 0}
+          {@render truncateNote(overflowCount(dossier.exposure.doseTotals))}
+        {/if}
       {/if}
 
       {#if dossier.exposure.routeDays.length}
@@ -270,8 +330,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.exposure.routeDays as rd (rd.route)}
-                <tr>
+              {#each dossier.exposure.routeDays as rd, i (rd.route)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>{rd.route}</td>
                   <td class="num">{m.exposure_days_count({ days: String(rd.days) })}</td>
                 </tr>
@@ -279,6 +339,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.exposure.routeDays) > 0}
+          {@render truncateNote(overflowCount(dossier.exposure.routeDays))}
+        {/if}
       {/if}
 
       {#if dossier.exposure.regimenDays.length}
@@ -294,8 +357,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.exposure.regimenDays as regd (regd.episodeId)}
-                <tr>
+              {#each dossier.exposure.regimenDays as regd, i (regd.episodeId)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td><strong>{regd.drug}</strong></td>
                   <td class="num">{regd.dose} {regd.doseUnit}</td>
                   <td>{regd.route}</td>
@@ -305,6 +368,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.exposure.regimenDays) > 0}
+          {@render truncateNote(overflowCount(dossier.exposure.regimenDays))}
+        {/if}
       {/if}
     </section>
   {/if}
@@ -330,8 +396,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.labs as lab (lab.id)}
-                <tr>
+              {#each dossier.labs as lab, i (lab.id)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td class="num">
                     {dayShort(lab.epochDay)}
                     {#if lab.drawTime}<span class="muted small">· {lab.drawTime}</span>{/if}
@@ -354,6 +420,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.labs) > 0}
+          {@render truncateNote(overflowCount(dossier.labs))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_labs_empty()}</p>
       {/if}
@@ -378,8 +447,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.sideEffects as effect (effect.id)}
-                <tr>
+              {#each dossier.sideEffects as effect, i (effect.id)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td class="num">{dayShort(effect.epochDay)}</td>
                   <td><strong>{effect.name}</strong></td>
                   <td>
@@ -394,6 +463,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.sideEffects) > 0}
+          {@render truncateNote(overflowCount(dossier.sideEffects))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_side_effects_empty()}</p>
       {/if}
@@ -417,8 +489,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.cycleEvents as event (event.id)}
-                <tr>
+              {#each dossier.cycleEvents as event, i (event.id)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td class="num">{dayShort(event.epochDay)}</td>
                   <td><strong>{cycleEventKindName(event.kind)}</strong></td>
                 </tr>
@@ -426,6 +498,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.cycleEvents) > 0}
+          {@render truncateNote(overflowCount(dossier.cycleEvents))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_cycle_events_empty()}</p>
       {/if}
@@ -449,8 +524,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.appointmentPrep as item (item.id)}
-                <tr>
+              {#each dossier.appointmentPrep as item, i (item.id)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td style="width: 130px;">
                     {#if item.checked}
                       <span class="dossier-timing-badge" style="text-decoration: line-through;">{m.clinician_summary_prep_done()}</span>
@@ -469,6 +544,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.appointmentPrep) > 0}
+          {@render truncateNote(overflowCount(dossier.appointmentPrep))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_appointment_prep_empty()}</p>
       {/if}
@@ -493,9 +571,9 @@
             </tr>
           </thead>
           <tbody>
-            {#each dossier.procedures as proc (proc.id)}
+            {#each dossier.procedures as proc, i (proc.id)}
               {@const day = recoveryDay(proc.surgeryEpochDay, today)}
-              <tr>
+              <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                 <td><strong>{proc.name}</strong></td>
                 <td>
                   {#if proc.surgeryEpochDay !== null}
@@ -535,6 +613,9 @@
           </tbody>
         </table>
       </div>
+      {#if overflowCount(dossier.procedures) > 0}
+        {@render truncateNote(overflowCount(dossier.procedures))}
+      {/if}
     </section>
   {/if}
 
@@ -557,8 +638,8 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.finishedAreas as area (area.key)}
-                <tr>
+              {#each dossier.finishedAreas as area, i (area.key)}
+                <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td><strong>{areaGroupName(area.key)}</strong></td>
                   <td class="num">{dayShort(area.epochDay)}</td>
                 </tr>
@@ -566,6 +647,9 @@
             </tbody>
           </table>
         </div>
+        {#if overflowCount(dossier.finishedAreas) > 0}
+          {@render truncateNote(overflowCount(dossier.finishedAreas))}
+        {/if}
       {:else}
         <p class="dossier-empty-note">{m.clinician_summary_finished_areas_empty()}</p>
       {/if}

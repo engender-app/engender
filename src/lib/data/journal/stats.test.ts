@@ -8,6 +8,13 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
+import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats.ts';
+
+/** The slider position a euphoria intensity of `intensity` maps to
+    (bodyMap.ts's now-deleted `sliderToFeeling`, run by hand): tests below
+    key their floor off the exported intensity constant rather than a
+    pasted slider literal. */
+const euphoriaValue = (intensity: number) => 50 + intensity / 2;
 
 /* Photo bytes only have to be distinguishable here - normalize() is the
    browser's job and the journal stores what it is handed (ADR-0008). */
@@ -214,9 +221,9 @@ test('a metric nothing was logged against has no spread rather than an error', a
 
 test('a body-region trend reports per-day averages the same way dayAverages does', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: { dysphoria: 20, euphoria: null } } });
-  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, bodyRegions: { chest: { dysphoria: 40, euphoria: null } } });
-  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: { dysphoria: 60, euphoria: null }, hairline: { dysphoria: 10, euphoria: null } } });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: 40 } }); // dysphoria 20
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, bodyRegions: { chest: 30 } }); // dysphoria 40
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: 20, hairline: 45 } }); // dysphoria 60, 10
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3 }); // no body regions at all
 
   assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102), [
@@ -233,17 +240,28 @@ test('the two axes of a region trend independently, and an unlogged axis is abse
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 80, euphoria: null } }
+    bodyRegions: { chest: 10 } // dysphoria 80
   });
   await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 60 } }
+    bodyRegions: { chest: 80 } // euphoria 60
+  });
+  // A region is one value now (ticket 39, ADR-0081), so a day carrying
+  // both a dysphoria and a euphoria reading needs two entries rather than
+  // one row's two axes - the independence this test is about lives at the
+  // day level, not the row.
+  await journal.entries.upsertEntry({
+    epochDay: 102,
+    timestamp: 1,
+    mood: 3,
+    bodyRegions: { chest: 40 } // dysphoria 20
   });
   await journal.entries.upsertEntry({
     epochDay: 102,
-    mood: 3,
-    bodyRegions: { chest: { dysphoria: 20, euphoria: 40 } }
+    timestamp: 2,
+    mood: 4,
+    bodyRegions: { chest: 70 } // euphoria 40
   });
 
   // Day 101 said nothing about dysphoria, so it is missing from that series
@@ -260,7 +278,7 @@ test('the two axes of a region trend independently, and an unlogged axis is abse
 
 test('a region nothing was ever logged against comes back empty rather than throwing', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: { dysphoria: 50, euphoria: null } } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { chest: 25 } }); // dysphoria 50
 
   assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 'dysphoria', 100, 100), []);
 });
@@ -274,18 +292,18 @@ test('a body-region trend filters by presentation, and partitions the unfiltered
     epochDay: 100,
     mood: 3,
     presentationId: girl.id,
-    bodyRegions: { chest: { dysphoria: 20, euphoria: null } }
+    bodyRegions: { chest: 40 } // dysphoria 20
   });
   await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 3,
     presentationId: boy.id,
-    bodyRegions: { chest: { dysphoria: 80, euphoria: null } }
+    bodyRegions: { chest: 10 } // dysphoria 80
   });
   await journal.entries.upsertEntry({
     epochDay: 102,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 50, euphoria: null } }
+    bodyRegions: { chest: 25 } // dysphoria 50
   });
 
   assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102, girl.id), [
@@ -683,7 +701,7 @@ test('a trashed entry\'s body-region euphoria does not make a day good', async (
   const trashed = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 1,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 90 } }
+    bodyRegions: { chest: euphoriaValue(90) }
   });
   await journal.entries.deleteEntry(trashed);
 
@@ -697,23 +715,24 @@ test('a body region logged with high euphoria makes a day good, with no euphoria
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 1,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 70 } }
+    bodyRegions: { chest: euphoriaValue(70) }
   });
 
   assert.equal(await journal.stats.isGoodDay(100), true);
 });
 
-test('the region-euphoria floor is inclusive: exactly 50 clears it, 49 does not', async () => {
+test('the region-euphoria floor is inclusive: the floor clears it, one below does not', async () => {
   const { journal } = await journalWithBuiltIns();
+  const floorValue = euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR);
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 1,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 50 } }
+    bodyRegions: { chest: floorValue }
   });
   await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 1,
-    bodyRegions: { chest: { dysphoria: null, euphoria: 49 } }
+    bodyRegions: { chest: floorValue - 1 }
   });
 
   assert.equal(await journal.stats.isGoodDay(100), true);
@@ -725,7 +744,7 @@ test('a region logged as high dysphoria does not make a day good', async () => {
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 1,
-    bodyRegions: { chest: { dysphoria: 90, euphoria: null } }
+    bodyRegions: { chest: 5 } // dysphoria 90
   });
 
   assert.equal(await journal.stats.isGoodDay(100), false);
@@ -740,8 +759,8 @@ test('a low euphoria on one region and a low euphoria on another do not average 
     epochDay: 100,
     mood: 1,
     bodyRegions: {
-      chest: { dysphoria: null, euphoria: 30 },
-      hairline: { dysphoria: null, euphoria: 30 }
+      chest: euphoriaValue(30),
+      hairline: euphoriaValue(30)
     }
   });
 
@@ -925,4 +944,88 @@ test('tagShare is bounded by its range at both ends', async () => {
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-tired'] });
 
   assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 2 }]);
+});
+
+/* the body map's own read (phase 10 redesign ticket 40) */
+
+test('the body map reads every region at once, each on the side it mostly sat on', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // chest: two dysphoria readings and nothing the other way.
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, bodyRegions: { chest: 40 } }); // dysphoria 20
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 2, mood: 3, bodyRegions: { chest: 20 } }); // dysphoria 60
+  // hairline: euphoria only.
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 3, mood: 4, bodyRegions: { hairline: 80 } }); // euphoria 60
+  // voice_throat: the binder split - one each way, the louder one painted.
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 4, mood: 2, bodyRegions: { voice_throat: 5 } }); // dysphoria 90
+  await journal.entries.upsertEntry({ epochDay: 102, timestamp: 5, mood: 4, bodyRegions: { voice_throat: 65 } }); // euphoria 30
+
+  const byRegion = new Map(
+    (await journal.stats.bodyRegionMap(100, 102)).map((reading) => [reading.region, reading])
+  );
+
+  assert.deepEqual(byRegion.get('chest'), {
+    region: 'chest',
+    side: 'dysphoria',
+    value: 40,
+    mixed: false,
+    count: 2
+  });
+  assert.deepEqual(byRegion.get('hairline'), {
+    region: 'hairline',
+    side: 'euphoria',
+    value: 60,
+    mixed: false,
+    count: 1
+  });
+  assert.deepEqual(byRegion.get('voice_throat'), {
+    region: 'voice_throat',
+    side: 'dysphoria',
+    value: 90,
+    mixed: true,
+    count: 2
+  });
+  // A region nothing was logged against in the range is simply absent; the
+  // figure draws every region it has and reads an absence as undrawn.
+  assert.equal(byRegion.has('genitals'), false);
+});
+
+test('the body map reaches a region somebody added themselves', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const mine = await journal.bodyRegions.addCustomRegion('Scars');
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, bodyRegions: { [mine.id]: 15 } }); // dysphoria 70
+
+  const readings = await journal.stats.bodyRegionMap(100, 100);
+  assert.deepEqual(readings.find((r) => r.region === mine.id), {
+    region: mine.id,
+    side: 'dysphoria',
+    value: 70,
+    mixed: false,
+    count: 1
+  });
+});
+
+test('the body map excludes trashed entries, honours the range, and filters by presentation', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    presentationId: girl.id,
+    bodyRegions: { chest: 30 } // dysphoria 40
+  });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, bodyRegions: { chest: 10 } }); // dysphoria 80
+  await journal.entries.upsertEntry({ epochDay: 200, mood: 3, bodyRegions: { chest: 0 } }); // out of range
+  const trashed = await journal.entries.upsertEntry({ epochDay: 100, mood: 1, bodyRegions: { chest: 0 } });
+  await journal.entries.deleteEntry(trashed);
+
+  assert.deepEqual(await journal.stats.bodyRegionMap(100, 102), [
+    { region: 'chest', side: 'dysphoria', value: 60, mixed: false, count: 2 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, girl.id), [
+    { region: 'chest', side: 'dysphoria', value: 40, mixed: false, count: 1 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, null), [
+    { region: 'chest', side: 'dysphoria', value: 80, mixed: false, count: 1 }
+  ]);
 });

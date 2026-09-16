@@ -60,6 +60,7 @@
    The reads that feed it live in `comingBackReads.ts`, so this file can be
    read on the Node tier while that one names the journal. */
 
+import { mostRecentPassedSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
 import type { DoseScheduleComparison } from './journal/doses';
 import { eraCoversDay } from './eras';
@@ -434,9 +435,7 @@ export function whatIsWaiting(input: ComingBackInput): ComingBack | null {
      (doseSchedule.ts): a break somebody declared is not a slot that went
      unlogged. */
   if (input.doses.reason === null) {
-    const missed = input.doses.comparison.rows
-      .filter((row) => row.dose === null && row.slot.epochDay < input.todayEpochDay)
-      .sort((a, b) => b.slot.epochDay - a.slot.epochDay)[0];
+    const missed = mostRecentPassedSlot(input.doses.comparison, input.todayEpochDay);
     if (missed) {
       const episode = input.doses.activeEpisode;
       items.push({

@@ -50,6 +50,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
+  import { crossfade } from '$lib/motion/reveal';
 
   const today = todayEpochDay();
   const todayInput = dateInputValueFromEpochDay(today);
@@ -69,6 +70,38 @@
     range ? j.journalBook.getBook(range.start, range.end, inclusion) : Promise.resolve(null)
   );
   let book = $derived(bookQuery.value);
+
+  const CHUNK_SIZE = 25;
+  let renderedCount = $state(CHUNK_SIZE);
+
+  $effect(() => {
+    if (book?.entries) {
+      if (renderedCount < book.entries.length) {
+        const handle = requestAnimationFrame(() => {
+          renderedCount = Math.min(book.entries.length, renderedCount + CHUNK_SIZE);
+        });
+        return () => cancelAnimationFrame(handle);
+      }
+    } else {
+      renderedCount = CHUNK_SIZE;
+    }
+  });
+
+  let visibleEntries = $derived(
+    book?.entries ? book.entries.slice(0, renderedCount) : []
+  );
+
+  $effect(() => {
+    function onBeforePrint() {
+      if (book?.entries) {
+        renderedCount = book.entries.length;
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeprint', onBeforePrint);
+      return () => window.removeEventListener('beforeprint', onBeforePrint);
+    }
+  });
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -111,6 +144,9 @@
   }
 
   function printBook() {
+    if (book?.entries) {
+      renderedCount = book.entries.length;
+    }
     void printCurrentPage(m.journal_book_title());
   }
 </script>
@@ -144,25 +180,28 @@
 
   <div class="no-print">
     <SectionTitle text={m.journal_book_include_title()} />
-    <div class="card" data-book-inclusion style="margin-bottom:var(--space-4)">
+    <div data-book-inclusion style="margin-bottom:var(--space-4)">
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.journal_book_include_note()}</p>
-      {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
-        <div class="spread inclusion-row" data-inclusion={key}>
-          <span>{journalBookPartName(key)}</span>
-          <Switch
-            checked={inclusion[key]}
-            label={journalBookPartName(key)}
-            onChange={(v) => include(key, v)}
-          />
-        </div>
-      {/each}
+      <ListCard>
+        {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
+          <ListRow static key={key} data-inclusion={key} title={journalBookPartName(key)}>
+            {#snippet trailing()}
+              <Switch
+                checked={inclusion[key]}
+                label={journalBookPartName(key)}
+                onChange={(v) => include(key, v)}
+              />
+            {/snippet}
+          </ListRow>
+        {/each}
+      </ListCard>
     </div>
   </div>
 
   {#if range === null}
     <!-- Nothing to assemble until both boundaries are picked; the hint above already says so. -->
   {:else if bookQuery.loading || !book}
-    <Skeleton variant="block" count={4} />
+    <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
     {#if opening}
       <div class="opening-page" data-book-opening>
@@ -182,7 +221,7 @@
     {#if book.entries.length}
       <SectionTitle text={journalBookPartName('entries')} />
       <div class="section-block">
-        {#each book.entries as entry (entry.id)}
+        {#each visibleEntries as entry (entry.id)}
           <article class="book-entry" data-book-entry>
             <h3 class="book-day">{dayLong(entry.epochDay)}, {fmtTime(entry.timestamp)}</h3>
             {#if entry.mood !== null}<p class="muted small">{moodName(entry.mood)}</p>{/if}
@@ -228,10 +267,6 @@
 </div>
 
 <style>
-  .inclusion-row {
-    padding: var(--space-2) 0;
-  }
-
   .section-block {
     margin-bottom: var(--space-4);
   }

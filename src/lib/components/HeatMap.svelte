@@ -37,7 +37,7 @@
 
      **On mood, the cell is the face a person chose.** Mood already owns
      five drawn faces and a colour ramp of its own (ADR-0025, MoodFace),
-     and kit/MoodYear.svelte already draws a year of days as those faces -
+     and kit/YearRows.svelte drew a year of days as those faces -
      with the size they stay legible at settled by tests/mood-faces.test.ts
      and by Alicja twice on 2026-08-25. A calendar cell is bigger than any
      of those, so this is that same drawing on a bigger grid, and the fill
@@ -50,7 +50,7 @@
      So a dimension keeps the flag-hued square and its legend, and mood is
      round, faced, and has no legend at all - the faces are the picker's
      own five, and naming them under the grid is the app explaining itself
-     to its reader (MoodYear's own note, Alicja, 2026-08-25).
+     to its reader (the year grid's own note, Alicja, 2026-08-25).
 
      The form is Daylio's, which Alicja asked for by name on 2026-09-02
      against a screenshot of its month. Its calendar is the reason the date
@@ -86,7 +86,8 @@
     month,
     role,
     eras = [],
-    highlight
+    highlight,
+    compact = false
   }: {
     year: number;
     month: number /* 0-based */;
@@ -110,6 +111,16 @@
         shaded, ringed as today, bordered for its era and marked for its
         mode all at once without any of the four reusing another's channel. */
     highlight?: { presentationId: string; role: Role };
+    /** The month as one row of bars instead of a grid of days (phase 10
+        redesign ticket 10). The Journal door opens on it: somebody arriving
+        is looking for something they wrote, so the month is the shape of the
+        month until they ask for the days. Same read, same ramp, same order,
+        and the same elements - a bar is a cell laid out in a row with
+        everything it has no room for at opacity 0, which is what lets each
+        day be animated across the change rather than swapped. Whether it is
+        compact is the screen's state and not this component's; the cells
+        carry `data-cal-cell` for the screen to measure (motion/regroup.ts). */
+    compact?: boolean;
   } = $props();
 
   const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -127,7 +138,7 @@
      it is the role's computed ramp, falling back to the stylesheet's
      hand-tuned tokens where there is no flag to shade with. Step 0 is the
      empty end of both systems: a day nobody logged is not a day at the
-     bottom of a scale (kit/MoodYear.svelte's own rule). */
+     bottom of a scale (kit/YearRows.svelte's own rule). */
   const fillAt = (step: number) =>
     step === 0 || !isMood
       ? (role?.heat[step].fill ?? `var(--heat-${step})`)
@@ -297,55 +308,128 @@
   });
 </script>
 
-<div class="cal-grid" role="grid" data-cal-grid aria-busy={loading}>
-  {#each DOWS as d, i (i)}<span class="cal-dow" aria-hidden="true">{d}</span>{/each}
-  {#each Array.from({ length: cells.startDow }) as _, i (i)}<span class="cal-day is-blank"></span>{/each}
-  {#each cells.days as c (c.epochDay)}
-    {#if c.count}
-      <a
-        class="cal-day has-entries press"
-        class:is-today={c.isToday}
-        data-hm-cell-filled
-        href="/day/{c.epochDay}"
-        aria-label={c.label}
-      >
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </a>
-    {:else if c.hasMark}
-      <!-- A future day with something coming up (ADR-0067): it was not a
-           link before this ticket, because a future day carried nothing to
-           open. It is one now, the same as a logged day, to the same route -
-           `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
-           this cell only says that there is something. -->
-      <a class="cal-day has-mark press" data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </a>
-    {:else if c.isPastOrToday}
-      <!-- A past or today cell with nothing on it opens a new entry for
-           that day (ticket 99 item 13) - the same route the "+" affordances
-           elsewhere in the app seed a day for, rather than leaving an empty
-           cell with nothing to tap. -->
-      <a class="cal-day press" data-hm-cell-empty class:is-today={c.isToday} href="/entry/new/{c.epochDay}" aria-label={c.label}>
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </a>
-    {:else}
-      <span class="cal-day" class:is-today={c.isToday} aria-label={c.label}>
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </span>
-    {/if}
-  {/each}
+<!-- The days are one set of elements in two layouts, and never two sets
+     (phase 10 ticket 10). Compact, the grid is one row: a bar per day in the
+     order they run, on the same five steps, and everything a bar has no room
+     for - the date, the split, the face, the deck, the mark - fades out
+     where it stands rather than being swapped away. That is the whole reason
+     this is a class on the grid and not a second block of markup: an element
+     that survives the change can be animated across it, and one that is
+     replaced can only cut. The travel itself is the screen's
+     (motion/regroup.ts).
+
+     Compact, none of it is reachable either: 7px of width is not a tap
+     target and thirty of them are not a reading. The strip is hidden from a
+     screen reader, its cells are out of the tab order, and the control that
+     opens the grid carries the name; every day's own words are in the grid
+     one tap away.
+
+     The day-of-week header is the one thing that cannot be laid out both
+     ways - seven letters cannot align to thirty-one columns - so it is a
+     block of its own - and compact it goes out of flow and fades where it
+     stands rather than being switched off, so the cells' own travel is
+     measured against a layout that has already given the row back. -->
+<div class="cal-dows" class:is-compact={compact} aria-hidden="true">
+  {#each DOWS as d, i (i)}<span class="cal-dow">{d}</span>{/each}
+</div>
+<div
+  class="cal-grid"
+  class:is-compact={compact}
+  role="grid"
+  data-cal-grid
+  data-cal-month-state={compact ? 'strip' : 'grid'}
+  aria-busy={loading}
+  aria-hidden={compact ? 'true' : undefined}
+  style:--days={cells.days.length}
+>
+    {#each Array.from({ length: cells.startDow }) as _, i (i)}<span class="cal-day is-blank"></span>{/each}
+    {#each cells.days as c (c.epochDay)}
+      {#if c.count}
+        <a class="cal-day has-entries press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
+          data-hm-cell-filled href="/day/{c.epochDay}" aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
+        </a>
+      {:else if c.hasMark}
+        <!-- A future day with something coming up (ADR-0067): it was not a
+             link before this ticket, because a future day carried nothing to
+             open. It is one now, the same as a logged day, to the same route -
+             `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
+             this cell only says that there is something. -->
+        <a class="cal-day has-mark press" tabindex={compact ? -1 : undefined}
+          data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
+        </a>
+      {:else if c.isPastOrToday}
+        <!-- A past or today cell with nothing on it opens a new entry for
+             that day (ticket 99 item 13) - the same route the "+" affordances
+             elsewhere in the app seed a day for, rather than leaving an empty
+             cell with nothing to tap. -->
+        <a class="cal-day press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
+          data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
+        </a>
+      {:else}
+        <span class="cal-day" class:is-today={c.isToday} aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
+        </span>
+      {/if}
+    {/each}
 </div>
 
+{#if !compact}
+  <!-- The ends are the metric's own words, never "worst" and "best": neither
+       end of binary <-> nonbinary is the better one, and colour that judges is
+       the one thing this app cannot do (ADR-0012, F15).
+
+       Mood has none. Its five faces are the same five a person picks a mood
+       from every day, so a legend under them is the app explaining itself to
+       its reader - which is the call the year grid already made, and
+       Alicja's on 2026-08-25. -->
+  {#if !isMood}
+    <div
+      class="cal-legend"
+      data-cal-legend
+      aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
+    >
+      <span class="cal-legend-scale">
+        <span class="cal-legend-end">{legend.low}</span>
+        {#each SHADED as level (level)}
+          <span class="cal-legend-swatch" style="background:{fillAt(level)}"></span>
+        {/each}
+        <span class="cal-legend-end">{legend.high}</span>
+      </span>
+      <span class="cal-legend-none">
+        <span class="cal-legend-swatch" style="background:{fillAt(0)}"></span>
+        {m.legend_none()}
+      </span>
+    </div>
+  {/if}
+
+  {#if eraLegend.length}
+    <!-- Which era's border a day is drawing (phase 6 ticket 03), named next
+         to its colour the same way the metric legend already is. A month in
+         no era draws no strip at all, rather than an empty state or
+         "Uncategorized" (ADR-0049). -->
+    <div class="cal-era-legend" data-cal-era-legend>
+      {#each eraLegend as e (e.name)}
+        <span class="cal-era-legend-item">
+          <span class="cal-legend-swatch" style="border-color:{e.mark}"></span>
+          {e.name}
+        </span>
+      {/each}
+    </div>
+  {/if}
+{/if}
 <!-- The deck is drawn behind the swatch and peeks out to its left, which is
      the whole of what a stack says: how many readings, never how far apart
      they were. That question is answered by the split, and by the words the
      cell reads out. -->
 {#snippet swatch(c: (typeof cells.days)[number])}
-  <span class="cal-stack" class:is-round={isMood}>
+  <span class="cal-stack" class:is-round={isMood} data-cal-cell={c.epochDay}>
     {#if c.shape?.kind === 'stack'}
       {#each Array.from({ length: c.shape.cards - 1 }) as _, i (i)}
         <span
@@ -377,14 +461,24 @@
          inside the halves, because the later half is a pixel proud on three
          sides and a face hung inside it would be a pixel off the one beside
          it; both of these are the whole cell, cut. -->
-    {#if isMood && c.step > 0}
+    {#if isMood}
+      <!-- Mounted whenever mood is on screen, empty day or not (ticket 99
+           item 7, "the faces... should fade in, not appear in 1 frame"): a
+           day gated behind `c.step > 0` had no face element to fade at all
+           while its average was still loading, so the element Svelte
+           inserted the instant the read resolved had no earlier frame to
+           transition from and simply appeared drawn. Opacity carries "no
+           reading yet" the same way it already carries "no room in the
+           strip" below, on an element that was there all along. -->
       {#if c.shape?.kind === 'split'}
         <span class="cal-face is-earlier" data-hm-cell-face
           ><MoodFace step={c.shape.first} size="100%" disc={false} /></span
         >
         <span class="cal-face is-later"><MoodFace step={c.shape.last} size="100%" disc={false} /></span>
       {:else}
-        <span class="cal-face" data-hm-cell-face><MoodFace step={c.step} size="100%" disc={false} /></span>
+        <span class="cal-face" class:is-empty={c.step === 0} data-hm-cell-face
+          ><MoodFace step={c.step || 1} size="100%" disc={false} /></span
+        >
       {/if}
     {/if}
     <!-- The presentation chip's mark (ticket 17, ADR-0048): a small dot of
@@ -398,50 +492,29 @@
   </span>
 {/snippet}
 
-<!-- The ends are the metric's own words, never "worst" and "best": neither
-     end of binary <-> nonbinary is the better one, and colour that judges is
-     the one thing this app cannot do (ADR-0012, F15).
-
-     Mood has none. Its five faces are the same five a person picks a mood
-     from every day, so a legend under them is the app explaining itself to
-     its reader - which is the call kit/MoodYear.svelte already made, and
-     Alicja's on 2026-08-25. -->
-{#if !isMood}
-  <div
-    class="cal-legend"
-    data-cal-legend
-    aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
-  >
-    <span class="cal-legend-scale">
-      <span class="cal-legend-end">{legend.low}</span>
-      {#each SHADED as level (level)}
-        <span class="cal-legend-swatch" style="background:{fillAt(level)}"></span>
-      {/each}
-      <span class="cal-legend-end">{legend.high}</span>
-    </span>
-    <span class="cal-legend-none">
-      <span class="cal-legend-swatch" style="background:{fillAt(0)}"></span>
-      {m.legend_none()}
-    </span>
-  </div>
-{/if}
-
-{#if eraLegend.length}
-  <!-- Which era's border a day is drawing (phase 6 ticket 03), named next
-       to its colour the same way the metric legend already is. A month in
-       no era draws no strip at all, rather than an empty state or
-       "Uncategorized" (ADR-0049). -->
-  <div class="cal-era-legend" data-cal-era-legend>
-    {#each eraLegend as e (e.name)}
-      <span class="cal-era-legend-item">
-        <span class="cal-legend-swatch" style="border-color:{e.mark}"></span>
-        {e.name}
-      </span>
-    {/each}
-  </div>
-{/if}
-
 <style>
+  .cal-dows {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0 8px;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+  .cal-dow {
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    font-weight: var(--weight-bold);
+  }
+  /* Out of flow before it fades, so the row it held is given back in the
+     frame of the tap - which is the layout the cells' travel is measured
+     against. Left where it was: an absolutely positioned box with every
+     offset auto keeps its static position. */
+  .cal-dows.is-compact {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -450,13 +523,57 @@
        cards and the day's padding cannot drift apart. */
     --deck: 9px;
   }
-  .cal-dow {
-    text-align: center;
-    font-size: var(--text-xs);
-    color: var(--text-2);
-    font-weight: var(--weight-bold);
+
+  /* The same days as one row (phase 10 ticket 10). A bar rather than a small
+     square because the row holds 31 of them inside 280px at the narrowest -
+     7px of width is all a day gets, and 7px tall as well would be a speck.
+     Tall and thin it reads as a month the way a barcode reads as a barcode,
+     and it is still a block: the swatch's own 1px edge, so an unlogged day
+     is a day and a quiet month is not a blank line, and 2px corners, which
+     is what DIRECTION.md rule 9 already gives a bar's ends
+     (`.kit-bar-mark`) rather than a fourth radius - 6px on 7px of width is a
+     lozenge, and rule 5's budget is about what a block is, not about
+     refusing the one value the kit's own bars use.
+
+     Everything a bar has no room for goes to opacity 0 rather than out of
+     the markup - the date, the split's two halves, the face, the deck, the
+     mark, the highlight dot. They are the same elements in both layouts, so
+     each of them fades as its cell travels instead of being gone in the
+     frame the tap landed. */
+  .cal-grid.is-compact {
+    grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+    gap: 2px;
+    --deck: 0px;
+    /* Room under the bars for today's mark, which is drawn below rather than
+       around. */
+    padding-bottom: 6px;
   }
+  /* A blank leads the grid up to the first of the month, and a row has no
+     lead-in - out of the markup rather than at opacity 0, since a spacer
+     fading is nothing fading. */
+  .cal-grid.is-compact .cal-day.is-blank { display: none; }
+  .cal-grid.is-compact .cal-day {
+    gap: 0;
+    /* 7px is not a tap target and thirty of them are not a reading: the
+       strip is the screen's control to open, and only that. */
+    pointer-events: none;
+  }
+  .cal-grid.is-compact .cal-stack {
+    aspect-ratio: auto;
+    height: 24px;
+    --r: 2px;
+    --half-low: 2px;
+    --half-high: 2px;
+  }
+  .cal-grid.is-compact .cal-num { position: absolute; opacity: 0; }
+  .cal-grid.is-compact .cal-card,
+  .cal-grid.is-compact .cal-half,
+  .cal-grid.is-compact .cal-face,
+  .cal-grid.is-compact .cal-mark,
+  .cal-grid.is-compact .cal-highlight { opacity: 0; }
+
   .cal-day {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -476,7 +593,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1;
-    --r: var(--radius-xs);
+    --r: var(--r-block);
     /* A half's own radii, which are not the cell's. A border-radius
        percentage resolves against the box it is on, so `50%` on a box half
        as wide as the cell draws an ellipse half as wide as the disc, and
@@ -486,15 +603,25 @@
        height on each corner, which is what `100% / 50%` says. A square
        cell's corner is a length and needs no such correction, so the two
        shapes cannot share one declaration. */
-    --half-low: var(--radius-xs) 0 0 var(--radius-xs) / var(--radius-xs) 0 0 var(--radius-xs);
-    --half-high: 0 var(--radius-xs) var(--radius-xs) 0 / 0 var(--radius-xs) var(--radius-xs) 0;
+    --half-low: var(--r-block) 0 0 var(--r-block) / var(--r-block) 0 0 var(--r-block);
+    --half-high: 0 var(--r-block) var(--r-block) 0 / 0 var(--r-block) var(--r-block) 0;
   }
-  /* Mood is round, because a mood is a face and a face is a disc
-     (MoodFace.svelte). A gender dimension is not and stays square. */
+  /* Mood is the same rounded square every other mood face in the app draws
+     (ticket 99 item 7: "the same rounded square shape as the rest of the
+     screens"), not the circle this drew before MoodChips and MoodPicker's
+     own faces were carried back to that shape - 26.7% is moodFace.ts's
+     MOOD_BLOCK, the same fraction `.mood-btn .mood-face` and `.kit-mood
+     .mood-face` use. A gender dimension takes no share of a face's shape at
+     all and stays var(--r-block).
+     A split halves the cell's width, so its own radius has to double on the
+     axis that halving shrank: the corner is still 26.7% of the *whole*
+     cell's side, which on a box half as wide reads as 53.4% of that box's
+     own width (the same doubling the old circle case made from 50% to
+     100%) while the vertical axis, unchanged, keeps 26.7%. */
   .cal-stack.is-round {
-    --r: 50%;
-    --half-low: 100% 0 0 100% / 50% 0 0 50%;
-    --half-high: 0 100% 100% 0 / 0 50% 50% 0;
+    --r: 26.7%;
+    --half-low: 53.4% 0 0 53.4% / 26.7% 0 0 26.7%;
+    --half-high: 0 53.4% 53.4% 0 / 0 26.7% 26.7% 0;
   }
   .cal-card,
   .cal-swatch {
@@ -521,11 +648,45 @@
   .cal-card { left: calc(var(--card) * -3px); }
   .cal-swatch { background: var(--heat-0); }
   /* Every piece of a cell that carries a fill, in one rule: the swatch, the
-     stacked cards of a deck behind it, and a split day's two halves. */
+     stacked cards of a deck behind it, and a split day's two halves. Opacity
+     rides along because these are also the pieces the compact layout has no
+     room for, and one shorthand has to name both or the last rule wins. */
   .cal-card,
   .cal-swatch,
   .cal-half {
-    transition: background-color var(--dur-med) var(--ease-out);
+    transition:
+      background-color var(--dur-med) var(--ease-out),
+      outline-color var(--dur-med) var(--ease-out),
+      opacity var(--dur-med) var(--ease-out);
+  }
+  /* The date travels rather than scaling (see the screen's own travel), so
+     it can fade with everything else. */
+  .cal-num {
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+  /* A disc cannot be stretched, and these three are discs: the mood face,
+     the coming-up mark and the highlight dot. The travel scales a cell 0.17
+     across and 0.6 down, which on the recording turned every dot into an
+     ellipse and every face into an egg - debris in the middle of a
+     choreography whose whole premise is that nothing is unaccounted for. So
+     they sit the travel out: gone in the frame of the tap, and back over a
+     beat once the cells have landed.
+
+     The delay is the travel's own --dur-slow, not --dur-med (ticket 99 item
+     7 round 2, Alicja: "for me they still appear suddenly"). --dur-med was
+     140ms short of it, so the fade used to start while the cell was still
+     mid-flight - riding the tail of the same ease-out curve that is still
+     visibly moving a cell that size, which reads as the face popping in
+     rather than fading, even though the opacity itself ramps smoothly. */
+  .cal-face,
+  .cal-mark,
+  .cal-highlight {
+    transition: opacity var(--dur-fast) var(--ease-out) var(--dur-slow);
+  }
+  .cal-grid.is-compact .cal-face,
+  .cal-grid.is-compact .cal-mark,
+  .cal-grid.is-compact .cal-highlight {
+    transition: opacity 0s;
   }
 
   /* A split is two pieces laid over each other rather than two halves butted
@@ -564,6 +725,13 @@
     z-index: 1;
     pointer-events: none;
   }
+  /* No reading yet, drawn or still loading (ticket 99 item 7) - opacity
+     rather than absence, so the element is already there to fade in once
+     one arrives. `step || 1` above draws a real face underneath this, never
+     read. */
+  .cal-face.is-empty {
+    opacity: 0;
+  }
   /* Cut on the colour's own seam, which sits a pixel left of centre because
      the later half is a pixel proud over the middle. Off by that pixel and
      a mouth would step across the join twice, once for the colour and once
@@ -572,8 +740,31 @@
   .cal-face.is-later { clip-path: inset(0 0 0 calc(50% - 1px)); }
   /* Today, marked by an outline rather than by a fill, because the fill is
      already saying something else. Above the deck, so a stacked today is
-     still ringed once. */
+     still ringed once.
+
+     Compact it is marked under the bar instead: a 2px ring around a 7px bar
+     2px from its neighbours crosses both of them. The two marks cross-fade,
+     so today is never unmarked mid-travel and never marked twice. */
   .cal-day.is-today .cal-swatch { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cal-day.is-today::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -5px;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    /* Off at once, on over a beat. A transition is read off the state being
+       moved to, so this is the pair: closing the month, the mark arrives
+       under the bar as the bar settles; opening it, the mark is gone in the
+       frame of the tap rather than hanging 2px of accent under a cell the
+       days have not reached yet. */
+    transition: opacity 0s;
+  }
+  .cal-grid.is-compact .cal-day.is-today .cal-swatch { outline-color: transparent; }
+  .cal-grid.is-compact .cal-day.is-today::after {
+    opacity: 1;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
 
   /* The presentation chip's mark (ticket 17, ADR-0048). A corner dot,
      never a border or an outline: this cell may already be wearing an
@@ -634,7 +825,7 @@
   .cal-legend-swatch {
     width: 16px;
     height: 16px;
-    border-radius: 5px;
+    border-radius: var(--r-block);
     display: inline-block;
     border: 1px solid var(--outline);
   }
