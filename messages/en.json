@@ -327,7 +327,6 @@
   "hub_sub_hair_progress": "A published scale, and photos from the same spot",
   "hub_sub_hair_removal": "Electrolysis and laser sessions",
   "hub_sub_cycle_events": "Cycle days against your regimen history",
-  "hub_sub_side_effects": "What you notice, and how strong it is",
   "hub_sub_surgery": "Consults, the date, and healing",
   "hub_sub_dilation": "Your schedule, and the sessions against it",
   "hub_sub_milestones": "The days that mattered, with their dates",
@@ -1549,7 +1548,6 @@
   "exposure_route_days_title": "Days on each route",
   "exposure_days_count": "{days} days",
   "exposure_regimen_days_title": "Time on each regimen",
-  "side_effects_intro": "What you notice, when you notice it. No grading and no advice.",
   "side_effect_add_aria": "Log a side effect",
   "side_effect_empty_title": "Nothing logged yet",
   "side_effect_empty_body": "Log a side effect when you notice one.",
@@ -1592,6 +1590,7 @@
   "severity_4": "pronounced",
   "severity_5": "severe",
   "effects_timeline": "Changes you've noticed",
+  "effects_timeline_subtitle": "What you noticed after starting, hoped for or not, and when. No grading and no advice.",
   "effects_intro": "Mark the day you first noticed each change. Where the literature gives a typical timing since your regimen began, it shows as a shaded band, from the table for your regimen's own hormone: the feminizing one for estradiol, the masculinizing one for testosterone. A change with no band is one the tables are quiet about.",
   "effects_source": "The shaded bands come from the Endocrine Society's 2017 clinical practice guideline (Hembree et al.) and GenderGP's HRT timeline tables, which cite WPATH Standards of Care v7. Every other effect below is named by the source noted underneath it, with no band: a guide naming a change is not the same claim as a guideline naming its timing.",
   "effect_variability_notice": "No evidence shows that age, body type, ethnicity or family appearance reliably predicts how someone responds to hormone therapy, with one likely exception: voice deepening in people on testosterone. The bands here describe the literature. They are not a schedule for your own body.",
@@ -1605,6 +1604,7 @@
   "effects_axis_calendar": "By calendar month. There's no regimen logged yet, so there's nothing to count months from.",
   "effects_axis_empty": "Nothing marked yet. Mark a change below and it lands on this line.",
   "effects_axis_mark_aria": "{name}, first noticed {date}",
+  "effects_axis_mark_aria_severity": "{name}, first noticed {date}, {severity}",
   "effects_axis_summary": [
     {
       "declarations": [

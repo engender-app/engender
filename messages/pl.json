@@ -349,7 +349,6 @@
   "hub_sub_hair_progress": "Opublikowana skala i zdjęcia z tego samego miejsca",
   "hub_sub_hair_removal": "Sesje elektrolizy i lasera",
   "hub_sub_cycle_events": "Dni cyklu na tle historii kuracji",
-  "hub_sub_side_effects": "To, co zauważasz, i jak mocno",
   "hub_sub_surgery": "Konsultacje, termin i gojenie",
   "hub_sub_dilation": "Twój harmonogram i zapisane sesje",
   "hub_sub_milestones": "Dni, które miały znaczenie, z datami",
@@ -1589,7 +1588,6 @@
   "exposure_route_days_title": "Dni na każdej trasie podania",
   "exposure_days_count": "{days} dni",
   "exposure_regimen_days_title": "Czas na każdym schemacie",
-  "side_effects_intro": "To, co zauważasz, i kiedy to zauważasz. Bez ocen i bez porad.",
   "side_effect_add_aria": "Zapisz skutek uboczny",
   "side_effect_empty_title": "Jeszcze nic nie zapisano",
   "side_effect_empty_body": "Zapisz skutek uboczny, kiedy go zauważysz.",
@@ -1632,6 +1630,7 @@
   "severity_4": "wyraźne",
   "severity_5": "silne",
   "effects_timeline": "Zauważone zmiany",
+  "effects_timeline_subtitle": "To, co zauważasz po rozpoczęciu kuracji, upragnione lub nie, i kiedy. Bez ocen i bez porad.",
   "effects_intro": "Zaznacz dzień, w którym pierwszy raz pojawiła się każda zmiana. Tam, gdzie literatura podaje typowy czas liczony od początku kuracji, widać to jako zacieniowany pas, z tabeli dla hormonu z twojej kuracji: feminizującej przy estradiolu, maskulinizującej przy testosteronie. Brak pasa oznacza, że tabele o tej zmianie milczą.",
   "effects_source": "Zacieniowane pasy pochodzą z wytycznych klinicznych Endocrine Society z 2017 roku (Hembree i wsp.) oraz z tabel czasowych kuracji hormonalnej GenderGP, które powołują się na WPATH Standards of Care w wersji 7. Każdy pozostały efekt poniżej jest podpisany źródłem, z którego pochodzi, bez pasa: nazwanie zmiany przez poradnik to nie to samo, co podanie jej czasu przez wytyczne.",
   "effect_variability_notice": "Nic nie wskazuje, że wiek, budowa ciała, pochodzenie etniczne czy wygląd rodziny pozwalają wiarygodnie przewidzieć reakcję na kurację hormonalną. Prawdopodobnym wyjątkiem jest obniżenie głosu przy testosteronie. Pasy tutaj opisują literaturę. Nie są harmonogramem dla twojego ciała.",
@@ -1645,6 +1644,7 @@
   "effects_axis_calendar": "Według miesięcy kalendarzowych. Nie ma jeszcze zapisanej kuracji, więc nie ma od czego liczyć miesięcy.",
   "effects_axis_empty": "Nic jeszcze nie zaznaczono. Zaznacz zmianę poniżej, a trafi na tę oś.",
   "effects_axis_mark_aria": "{name}, pierwszy raz zauważone {date}",
+  "effects_axis_mark_aria_severity": "{name}, pierwszy raz zauważone {date}, {severity}",
   "effects_axis_summary": [
     {
       "declarations": [
