@@ -580,42 +580,28 @@
   }
 
   /* And at 200% zoom on a 390px phone - 195px - even that is not enough:
-     the row is 155px inside the screen's inset and the two controls are 96
-     of it. So the row becomes two lines, the title across the whole of it
-     and the handle and the unpin under it at the trailing edge.
+     the pinned row is 155px inside the screen's inset and the two controls
+     are 96 of it, and the tiles list has the same argument with one control
+     and a word: "Appointment today" set solid is wider than the ~107px left
+     beside a switch, and it broke into "Appointme" and a stranded "nt
+     today". So both rows become two lines, the text across the whole of the
+     row and the controls under it at the trailing edge.
 
      A row is 48 one line and 60 with a subtitle (DIRECTION.md 6). This is
-     neither: it is one row wearing two controls at the accessibility
-     floor, and 200% zoom is where the floor and the row disagree. */
+     neither: it is one row wearing its controls at the accessibility floor,
+     and 200% zoom is where the floor and the row disagree. */
   @media (max-width: 260px) {
-    .today-editor-list :global(.kit-row) {
-      flex-wrap: wrap;
-    }
-
-    .today-editor-list :global(.kit-row-text) {
-      flex-basis: 100%;
-    }
-
-    .today-editor-list :global(.kit-row-trail) {
-      margin-left: auto;
-    }
-  }
-
-  /* The same 260px rule the pinned list above keeps, for the same reason
-     and against a word this list actually broke: at 195px (200% zoom on a
-     390px phone) the title column left beside a 48px switch is about 107px
-     and "Appointment today" set solid is wider, so it broke into
-     "Appointme" and a stranded "nt today". Wrapped, the text has the row's
-     whole width and the switch sits under it at the trailing edge. */
-  @media (max-width: 260px) {
+    .today-editor-list :global(.kit-row),
     .today-editor-tiles :global(.kit-row) {
       flex-wrap: wrap;
     }
 
+    .today-editor-list :global(.kit-row-text),
     .today-editor-tiles :global(.kit-row-text) {
       flex-basis: 100%;
     }
 
+    .today-editor-list :global(.kit-row-trail),
     .today-editor-tiles :global(.kit-row-trail) {
       margin-left: auto;
     }

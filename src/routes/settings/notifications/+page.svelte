@@ -110,8 +110,19 @@
 
   /* The four prompts, in the order Settings drew them. A list rather than
      four copies of the same eight lines of markup: they differ only in
-     which boolean they write and what they are called. */
-  const PROMPTS: { key: string; prefKey: BooleanPrefKey; title: () => string; subtitle: () => string }[] = [
+     which boolean they write and what they are called.
+
+     A named shape rather than an inline one, the way the registry names
+     `UnpromptedRow`: the four fields travel together everywhere they go. */
+  interface PromptRow {
+    /** The walkthrough's handle (ADR-0029), never the title, which is copy. */
+    key: string;
+    prefKey: BooleanPrefKey;
+    title: () => string;
+    subtitle: () => string;
+  }
+
+  const PROMPTS: PromptRow[] = [
     { key: 'entry-nudges', prefKey: 'entryNudges', title: () => m.entry_nudges(), subtitle: () => m.entry_nudges_sub() },
     { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() },
     {

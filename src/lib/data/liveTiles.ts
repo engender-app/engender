@@ -421,8 +421,9 @@ type AssertKindsAreUnprompted<K extends UnpromptedKind> = K;
 type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
 
 /** Which preference switches each tile off, taken from the registry that
-    already declares it (`/settings/live-tiles` draws its switch from the
-    same field). Exported as a function over the rows so registry.test.ts's
+    already declares it (Today's editor draws its switch from the same
+    field, and /settings/notifications draws the rest of the registry's from
+    it too). Exported as a function over the rows so registry.test.ts's
     trick works here too: the rule can be run over a shortened registry and
     seen to fail, rather than only asserted never to. */
 export function liveTilePrefKeys(rows: readonly SurfaceRow[]): Record<LiveTileKind, BooleanPrefKey> {
