@@ -8,6 +8,12 @@
      chips and never read here for its own sake - the same reason body
      regions and affirmations already sit on this screen.
 
+     A sheet's own body rather than a screen (audit item 6): even hosted on
+     Settings, this was still two rows and hundreds of pixels of black for
+     anyone with one or two modes - a vocabulary manager wearing an area
+     screen's clothes. See VocabularyManagerSheets.svelte for where this
+     mounts and why.
+
      Read through the mirrored vocabulary rather than a live query: a
      presentation is reference data the same way a tag is (reference.svelte.ts),
      and `vocabulary.presentations` already comes back most-recently-used
@@ -18,7 +24,6 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Presentation } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -72,109 +77,110 @@
   }
 </script>
 
-<div class="screen">
-  <ScreenHeader title={m.presentations_title()} back="/settings" subtitle={m.presentations_intro()}>
-    {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.presentations_add()} onclick={() => record.openEditor(null)}>
-        <Icon name="plus" size={22} />
-      </button>
-    {/snippet}
-  </ScreenHeader>
-
-  {#if presentations.length > 0}
-    <div class="screen-part">
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each presentations as p (p.id)}
-          {@const role = roleAt(activeFlag.roles, p.roleIndex)}
-          <ListRow
-            key={p.id}
-            data-presentation={p.id}
-            title={p.name}
-            subtitle={p.hidden ? m.tags_hidden() : undefined}
-            chevron={false}
-            onclick={() => record.openEditor(p)}
-            action={{
-              icon: p.hidden ? 'eye' : 'eyeOff',
-              label: p.hidden
-                ? m.presentation_show_aria({ name: p.name })
-                : m.presentation_hide_aria({ name: p.name }),
-              onclick: () => toggleHidden(p)
-            }}
-          >
-            {#snippet leading()}
-              <span class="presentation-dot" {...roleAttrs(role)}></span>
-            {/snippet}
-          </ListRow>
-        {/each}
-      </ListCard>
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="palette"
-        key="presentations-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.presentations_empty_title()}
-        text={m.presentations_empty_body()}
-        action={{ label: m.presentations_add(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
-
-  <RecordSheet
-    {record}
-    handle="presentation"
-    newTitle={m.presentation_new_sheet()}
-    editTitle={m.presentation_edit_sheet()}
-    saveLabel={m.presentation_save()}
-    canSave={(draft) => draft.name.trim().length > 0}
-    confirm={{
-      // Unreachable: RecordSheet's own delete-confirm sheet only opens
-      // through askToDelete, and nothing on this screen ever calls it -
-      // there is no deleteLabel, so no button on the editor can reach it
-      // either. Required by the shared component regardless of whether a
-      // screen offers deletion at all.
-      title: '',
-      question: () => '',
-      confirmLabel: '',
-      cancelLabel: ''
-    }}
-  >
-    {#snippet fields(editor)}
-      <Field label={m.presentation_name_label()} id="presentation-name">
-        {#snippet children(id)}
-          <input
-            class="input"
-            {id}
-            name="presentation-name"
-            placeholder={m.presentation_name_placeholder()}
-            bind:value={editor.name}
-          />
-        {/snippet}
-      </Field>
-      <Field label={m.presentation_colour_label()} legend>
-        {#snippet children()}
-          <div class="presentation-swatches" role="radiogroup" aria-label={m.presentation_colour_label()}>
-            {#each activeFlag.roles as role, i (i)}
-              <button
-                type="button"
-                class="presentation-swatch press"
-                class:is-selected={editor.roleIndex === i}
-                role="radio"
-                aria-checked={editor.roleIndex === i}
-                aria-label={m.presentation_colour_swatch_aria({ index: i + 1 })}
-                {...roleAttrs(role)}
-                onclick={() => (editor.roleIndex = i)}
-              ></button>
-            {/each}
-          </div>
-        {/snippet}
-      </Field>
-    {/snippet}
-  </RecordSheet>
+<div class="vocab-manager-head">
+  <h3>{m.presentations_title()}</h3>
+  <button class="icon-btn press" data-add aria-label={m.presentations_add()} onclick={() => record.openEditor(null)}>
+    <Icon name="plus" size={22} />
+  </button>
 </div>
+<p class="ob-text">{m.presentations_intro()}</p>
+
+{#if presentations.length > 0}
+  <ListCard role={roleAt(activeFlag.roles, 0)}>
+    {#each presentations as p (p.id)}
+      {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+      <ListRow
+        key={p.id}
+        data-presentation={p.id}
+        title={p.name}
+        subtitle={p.hidden ? m.tags_hidden() : undefined}
+        chevron={false}
+        onclick={() => record.openEditor(p)}
+        action={{
+          icon: p.hidden ? 'eye' : 'eyeOff',
+          label: p.hidden
+            ? m.presentation_show_aria({ name: p.name })
+            : m.presentation_hide_aria({ name: p.name }),
+          onclick: () => toggleHidden(p)
+        }}
+      >
+        {#snippet leading()}
+          <span class="presentation-dot" {...roleAttrs(role)}></span>
+        {/snippet}
+      </ListRow>
+    {/each}
+  </ListCard>
+{:else}
+  <Notice
+    icon="palette"
+    key="presentations-empty"
+    role={roleAt(activeFlag.roles, 0)}
+    title={m.presentations_empty_title()}
+    text={m.presentations_empty_body()}
+    action={{ label: m.presentations_add(), primary: true, onclick: () => record.openEditor(null) }}
+  />
+{/if}
+
+<RecordSheet
+  {record}
+  handle="presentation"
+  newTitle={m.presentation_new_sheet()}
+  editTitle={m.presentation_edit_sheet()}
+  saveLabel={m.presentation_save()}
+  canSave={(draft) => draft.name.trim().length > 0}
+  confirm={{
+    // Unreachable: RecordSheet's own delete-confirm sheet only opens
+    // through askToDelete, and nothing on this screen ever calls it -
+    // there is no deleteLabel, so no button on the editor can reach it
+    // either. Required by the shared component regardless of whether a
+    // screen offers deletion at all.
+    title: '',
+    question: () => '',
+    confirmLabel: '',
+    cancelLabel: ''
+  }}
+>
+  {#snippet fields(editor)}
+    <Field label={m.presentation_name_label()} id="presentation-name">
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="presentation-name"
+          placeholder={m.presentation_name_placeholder()}
+          bind:value={editor.name}
+        />
+      {/snippet}
+    </Field>
+    <Field label={m.presentation_colour_label()} legend>
+      {#snippet children()}
+        <div class="presentation-swatches" role="radiogroup" aria-label={m.presentation_colour_label()}>
+          {#each activeFlag.roles as role, i (i)}
+            <button
+              type="button"
+              class="presentation-swatch press"
+              class:is-selected={editor.roleIndex === i}
+              role="radio"
+              aria-checked={editor.roleIndex === i}
+              aria-label={m.presentation_colour_swatch_aria({ index: i + 1 })}
+              {...roleAttrs(role)}
+              onclick={() => (editor.roleIndex = i)}
+            ></button>
+          {/each}
+        </div>
+      {/snippet}
+    </Field>
+  {/snippet}
+</RecordSheet>
 
 <style>
+  .vocab-manager-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
   .presentation-dot {
     width: 16px;
     height: 16px;

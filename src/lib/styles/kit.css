@@ -223,6 +223,14 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 2px;
+  /* A `<button>` carries this class too now (audit item 6's "manage"
+     links, which raise a sheet in place rather than navigating): harmless
+     resets for the `<a>` uses above, which already had none of these from
+     the user-agent sheet worth cancelling. */
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 /* ---------- list card ----------

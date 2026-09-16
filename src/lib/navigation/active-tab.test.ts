@@ -60,17 +60,17 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/settings/access-mode', 'calendar')).toBe('calendar');
   });
 
-  /* Redesign ticket 51 (ADR-0084) hosted these three under Settings without
-     making them preferences - a mode, a template and an era are the fourth
-     door's own reference data, just filed at a different address now, so
-     they keep the fixed tab their hub rows used to light rather than
-     borrowing whatever the editor's "manage"/"change" link happened to be
-     opened from. */
-  it('lights settings for the reference areas Settings hosts, whatever the chrome origin', () => {
-    expect(activeTabKey('/settings/presentations')).toBe('settings');
-    expect(activeTabKey('/settings/entry-templates')).toBe('settings');
+  /* Redesign ticket 51 (ADR-0084) hosted eras under Settings without
+     making it a preference - the fourth door's own reference data, just
+     filed at a different address now, so it keeps the fixed tab its hub
+     row used to light rather than borrowing whatever screen the person
+     happened to be on. Modes and entry templates, ticket 51's other two,
+     are not tested here any more: audit item 6 made them sheets raised
+     over Settings, so their old addresses redirect before this function
+     ever sees them as a live pathname (settings-route-redirects.test.ts). */
+  it('lights settings for the reference area Settings hosts, whatever the chrome origin', () => {
     expect(activeTabKey('/settings/eras')).toBe('settings');
-    expect(activeTabKey('/settings/presentations', 'calendar')).toBe('settings');
+    expect(activeTabKey('/settings/eras', 'calendar')).toBe('settings');
   });
 
   /* Redesign ticket 05: the ignore list's reading draws on Look back
