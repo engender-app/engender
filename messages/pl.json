@@ -3877,7 +3877,7 @@
   "home_edit_done": "Gotowe",
   "home_edit_reset": "Wróć do domyślnego zestawu",
   "home_edit_reset_question": "Wrócić do domyślnego zestawu?",
-  "home_edit_reset_hint": "Ułożona kolejność przepada, a wszystkie kafelki i rodzaje wpisów w Nadchodzi wracają. Nic nie zostaje usunięte: te ekrany dalej są na swoim miejscu.",
+  "home_edit_reset_hint": "Przypięte pozycje wracają do domyślnego zestawu, więc to, co zdjęte, wraca, a to, co dodane, znika, i wracają wszystkie kafelki oraz rodzaje wpisów w Nadchodzi. Nic nie zostaje usunięte: te ekrany dalej są na swoim miejscu.",
   "tomorrow": "Jutro",
   "surgery_unit_post_op": [
     {

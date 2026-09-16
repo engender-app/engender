@@ -141,10 +141,13 @@
     prefs.agendaKinds = withAgendaKind(prefs, kind, on);
   }
 
-  /* The tiles' own titles, off the registry that already names them for
-     every other surface - the switch here and the tile on the page have to
-     be the same words, and the registry is where that is declared once. */
-  const TILE_TITLE = new Map(UNPROMPTED_ROWS.map((row) => [row.key, row.title]));
+  /* The tiles' own titles and lines, off the registry that already carries
+     them for every other surface - the switch here and the tile on the page
+     have to be the same words, and the registry is where that is declared
+     once. */
+  const TILE_LABEL = new Map(
+    UNPROMPTED_ROWS.map((row) => [row.key, { title: row.title, line: row.surface?.subtitle }])
+  );
 
   function toggleTile(kind: LiveTileKind, on: boolean) {
     prefs[LIVE_TILE_PREF_KEY[kind]] = on;
@@ -452,6 +455,13 @@
        inventing thirteen of them here would name each tile a second way in
        the one place both names would be read at once.
 
+       Each row keeps the registry's line, for the reason the add list above
+       keeps its own and the pinned list drops them: a line under a row being
+       dragged is in the way, and a line under a row being decided about is
+       the decision. "Revisit" and "Active tryout" are not self-evident, and
+       the screen these switches came from stated what each one puts in front
+       of you (the impeccable critique's own first finding, 2026-09-16).
+
        Every kind, including one whose area is hidden or finished. The
        switch means "never show me this kind" rather than "hide the instance
        that is true today" (ADR-0039's amendment), so it answers a different
@@ -462,8 +472,9 @@
   <p class="today-editor-hint">{m.home_edit_tiles_hint()}</p>
   <ListCard {role}>
     {#each LIVE_TILE_DRAW_ORDER as kind (kind)}
-      {@const title = TILE_TITLE.get(kind)?.() ?? kind}
-      <ListRow static key={kind} {title} data-edit-tile={kind}>
+      {@const label = TILE_LABEL.get(kind)}
+      {@const title = label?.title() ?? kind}
+      <ListRow static key={kind} {title} subtitle={label?.line?.()} data-edit-tile={kind}>
         {#snippet trailing()}
           <Switch
             checked={prefs[LIVE_TILE_PREF_KEY[kind]]}
