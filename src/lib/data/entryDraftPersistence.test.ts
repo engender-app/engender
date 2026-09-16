@@ -66,7 +66,8 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
     procedureRecovery: { procedureId: 'p1', notes: 'healing well' },
     effectMarker: { effect: 'skin_softening', firstNoticedEpochDay: 20_001 },
     cycleEvent: { kind: 'spotting', epochDay: 20_001 },
-    presentationId: null
+    presentationId: null,
+    openSection: null
   });
 });
 
@@ -224,4 +225,22 @@ test('applying a persisted draft drops stored video notes the user had already r
     draft.videos.map((v) => (v.kind === 'stored' ? v.video.id : v.kind)),
     ['n2']
   );
+});
+
+test('the open chip travels with the draft, so a resumed entry lands where the person left it (ticket 19)', () => {
+  const draft = createEntryDraft(20_001);
+  assert.equal(draft.openSection, null);
+  draft.setOpenSection('tags');
+  assert.equal(serializeDraft(draft).openSection, 'tags');
+
+  const fresh = createEntryDraft(20_001);
+  applyPersistedDraft(fresh, { ...serializeDraft(draft), openSection: 'gender' });
+  assert.equal(fresh.openSection, 'gender');
+
+  /* A mirror from before the chip existed carries no field, and reads as
+     nothing open rather than as undefined. */
+  const older = createEntryDraft(20_001);
+  const { openSection: _dropped, ...withoutChip } = serializeDraft(draft);
+  applyPersistedDraft(older, withoutChip);
+  assert.equal(older.openSection, null);
 });
