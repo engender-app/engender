@@ -8,7 +8,14 @@
    carries the range's content is never marked `no-print` and never hidden
    under `@media print`, and that the shortcut this ticket adds writes into
    the same two fields the range is already read from - nothing about "the
-   range" forks into an on-screen-only value the print side does not see. */
+   range" forks into an on-screen-only value the print side does not see.
+
+   Ticket 08 moved every control named below into the controls sheet, which
+   this screen opens rather than scrolls to. They lost their own individual
+   `no-print` there for one on the sheet's whole body instead
+   (`$lib/print/print.ts`'s own note on why a print that happens to catch
+   the sheet open still needs one) - so what this file checks about them
+   changed shape without their being any less print-safe. */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -48,8 +55,21 @@ describe('clinician summary print parity', () => {
     expect(printBlock).not.toMatch(/\.dossier-output\s*{[^}]*display:\s*none/);
   });
 
-  it('every range control - including the new shortcut - is marked no-print', () => {
-    expect(classAttrFor(page, 'cd-endpoints')).toContain('no-print');
-    expect(classAttrFor(page, 'cd-since-appointment')).toContain('no-print');
+  it('every range control - including the new shortcut - sits inside the controls sheet\'s one no-print wrap', () => {
+    // Neither carries its own `no-print` any more (ticket 08) - one wrap
+    // around the whole sheet body does it for all of them.
+    expect(classAttrFor(page, 'cd-endpoints')).not.toContain('no-print');
+    expect(classAttrFor(page, 'cd-since-appointment')).not.toContain('no-print');
+
+    const sheetStart = page.indexOf('<Sheet ');
+    const wrapStart = page.indexOf('<div class="no-print">', sheetStart);
+    const wrapEnd = page.indexOf('cd-endpoints', sheetStart);
+    if (sheetStart === -1 || wrapStart === -1 || wrapEnd === -1 || wrapStart > wrapEnd) {
+      throw new Error('cd-endpoints is not inside the sheet\'s no-print wrap');
+    }
+  });
+
+  it('the settings row that opens the sheet is itself no-print', () => {
+    expect(classAttrFor(page, 'settings-row-wrap')).toContain('no-print');
   });
 });
