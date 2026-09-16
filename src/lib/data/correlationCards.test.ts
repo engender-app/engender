@@ -115,6 +115,37 @@ test('rankCorrelationCards caps at the requested limit', () => {
   assert.equal(cards.length, 2);
 });
 
+/* Redesign ticket 05: the stats screen used to draw this ranking's cards
+   twice - once here, and once again through a second, single-metric read
+   (wrappedDisplay.ts's tagInsightRows) that looked almost identical. The
+   fix was to delete the second read and let this one feed the merged card
+   alone, so what this ranking owes on its own is that a tag's occurrence
+   under one metric is never confused with its occurrence under another -
+   two real, distinct findings, not the same row counted twice. */
+test('rankCorrelationCards never folds the same tag from two metrics into one card', () => {
+  const cards = rankCorrelationCards(
+    [
+      {
+        metric: 'mood',
+        range: { min: 1, max: 5 },
+        tagInsights: [{ id: 'tag-a', count: 5, withAvg: 4, withoutAvg: 3 }],
+        doseDay: null
+      },
+      {
+        metric: 'femininity',
+        range: { min: 0, max: 100 },
+        tagInsights: [{ id: 'tag-a', count: 5, withAvg: 70, withoutAvg: 50 }],
+        doseDay: null
+      }
+    ],
+    10
+  );
+
+  assert.equal(cards.length, 2);
+  const keys = cards.map((c) => `${c.occurrence.kind === 'tag' ? c.occurrence.id : 'dose'}-${c.metric}`);
+  assert.equal(new Set(keys).size, keys.length);
+});
+
 test('rankCorrelationCards includes a dose-day card alongside tag cards for the same metric', () => {
   const cards = rankCorrelationCards(
     [

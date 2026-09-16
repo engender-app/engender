@@ -17,12 +17,15 @@
      one, and no lab value is read as anything (PRODUCT.md:109, and
      labTiming.ts and /settings/hormone-curve as the worked precedents). */
   import { m } from '$lib/paraglide/messages';
+  import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -41,6 +44,7 @@
   import type { RegimenEpisode } from '$lib/data/types';
   import { depletingStocks } from '$lib/data/stockProjection';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
+  import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -181,6 +185,70 @@
      read as a chart that had failed to draw. */
   let rowsBelow = $derived(Math.max(...(spine?.marks ?? []).filter((mark) => laneSide(mark.lane) === 'below').map((mark) => laneDepth(mark.lane) + 1), 1));
   let rowsAbove = $derived(Math.max(...(spine?.marks ?? []).filter((mark) => laneSide(mark.lane) === 'above').map((mark) => laneDepth(mark.lane) + 1), 0));
+
+  /* Mood between injections (phase 5 ticket 09, moved here whole by
+     redesign ticket 05): two bucket-and-average shapes over a cyclical
+     position, kept apart from correlation cards on purpose
+     (../../lib/data/intervalMoodPattern.ts). Neither reading names a
+     target or a verdict: both say only where days fell.
+
+     Both ask across the journal's whole history rather than a range this
+     screen has no picker for (Number.MIN_SAFE_INTEGER as the lower bound,
+     which is what "ever" means on an epoch-day column): an injection
+     interval is commonly 14-28 days and rarely completes three times
+     inside even a 90-day window. "Ever" is capped to a lookback window at
+     the journal/intervalMoodPattern.ts seam instead of actually reaching a
+     decade back (phase 8 audit ticket 16). */
+  let intervalMoodQuery = liveList((j) =>
+    j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
+  );
+  let intervalMoodPattern = $derived(intervalMoodQuery.rows);
+
+  let customIntervalLength = $state(28);
+  // A boundary clamp, not a save-time validation: the field can sit blank or
+  // negative mid-edit, and the chart underneath has to show something for
+  // every keystroke rather than the query throwing on a bad value.
+  let safeCustomIntervalLength = $derived(
+    Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
+  );
+
+  /* Waited out the same way /search's query is (phase 8 audit ticket 15,
+     ticket 16 here): the liveList closure below reads a $state before its
+     first await, which by the reactivity contract (journal.svelte.ts) makes
+     that read a dependency - so reading safeCustomIntervalLength directly
+     would re-run byCustomInterval's whole-history fold on every keystroke,
+     a fresh 102KB read per digit typed. */
+  const CUSTOM_INTERVAL_DEBOUNCE_MS = 250;
+  let debouncedCustomIntervalLength = $state(28);
+  $effect(() => {
+    const length = safeCustomIntervalLength;
+    const timer = setTimeout(() => {
+      debouncedCustomIntervalLength = length;
+    }, CUSTOM_INTERVAL_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  });
+
+  let customIntervalQuery = liveList((j) =>
+    j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, debouncedCustomIntervalLength)
+  );
+  let customIntervalPattern = $derived(customIntervalQuery.rows);
+
+  /* A position on a cycle is not a day, so the two folds label their ends
+     with the position rather than with a date, and they are already one
+     point per position - there is nothing to bucket. */
+  const positionPoints = (pattern: { position: number; value: number }[]) =>
+    pattern.map((p) => ({ x: p.position, y: p.value }));
+  const positionLabel = (point: { x: number }) => m.interval_day_n({ n: String(point.x) });
+  const positionEnds = (pattern: { position: number }[]) => ({
+    from: m.interval_day_n({ n: String(pattern[0].position) }),
+    to: m.interval_day_n({ n: String(pattern[pattern.length - 1].position) })
+  });
+
+  /* What a fold has to hold before it is drawn: not a bare trend floor,
+     which is one straight segment for somebody with a couple of entries,
+     but `WRAPPED_ENTRY_FLOOR` positions of the fold's own all-history
+     output - five places inside the interval that carry a reading. */
+  const foldDrawable = (pattern: readonly unknown[]) => pattern.length >= WRAPPED_ENTRY_FLOOR;
 </script>
 
 <div class="screen">
@@ -276,6 +344,91 @@
   {:else}
     <Notice icon="info" key="care-empty" text={m.care_rail_empty()} />
   {/if}
+
+  <!-- Mood between injections (redesign ticket 05: moved off a general
+       stats door, since this is a regimen reading and Care is where the
+       regimen lives). Two readings under one heading rather than two
+       cards, which is what let the "reads your whole journal" line stop
+       repeating itself: it used to sit under each of them, once each,
+       saying the same thing twice on the one door that had a range picker
+       to be reading past. Care has no range control at all - only the
+       rail's own forward-looking window - so it says so once, in Care's
+       own words, and both readings still gate on their own output rather
+       than on a floor either could clear with nothing to show. -->
+  <ChartCard heading={m.interval_mood_title()} kind="interval-mood" role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
+    {#snippet control()}
+      <span class="stats-interval" data-interval-control>
+        <span class="stats-interval-affix">{m.care_interval_fold_prefix()}</span>
+        <label class="visually-hidden" for="custom-interval-length">{m.care_interval_fold_label()}</label>
+        <input
+          class="stats-interval-input"
+          type="number"
+          min="2"
+          id="custom-interval-length"
+          name="custom-interval-length"
+          inputmode="numeric"
+          data-interval-length
+          bind:value={customIntervalLength}
+        />
+        <span class="stats-interval-affix">{m.care_interval_fold_unit()}</span>
+      </span>
+    {/snippet}
+    <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
+    <p class="stats-inline-note">{m.care_interval_all_history()}</p>
+    <ReadGate read={intervalMoodQuery} variant="block" count={1}>
+      {#snippet rows()}
+        {#if foldDrawable(intervalMoodPattern)}
+          {@const ends = positionEnds(intervalMoodPattern)}
+          <AreaChart
+            points={positionPoints(intervalMoodPattern)}
+            min={1}
+            max={5}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => v.toFixed(1)}
+            scrubLabel={positionLabel}
+            ariaLabel={m.interval_mood_chart_aria({
+              count: String(intervalMoodPattern.length),
+              from: String(intervalMoodPattern[0].position),
+              to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+        {/if}
+      {/snippet}
+      {#snippet empty()}
+        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+      {/snippet}
+    </ReadGate>
+    <ReadGate read={customIntervalQuery} variant="block" count={1}>
+      {#snippet rows(customIntervalPattern)}
+        {#if foldDrawable(customIntervalPattern)}
+          {@const ends = positionEnds(customIntervalPattern)}
+          <AreaChart
+            points={positionPoints(customIntervalPattern)}
+            min={1}
+            max={5}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => v.toFixed(1)}
+            scrubLabel={positionLabel}
+            ariaLabel={m.custom_interval_chart_aria({
+              days: String(debouncedCustomIntervalLength),
+              count: String(customIntervalPattern.length),
+              from: String(customIntervalPattern[0].position),
+              to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+        {/if}
+      {/snippet}
+      {#snippet empty()}
+        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+      {/snippet}
+    </ReadGate>
+  </ChartCard>
 
   {#if !loading && otherScheduleRows.length > 0}
     <!-- The rail draws one schedule; every other active one - an unrelated
@@ -594,5 +747,15 @@
       var(--role-mark) 0 2px,
       transparent 2px 4px
     );
+  }
+
+  /* The words either side of the interval-length field ("fold by", "days" -
+     care_interval_fold_prefix/care_interval_fold_unit), at the weight a
+     chart card's other heading-line text takes. */
+  .stats-interval-affix {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+    white-space: nowrap;
   }
 </style>

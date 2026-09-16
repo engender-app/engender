@@ -30,7 +30,20 @@ const TAB_ROUTES: TabRoute[] = [
      screen it redirects to. */
   {
     key: 'stats',
-    prefixes: ['/stats', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
+    prefixes: [
+      '/stats',
+      '/wrapped',
+      '/body-map',
+      '/tally',
+      '/compare',
+      '/on-this-day',
+      /* Its reading draws on Look back (redesign ticket 62's words card),
+         not on Settings, so this address lights the same tab that reading
+         does (redesign ticket 05) - matched here, ahead of the generic
+         `/settings` prefix below, since the first route this list matches
+         wins. */
+      '/settings/words'
+    ]
   },
   /* Doses sits outside /settings, but it is reached from More's health
      group (regimen, hormone-curve) and joins that group's tab too

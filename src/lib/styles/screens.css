@@ -905,14 +905,44 @@
   margin-top: var(--space-5);
 }
 
+/* A line of context inside a chart card, above or below the plot: which
+   analyte is drawn, that a fold reads the whole journal, which tags were
+   left out, the day a stream ended. Shared by /stats and, since redesign
+   ticket 05 moved the two interval folds there, /care.
+
+   Inside the card because it belongs to that chart and is gated on the same
+   read. `.stats-note` used to hang these under the card instead, and the
+   spacing gave the game away: its `margin-top` of 8 collapsed under the
+   card's own 24, so a sentence sat 24px below the chart it qualified and
+   16px above the next one, reading as a preamble to the wrong card.
+
+   ChartCard takes no prop for a paragraph and does not need one; this is
+   body content, which is what its `children` slot is for. */
+.stats-inline-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+}
+
+.stats-inline-note:first-child {
+  margin: 0 0 var(--space-3);
+}
+
 /* The custom interval's length, as that chart's one control on the
    heading's line - where the metric picker sits on the chart above it. It
    was a labelled field in a block of its own, which is a form on a screen
    that has no other form on it. The pill matches the picker's face; the
-   field itself carries the touch target. */
+   field itself carries the touch target.
+
+   Moved to /care whole by redesign ticket 05, along with the two folds it
+   controls - the class kept its name rather than taking a `care-` one,
+   since nothing about it is specific to either screen. */
 .stats-interval {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   flex: 0 0 auto;
 }
 

@@ -15,12 +15,23 @@
 
      The top block is the reads nothing else can do, because they cross
      areas: day by day with a second scale on the plot, where each scale sat,
-     how the days fall across the mood scale, what gets written about, which
-     tags move a scale, what shows up together, the highest days on the
-     person's own euphoria reading, the constellation, and the two folds. It
-     renders whatever the journal holds and says "not enough data" where it
-     holds too little, because it is the tab's own content and somebody
-     arriving on day two should see what the tab becomes.
+     how the days fall across the mood scale, what gets written about, tags
+     and how a scale moved, the highest days on the person's own euphoria
+     reading, and the constellation. It renders whatever the journal holds
+     and says "not enough data" where it holds too little, because it is the
+     tab's own content and somebody arriving on day two should see what the
+     tab becomes.
+
+     Redesign ticket 05 took two things off this block. The two interval
+     folds - "mood between injections" and its custom-length twin - printed
+     "reads your whole journal, not the range above" beside a screen whose
+     whole premise is one range, because they are regimen readings and this
+     is not the regimen's screen; both moved to /care under the spine, one
+     merged card there instead of two. And tag insights and what-shows-up-
+     together were two cards over one ranking, mood filtered to the screen's
+     shown scale in one and every scale in the other, drawing the same six
+     rows twice on an ordinary range - merged into the one card named above,
+     fed by the ranking that already spanned every scale.
 
      Under it was an index: one row per area the person uses, in the More
      hub's four groups and order. Ticket 99 item 36 took it off - "stats
@@ -31,17 +42,16 @@
      no hub row covers.
 
      One floor, an existing constant and not restated: a summary panel needs
-     `WRAPPED_ENTRY_FLOOR` entries in range, and the two folds want the same
-     five as positions of their own all-history output. ADR-0056's other
-     floor, `MIN_PLOT_POSITIONS`, went off this screen with the area charts
-     and still governs the trends on the screens that own them.
+     `WRAPPED_ENTRY_FLOOR` entries in range. ADR-0056's other floor,
+     `MIN_PLOT_POSITIONS`, went off this screen with the area charts and
+     still governs the trends on the screens that own them; Care's own
+     interval folds hold to the entry floor too, for the same reason theirs
+     did here before the move.
 
      One disclaimer still hangs under its card rather than inside it, and it
      is the explanatory-paragraph habit's opposite: `insights_note` says
      which tags were left out. A finding is the app telling you what a
-     reading means; that is the app declining to. The two folds' own lines
-     moved inside their cards, where they are gated on the read that draws
-     the chart.
+     reading means; that is the app declining to.
 
      `/recap` is gone (spec 07). Its two links here reach the wrapped for
      the same periods, and its arbitrary range is a wrapped of its own.
@@ -58,7 +68,16 @@
      month and year are one tap each as links to the three cadence routes.
      The two look-back offers Home used to carry (the wrapped tile and on
      this day) draw here now, under the rail, since this is the door they
-     are offers for. */
+     are offers for.
+
+     Redesign ticket 05: the body map and compare take the span too now,
+     the way /wrapped/range already did. The body map reads its two dates
+     out of the same query, having dropped the 7d-to-365d range picker it
+     opened with (body-map/+page.svelte). Compare opens both sides filled -
+     the span as A, the same-length stretch before it as B - through
+     compareStretch.ts, the query a tryout's or a procedure's own "compare
+     this stretch" link already mints; the two pickers on /compare are
+     still how either side changes. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -66,15 +85,11 @@
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { defaultSpan, eraBands, eraOfferDue, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
+  import { precedingWindow, compareStretchQuery } from '$lib/data/compareStretch';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
-  import {
-    nativeAmount,
-    nativeValue,
-    signedValue,
-    spreadNote,
-    tagInsightRows
-  } from '$lib/data/wrappedDisplay';
+  import { recapDimChange } from '$lib/data/recapDisplay';
+  import { nativeAmount, nativeValue, signedValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
@@ -94,12 +109,12 @@
   import GenderConstellationChart from '$lib/components/GenderConstellationChart.svelte';
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
+  import PairedDots from '$lib/components/kit/PairedDots.svelte';
+  import type { PairedRow } from '$lib/components/kit/pairedRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import OrderedStrip from '$lib/components/kit/OrderedStrip.svelte';
-  import PairedDots from '$lib/components/kit/PairedDots.svelte';
-  import type { PairedRow } from '$lib/components/kit/pairedRow';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -116,9 +131,6 @@
 
   /** How many entries the sheet behind a tag insight lists. */
   const INSIGHT_ENTRIES = 20;
-  /** How many tags the insight chart draws. Bars, not rows: past a handful
-      the shortest ones are a stub each and the card is a list again. */
-  const INSIGHT_BARS = 6;
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically").
@@ -138,7 +150,11 @@
      The mood distribution takes no role at all: it is drawn on mood's own
      ramp (ADR-0025), the one colour system here that is not the flag's, and
      a stripe on that card would put two scales on one surface. */
-  const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
+  /* `1` was the two interval folds' own stripe, moved to Care with them
+     (redesign ticket 05); `lookBack` keeps its index rather than sliding
+     down into the gap, so the palette's own third role still lands where it
+     always has here. */
+  const AREA_ROLE = { charts: 0, lookBack: 2 };
 
   /* Read on recompute rather than captured, so a session open across
      midnight moves on (ticket 10). */
@@ -217,6 +233,11 @@
   let from = $derived(span?.start ?? defaultSpan(today, today).start);
   let to = $derived(span?.end ?? today);
   let range = $derived(to - from + 1);
+  /* `from`/`to` as a `Span` object, for the two look-back rows below: they
+     are reached whether or not a real span exists yet, the same as every
+     chart on this screen, and want the pair spanRangeQuery/compareStretchQuery
+     take rather than the two loose numbers. */
+  let resolvedSpan = $derived<Span>({ start: from, end: to });
 
   /* The span, written once under the title with its length (DIRECTION.md
      rule 7). Years only where they carry information: the start's when it
@@ -279,9 +300,6 @@
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
-  let insightsQuery = liveList((j) => j.stats.tagInsights(vocabulary.activeMetric, from, to));
-  let insights = $derived(insightsQuery.rows);
-
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
   // Native units both ways (ADR-0012), from $lib/data/wrappedDisplay so this
@@ -316,23 +334,6 @@
 
   let moodSteps = $derived(
     moodDistribution(seriesFor('mood')).map((step) => ({ ...step, name: moodName(step.step) }))
-  );
-
-  /* The same rows wrapped draws, from the same module: length from the size
-     of the movement and never from its direction, since the two ends of a
-     scale are not better and worse. */
-  let insightRows = $derived(
-    tagInsightRows(
-      insights.slice(0, INSIGHT_BARS).map((insight) => ({
-        id: insight.id,
-        label: vocabulary.tag(insight.id)?.label ?? insight.id,
-        count: insight.count,
-        withAvg: insight.withAvg,
-        withoutAvg: insight.withoutAvg,
-        delta: insight.withAvg - insight.withoutAvg
-      })),
-      vocabulary.activeMetric
-    )
   );
 
   /* A second scale on the same chart (phase 6 ticket 12). The manual,
@@ -454,71 +455,35 @@
   );
   let correlationCards = $derived(correlationCardsQuery.rows);
 
-  /* Interval mood pattern (phase 5 ticket 09) - two bucket-and-average
-     shapes over a cyclical position, kept apart from correlation cards on
-     purpose (../lib/data/intervalMoodPattern.ts). Neither card names a
-     target or a verdict: both say only where days fell.
-
-     Both ask across the journal's whole history rather than the segmented
-     range above (Number.MIN_SAFE_INTEGER as the lower bound, which is what
-     "ever" means on an epoch-day column), not just the visible window: an
-     injection interval is commonly 14-28 days, so a completed one rarely
-     recurs three times inside even the 90-day preset. "Ever" is capped to a
-     lookback window at the journal/intervalMoodPattern.ts seam instead of
-     actually reaching a decade back (phase 8 audit ticket 16) - this screen
-     still asks the same question, it just no longer pays for the answer
-     literally. */
-  let intervalMoodQuery = liveList((j) =>
-    j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
-  );
-  let intervalMoodPattern = $derived(intervalMoodQuery.rows);
-
-  let customIntervalLength = $state(28);
-  // A boundary clamp, not a save-time validation: the field can sit blank or
-  // negative mid-edit, and the chart underneath has to show something for
-  // every keystroke rather than the query throwing on a bad value.
-  let safeCustomIntervalLength = $derived(
-    Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
-  );
-
-  /* Waited out the same way /search's query is (phase 8 audit ticket 15,
-     ticket 16 here): the liveList closure below reads a $state before its
-     first await, which by the reactivity contract (journal.svelte.ts) makes
-     that read a dependency - so reading safeCustomIntervalLength directly
-     would re-run byCustomInterval's whole-history fold on every keystroke,
-     a fresh 102KB read per digit typed. No cleared-value case to special-case
-     the way /search's does: every value here is already a valid interval
-     length, clamped above, so there is nothing to land early on. */
-  const CUSTOM_INTERVAL_DEBOUNCE_MS = 250;
-  let debouncedCustomIntervalLength = $state(28);
-  $effect(() => {
-    const length = safeCustomIntervalLength;
-    const timer = setTimeout(() => {
-      debouncedCustomIntervalLength = length;
-    }, CUSTOM_INTERVAL_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  });
-
-  let customIntervalQuery = liveList((j) =>
-    j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, debouncedCustomIntervalLength)
-  );
-  let customIntervalPattern = $derived(customIntervalQuery.rows);
-
   /* ---------------------------------------------------------------------
-     The recap, for two things at once (ADR-0056).
+     The recap, for three things at once (ADR-0056).
 
      `entryCount` is the floor every summary panel on this screen is held to
      - WRAPPED_ENTRY_FLOOR, the same bar a retrospective clears before the
-     app offers one - and `topTags` is the donut's whole data source. One
-     read answers both, which is why the screen pays for a recap rather than
-     counting entries itself: nothing here folds a figure the module that
-     owns it does not already produce (ADR-0010). */
+     app offers one - `topTags` is the donut's whole data source, and
+     `biggestDimensionChange` feeds the span's facts below (redesign ticket
+     05). One read answers all three, which is why the screen pays for a
+     recap rather than counting entries itself: nothing here folds a figure
+     the module that owns it does not already produce (ADR-0010). */
   let recapQuery = liveQuery((j) => j.stats.recap(from, to));
   let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
   /* Under the floor and while the read is in flight both read as "not
      enough", and the difference is carried by the skeleton the ReadGate
      draws rather than by a second empty state. */
   let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+
+  /* The span's facts (redesign ticket 05, the ticket's own headline: "zero
+     facts in the first viewport"). Wrapped's own three-line shape
+     (WrappedCompact.svelte, recapDisplay.ts's naming step), with one
+     deliberate difference: wrapped's second line is always mood, and this
+     one is whichever scale the person has active - the same preference the
+     day-by-day chart and the merged tag card above already shade by - so
+     the door's first number is never a scale nobody keeps. `scaleRows`
+     already carries every metric's own native average (ticket 11's own
+     "Each scale, this period" card); this looks up the shown one rather
+     than reading a second time. */
+  let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);
+  let activeScaleRow = $derived(scaleRows.find((row) => row.key === shown.key));
 
   /* Share by tag, the donut's first consumer anywhere in the tree - the case
      ADR-0058 named when it minted the form and left unbuilt. Tags have no
@@ -596,22 +561,35 @@
       ? m.correlation_card_dose_day()
       : (vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id);
 
-  /* One paired-dot row per card: where the days it happened sat, where the
-     rest sat, and the distance between them. Not bars - a bar answers "how
-     much" and measures every row against the longest one, which is what made
-     six of them read as busy and as a third copy of the same shape. Each
-     row's track is its own metric's range, so a mood card and a dimension
-     card need nothing in common to sit next to each other. */
+  /* The merged tag card (redesign ticket 05): tag insights and what-shows-
+     up-together used to be two cards over the same ranking, mood filtered
+     to one metric and everything filtered to none, and on an ordinary
+     range that drew the same six rows twice, bars in one card and paired
+     dots in the other. One card now, fed by the one ranking that already
+     spans every scale and the dose day (correlationCards.ts), drawn as
+     paired dots - Alicja's call, over the bars the tag-insights half used
+     to draw: PairedDots needs no normalizing to mix scales in one set the
+     way a bar's leader measure would, since every row is already read
+     against its own track rather than against the others. Each row's own
+     metric named on its note, since a row can no longer lean on "the card
+     is all one scale" the way a single-metric tag list could. */
   const metricBounds = (key: string) => {
     const dimension = vocabulary.metricDimension(key);
     return dimension ? { min: dimension.min, max: dimension.max } : { min: 1, max: 5 };
   };
 
+  /* A row's key rather than the bare tag id: the same tag can rank under
+     two different metrics now, and a keyed `{#each}` cannot hold two rows
+     of one id. Built the same way twice - once for the row, once to find
+     the card a tapped row came from - so the two never drift apart. */
+  const correlationKey = (card: CorrelationCard) =>
+    `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`;
+
   let correlationRows = $derived<PairedRow[]>(
     correlationCards.map((card) => {
       const bounds = metricBounds(card.metric);
       return {
-        key: `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`,
+        key: correlationKey(card),
         name: occurrenceLabel(card),
         with: card.withAvg,
         without: card.withoutAvg,
@@ -626,39 +604,14 @@
     })
   );
 
-  /* A position on a cycle is not a day, so the two pattern charts label
-     their ends with the position rather than with a date, and they are
-     already one point per position - there is nothing to bucket.
-
-     The axis is the position too, and it was missing (Alicja, on the shots):
-     both folds drew a value gutter and no ends at all, so the one thing the
-     picture is keyed on went unnamed. `interval_day_n` is what the two aria
-     labels have always said out loud - "day {from} to day {to}" - now
-     written on the chart as well, and the scrub reads the same words as the
-     ends it sits between. Not `range_days`, which is the segmented control's
-     compact form and rendered "1d" where this wants "Day 1". */
-  const positionPoints = (pattern: { position: number; value: number }[]) =>
-    pattern.map((p) => ({ x: p.position, y: p.value }));
-  const positionLabel = (point: { x: number }) => m.interval_day_n({ n: String(point.x) });
-  const positionEnds = (pattern: { position: number }[]) => ({
-    from: m.interval_day_n({ n: String(pattern[0].position) }),
-    to: m.interval_day_n({ n: String(pattern[pattern.length - 1].position) })
-  });
-
-  /* What a fold has to hold before it is drawn.
-
-     Not the range floor the summary panels use, which is what these two were
-     wrongly behind: the card says it reads the whole journal and the gate was
-     counting entries in the last thirty days, so a long dose history with a
-     quiet month hid both cards. And not the bare trend floor either - two
-     positions is one straight segment, which is what this drew for somebody
-     with a couple of entries and is the empty-chart complaint this whole
-     ticket opens with.
-
-     `WRAPPED_ENTRY_FLOOR` positions of the fold's own all-history output:
-     five places inside the interval that carry a reading. An existing
-     constant, applied to the thing the card actually draws. */
-  const foldDrawable = (pattern: readonly unknown[]) => pattern.length >= WRAPPED_ENTRY_FLOOR;
+  /* Only a tag row opens the entries-with-this-tag sheet: a dose day has no
+     tag id to look one up by, and the sheet has nothing to show it. */
+  const pickCorrelationRow = (key: string) => {
+    const card = correlationCards.find((c) => correlationKey(c) === key);
+    if (card?.occurrence.kind === 'tag') {
+      insightSheet = { id: card.occurrence.id, label: vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id };
+    }
+  };
 
   /* The day-by-day chart fits the card, so what changes with the range is
      how coarsely it reads: 30 days day by day, a year week by week
@@ -855,6 +808,45 @@
         {/if}
       </div>
     </div>
+
+    <!-- The span's facts (redesign ticket 05: "zero facts in the first
+         viewport" was the whole-app audit's own finding 1). Wrapped's own
+         three-line shape, directly under the rail and before any card - the
+         first number on the door used to be four cards down, in Each
+         scale, this period. `enoughEntries` is the one floor every summary
+         panel here shares; under it the thin-body line above already says
+         why there is nothing to open, so this draws nothing rather than a
+         second "not enough" message for the same span. -->
+    {#if recapQuery.loading}
+      <Skeleton variant="line" count={3} />
+    {:else if enoughEntries}
+      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
+        <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
+          {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
+        </ListRow>
+        {#if activeScaleRow?.value}
+          <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
+            {#snippet trailing()}<b class="wrapped-figure-value">{activeScaleRow.value}</b>{/snippet}
+          </ListRow>
+        {/if}
+        {#if dimChange}
+          <ListRow
+            static
+            data-lookback-fact
+            title={m.wrapped_scale_arc()}
+            subtitle={m.wrapped_scale_arc_body({
+              name: dimChange.name,
+              from: String(Math.round(dimChange.from)),
+              to: String(Math.round(dimChange.to))
+            })}
+          >
+            {#snippet trailing()}
+              <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
+            {/snippet}
+          </ListRow>
+        {/if}
+      </ListCard>
+    {/if}
 
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, on this surface
@@ -1149,69 +1141,42 @@
        is a way somewhere else, and this is a reading that draws here. -->
   <WordsReading role={roleAt(activeFlag.roles, AREA_ROLE.charts)} />
 
-  <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    <!-- Which scale the six bars are of, named once, on the heading's line
-         where a chart card keeps its context. Why it is not on each row is
-         in `tagInsightRows` (../lib/data/wrappedDisplay.ts), which is where
-         the rows are built.
-
-         A picker rather than a label, because the second half of the same
-         problem is that this fact was only changeable from the day-by-day
-         card four cards up the screen. Same stored preference, so the two
-         pickers mirror rather than drift; its own `key`, because that is the
-         select's DOM id and there cannot be two of one id. -->
+  <!-- The merged tag card (redesign ticket 05). Tag insights and what shows
+       up together were two cards over one ranking - one filtered to the
+       shown scale, one spanning every scale and the dose day - and on an
+       ordinary range that meant the same six rows twice, bars in one card
+       and paired dots in the other. Paired dots is the survivor (Alicja's
+       call, over the bars the tag-insights half drew): a bar's leader
+       measure ranks every row against the longest one in the set, which
+       needs normalizing the moment two scales share a card, and a paired
+       dot never ranks a row against another - each one reads against its
+       own track, which is what let mixed scales into one set with no
+       arithmetic of its own. The picker still writes the screen's stored
+       metric, the same mirrored control the day-by-day chart above keeps in
+       step with; it is not what filters this card's own rows any more,
+       which is what let the dose day and every other scale in. -->
+  <ChartCard heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     {#snippet control()}
       <ChartPicker
         key="stats-insight-metric"
-        label={m.tag_insights()}
+        label={m.stats_tags_moved()}
         value={shown.key}
         options={metricOptions}
         onPick={(value) => selectMetric(value === 'mood' ? null : value)}
       />
     {/snippet}
-    <ReadGate read={insightsQuery} variant="line" count={3}>
-      {#snippet rows()}
-        <BarRows
-          rows={insightRows}
-          onPick={(key) =>
-            (insightSheet = { id: key, label: vocabulary.tag(key)?.label ?? key })}
-        />
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.insights_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
-    <!-- Inside the card, under the bars it qualifies. It used to hang below
-         the card, where a `margin-top` of 8 collapsed under the card's own 24
-         and left the sentence sitting 24px under its bars and 16px above the
-         next card - reading as a preamble to the wrong chart, after six rows
-         had already been taken at face value. -->
-    {#if insightRows.length}
-      <p class="stats-inline-note">{m.insights_note()}</p>
-    {/if}
-  </ChartCard>
-
-  <!-- The correlation cards, as bars. They were rows of three stacked lines
-       each - a name, "tends to appear with higher Mood on the same day", and
-       the two averages - which read as busy and unfinished at six of them
-       (Alicja, 2026-08-25), and the middle line was the app interpreting a
-       reading, which PRODUCT.md says it never does. The bar carries the
-       movement, the note carries which scale and how many entries, and the
-       sentence is gone: "+1.6" says what "tends to appear with higher" said,
-       without a verdict on top of it. -->
-  <ChartCard
-    heading={m.correlation_cards_title()}
-    kind="correlations"
-    role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
-  >
     <ReadGate read={correlationCardsQuery} variant="line" count={3}>
       {#snippet rows()}
-        <PairedDots rows={correlationRows} />
+        <PairedDots rows={correlationRows} onPick={pickCorrelationRow} />
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.correlation_cards_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
+    <!-- Inside the card, under the rows it qualifies. -->
+    {#if correlationRows.length}
+      <p class="stats-inline-note">{m.insights_note()}</p>
+    {/if}
   </ChartCard>
 
   <!-- The highest days on one of the person's own readings (phase 8
@@ -1254,104 +1219,6 @@
     {/if}
   </ChartCard>
 
-  <ChartCard
-    heading={m.interval_mood_title()}
-    kind="interval-mood"
-    role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}
-  >
-    <ReadGate read={intervalMoodQuery} variant="block" count={1}>
-      {#snippet rows()}
-        {#if foldDrawable(intervalMoodPattern)}
-          <!-- Inside the card and above the plot, which is the point
-               (ADR-0056). It used to hang under the card and print whether or
-               not anything was drawn, so somebody who had never logged a dose
-               read about where their days fall across the dosing interval.
-               ChartCard takes no prop for a paragraph and still does not; this
-               is body content, drawn beside the chart it belongs to and gated
-               on the same read. -->
-          <!-- What the fold actually is, in the card rather than in a term
-               somebody has to already know (ticket 99 item 34: "i dont know
-               what it means"). The domain keeps calling this a day of
-               interval - CONTEXT.md's own vocabulary, and the axis still
-               counts "Day 1" from the injection day - but a chart heading
-               is not the place to teach a term, so the heading says what it
-               is and this says how to read it. The second sentence is the
-               one ADR-0012 asks for: a position says where days fell and
-               never where they ought to. -->
-          <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
-          <p class="stats-inline-note">{m.stats_all_history()}</p>
-          {@const ends = positionEnds(intervalMoodPattern)}
-          <AreaChart
-            points={positionPoints(intervalMoodPattern)}
-            min={1}
-            max={5}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => v.toFixed(1)}
-            scrubLabel={positionLabel}
-            ariaLabel={m.interval_mood_chart_aria({
-              count: String(intervalMoodPattern.length),
-              from: String(intervalMoodPattern[0].position),
-              to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-            })}
-          />
-        {:else}
-          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/if}
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
-  </ChartCard>
-  <!-- The interval length is this chart's one control, so it sits on the
-       heading's line where the metric picker sits on the chart above rather
-       than as a labelled field in a card of its own. -->
-  <ChartCard heading={m.custom_interval_title()} kind="custom-interval">
-    {#snippet control()}
-      <span class="stats-interval">
-        <label class="visually-hidden" for="custom-interval-length">{m.custom_interval_length_label()}</label>
-        <input
-          class="stats-interval-input"
-          type="number"
-          min="2"
-          id="custom-interval-length"
-          name="custom-interval-length"
-          inputmode="numeric"
-          data-interval-length
-          bind:value={customIntervalLength}
-        />
-      </span>
-    {/snippet}
-    <ReadGate read={customIntervalQuery} variant="block" count={1}>
-      {#snippet rows(customIntervalPattern)}
-        {#if foldDrawable(customIntervalPattern)}
-          <p class="stats-inline-note">{m.stats_all_history()}</p>
-          {@const ends = positionEnds(customIntervalPattern)}
-          <AreaChart
-            points={positionPoints(customIntervalPattern)}
-            min={1}
-            max={5}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => v.toFixed(1)}
-            scrubLabel={positionLabel}
-            ariaLabel={m.custom_interval_chart_aria({
-              days: String(debouncedCustomIntervalLength),
-              count: String(customIntervalPattern.length),
-              from: String(customIntervalPattern[0].position),
-              to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-            })}
-          />
-        {:else}
-          <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
-        {/if}
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
-  </ChartCard>
   <!-- The area index that used to sit here is gone (ticket 99 item 36,
        "stats shouldnt have the 'more' list at the end. it is only the stats
        tab"): it was one row per area the person uses, in the More hub's own
@@ -1378,19 +1245,27 @@
        to open. Two rows left, both of them a screen this tab owns. -->
   <SectionHeading text={m.stats_look_back()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
+    <!-- Takes the span itself now (redesign ticket 05) and has dropped its
+         own 7d-to-365d range control - the same query /wrapped/range reads,
+         though the body map only ever wants the two dates out of it. -->
     <ListRow
       key="body-map"
       icon="grid"
       title={m.body_map_title()}
       subtitle={m.body_map_sub()}
-      href="/body-map"
+      href={`/body-map${spanRangeQuery(resolvedSpan)}`}
     />
+    <!-- Opens filled (redesign ticket 05): the span as side A and the
+         same-length stretch before it as side B, through the query
+         compareStretch.ts already mints for a tryout's or a procedure's own
+         "compare this stretch" link. The pickers on /compare are still how
+         either side changes; this only supplies where they open. -->
     <ListRow
       key="compare"
       icon="shuffle"
       title={m.compare_title()}
-      subtitle={m.compare_sub()}
-      href="/compare"
+      subtitle={m.lookback_compare_sub()}
+      href={compareStretchQuery(resolvedSpan, precedingWindow(resolvedSpan))}
     />
   </ListCard>
 
@@ -1541,30 +1416,6 @@
      still has to leave its label room. */
   .stats-axis :global(.kit-chart-pick) {
     max-width: 74%;
-  }
-
-  /* A line of context inside a chart card, above or below the plot: which
-     analyte is drawn, that a fold reads the whole journal, which tags were
-     left out, the day a stream ended.
-
-     Inside the card because it belongs to that chart and is gated on the same
-     read. `.stats-note` used to hang these under the card instead, and the
-     spacing gave the game away: its `margin-top` of 8 collapsed under the
-     card's own 24, so a sentence sat 24px below the chart it qualified and
-     16px above the next one, reading as a preamble to the wrong card. The
-     class is gone and its three consumers are in here.
-
-     ChartCard still takes no prop for a paragraph and does not need one; this
-     is body content, which is what its `children` slot is for. */
-  .stats-inline-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    line-height: var(--leading-body);
-    color: var(--text-2);
-  }
-
-  .stats-inline-note:first-child {
-    margin: 0 0 var(--space-3);
   }
 
   /* The offer of a second scale (phase 6 ticket 12), in the row the picker

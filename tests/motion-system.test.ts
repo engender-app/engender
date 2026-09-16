@@ -296,6 +296,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
       'a bar row is the width of its card and fills with a wash instead; the compact depth walked a 306px row 9.2px inward on every tap (carpet ticket 10)'
   },
   {
+    file: 'src/lib/components/kit/PairedDots.svelte',
+    count: 1,
+    reason:
+      "a paired-dot row is the width of its card, the same shape BarRows' own opt-out above is for (redesign ticket 05)"
+  },
+  {
     file: 'src/routes/onboarding/+page.svelte',
     count: 1,
     reason:
