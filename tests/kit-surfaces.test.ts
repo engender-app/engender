@@ -147,6 +147,13 @@ describe('the surfaces', () => {
          mostly-the-middle-two, and neither can five columns without the
          reader measuring them against each other. */
       'OrderedStrip.svelte',
+      /* Two positions on one scale with the gap between them: the merged
+         tag card's own mark (redesign ticket 05), and the survivor of a
+         real choice between it and bars, since a paired dot reads each row
+         against its own track rather than against the longest one in the
+         set, which is what let the merged card mix scales with no
+         normalizing of its own. */
+      'PairedDots.svelte',
       /* Not a surface: a Sheet with a fixed arrangement inside it, the same
          shape ConfirmDeleteSheet is (ticket 47) - except this one owns its
          own copy rather than taking it as props, because both callers (the

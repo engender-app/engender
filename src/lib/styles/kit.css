@@ -2850,6 +2850,107 @@ button.kit-strip-day .kit-strip-cell {
   outline-offset: -1px;
 }
 
+/* --- paired dots ---
+
+   The correlation cards' own mark. Two positions on one scale with the gap
+   between them drawn: a bar answers "how much" and these answer "these days
+   sat here, the other days sat there", which is a different question and
+   wanted a different shape. Each row's track is its own metric's range, so
+   nothing here is measured against the row above it - which a bar chart
+   cannot help doing, since every bar is measured against the longest. */
+.kit-paired {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.kit-paired-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.kit-paired-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kit-paired-gap {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kit-paired-track {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+}
+
+/* The scale itself, as the faintest line the theme has. Not a gridline and
+   not an axis: there are no ticks on it and nothing is written along it.
+   Drawn as a child rather than as a two-stop gradient on the track, because
+   the kit paints flat colour and a gradient of one colour is still a
+   gradient to anything reading this. */
+.kit-paired-track::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background: var(--hairline);
+}
+
+/* The distance between the two readings, which is the reading. */
+.kit-paired-span {
+  position: absolute;
+  top: 50%;
+  left: var(--from);
+  width: max(calc(var(--to) - var(--from)), 2px);
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--role-draw);
+}
+
+.kit-paired-dot {
+  position: absolute;
+  top: 50%;
+  left: var(--at);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+}
+
+/* Filled is the days it happened, hollow is the rest - on every row,
+   whichever way the gap runs. Colour says which set, never which way
+   (ADR-0012). */
+.kit-paired-dot.is-with {
+  background: var(--role-draw);
+}
+
+.kit-paired-dot.is-without {
+  background: var(--surface);
+  border: 2px solid var(--role-draw);
+}
+
+.kit-paired-note {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
 
 /* --- vertical distribution ---
 

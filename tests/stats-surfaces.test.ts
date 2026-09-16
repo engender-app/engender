@@ -205,3 +205,22 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toContain('href={compareStretchQuery(resolvedSpan, precedingWindow(resolvedSpan))}');
   });
 });
+
+/* Redesign ticket 05: the merged tag card draws as paired dots, not bars -
+   Alicja's call over the bars the tag-insights half of the duplication
+   drew, since a paired dot reads each row against its own track rather
+   than against the longest one in the set, and needs no normalizing to
+   mix scales in one card the way a bar's leader measure would. */
+describe('the merged tag card draws as paired dots', () => {
+  it('feeds PairedDots, not BarRows, for the merged ranking', () => {
+    expect(stats).toContain('<PairedDots rows={correlationRows} onPick={pickCorrelationRow} />');
+    expect(stats).not.toContain('kind="tag-insights"');
+    expect(stats).not.toContain('kind="correlations"');
+  });
+
+  it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
+    expect(stats).toMatch(
+      /const pickCorrelationRow = \(key: string\) => \{[\s\S]{0,200}occurrence\.kind === 'tag'/
+    );
+  });
+});

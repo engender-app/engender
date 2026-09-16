@@ -89,14 +89,7 @@
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import { recapDimChange } from '$lib/data/recapDisplay';
-  import {
-    correlationBarRows,
-    nativeAmount,
-    nativeValue,
-    signedValue,
-    spreadNote,
-    type CorrelationBarInput
-  } from '$lib/data/wrappedDisplay';
+  import { nativeAmount, nativeValue, signedValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
@@ -116,6 +109,8 @@
   import GenderConstellationChart from '$lib/components/GenderConstellationChart.svelte';
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
+  import PairedDots from '$lib/components/kit/PairedDots.svelte';
+  import type { PairedRow } from '$lib/components/kit/pairedRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
@@ -569,11 +564,15 @@
   /* The merged tag card (redesign ticket 05): tag insights and what-shows-
      up-together used to be two cards over the same ranking, mood filtered
      to one metric and everything filtered to none, and on an ordinary
-     range that drew the same six rows twice. One card now, fed by the one
-     ranking that already spans every scale and the dose day
-     (correlationCards.ts) - each row's own metric named on its note, since
-     a row can no longer lean on "the card is all one scale" the way a
-     single-metric tag list could. */
+     range that drew the same six rows twice, bars in one card and paired
+     dots in the other. One card now, fed by the one ranking that already
+     spans every scale and the dose day (correlationCards.ts), drawn as
+     paired dots - Alicja's call, over the bars the tag-insights half used
+     to draw: PairedDots needs no normalizing to mix scales in one set the
+     way a bar's leader measure would, since every row is already read
+     against its own track rather than against the others. Each row's own
+     metric named on its note, since a row can no longer lean on "the card
+     is all one scale" the way a single-metric tag list could. */
   const metricBounds = (key: string) => {
     const dimension = vocabulary.metricDimension(key);
     return dimension ? { min: dimension.min, max: dimension.max } : { min: 1, max: 5 };
@@ -586,19 +585,24 @@
   const correlationKey = (card: CorrelationCard) =>
     `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`;
 
-  let correlationBarInputs = $derived<CorrelationBarInput[]>(
-    correlationCards.map((card) => ({
-      key: correlationKey(card),
-      label: occurrenceLabel(card),
-      metric: card.metric,
-      metricName: vocabulary.metricNameOf(card.metric),
-      range: metricBounds(card.metric),
-      count: card.count,
-      withAvg: card.withAvg,
-      withoutAvg: card.withoutAvg
-    }))
+  let correlationRows = $derived<PairedRow[]>(
+    correlationCards.map((card) => {
+      const bounds = metricBounds(card.metric);
+      return {
+        key: correlationKey(card),
+        name: occurrenceLabel(card),
+        with: card.withAvg,
+        without: card.withoutAvg,
+        ...bounds,
+        gap: signedValue(card.withAvg - card.withoutAvg, (v) => fmtNativeValue(card.metric, v)),
+        note: `${vocabulary.metricNameOf(card.metric)} · ${m.insight_row_sub({
+          count: String(card.count),
+          with: fmtNativeValue(card.metric, card.withAvg),
+          without: fmtNativeValue(card.metric, card.withoutAvg)
+        })}`
+      };
+    })
   );
-  let tagCardRows = $derived<BarRow[]>(correlationBarRows(correlationBarInputs));
 
   /* Only a tag row opens the entries-with-this-tag sheet: a dose day has no
      tag id to look one up by, and the sheet has nothing to show it. */
@@ -1141,18 +1145,16 @@
        up together were two cards over one ranking - one filtered to the
        shown scale, one spanning every scale and the dose day - and on an
        ordinary range that meant the same six rows twice, bars in one card
-       and dumbbells in the other. `PairedDots` answered "these days sat
-       here, the other days sat there" for a card that was one scale at a
-       time; a card that mixes scales has no shared "here" and "there" to
-       draw two dots on, so the reading is bars again, the way the tag
-       insights card always drew it - length off the size of the movement,
-       normalized to each row's own scale (`correlationBarRows`,
-       ../lib/data/wrappedDisplay.ts) so a 20-point dimension swing does not
-       out-draw a proportionally bigger 1-point mood one. The picker still
-       writes the screen's stored metric, the same mirrored control the
-       day-by-day chart above keeps in step with; it is not what filters
-       this card's own rows any more, which is what let the dose day and
-       every other scale in. -->
+       and paired dots in the other. Paired dots is the survivor (Alicja's
+       call, over the bars the tag-insights half drew): a bar's leader
+       measure ranks every row against the longest one in the set, which
+       needs normalizing the moment two scales share a card, and a paired
+       dot never ranks a row against another - each one reads against its
+       own track, which is what let mixed scales into one set with no
+       arithmetic of its own. The picker still writes the screen's stored
+       metric, the same mirrored control the day-by-day chart above keeps in
+       step with; it is not what filters this card's own rows any more,
+       which is what let the dose day and every other scale in. -->
   <ChartCard heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     {#snippet control()}
       <ChartPicker
@@ -1165,14 +1167,14 @@
     {/snippet}
     <ReadGate read={correlationCardsQuery} variant="line" count={3}>
       {#snippet rows()}
-        <BarRows rows={tagCardRows} onPick={pickCorrelationRow} />
+        <PairedDots rows={correlationRows} onPick={pickCorrelationRow} />
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.correlation_cards_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
-    <!-- Inside the card, under the bars it qualifies. -->
-    {#if tagCardRows.length}
+    <!-- Inside the card, under the rows it qualifies. -->
+    {#if correlationRows.length}
       <p class="stats-inline-note">{m.insights_note()}</p>
     {/if}
   </ChartCard>
