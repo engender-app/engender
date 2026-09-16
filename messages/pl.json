@@ -3049,6 +3049,7 @@
   "stats_look_back": "Głębsze odczyty",
   "lookback_compare_sub": "Twój zakres na tle poprzedzającego go odcinka.",
   "lookback_read_span": "Bilans tego okresu",
+  "lookback_facts_average": "{name}: średnia",
   "lookback_handle_start": "Początek okresu",
   "lookback_handle_end": "Koniec okresu",
   "lookback_era_aria": "Wybierz erę {name}",

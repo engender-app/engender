@@ -2985,6 +2985,7 @@
   "stats_look_back": "Deeper readings",
   "lookback_compare_sub": "Your span against the stretch before it.",
   "lookback_read_span": "Wrapped for this span",
+  "lookback_facts_average": "Average {name}",
   "lookback_handle_start": "Span start",
   "lookback_handle_end": "Span end",
   "lookback_era_aria": "Select the era {name}",
