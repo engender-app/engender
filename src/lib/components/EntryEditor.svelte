@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import {
@@ -11,6 +11,8 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
+  import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
+  import { isReducedMotion } from '$lib/motion/tokens';
   import { readLabResultsInRange } from '$lib/data/journal/clinicianSummary';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
@@ -370,6 +372,68 @@
   });
   let isToday = $derived(day === todayEpochDay());
 
+  /* The chip row and the section it opens (phase 11 ticket 19). The note
+     is the focus target on a new entry: the screen opens on the page, with
+     the keyboard up, the way the two references do (Mobbin: Journal, Liven).
+     `preventScroll` because the screen is arriving through the container
+     transform and a focus scroll during it would fight the frame. An
+     existing entry is read before it is written, so it opens unfocused. */
+  let noteEl = $state<HTMLTextAreaElement | undefined>();
+  let chipRowEl = $state<HTMLElement | undefined>();
+  let moodsEl = $state<HTMLElement | undefined>();
+
+  $effect(() => {
+    if (entryId == null && noteEl) noteEl.focus({ preventScroll: true });
+  });
+
+  function sectionName(section: EntrySection): string {
+    switch (section) {
+      case 'tags':
+        return m.tags_label();
+      case 'body':
+        return m.body_map_label();
+      case 'photos':
+        return m.photos_label();
+      case 'voice':
+        return m.entry_chip_voice();
+      case 'video':
+        return m.entry_chip_video();
+    }
+  }
+
+  /* A second tap on the open chip closes it; a tap on another chip swaps
+     the section. The open chip is draft state (entryDraft.ts), so the
+     process-death mirror carries it. */
+  async function toggleSection(section: EntrySection) {
+    const opening = entryDraft.openSection !== section;
+    entryDraft.setOpenSection(opening ? section : null);
+    if (!opening) return;
+    await tick();
+    revealSection(section);
+  }
+
+  /* Brings the opened section into view on the same clock it discloses
+     on: the scroll region moves by however much of the section's settled
+     height would land under the foot, and never so far that the chip row
+     itself leaves the top of the window - the row is what the person just
+     tapped, and a section that scrolled its own chip away would be a
+     section with no visible way to close it. `scrollHeight` is the
+     section's content height even while `disclose` still clips its box,
+     which is what makes the settled height readable on the first frame. */
+  function revealSection(section: EntrySection) {
+    const sectionEl = chipRowEl?.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
+    const region = chipRowEl?.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!sectionEl || !region || !chipRowEl) return;
+    const regionBox = region.getBoundingClientRect();
+    const settledBottom = sectionEl.getBoundingClientRect().top + sectionEl.scrollHeight;
+    const overflow = settledBottom + 20 - regionBox.bottom;
+    if (overflow <= 0) return;
+    const rowRoom = chipRowEl.getBoundingClientRect().top - regionBox.top - 8;
+    const travel = Math.min(overflow, rowRoom);
+    if (travel <= 0) return;
+    region.scrollBy({ top: travel, behavior: isReducedMotion() ? 'auto' : 'smooth' });
+  }
+
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
   let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let activeTryout = $derived(
@@ -654,8 +718,13 @@
   let moodMissing = $derived(entryDraft.mood == null);
 
   async function saveEntry() {
+    /* The requirement is on the button's own label while it is unmet
+       ("Pick a mood to save"), so a tap here fires no toast: it hands the
+       focus to the faces, which are on the same bar, and that is the whole
+       answer. The toast's own string (entry_needs_mood) had no caller left
+       and is gone from both catalogues. */
     if (moodMissing) {
-      toast(m.entry_needs_mood());
+      moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
     if (saving) return; // a second tap while the worker is writing
@@ -803,9 +872,27 @@
   {#if loaded.loading}
     <Skeleton variant="block" count={3} />
   {:else}
-  <SectionHeading text={m.mood()} />
-  <MoodPicker value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
+  <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
+       mode, two sliders and thirty tag chips - about 1900px down on the
+       audit's render - and the save was gated on the mood picker three
+       viewports above the Save button. What a journal is for comes first
+       now, grown to its text; every structured question is one tap away
+       in the chip row under it; mood is asked where the saving happens.
+       Nothing about what an entry records changed (CONTEXT: "Entry"). -->
+  <textarea
+    class="input editor-note"
+    id="ed-note"
+    name="note"
+    rows="4"
+    placeholder={m.note_placeholder()}
+    bind:this={noteEl}
+    bind:value={entryDraft.note}
+  ></textarea>
 
+  <!-- Mode and Gender stay open on the page (Alicja, on the spike,
+       17 September 2026: "some of the sections should be always-on, for
+       example gender and mode"). They keep the headings and the "manage"
+       and "change" links redesign ticket 51 gave them. -->
   {#if vocabulary.visiblePresentations.length > 0}
     <SectionHeading text={m.presentation_label()}>
       {#snippet action()}
@@ -856,24 +943,190 @@
     {/if}
   {/each}
 
-  <SectionHeading text={m.tags_label()} />
-  <TagPicker
-    groups={vocabulary.visibleTagGroups}
-    selected={entryDraft.tags}
-    onToggle={(id) => entryDraft.toggleTag(id)}
-  />
+  <!-- One chip per folded section, each a key (DIRECTION.md rule 13): its
+       name, and under it what the section holds once it holds something -
+       so a saved entry reads as a summary line under its note. A chip opens
+       its section directly under the row and closes it on a second tap; one
+       section at a time. -->
+  <div class="editor-chips" data-editor-chips role="group" bind:this={chipRowEl}>
+    {#each ENTRY_SECTIONS as section (section)}
+      {@const state = sectionState(section, entryDraft)}
+      {@const open = entryDraft.openSection === section}
+      <button
+        type="button"
+        class="editor-chip press"
+        class:is-open={open}
+        data-section-chip={section}
+        aria-expanded={open}
+        aria-controls={open ? `editor-section-${section}` : undefined}
+        onclick={() => toggleSection(section)}
+      >
+        <span class="editor-chip-name">{sectionName(section)}</span>
+        {#if state != null}
+          <span class="editor-chip-state">{state}</span>
+        {/if}
+      </button>
+    {/each}
+  </div>
 
-  <SectionHeading text={m.note_label()} />
-  <textarea
-    class="input editor-note"
-    id="ed-note"
-    name="note"
-    rows="4"
-    placeholder={m.note_placeholder()}
-    bind:value={entryDraft.note}
-  ></textarea>
+  <!-- ADR-0078 holds: a section discloses by moving under the note, and a
+       switch from one chip to another is the old section closing while the
+       new one opens - two heights travelling, never a cut. A transition is
+       local and does not play on first render, so a draft restored with a
+       chip open draws it without a movement the person did not make. -->
+  {#if entryDraft.openSection === 'tags'}
+    <div class="editor-section" id="editor-section-tags" data-editor-section="tags" transition:disclose>
+      <TagPicker
+        groups={vocabulary.visibleTagGroups}
+        selected={entryDraft.tags}
+        onToggle={(id) => entryDraft.toggleTag(id)}
+      />
+    </div>
+  {/if}
 
-  <!-- Contextual Inline Cards (ticket 04, ADR-0044) -->
+  {#if entryDraft.openSection === 'body'}
+    <div class="editor-section" id="editor-section-body" data-editor-section="body" transition:disclose>
+      <p class="editor-hint">{m.body_map_hint()}</p>
+      <BodyRegionPicker
+        regions={vocabulary.visibleBodyRegions}
+        values={entryDraft.bodyRegions}
+        onToggle={(key) => entryDraft.toggleBodyRegion(key)}
+        onFeeling={(key, feeling) => entryDraft.setBodyRegionFeeling(key, feeling)}
+      />
+    </div>
+  {/if}
+
+  <!-- Attachments, split by kind (ticket 19): a person adding a photo does
+       not want the recorder. Each kind keeps its own two controls, pick and
+       make, since "Record" on two buttons side by side did not say which one
+       was which (phase 5 ticket 22) and the chip now says it instead. -->
+  {#if entryDraft.openSection === 'photos'}
+    <div class="editor-section" id="editor-section-photos" data-editor-section="photos" data-editor-media transition:disclose>
+      <div class="photo-row">
+        {#each entryDraft.photos as p, i (p)}
+          <div class="photo-wrap">
+            {#if p.kind === 'stored'}
+              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
+                <PhotoThumb photo={p.photo} size={72} />
+              </button>
+              <button
+                class="photo-star"
+                class:is-starred={p.photo.starred}
+                aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
+                aria-pressed={p.photo.starred}
+                onclick={() => togglePhotoStarred(i)}
+              >
+                <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
+              </button>
+            {:else}
+              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
+                <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+              </button>
+            {/if}
+            <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        {/each}
+        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={addPhoto}>
+          <Icon name="image" size={22} /><span>{m.add_photo()}</span>
+        </button>
+        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
+          <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  {#if entryDraft.openSection === 'voice'}
+    <div class="editor-section" id="editor-section-voice" data-editor-section="voice" transition:disclose>
+      {#if entryDraft.recordings.length > 0}
+        <div class="recording-list">
+          {#each entryDraft.recordings as r, i (r)}
+            <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
+                 so adding or removing one moves the rows under it rather
+                 than jumping them. -->
+            <div class="recording-row" transition:collapse|global>
+              {#if r.kind === 'stored'}
+                <VoicePlayer fileName={r.recording.fileName} />
+              {:else}
+                <VoicePlayer bytes={r.bytes} />
+              {/if}
+              <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      <div class="photo-row">
+        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
+          <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
+          <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
+        </button>
+        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={addRecordingFile}>
+          <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  {#if entryDraft.openSection === 'video'}
+    <div class="editor-section" id="editor-section-video" data-editor-section="video" transition:disclose>
+      {#if entryDraft.videos.length > 0}
+        <div class="recording-list">
+          {#each entryDraft.videos as v, i (v)}
+            <div class="video-row" transition:collapse|global>
+              {#if v.kind === 'stored'}
+                <VideoNotePlayer fileName={v.video.fileName} />
+              {:else}
+                <VideoNotePlayer bytes={v.bytes} />
+              {/if}
+              <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if activeVideo}
+        <div class="video-preview">
+          <!-- Muted: routing the microphone back to the speaker would howl. -->
+          <!-- svelte-ignore a11y_media_has_caption -->
+          <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
+          <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
+        </div>
+      {:else if compressingVideo}
+        <p class="video-hint">{m.video_compressing()}</p>
+      {:else}
+        <p class="video-hint">{m.video_recording_hint()}</p>
+      {/if}
+      <div class="photo-row">
+        <button
+          class="photo-add press"
+          disabled={compressingVideo}
+          aria-label={activeVideo ? m.stop_video() : m.add_video()}
+          onclick={toggleVideo}
+        >
+          <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
+          <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
+        </button>
+        <button
+          class="photo-add press"
+          data-add-video-file
+          disabled={compressingVideo || !!activeVideo}
+          aria-label={m.add_video_file()}
+          onclick={addVideoFile}
+        >
+          <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Contextual Inline Cards (ticket 04, ADR-0044). Offers rather than
+       questions, so they stay where they were - after what the person
+       chose to open, before the foot - and take no chip. -->
   {#if prefs.entryTryoutPromptEnabled && activeTryout}
     <!-- All three contextual cards open their own height rather than
          appearing at full size in one frame (ticket 99 item 18, "tryout
@@ -1089,151 +1342,18 @@
     </div>
   {/if}
 
-  <SectionHeading text={m.body_map_label()} />
-  <p class="editor-hint">{m.body_map_hint()}</p>
-  <BodyRegionPicker
-    regions={vocabulary.visibleBodyRegions}
-    values={entryDraft.bodyRegions}
-    onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-    onFeeling={(key, feeling) => entryDraft.setBodyRegionFeeling(key, feeling)}
-  />
-
-  <!-- One area for everything an entry carries besides its words, rather
-       than three headed cards in a row. A photo, a voice note and a video
-       note are the same act - attaching something to today - and the three
-       of them were half the editor's length. They keep their own labels
-       inside it, because "Record" on two buttons side by side does not say
-       which one is which, and the label is what disambiguates them. -->
-  <SectionHeading text={m.attachments_label()} />
-  <div class="editor-media" data-editor-media>
-    <section class="editor-media-group">
-      <h3 class="editor-media-label">{m.photos_label()}</h3>
-      <div class="photo-row">
-        {#each entryDraft.photos as p, i (p)}
-          <div class="photo-wrap">
-            {#if p.kind === 'stored'}
-              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
-                <PhotoThumb photo={p.photo} size={72} />
-              </button>
-              <button
-                class="photo-star"
-                class:is-starred={p.photo.starred}
-                aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
-                aria-pressed={p.photo.starred}
-                onclick={() => togglePhotoStarred(i)}
-              >
-                <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
-              </button>
-            {:else}
-              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
-                <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
-              </button>
-            {/if}
-            <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
-              <Icon name="x" size={14} />
-            </button>
-          </div>
-        {/each}
-        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={addPhoto}>
-          <Icon name="image" size={22} /><span>{m.add_photo()}</span>
-        </button>
-        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
-          <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
-        </button>
-      </div>
-    </section>
-
-    <section class="editor-media-group">
-      <h3 class="editor-media-label">{m.recordings_label()}</h3>
-      {#if entryDraft.recordings.length > 0}
-        <div class="recording-list">
-          {#each entryDraft.recordings as r, i (r)}
-            <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
-                 so adding or removing one moves the rows under it rather
-                 than jumping them. -->
-            <div class="recording-row" transition:collapse|global>
-              {#if r.kind === 'stored'}
-                <VoicePlayer fileName={r.recording.fileName} />
-              {:else}
-                <VoicePlayer bytes={r.bytes} />
-              {/if}
-              <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
-                <Icon name="x" size={16} />
-              </button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      <div class="photo-row">
-        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
-          <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
-          <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
-        </button>
-        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={addRecordingFile}>
-          <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
-        </button>
-      </div>
-    </section>
-
-    <section class="editor-media-group">
-      <h3 class="editor-media-label">{m.videos_label()}</h3>
-      {#if entryDraft.videos.length > 0}
-        <div class="recording-list">
-          {#each entryDraft.videos as v, i (v)}
-            <div class="video-row" transition:collapse|global>
-              {#if v.kind === 'stored'}
-                <VideoNotePlayer fileName={v.video.fileName} />
-              {:else}
-                <VideoNotePlayer bytes={v.bytes} />
-              {/if}
-              <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
-                <Icon name="x" size={16} />
-              </button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#if activeVideo}
-        <div class="video-preview">
-          <!-- Muted: routing the microphone back to the speaker would howl. -->
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
-          <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
-        </div>
-      {:else if compressingVideo}
-        <p class="video-hint">{m.video_compressing()}</p>
-      {:else}
-        <p class="video-hint">{m.video_recording_hint()}</p>
-      {/if}
-      <div class="photo-row">
-        <button
-          class="photo-add press"
-          disabled={compressingVideo}
-          aria-label={activeVideo ? m.stop_video() : m.add_video()}
-          onclick={toggleVideo}
-        >
-          <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
-          <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
-        </button>
-        <button
-          class="photo-add press"
-          data-add-video-file
-          disabled={compressingVideo || !!activeVideo}
-          aria-label={m.add_video_file()}
-          onclick={addVideoFile}
-        >
-          <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
-        </button>
-      </div>
-    </section>
-  </div>
-
   <SaveBar>
-    <!-- The star beside Save rather than a `row` arrangement's two equal
-         controls (ticket 18): a toggle and a commit are not the same
-         weight, so this is its own row with its own flex rule
-         (.editor-save-row below) instead of SaveBar's shared 50/50 split. -->
+    <!-- Mood is asked where the saving happens (ticket 19): the five faces
+         (ADR-0077's drawing and motion, at the bar's height), the star
+         (ticket 18), Save. The requirement is unchanged - an entry needs a
+         mood - but it is stated on the button rather than toasted after the
+         tap, and the control it points at is 60px away rather than three
+         viewports up. A tap on the unmet Save sends focus to the faces and
+         fires nothing. -->
     <div class="editor-save-row">
+      <div class="editor-save-moods" data-save-moods bind:this={moodsEl}>
+        <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
+      </div>
       <button
         class="icon-btn press"
         aria-label={starred ? m.unstar_entry() : m.star_entry()}
@@ -1243,8 +1363,17 @@
       >
         <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
       </button>
-      <button class="btn btn-primary" data-save disabled={saving} onclick={saveEntry}>
-        <Icon name="check" size={20} /><span>{m.save_entry()}</span>
+      <button
+        class="btn press"
+        class:btn-primary={!moodMissing}
+        class:btn-soft={moodMissing}
+        class:is-unmet={moodMissing}
+        data-save
+        data-save-unmet={moodMissing ? 'mood' : undefined}
+        disabled={saving}
+        onclick={saveEntry}
+      >
+        <span>{moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
     </div>
   </SaveBar>
@@ -1392,10 +1521,15 @@
   .editor-save-row {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
   .editor-save-row .icon-btn { flex: none; }
-  .editor-save-row .btn { flex: 1; }
+  /* 116px at 390 (350 less 170 of faces, 48 of star, two 8px gaps), so
+     the label takes 8px of side padding rather than .btn's 24: "Save
+     entry" measures 79 in Nunito 16/750 and "Zapisz wpis" 81, and the
+     check icon that rode beside them on every other primary is 28 more
+     than the line has. The faces say what this bar is; the tick did not. */
+  .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
 
   /* The line under a heading that needs one. A hint is the area's own second
      sentence rather than a caption on a field, so it sits at the page's
@@ -1422,10 +1556,87 @@
   .revisit-date-row :global(input) { flex: 1; }
   :global(.icon.revisit-set) { color: var(--accent); }
 
+  /* Grown to the height of its text (ticket 19): the browser owns the
+     measurement (`field-sizing`), and where it does not yet, `rows` holds
+     the four-line floor it always had. No drag handle: a field that sizes
+     itself has nothing for one to do, and the corner grip was the one
+     piece of chrome on the page. */
   .editor-note {
     width: 100%;
-    resize: vertical;
+    resize: none;
+    field-sizing: content;
+    min-height: calc(4lh + 2 * var(--space-3));
     font-family: var(--font-body);
+  }
+
+  /* The chip row: one key per folded section (DIRECTION.md rule 13).
+     Blocks with a 1px outline edge and the app's one corner, wrapping at
+     390px rather than scrolling - a row you have to scroll hides the
+     question you came for, and "one tap away" has to mean visible. The
+     open chip takes the chosen block's 3px `--text` edge, drawn as an
+     inset outline so no chip moves when one opens. */
+  .editor-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-5) 0 0;
+  }
+  .editor-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--r-block);
+    border: 1px solid var(--outline);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: outline-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    outline: 3px solid transparent;
+    outline-offset: -3px;
+  }
+  .editor-chip:hover { background: var(--surface-2); }
+  .editor-chip.is-open { outline-color: var(--text); }
+  .editor-chip:focus-visible { outline-color: var(--focus-ring); outline-offset: 2px; }
+  .editor-chip-name {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    line-height: 1.25;
+  }
+  .editor-chip-state {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+  }
+
+  /* The section a chip opens sits on the page under the row, 20 below it
+     (rule 1's gap between blocks) and 20 above whatever follows. The chip
+     is its heading. */
+  .editor-section {
+    margin: var(--space-5) 0;
+  }
+
+  /* The faces' room on the bar: five 32px faces at 36px each, then the
+     star, then Save taking the rest. The picked face's 1.18 scale and the
+     magnifier's lift paint outside the row, which is why nothing here
+     clips. */
+  .editor-save-moods { flex: none; }
+  /* "Pick a mood to save" is two lines in 100px - "Pick a mood" is 77 at
+     14px, "Wybierz nastrój," 97 at 13px - so the unmet label sets at 13
+     and asks the browser to balance the break. */
+  .editor-save-row .btn.is-unmet {
+    font-size: 0.8125rem;
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+    text-align: center;
+    text-wrap: balance;
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
@@ -1565,31 +1776,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-  }
-
-  /* Everything an entry carries besides its words, on one surface (phase 5
-     ticket 22). Three headed cards in a row were half the editor's length and
-     said the same thing three times; this is one area with three labelled
-     groups, separated by the same hairline a list card puts between its rows.
-
-     Uncoloured on purpose. Every other area of every other screen takes a
-     flag stripe, and this one is full of photographs and waveforms that bring
-     their own colour - a tinted ground behind a photo grid is a tint behind a
-     photograph. */
-  .editor-media {
-    background: var(--surface);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    overflow: hidden;
-  }
-  .editor-media-group { padding: var(--space-4); }
-  .editor-media-group + .editor-media-group { border-top: 1px solid var(--outline); }
-  .editor-media-label {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
-    color: var(--text-2);
-    margin: 0 0 var(--space-3);
   }
 
   /* Wraps the thumb only, not the star/remove badges beside it (ticket

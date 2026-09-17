@@ -231,7 +231,7 @@
      "Today" used to be a row of its own, opening a blank entry. It is gone,
      merged into the mood row above it, because the three of them were one
      thing wearing three labels: an entry cannot be saved without a mood
-     (entry_needs_mood), so a blank entry for today is a mood picker with an
+     (the editor's Save says so), so a blank entry for today is a mood picker with an
      extra tap in front of it. Picking a mood is how you start today's
      entry, and the editor still lets you change it. */
   function chooseDate() {
