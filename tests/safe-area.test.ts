@@ -37,8 +37,9 @@ describe('the shell declares its window insets', () => {
   it('asks the platform for the insets at all, with viewport-fit=cover', () => {
     const html = read('../src/app.html');
     /* Matched via the name attribute, not the whole tag: the meta is
-       written across several lines, which is what this test missed when
-       it assumed a single line and went quiet. */
+       written across several lines, which this test missed when it
+       assumed a single line - and a match that returns undefined makes
+       the very next line throw, so the failure was loud, not silent. */
     const viewport = html.match(/name="viewport"\s+content="([^"]+)"/)?.[1];
     expect(viewport).toBeDefined();
     expect(viewport!.split(',').map((part) => part.trim())).toContain('viewport-fit=cover');
