@@ -1978,7 +1978,9 @@ try {
      group inside a list is named by 15/600 in the secondary ink - the same
      drawing the permissions step already used for its two groups. */
   const areaHeadings = (await page.locator('[data-setup-caption]').allTextContents()).map((t) => t.trim());
-  if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
+  /* Two, not three, since audit item 10: the Body group was one row and is
+     folded into Health, so this step lists what the door lists. */
+  if (areaHeadings.join() !== ['Health', 'Steps'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
