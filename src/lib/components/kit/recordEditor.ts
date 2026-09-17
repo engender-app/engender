@@ -48,6 +48,28 @@ export async function trySave<TDraft extends { id?: string }>(
   return result !== false;
 }
 
+/** Copy editable objects, retaining immutable attachment bytes by identity.
+    Drafts and their baseline never leave memory. */
+export function snapshotDraft<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(snapshotDraft) as T;
+  if (value && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, snapshotDraft(item)])) as T;
+  }
+  return value;
+}
+
+export function sameDraft(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+  if (Object.getPrototypeOf(left) !== Object.getPrototypeOf(right)) return false;
+  if (!Array.isArray(left) && Object.getPrototypeOf(left) !== Object.prototype) return false;
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every((key) =>
+    Object.hasOwn(right, key) &&
+    sameDraft((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key])
+  );
+}
+
 /** Resolves what `askToDelete` should set as the delete-confirm target.
     Three call shapes: no argument, from inside an open editor (looks the
     record up by the draft's own id); an id string, for a row deleted

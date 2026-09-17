@@ -7,12 +7,18 @@
     open = $bindable(false),
     title = '',
     onClose,
+    onRequestClose,
     children,
-  }: { open?: boolean; title?: string; onClose?: () => void; children: Snippet } = $props();
+  }: { open?: boolean; title?: string; onClose?: () => void; onRequestClose?: () => void; children: Snippet } = $props();
 
   let sheetEl: HTMLElement | null = null;
 
   function close() {
+    dragY = 0;
+    if (onRequestClose) {
+      onRequestClose();
+      return;
+    }
     open = false;
     onClose?.();
   }

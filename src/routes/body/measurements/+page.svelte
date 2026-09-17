@@ -521,7 +521,7 @@
       <div class="cd-endpoints">
         <Field label={m.measurement_value_label()} id="measurement-value">
           {#snippet children(id)}
-            <input class="input" type="number" {id} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
+            <input class="input" type="number" {id} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
           {/snippet}
         </Field>
         <Field label={m.measurement_unit_label()} legend>

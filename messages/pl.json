@@ -467,6 +467,10 @@
   "skip": "Pomiń",
   "not_now": "Nie teraz",
   "cancel": "Anuluj",
+  "record_discard_title": "Odrzucić niezapisane zmiany?",
+  "record_discard_body": "Zmiany nie zostały zapisane.",
+  "record_keep_editing": "Edytuj dalej",
+  "record_save_failed": "Nie udało się zapisać. Zmiany nadal tu są. Spróbuj ponownie.",
   "n_years": [
     {
       "declarations": [
