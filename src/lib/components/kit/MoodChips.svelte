@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* The mood row: five moods, flush to the page with no container around it
      at all.
 
@@ -43,7 +44,6 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import { moodMagnifier } from '../moodMagnifier.svelte';
   import MoodFace from '../MoodFace.svelte';
-  import { nextRadioIndex } from '../rovingRadioIndex';
 
   let {
     value = null,
@@ -64,15 +64,6 @@
      bubble up here. The release puts every face back. */
   const magnifier = moodMagnifier(STEPS.length);
 
-  let buttons = $state<(HTMLElement | undefined)[]>([]);
-
-  /* The one face the roving tabindex leaves in the tab order: the picked
-     one, or the first while nothing is picked yet. */
-  let activeIndex = $derived.by(() => {
-    const i = STEPS.findIndex((s) => s === value);
-    return i === -1 ? 0 : i;
-  });
-
   /* The row hears about the pick before the caller does, because the beat it
      runs afterwards - the four unpicked faces turning to look at the chosen
      one - needs the cell index, and the index is a thing only the row knows.
@@ -89,24 +80,13 @@
   function choose(i: number) {
     announce(i, STEPS[i] === value ? null : STEPS[i]);
   }
-
-  function onRadioKeydown(e: KeyboardEvent, i: number) {
-    const next = nextRadioIndex(e.key, i, STEPS.length);
-    if (next === null) return;
-    e.preventDefault();
-    buttons[next]?.focus();
-    /* Through announce(), not straight to onPick: an arrow key picks a mood
-       exactly as much as a tap does, and routing it past the row left a
-       keyboard user the only one who never saw the other four look at what
-       they had chosen. */
-    announce(next, STEPS[next]);
-  }
 </script>
 
 <div
   class="kit-moods"
   data-kit-surface
   role="radiogroup"
+  use:rovingRadio
   tabindex="-1"
   aria-label={m.mood()}
   data-mood-chips
@@ -117,17 +97,14 @@
 >
   {#each STEPS as step, i (step)}
     <button
-      bind:this={buttons[i]}
       type="button"
       class="kit-mood press"
       role="radio"
       aria-checked={step === value}
       aria-label={moodName(step)}
-      tabindex={i === activeIndex ? 0 : -1}
       data-mood={step}
       style:--mood-mag={magnifier.moodScale[i]}
       onclick={() => choose(i)}
-      onkeydown={(e) => onRadioKeydown(e, i)}
     >
       <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
            number as --touch-target, so the circle itself now clears the row

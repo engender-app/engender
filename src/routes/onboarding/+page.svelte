@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* The first run (F16), rebuilt for phase 5 ticket 26.
 
      Five settings, one pass. What a person had to leave here and go and find
@@ -781,7 +782,7 @@
                      name under it on the page. The chosen one takes the
                      section rule's 3px as a frame; nothing tints, and
                      nothing fills behind the name. -->
-                <div class="palette-grid setup-flags" role="radiogroup" aria-label={m.colour_palette()}>
+                <div class="palette-grid setup-flags" role="radiogroup" use:rovingRadio aria-label={m.colour_palette()}>
                   {#each PALETTES as [key, label] (key)}
                     <button
                       class="palette-swatch"
