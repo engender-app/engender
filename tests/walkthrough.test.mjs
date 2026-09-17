@@ -6006,6 +6006,31 @@ try {
     throw new Error('walking back and forward lost what was jotted');
   }
 
+  /* Leaving the screen entirely and coming back (ticket 05, audit I2): the
+     in-page previous/next walk above never remounts the component, so it
+     cannot catch an answer only held in module state getting lost - or
+     wiped by this screen's own empty state - the moment it remounts.
+
+     The header's own back control, not `page.goto`: a `goto` is a full
+     browser navigation and reloads the document, which would wipe the
+     module state under test along with everything else - proving nothing
+     about "survives back and return" beyond what a killed process already
+     covers elsewhere. The client-side route change this control makes is
+     what "the same app process" actually means here. */
+  await page.click('[data-screen-back]');
+  await page.waitForSelector('[data-list-row="in-the-room"]');
+  await page.click('[data-list-row="in-the-room"]');
+  await page.waitForSelector('[data-in-the-room]', { timeout: 8000 });
+  steps = 0;
+  while ((await questionOnScreen()) !== REFERRAL) {
+    if (steps > 60) throw new Error('walked the whole prep list without reaching the question just written, after returning');
+    await page.click('[data-room-next]');
+    steps += 1;
+  }
+  if ((await page.inputValue('[data-room-answer]')) !== ANSWER) {
+    throw new Error('leaving the room and coming back lost what was jotted');
+  }
+
   // The one way out, which carries what was jotted into the debrief.
   await page.click('[data-room-done]');
   await page.waitForSelector('#ed-note', { timeout: 8000 });

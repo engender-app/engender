@@ -21,16 +21,44 @@
    debrief. */
 import type { DebriefAnswer } from '../data/journal/debriefNote';
 
-let held: { appointmentId: string; answers: DebriefAnswer[] } | null = null;
+let held: {
+  appointmentId: string;
+  answers: DebriefAnswer[];
+  byItemId: Record<string, string>;
+} | null = null;
 
 /** Replaces whatever was held. A visit at a time: opening the screen for a
     different appointment is a different visit, and holding both would mean
-    deciding later which one a debrief meant. */
-export function holdRoomAnswers(appointmentId: string, answers: DebriefAnswer[]): void {
-  held = { appointmentId, answers };
+    deciding later which one a debrief meant.
+
+    `byItemId` is the same answers keyed by checklist item id rather than by
+    question text - what a remounted room screen restores from (ticket 05,
+    audit I2), since `answers` alone has already dropped the id a screen
+    needs to put a jotting back under the field it was typed into. */
+export function holdRoomAnswers(
+  appointmentId: string,
+  answers: DebriefAnswer[],
+  byItemId: Record<string, string>
+): void {
+  held = { appointmentId, answers, byItemId };
 }
 
 /** What was jotted for this appointment, or nothing. */
 export function roomAnswersFor(appointmentId: string): DebriefAnswer[] {
   return held?.appointmentId === appointmentId ? held.answers : [];
+}
+
+/** The held answers for `appointmentId`, narrowed to `itemIds` - what a
+    remounted room screen puts back in its fields. Matched by checklist item
+    id and nothing else, so an item edited, reordered or deleted since is
+    never the reason an answer reappears under a different question: an id
+    no longer in `itemIds` is dropped, not carried over to whatever now sits
+    in its old place. */
+export function restoreRoomAnswers(appointmentId: string, itemIds: string[]): Record<string, string> {
+  const byItemId = held?.appointmentId === appointmentId ? held.byItemId : {};
+  const restored: Record<string, string> = {};
+  for (const id of itemIds) {
+    if (byItemId[id] !== undefined) restored[id] = byItemId[id];
+  }
+  return restored;
 }
