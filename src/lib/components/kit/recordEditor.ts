@@ -65,7 +65,7 @@ export function sameDraft(left: unknown, right: unknown): boolean {
   if (!Array.isArray(left) && Object.getPrototypeOf(left) !== Object.prototype) return false;
   const keys = Object.keys(left);
   return keys.length === Object.keys(right).length && keys.every((key) =>
-    Object.hasOwn(right, key) &&
+    Object.prototype.hasOwnProperty.call(right, key) &&
     sameDraft((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key])
   );
 }

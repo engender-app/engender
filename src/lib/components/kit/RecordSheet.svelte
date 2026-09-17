@@ -105,6 +105,10 @@
     after?.();
   }
 
+  function requestDelete() {
+    requestDismiss(() => { record.askToDelete(); });
+  }
+
   beforeNavigate((navigation) => {
     if (!draft || lockState.blanked || (!record.changed && !record.saving)) return;
     navigation.cancel();
@@ -144,35 +148,35 @@
     {#if draft}
       <h3>{wording(draft.id ? editTitle : newTitle, draft)}</h3>
       <fieldset disabled={record.saving}>
-      {@render fields(draft)}
-      {#if record.saveFailed}
-        <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
-      {/if}
-      <div class="stack-3">
-        {#if primary}
-          {@render primary(draft)}
-        {:else}
-          <button
-            class="btn btn-primary"
-            {...{ [handles.save]: '' }}
-            disabled={canSave ? !canSave(draft) : false}
-            onclick={record.save}
-          >
-            <span>{wording(saveLabel, draft)}</span>
-          </button>
+        {@render fields(draft)}
+        {#if record.saveFailed}
+          <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
         {/if}
-        {#if draft.id}
-          {#if extraActions}{@render extraActions(draft)}{/if}
-          {#if deleteLabel}
-            <button class="btn btn-ghost" {...{ [handles.delete]: '' }} onclick={() => requestDismiss(() => { record.askToDelete(); })}>
-              <span>{deleteLabel}</span>
+        <div class="stack-3">
+          {#if primary}
+            {@render primary(draft)}
+          {:else}
+            <button
+              class="btn btn-primary"
+              {...{ [handles.save]: '' }}
+              disabled={canSave ? !canSave(draft) : false}
+              onclick={record.save}
+            >
+              <span>{wording(saveLabel, draft)}</span>
             </button>
           {/if}
-        {/if}
-        <button class="btn btn-ghost" data-close-record onclick={() => requestDismiss()}>
-          <span>{m.cancel()}</span>
-        </button>
-      </div>
+          {#if draft.id}
+            {#if extraActions}{@render extraActions(draft)}{/if}
+            {#if deleteLabel}
+              <button class="btn btn-ghost" {...{ [handles.delete]: '' }} onclick={requestDelete}>
+                <span>{deleteLabel}</span>
+              </button>
+            {/if}
+          {/if}
+          <button class="btn btn-ghost" data-close-record onclick={() => requestDismiss()}>
+            <span>{m.cancel()}</span>
+          </button>
+        </div>
       </fieldset>
     {/if}
   </Sheet>
@@ -181,7 +185,7 @@
 <Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
   <h3>{m.record_discard_title()}</h3>
   <p class="muted">{m.record_discard_body()}</p>
-  <div class="stack-3">
+  <div class="discard-actions">
     <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}>
       <span>{m.record_keep_editing()}</span>
     </button>
@@ -195,8 +199,18 @@
   fieldset {
     border: 0;
     padding: 0;
-    margin: 0;
+    margin: var(--space-4) 0 0;
     min-width: 0;
+  }
+
+  fieldset > :global(* + *) {
+    margin-top: var(--space-4);
+  }
+
+  .discard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 </style>
 
