@@ -21,11 +21,13 @@
    debrief. */
 import type { DebriefAnswer } from '../data/journal/debriefNote';
 
-let held: {
+interface HeldRoomAnswers {
   appointmentId: string;
   answers: DebriefAnswer[];
   byItemId: Record<string, string>;
-} | null = null;
+}
+
+let held: HeldRoomAnswers | null = null;
 
 /** Replaces whatever was held. A visit at a time: opening the screen for a
     different appointment is a different visit, and holding both would mean
@@ -35,12 +37,8 @@ let held: {
     question text - what a remounted room screen restores from (ticket 05,
     audit I2), since `answers` alone has already dropped the id a screen
     needs to put a jotting back under the field it was typed into. */
-export function holdRoomAnswers(
-  appointmentId: string,
-  answers: DebriefAnswer[],
-  byItemId: Record<string, string>
-): void {
-  held = { appointmentId, answers, byItemId };
+export function holdRoomAnswers(entry: HeldRoomAnswers): void {
+  held = entry;
 }
 
 /** What was jotted for this appointment, or nothing. */
