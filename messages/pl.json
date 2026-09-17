@@ -869,7 +869,7 @@
   "pp_new_confirm_label": "Nowe hasło jeszcze raz",
   "dbr_archive_body": "Jeśli masz zapisane archiwum, możesz odtworzyć jego zawartość, używając hasła do archiwum. Danych zapisanych tylko na tym urządzeniu nie da się odzyskać bez klucza lokalnego lub klucza odzyskiwania.",
   "dbr_archive_open": "Odtwórz z zapisanego archiwum",
-  "dbr_archive_replace_body": "Najpierw usunie to wszystkie wpisy, zdjęcia i ustawienia z tego urządzenia, a potem otworzy odtwarzanie archiwum. Przed kontynuowaniem przygotuj plik archiwum i jego hasło. Wrócą tylko dane z archiwum; nie można ich połączyć z tą niedostępną kopią.",
+  "dbr_archive_replace_body": "Usunięcia wszystkich wpisów, zdjęć i ustawień z tego urządzenia nie da się cofnąć. Potem otworzy się odtwarzanie archiwum. Przed kontynuowaniem przygotuj plik archiwum i jego hasło. Wrócą tylko dane z archiwum; nie można ich połączyć z tą niedostępną kopią.",
   "dbr_archive_confirm": "Usuń dane lokalne i otwórz odtwarzanie",
   "dbr_title": "Ten dziennik był przypięty do tego urządzenia",
   "dbr_body": "Ten egzemplarz otwierał się bez hasła do dziennika, a lokalnego klucza, który trzymała dla niego ta przeglądarka albo to urządzenie, już nie ma. enGender go nie odzyska, więc tego egzemplarza nie da się już otworzyć.",

@@ -66,6 +66,33 @@ try {
       }
       await page.setViewportSize({ width: 390, height: 844 });
     }
+    await page.evaluate(async (path) => {
+      const { prefs } = await import(path);
+      prefs.disguise = true;
+    }, `/@fs${process.cwd()}/src/lib/data/prefs/store.svelte.ts`);
+    await page.selectOption('select[aria-label="Scene"]', 'device-recovery');
+    await page.locator('[data-device-recovery-none]').waitFor();
+    for (const palette of PALETTES) {
+      await page.selectOption('select[aria-label="Palette"]', palette);
+      for (const theme of ['light', 'dark']) {
+        await page.selectOption('select[aria-label="Theme"]', theme);
+        await page.screenshot({ path: `${out}/disguise-${palette}-${theme}.png` });
+        assert.equal(await page.locator('[data-flag-sun], [data-entry-card]').count(), 0);
+      }
+    }
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
+    assert.equal(await page.evaluate(() => visualViewport.scale), 2);
+    await page.locator('[data-open-archive-recovery]').focus();
+    await page.keyboard.press('Enter');
+    await page.locator('[data-confirm-archive-reset]').waitFor();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${out}/disguise-zoom-200.png` });
+    await page.keyboard.press('Escape');
+    await page.locator('[data-sheet]').waitFor({ state: 'hidden' });
+    await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
+    await cdp.detach();
+    console.log('PASS disguise across palettes/themes and 200% page magnification with keyboard activation');
     console.log('PASS gallery: both recovery states, eight palettes, both themes, English and Polish, narrow and desktop confirmation');
   }
 } finally {
@@ -127,10 +154,22 @@ try {
     await writer.write('local data must survive cancellation');
     await writer.close();
   });
+  // Keep connections alive so garbage collection cannot hide a blocked reset.
+  await realPage.addInitScript(() => {
+    window.__heldKeyConnections = [];
+    const open = indexedDB.open.bind(indexedDB);
+    indexedDB.open = (...args) => {
+      const request = open(...args);
+      if (args[0] === 'engender-device-key') {
+        request.addEventListener('success', () => window.__heldKeyConnections.push(request.result));
+      }
+      return request;
+    };
+  });
   await realPage.reload();
   await realPage.locator('[data-device-bound-recovery]').waitFor();
   await realPage.locator('[data-open-archive-recovery]').click();
-  assert.match(await realPage.locator('[data-sheet]').innerText(), /first deletes every entry/);
+  assert.match(await realPage.locator('[data-sheet]').innerText(), /Deleting every entry, photo and setting on this device cannot be undone/);
   await realPage.keyboard.press('Escape');
   await realPage.locator('[data-sheet]').waitFor({ state: 'hidden' });
   assert.equal(await realPage.evaluate(async () => {
@@ -141,7 +180,7 @@ try {
 
   await realPage.locator('[data-open-archive-recovery]').click();
   await realPage.locator('[data-confirm-archive-reset]').click();
-  await realPage.waitForURL('**/onboarding?restore=1');
+  await realPage.waitForURL('**/onboarding?restore=1', { timeout: 10000 });
   await realPage.locator('[data-restore-pick]').waitFor();
   assert.equal(await realPage.locator('[data-restore-start]').count(), 0);
   await chooseFile([]);

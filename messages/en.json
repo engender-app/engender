@@ -832,7 +832,7 @@
   "pp_change_mismatch": "The new passphrase and its confirmation did not match.",
   "dbr_archive_body": "If you have a saved archive, you can restore what it contains using its own password. Anything saved only on this device cannot be recovered without the local key or a recovery key.",
   "dbr_archive_open": "Restore from a saved archive",
-  "dbr_archive_replace_body": "This first deletes every entry, photo and setting on this device, then opens archive restore. Have your archive file and its password ready before continuing. Only data in that archive can come back; it cannot be combined with this inaccessible copy.",
+  "dbr_archive_replace_body": "Deleting every entry, photo and setting on this device cannot be undone. Archive restore opens afterwards. Have your archive file and its password ready before continuing. Only data in that archive can come back; it cannot be combined with this inaccessible copy.",
   "dbr_archive_confirm": "Delete local data and open restore",
   "dbr_title": "This journal was tied to this device",
   "dbr_body": "This journal was opened without a journal passphrase, and the local key this browser or device kept for it is no longer available. enGender cannot recover that key, so this copy cannot be reopened.",

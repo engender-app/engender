@@ -81,11 +81,13 @@
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
-      <span class="notice-title">{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
-      {body}
+      <span class="notice-title">{restoringArchive ? m.dbr_open_reset() : recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
+      {restoringArchive ? m.dbr_archive_replace_body() : body}
     </div>
   </div>
-  <p class="ob-text">{restoringArchive ? m.dbr_archive_replace_body() : m.reset_offer_archive_password()}</p>
+  {#if !restoringArchive}
+    <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-device-reset data-confirm-archive-reset={restoringArchive || undefined} disabled={resetting} onclick={confirmReset}>
       <span>{resetting ? m.reset_running() : restoringArchive ? m.dbr_archive_confirm() : m.reset_confirm()}</span>
