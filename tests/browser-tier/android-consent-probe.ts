@@ -47,10 +47,13 @@ const NAME = 'android-consent-probe';
 /* The fake the html page's nativePromise aims at. `unlockOutcome` is the
    dial each case turns: everything here is a refusal, because a success
    unmounts the gate (the journal opens) and the question this probe asks
-   is what the gate does while it is still a gate. */
+    is what the gate does while it is still a gate. `unlockOutcome` is
+    the dial the repair sequence turns: a dismissed prompt first, then a
+    rejected finger, so both transient outcomes prove themselves
+    distinguishable from the cliff. */
 const fake = {
   calls: [] as string[],
-  unlockOutcome: 'cancelled',
+  unlockOutcome: 'cancelled' as 'cancelled' | 'failed',
   status: async () => ({ hasKey: true, authRequired: true }),
   unlock: async () => {
     fake.calls.push('unlock');
@@ -174,17 +177,26 @@ async function repairSequence(existingChoice: Consent) {
   let choicePreserved: boolean | null = null;
   let sheetClosedAfterAnswer = false;
   let askedAgainAfterDecline = true;
+  let failedStayedRetryGate = false;
   if (consentSheetOpen() && existingChoice === 'unanswered') {
     document.querySelector<HTMLButtonElement>('[data-bio-consent-no]')?.click();
     await until(() => !consentSheetOpen());
     sheetClosedAfterAnswer = !consentSheetOpen();
     choicePreserved = prefs.bioOptIn === false;
 
-    /* Another cancelled prompt must not re-ask: once means once. */
+    /* One more prompt, this time a rejected finger, must not re-ask either:
+       once means once. And `failed` lands on the retry gate like cancelled
+       did - the ticket's fourth acceptance line covers both transient
+       outcomes, not just dismissal. */
+    fake.unlockOutcome = 'failed';
+    const unlocksBefore = unlockCalls();
     document.querySelector<HTMLButtonElement>('[data-key-retry]')?.click();
-    await until(() => document.querySelector('[data-key-status]') !== null);
+    await until(() => unlockCalls() > unlocksBefore);
     await frame(500);
     askedAgainAfterDecline = consentSheetOpen();
+    failedStayedRetryGate =
+      document.querySelector('[data-key-retry]') !== null &&
+      document.querySelector('[data-open-reset]') === null;
   } else if (existingChoice === 'accepted') {
     /* A preserved yes is honored by firing, not by asking again. */
     choicePreserved = await until(() => unlockCalls() > 0) && prefs.bioOptIn === true;
@@ -199,6 +211,7 @@ async function repairSequence(existingChoice: Consent) {
     sheetClosedAfterAnswer,
     choicePreserved,
     askedAgainAfterDecline,
+    failedStayedRetryGate,
     unlockCalls: unlockCalls(),
     status: bootState.status,
     journal: bootState.journal
