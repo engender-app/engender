@@ -680,7 +680,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         note: cueShowing
           ? m.wear_session_cue()
           : m.wear_session_running_since({ time: format.time(session.startTimestamp) }),
-        href: '/practice/wear',
+        href: '/body/wear',
         action: {
           icon: 'stop',
           text: m.wear_session_stop_action(),
@@ -922,12 +922,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_voice_benchmark_title(),
         value: m.tile_voice_benchmark_action(),
         note: m.tile_voice_benchmark_days_ago({ days: String(qualifying.daysElapsed) }),
-        href: '/practice/voice?tab=compare',
+        href: '/voice?tab=compare',
         action: {
           icon: 'mic',
           text: m.tile_voice_benchmark_action(),
           label: m.tile_voice_benchmark_action(),
-          href: '/practice/voice?tab=record'
+          href: '/voice?tab=record'
         },
         dismiss: dismissSnooze('voice-benchmark-nudge')
       };

@@ -120,7 +120,7 @@ test('a wear-session reminder is recognised too, not just stock - the same auto_
   assert.deepEqual(origin, {
     text: 'Set from a wear session you logged.',
     hint: "Edit it, and it's yours to manage from here on.",
-    href: '/practice/wear',
+    href: '/body/wear',
     actionLabel: 'View wear log'
   });
 });

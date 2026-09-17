@@ -191,7 +191,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.hair_progress()} back="/practice/personal-effects" subtitle={m.hair_intro()} />
+  <ScreenHeader title={m.hair_progress()} back="/care/changes" subtitle={m.hair_intro()} />
 
   {#if dosesQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
