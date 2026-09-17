@@ -77,6 +77,9 @@
 
     function addControls(fp: flatpickr.Instance) {
       focusableNavigation([], '', fp);
+      fp.monthsDropdownContainer.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' && event.key !== 'Tab') event.stopPropagation();
+      });
       fp.calendarContainer.classList.add('date-picker-calendar');
       fp.calendarContainer.addEventListener('keydown', moveDay, true);
       for (const [control, label, step] of [
@@ -130,7 +133,7 @@
       apply.addEventListener('click', applyDate);
       clearButton = document.createElement('button');
       clearButton.type = 'button';
-      clearButton.className = 'btn btn-secondary';
+      clearButton.className = 'btn btn-ghost';
       clearButton.textContent = m.date_picker_clear();
       clearButton.addEventListener('click', () => {
         fp.clear();
@@ -208,7 +211,8 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       picker.open();
-      picker.days.querySelector<HTMLElement>('.selected, .flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)')?.focus();
+      const selected = picker.days.querySelector<HTMLElement>('.selected');
+      (selected ?? picker.days.querySelector<HTMLElement>('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)'))?.focus();
     };
     launcher.addEventListener('click', open);
     launcher.addEventListener('keydown', openFromKeyboard, true);

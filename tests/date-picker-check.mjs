@@ -13,7 +13,7 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const errors = [];
 async function shot(page, name) {
-  if (gallery) await page.screenshot({ path: `${out}/${name}.png` });
+  if (gallery) await page.screenshot({ path: `${out}/${name}.png`, animations: 'disabled' });
 }
 async function enterDate(page, value) {
   await page.locator('.flatpickr-calendar.open .date-picker-entry input').fill(value);
@@ -46,7 +46,11 @@ try {
         await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
         assert.match(await input.inputValue(), new RegExp(`-${day}$`), 'adjacent day selected through actual hit target');
       }
-      await input.click();
+      await input.focus();
+      await input.press('ArrowDown');
+      assert.equal(await page.locator('.flatpickr-day:focus').textContent(), '16', 'keyboard starts on selected day');
+      await page.keyboard.press('ArrowLeft');
+      assert.equal(await page.locator('.flatpickr-day:focus').textContent(), '15', 'day arrow reaches adjacent target');
       await enterDate(page, '2000-02-29');
       assert.equal(await input.inputValue(), '2000-02-29', 'historical leap day preserves local date east of UTC');
       await input.click();
@@ -58,15 +62,24 @@ try {
       const month = page.locator('.date-picker-calendar.open .flatpickr-monthDropdown-months');
       await month.selectOption('8');
       assert.equal(await month.inputValue(), '8', 'month dropdown works');
+      await month.focus();
+      await month.press('ArrowDown');
+      assert.equal(await month.inputValue(), '9', 'month dropdown responds to keyboard arrows');
       const year = page.locator('.date-picker-calendar.open .cur-year');
       await year.fill('1999');
       await year.press('Enter');
       assert.equal(await year.inputValue(), '1999', 'direct year navigation works');
+      const controls = await page.locator('.date-picker-calendar.open').evaluate(calendar =>
+        [...calendar.querySelectorAll('button, input, select, [role="button"], .flatpickr-day')]
+          .filter(el => el.getClientRects().length && !el.disabled)
+          .map(el => { const r = el.getBoundingClientRect(); return [el.className, r.width, r.height]; }));
+      assert.ok(controls.every(([, width, height]) => width >= 48 && height >= 48), JSON.stringify(controls));
       await shot(page, `picker-${language}-${width}`);
       await page.keyboard.press('Escape');
       assert.equal(await page.locator('[data-sheet]').count(), 1, 'calendar Escape preserves parent sheet');
       assert.equal(await input.evaluate(el => el === document.activeElement), true, 'calendar Escape restores launcher');
       await page.keyboard.press('Escape');
+      await page.locator('[data-discard-record]').click();
       await page.waitForSelector('[data-sheet]', { state: 'detached' });
 
       await open(page, '/settings/journal-book');
@@ -78,6 +91,7 @@ try {
       for (const field of [start, end]) {
         assert.ok(await field.evaluate(el => el.scrollWidth <= el.clientWidth), 'full numeric date fits field at 200% text');
       }
+      await end.scrollIntoViewIfNeeded();
       await shot(page, `book-${language}-${width}-text200`);
       await page.evaluate(() => document.documentElement.style.fontSize = '');
       await end.click();
