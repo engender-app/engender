@@ -72,17 +72,26 @@
             : [m.rk_row_sub_none(), m.rk_row_sub_none_consequence()]}
         href="/settings/recovery-key"
       />
+      <!-- The one mode combination where lock on leave cannot challenge anyone
+           (web device-bound, no secret to ask for again): the switch is
+           visibly inert rather than merely annotated, and the row itself
+           becomes the way to the one screen that can fix that. Presentation
+           only either way - the stored preference is neither written nor
+           cleared here, so a mode change later finds it exactly as it was
+           (UI/UX ticket 09). -->
       <ListRow
-        static
         key="lock-on-leave"
         icon="lock"
         title={m.lock_on_leave_title()}
         subtitle={hasSecret ? m.lock_on_leave_sub() : `${m.lock_on_leave_sub()} · ${m.lock_needs_secret()}`}
+        static={hasSecret}
+        href={hasSecret ? undefined : '/settings/access-mode'}
       >
         {#snippet trailing()}
           <Switch
             checked={prefs.lockOnLeave}
             label={m.lock_on_leave_title()}
+            disabled={!hasSecret}
             onChange={(v) => {
               prefs.lockOnLeave = v;
             }}

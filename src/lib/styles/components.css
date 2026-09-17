@@ -687,6 +687,10 @@
 .switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch[aria-checked="true"] .switch-thumb { background: var(--on-accent); translate: 16px; }
 .switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* The one state a switch can be in without being off: the preference it
+   holds cannot apply in this mode, so the control reads dimmed rather than
+   merely unchecked. Same figure as .btn:disabled, for the same reason. */
+.switch:disabled { cursor: default; opacity: 0.45; }
 
 /* ---------- segmented ---------- */
 /* The positioning box: the chevron hints anchor to this rather than to the
