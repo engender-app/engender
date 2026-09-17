@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
-  import { nextRadioIndex } from './rovingRadioIndex';
   import {
     boxesMatch,
     insets,
@@ -89,21 +89,6 @@
     near: LEAD,
     far: LEAD
   });
-
-  /* The one radio the roving tabindex leaves in the tab order: the selected
-     one, or the first while nothing is (a fresh group with no value yet). */
-  let activeIndex = $derived.by(() => {
-    const i = options.findIndex((o) => o.value === value);
-    return i === -1 ? 0 : i;
-  });
-
-  function onRadioKeydown(e: KeyboardEvent, i: number) {
-    const next = nextRadioIndex(e.key, i, options.length);
-    if (next === null) return;
-    e.preventDefault();
-    buttons[next]?.focus();
-    onChange?.(options[next].value);
-  }
 
   /* The track scrolls rather than shrinks when its segments run wider than
      it is (Alicja, 2026-08-26, "the pill came out 48 by 48" - shrinking was
@@ -335,6 +320,7 @@
       class:can-scroll={canScroll}
       data-segmented={key}
       role="radiogroup"
+      use:rovingRadio
       tabindex="-1"
       aria-label={name}
       onpointerdown={onTrackPointerDown}
@@ -361,11 +347,9 @@
           class:is-active={o.value === value}
           role="radio"
           aria-checked={o.value === value}
-          tabindex={i === activeIndex ? 0 : -1}
           data-segment={o.value}
           data-no-press
-          onclick={() => onChange?.(o.value)}
-          onkeydown={(e) => onRadioKeydown(e, i)}>{o.label}</button
+          onclick={() => onChange?.(o.value)}>{o.label}</button
         >
       {/each}
     </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* The presentation chip (phase 8 features ticket 17, ADR-0048): choosing
      a mode highlights the days logged under it on whatever chart sits
      below - tally, wear, voice and calendar all take this same row rather
@@ -52,7 +53,7 @@
     <span class="tag-group-name" id="presentation-highlight-label">
       {m.presentation_highlight_label()}
     </span>
-    <div class="tag-row" role="radiogroup" aria-labelledby="presentation-highlight-label">
+    <div class="tag-row" role="radiogroup" use:rovingRadio aria-labelledby="presentation-highlight-label">
       {#each presentations as p (p.id)}
         {@const role = roleAt(activeFlag.roles, p.roleIndex)}
         <button

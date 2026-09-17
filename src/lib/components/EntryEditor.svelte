@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -912,7 +913,7 @@
         </button>
       {/snippet}
     </SectionHeading>
-    <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
+    <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.presentation_label()}>
       {#each vocabulary.visiblePresentations as p (p.id)}
         {@const role = roleAt(activeFlag.roles, p.roleIndex)}
         <button
@@ -1153,7 +1154,7 @@
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_tryout_felt_sense_title({ name: activeTryout.label })}</span>
       </div>
-      <div class="contextual-chips" role="radiogroup" aria-label={m.entry_tryout_felt_sense_title({ name: activeTryout.label })}>
+      <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.entry_tryout_felt_sense_title({ name: activeTryout.label })}>
         {#each [
           { step: 5, label: m.entry_tryout_sentiment_euphoric() },
           { step: 4, label: m.entry_tryout_sentiment_affirming() },
@@ -1356,13 +1357,7 @@
   {/if}
 
   <SaveBar>
-    <!-- Mood is asked where the saving happens (ticket 19): the five faces
-         (ADR-0077's drawing and motion, at the bar's height), the star
-         (ticket 18), Save. The requirement is unchanged - an entry needs a
-         mood - but it is stated on the button rather than toasted after the
-         tap, and the control it points at is 60px away rather than three
-         viewports up. A tap on the unmet Save sends focus to the faces and
-         fires nothing. -->
+    <!-- Mood stays beside saving, with its own row of full-size targets. -->
     <div class="editor-save-row">
       <div class="editor-save-moods" data-save-moods bind:this={moodsEl}>
         <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
@@ -1381,7 +1376,6 @@
         class="btn press"
         class:btn-primary={!moodMissing}
         class:btn-soft={moodMissing}
-        class:is-unmet={moodMissing}
         data-save
         data-save-unmet={moodMissing ? 'mood' : undefined}
         disabled={saving || entryDraft.savedId !== undefined}
@@ -1536,26 +1530,14 @@
   }
   .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
 
-  /* The star's own row inside the save bar (ticket 18), rather than
-     SaveBar's `row` arrangement: that one splits two controls 50/50, and a
-     48px toggle stretched to half the bar's width beside a one-word Save
-     is not what "beside Save" meant. `flex: 1` on the primary button
-     overrides `.app-savebar .btn`'s own `width: 100%` for layout purposes -
-     a flex item's basis wins over a plain `width` once it is set - so the
-     star keeps its intrinsic 48px and Save takes the rest, the same
-     icon-btn-plus-flexible-control shape the calendar's own control line
-     already uses (`.cal-controls`). */
   .editor-save-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
+  .editor-save-moods { flex: 1 0 100%; min-width: 0; }
   .editor-save-row .icon-btn { flex: none; }
-  /* 116px at 390 (350 less 170 of faces, 48 of star, two 8px gaps), so
-     the label takes 8px of side padding rather than .btn's 24: "Save
-     entry" measures 79 in Nunito 16/750 and "Zapisz wpis" 81, and the
-     check icon that rode beside them on every other primary is 28 more
-     than the line has. The faces say what this bar is; the tick did not. */
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
 
   /* The line under a heading that needs one. A hint is the area's own second
@@ -1648,22 +1630,6 @@
      is its heading. */
   .editor-section {
     margin: var(--space-5) 0;
-  }
-
-  /* The faces' room on the bar: five 32px faces at 36px each, then the
-     star, then Save taking the rest. The picked face's 1.18 scale and the
-     magnifier's lift paint outside the row, which is why nothing here
-     clips. */
-  .editor-save-moods { flex: none; }
-  /* "Pick a mood to save" is two lines in 100px - "Pick a mood" is 77 at
-     14px, "Wybierz nastrój," 97 at 13px - so the unmet label sets at 13
-     and asks the browser to balance the break. */
-  .editor-save-row .btn.is-unmet {
-    font-size: 0.8125rem;
-    font-weight: var(--weight-medium);
-    line-height: 1.2;
-    text-align: center;
-    text-wrap: balance;
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */

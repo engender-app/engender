@@ -16,6 +16,7 @@
      dashed ring is where the last injection went. Nothing here says a site
      is due. -->
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   import { m } from '$lib/paraglide/messages';
   import { INJECTION_SITES, type InjectionSiteKey } from '$lib/data/doseSchedule';
   import { recencyHeatLevel, recencySpan } from '$lib/data/metricRange';
@@ -71,7 +72,7 @@
   };
 </script>
 
-<div class="site-map" role="radiogroup" aria-label={m.dose_site_map_aria()}>
+<div class="site-map" role="radiogroup" use:rovingRadio aria-label={m.dose_site_map_aria()}>
   <!-- Decorative: every site's name is on its button, so the silhouette
        carries no information a screen reader needs. -->
   <svg class="site-map-body" viewBox="0 0 100 150" aria-hidden="true" focusable="false">

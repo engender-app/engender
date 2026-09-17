@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* Entry templates, editable and hideable (phase 6 ticket 07). The six
      original templates and the eight folded-in guided prompts are built-in
      rows the same way a tag or a gender dimension is: edited into the
@@ -155,7 +156,7 @@
 
     {#if vocabulary.visiblePresentations.length > 0}
       <SectionHeading text={m.presentation_label()} />
-      <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
+      <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.presentation_label()}>
         {#each vocabulary.visiblePresentations as p (p.id)}
           {@const role = roleAt(activeFlag.roles, p.roleIndex)}
           <button
