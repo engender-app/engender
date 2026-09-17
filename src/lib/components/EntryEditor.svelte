@@ -401,10 +401,6 @@
     }
   }
 
-  function stateOf(section: EntrySection): string | null {
-    return sectionState(section, entryDraft);
-  }
-
   /* A second tap on the open chip closes it; a tap on another chip swaps
      the section. The open chip is draft state (entryDraft.ts), so the
      process-death mirror carries it. */
@@ -725,8 +721,8 @@
     /* The requirement is on the button's own label while it is unmet
        ("Pick a mood to save"), so a tap here fires no toast: it hands the
        focus to the faces, which are on the same bar, and that is the whole
-       answer. `entry_needs_mood` stays for the one caller that has no bar
-       to state it on. */
+       answer. The toast's own string (entry_needs_mood) had no caller left
+       and is gone from both catalogues. */
     if (moodMissing) {
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
@@ -954,7 +950,7 @@
        section at a time. -->
   <div class="editor-chips" data-editor-chips role="group" bind:this={chipRowEl}>
     {#each ENTRY_SECTIONS as section (section)}
-      {@const state = stateOf(section)}
+      {@const state = sectionState(section, entryDraft)}
       {@const open = entryDraft.openSection === section}
       <button
         type="button"
