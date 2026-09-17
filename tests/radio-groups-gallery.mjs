@@ -46,7 +46,10 @@ async function geometry() {
 }
 
 async function shot(name, crop = false) {
-  await page.evaluate(() => document.querySelectorAll('[data-toast]').forEach(el => el.remove()));
+  await page.evaluate(() => {
+    document.querySelectorAll('[data-toast], .demo-bar').forEach(el => el.remove());
+    document.body.classList.remove('has-demo-bar');
+  });
   await page.mouse.move(0, 0);
   await page.waitForTimeout(200);
   await (crop ? page.locator('[data-app-savebar]') : page).screenshot({ path: `${out}/${name}.png` });
@@ -90,6 +93,7 @@ try {
     }
   }
   await page.setViewportSize({ width: 390, height: 360 });
+  await page.locator('#ed-note').scrollIntoViewIfNeeded();
   await page.locator('#ed-note').focus();
   await shot('short-viewport-pl-390');
   await geometry();
@@ -99,6 +103,19 @@ try {
   assert.equal(await page.evaluate(() => visualViewport.scale), 2);
   await page.locator('[data-save]').scrollIntoViewIfNeeded();
   await shot('pinch-zoom-200');
+  const savePoint = await page.locator('[data-save]').evaluate(button => {
+    const box = button.getBoundingClientRect();
+    const view = visualViewport;
+    const left = Math.max(box.left, view.offsetLeft);
+    const right = Math.min(box.right, view.offsetLeft + view.width);
+    const top = Math.max(box.top, view.offsetTop);
+    const bottom = Math.min(box.bottom, view.offsetTop + view.height);
+    if (right <= left || bottom <= top) throw new Error('Save is outside the zoomed viewport');
+    return { x: (left + right) / 2 - view.offsetLeft,
+      y: (top + bottom) / 2 - view.offsetTop };
+  });
+  await page.mouse.click(savePoint.x, savePoint.y);
+  assert.equal(await page.locator('[data-save-moods] [role="radio"]:focus').count(), 1, 'Save responds at 200% pinch zoom');
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
 
   for (const palette of PALETTES) for (const theme of ['light', 'dark']) {
@@ -109,6 +126,21 @@ try {
     await geometry();
     await shot(`savebar-${palette}-${theme}`, true);
   }
+  await open('/settings');
+  await page.locator('[data-list-row="disguise"]').click();
+  await page.locator('[role="dialog"] [role="switch"]').first().click();
+  await page.keyboard.press('Escape');
+  await open('/entry/new/today');
+  await shot('new-entry-disguise-390');
+  await geometry();
+
+  await page.goto(base + '/onboarding', { waitUntil: 'networkidle' });
+  await page.locator('[data-next]').click();
+  await page.locator('[data-next]').click();
+  await page.waitForSelector('.setup-flags');
+  await checkRadioGroup(page, page.locator('.setup-flags'));
+  await page.locator('.setup-flags [aria-checked="true"]').scrollIntoViewIfNeeded();
+  await shot('setup-keyboard');
   assert.deepEqual(errors, []);
   console.log(`PASS new and existing entry flows; radio keyboard; target hit tests; screenshots: ${out}`);
 } finally {
