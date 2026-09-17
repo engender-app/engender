@@ -73,7 +73,12 @@ function openDeviceKeyDatabase(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(DEVICE_BOUND_STORE)) db.createObjectStore(DEVICE_BOUND_STORE);
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      // A reset deletes this database while the lost-key gate is still open.
+      db.onversionchange = () => db.close();
+      resolve(db);
+    };
     request.onerror = () => reject(request.error ?? new Error('could not open the device-key database'));
   });
 }

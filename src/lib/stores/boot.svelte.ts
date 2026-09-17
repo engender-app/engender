@@ -187,7 +187,7 @@ const bootCache = localStorageCache();
     modules in place - boot() has already run, the journal is attached, and
     unwinding all of that in the browser is a far bigger surface than
     starting the page again. */
-export async function resetApp(): Promise<void> {
+export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise<void> {
   await wipeLocalData({
     closeDatabase: async () => {
       await openDriver?.close();
@@ -241,7 +241,7 @@ export async function resetApp(): Promise<void> {
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
-  location.replace('/');
+  location.replace(next === 'restore' ? '/onboarding?restore=1' : '/');
 }
 
 /** Puts the pre-migration copy back as the live Journal and starts the app
