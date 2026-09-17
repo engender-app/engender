@@ -73,6 +73,14 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('m.exposure_regimen_days_title()');
   });
 
+  it('labels route and regimen days with explicit medication-days unit and concurrency note', () => {
+    expect(dossierComponent).toContain('data-dossier-route-days-note');
+    expect(dossierComponent).toContain('m.exposure_route_days_note()');
+    expect(dossierComponent).toContain('m.exposure_medication_days_count(');
+    expect(dossierComponent).toContain('data-dossier-regimen-days-note');
+    expect(dossierComponent).toContain('m.exposure_regimen_days_note()');
+  });
+
   it('renders lab results with post-dose timing badge', () => {
     expect(dossierComponent).toContain('{#if dossier.labs}');
     expect(dossierComponent).toContain('data-dossier-section="labs"');
