@@ -293,7 +293,7 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           endEpochDay: null,
           // No screen for one side effect, so the screen that owns them
           // (searchHitRows.ts's rule, and dayRows.ts sends its row there too).
-          href: '/practice/personal-effects'
+          href: '/care/changes'
         })),
         ...injectionSources(doses, episodes),
         ...standoutTallies(misgendered, todayEpochDay, 'tallyMisgendered'),

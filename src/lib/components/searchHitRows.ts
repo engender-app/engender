@@ -87,7 +87,7 @@ const AREA_ROWS: Record<
     label: () => m.appointment_prep_title(),
     href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointments')
   },
-  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/practice/personal-effects' },
+  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/care/changes' },
   /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
      travels with the hit for exactly this (textSearch.ts): with one, the hit
      opens that tryout, which is where its history is read; without one, the
@@ -113,10 +113,10 @@ const AREA_ROWS: Record<
   labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/care/labs' },
   sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
   taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/health/dilation' },
-  wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/practice/wear' },
+  wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/body/wear' },
   // The compare surface rather than the recorder: a hit is a take somebody
   // is looking for, not a new one (dayRows.ts sends a benchmark there too).
-  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/practice/voice?tab=compare' },
+  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/voice?tab=compare' },
   hairStages: { icon: 'comb', label: () => m.hair_progress(), href: () => '/body/hair-progress' },
   hairRemovalSessions: {
     icon: 'shuffle',

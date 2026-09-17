@@ -290,7 +290,7 @@
      wearSessions uses above: active only while at least one tier-1
      literature onset window for the earliest regimen episode's drug is
      current, gone once every onset window has passed. Tapping navigates to
-     /practice/personal-effects. */
+     /care/changes. */
   let showEffects = $state(false);
   $effect(() => {
     if (!ui.chooserOpen) return;
@@ -367,7 +367,7 @@
 
   function logEffects() {
     close();
-    goto('/practice/personal-effects');
+    goto('/care/changes');
   }
 
   /* Nearest the thumb first, because the order is a reachability decision

@@ -138,7 +138,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.cycle_events()} back="/practice/personal-effects" subtitle={m.cycle_events_intro()}>
+  <ScreenHeader title={m.cycle_events()} back="/care/changes" subtitle={m.cycle_events_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.cycle_event_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
