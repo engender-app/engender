@@ -31,10 +31,10 @@ describe('gaveUp', () => {
     expect(gaveUp(landed([1, 2])).value).toEqual([1, 2]);
   });
 
-  it('reads as empty when the read never got anywhere, which is what a screen renders', () => {
+  it('does not confuse an initial failure with an empty success', () => {
     const state: ReadState<number[]> = gaveUp(pending<number[]>());
     expect(rowsOf(state)).toEqual([]);
-    expect(emptyOf(state)).toBe(true);
+    expect(emptyOf(state)).toBe(false);
   });
 });
 
@@ -55,6 +55,10 @@ describe('emptyOf', () => {
 
   it('is empty when the read came back with no rows', () => {
     expect(emptyOf(landed([]))).toBe(true);
+  });
+
+  it('does not repeat an empty claim after refresh fails', () => {
+    expect(emptyOf(gaveUp(landed([])))).toBe(false);
   });
 
   it('is not empty when there are rows', () => {

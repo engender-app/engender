@@ -2387,5 +2387,11 @@ await block('ticket redesign-30 the lock step splits in two', 2, async () => {
 await browser.close();
 await server.close();
 
+await block('Read failures on the production Eras screen', 1, async () => {
+  const { verifyReadFailures } = await import('../read-failures.mjs');
+  await verifyReadFailures();
+  ok('failure, stale rows, retry races, empty recovery and locked-gate concealment');
+});
+
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);

@@ -1,17 +1,4 @@
-/* What a live read shows, and what each outcome of a run does to it
-   (phase 5 audit ticket 04).
-
-   Three facts rather than two. `loading` and a value were enough while a
-   rejected read was indistinguishable from a journal with nothing in it;
-   `failed` is what lets a screen tell those apart when it wants to. What it
-   deliberately does not do is change the rendering: a read that gave up still
-   reads as empty, because a placeholder held forever tells the user less than
-   an empty state does and an unreadable database is already reported from
-   boot. The state has a name now, and a screen opts in to saying more.
-
-   Rune-free and here rather than in journal.svelte.ts so that the rule can be
-   node-tested at all: `$state` is not defined in that tier (ADR-0017), which
-   is why writes.ts and tableVersions.notify.ts sit beside this one. */
+/* Shared outcomes for live reads. Refresh failures retain the last result. */
 
 export interface ReadState<T> {
   /** The last result, or `undefined` until the first one lands. */
@@ -47,9 +34,7 @@ export function rowsOf<T>(state: ReadState<T[]>): T[] {
   return state.value ?? [];
 }
 
-/** Nothing to show, and not because the answer is still out. A read that
-    failed before it ever landed is empty by this measure, which is exactly
-    the rendering the default keeps. */
+/** Only a successful read can say the list is empty. */
 export function emptyOf(state: ReadState<unknown[]>): boolean {
-  return !state.loading && rowsOf(state).length === 0;
+  return !state.loading && !state.failed && rowsOf(state).length === 0;
 }
