@@ -51,10 +51,6 @@
       <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} />
     {/snippet}
     {#snippet failed()}
-      <!-- One of the two surfaces that say more than "nothing here" when a
-           read fails (phase 5 audit ticket 04). A person on this screen came
-           to get something back, and "Trash is empty" would send them away
-           believing a deleted entry is gone for good. -->
       <EmptyState title={m.trash_read_failed_title()} text={m.trash_read_failed_body()} />
     {/snippet}
   </ReadGate>

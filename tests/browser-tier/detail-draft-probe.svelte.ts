@@ -123,18 +123,22 @@ async function run() {
           return answersFor(taggedQuery.value, tryoutId) ? taggedQuery.value!.value : undefined;
         },
         get loading() {
-          return !answersFor(taggedQuery.value, tryoutId);
+          return !answersFor(taggedQuery.value, tryoutId) && !taggedQuery.failed;
         },
         get failed() {
           return taggedQuery.failed;
-        }
+        },
+        get stale() {
+          return answersFor(taggedQuery.value, tryoutId) && taggedQuery.stale;
+        },
+        retry: () => taggedQuery.retry()
       },
       (answer) => answer.hits
     );
 
     $effect(() => {
-      const raw = gateBranch(rawEntries, false);
-      const gated = gateBranch(gatedEntries, false);
+      const raw = gateBranch(rawEntries);
+      const gated = gateBranch(gatedEntries);
       rawBranches.push(raw);
       gatedBranches.push(gated);
       if (raw === 'rows' && gated === 'rows') settled = true;

@@ -128,15 +128,17 @@ export const journal: Journal = new Proxy({} as Journal, {
 export interface LiveQuery<T> {
   /** The last result, or `undefined` until the first one lands. */
   readonly value: T | undefined;
-  /** True until the first result lands. A re-run after a write keeps showing
+  /** True until the first run settles. A re-run after a write keeps showing
       the previous result rather than flashing the skeleton again: what is on
       screen is one round trip old, not absent, and replacing a list with a
       placeholder on every save would be worse than the wait it reports. */
   readonly loading: boolean;
-  /** True when the most recent run rejected; readState.ts states the rule and
-      why the default rendering does not change with it. Reading this is a
-      screen's choice, and most screens do not. */
+  /** True when the most recent run rejected. */
   readonly failed: boolean;
+  /** The last result remains visible after a refresh failure. */
+  readonly stale: boolean;
+  /** Request another read without discarding the last result. */
+  retry(): void;
 }
 
 /** A read whose answer is a list, which is most of them.
@@ -155,6 +157,8 @@ export interface LiveList<T> {
       a screen cannot show its empty state over a read still in flight. */
   readonly empty: boolean;
   readonly failed: boolean;
+  readonly stale: boolean;
+  retry(): void;
 }
 
 /** A query that re-runs whenever a table it read is written.
@@ -198,10 +202,10 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: Table
 
     A read that answers `undefined` - the checklist screens ask for a list
     that may not have been made yet - is no rows, the same as one that has
-    not answered at all. That is the one default this owns, and it is why no
-    screen writes `?? []` any more. `seed` is `liveQuery`'s own. */
+    not answered at all, but still counts as a successful empty result.
+    `seed` is `liveQuery`'s own. */
 export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>, seed?: TableName[]): LiveList<T> {
-  return listOf(query(null, run, seed ?? null));
+  return listOf(query(null, (journal) => run(journal).then((rows) => rows ?? []), seed ?? null));
 }
 
 /** The list inside a wider answer, gated like any other list.
@@ -223,7 +227,11 @@ export function liveListIn<T, V>(read: LiveQuery<V>, rows: (answer: V) => T[]): 
     },
     get failed() {
       return read.failed;
-    }
+    },
+    get stale() {
+      return read.stale;
+    },
+    retry: () => read.retry()
   });
 }
 
@@ -246,7 +254,11 @@ function listOf<T>(read: LiveQuery<T[] | undefined>): LiveList<T> {
     },
     get failed() {
       return read.failed;
-    }
+    },
+    get stale() {
+      return read.stale;
+    },
+    retry: () => read.retry()
   };
 }
 
@@ -276,6 +288,7 @@ function query<T>(
      overtakes a slow one - a search where "co" outruns "c" - would leave the
      older answer on screen for good. */
   let latest = 0;
+  let retries = $state(0);
 
   /* Every table this query has been seen to read. Filled by the recorder
      below as the closure calls its operations, and only ever grown: a query
@@ -305,6 +318,7 @@ function query<T>(
 
   $effect(() => {
     void discovered;
+    void retries;
     for (const table of dependencies) void versionOf(table);
     const ready = open.journal;
     if (!ready) return; // still booting; this re-runs when the database opens
@@ -314,6 +328,8 @@ function query<T>(
     let running: Promise<T>;
     try {
       running = run(recordingJournal(ready, dependOn));
+    } catch (error) {
+      running = Promise.reject(error);
     } finally {
       recording = false;
     }
@@ -324,16 +340,11 @@ function query<T>(
       },
       (error) => {
         if (mine !== latest) return;
-        /* Logged, and rendered as the empty state rather than surfaced by
-           default: a screen holding its placeholder forever tells the user
-           less than an empty state does, and a failure here means the database
-           is unreadable, which +layout.svelte already reports from boot. What
-           `failed` adds is that a screen with better words for it can now ask
-           (readState.ts, phase 5 audit ticket 04). */
         console.error('a journal query failed', error);
         state = gaveUp(state);
       }
     );
+    return () => { latest += 1; };
   });
 
   return {
@@ -345,6 +356,13 @@ function query<T>(
     },
     get failed() {
       return state.failed;
+    },
+    get stale() {
+      return state.failed && state.value !== undefined;
+    },
+    retry() {
+      latest += 1;
+      retries += 1;
     }
   };
 }

@@ -111,11 +111,15 @@ export function detailDraft<TRecord, TDraft extends object>(
           return mine?.value;
         },
         get loading() {
-          return mine === undefined;
+          return mine === undefined && !dependent.failed;
         },
         get failed() {
           return dependent.failed;
-        }
+        },
+        get stale() {
+          return mine !== undefined && dependent.stale;
+        },
+        retry: () => dependent.retry()
       };
     }
   };

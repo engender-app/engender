@@ -1,4 +1,8 @@
 {
+  "read_failed": "Nie można odczytać dziennika",
+  "read_refresh_failed": "Nie można odświeżyć dziennika",
+  "read_stale_body": "Widać ostatni wynik. Może nie uwzględniać ostatnich zmian.",
+  "read_retry": "Spróbuj ponownie",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_name": "enGender",
   "nav_calendar": "Kalendarz",
@@ -107,7 +111,7 @@
   "trash_empty_title": "Kosz jest pusty",
   "trash_empty_body": "Usunięty wpis trafia tutaj na 30 dni, zanim zniknie na stałe.",
   "trash_read_failed_title": "Nie udało się odczytać kosza",
-  "trash_read_failed_body": "To nie to samo, co pusty kosz. Błąd niczego nie usunął, więc to, co tu czekało, nadal czeka. Wyjdź z ekranu i wróć, żeby spróbować jeszcze raz.",
+  "trash_read_failed_body": "Błąd odczytu nie usunął żadnych wpisów. Spróbuj ponownie odczytać kosz.",
   "trash_restore": "Przywróć",
   "trash_restored_toast": "Wpis przywrócony",
   "trash_days_left": [
@@ -2009,7 +2013,7 @@
   "photo_day_prompt_save": "Zapisz",
   "photo_day_prompt_skip": "Pomiń",
   "pj_read_failed_title": "Nie udało się odczytać zdjęć",
-  "pj_read_failed_body": "To nie to samo, co brak zdjęć. Wyjdź z ekranu i wróć, żeby spróbować jeszcze raz.",
+  "pj_read_failed_body": "Spróbuj ponownie odczytać zdjęcia.",
   "photo_picker_failed": "Nie udało się otworzyć wyboru zdjęć.",
   "vc_compare": "Porównaj",
   "vc_earlier": "Wcześniejszy wzorzec",
