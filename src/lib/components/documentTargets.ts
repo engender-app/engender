@@ -1,15 +1,4 @@
-/* The four things a document can be filed under, as one list (phase 8
-   features ticket 56, ADR-0065). The rune-free half of
-   documentTargets.svelte.ts, which is where the four live reads are: the
-   ordering rule below is the only part worth a test, and a node test cannot
-   compile a rune (`.svelte.ts` modules are browser-tier only).
-
-   Where a target's screen is, per kind. Three of the four have no route of
-   their own - a milestone, a procedure and a regimen episode are each edited
-   in a sheet on their area's list screen - so the link goes to the list and
-   the person taps the row there, the same fallback provenance.ts already
-   makes. A goal has no route either, and reaches its sheet through the
-   `?goal=` query param ADR-0068 adds. */
+/** Exact destinations for the four kinds a document can be filed under. */
 
 import type { DocumentTarget, DocumentTargetKind } from '$lib/data/types';
 
@@ -17,10 +6,10 @@ type TargetRow = { id: string; title: string; subtitle?: string };
 export type TargetSection = { kind: DocumentTargetKind; heading: string; rows: TargetRow[] };
 
 export function documentTargetHref(target: DocumentTarget): string {
-  if (target.kind === 'milestone') return '/transition/milestones';
-  if (target.kind === 'procedure') return '/health/surgery';
-  if (target.kind === 'episode') return '/care/regimen';
-  return `/transition/roadmap?goal=${target.id}`;
+  if (target.kind === 'milestone') return `/transition/milestones?edit=${encodeURIComponent(target.id)}`;
+  if (target.kind === 'procedure') return `/health/surgery?procedure=${encodeURIComponent(target.id)}`;
+  if (target.kind === 'episode') return `/care/regimen?episode=${encodeURIComponent(target.id)}#${encodeURIComponent(target.id)}`;
+  return `/transition/roadmap?goal=${encodeURIComponent(target.id)}`;
 }
 
 /** The sections a picker draws: a kind with nothing in it is dropped rather

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import PhotoViewer from '$lib/components/PhotoViewer.svelte';
+  import { page } from '$app/state';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* Staging against a published scale, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
@@ -75,6 +78,9 @@
 
   let photosQuery = liveList((j) => j.hairProgress.getPhotos());
   let photos = $derived(photosQuery.rows);
+  let sourceId = $derived(page.url.searchParams.get('photo'));
+  let sourcePhoto = $derived(photos.find((photo) => photo.id === sourceId));
+  let viewing = $state<HairPhoto | null>(null);
 
   let lastPhotoEpochDay = $derived(photos[photos.length - 1]?.epochDay ?? null);
   let photoDue = $derived(isHairPhotoDue(anchorEpochDay, lastPhotoEpochDay, today));
@@ -193,6 +199,8 @@
 
 <div class="screen">
   <ScreenHeader title={m.hair_progress()} back="/care/changes" subtitle={m.hair_intro()} />
+  <SourceRecordHandoff id={sourceId} ready={!photosQuery.loading && !photosQuery.failed} found={!!sourcePhoto} onOpen={() => { viewing = sourcePhoto!; }} />
+  <PhotoViewer photo={viewing} onClose={() => { viewing = null; }} />
 
   {#if dosesQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>

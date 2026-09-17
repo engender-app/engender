@@ -2476,5 +2476,11 @@ await block('Care composed medication read', 1, async () => {
   ok('Care waits for totals, keeps stale facts and refreshes every fact after a dose write');
 });
 
+await block('Cross-area source records', 1, async () => {
+  const { verifySourceRecordLinks } = await import('../source-record-links.mjs');
+  await verifySourceRecordLinks();
+  ok('document targets, photo owners, provenance, deleted targets and return context');
+});
+
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);

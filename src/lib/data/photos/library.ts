@@ -47,6 +47,8 @@ export interface LibraryPhoto {
       nothing that is named - a hair photograph, a hair-removal session, an
       entry, a video note. */
   ownerName: string | null;
+  /** The ID accepted by the owner's existing route. Hair photos own themselves. */
+  ownerId: string;
   starred: boolean;
 }
 
@@ -123,4 +125,18 @@ export function yearMarks(photos: LibraryPhoto[]): YearMark[] {
     marks.push({ year, id: photo.id });
   }
   return marks.length < 2 ? [] : marks;
+}
+
+/** Opening an owner never hands a library projection to a write. */
+export function photoOwnerHref(photo: LibraryPhoto): string {
+  const id = encodeURIComponent(photo.ownerId);
+  switch (photo.source) {
+    case 'entry':
+    case 'video': return `/entry/${id}`;
+    case 'milestone': return `/transition/milestones?edit=${id}`;
+    case 'hair': return `/body/hair-progress?photo=${id}`;
+    case 'hairRemoval': return `/body/hair-removal?session=${id}`;
+    case 'tryout': return `/transition/tryouts/${id}`;
+    case 'procedure': return `/health/surgery?procedure=${id}`;
+  }
 }

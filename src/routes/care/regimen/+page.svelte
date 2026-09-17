@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* What you are taking, and since when, on the surface kit (phase 5 UX
      ticket 25).
 
@@ -56,7 +58,9 @@
   /* The clinician summary links an episode across a hash (phase 8 features
      ticket 67) - read once, the same "one visit to one screen" rule
      BatchedList's own `path` follows. */
-  const deepLinkedEpisodeId = hashRowId();
+  let sourceId = $derived(page.url.searchParams.get('episode'));
+  let sourceEpisode = $derived(episodes.find((episode) => episode.id === sourceId));
+  let deepLinkedEpisodeId = $derived(sourceId ?? hashRowId(page.url.hash));
   let deepLinkedEpisodeIndex = $derived(
     deepLinkedEpisodeId ? orderedEpisodes.findIndex((episode) => episode.id === deepLinkedEpisodeId) : -1
   );
@@ -324,6 +328,7 @@
       </button>
     {/snippet}
   </ScreenHeader>
+  <SourceRecordHandoff id={sourceId} ready={!episodesQuery.loading && !episodesQuery.failed} found={!!sourceEpisode} onOpen={() => openEditor(sourceEpisode!)} />
 
   <ReadGate read={episodesQuery} variant="line" count={3}>
     {#snippet rows()}

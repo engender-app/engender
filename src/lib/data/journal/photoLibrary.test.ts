@@ -71,6 +71,7 @@ async function oneOfEach(journal: ReturnType<typeof openJournal>) {
   return {
     entryId,
     videoEntry,
+    owners: { milestoneId, sessionId, tryoutId, procedureId },
     ids: {
       entryPhoto,
       milestonePhoto,
@@ -85,9 +86,11 @@ async function oneOfEach(journal: ReturnType<typeof openJournal>) {
 
 test('every photograph in the journal appears once, dated, with its source and owner name', async () => {
   const { journal } = await journalWithFiles();
-  const { ids } = await oneOfEach(journal);
+  const { ids, entryId, videoEntry, owners } = await oneOfEach(journal);
 
   const library = await journal.photoLibrary.inJournal();
+
+  assert.deepEqual(library.map((p) => p.ownerId), [String(entryId), owners.milestoneId, ids.hairPhoto, owners.sessionId, owners.tryoutId, owners.procedureId, String(videoEntry)]);
 
   assert.deepEqual(
     library.map((photo) => [photo.id, photo.source, photo.epochDay, photo.ownerName]),
@@ -129,6 +132,7 @@ test('a hair-removal photograph is dated to its session, which is the only day i
       fileName: `${photoId}.jpg`,
       epochDay: 19500,
       source: 'hairRemoval',
+      ownerId: sessionId,
       ownerName: null,
       starred: false
     }
@@ -182,7 +186,7 @@ test('an empty journal yields an empty library, not a broken join', async () => 
 
 test('starred reads the library shape, and only the photo table can be starred', async () => {
   const { journal } = await journalWithFiles();
-  const { ids } = await oneOfEach(journal);
+  const { ids, owners } = await oneOfEach(journal);
 
   await journal.photos.setStarred(ids.milestonePhoto, true);
 
@@ -192,6 +196,7 @@ test('starred reads the library shape, and only the photo table can be starred',
       fileName: `${ids.milestonePhoto}.jpg`,
       epochDay: 20001,
       source: 'milestone',
+      ownerId: owners.milestoneId,
       ownerName: 'First appointment',
       starred: true
     }

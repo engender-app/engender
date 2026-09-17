@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
+  import { page } from '$app/state';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Procedures, dates and your own recovery log, on the surface kit (phase
      5 UX ticket 25 and phase 5 deepening ticket 12).
      Rebuilt into a comprehensive 4-phase Procedure Care & Recovery Hub:
@@ -53,6 +57,9 @@
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
+
+  let sourceId = $derived(page.url.searchParams.get('procedure'));
+  let sourceProcedure = $derived(procedures.find((p) => p.id === sourceId));
 
   let selectedId = $state<string | null>(null);
   /* Read off the live list rather than held as its own copy, so an edit or a
@@ -191,6 +198,14 @@
     findById: (id) => checklistItems.find((i) => i.id === id)
   });
 
+  async function openSourceProcedure() {
+    const procedure = sourceProcedure!;
+    selectedId = procedure.id;
+    notesDraft = procedure.notes;
+    await tick();
+    scrollToHash(`#procedure-log-${procedure.id}`);
+  }
+
   function select(procedure: Procedure) {
     selectedId = selectedId === procedure.id ? null : procedure.id;
     notesDraft = selectedId ? procedure.notes : '';
@@ -265,6 +280,7 @@
       </button>
     {/snippet}
   </ScreenHeader>
+  <SourceRecordHandoff id={sourceId} ready={!proceduresQuery.loading && !proceduresQuery.failed} found={!!sourceProcedure} onOpen={() => { void openSourceProcedure(); }} />
 
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
