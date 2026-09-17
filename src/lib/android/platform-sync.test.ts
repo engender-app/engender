@@ -430,6 +430,72 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     vi.unstubAllGlobals();
   });
 
+  test('Back closes the nested calendar and sheet before navigating', async () => {
+    const deps = makeDeps({ navigationDepth: () => 1 });
+    window.location.pathname = '/health/appointments';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerOverlay, registerOverlayRegion } = await import('../components/overlayLock');
+    const container = { contains: () => true } as unknown as HTMLElement;
+    const dismissSheet = vi.fn();
+    const releaseSheet = registerOverlay(container, { dismiss: dismissSheet });
+    const dismissCalendar = vi.fn(() => releaseCalendar());
+    const releaseCalendar = registerOverlayRegion(container, container, { dismiss: dismissCalendar });
+
+    back();
+    expect(dismissCalendar).toHaveBeenCalledTimes(1);
+    expect(dismissSheet).not.toHaveBeenCalled();
+    expect(window.history.back).not.toHaveBeenCalled();
+    back();
+    expect(dismissSheet).toHaveBeenCalledTimes(1);
+    expect(window.history.back).not.toHaveBeenCalled();
+    releaseSheet();
+    back();
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+  });
+
+  test('Back closes a calendar outside a sheet before minimizing at home', async () => {
+    const deps = makeDeps();
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerOverlayRegion } = await import('../components/overlayLock');
+    const container = {} as HTMLElement;
+    const dismiss = vi.fn(() => release());
+    const release = registerOverlayRegion(container, container, { dismiss });
+    back();
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+    back();
+    expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+  });
+
+  test('Back stays with a non-dismissible surface and ignores a torn-down listener', async () => {
+    const deps = makeDeps();
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerOverlay } = await import('../components/overlayLock');
+    const release = registerOverlay({} as HTMLElement);
+    back();
+    back();
+    expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+    release();
+    platformSync.stopAndroidPlatformSync();
+    back();
+    expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+  });
+
+  test('Back replaces a deep link with home when no surface or history remains', () => {
+    const deps = makeDeps();
+    window.location.pathname = '/health/appointments';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    back();
+    expect(deps.replaceRoute).toHaveBeenCalledExactlyOnceWith('/');
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+  });
+
   test('runs the initial reminder sync, stock reconciliation, disguise, quick-exit and screen-capture sync on start', async () => {
     const deps = makeDeps();
     platformSync.startAndroidPlatformSync(deps);
