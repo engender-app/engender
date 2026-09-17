@@ -18,6 +18,14 @@ const config: CapacitorConfig = {
   appName: 'enGender',
   webDir: 'build',
   android: {
+    /* Zoom is a web capability and only a web capability (audit U2). The
+       bridge maps this to setBuiltInZoomControls(false), the WebView
+       setting pinch input actually answers to, so two-finger gestures
+       stay with the app's own surfaces (photo wipe, timeline drag) rather
+       than zooming the page behind them. Written out rather than left to
+       the library default because app.html now allows zoom for the web
+       release, and the split is the decision, not an accident. */
+    zoomEnabled: false,
     /* The journal is opened by the native driver over SQLCipher, not by the
        WebView, so nothing here needs a mixed-content or cleartext exception. */
     allowMixedContent: false,
