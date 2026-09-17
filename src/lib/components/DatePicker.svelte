@@ -16,6 +16,7 @@
   import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.min.css';
   import { pickerLocale } from './flatpickrLocale';
+  import { registerOverlayRegion } from './overlayLock';
 
   let {
     value = $bindable(''),
@@ -47,6 +48,7 @@
   } = $props();
 
   let picker: flatpickr.Instance | null = null;
+  let releaseOverlay: (() => void) | null = null;
 
   function mount(node: HTMLInputElement) {
     picker = flatpickr(node, {
@@ -62,6 +64,19 @@
         const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
         value = next;
         onchange?.(next);
+      },
+      onOpen: () => {
+        if (!picker) return;
+        releaseOverlay?.();
+        const launcher = picker.altInput ?? node;
+        releaseOverlay = registerOverlayRegion(launcher, picker.calendarContainer, {
+          dismiss: () => picker?.close(),
+          restoreFocus: launcher
+        });
+      },
+      onClose: () => {
+        releaseOverlay?.();
+        releaseOverlay = null;
       }
     });
     /* The id belongs on the field a person sees and a label points at; the
@@ -79,6 +94,8 @@
     }
     return {
       destroy() {
+        releaseOverlay?.();
+        releaseOverlay = null;
         picker?.destroy();
         picker = null;
       }
