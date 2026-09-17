@@ -37,9 +37,12 @@
      analysis hangs off the query alone, and everything below it is
      answered off what that produced. words-surfaces.test.ts holds this
      file to it. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { analyseNotes, distinctiveWords, groupByEra, groupByPresentation, type WordWeight } from '$lib/data/wordFrequency';
+  import { eraForDay } from '$lib/data/eras';
+  import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { crossfade, resize, spread } from '$lib/motion/reveal';
   import type { Role } from '$lib/theme/roles';
@@ -62,8 +65,16 @@
   let {
     role,
     view = 'screen',
-    href = ''
-  }: { role?: Role; view?: 'tile' | 'screen'; href?: string } = $props();
+    href = '',
+    span,
+    scopeSubtitle = $bindable('')
+  }: {
+    role?: Role;
+    view?: 'tile' | 'screen';
+    href?: string;
+    span?: Span;
+    scopeSubtitle?: string;
+  } = $props();
 
   /** How many words the cloud draws. A render limit, not a narrower fold -
       `distinctiveWords` returns every word that carries weight. Past a
@@ -97,10 +108,22 @@
     ...(eraOptions.length > 0 ? (['era'] as const) : []),
     ...(modeOptions.length > 0 ? (['presentation'] as const) : [])
   ]);
-  let dimension = $state<Dimension>('era');
-  let selectedId = $state<string | null>(null);
+  const initialDimension = page.url.searchParams.get('dimension');
+  const initialId = page.url.searchParams.get('id');
+
+  let dimension = $state<Dimension>(
+    initialDimension === 'presentation' || initialDimension === 'era' ? initialDimension : 'era'
+  );
+  let selectedId = $state<string | null>(initialId);
   let options = $derived(dimension === 'era' ? eraOptions : modeOptions);
-  let opensOn = $derived(dimension === 'era' ? eraOptions[eraOptions.length - 1] : modeOptions[0]);
+
+  let eraForSpan = $derived(
+    span ? (eraForDay(erasQuery.rows, span.end) ?? eraForDay(erasQuery.rows, span.start)) : null
+  );
+  let defaultEra = $derived(
+    eraForSpan ? { value: eraForSpan.id, label: eraForSpan.name } : eraOptions[eraOptions.length - 1]
+  );
+  let opensOn = $derived(dimension === 'era' ? defaultEra : modeOptions[0]);
 
   /* One settling effect for both, because they settle together: an era
      deleted or a mode hidden mid-session leaves the picker pointing at
@@ -115,9 +138,22 @@
      - the correction only ever runs when what is on screen has stopped
      existing. */
   $effect(() => {
-    if (erasQuery.loading || dimensions.length === 0) return;
+    if (erasQuery.loading || dimensions.length === 0) {
+      scopeSubtitle = '';
+      return;
+    }
     if (!dimensions.includes(dimension)) dimension = dimensions[0];
     else if (!options.some((o) => o.value === selectedId)) selectedId = opensOn?.value ?? null;
+
+    const label = options.find((o) => o.value === (selectedId ?? opensOn?.value))?.label;
+    if (label) {
+      scopeSubtitle =
+        dimension === 'era'
+          ? m.words_scope_era({ name: label })
+          : m.words_scope_mode({ name: label });
+    } else {
+      scopeSubtitle = '';
+    }
   });
 
   let analysed = $derived(analyseNotes(entriesQuery.rows));
@@ -140,6 +176,20 @@
       injected into one needs a case the English never asks for. */
   let selectionLabel = $derived(options.find((o) => o.value === selectedId)?.label ?? '');
 
+  let tileHref = $derived.by(() => {
+    if (!selectedId) return href;
+    const sep = href.includes('?') ? '&' : '?';
+    return `${href}${sep}dimension=${dimension}&id=${selectedId}`;
+  });
+
+  let manageHref = $derived.by(() => {
+    const params = new URLSearchParams(page.url.searchParams);
+    params.set('dimension', dimension);
+    if (selectedId) params.set('id', selectedId);
+    const returnPath = `${page.url.pathname}?${params.toString()}`;
+    return `/settings/words?return=${encodeURIComponent(returnPath)}`;
+  });
+
   let picked = $state<WordWeight | null>(null);
 </script>
 
@@ -148,9 +198,11 @@
     <ReadingTile
       key="words"
       name={m.words_reading_title()}
-      {href}
+      href={tileHref}
       headline={weighted[0].word}
-      note={weighted.slice(1, 3).map((w) => w.word).join(', ')}
+      note={dimension === 'era'
+        ? m.words_scope_era({ name: selectionLabel })
+        : m.words_scope_mode({ name: selectionLabel })}
     />
   {/if}
 {:else}
@@ -235,7 +287,7 @@
          link too - "put this back" belongs beside the word it names - this
          one is "go look at the list", which does not need a word picked to
          want. -->
-    <a class="words-manage-link" href="/settings/words">{m.words_ignored_title()}</a>
+    <a class="words-manage-link" href={manageHref}>{m.words_ignored_title()}</a>
   {/if}
 </ChartCard>
 
@@ -255,7 +307,7 @@
     >
       <span>{m.words_ignore_action()}</span>
     </button>
-    <a class="words-sheet-link" href="/settings/words">{m.words_ignored_title()}</a>
+    <a class="words-sheet-link" href={manageHref}>{m.words_ignored_title()}</a>
   {/if}
 </Sheet>
 {/if}
