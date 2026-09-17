@@ -299,6 +299,25 @@
     {/snippet}
   </ReadGate>
 
+  <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
+       Health row, which put a dilation log in front of everyone who opened
+       More whatever their surgery was or was not.
+
+       Ticket 16 shipped the loosest honest gate available at the time - any
+       procedure at all - and recorded that it was wrong on purpose. Ticket
+       17 replaces it with the real one: a vaginoplasty, or a custom
+       procedure whose own dilation toggle is on. Vulvoplasty is deliberately
+       not in this OR - there is no canal to keep (ticket 17's own list).
+
+       Directly under the cards since audit item 13. It used to sit past the
+       open procedure's whole log - the checklist, the album, the consults,
+       the documents - so on a screen that ended at 520px with nothing open
+       it was the last thing on the page, and on an open one it was a
+       thousand pixels below the procedure it belongs to. -->
+  {#if procedures.some(dilationEligible)}
+    <HostedRows host="surgery" card />
+  {/if}
+
   {#if selected && selectedPhase}
     <!-- The id is what the card's own `aria-expanded` button points at
          with `aria-controls` (ticket 52): the log is a sibling of the
@@ -616,19 +635,6 @@
            link. -->
       <LinkedDocuments kind="procedure" id={selected.id} />
     </div>
-  {/if}
-
-  <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
-       Health row, which put a dilation log in front of everyone who opened
-       More whatever their surgery was or was not.
-
-       Ticket 16 shipped the loosest honest gate available at the time - any
-       procedure at all - and recorded that it was wrong on purpose. Ticket
-       17 replaces it with the real one: a vaginoplasty, or a custom
-       procedure whose own dilation toggle is on. Vulvoplasty is deliberately
-       not in this OR - there is no canal to keep (ticket 17's own list). -->
-  {#if procedures.some(dilationEligible)}
-    <HostedRows host="surgery" card />
   {/if}
 
   <RecordSheet
