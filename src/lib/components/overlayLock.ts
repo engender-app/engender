@@ -51,13 +51,24 @@ type OverlayOwner = {
   container: HTMLElement;
   dismiss?: () => void;
   regions: HTMLElement[];
-  nested: Array<{ region: HTMLElement; dismiss: () => void; restoreFocus?: HTMLElement }>;
+  nested: Array<{ region: HTMLElement; dismiss: () => void }>;
 };
 
 const overlayOwners: OverlayOwner[] = [];
 
 function topOwner(): OverlayOwner | undefined {
   return overlayOwners[overlayOwners.length - 1];
+}
+
+/** Escape and native Back consume the same top surface, including one that
+    cannot currently close. The caller navigates only when no owner remains. */
+export function dismissActiveOverlay(): boolean {
+  const owner = topOwner();
+  if (!owner) return false;
+  const nested = owner.nested[owner.nested.length - 1];
+  if (nested) nested.dismiss();
+  else owner.dismiss?.();
+  return true;
 }
 
 function onOverlayKeydown(event: KeyboardEvent): void {
@@ -68,17 +79,7 @@ function onOverlayKeydown(event: KeyboardEvent): void {
        would dismiss a sheet underneath it instead. */
     event.preventDefault();
     event.stopImmediatePropagation();
-    const nested = owner.nested[owner.nested.length - 1];
-    if (nested) {
-      /* Focus before dismissal. Popups commonly open from their launcher's
-         focus event; focusing after close would immediately reopen them. */
-      if (nested.restoreFocus?.isConnected && isFocusable(nested.restoreFocus)) {
-        nested.restoreFocus.focus({ preventScroll: true });
-      }
-      nested.dismiss();
-    } else {
-      owner.dismiss?.();
-    }
+    dismissActiveOverlay();
   } else if (event.key === 'Tab') {
     trapFocus(owner.regions, event);
   }
@@ -102,15 +103,24 @@ export function registerOverlay(
 }
 
 /** Extends the overlay containing `launcher` with a portalled child surface.
-    The child shares the owner's Tab boundary but receives Escape first. */
+    The child shares the owner's Tab boundary but receives dismissal first.
+    Outside an overlay, the popup owns its own keyboard and Back boundary. */
 export function registerOverlayRegion(
   launcher: HTMLElement,
   region: HTMLElement,
   options: { dismiss: () => void; restoreFocus?: HTMLElement }
 ): () => void {
   const owner = [...overlayOwners].reverse().find((candidate) => candidate.container.contains(launcher));
-  if (!owner) return () => {};
-  const nested = { region, ...options };
+  const dismiss = () => {
+    /* Focus before dismissal: focusing a flatpickr launcher after close
+       would immediately reopen its calendar. */
+    if (options.restoreFocus?.isConnected && isFocusable(options.restoreFocus)) {
+      options.restoreFocus.focus({ preventScroll: true });
+    }
+    options.dismiss();
+  };
+  if (!owner) return registerOverlay(region, { dismiss });
+  const nested = { region, dismiss };
   owner.regions.push(region);
   owner.nested.push(nested);
 

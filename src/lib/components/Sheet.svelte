@@ -14,6 +14,8 @@
   let sheetEl: HTMLElement | null = null;
 
   function close() {
+    // The outgoing sheet still owns Back until its transition removes it.
+    if (!open) return;
     if (onRequestClose) {
       dragY = 0;
       onRequestClose();
