@@ -27,30 +27,59 @@ describe('the day after today', () => {
     expect(day).toContain('j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay())');
   });
 
+  /* The future branch itself: everything between `{#if isFuture}` and the
+     `{:else}` that hands the screen to a past day. Audit item 12 turned the
+     old `{#if !isFuture}` guard around so a future day can draw the records
+     it does hold - an appointment, a milestone - so the rule is stated over
+     that branch's own contents rather than over the order of the file. */
+  const futureBranch = markupOf(day).split('{#if isFuture}')[1]?.split('{:else}')[0] ?? '';
+
   it('never lets the entries gate, the add-entry button or the era link past the future guard', () => {
-    // The three things ADR-0067 says a future day must not offer all sit
-    // inside one `{#if !isFuture}` block, closed before the screen's own
-    // closing div - not scattered behind three separate checks that could
-    // drift apart.
-    expect(markupOf(day)).toMatch(
-      /\{#if !isFuture\}[\s\S]*<ReadGate[\s\S]*data-add[\s\S]*data-start-era[\s\S]*\{\/if\}\s*<\/div>/
-    );
+    expect(futureBranch).not.toBe('');
+    for (const offered of ['<ReadGate', 'data-add', 'data-start-era']) {
+      expect(futureBranch, `${offered} reaches a day that has not happened`).not.toContain(offered);
+    }
+    // And they are all still on the screen, in the branch a past day takes.
+    expect(markupOf(day)).toMatch(/\{:else\}[\s\S]*<ReadGate[\s\S]*data-add[\s\S]*data-start-era[\s\S]*\{\/if\}\s*<\/div>/);
   });
 
   it('never calls the old nothing-logged notice from outside that guard', () => {
     // "Nothing logged this day, you can still add an entry" is exactly the
-    // wrong thing to say about a day that has not happened - the bug this
-    // ticket exists to fix. Asserted negatively because the positive case
-    // (it still fires for an empty past day) is unchanged and already
-    // covered by the loading-states test in calendar-surfaces.test.ts.
-    const beforeGuard = markupOf(day).split('{#if !isFuture}')[0];
+    // wrong thing to say about a day that has not happened - the bug ticket
+    // 62 exists to fix. Asserted negatively because the positive case (it
+    // still fires for an empty past day) is unchanged and already covered
+    // by the loading-states test in calendar-surfaces.test.ts.
+    expect(futureBranch).not.toContain('m.nothing_logged()');
+    const beforeGuard = markupOf(day).split('{#if isFuture}')[0];
     expect(beforeGuard).not.toContain('m.nothing_logged()');
     expect(beforeGuard).not.toContain('data-add');
   });
 
-  it('has an honest empty state that offers nothing, reached only when nothing is coming', () => {
-    expect(markupOf(day)).toMatch(/\{:else if isFuture\}[\s\S]*?<Notice[\s\S]*?m\.day_ahead_empty_title\(\)/);
+  it('has an honest empty state that offers nothing, reached only when nothing is coming or already recorded', () => {
+    expect(markupOf(day)).toMatch(
+      /\{:else if isFuture && !hasRecords\}[\s\S]*?<Notice[\s\S]*?m\.day_ahead_empty_title\(\)/
+    );
     expect(day).not.toMatch(/day_ahead_empty[\s\S]{0,120}(data-add|goto\(|onclick)/);
+  });
+
+  it('says what a dose slot expects, which the mark itself may not carry', () => {
+    /* Audit item 12: the row said "Dose" and went to /doses, which is what
+       Today's agenda row already said. The amount comes off the schedule
+       through `expectedDosesOnDay`, never off the mark - ADR-0067's rule
+       that a mark is a day and a kind is what that split protects. */
+    expect(day).toContain('expectedDosesOnDay(episodes, schedules, pauses, asked)');
+    expect(day).toContain('m.adherence_slot_amount(');
+    // The mark's own row module still states the kind and nothing else: the
+    // amount is the screen's, read off the schedule.
+    expect(dayAheadRows).not.toContain('expectedDoses');
+  });
+
+  it('drops a mark whose own record is on the screen beside it', () => {
+    // An appointment and a milestone both draw a row through day.ts with
+    // their kind, place or name on it; the mark would be the same fact with
+    // less on it, which is the shape the audit measured.
+    expect(day).toMatch(/namedByRecords[\s\S]{0,400}appointment[\s\S]{0,200}milestone/);
+    expect(day).toContain('dayAheadRead.rows.filter((mark) => !namedByRecords.has(mark.kind))');
   });
 
   it('draws what is coming under the heading the appointments screen already has, not a second string for it', () => {

@@ -59,13 +59,24 @@
      days reuses this component, and a plain const would keep the first day it
      saw (see the stale-params note on /entry/[id]).
 
-     A day after today (phase 8 features ticket 62, ADR-0067): before this
+     A day after today (phase 8 features ticket 62, ADR-0067): before that
      ticket `journal.day.getDay` was called unconditionally, which reads
      logged rows a future day cannot have, so it rendered as an empty past
      day - "Nothing logged this day, add an entry" for a day that has not
-     happened. `isFuture` gates that whole branch off instead: a future day
-     shows only what `dayAhead` has for it and nothing else, never the
-     entries gate, never the add-entry button, never the era-start link.
+     happened. `isFuture` still takes the whole of that off: never the
+     entries gate, never the "nothing logged" notice, never the add-entry
+     button, never the era-start link.
+
+     What a future day does draw, since audit item 12: what it is expected
+     to hold, said properly. It was a weekday with no date, "Coming up", one
+     row reading "Dose", and 600px of nothing - a screen repeating its own
+     entry point, since Today's agenda row said the same word and went to
+     the same place. So the title carries the date the URL already knows,
+     the schedules' own expectation reaches the dose row (the drug and the
+     amount, which a mark may not carry - ADR-0067), and the records this
+     day genuinely holds ahead of time, an appointment or a milestone, draw
+     through `DayRecords` in the same words a past day uses for them. A mark
+     whose record is on the screen is dropped rather than drawn twice.
 
      What is coming (`comingRows`) is read unconditionally rather than
      branched on `isFuture` the way the entries read now is, because
@@ -85,6 +96,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { dayAheadRows } from '$lib/components/dayAheadRows';
+  import { expectedDosesOnDay } from '$lib/data/regimenEpisode';
   import Icon from '$lib/components/Icon.svelte';
   import DayRecordsView from '$lib/components/DayRecords.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -110,7 +122,71 @@
      this screen's own day, the same reason HeatMap asks for a month and
      Home (ticket 63) will ask for just today. */
   let dayAheadRead = liveList((j) => j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay()));
-  let comingRows = $derived(dayAheadRows(dayAheadRead.rows));
+
+  /* What the schedules expect on this day, which a mark cannot say
+     (audit item 12): a mark is a day and a kind, never an amount
+     (ADR-0067), so the row that says "Dose" and nothing else was the
+     Today agenda's row with less on it. Read here rather than folded into
+     `dayAhead`, the call `rowForward.ts` makes for the same reason - names
+     and amounts come off the records, and the registry keeps answering
+     only which days carry a mark.
+
+     All three reads are issued before the first await, which is what makes
+     a liveQuery find its dependencies on the first run (journal.svelte.ts).
+     Bounded to a future day: a past day's doses are records, and `day.ts`
+     already draws them. */
+  let expectedDosesRead = liveQuery(async (j) => {
+    const asked = epochDay;
+    if (asked <= todayEpochDay()) return [];
+    const [episodes, schedules, pauses] = await Promise.all([
+      j.regimen.getEpisodes(),
+      j.doses.getSchedules(),
+      j.doses.getPauses()
+    ]);
+    return expectedDosesOnDay(episodes, schedules, pauses, asked);
+  });
+  let expectedDoses = $derived(expectedDosesRead.value ?? []);
+
+  /* The marks, less the ones the day's own records name better (audit item
+     12). An appointment and a milestone both put a row on this screen
+     through `day.ts` carrying what they are - a kind and a place, a name -
+     and the mark beside it would be the same fact drawn again with less on
+     it. A surgery day and a letter unlock have no such row: a procedure's
+     own record on a day is its recovery photos, and a letter that has not
+     opened deliberately carries no title anywhere (letters.ts's
+     `getUnlockDaysInRange`). The dose slot keeps its row and gains what the
+     schedule expects. */
+  let namedByRecords = $derived(
+    new Set([
+      ...((day?.appointments.length ?? 0) > 0 ? ['appointment'] : []),
+      ...((day?.milestones.length ?? 0) > 0 ? ['milestone'] : [])
+    ])
+  );
+  let comingRows = $derived(
+    dayAheadRows(dayAheadRead.rows.filter((mark) => !namedByRecords.has(mark.kind))).flatMap((row) =>
+      row.key === 'coming-doseSlot' && expectedDoses.length > 0
+        ? expectedDoses.map((dose) => ({
+            ...row,
+            key: `coming-dose-${dose.episodeId}-${dose.indexInDay}`,
+            title: dose.drug,
+            subtitle: [
+              dose.amount ? m.adherence_slot_amount({ dose: dose.amount.dose, unit: dose.amount.doseUnit }) : '',
+              dose.dosesPerDay > 1 ? m.adherence_slot_numbered({ index: dose.indexInDay + 1, count: dose.dosesPerDay }) : ''
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          }))
+        : [row]
+    )
+  );
+
+  /* Whether this day holds a record of its own at all. On a future day that
+     is an appointment or a milestone dated ahead; every other section reads
+     what happened and answers with nothing. Off DAY_SECTION_KEYS rather
+     than a list here, the same reason `everythingLogged` below is. */
+  let hasRecords = $derived(
+    day !== undefined && DAY_SECTION_KEYS.some((key) => (day![key] as unknown[]).length > 0)
+  );
 
   /* Margin notes are not one of `day.ts`'s sections (they render with the
      entry they annotate, not as a record of the day they were written on -
@@ -143,7 +219,7 @@
 
 <div class="screen" data-screen>
   <ScreenHeader
-    title={isToday ? m.today() : fmtDay(epochDay, { weekday: 'long' })}
+    title={isToday ? m.today() : fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
     screen="day"
     back="/calendar"
   />
@@ -166,10 +242,10 @@
     <SectionHeading text={m.appointments_upcoming_heading()} />
     <ListCard role={isFuture ? entriesRole : alsoRole}>
       {#each comingRows as row (row.key)}
-        <ListRow key={row.key} icon={row.icon} title={row.title} href={row.href} />
+        <ListRow key={row.key} icon={row.icon} title={row.title} subtitle={row.subtitle} href={row.href} />
       {/each}
     </ListCard>
-  {:else if isFuture}
+  {:else if isFuture && !hasRecords}
     <!-- Honest and offers nothing (ADR-0067, out of scope: writing on a
          future day): no add-entry button reaches this branch, and no era
          link either, since both sit inside the `!isFuture` block below. -->
@@ -182,7 +258,17 @@
     />
   {/if}
 
-  {#if !isFuture}
+  {#if isFuture}
+    <!-- What this day already holds, in the words a past day uses for the
+         same records (audit item 12): an appointment says its kind and its
+         place, a milestone says its name. No gate and no empty state - the
+         notice above covers a day with nothing on it, and a skeleton in
+         front of a day that may hold nothing would flash on every future
+         day somebody opens. -->
+    {#if hasRecords}
+      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} />
+    {/if}
+  {:else}
     <ReadGate read={everythingLogged} variant="card" count={2}>
       {#snippet rows()}
         <!-- `day!` because the gate renders this snippet only once the read
