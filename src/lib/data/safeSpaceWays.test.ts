@@ -58,7 +58,7 @@ describe('the ways down from Safe space', () => {
          /stats/, and this moves onto it when that lands. */
       '/stats'
     ]);
-    expect(SAFE_SPACE_WAYS.find((w) => w.key === 'resources')?.href).toBe('/practice/resources');
+    expect(SAFE_SPACE_WAYS.find((w) => w.key === 'resources')?.href).toBe('/support/resources');
   });
 
   it('points every way at a route that exists', () => {

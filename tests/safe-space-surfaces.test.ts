@@ -232,7 +232,7 @@ describe('the support directory panel', () => {
        panel of its own above the rest of a dashboard - and still the first
        of them, which is where it already sat and which ticket 63 is the
        ticket that gets to move. */
-    expect(SAFE_SPACE_WAYS[0]).toMatchObject({ key: 'resources', href: '/practice/resources' });
+    expect(SAFE_SPACE_WAYS[0]).toMatchObject({ key: 'resources', href: '/support/resources' });
     expect(doubt).toContain('title: m.resources_title');
     /* The row's own key, shortened rather than duplicated: this screen was
        always its only caller, and at its old length it ran to a third line

@@ -10,8 +10,9 @@
 
    Phase 11 all-four-doors ticket 13 took `health/side-effects` off this list
    without adding a replacement: side effects finish on
-   practice/personal-effects now, under `effects`, the way hair progress's
-   two areas always have.
+   care/changes now, under `effects`, the way hair progress's
+   two areas always have. Ticket 21 moved that screen's own address, and
+   the voice screen's, off the retired Practice prefix.
 
    A source scan, like the clinician summary's print-parity test: these are
    `.svelte` files and the node tier cannot mount one (ADR-0016). */
@@ -52,10 +53,10 @@ describe('where the finish control is mounted', () => {
       { route: 'body/hair-progress', group: 'hair-progress' },
       { route: 'body/hair-removal', group: 'hair-removal' },
       { route: 'body/measurements', group: 'measurements' },
+      { route: 'body/wear', group: 'wear' },
+      { route: 'care/changes', group: 'effects' },
       { route: 'health/dilation', group: 'dilation' },
-      { route: 'practice/personal-effects', group: 'effects' },
-      { route: 'practice/voice', group: 'voice' },
-      { route: 'practice/wear', group: 'wear' }
+      { route: 'voice', group: 'voice' }
     ]);
   });
 
@@ -100,6 +101,6 @@ describe('where the finish control is mounted', () => {
        finishes the benchmarks and the practice takes together, and the row
        that fronts both is the benchmark row - the memos row is entry content
        and is not finishable at all. */
-    expect(owner['voice']).toBe('practice/voice');
+    expect(owner['voice']).toBe('voice');
   });
 });

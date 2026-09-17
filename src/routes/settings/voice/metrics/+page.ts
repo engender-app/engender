@@ -6,5 +6,5 @@
 import { redirect } from '@sveltejs/kit';
 
 export function load() {
-  redirect(307, '/practice/voice?metric=pitch');
+  redirect(307, '/voice?metric=pitch');
 }

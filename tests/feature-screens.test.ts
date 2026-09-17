@@ -57,9 +57,10 @@ const REACHED_FROM_INSIDE = [
   /* The metric reference (phase 8 features ticket 27) held this place
      until phase 11 ticket 17 folded it into a sheet over the voice screen
      itself - its markup is `VoiceMetricSection.svelte` and
-     `practice/voice/+page.svelte` now, both already reached the ordinary
-     way, and `practice/voice/metrics` is a redirect stub with nothing on
-     it to hold to the kit. */
+     `voice/+page.svelte` now (all-four-doors ticket 21 moved it off the
+     retired Practice prefix), both already reached the ordinary way, and
+     `practice/voice/metrics` is a redirect stub with nothing on it to
+     hold to the kit. */
   /* Two views over the unprompted registry (phase 6 ticket 04). The
      notifications view joins the list because its own milestone spec says so
      ("feature-screens.test.ts covers /transition/eras and the notifications
@@ -205,7 +206,7 @@ describe('every feature screen', () => {
     // DIRECTION.md 3c: display face at the screen-title size, no icon. A
     // screen with only one area needs no heading at all, so this only
     // holds the screens that had a SectionTitle to replace.
-    for (const route of ['transition/letters', 'transition/tryouts/[id]', 'practice/resources']) {
+    for (const route of ['transition/letters', 'transition/tryouts/[id]', 'support/resources']) {
       expect(sourceOf.get(route), route).toContain("from '$lib/components/kit/SectionHeading.svelte'");
     }
   });
@@ -252,7 +253,7 @@ describe('what a first-run journal sees', () => {
     (route) =>
       ![
         'transition/milestones',
-        'practice/resources',
+        'support/resources',
         'settings/entry-templates',
         'health/clinician-summary',
         /* The return moment is a step rather than a screen (DIRECTION.md
@@ -314,7 +315,7 @@ describe('what the worker is still fetching', () => {
     (route) =>
       ![
         'transition/milestones',
-        'practice/resources',
+        'support/resources',
         'settings/notifications',
         'settings/presentations',
         'settings/entry-templates',

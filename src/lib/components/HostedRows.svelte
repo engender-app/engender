@@ -64,7 +64,7 @@
              so a row drawn through this component would show regardless of
              `cycleTrackingVisible`, which is the one gate that is allowed to
              make it not exist at all. Ticket 13 moved that block onto
-             /practice/personal-effects, sharing a host with hair progress
+             /care/changes, sharing a host with hair progress
              for the first time, which is what makes this filter load-bearing
              rather than always a no-op. */
           .filter((row) => row.key !== 'cycle-events')

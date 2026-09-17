@@ -921,8 +921,18 @@ const HYDRATION_SCENES = [
   { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
   { name: 'measurements', at: '/body/measurements', is: 'measurements over time and sizes' },
+  /* Ticket 21: wear moved off the retired Practice prefix onto its own
+     door. */
+  { name: 'wear', at: '/body/wear', is: 'wear time tracked plainly' },
   /* Health group */
   { name: 'care', at: '/care', is: 'the care dashboard' },
+  /* Ticket 21: personal effects moved off the retired Practice prefix onto
+     the door it was always about. */
+  {
+    name: 'changes',
+    at: '/care/changes',
+    is: 'the changes-first-noticed timeline, side effects and the cycle block'
+  },
   { name: 'appointments', at: '/health/appointments', is: 'the visit, its prep list and the ones behind you' },
   { name: 'in-the-room', at: '/health/appointments/in-the-room', is: 'the in-the-room card' },
   { name: 'clinician-summary', at: '/health/clinician-summary', is: 'the printable summary' },
@@ -944,14 +954,17 @@ const HYDRATION_SCENES = [
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
   { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
-  /* Practice group */
-  { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline, side effects and the cycle block' },
-  { name: 'resources', at: '/practice/resources', is: 'organisations and helplines' },
-  { name: 'voice', at: '/practice/voice', is: 'the voice benchmark' },
-  { name: 'voice-record', at: '/practice/voice?tab=record', is: 'the benchmark record tab' },
+  /* Ticket 21: the voice benchmark moved off the retired Practice prefix -
+     to the root rather than under a door prefix, unlike its siblings, but
+     still Transition's screen. Its metrics and memos stubs did not move
+     (settings-route-redirects.test.ts), so they keep their addresses. */
+  { name: 'voice', at: '/voice', is: 'the voice benchmark' },
+  { name: 'voice-record', at: '/voice?tab=record', is: 'the benchmark record tab' },
   { name: 'voice-metrics', at: '/practice/voice/metrics', is: 'the metric reference' },
   { name: 'voice-memos', at: '/media/voice/memos', is: 'the memo browser' },
-  { name: 'wear', at: '/practice/wear', is: 'wear time tracked plainly' },
+  /* Support group (ticket 21: resources moved off the retired Practice
+     prefix onto the door ADR-0072 gave it) */
+  { name: 'resources', at: '/support/resources', is: 'organisations and helplines' },
   /* Media */
   { name: 'photos', at: '/media/photos', is: 'progress photos, then and now' },
   { name: 'photos-export', at: '/media/photos/export', is: 'the photo journey export' },

@@ -21,7 +21,7 @@
 
    Both surfaces mount for real: the summary's figure list over a fixed set
    of figures, and every one of the seven sections the sheet would render,
-   each `VoiceMetricSection` mounted the way `practice/voice/+page.svelte`
+   each `VoiceMetricSection` mounted the way `voice/+page.svelte`
    mounts it - into a `<section id={key}>` of its own, with no journal
    behind it (`figure: null`, the same fallback an unread journal gets
    there).
@@ -102,7 +102,7 @@ try {
   });
   /* The seven sections a sheet opened from any of these links would
      render, each in the wrapping `<section id>` the real screen gives it
-     (practice/voice/+page.svelte). No benchmarks in this harness, so
+     (voice/+page.svelte). No benchmarks in this harness, so
      `figure` is null for all seven - the same fallback the real sheet
      falls back to before a journal has landed. */
   const reference = document.querySelector('#reference')!;

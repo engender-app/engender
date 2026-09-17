@@ -4,5 +4,5 @@
 import { redirect } from '@sveltejs/kit';
 
 export function load() {
-  redirect(307, '/practice/wear');
+  redirect(307, '/body/wear');
 }
