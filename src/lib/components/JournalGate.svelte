@@ -382,7 +382,11 @@
           >{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span
         >
       {/if}
-      {unlockingBiometric ? m.bm_forgot_key_note() : m.pp_forgot_key_note()}
+      {unlockingPin
+        ? m.pin_forgot_key_note()
+        : unlockingBiometric
+          ? m.bm_forgot_key_note()
+          : m.pp_forgot_key_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>

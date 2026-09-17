@@ -523,6 +523,13 @@
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
       <DisguisePreview on={prefs.disguise} />
+      <!-- Where the mode has no secret to challenge with, the switch is
+           inert and the suffix says why (UI/UX ticket 09). The destination
+           this row's counterpart on the Security screen carries is
+           deliberately not repeated here: a link small enough to sit inside
+           the sub-line is under the 48px floor, and rebuilding this
+           hand-written row as a kit row is a visual change this copy ticket
+           does not make. -->
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.lock_on_leave_title()}</span>
@@ -533,6 +540,7 @@
         <Switch
           checked={prefs.lockOnLeave}
           label={m.lock_on_leave_title()}
+          disabled={!hasAccessSecret}
           onChange={(v) => {
             prefs.lockOnLeave = v;
           }}
@@ -570,7 +578,12 @@
       </div>
       <p class="small">{m.about_license()}</p>
       <p class="small">
-        <strong>{m.about_no_network_title()}</strong> {m.about_no_network_body()}
+        <!-- Platform copy (UI/UX ticket 09): the no-requests claim is
+             Android's, bought by holding no internet permission. The web
+             app is itself something the browser downloads, so its sentence
+             is about what is sent rather than what is fetched. -->
+        <strong>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</strong>
+        {isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}
       </p>
       <p class="small">{m.about_attribution()}</p>
       <p class="small">
