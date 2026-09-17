@@ -51,11 +51,11 @@ function builtinGoalTitle(key: string): string | null {
     rather than leaving a dangling reference (ADR-0045). */
 export function resolveMilestoneOrigin(milestone: Milestone): Origin | null {
   if (milestone.procedureId) {
-    return { text: m.prov_from_surgery({ name: milestone.procedureName ?? '' }), href: '/health/surgery' };
+    return { text: m.prov_from_surgery({ name: milestone.procedureName ?? '' }), href: `/health/surgery?procedure=${encodeURIComponent(milestone.procedureId)}` };
   }
   if (milestone.roadmapGoalKey) {
     const title = milestone.customRoadmapGoalText ?? builtinGoalTitle(milestone.roadmapGoalKey);
-    return title ? { text: m.prov_from_roadmap({ goal: title }), href: '/transition/roadmap' } : { text: m.prov_source_gone(), href: null };
+    return title ? { text: m.prov_from_roadmap({ goal: title }), href: `/transition/roadmap?goal=${encodeURIComponent(milestone.roadmapGoalKey)}` } : { text: m.prov_source_gone(), href: null };
   }
   if (milestone.tryoutId) {
     return { text: m.prov_from_tryout({ label: milestone.tryoutLabel ?? '' }), href: `/transition/tryouts/${milestone.tryoutId}` };

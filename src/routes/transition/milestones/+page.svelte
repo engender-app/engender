@@ -1,4 +1,7 @@
 <script lang="ts">
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
+  import { bootState } from '$lib/stores/boot.svelte';
+  import { withSourceReturn } from '$lib/navigation/sourceRecord';
   /* Milestones, on the surface kit (phase 5 UX ticket 25).
 
      Two things were crowded.
@@ -27,7 +30,7 @@
      is a redirect to here now. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
-  import { goto, replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
@@ -173,34 +176,8 @@
     record.openEditor(existing);
   }
 
-  /* The timeline screen's deep link (ticket 99 item 4): a milestone card
-     there opened straight into this same editor rather than a detail page
-     of its own. Redesign ticket 43 merged that screen into this one, so
-     nothing in the app writes this param any more - a mark on the rail
-     calls `openEditor` directly. It stays for the same reason /timeline
-     stays as a redirect (ADR-0036): the address was handed out, and a link
-     somebody saved has to keep opening what it opened.
-
-     The one-shot-param shape /doses' `add` uses, with one difference that
-     matters: `add` needs no data, and this needs a milestone to open.
-
-     So the param comes off only once the milestone has actually been
-     found, never on the way past. Opened cold, on a link pasted into a
-     fresh tab, this effect can run before boot has filled
-     `vocabulary.milestones` - and stripping the param there threw
-     the id away before anything could be done with it, so the editor never
-     opened at all and the URL kept a param nothing would look at again
-     (found by the ticket's own code review, reproduced by loading the deep
-     link in a fresh tab). Reading the list is what subscribes this effect
-     to it, so the arrival of the real data is what runs this again. */
-  $effect(() => {
-    const id = page.url.searchParams.get('edit');
-    if (!id) return;
-    const existing = vocabulary.milestones.find((mi) => mi.id === id);
-    if (!existing) return;
-    openEditor(existing, null);
-    replaceState('/transition/milestones', {});
-  });
+  let sourceId = $derived(page.url.searchParams.get('edit'));
+  let sourceMilestone = $derived(sorted.find((mi) => mi.id === sourceId));
 
   /* A milestone shows at most one photo, so its "list" is that one slot or
      none - the same shape a stored photo's own id would have, whether it
@@ -295,6 +272,8 @@
       </button>
     {/snippet}
   </ScreenHeader>
+  <SourceRecordHandoff id={sourceId} ready={bootState.status === 'ready'} found={!!sourceMilestone} onOpen={() => openEditor(sourceMilestone!, null)} />
+
 
   {#if sorted.length}
     <!-- What is true now, before what was true before (DIRECTION.md rule
@@ -416,7 +395,7 @@
           icon="sparkle"
           key="milestone-provenance"
           text={editingOrigin.text}
-          action={editingOrigin.href ? { label: m.prov_open_source(), href: editingOrigin.href } : undefined}
+          action={editingOrigin.href ? { label: m.prov_open_source(), href: withSourceReturn(editingOrigin.href, page.url) } : undefined}
         />
       {/if}
       <Field label={m.ms_name_label()} id="ms-name">

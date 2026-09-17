@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
      ticket 25). Two lists on the screen and a third inside the editor,
      all of them `.list-group` before this; the recency figures and the
@@ -51,6 +53,8 @@
 
   let sessionsQuery = liveList((j) => j.hairRemoval.getSessions());
   let sessions = $derived(sessionsQuery.rows);
+  let sourceId = $derived(page.url.searchParams.get('session'));
+  let sourceSession = $derived(sessions.find((session) => session.id === sourceId));
 
   let recency = $derived(daysSinceLastSession(sessions, today));
 
@@ -181,6 +185,7 @@
       </button>
     {/snippet}
   </ScreenHeader>
+  <SourceRecordHandoff id={sourceId} ready={!sessionsQuery.loading && !sessionsQuery.failed} found={!!sourceSession} onOpen={() => record.openEditor(sourceSession!)} />
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
     {#snippet rows()}
