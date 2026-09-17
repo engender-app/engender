@@ -47,6 +47,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { gapTo } from '$lib/data/vocabulary/hubLabels';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { Milestone, Procedure } from '$lib/data/types';
 
@@ -131,6 +132,32 @@
     return formatted;
   });
 
+  /* What is next for this procedure, which the card had nowhere to say
+     (audit item 13): the screen ended at 520px with the journey's own
+     forward fact locked inside the open card's consult list. The nearest
+     consult from today on, in ticket 12's grammar - `gapTo` and the same
+     two strings a hub row uses for a consult, so a row saying "Consult in
+     12 days" and this card cannot come to disagree about either the
+     arithmetic or the words.
+
+     Only a card still running: an archived procedure keeps no forward
+     reading (`open`'s own rule above), and a consult dated after one is a
+     record of something else. */
+  let nextConsult = $derived(
+    open
+      ? [...procedure.consults]
+          .filter((consult) => consult.epochDay >= today)
+          .sort((a, b) => a.epochDay - b.epochDay)[0] ?? null
+      : null
+  );
+  let nextConsultLine = $derived(
+    nextConsult === null
+      ? null
+      : nextConsult.epochDay === today
+        ? m.hub_line_next_consult_today()
+        : m.hub_line_next_consult({ gap: gapTo(nextConsult.epochDay, today) })
+  );
+
   /** How many thumbs fit across a phone's column beside each other. Five,
       because the narrowest screen the app supports is 320px and leaves a
       280px column: 5 x 44 + 4 x 8 is 252px and six of them is 304px, which
@@ -210,6 +237,15 @@
     {/if}
   </div>
 
+  <!-- Under the rail, which is where the journey's own line ends: the rail
+       draws the consult behind you and the date ahead of you, and this
+       names the next one in words (audit item 13). `aria-hidden` on the
+       rail is why it has to be written as well as drawn - the same reason
+       the consult count below is kept. -->
+  {#if nextConsultLine}
+    <p class="proc-next" data-procedure-next={procedure.id}>{nextConsultLine}</p>
+  {/if}
+
   <ProcedurePhaseRail {procedure} {today} />
 
   {#if open && strip.length}
@@ -275,6 +311,16 @@
   .proc-card {
     position: relative;
     padding: var(--space-3) 0;
+  }
+
+  /* The forward line sits between the reading and the rail, in the page's
+     own secondary ink: it is a fact about time and not a verdict about it
+     (ADR-0012), so nothing here is coloured, emphasised or counted down in
+     a unit of its own. */
+  .proc-next {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
   }
 
   .proc-top {
