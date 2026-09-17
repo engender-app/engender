@@ -25,7 +25,7 @@ import { foldText } from '../fold';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
-import { assertChanged, rowidWhere } from './support';
+import { assertChanged, mintUuid, now, rowidWhere } from './support';
 import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
 
 /** One import, mid-flight: the mode decides what happens to a row that is
@@ -1174,12 +1174,33 @@ export function aliasLegacyConsults(journal: ArchiveJournal): ArchiveJournal {
     own minted uuid and timestamp (journal/archive.ts writes it once, on
     commit), so `ts` here only stamps `updated_at` - the bookkeeping column
     every insert carries, not the moment the import itself happened. */
-/** The column list import_log's insert shares with journal/archive.ts's
-    `recordImport` - that one writes always, one row at a time and outside
-    the merge (a record is a new fact every commit, never insert-if-absent),
-    this one is insert-if-absent, many rows at once. Named once here so a
-    column added later is one edit rather than two kept in sync by hand. */
+/** The column list import_log's insert shares with `recordImport` below -
+    that one writes always and one row at a time (a record is a new fact
+    every commit, never insert-if-absent), this one is insert-if-absent,
+    many rows at once. Named once here so a column added later is one edit
+    rather than two kept in sync by hand. */
 export const IMPORT_LOG_COLUMNS = 'uuid, source, counts, imported_at, updated_at';
+
+/** One import_log row for a commit that has just happened, direct rather
+    than through the ordinary merge: this record is not content a device
+    might already have and skip (ADR-0002's own insert-if-absent shape) - it
+    is a new fact every time, minted here the way any other user-owned row is
+    (phase 7 ticket 03).
+
+    Called from inside the restore's own transaction (restore.ts) and from
+    nowhere else, which is what makes the history and the rows it describes
+    one commit rather than two (audit A1). */
+export async function recordImport(
+  driver: SqliteDriver,
+  source: string,
+  counts: Record<string, number>
+): Promise<void> {
+  const ts = now();
+  await driver.run(
+    `INSERT INTO import_log (${IMPORT_LOG_COLUMNS}) VALUES (?, ?, ?, ?, ?)`,
+    importLogRow({ id: mintUuid(), source, counts, importedAt: ts }, ts)
+  );
+}
 
 /** One import_log row's values, in `IMPORT_LOG_COLUMNS`' order. Shared the
     same reason the column list is. */
