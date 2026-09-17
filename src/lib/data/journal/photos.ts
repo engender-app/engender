@@ -24,7 +24,7 @@ import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import { watchJournalWrites } from '../journal-busy';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import { documentFilesOf } from './documents';
+import { readFileOwnership } from './fileOwnership';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 /** A photo that has been through normalize() (ADR-0008/0015): JPEG bytes,
@@ -184,26 +184,8 @@ export async function photosByMilestone(
    OPFS root: the database file lives in OPFS too, and no row references
    it.
 
-   Reads `hair_photo`, `voice_recording`, `video_note`, `tryout_photo` and
-   `document` as well as `photo` (schema.ts has all six): a
-   hair-progress photo's row lives in its own table
-   (journal/hairProgress.ts), a voice recording's in its own
-   (journal/voiceRecordings.ts), a video note's in its own
-   (journal/videoNotes.ts), a tryout photo's in its own
-   (journal/tryouts.ts) and a document's in its own
-   (journal/documents.ts), none as a further owner here, but every kind of
-   file sits in the same store and would otherwise look orphaned the
-   moment this ran. Neither a recording nor a video note has a thumbnail
-   to derive, so their file names are read straight rather than through
-   filesOf(): that helper's `thumbFileName()` only rewrites a `.jpg`
-   suffix (names.ts), so calling it on a `.webm` name would leave it
-   unchanged and add the same name to the referenced set twice for no
-   reason. A document's file is read through `documentFilesOf()` instead of
-   `filesOf()` directly for the same reason (tickets 53 and 55): both kinds
-   of document have a thumbnail beside them, but a PDF's is named off its
-   own `.pdf` rather than off a `.jpg`, and `documentFilesOf()` is what
-   knows that - a blanket `filesOf()` would name the PDF itself twice and
-   leave its first page looking like an orphan.
+   fileOwnership.ts supplies every owner's names, including derived
+   thumbnails and optional benchmark recordings.
 
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
@@ -232,51 +214,7 @@ async function sweepUnreferencedFiles(
   sawWrite: () => boolean
 ): Promise<void> {
   if (sawWrite()) return;
-  const [
-    photoRows,
-    hairPhotoRows,
-    hairRemovalPhotoRows,
-    procedurePhotoRows,
-    tryoutPhotoRows,
-    documentRows,
-    recordingRows,
-    videoRows,
-    benchmarkRows
-  ] = await Promise.all([
-      driver.query<{ file_path: string }>('SELECT file_path FROM photo'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM hair_removal_photo'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM procedure_photo'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM tryout_photo'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM document'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM voice_recording'),
-      driver.query<{ file_path: string }>('SELECT file_path FROM video_note'),
-      driver.query<{ passage_file_path: string; vowel_file_path: string | null }>(
-        'SELECT passage_file_path, vowel_file_path FROM voice_benchmark'
-      )
-    ]);
-  const referenced = new Set([
-    ...[
-      ...photoRows,
-      ...hairPhotoRows,
-      ...hairRemovalPhotoRows,
-      ...procedurePhotoRows,
-      ...tryoutPhotoRows
-    ].flatMap((row) => filesOf(row.file_path)),
-    // An image document's thumbnail comes out of normalisation and a PDF's
-    // out of the renderer, under a name spelled off its own extension
-    // (tickets 53 and 55) - documentFilesOf() is what knows both, the way
-    // filesOf() alone cannot. A PDF that could not be rendered names a
-    // page that is not there, which is nothing for the sweep to find.
-    ...documentRows.flatMap((row) => documentFilesOf(row.file_path)),
-    ...recordingRows.map((row) => row.file_path),
-    // Neither a recording nor a video note has a thumbnail sibling, so
-    // filesOf() would only ever invent a name no row references.
-    ...videoRows.map((row) => row.file_path),
-    // Two files per benchmark, and the vowel half is absent on a take that
-    // skipped it (ticket 15) - which is a row with one file, not an orphan.
-    ...benchmarkRows.flatMap((row) => (row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path]))
-  ]);
+  const referenced = new Set((await readFileOwnership(driver, 'cleanup')).names);
   for (const name of await files.list()) {
     // Asked per file rather than once: a write that starts halfway through
     // must not have the rest of the listing deleted out from under it.
