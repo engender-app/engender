@@ -189,10 +189,9 @@ if (!before) {
   await page.waitForTimeout(700);
   await crop('search-both', '[data-screen-header]', '[data-hub-results]');
 
-  /* Not shot: a page of records with more behind it. No query the demo
-     journal answers reaches twenty records, so the control that asks for the
-     next twenty has no state to be photographed in - the search screen's own
-     `list_more` is the same control, on the same copy. */
+  /* The paging control is gone (audit item 11): the door shows one page of
+     records and ends with the row that carries the query to the search
+     screen, which is in the crop above. */
 
   await page.locator('[data-hub-search]').fill('qqzzxx');
   await page.waitForSelector('[data-notice="hub-search-none"]');
