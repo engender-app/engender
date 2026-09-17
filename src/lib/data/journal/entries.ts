@@ -105,6 +105,10 @@ export interface EntryCycleEventInput {
 
 export interface EntryInput {
   id?: number;
+  /** Creation only. Existing entries are starred independently. */
+  starred?: boolean;
+  /** Creation only. The debrief link commits with the entry. */
+  debriefForAppointment?: string;
   epochDay?: number;
   timestamp?: number;
   mood?: number | null;
@@ -1212,8 +1216,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const uuid = mintUuid();
       return driver.transaction(async () => {
         await driver.run(
-          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', presentationId, now()]
+          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_id, starred, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', presentationId, input.starred ? 1 : 0, now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
         await indexEntry(entryId, input.note ?? '');
@@ -1230,6 +1234,10 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           await insertStagedVideo(driver, entryId, video);
         }
         await commitContextual(input, contextual, input.epochDay!);
+        if (input.debriefForAppointment != null) {
+          const { makeChecklistsArea } = await import('./checklists');
+          await makeChecklistsArea(driver).recordDebriefEntry(entryId, input.debriefForAppointment);
+        }
         return entryId;
       });
     },

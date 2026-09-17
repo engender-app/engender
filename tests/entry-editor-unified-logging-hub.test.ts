@@ -87,12 +87,4 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     expect(guardCloseBeforeStar).toBeGreaterThan(guardOpenBeforeStar);
   });
 
-  it('a pending star applies once a new entry has an id to write it against', () => {
-    const savePos = editor.indexOf('async function saveEntry()');
-    const upsertPos = editor.indexOf('journal.entries.upsertEntry(entryDraft.toUpsert())', savePos);
-    const applyPos = editor.indexOf('entryId == null && starred', savePos);
-    expect(upsertPos).toBeGreaterThan(savePos);
-    expect(applyPos).toBeGreaterThan(upsertPos);
-    expect(editor).toContain('journal.entries.setEntryStarred(id, true)');
-  });
 });

@@ -2168,6 +2168,8 @@
   "slider_aria": "{name}: od {low} do {high}",
   "slider_unset": "-",
   "entry_save_failed": "Nie udało się zapisać tego wpisu.",
+  "entry_saved_navigation_failed": "Wpis jest zapisany, ale nie udało się otworzyć następnego ekranu.",
+  "entry_saved_continue": "Przejdź do Dzisiaj",
   "entry_tryout_felt_sense_title": "Przymiarka: {name}",
   "entry_tryout_sentiment_euphoric": "Euforycznie",
   "entry_tryout_sentiment_affirming": "Afirmująco",
