@@ -38,9 +38,15 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     }
   });
 
-  it('every section the editor asked before ticket 19 is reachable from a chip', () => {
-    for (const section of ['mode', 'gender', 'tags', 'body', 'photos', 'voice', 'video']) {
-      expect(editor).toContain(`data-section-chip={section}`);
+  it('every section the editor asked before ticket 19 is still asked: mode and gender on the page, the rest from a chip', () => {
+    const notePos = editor.indexOf('name="note"');
+    const chipsPos = editor.indexOf('data-editor-chips');
+    for (const onPage of ['text={m.presentation_label()}', 'text={m.gender_label()}']) {
+      const pos = editor.indexOf(onPage);
+      expect(pos).toBeGreaterThan(notePos);
+      expect(pos).toBeLessThan(chipsPos);
+    }
+    for (const section of ['tags', 'body', 'photos', 'voice', 'video']) {
       expect(editor).toContain(`data-editor-section="${section}"`);
     }
     /* The mood faces and Save share the sticky bar, and an unmet mood is

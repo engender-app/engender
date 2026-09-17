@@ -10,37 +10,13 @@ import { createEntryDraft } from './entryDraft.ts';
 import { ENTRY_SECTIONS, sectionState } from './entrySections.ts';
 import { BODY_REGION_MIDPOINT } from './bodyMap.ts';
 
-const ctx = { presentationName: null as string | null, dimOrder: ['femininity', 'masculinity'] };
-
-test('the seven sections, in the order the chips are drawn', () => {
-  assert.deepEqual(ENTRY_SECTIONS, ['mode', 'gender', 'tags', 'body', 'photos', 'voice', 'video']);
+test('the five folded sections, in the order the chips are drawn (mode and gender stay on the page)', () => {
+  assert.deepEqual(ENTRY_SECTIONS, ['tags', 'body', 'photos', 'voice', 'video']);
 });
 
 test('a chip over an empty section states nothing', () => {
   const draft = createEntryDraft(20_001);
-  for (const section of ENTRY_SECTIONS) assert.equal(sectionState(section, draft, ctx), null);
-});
-
-test('mode reads the presentation by name, never by id', () => {
-  const draft = createEntryDraft(20_001);
-  draft.setPresentation('femme');
-  assert.equal(sectionState('mode', draft, { ...ctx, presentationName: 'Femme' }), 'Femme');
-  /* A presentation the vocabulary no longer names - hidden, or deleted -
-     is not restated as its id. */
-  assert.equal(sectionState('mode', draft, ctx), null);
-});
-
-test('gender reads the set scales in the ticked order, then extras kept from the entry', () => {
-  const draft = createEntryDraft(20_001);
-  draft.setDim('masculinity', 87);
-  draft.setDim('femininity', 55);
-  assert.equal(sectionState('gender', draft, ctx), '55 / 87');
-  draft.setDim('voice_comfort', 12);
-  assert.equal(sectionState('gender', draft, ctx), '55 / 87 / 12');
-  /* One scale set of two ticked: only what is set is stated. */
-  const one = createEntryDraft(20_001);
-  one.setDim('masculinity', 40);
-  assert.equal(sectionState('gender', one, ctx), '40');
+  for (const section of ENTRY_SECTIONS) assert.equal(sectionState(section, draft), null);
 });
 
 test('tags, photos, voice and video read a count', () => {
@@ -49,14 +25,14 @@ test('tags, photos, voice and video read a count', () => {
   draft.toggleTag('b');
   draft.toggleTag('c');
   draft.toggleTag('d');
-  assert.equal(sectionState('tags', draft, ctx), '4');
+  assert.equal(sectionState('tags', draft), '4');
   draft.addPhoto({ full: new Uint8Array(1), thumb: new Uint8Array(1), width: 1, height: 1 } as never);
   draft.addPhoto({ full: new Uint8Array(1), thumb: new Uint8Array(1), width: 1, height: 1 } as never);
-  assert.equal(sectionState('photos', draft, ctx), '2');
+  assert.equal(sectionState('photos', draft), '2');
   draft.addRecording(new Uint8Array(1));
-  assert.equal(sectionState('voice', draft, ctx), '1');
+  assert.equal(sectionState('voice', draft), '1');
   draft.addVideo(new Uint8Array(1));
-  assert.equal(sectionState('video', draft, ctx), '1');
+  assert.equal(sectionState('video', draft), '1');
 });
 
 test('body map counts regions that say something, not regions merely on screen', () => {
@@ -66,9 +42,9 @@ test('body map counts regions that say something, not regions merely on screen',
      (bodyMap.ts, ticket 31), and is dropped on save - so it is not content
      the chip should claim. */
   assert.equal(draft.bodyRegions.chest, BODY_REGION_MIDPOINT);
-  assert.equal(sectionState('body', draft, ctx), null);
+  assert.equal(sectionState('body', draft), null);
   draft.setBodyRegionFeeling('chest', 20);
   draft.toggleBodyRegion('face');
   draft.setBodyRegionFeeling('face', 80);
-  assert.equal(sectionState('body', draft, ctx), '2');
+  assert.equal(sectionState('body', draft), '2');
 });
