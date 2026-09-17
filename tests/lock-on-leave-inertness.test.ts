@@ -51,10 +51,12 @@ it('the settings sheet switch goes inert for the same mode combination', () => {
 });
 
 it('the switch component itself passes the state to the platform', () => {
-  /* A native disabled button blocks activation and announces itself as
-      dimmed, which is the whole mechanism; anything fancier would be a
-      second state machine for one boolean. */
-  expect(SWITCH).toMatch(/disabled=\{disabled\}|disabled,|\{disabled\}/);
+  /* The shorthand attribute, exactly: anything looser would also match a
+      rename that stops carrying the prop at all. A native disabled button
+      blocks activation and announces itself as dimmed, which is the whole
+      mechanism; anything fancier would be a second state machine for one
+      boolean. */
+  expect(SWITCH).toContain('{disabled}');
 });
 
 it('neither screen finds another way to write the stored preference', () => {

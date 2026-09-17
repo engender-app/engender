@@ -523,6 +523,13 @@
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
       <DisguisePreview on={prefs.disguise} />
+      <!-- Where the mode has no secret to challenge with, the switch is
+           inert and the suffix says why (UI/UX ticket 09). The destination
+           this row's counterpart on the Security screen carries is
+           deliberately not repeated here: a link small enough to sit inside
+           the sub-line is under the 48px floor, and rebuilding this
+           hand-written row as a kit row is a visual change this copy ticket
+           does not make. -->
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.lock_on_leave_title()}</span>

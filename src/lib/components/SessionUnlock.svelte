@@ -244,7 +244,15 @@
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      {mode === 'biometric' ? m.bm_forgot_key_note() : m.pp_forgot_key_note()}
+      <!-- The note follows the title's noun: a sheet headed "Forgotten your
+           PIN?" cannot open with a sentence about a passphrase (UI/UX
+           ticket 09). Biometric keeps its own note because its secret is a
+           device that will not answer, not something forgotten. -->
+      {mode === 'pin'
+        ? m.pin_forgot_key_note()
+        : mode === 'biometric'
+          ? m.bm_forgot_key_note()
+          : m.pp_forgot_key_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
