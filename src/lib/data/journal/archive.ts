@@ -25,8 +25,7 @@
    format and the registry, and the ordering rule an import turns on
    (ADR-0011) is long enough to be worth reading on its own. */
 
-import { filesOf, thumbFileName } from '../photos/names';
-import { documentFilesOf } from './documents';
+import { thumbFileName } from '../photos/names';
 import type { ImportCommit, OnRestoreProgress, RestoreContents, RestoreMode } from './restore';
 import {
   daylioPreview,
@@ -222,13 +221,6 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     return manifested;
   };
 
-  /** The manifest for photo and hair-photo rows specifically: each names
-      one full file, and filesOf() expands it to the derived thumbnail
-      name beside it (names.ts) - a recording has no such pair
-      (voiceRecordings/names.ts), so manifestNames() alone covers it. */
-  const manifest = (fileOwners: { file_path: string }[]): Promise<ArchiveFile[]> =>
-    manifestNames(fileOwners.flatMap((owner) => filesOf(owner.file_path)));
-
   const area: ArchiveArea = {
     replace: (contents, onProgress) => restoreArchive(driver, files, 'replace', contents, onProgress),
     merge: (contents, onProgress) => restoreArchive(driver, files, 'merge', contents, onProgress),
@@ -403,41 +395,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async snapshot() {
-      // One read of the photo, hair photo, hair-removal photo, recovery
-      // photo, tryout photo, recording, video-note, benchmark and document
-      // tables for the rows,
-      // their owners and the manifest: several passes over the same
-      // lists, never several queries (archiveRead.ts).
       const reading = await readRowContext(driver);
-
-      const archivedFiles = [
-        ...(await manifest([
-          ...reading.photos,
-          ...reading.hairPhotos,
-          ...reading.hairRemovalPhotos,
-          ...reading.procedurePhotos,
-          ...reading.tryoutPhotos
-        ])),
-        /* A document's own manifestNames() call rather than folded into
-           `manifest()` above: every other owner there is an image and
-           `filesOf` is always right for it, but a document can be a PDF,
-           whose page beside it is named off the `.pdf` rather than off a
-           `.jpg` (phase 8 features tickets 53 and 55) - `documentFilesOf`
-           is what tells the two kinds apart. Without this a document
-           travels as a row with no bytes and restores into a broken
-           reference (phase 8 features ticket 52). A PDF the renderer
-           could not read names a page that was never written, and
-           manifestNames() leaves out what the store has no size for. */
-        ...(await manifestNames(reading.documentFiles.flatMap((d) => documentFilesOf(d.file_path)))),
-        ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
-        ...(await manifestNames(reading.videos.map((v) => v.file_path))),
-        // Two per benchmark, one where the vowel step was skipped (ticket 15).
-        ...(await manifestNames(
-          reading.benchmarkFiles.flatMap((b) =>
-            b.vowel_file_path ? [b.passage_file_path, b.vowel_file_path] : [b.passage_file_path]
-          )
-        ))
-      ];
+      const archivedFiles = await manifestNames(reading.fileNames);
 
       return {
         journal: await readArchiveJournal(reading),
