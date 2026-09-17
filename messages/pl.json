@@ -3524,7 +3524,10 @@
   "words_reading_empty": "Nic się jeszcze nie wyróżnia. Te notatki używają tych samych słów co reszta dziennika.",
   "words_reading_needs_stretch": "Nazwij erę albo dodaj tryb, a słowa z tego okresu pojawią się tutaj.",
   "words_ignore_action": "Przestań liczyć to słowo",
-  "words_ignored_sub": "Słowa pomijane w tym odczycie.",
+  "words_ignored_sub": "Odczyt Słowa, które się wyróżniają pomija te słowa. Pozostają one w notatkach dziennika.",
+  "words_return_to_reading": "Wróć do: Słowa, które się wyróżniają",
+  "words_scope_era": "Era: {name} · Tło: cały dziennik",
+  "words_scope_mode": "Tryb: {name} · Tło: cały dziennik",
   "words_ignored_empty": "Żadne słowo nie jest pomijane.",
   "words_times": [
     {

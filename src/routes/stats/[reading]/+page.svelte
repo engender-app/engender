@@ -55,12 +55,13 @@
      down (WRAPPED_ENTRY_FLOOR, the bar a retrospective clears). */
   let recapQuery = liveQuery((j) => j.stats.recap(span.start, span.end));
   let enoughEntries = $derived((recapQuery.value?.entryCount ?? 0) >= WRAPPED_ENTRY_FLOOR);
+  let wordsScopeSubtitle = $state('');
 </script>
 
 <div class="screen">
   <ScreenHeader
     title={reading ? TITLE[reading]() : m.nav_lookback()}
-    subtitle={reading ? label : undefined}
+    subtitle={reading === 'words' ? (wordsScopeSubtitle || undefined) : (reading ? label : undefined)}
     screen={reading ? `stats-${reading}` : 'stats-reading'}
     back="/stats"
   />
@@ -82,7 +83,7 @@
   {:else if reading === 'days'}
     <DaysReading {span} {enoughEntries} />
   {:else if reading === 'words'}
-    <WordsReading />
+    <WordsReading {span} bind:scopeSubtitle={wordsScopeSubtitle} />
   {:else if reading === 'tags'}
     <TagsReading {span} spanLabel={label} />
   {:else if reading === 'highest'}
