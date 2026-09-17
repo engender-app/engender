@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* Settings, on the surface kit (phase 5 ticket 24). The three sections
      stay hand-written, per this ticket's own scope line - what changes is
      the container each sits in, same as the More hub next to it.
@@ -139,7 +140,7 @@
   <ListCard>
     <div class="settings-pad">
       <p class="field-label" style="margin-bottom:var(--space-3)">{m.colour_palette()}</p>
-      <div class="palette-grid" role="radiogroup" aria-label={m.colour_palette()}>
+      <div class="palette-grid" role="radiogroup" use:rovingRadio aria-label={m.colour_palette()}>
         {#each PALETTES as [key, label] (key)}
           <button
             class="palette-swatch press"
@@ -157,7 +158,7 @@
       <div class="hr"></div>
       <p class="field-label" style="margin-bottom:var(--space-3)">{m.mood_colours()}</p>
       <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.mood_colours_note()}</p>
-      <div class="mood-preset-grid" role="radiogroup" aria-label={m.mood_colours()}>
+      <div class="mood-preset-grid" role="radiogroup" use:rovingRadio aria-label={m.mood_colours()}>
         {#each MOOD_PRESETS as [key, label] (key)}
           <button
             class="palette-swatch press"

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { moodMagnifier } from './moodMagnifier.svelte';
@@ -12,12 +13,7 @@
   }: {
     value?: number | null;
     compact?: boolean;
-    /** The row at the save bar's height (phase 11 ticket 19): 32px faces
-        with no label under them - the name stays on each face's aria-label -
-        so five moods, the star and Save share one 48px line. The faces keep
-        their motion (ADR-0077); only the lift is shorter, since a face on the
-        window's bottom edge has the whole screen above it to rise into and
-        34px read as leaving the bar. */
+    /** Compact faces in full-size targets beside the save controls. */
     bar?: boolean;
     onPick: (v: number | null) => void;
   } = $props();
@@ -43,7 +39,7 @@
   }
 </script>
 
-<div class="mood-picker" class:is-compact={compact} class:is-bar={bar} role="radiogroup" aria-label={m.mood()}>
+<div class="mood-picker" class:is-compact={compact} class:is-bar={bar} role="radiogroup" use:rovingRadio aria-label={m.mood()}>
   <div
     class="mood-row"
     role="presentation"
@@ -77,16 +73,17 @@
      components.css's and are untouched. Scoped here rather than in the
      shared sheet because this row is the one consumer of the form. */
   .mood-picker.is-bar .mood-row {
-    justify-content: flex-start;
-    gap: 0;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-1);
     --mood-lift: 16px;
   }
   .mood-picker.is-bar .mood-btn {
-    flex: 0 0 auto;
+    flex: 1 0 48px;
+    min-width: 48px;
+    min-height: 48px;
     gap: 0;
-    /* 34px a face, 170 for the five: what leaves Save 116px on a 390px
-       bar beside a 48px star, the width its label needs on one line. */
-    padding: var(--space-2) 1px;
+    padding: var(--space-2);
   }
   /* The picked face's 1.18 scale on a 32px face is 38px, inside the bar's
      48px line, so the row never grows the bar. */

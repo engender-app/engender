@@ -12,6 +12,7 @@ import { dirname } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
+import { checkRadioGroup } from './radio-controls.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { ok, fail, finish, block } = createReporter();
@@ -1208,6 +1209,13 @@ await block('phase 9 audit ticket 07 segmented keyboard nav', 4, async () => {
 });
 
 // --- Phase 9 audit ticket 07: MoodChips' radiogroup takes arrow keys -------
+await block('U03 radio selection and disabled choices', 2, async () => {
+  await checkRadioGroup(page, page.locator('[data-segmented="range"]'));
+  ok('Segmented: Space, arrows, Tab re-entry and disabled choices');
+  await checkRadioGroup(page, page.locator('.mood-picker'));
+  ok('MoodPicker: Space, arrows, Tab re-entry and disabled choices');
+});
+
 await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
   await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
