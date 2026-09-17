@@ -32,6 +32,8 @@
      screen is not an exception to that just because it comes first. */
 
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
@@ -98,7 +100,8 @@
     ['agender', m.palette_agender]
   ];
 
-  let step = $state<OnboardingStep>('welcome');
+  const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
+  let step = $state<OnboardingStep>(restoreOnEntry ? 'restore' : 'welcome');
 
   let name = $state('');
   /* Null until the scales step is touched, which is what lets Skip mean
@@ -216,7 +219,7 @@
      this device is touched, and the way out of them is the way in reversed.
      This flag is what says the file on screen is the one that was proved:
      picking another file or editing the password puts it back to false. */
-  let restoring = $state(false);
+  let restoring = $state(restoreOnEntry);
   let picked = $state.raw<PickedArchive | null>(null);
   let archivePass = $state('');
   let archiveReady = $state(false);
