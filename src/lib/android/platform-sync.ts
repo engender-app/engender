@@ -41,6 +41,7 @@ import { unpromptedQuiet } from '../unprompted/registry';
 import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
+import { dismissActiveOverlay } from '../components/overlayLock';
 import { resolveAndroidBackAction } from './back-navigation';
 
 /* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
@@ -315,6 +316,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   let removeBackButtonListener: (() => void) | null = null;
   void deps.androidBackButton
     .addListener('backButton', () => {
+      if (backButtonTornDown || dismissActiveOverlay()) return;
       switch (resolveAndroidBackAction(window.location.pathname, deps.navigationDepth())) {
         case 'minimize':
           void deps.androidBackButton.minimizeApp();
