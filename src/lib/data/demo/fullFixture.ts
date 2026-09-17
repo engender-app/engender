@@ -417,10 +417,13 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   );
   await journal.documents.setDocumentTarget(preOpClearanceId, { kind: 'procedure', id: procedureId });
 
-  // A second procedure, still ahead of its surgery date with a consult
-  // already behind it - `open` (ProcedureRecoveryCard.svelte) is everything
-  // but the archived phase, so this is what puts a full-size, still-running
-  // rail beside the first procedure's collapsed, archived one.
+  // A second procedure, still ahead of its surgery date with one consult
+  // behind it and one still to come - `open` (ProcedureRecoveryCard.svelte)
+  // is everything but the archived phase, so this is what puts a full-size,
+  // still-running rail beside the first procedure's collapsed, archived
+  // one. The consult ahead is what gives that card its forward line (audit
+  // item 13): with both consults behind it, the card that is meant to say
+  // what is next has nothing to say.
   const secondProcedureId = await journal.procedures.upsertProcedure({
     name: 'facial feminization surgery',
     kind: 'facial_feminization',
@@ -428,6 +431,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     notes: 'Consult went well, surgeon proposed a date.'
   });
   await journal.procedures.addConsult(secondProcedureId, today - 10);
+  await journal.procedures.addConsult(secondProcedureId, today + 12);
 
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
   for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {

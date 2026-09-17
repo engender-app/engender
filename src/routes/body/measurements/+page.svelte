@@ -23,7 +23,7 @@
      are.
 
      The two readings sit together at the top rather than each above its
-     own log (audit item 13): the size lines used to open the sizes half,
+     own log (audit item 8): the size lines used to open the sizes half,
      directly on top of a log that repeated the same two records as rows,
      so the screen said each change twice within 100px. The protocol card
      is below them for the other half of the same finding - 200px of how to
@@ -315,7 +315,7 @@
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
   <!-- What is true now, before anything explains how to measure or lists
-       what was measured (audit item 13): the span for the picked type and,
+       what was measured (audit item 8): the span for the picked type and,
        under it, every size that changed. Both readings sit here rather than
        each above its own list - the size lines used to sit on top of the
        log that repeats the same two records as rows. -->
@@ -645,6 +645,13 @@
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-3);
     margin: 0;
+  }
+
+  /* The hairline is between the two readings, never under the block: what
+     comes after it draws its own top line - a Notice is flush between two
+     of them (rule 4) - and two hairlines a few pixels apart read as a
+     stray band rather than as a boundary. */
+  .span:not(:last-child) {
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--hairline);
   }
@@ -663,10 +670,6 @@
        in the same columns whatever the value - otherwise Start and Current
        shift against each other every time a figure changes width. */
     font-variant-numeric: tabular-nums;
-  }
-
-  .changes {
-    border-bottom: 1px solid var(--hairline);
   }
 
   .change {
