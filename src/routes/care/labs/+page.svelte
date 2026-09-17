@@ -574,7 +574,7 @@
       <div class="cd-endpoints">
         <Field label={m.labs_value_label()} id="lab-value">
           {#snippet children(id)}
-            <input class="input" type="number" {id} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
+            <input class="input" type="number" {id} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
           {/snippet}
         </Field>
         <Field label={m.labs_unit_label()} id="lab-unit">

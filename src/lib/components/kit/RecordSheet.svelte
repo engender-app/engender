@@ -21,6 +21,9 @@
      which is the same shape recordEditor takes when it is handed no
      `blank`. */
   import type { Snippet } from 'svelte';
+  import { beforeNavigate, goto } from '$app/navigation';
+  import { m } from '$lib/paraglide/messages';
+  import { lockState } from '$lib/stores/lock.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ConfirmDeleteSheet from './ConfirmDeleteSheet.svelte';
   import type { recordEditor } from './recordEditor.svelte';
@@ -88,6 +91,39 @@
   const handles = $derived(recordHandles(handle));
   let draft = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
+  let pendingDismiss = $state<(() => void) | null>(null);
+
+  function requestDismiss(after: () => void = () => { record.editor = null; }) {
+    if (record.saving || pendingDismiss) return;
+    if (record.changed) pendingDismiss = after;
+    else after();
+  }
+
+  function discard() {
+    const after = pendingDismiss;
+    pendingDismiss = null;
+    after?.();
+  }
+
+  function requestDelete() {
+    requestDismiss(() => { record.askToDelete(); });
+  }
+
+  beforeNavigate((navigation) => {
+    if (!draft || lockState.blanked || (!record.changed && !record.saving)) return;
+    navigation.cancel();
+    // Unloading uses the browser's own confirmation; it cannot await a sheet.
+    if (navigation.willUnload) return;
+    requestDismiss(() => {
+      record.editor = null;
+      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
+      else if (navigation.to) void goto(navigation.to.url);
+    });
+  });
+
+  $effect(() => {
+    if (!draft || lockState.blanked) pendingDismiss = null;
+  });
 
   /* Stated outright by most screens, read off the record being deleted by
      the one whose records are not all the same thing. Empty while there is
@@ -107,36 +143,76 @@
   <Sheet
     open={draft !== null}
     title={draft ? wording(draft.id ? editTitle : newTitle, draft) : undefined}
-    onClose={() => (record.editor = null)}
+    onRequestClose={() => requestDismiss()}
   >
     {#if draft}
       <h3>{wording(draft.id ? editTitle : newTitle, draft)}</h3>
-      {@render fields(draft)}
-      <div class="stack-3">
-        {#if primary}
-          {@render primary(draft)}
-        {:else}
-          <button
-            class="btn btn-primary"
-            {...{ [handles.save]: '' }}
-            disabled={canSave ? !canSave(draft) : false}
-            onclick={record.save}
-          >
-            <span>{wording(saveLabel, draft)}</span>
-          </button>
+      <fieldset disabled={record.saving}>
+        {@render fields(draft)}
+        {#if record.saveFailed}
+          <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
         {/if}
-        {#if draft.id}
-          {#if extraActions}{@render extraActions(draft)}{/if}
-          {#if deleteLabel}
-            <button class="btn btn-ghost" {...{ [handles.delete]: '' }} onclick={() => record.askToDelete()}>
-              <span>{deleteLabel}</span>
+        <div class="stack-3">
+          {#if primary}
+            {@render primary(draft)}
+          {:else}
+            <button
+              class="btn btn-primary"
+              {...{ [handles.save]: '' }}
+              disabled={canSave ? !canSave(draft) : false}
+              onclick={record.save}
+            >
+              <span>{wording(saveLabel, draft)}</span>
             </button>
           {/if}
-        {/if}
-      </div>
+          {#if draft.id}
+            {#if extraActions}{@render extraActions(draft)}{/if}
+            {#if deleteLabel}
+              <button class="btn btn-ghost" {...{ [handles.delete]: '' }} onclick={requestDelete}>
+                <span>{deleteLabel}</span>
+              </button>
+            {/if}
+          {/if}
+          <button class="btn btn-ghost" data-close-record onclick={() => requestDismiss()}>
+            <span>{m.cancel()}</span>
+          </button>
+        </div>
+      </fieldset>
     {/if}
   </Sheet>
 {/if}
+
+<Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
+  <h3>{m.record_discard_title()}</h3>
+  <p class="muted">{m.record_discard_body()}</p>
+  <div class="discard-actions">
+    <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}>
+      <span>{m.record_keep_editing()}</span>
+    </button>
+    <button class="btn btn-danger" data-discard-record onclick={discard}>
+      <span>{m.vb_practice_discard()}</span>
+    </button>
+  </div>
+</Sheet>
+
+<style>
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: var(--space-4) 0 0;
+    min-width: 0;
+  }
+
+  fieldset > :global(* + *) {
+    margin-top: var(--space-4);
+  }
+
+  .discard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+</style>
 
 <ConfirmDeleteSheet
   open={deleteTarget !== null}

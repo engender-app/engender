@@ -721,7 +721,7 @@
                   name="wear-duration"
                   inputmode="decimal"
                   placeholder={m.wear_session_duration_placeholder()}
-                  bind:value={editor.durationHours}
+                  bind:value={() => editor.durationHours, (value) => { editor.durationHours = value == null ? '' : String(value); }}
                 />
               {/snippet}
             </Field>
@@ -774,7 +774,7 @@
                   {id}
                   name="wear-reminder-hours"
                   inputmode="decimal"
-                  bind:value={editor.reminderHours}
+                  bind:value={() => editor.reminderHours, (value) => { editor.reminderHours = value == null ? '' : String(value); }}
                 />
               {/snippet}
             </Field>
