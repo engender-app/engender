@@ -12,6 +12,7 @@
 import { BODY_REGION_MIDPOINT, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
 import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
+import type { EntrySection } from './entrySections';
 import type { Entry, EntryTemplate } from './types';
 import type {
   EntryCycleEventInput,
@@ -59,6 +60,12 @@ export interface EntryDraft {
       domain id or null, never pre-filled for a new entry - only an existing
       entry's own value seeds it, the same way `mood` does. */
   presentationId: string | null;
+  /** The chip whose section is open under the note (phase 11 ticket 19),
+      or null with every section folded. Editor state rather than entry
+      content - `toUpsert()` never reads it - but it lives on the draft so
+      the process-death mirror carries it: a return to a half-written entry
+      lands where the person left it. */
+  openSection: EntrySection | null;
   readonly isEmpty: boolean;
   readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
@@ -72,7 +79,9 @@ export interface EntryDraft {
       way `setDim` does, a note scaffold only ever fills an empty note, and
       a template's own presentation replaces the draft's when it has one.
       Every value it sets is a plain field afterwards - `toggleTag`/`setDim`
-      edit it same as anything the person picked themselves. The merge math
+      edit it same as anything the person picked themselves. It also closes
+      whichever chip was open (ticket 19), so what it set reads off the
+      chips' states rather than off one section. The merge math
       itself is `applyEntryTemplateToDraft` (vocabulary/entryTemplates.ts),
       the same pure seam ticket 08's debrief offer reads. */
   applyTemplate(template: EntryTemplate): void;
@@ -95,6 +104,7 @@ export interface EntryDraft {
   setEffectMarker(marker: EntryEffectMarkerInput | null): void;
   setCycleEvent(cycleEvent: EntryCycleEventInput | null): void;
   setPresentation(id: string | null): void;
+  setOpenSection(section: EntrySection | null): void;
   /** The exact upsertEntry payload for the draft as it stands, including the
       photo, recording and video-note attach and remove lists. */
   toUpsert(): EntryInput;
@@ -132,6 +142,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     effectMarker: null,
     cycleEvent: null,
     presentationId: existing ? existing.presentationId : null,
+    openSection: null,
 
     get isEmpty() {
       return entryIsEmpty({
@@ -184,6 +195,9 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.dims = merged.dims;
       this.note = merged.note;
       this.presentationId = merged.presentationId;
+      /* A template fills its chips and opens none (ticket 19): what it set
+         is read off the chips' states, not off a section it chose to open. */
+      this.openSection = null;
     },
 
     toggleBodyRegion(key) {
@@ -248,6 +262,10 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
 
     setPresentation(id) {
       this.presentationId = id;
+    },
+
+    setOpenSection(section) {
+      this.openSection = section;
     },
 
     toUpsert() {

@@ -303,7 +303,7 @@ test('a side effect marks its own day and goes to the changes screen', async () 
 
   assert.deepEqual(
     markers.map((a) => ({ name: a.name, day: a.fromEpochDay, href: a.href })),
-    [{ name: 'headaches', day: daysAgo(10), href: '/practice/personal-effects' }]
+    [{ name: 'headaches', day: daysAgo(10), href: '/care/changes' }]
   );
 });
 

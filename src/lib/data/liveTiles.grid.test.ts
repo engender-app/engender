@@ -396,7 +396,7 @@ describe('what each tile says', () => {
     const tile = tileNamed('wear-timer')!;
     expect(tile.tileKey).toBe('wear-timer');
     expect(tile.attrs).toEqual({ 'data-wear-running-tile': true });
-    expect(tile.href).toBe('/practice/wear');
+    expect(tile.href).toBe('/body/wear');
     // 1h 2m 3s, off the one clock the whole grid reads.
     expect(tile.value).toBe(m.wear_session_duration_hms({ hours: '1', minutes: '2', seconds: '3' }));
     expect(tile.note).toBe(m.wear_session_running_since({ time: `time:${wearSession.startTimestamp}` }));
@@ -618,8 +618,8 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('voice-benchmark');
     expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': true });
     expect(tile.note).toBe(m.tile_voice_benchmark_days_ago({ days: '20' }));
-    expect(tile.href).toBe('/practice/voice?tab=compare');
-    expect(tile.action?.href).toBe('/practice/voice?tab=record');
+    expect(tile.href).toBe('/voice?tab=compare');
+    expect(tile.action?.href).toBe('/voice?tab=record');
   });
 
   it('the pause banner says when the pause ends and offers to resume it', () => {

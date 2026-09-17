@@ -53,18 +53,36 @@ const TAB_ROUTES: TabRoute[] = [
 
      The five prefixes below joined here in features ticket 33, when the 23
      hub rows still living at /settings/<slug> moved to their own
-     HubGroupKey-named address - /settings itself stays, since the
-     redirects, /settings/reminders[/...] and the hand-written
-     Appearance/Tracking/Privacy sections all remain there.
+     HubGroupKey-named address. `/settings` itself is no longer one of
+     them: audit item 4 took it out of this group entirely, and the note
+     under this table says what it lights instead.
 
      `/timeline` is a stub redirecting to /transition/milestones (redesign
      ticket 43), and it is listed here rather than left to the fallback so
      that the tab the old address lights is the tab it lands on. Left with
      Look back, where the rail used to live, the indicator would have
-     travelled one tab and back while the redirect resolved. */
+     travelled one tab and back while the redirect resolved.
+
+     `/support` and `/voice` joined in ticket 21, when the retired Practice
+     prefix's screens moved to addresses that say which door group holds
+     them (ADR-0072) - `/voice` alone got no door prefix, but the tab it
+     lights is unchanged. `/practice` itself stays, since the directory
+     still holds this ticket's redirect stubs. */
   {
     key: 'settings',
-    prefixes: ['/timeline', '/more', '/doses', '/care', '/body', '/health', '/transition', '/practice', '/media']
+    prefixes: [
+      '/timeline',
+      '/more',
+      '/doses',
+      '/care',
+      '/body',
+      '/health',
+      '/transition',
+      '/support',
+      '/voice',
+      '/practice',
+      '/media'
+    ]
   }
 ];
 

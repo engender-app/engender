@@ -136,12 +136,12 @@ export function bandsOf(metric: VoiceMetric, language: BandLanguage): readonly P
 /** Where the explanations live: a sheet over the voice screen rather than
     a screen of its own since ticket 17 - `/practice/voice/metrics` is a
     redirect stub now, kept for a bookmark rather than built from here. */
-export const VOICE_METRICS_ROUTE = '/practice/voice';
+export const VOICE_METRICS_ROUTE = '/voice';
 
 /** Where one figure's own explanation lives. Here rather than written out
     at each call site so that a link and the section it opens cannot
     drift: the sheet reads the same key out of the query
-    (`practice/voice/+page.svelte`) that names which section to land on
+    (`voice/+page.svelte`) that names which section to land on
     (ticket 27's own rule that renaming and explaining are one edit
     applies to the query key too). A query rather than the `#anchor`
     ticket 27 shipped, because a fragment is never sent to the server and
