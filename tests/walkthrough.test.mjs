@@ -1041,10 +1041,10 @@ try {
 
 /* 5g. search opens with something: the opening state's tag chips and this
    device's own recent searches both run a search on a tap (ticket 18).
-   `fresh()` clears localStorage, which is where recentSearches.ts keeps
-   its history - this device's memory, not the journal's - so this flow
-   makes its own recent search rather than assuming an earlier flow's
-   survived the reset. */
+   `fresh()` reloads the page, which drops recentSearches.ts's history -
+   session memory now (pre-production audit S1), not the journal's - so
+   this flow makes its own recent search rather than assuming an earlier
+   flow's survived the reset. */
 try {
   await fresh('/search');
   await page.waitForSelector('[data-search-idle]');
