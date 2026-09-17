@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* The fluidity engine's presentations, managed (phase 5 deepening ticket
      17, ADR-0048): list, add, rename, recolour and hide - there is no
      delete (CONTEXT: "Hidden"), so the shared record editor's `remove`
@@ -154,7 +155,7 @@
     </Field>
     <Field label={m.presentation_colour_label()} legend>
       {#snippet children()}
-        <div class="presentation-swatches" role="radiogroup" aria-label={m.presentation_colour_label()}>
+        <div class="presentation-swatches" role="radiogroup" use:rovingRadio aria-label={m.presentation_colour_label()}>
           {#each activeFlag.roles as role, i (i)}
             <button
               type="button"

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rovingRadio } from '$lib/components/rovingRadio';
   /* Staging against a published scale, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
 
@@ -383,7 +384,7 @@
       <Field label={m.hair_scale_label()} legend>
         {#snippet children(id)}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
-            <div role="radiogroup" aria-labelledby={id}>
+            <div role="radiogroup" use:rovingRadio aria-labelledby={id}>
               {#each HAIR_SCALES as scale (scale)}
                 <ListRow
                   role="radio"
