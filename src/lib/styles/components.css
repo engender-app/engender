@@ -2826,14 +2826,14 @@ body > .date-picker-calendar {
   grid-template-columns: 48px 1fr 48px;
   align-items: center;
 }
-.date-picker-calendar .flatpickr-month {
+.date-picker-calendar .flatpickr-months .flatpickr-month {
   grid-column: 1 / -1;
   grid-row: 2;
   height: auto;
   overflow: visible;
 }
-.date-picker-calendar .flatpickr-prev-month,
-.date-picker-calendar .flatpickr-next-month {
+.date-picker-calendar .flatpickr-months .flatpickr-prev-month,
+.date-picker-calendar .flatpickr-months .flatpickr-next-month {
   position: static;
   width: 48px;
   height: 48px;
@@ -2841,7 +2841,7 @@ body > .date-picker-calendar {
   place-items: center;
   padding: 0;
 }
-.date-picker-calendar .flatpickr-next-month { grid-column: 3; grid-row: 1; }
+.date-picker-calendar .flatpickr-months .flatpickr-next-month { grid-column: 3; grid-row: 1; }
 .date-picker-calendar .flatpickr-current-month {
   position: static;
   display: flex;
