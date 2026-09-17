@@ -123,7 +123,7 @@ async function run() {
           return answersFor(taggedQuery.value, tryoutId) ? taggedQuery.value!.value : undefined;
         },
         get loading() {
-          return !answersFor(taggedQuery.value, tryoutId);
+          return !answersFor(taggedQuery.value, tryoutId) && !taggedQuery.failed;
         },
         get failed() {
           return taggedQuery.failed;

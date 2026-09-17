@@ -83,6 +83,7 @@ export async function verifyReadFailures({ gallery = false } = {}) {
           prefs.palette = palette;
           prefs.theme = theme;
         }, { palette, theme });
+        await page.waitForTimeout(500);
         await page.screenshot({ path: `.claude/read-failure-shots/${palette}-${theme}.png`, fullPage: true });
       }
     }
@@ -143,6 +144,36 @@ export async function verifyReadFailures({ gallery = false } = {}) {
     ]));
     assert.equal(await page.getByText('Late private result', { exact: true }).count(), 0);
     assert.equal(await retry.count(), 0);
+    // The tryout's entry list uses detailDraft.readingRecord and liveListIn.
+    await page.evaluate(async () => {
+      const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+      const { lockState } = await import('/src/lib/stores/lock.svelte.ts');
+      const { attachJournal, journalIsOpen } = await import('/src/lib/data/live/journal.svelte.ts');
+      const journal = bootState.journal;
+      const original = journal.entries.searchEntries;
+      window.dependentReadFails = true;
+      journal.entries.searchEntries = (...args) => window.dependentReadFails
+        ? Promise.reject(new Error('injected dependent read failure'))
+        : original(...args);
+      const tryoutId = await journal.tryouts.upsertTryout({
+        kind: 'name', label: 'Read proof', startEpochDay: 19000, endEpochDay: 19010
+      });
+      await journal.entries.upsertEntry({ epochDay: 19005, mood: 3, note: 'Dependent entry proof' });
+      attachJournal(journal);
+      journalIsOpen();
+      lockState.unlocked = true;
+      const link = document.createElement('a');
+      link.href = '/transition/tryouts/' + tryoutId;
+      link.id = 'dependent-proof-link';
+      link.textContent = 'Open tryout';
+      document.body.append(link);
+    });
+    await page.locator('#dependent-proof-link').click();
+    await retry.waitFor();
+    await page.evaluate(() => { window.dependentReadFails = false; });
+    await retry.click();
+    await retry.waitFor({ state: 'detached' });
+    await page.getByText('Dependent entry proof', { exact: true }).waitFor();
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();
