@@ -343,6 +343,26 @@ test('verifying a truncated archive fails rather than passing on a silently shor
   );
 });
 
+test('an oversized final frame rejects a restore before replacing journal rows', async () => {
+  const { journal: live } = await populatedJournal();
+  const before = await live.archive.snapshot();
+  const length = CHUNK_SIZE + 4096;
+  const archive = await pack({
+    journal: EMPTY_JOURNAL,
+    preferences: portablePreferences(PREFERENCE_DEFAULTS),
+    files: [{ name: 'big.jpg', length }],
+    async readFile() {
+      return new Uint8Array(length);
+    }
+  });
+  const oversized = new Uint8Array(archive.length + 8 * 1024 * 1024);
+  oversized.set(archive);
+  const { payload, files } = await openArchive(oneShot(oversized), 'correct horse');
+
+  await assert.rejects(live.archive.replace({ journal: payload.journal, files }), CorruptArchiveError);
+  assert.deepEqual((await live.archive.snapshot()).journal, before.journal);
+});
+
 test('verifying an archive from a newer format version is refused before the password is used', async () => {
   const { contents } = await contentsOf();
   const archive = new Uint8Array(await pack(contents));
@@ -368,6 +388,10 @@ test('verifying a different archive leaves a live journal exactly as it was', as
 
   await verifyArchive(oneShot(archive), 'correct horse');
   await assert.rejects(verifyArchive(oneShot(archive), 'wrong password entirely'));
+
+  const oversized = new Uint8Array(archive.length + 8 * 1024 * 1024);
+  oversized.set(archive);
+  await assert.rejects(verifyArchive(oneShot(oversized), 'correct horse'), CorruptArchiveError);
 
   assert.deepEqual((await live.archive.snapshot()).journal, before.journal);
 });
