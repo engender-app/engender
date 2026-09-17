@@ -3,52 +3,48 @@
    character is typed, so a returning search is one tap rather than
    retyped.
 
-   Client-side and per-device, the same footing liveTilesSnooze.ts's
-   snoozes stand on: nothing the journal itself reads, backs up or syncs -
-   a device's own memory of what its own typing asked for. */
+   Session memory now, not localStorage (pre-production audit S1): a search
+   term is journal content the moment it echoes a diagnosis, a drug or a
+   provider's name, and `engender-recent-searches` held the last five in
+   plaintext outside ADR-0018's encryption boundary. There is no encrypted
+   design for this ticket to reach for, so the history lives only as long as
+   the process does - client-side and per-device still, the same footing
+   liveTilesSnooze.ts's snoozes stand on, just without a mirror surviving a
+   reload. */
 
-const STORAGE_KEY = 'engender-recent-searches';
+const LEGACY_STORAGE_KEY = 'engender-recent-searches';
 
 /* MAX_ENTRIES stays exported only for its own test. */
 export const MAX_ENTRIES = 5;
 
-function resolveStorage(storage?: Storage): Storage | null {
-  if (storage) return storage;
-  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
-  if (typeof localStorage !== 'undefined') return localStorage;
-  return null;
-}
+let recent: string[] = [];
 
-function readAll(store: Storage): string[] {
+/** An install that ran before this ticket may still hold plaintext search
+    terms under the old key; a fresh session purges it once so an upgrade
+    ends up in the same state a new install already starts in. Exported only
+    for its own test - the real caller is the module-load call below. */
+export function purgeLegacyRecentSearches(storage?: Storage): void {
+  const store = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null);
+  if (!store) return;
   try {
-    const raw = store.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+    store.removeItem(LEGACY_STORAGE_KEY);
   } catch {
-    return [];
+    /* Ignore quota / private browsing errors */
   }
 }
+purgeLegacyRecentSearches();
 
 /** The last searches actually run, most recent first, at most MAX_ENTRIES. */
-export function listRecentSearches(storage?: Storage): string[] {
-  const store = resolveStorage(storage);
-  return store ? readAll(store) : [];
+export function listRecentSearches(): string[] {
+  return recent;
 }
 
 /** Records a search just run, moving it to the front rather than
     duplicating it if it was already there, and dropping the oldest past
     MAX_ENTRIES. A blank term records nothing - there is no search to
     remember. */
-export function recordRecentSearch(term: string, storage?: Storage): void {
+export function recordRecentSearch(term: string): void {
   const trimmed = term.trim();
   if (!trimmed) return;
-  const store = resolveStorage(storage);
-  if (!store) return;
-  const next = [trimmed, ...readAll(store).filter((t) => t !== trimmed)].slice(0, MAX_ENTRIES);
-  try {
-    store.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    /* Ignore quota / private browsing errors */
-  }
+  recent = [trimmed, ...recent.filter((t) => t !== trimmed)].slice(0, MAX_ENTRIES);
 }
