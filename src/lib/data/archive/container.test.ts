@@ -207,6 +207,65 @@ test('bytes appended to the end fail authentication', async () => {
   await assert.rejects(unframe(k, longer), DecryptionFailedError);
 });
 
+test('an oversized final frame is refused without pulling its 8 MiB tail', async () => {
+  const { k, bytes } = await framed(1024);
+  let pulled = 0;
+  async function* oversized() {
+    yield bytes;
+    for (let at = 0; at < 8 * 1024 * 1024; at++) {
+      pulled++;
+      assert.ok(pulled <= 2, 'the reader must stop at the first extra byte');
+      yield new Uint8Array(1);
+    }
+  }
+  const reader = byteReader(oversized());
+  const { header, headerBytes } = await readArchiveHeader(reader);
+  await assert.rejects(collect(unframeArchive(reader, header, headerBytes, k)), CorruptArchiveError);
+  assert.equal(pulled, 1);
+});
+
+test('a final frame and oversized tail split into small pieces stop after bounded reads', async () => {
+  const { k, bytes } = await framed(1024);
+  let pulled = 0;
+  async function* pieces() {
+    for (const byte of bytes) {
+      pulled++;
+      yield new Uint8Array([byte]);
+    }
+    for (let at = 0; at < 8 * 1024 * 1024; at += 17) {
+      pulled += 17;
+      assert.ok(pulled <= bytes.length + 34, 'the reader must not drain the tail');
+      yield new Uint8Array(17);
+    }
+  }
+  const reader = byteReader(pieces());
+  const { header, headerBytes } = await readArchiveHeader(reader);
+  await assert.rejects(collect(unframeArchive(reader, header, headerBytes, k)), CorruptArchiveError);
+  assert.equal(pulled, bytes.length + 17);
+});
+
+test('an oversized final frame already buffered in one piece is refused', async () => {
+  const { k, bytes } = await framed(1024);
+  const oversized = new Uint8Array(bytes.length + 8 * 1024 * 1024);
+  oversized.set(bytes);
+  await assert.rejects(unframe(k, oversized), CorruptArchiveError);
+});
+
+test('a final frame too short for plaintext retains its corruption failure', async () => {
+  const { k, bytes } = await framed(1024);
+  const short = bytes.subarray(0, 12 + headerJsonLength(bytes) + 28);
+  await assert.rejects(unframe(k, short), {
+    name: 'CorruptArchiveError',
+    message: 'the archive ends before chunk 1 of 1'
+  });
+});
+
+test('a bad tag on a full final frame retains its authentication failure', async () => {
+  const { k, bytes } = await framed(1024);
+  bytes[bytes.length - 1] ^= 0xff;
+  await assert.rejects(unframe(k, bytes), DecryptionFailedError);
+});
+
 test('reordering two chunks fails authentication', async () => {
   const { k, bytes } = await framed(5000, 1024);
   const framedChunk = 12 + 1024 + 16;
