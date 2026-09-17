@@ -457,19 +457,19 @@ const SECTIONS = [
   /* The dilation taper schedule (ticket 12) - a plan the person typed in,
      not a record of anything that happened to them, so `travels: 'none'`
      the same way a dose schedule would if it were archive-registered at
-     all. */
-  flat({
+     all.
+
+     Not `flat` since schema v83 (audit item 7), and after `procedures` for
+     the same reason `appointments` is both: the procedure it dilates for is
+     a rowid on this device and a uuid on the wire, and the rows it resolves
+     against have to be written first. */
+  section({
     name: 'taper',
+    after: ['procedures'],
+    discard: ['DELETE FROM taper'],
     travels: 'none',
-    table: 'taper',
-    identity: 'uuid',
-    orderBy: 'id',
-    columns: {
-      uuid: 'id',
-      surgery_epoch_day: 'surgeryEpochDay',
-      start_epoch_day: 'startEpochDay',
-      stages: 'stagesJson'
-    }
+    read: read.readTaper,
+    apply: apply.applyTaper
   }),
   flat({
     name: 'taperSessions',

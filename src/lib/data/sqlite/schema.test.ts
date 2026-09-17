@@ -93,7 +93,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 82);
+  assert.equal(db.getUserVersion(), 83);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -937,6 +937,76 @@ test('every procedure has a kind, and a row from before the column existed gets 
   };
   assert.equal(row.kind, 'custom');
   assert.equal(row.dilation_opt_in, 0);
+});
+
+test('the taper takes the procedure it dilates for, and its surgery day travels onto that procedure', async () => {
+  /* Audit item 7's own case, in the numbers the audit found: the screen said
+     the surgery was on one day and the procedure hosting it said another,
+     because both kept a copy. Migrating to v83 keeps the taper's - it is
+     what the dilation screen actually showed - and leaves one copy. */
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 82)
+  );
+
+  // First by id and not dilation-eligible, so picking the first row rather
+  // than the first eligible one would pick this one.
+  db.raw.exec(`INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at)
+    VALUES ('p-chest', 'top surgery', 20000, '', 'chest_reconstruction', 0, 1000)`);
+  db.raw.exec(`INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at)
+    VALUES ('p-vag', 'vaginoplasty', 20250, '', 'vaginoplasty', 0, 1000)`);
+  db.raw.exec(`INSERT INTO taper (uuid, surgery_epoch_day, start_epoch_day, stages, updated_at)
+    VALUES ('t-1', 20080, 20085, '[{"everyNDays":1,"days":14}]', 1000)`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  const taper = db.raw
+    .prepare('SELECT p.uuid AS procedure_uuid, t.start_epoch_day, t.stages FROM taper t JOIN procedure p ON p.id = t.procedure_id')
+    .get() as { procedure_uuid: string; start_epoch_day: number; stages: string };
+  assert.equal(taper.procedure_uuid, 'p-vag');
+  assert.equal(taper.start_epoch_day, 20085);
+  assert.equal(taper.stages, '[{"everyNDays":1,"days":14}]');
+
+  const dates = db.raw.prepare('SELECT uuid, surgery_epoch_day FROM procedure ORDER BY id').all() as {
+    uuid: string;
+    surgery_epoch_day: number;
+  }[];
+  assert.deepEqual(
+    dates.map((row) => [row.uuid, row.surgery_epoch_day]),
+    [
+      ['p-chest', 20000],
+      ['p-vag', 20080]
+    ]
+  );
+
+  // The second copy is gone rather than left behind to drift again.
+  const columns = db.raw.prepare('SELECT name FROM pragma_table_info(?)').all('taper') as { name: string }[];
+  assert.equal(
+    columns.some((column) => column.name === 'surgery_epoch_day'),
+    false
+  );
+});
+
+test('a taper with no procedure to dilate for does not survive v83', async () => {
+  /* Unreachable from the screen - a schedule is typed in against a
+     procedure - and dropped rather than guessed at, because `procedure_id`
+     is NOT NULL and a schedule whose surgery day belongs to nothing says
+     nothing on its own. */
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 82)
+  );
+  db.raw.exec(`INSERT INTO taper (uuid, surgery_epoch_day, start_epoch_day, stages, updated_at)
+    VALUES ('t-orphan', 20080, 20085, '[]', 1000)`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  const count = db.raw.prepare('SELECT count(*) AS n FROM taper').get() as { n: number };
+  assert.equal(count.n, 0);
 });
 
 test('every wear session has a kind, and a write that names none gets the default', async () => {
