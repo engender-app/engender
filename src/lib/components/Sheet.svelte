@@ -14,8 +14,8 @@
   let sheetEl: HTMLElement | null = null;
 
   function close() {
-    dragY = 0;
     if (onRequestClose) {
+      dragY = 0;
       onRequestClose();
       return;
     }
