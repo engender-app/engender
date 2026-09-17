@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* The step-by-step checklist, on the surface kit (phase 5 UX ticket 25).
 
      The pack's provenance was five paragraphs stacked in one card - what
@@ -287,33 +288,19 @@
     journal.roadmap.deleteCustomGoal(id);
   };
 
-  /* A document's own screen links here as `?goal=<key>`, since a goal has
-     no route of its own to link to more precisely (ADR-0068). `dismissedKey`
-     stops a closed sheet reopening itself: without it, closing the sheet
-     while the query param is still in the URL would fire this effect again
-     on the next unrelated reactive change and pop it straight back. */
-  let dismissedKey = $state<string | null>(null);
-  $effect(() => {
-    const key = page.url.searchParams.get('goal');
-    if (!key || key === dismissedKey) return;
-    const builtinGoal = pack.goals.find((goal) => goal.key === key);
-    if (builtinGoal) {
-      openBuiltInGoal(builtinGoal.key);
-      return;
-    }
-    if (customQuery.loading) return;
-    const custom = customGoals.find((goal) => goal.id === key);
-    if (custom) openCustomGoal(custom);
-  });
+  let sourceId = $derived(page.url.searchParams.get('goal'));
+  let sourceBuiltin = $derived(pack.goals.find((goal) => goal.key === sourceId));
+  let sourceCustom = $derived(customGoals.find((goal) => goal.id === sourceId));
 
   function closeGoalSheet() {
-    if (selectedGoal) dismissedKey = selectedGoal.key;
     selectedGoal = null;
   }
+
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.roadmap_title()} back="/more" />
+  <SourceRecordHandoff id={sourceId} ready={!!sourceBuiltin || (!customQuery.loading && !customQuery.failed)} found={!!sourceBuiltin || !!sourceCustom} onOpen={() => sourceBuiltin ? openBuiltInGoal(sourceBuiltin.key) : openCustomGoal(sourceCustom!)} />
 
   <!-- The pack's provenance, collapsed to this one row (redesign ticket
        16): what the pack is and what it is not still changes how the list

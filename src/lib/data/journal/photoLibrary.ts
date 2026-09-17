@@ -70,6 +70,7 @@ type LibraryRow = {
   epoch_day: number;
   source: PhotoSource;
   owner_name: string | null;
+  owner_id: string;
   starred: number;
 };
 
@@ -79,6 +80,7 @@ const toLibraryPhoto = (row: LibraryRow): LibraryPhoto => ({
   epochDay: row.epoch_day,
   source: row.source,
   ownerName: row.owner_name,
+  ownerId: row.owner_id,
   starred: bool(row.starred)
 });
 
@@ -92,6 +94,7 @@ const PHOTO_ARM = (extra: string) => `
          COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
          CASE WHEN p.milestone_id IS NULL THEN 'entry' ELSE 'milestone' END AS source,
          m.name AS owner_name, p.starred AS starred,
+         COALESCE(m.uuid, CAST(e.id AS TEXT)) AS owner_id,
          0 AS source_rank, p.order_index AS owner_order, p.id AS row_id
   FROM photo p
   LEFT JOIN entry e ON e.id = p.entry_id
@@ -102,22 +105,22 @@ const LIBRARY_ORDER = 'ORDER BY epoch_day, source_rank, owner_order, row_id';
 
 const IN_JOURNAL = `${PHOTO_ARM('')}
   UNION ALL
-  SELECT h.uuid, h.file_path, h.epoch_day, 'hair', NULL, 0, 1, 0, h.id
+  SELECT h.uuid, h.file_path, h.epoch_day, 'hair', NULL, 0, h.uuid, 1, 0, h.id
   FROM hair_photo h
   UNION ALL
-  SELECT r.uuid, r.file_path, s.epoch_day, 'hairRemoval', NULL, 0, 2, 0, r.id
+  SELECT r.uuid, r.file_path, s.epoch_day, 'hairRemoval', NULL, 0, s.uuid, 2, 0, r.id
   FROM hair_removal_photo r
   JOIN hair_removal_session s ON s.id = r.session_id
   UNION ALL
-  SELECT t.uuid, t.file_path, t.epoch_day, 'tryout', y.label, 0, 3, 0, t.id
+  SELECT t.uuid, t.file_path, t.epoch_day, 'tryout', y.label, 0, y.uuid, 3, 0, t.id
   FROM tryout_photo t
   JOIN tryout y ON y.id = t.tryout_id
   UNION ALL
-  SELECT c.uuid, c.file_path, c.epoch_day, 'procedure', d.name, 0, 4, 0, c.id
+  SELECT c.uuid, c.file_path, c.epoch_day, 'procedure', d.name, 0, d.uuid, 4, 0, c.id
   FROM procedure_photo c
   JOIN procedure d ON d.id = c.procedure_id
   UNION ALL
-  SELECT v.uuid, v.file_path, n.epoch_day, 'video', NULL, 0, 5, v.order_index, v.id
+  SELECT v.uuid, v.file_path, n.epoch_day, 'video', NULL, 0, CAST(n.id AS TEXT), 5, v.order_index, v.id
   FROM video_note v
   JOIN entry n ON n.id = v.entry_id
   WHERE n.trashed_at IS NULL

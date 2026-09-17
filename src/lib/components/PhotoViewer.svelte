@@ -11,13 +11,15 @@
      72px-sourced thumbnail blown up would show less than the photo has. */
   let {
     photo,
-    onClose
+    onClose,
+    ownerHref
   }: {
     /** Null keeps the sheet closed. `bytes` is what the editor passes for a
         photo just picked, which has no stored file until the entry is
         saved. */
     photo: (Pick<Photo, 'fileName'> & { bytes?: Uint8Array }) | null;
     onClose: () => void;
+    ownerHref?: string;
   } = $props();
 
   let url = $state<string | null>(null);
@@ -52,9 +54,12 @@
 
 <Sheet open={photo !== null} title={m.photo_view_title()} {onClose}>
   {#if url}
-    <div class="photo-viewer-frame">
+    <div class="photo-viewer-frame" data-photo-viewer>
       <img src={url} alt={m.photo_alt()} />
     </div>
+  {/if}
+  {#if ownerHref}
+    <a class="btn btn-soft press" data-photo-owner href={ownerHref}>{m.photo_open_owner()}</a>
   {/if}
 </Sheet>
 

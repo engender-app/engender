@@ -4061,5 +4061,10 @@
   "strip_day_state": "{day}: {state}",
   "dilation_nothing_expected": "Nic nie zaplanowano",
   "strip_day_today_state": "Dzisiaj, {state}",
-  "strip_week_nothing": "W tym tygodniu nic"
+  "strip_week_nothing": "W tym tygodniu nic",
+  "source_record_unavailable": "Ten zapis jest niedostępny",
+  "source_record_unavailable_hint": "Być może został usunięty z dziennika.",
+  "source_record_return": "Wróć do źródła",
+  "photo_open_owner": "Otwórz zapis",
+  "photo_library_view": "Zobacz zdjęcie"
 }

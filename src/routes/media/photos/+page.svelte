@@ -1,4 +1,8 @@
 <script lang="ts">
+  import PhotoViewer from '$lib/components/PhotoViewer.svelte';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
+  import { photoOwnerHref } from '$lib/data/photos/library';
+  import { withSourceReturn } from '$lib/navigation/sourceRecord';
   /* The photo library: every photograph in the journal, wherever it is
      kept, and the wipe over any two of them (phase 11 ticket 14).
 
@@ -94,7 +98,25 @@
 
   let selected = $state<string[]>([]);
   let comparing = $state(false);
-  let playing = $state<LibraryPhoto | null>(null);
+  let viewingId = $derived(page.url.searchParams.get('photo'));
+  let viewing = $derived(library.find((photo) => photo.id === viewingId) ?? null);
+  let playing = $derived(viewing?.source === 'video' ? viewing : null);
+  let ownerHref = $derived(viewing ? withSourceReturn(photoOwnerHref(viewing), page.url) : undefined);
+
+  export const snapshot = {
+    capture: () => ({ selected: [...selected], comparing }),
+    restore: (value: { selected: string[]; comparing: boolean }) => {
+      selected = value.selected;
+      comparing = value.comparing;
+    }
+  };
+
+  function viewPhoto(id: string | null) {
+    const url = new URL(page.url);
+    if (id) url.searchParams.set('photo', id);
+    else url.searchParams.delete('photo');
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
+  }
 
   let orderedSelected = $derived(orderAnchorsByJourney(selected, comparable));
   let pair = $derived(toComparePair(selected, comparable));
@@ -344,8 +366,9 @@
                   <button
                     class="photo-cell"
                     data-photo-video={p.id}
+                    data-photo-view={p.id}
                     aria-label={m.ph_video_open({ date: cellDate(p) })}
-                    onclick={() => (playing = p)}
+                    onclick={() => viewPhoto(p.id)}
                   >
                     <span class="photo-thumb photo-video-thumb">
                       <Icon name="play" size={26} />
@@ -354,6 +377,7 @@
                     <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
                   </button>
                 {:else}
+                  <div class="photo-cell-controls">
                   <button
                     class="photo-cell"
                     data-photo-cell
@@ -371,6 +395,8 @@
                       <Icon name="calendar" size={14} />
                     </button>
                   {/if}
+                  </div>
+                  <button class="btn btn-soft press photo-view-action" data-photo-view={p.id} onclick={() => viewPhoto(p.id)}>{m.photo_library_view()}</button>
                 {/if}
               </div>
             {/each}
@@ -412,11 +438,15 @@
     </ReadGate>
   {/if}
 
-  <Sheet open={playing !== null} title={m.ph_video_title()} onClose={() => (playing = null)}>
+  <SourceRecordHandoff id={viewingId} ready={!libraryQuery.loading && !libraryQuery.failed} found={!!viewing} />
+  <PhotoViewer photo={viewing?.source !== 'video' ? viewing : null} {ownerHref} onClose={() => viewPhoto(null)} />
+
+  <Sheet open={playing !== null} title={m.ph_video_title()} onClose={() => viewPhoto(null)}>
     {#if playing}
       <h3>{m.ph_video_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.ph_video_grid_hint()}</p>
       <VideoNotePlayer fileName={playing.fileName} />
+      <a class="btn btn-soft press" data-photo-owner href={ownerHref}>{m.photo_open_owner()}</a>
     {/if}
   </Sheet>
 
@@ -450,7 +480,8 @@
      on the corner, the smaller ::before disc carrying the surface fill
      and the shadow that lifts it off whatever the photo underneath
      happens to be. */
-  .photo-cell-wrap { position: relative; }
+  .photo-cell-controls { position: relative; }
+  .photo-view-action { width: 100%; margin-top: var(--space-3); }
   .photo-edit-day {
     position: absolute; bottom: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
