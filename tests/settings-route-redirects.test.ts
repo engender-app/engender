@@ -75,6 +75,20 @@
    destinations rather than at the other two stubs - one hop, not two,
    ticket 61's own rule.
 
+   Phase 11 all-four-doors ticket 21 (ADR-0036, ADR-0072): the Practice
+   group was deleted from the hub by phase 9 carpet ticket 16, and every
+   remaining address under that prefix said which door group it belonged
+   to instead - `personal-effects` to `/care/changes`, `wear` to
+   `/body/wear`, `resources` to `/support/resources`, and `voice` to the
+   root as `/voice` rather than under a door prefix, unlike its siblings.
+   Every stub this ticket repoints follows the same one-hop rule: a
+   Settings stub that used to point into Practice now points at the new
+   address directly. `practice/voice` alone is not in the table below,
+   since its stub forwards whatever query string it was given rather than
+   a fixed one, and is checked in its own test further down.
+   `practice/entry-templates` is unchanged - it already pointed out at
+   Settings (redesign ticket 51) and still does.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -102,12 +116,12 @@ const REDIRECTS: [string, () => unknown, string][] = [
   [
     'settings/side-effects',
     () => import('../src/routes/settings/side-effects/+page.ts'),
-    '/practice/personal-effects'
+    '/care/changes'
   ],
   [
     'health/side-effects',
     () => import('../src/routes/health/side-effects/+page.ts'),
-    '/practice/personal-effects'
+    '/care/changes'
   ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
@@ -149,34 +163,48 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/roadmap', () => import('../src/routes/settings/roadmap/+page.ts'), '/transition/roadmap'],
   ['settings/letters', () => import('../src/routes/settings/letters/+page.ts'), '/transition/letters'],
   ['settings/tryouts', () => import('../src/routes/settings/tryouts/+page.ts'), '/transition/tryouts'],
-  ['settings/voice', () => import('../src/routes/settings/voice/+page.ts'), '/practice/voice?tab=record'],
-  ['settings/wear', () => import('../src/routes/settings/wear/+page.ts'), '/practice/wear'],
+  ['settings/voice', () => import('../src/routes/settings/voice/+page.ts'), '/voice?tab=record'],
+  ['settings/wear', () => import('../src/routes/settings/wear/+page.ts'), '/body/wear'],
   [
     'settings/personal-effects',
     () => import('../src/routes/settings/personal-effects/+page.ts'),
-    '/practice/personal-effects'
+    '/care/changes'
   ],
-  ['settings/resources', () => import('../src/routes/settings/resources/+page.ts'), '/practice/resources'],
+  ['settings/resources', () => import('../src/routes/settings/resources/+page.ts'), '/support/resources'],
   ['settings/photos', () => import('../src/routes/settings/photos/+page.ts'), '/media/photos'],
   [
     'settings/voice/memos',
     () => import('../src/routes/settings/voice/memos/+page.ts'),
-    '/practice/voice?tab=recordings'
+    '/voice?tab=recordings'
   ],
   [
     'media/voice/memos',
     () => import('../src/routes/media/voice/memos/+page.ts'),
-    '/practice/voice?tab=recordings'
+    '/voice?tab=recordings'
   ],
   [
     'settings/voice/metrics',
     () => import('../src/routes/settings/voice/metrics/+page.ts'),
-    '/practice/voice?metric=pitch'
+    '/voice?metric=pitch'
   ],
   [
     'practice/voice/metrics',
     () => import('../src/routes/practice/voice/metrics/+page.ts'),
-    '/practice/voice?metric=pitch'
+    '/voice?metric=pitch'
+  ],
+  /* All-four-doors ticket 21: the three retired-Practice addresses whose
+     stub takes no query. `practice/voice` is checked in its own test
+     below instead, since its stub forwards whatever query it was given. */
+  [
+    'practice/personal-effects',
+    () => import('../src/routes/practice/personal-effects/+page.ts'),
+    '/care/changes'
+  ],
+  ['practice/wear', () => import('../src/routes/practice/wear/+page.ts'), '/body/wear'],
+  [
+    'practice/resources',
+    () => import('../src/routes/practice/resources/+page.ts'),
+    '/support/resources'
   ],
   ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones'],
   [
@@ -249,6 +277,25 @@ describe('every moved route keeps a 307 redirect at its old address', () => {
       expect(e.status).toBe(307);
       expect(e.location).toBe('/transition/tryouts/t-9');
     }
+  });
+
+  it('the old voice address forwards whatever query it was given', async () => {
+    const mod = (await import('../src/routes/practice/voice/+page.ts')) as {
+      load: (event: { url: URL }) => unknown;
+    };
+    const at = (search: string) => {
+      try {
+        mod.load({ url: new URL(`https://example.test/practice/voice${search}`) });
+        expect.fail('load() did not redirect');
+      } catch (e) {
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(307);
+        return e.location;
+      }
+    };
+    expect(at('')).toBe('/voice');
+    expect(at('?tab=record')).toBe('/voice?tab=record');
+    expect(at('?metric=pitch')).toBe('/voice?metric=pitch');
   });
 
   it('the photo export deep link', async () => {

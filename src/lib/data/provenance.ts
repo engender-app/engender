@@ -84,7 +84,7 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
     return { text: m.prov_reminder_stock({ drug }), hint, href: '/care', actionLabel: m.prov_view_stock() };
   }
   if (reminder.autoSource.startsWith(WEAR_PREFIX)) {
-    return { text: m.prov_reminder_wear(), hint, href: '/practice/wear', actionLabel: m.prov_view_wear_log() };
+    return { text: m.prov_reminder_wear(), hint, href: '/body/wear', actionLabel: m.prov_view_wear_log() };
   }
   // Defensive: stock.ts and wearSessions.ts are the only writers of
   // autoSource today, so this branch is unreached until a third feature

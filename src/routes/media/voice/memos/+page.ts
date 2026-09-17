@@ -3,5 +3,5 @@
 import { redirect } from '@sveltejs/kit';
 
 export function load() {
-  redirect(307, '/practice/voice?tab=recordings');
+  redirect(307, '/voice?tab=recordings');
 }

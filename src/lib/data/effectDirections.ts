@@ -4,7 +4,7 @@
    somebody wrote for themselves has no direction at all - so `other` is
    both a real direction and where an absent one lands.
 
-   One home because two surfaces on /practice/personal-effects read it: the
+   One home because two surfaces on /care/changes read it: the
    grouped list below, which heads a section with the name, and the axis
    above it, which colours a mark by it and names the colours in its legend.
    Two copies of a three-arm if that returns copy is two places to add a
