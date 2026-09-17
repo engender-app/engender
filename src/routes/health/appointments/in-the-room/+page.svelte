@@ -87,11 +87,12 @@
      previous visit to this screen had held. Gated on both reads having
      landed - `items` is `[]` both before the checklist has loaded and after
      it has loaded empty, and restoring against the former would drop every
-     held answer for good. */
+     held answer for good. A failed read is not an empty journal either, so
+     it must not restore or publish an empty map. */
   let restoredFor: string | null = null;
   $effect(() => {
     if (!todaysAppointment) return;
-    if (checklistQuery.loading || appointmentsQuery.loading) return;
+    if (checklistQuery.loading || appointmentsQuery.loading || checklistQuery.failed || appointmentsQuery.failed) return;
     if (restoredFor !== todaysAppointment.id) {
       restoredFor = todaysAppointment.id;
       answers = restoreRoomAnswers(
