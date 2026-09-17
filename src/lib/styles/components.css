@@ -2785,6 +2785,93 @@ body > .flatpickr-calendar,
   color: var(--text);
 }
 
+/* Date fields use a consecutive day grid, without weekday columns. */
+body > .date-picker-calendar {
+  position: fixed;
+  width: 22rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2);
+}
+.date-picker-calendar::before,
+.date-picker-calendar::after,
+.date-picker-calendar .flatpickr-weekdays,
+.date-picker-calendar .prevMonthDay,
+.date-picker-calendar .nextMonthDay,
+.date-picker-calendar .numInputWrapper > span {
+  display: none;
+}
+.date-picker-calendar .flatpickr-innerContainer,
+.date-picker-calendar .flatpickr-rContainer,
+.date-picker-calendar .flatpickr-days {
+  width: 100%;
+}
+.date-picker-calendar .dayContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(48px, 3rem), 1fr));
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+.date-picker-calendar .flatpickr-day {
+  width: 100%;
+  max-width: none;
+  min-height: 48px;
+  height: auto;
+  line-height: 2.5;
+}
+.date-picker-calendar .flatpickr-months {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+}
+.date-picker-calendar .flatpickr-month {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: auto;
+  overflow: visible;
+}
+.date-picker-calendar .flatpickr-prev-month,
+.date-picker-calendar .flatpickr-next-month {
+  position: static;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.date-picker-calendar .flatpickr-next-month { grid-column: 3; grid-row: 1; }
+.date-picker-calendar .flatpickr-current-month {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+  height: auto;
+  padding: 0;
+}
+.date-picker-calendar .flatpickr-monthDropdown-months,
+.date-picker-calendar .numInputWrapper {
+  flex: 1 1 7rem;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+.date-picker-calendar .flatpickr-monthDropdown-months,
+.date-picker-calendar input.cur-year {
+  min-height: 48px;
+  padding: var(--space-2);
+}
+.date-picker-entry {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.date-picker-entry label { font-size: var(--text-sm); color: var(--text); }
+.date-picker-entry .input { margin-top: var(--space-1); }
+.date-picker-entry .btn { min-height: 48px; white-space: normal; }
+
 /* ---------- loading placeholders ---------- */
 /* Entry lists, stats, search and recap read through a worker and cannot
    answer synchronously (ADR-0004), so they show the shape of what is coming.

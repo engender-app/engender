@@ -1,20 +1,9 @@
 <script lang="ts">
-  /* The app's one date picker: a flatpickr popup on an input, themed onto
-     the tokens (components.css carries the one flatpickr stylesheet for the
-     whole app). It replaces the native `type="date"` inputs everywhere -
-     the native popup has no animation, no month dropdown, and a year you
-     reach a month at a time, which is what ticket 99 item 11 was about
-     before it became "all pickers".
-
-     The value is the same `yyyy-mm-dd` string the native input traded in,
-     so every existing bind keeps working. The visible field shows the
-     locale's own long date via altInput; the real input carries the ISO
-     value under it, exactly as a native date input has a visible formatting
-     and a submitted value. Anything else a caller puts on the component
-     lands on the input - a walkthrough handle, data-attributes - the same
-     rest-spread every kit control offers. */
+  /* Flatpickr owns local dates and bounds. The popup lists days in a
+     wrapping grid, so every target fits without a seven-column minimum. */
   import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.min.css';
+  import { m } from '$lib/paraglide/messages';
   import { pickerLocale } from './flatpickrLocale';
   import { registerOverlayRegion } from './overlayLock';
 
@@ -51,10 +40,111 @@
   let releaseOverlay: (() => void) | null = null;
 
   function mount(node: HTMLInputElement) {
+    let directInput: HTMLInputElement;
+    let clearButton: HTMLButtonElement;
+
+    function fitPopup() {
+      if (!picker?.isOpen) return;
+      const root = (node.closest('[data-app-root]') ?? document.documentElement).getBoundingClientRect();
+      const view = window.visualViewport;
+      const calendar = picker.calendarContainer;
+      const left = view?.offsetLeft ?? 0;
+      const width = view?.width ?? window.innerWidth;
+      calendar.style.maxWidth = `${Math.min(root.width, width) - 16}px`;
+      calendar.style.maxHeight = `${(view?.height ?? window.innerHeight) - 16}px`;
+      calendar.style.top = `${(view?.offsetTop ?? 0) + 8}px`;
+      calendar.style.left = `${Math.max(left + 8, Math.min(root.left + (root.width - calendar.offsetWidth) / 2, left + width - calendar.offsetWidth - 8))}px`;
+
+    }
+
+    function moveDay(event: KeyboardEvent) {
+      if (!(event.target instanceof HTMLElement) || !event.target.classList.contains('flatpickr-day') || !picker) return;
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key) || event.ctrlKey) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const days = Array.from(picker.days.querySelectorAll<HTMLElement>('.flatpickr-day:not(.prevMonthDay):not(.nextMonthDay)'));
+      const columns = getComputedStyle(picker.days).gridTemplateColumns.split(' ').length;
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns }[event.key]!;
+      let index = days.indexOf(event.target) + step;
+      while (days[index]?.classList.contains('flatpickr-disabled')) index += Math.sign(step);
+      if (days[index]) days[index].focus();
+    }
+
+    function focusableNavigation(_dates: Date[], _text: string, fp: flatpickr.Instance) {
+      fp.currentYearElement.tabIndex = 0;
+      fp.monthsDropdownContainer.tabIndex = 0;
+    }
+
+    function addControls(fp: flatpickr.Instance) {
+      focusableNavigation([], '', fp);
+      fp.calendarContainer.classList.add('date-picker-calendar');
+      fp.calendarContainer.addEventListener('keydown', moveDay, true);
+      for (const [control, label, step] of [
+        [fp.prevMonthNav, m.prev_month(), -1],
+        [fp.nextMonthNav, m.next_month(), 1]
+      ] as const) {
+        control.setAttribute('role', 'button');
+        control.setAttribute('aria-label', label);
+        control.tabIndex = 0;
+        control.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            fp.changeMonth(step);
+          }
+        });
+      }
+      const footer = document.createElement('div');
+      footer.className = 'date-picker-entry';
+      const label = document.createElement('label');
+      label.textContent = m.date_picker_entry();
+      directInput = document.createElement('input');
+      directInput.className = 'input';
+      directInput.type = 'text';
+      directInput.autocomplete = 'off';
+      label.append(directInput);
+      function applyDate() {
+        const text = directInput.value.trim();
+        const parsed = /^\d{4}-\d{2}-\d{2}$/.test(text) ? flatpickr.parseDate(text, 'Y-m-d') : undefined;
+        if (!parsed || flatpickr.formatDate(parsed, 'Y-m-d') !== text || !fp.isEnabled(parsed)) {
+          directInput.setCustomValidity(m.date_picker_invalid());
+          directInput.reportValidity();
+          return;
+        }
+        fp.setDate(parsed, true);
+        (fp.altInput ?? node).focus({ preventScroll: true });
+        fp.close();
+      }
+      directInput.addEventListener('input', () => directInput.setCustomValidity(''));
+      directInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' && event.key !== 'Tab') event.stopPropagation();
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          applyDate();
+        }
+      });
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'btn btn-primary';
+      apply.textContent = m.date_picker_apply();
+      apply.addEventListener('click', applyDate);
+      clearButton = document.createElement('button');
+      clearButton.type = 'button';
+      clearButton.className = 'btn btn-secondary';
+      clearButton.textContent = m.date_picker_clear();
+      clearButton.addEventListener('click', () => {
+        fp.clear();
+        (fp.altInput ?? node).focus({ preventScroll: true });
+        fp.close();
+      });
+      footer.append(label, apply, clearButton);
+      fp.calendarContainer.append(footer);
+    }
+
     picker = flatpickr(node, {
       dateFormat: 'Y-m-d',
       altInput: !invis,
-      altFormat: 'j F Y',
+      altFormat: 'Y-m-d',
       defaultDate: value || undefined,
       minDate: min || undefined,
       maxDate: max || undefined,
@@ -62,14 +152,23 @@
       // Flatpickr dismisses on touchstart, before Android can cancel a Back
       // gesture. Outside dismissal below waits for a completed click.
       ignoredFocusElements: [document.body],
+      clickOpens: false,
       locale: pickerLocale(),
+      position: fitPopup,
       onChange: (dates) => {
         const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
         value = next;
         onchange?.(next);
       },
+      onReady: (_dates, _text, fp) => addControls(fp),
+      onMonthChange: focusableNavigation,
+      onYearChange: focusableNavigation,
       onOpen: () => {
         if (!picker) return;
+        fitPopup();
+        directInput.value = value;
+        directInput.setCustomValidity('');
+        clearButton.disabled = !value;
         releaseOverlay?.();
         const launcher = picker.altInput ?? node;
         releaseOverlay = registerOverlayRegion(launcher, picker.calendarContainer, {
@@ -102,9 +201,26 @@
       visible.flatpickr = picker;
       visible._flatpickr = picker;
     }
+    const launcher = picker.altInput ?? node;
+    const open = () => picker?.open();
+    const openFromKeyboard = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowDown' || !picker) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      picker.open();
+      picker.days.querySelector<HTMLElement>('.selected, .flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)')?.focus();
+    };
+    launcher.addEventListener('click', open);
+    launcher.addEventListener('keydown', openFromKeyboard, true);
+    window.visualViewport?.addEventListener('resize', fitPopup);
+    window.visualViewport?.addEventListener('scroll', fitPopup);
     return {
       destroy() {
         document.removeEventListener('click', dismissOutside);
+        launcher.removeEventListener('click', open);
+        launcher.removeEventListener('keydown', openFromKeyboard, true);
+        window.visualViewport?.removeEventListener('resize', fitPopup);
+        window.visualViewport?.removeEventListener('scroll', fitPopup);
         releaseOverlay?.();
         releaseOverlay = null;
         picker?.destroy();
@@ -119,9 +235,9 @@
     if (!picker) return;
     picker.set('minDate', (min as string) ?? undefined);
     picker.set('maxDate', (max as string) ?? undefined);
-    if ((picker.selectedDates[0]?.toISOString().slice(0, 10) ?? '') !== value) {
+    if ((picker.selectedDates[0] ? flatpickr.formatDate(picker.selectedDates[0], 'Y-m-d') : '') !== value) {
       if (value) picker.setDate(value as string, false);
-    else picker.clear(false);
+      else picker.clear(false);
     }
   });
 </script>

@@ -161,7 +161,7 @@
   </ScreenHeader>
 
   <div class="card no-print" style="margin-bottom:var(--space-4)">
-    <div class="cd-endpoints">
+    <div class="book-endpoints">
       <Field label={m.journal_book_range_start_label()} id="journal-book-start">
         {#snippet children(id)}
           <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
@@ -267,6 +267,12 @@
 </div>
 
 <style>
+  .book-endpoints {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-3);
+  }
+
   .section-block {
     margin-bottom: var(--space-4);
   }

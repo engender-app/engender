@@ -80,8 +80,7 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   await shot(page, '01-appointment-sheet-focus');
 
-  /* flatpickr opens when its visible field receives initial focus. Close that
-     nested surface before proving traversal of the sheet underneath it. */
+  /* Traverse the sheet with its nested date popup closed. */
   if (await page.locator('.flatpickr-calendar.open').count()) {
     await page.keyboard.press('Escape');
     await page.waitForSelector('.flatpickr-calendar.open', { state: 'detached' });
@@ -118,6 +117,7 @@ await block('ticket 04 sheet focus', 13, async () => {
   else fail('reverse Tab stays inside appointment sheet and skips hidden date input', JSON.stringify(await activeState(page)));
 
   await page.locator('#appointment-date').focus();
+  await page.keyboard.press('Enter');
   await page.waitForSelector('.flatpickr-calendar.open');
   await shot(page, '02-appointment-calendar-focus');
   await page.keyboard.press('ArrowDown');
@@ -132,13 +132,13 @@ await block('ticket 04 sheet focus', 13, async () => {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Shift+Tab');
   active = await activeState(page);
-  if (active.inSheet && active.visible && active.type !== 'hidden')
+  if ((active.inSheet || active.inCalendar) && active.visible && active.type !== 'hidden')
     ok('reverse Tab from calendar grid stays within sheet owner');
   else fail('reverse Tab from calendar grid stays within sheet owner', JSON.stringify(active));
 
   await page.evaluate(() => document.querySelector('#appointment-date')._flatpickr.open());
   await page.waitForSelector('.flatpickr-calendar.open');
-  await page.locator('.flatpickr-day:not(.flatpickr-disabled)').first().focus();
+  await page.locator('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)').first().focus();
   await page.keyboard.press('Escape');
   const afterFirstEscape = {
     calendars: await page.locator('.flatpickr-calendar.open').count(),
