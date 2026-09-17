@@ -43,7 +43,7 @@
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { collapse } from '$lib/motion/reveal';
-  import { lockBackground, trapFocus } from './overlayLock';
+  import { lockBackground, registerOverlay } from './overlayLock';
   import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -76,10 +76,6 @@
      keyboard on a screen whose whole point is that neither is forced. */
   onMount(() => frame?.focus({ preventScroll: true }));
 
-  function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Tab') trapFocus(frame, e);
-  }
-
   /* Escape is deliberately not a way out. The two exits mean different
      things - one opens the letter and one does not - and a key that picks
      neither would have to pick one of them silently. */
@@ -92,8 +88,6 @@
     };
   }
 </script>
-
-<svelte:window onkeydown={onWindowKeydown} />
 
 <div
   class="letter-arrival"
@@ -109,6 +103,7 @@
     aria-modal="true"
     aria-labelledby="letter-arrival-title"
     {...roleAttrs(roleAt(activeFlag.roles, 0))}
+    {@attach (node) => registerOverlay(node)}
   >
     <!-- The field: the flag's own second colour from the window's top edge
          with the sentence on it. Its shape is written out here rather than

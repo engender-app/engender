@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { sheetRise, scrimFade } from '$lib/motion/navigation';
-  import { lockBackground, trapFocus } from './overlayLock';
+  import { firstFocusable, lockBackground, registerOverlay } from './overlayLock';
 
   let {
     open = $bindable(false),
@@ -94,18 +94,29 @@
      preventScroll: true. */
   function focusInitial(node: HTMLElement) {
     sheetEl = node;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
     const applyFocus = () => {
+      if (fallback) clearTimeout(fallback);
       if (!sheetEl || !sheetEl.isConnected) return;
       if (sheetEl.contains(document.activeElement)) return;
-      const field = node.querySelector<HTMLElement>('input, select, textarea');
-      (field ?? node).focus({ preventScroll: true });
+      (firstFocusable(node) ?? node).focus({ preventScroll: true });
     };
 
     node.addEventListener('introend', applyFocus, { once: true });
+    /* `in:` and `out:` run independently. If opening is interrupted, Svelte
+       can remove the transition before `introend`; reduced-motion engines
+       have also differed on zero-duration transition events. The fallback
+       runs after the normal 380ms entrance, never during its layout setup. */
+    fallback = setTimeout(applyFocus, 450);
     return () => {
       node.removeEventListener('introend', applyFocus);
+      if (fallback) clearTimeout(fallback);
       sheetEl = null;
     };
+  }
+
+  function ownSheet(node: HTMLElement) {
+    return registerOverlay(node, { dismiss: close });
   }
 
   /* SF-001's background lock and focus trap live in overlayLock.ts now: the
@@ -129,17 +140,7 @@
      directions had to differ - only the way up runs past its mark - and a
      sheet closed inside 380ms is a rarer thing to see than every close. */
 
-  function onWindowKeydown(e: KeyboardEvent) {
-    if (!open) return;
-    if (e.key === 'Escape') {
-      close();
-    } else if (e.key === 'Tab') {
-      trapFocus(sheetEl, e);
-    }
-  }
 </script>
-
-<svelte:window onkeydown={onWindowKeydown} />
 
 {#if open}
   <div
@@ -177,6 +178,7 @@
         in:sheetRise
         out:sheetRise
         {@attach focusInitial}
+        {@attach ownSheet}
       >
         <div class="sheet-handle"></div>
         {@render children()}
