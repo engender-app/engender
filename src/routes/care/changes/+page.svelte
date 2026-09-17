@@ -314,6 +314,7 @@
   }
 
   let manageOpen = $state(false);
+  let methodologyOpen = $state(false);
   let newEffectName = $state('');
   let newEffectCategory = $state('');
 
@@ -352,7 +353,13 @@
     <!-- What is true now, before the records (DIRECTION.md rule 16): every
          change already marked, at the month it was noticed, on one line. -->
     <div class="screen-part">
-      <NoticedAxis changes={noticedChanges} {anchorEpochDay} todayEpochDay={today} onOpen={openMark} />
+      <NoticedAxis
+        changes={noticedChanges}
+        {anchorEpochDay}
+        todayEpochDay={today}
+        onOpen={openMark}
+        onRecord={() => record.openEditor(null)}
+      />
     </div>
 
     <!-- Under the axis rather than over it, and no longer instead of it.
@@ -377,10 +384,32 @@
 
     <!-- All three of these are about the literature's bands, so they keep
          the company of the chart that draws them: with no regimen there is
-         no band on the screen for them to be describing. -->
+         no band on the screen for them to be describing. A short limitation
+         stays visible while longer methodology and sources move into an
+         accessible disclosure (ticket 20, UX17). -->
     {#if anchorEpochDay !== null}
-      <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.effect_variability_notice()}</p>
+      <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
+      <div class="effects-methodology">
+        <button
+          type="button"
+          class="effects-methodology-toggle"
+          aria-expanded={methodologyOpen}
+          data-methodology-toggle
+          onclick={() => (methodologyOpen = !methodologyOpen)}
+        >
+          <span>{m.effects_methodology_disclosure()}</span>
+          <span class="effects-methodology-chev">
+            <Icon name="chevronDown" size={18} />
+          </span>
+        </button>
+        {#if methodologyOpen}
+          <div class="disclosed" transition:disclose>
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
+            <p class="muted small">{m.effects_source()}</p>
+          </div>
+        {/if}
+      </div>
     {/if}
 
     {#each EFFECT_DIRECTIONS as direction (direction)}
@@ -468,10 +497,6 @@
         {/if}
       {/if}
     {/each}
-
-    {#if anchorEpochDay !== null}
-      <p class="muted small">{m.effects_source()}</p>
-    {/if}
 
     <!-- The other change hanging off this screen (ticket 13): a side effect
          and a change you were hoping for are both something you noticed
@@ -746,5 +771,37 @@
      wants the width, and the rows under it bring their own padding. */
   .effect-group-body {
     padding: var(--space-3) var(--space-3) 0;
+  }
+
+  .effects-methodology {
+    margin-bottom: var(--space-3);
+  }
+
+  .effects-methodology-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-2) 0;
+    margin: 0;
+    border: 0;
+    background: none;
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .effects-methodology-chev {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+
+  .effects-methodology-toggle[aria-expanded='true'] .effects-methodology-chev {
+    transform: rotate(180deg);
   }
 </style>
