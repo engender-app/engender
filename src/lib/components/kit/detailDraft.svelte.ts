@@ -111,7 +111,7 @@ export function detailDraft<TRecord, TDraft extends object>(
           return mine?.value;
         },
         get loading() {
-          return mine === undefined;
+          return mine === undefined && !dependent.failed;
         },
         get failed() {
           return dependent.failed;
