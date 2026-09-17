@@ -357,7 +357,7 @@
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
       <DaysReading span={resolvedSpan} view="tile" {enoughEntries} />
-      <WordsReading view="tile" href={readingHref('words', resolvedSpan)} />
+      <WordsReading view="tile" span={resolvedSpan} href={readingHref('words', resolvedSpan)} />
       <TagsReading span={resolvedSpan} view="tile" />
       <HighestReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <BodyMapTile span={resolvedSpan} />
