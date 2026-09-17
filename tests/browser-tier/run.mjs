@@ -2392,6 +2392,75 @@ await block('ticket redesign-30 the lock step splits in two', 2, async () => {
   }
 });
 
+// --- Ticket U08: automatic-unlock consent behind viable authentication ------
+await block('ticket U08 browser tier', 16, async () => {
+  /* 16 ok/fail calls: 9 matrix cells, the gate-held invariant, no-lock
+     silence, three-outcome distinguishability, ask-once-with-focus,
+     choice-preserved, never-re-asked, accepted-survives-repair. */
+  const r = await load('/android-consent.html', 'android-consent-probe');
+  if (r.error) throw new Error(r.error);
+
+  /* The 3x3 matrix, from the ticket's own acceptance: each row of failure
+     states must show its recovery action and never the question; only the
+     healthy row may ask or fire. */
+  const expected = {
+    'healthy-unanswered': { consentSheet: true, unlockCalls: 0, recoveryVisible: false },
+    'healthy-accepted': { consentSheet: false, unlockCalls: 1, recoveryVisible: false },
+    'healthy-declined': { consentSheet: false, unlockCalls: 0, recoveryVisible: false },
+    'no-lock-unanswered': { consentSheet: false, unlockCalls: 0, recoveryVisible: true },
+    'no-lock-accepted': { consentSheet: false, unlockCalls: 0, recoveryVisible: true },
+    'no-lock-declined': { consentSheet: false, unlockCalls: 0, recoveryVisible: true },
+    'invalidated-unanswered': { consentSheet: false, unlockCalls: 0, recoveryVisible: true },
+    'invalidated-accepted': { consentSheet: false, unlockCalls: 0, recoveryVisible: true },
+    'invalidated-declined': { consentSheet: false, unlockCalls: 0, recoveryVisible: true }
+  };
+  for (const [cell, want] of Object.entries(expected)) {
+    const got = r.matrix[cell];
+    const same =
+      got &&
+      got.consentSheet === want.consentSheet &&
+      got.unlockCalls === want.unlockCalls &&
+      got.recoveryVisible === want.recoveryVisible;
+    if (same) ok(`${cell}: sheet ${want.consentSheet ? 'asks' : 'stays closed'}, unlock fired ${want.unlockCalls}x`);
+    else fail(cell, `got ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`);
+  }
+
+  const gateHeld = Object.values(r.matrix).every(
+    (cell) => cell.status === 'needs-authentication' && cell.journal === null
+  );
+  if (gateHeld) ok('all nine cases stay on the gate: no journal handle, no route content behind the question');
+  else fail('all nine cases stay on the gate', 'a case left needs-authentication or gained a journal');
+
+  const u = r.repairUnanswered;
+  if (u.askedBeforeRepair === false && u.autoBeforeRepair === 0)
+    ok('no-lock with consent unanswered: nothing asked, nothing fired');
+  else fail('no-lock asks nothing before repair', JSON.stringify({ asked: u.askedBeforeRepair, fired: u.autoBeforeRepair }));
+
+  if (u.cancelledOfferedRetry && u.failedStayedRetryGate && !r.matrix['invalidated-unanswered'].consentSheet)
+    ok('cancelled and failed prompts offer retry while the invalidated key offers reset - three distinguishable states');
+  else
+    fail('cancellation, failure and key loss stay distinguishable', JSON.stringify({ cancelled: u.cancelledOfferedRetry, failed: u.failedStayedRetryGate }));
+
+  if (u.askedAfterRepair && u.focusInSheet)
+    ok('after repair the question is asked once, and focus lands inside the sheet');
+  else
+    fail('after repair the question is asked once with focus in the sheet', JSON.stringify({ asked: u.askedAfterRepair, focus: u.focusInSheet }));
+
+  if (u.sheetClosedAfterAnswer && u.choicePreserved === true)
+    ok('declining the sheet records the choice (preserved, not re-asked)');
+  else fail('declining the sheet records the choice', JSON.stringify({ closed: u.sheetClosedAfterAnswer, preserved: u.choicePreserved }));
+
+  if (u.askedAgainAfterDecline === false && u.journal === null)
+    ok('a later cancelled prompt does not re-ask, and the journal never opened');
+  else fail('the question is asked at most once', JSON.stringify({ reasked: u.askedAgainAfterDecline, journal: u.journal }));
+
+  const a = r.repairAccepted;
+  if (a.askedBeforeRepair === false && a.autoBeforeRepair === 0 && a.choicePreserved === true && a.unlockCalls >= 1)
+    ok('an accepted choice survives repair and fires on its own - no second question');
+  else
+    fail('an accepted choice is honored after repair', JSON.stringify({ asked: a.askedBeforeRepair, fired: a.autoBeforeRepair, preserved: a.choicePreserved, unlocks: a.unlockCalls }));
+});
+
 await browser.close();
 await server.close();
 

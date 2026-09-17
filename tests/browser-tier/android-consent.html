@@ -1,0 +1,38 @@
+<!doctype html>
+<html data-palette="trans" data-theme="dark" data-mood-preset="amber">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>the Android key gate's automatic-unlock consent</title>
+    <script>
+      /* The Capacitor stub has to exist before any module below imports
+         @capacitor/core, because registerPlugin reads the platform and the
+         plugin headers once, at registration. `androidBridge` is what a real
+         WebView gets from the native shell and what getPlatformId() asks for;
+         the headers are what makes registerPlugin route Keystore calls to
+         nativePromise, and nativePromise is the fake the probe aims.
+
+         Only Keystore is stubbed: AndroidKeyGate's whole reach is
+         openAndroidJournal, and no other plugin is called while the gate is
+         up. The empty object is enough for isAndroid() and for the platform
+         the registry records. */
+      window.androidBridge = {};
+      window.Capacitor = {
+        PluginHeaders: [
+          {
+            name: 'Keystore',
+            methods: ['status', 'create', 'wrap', 'unlock', 'confirm', 'erase'].map((name) => ({
+              name,
+              rtype: 'promise'
+            }))
+          }
+        ],
+        nativePromise: (plugin, method, options) => window.__fakeKeystore[method](options)
+      };
+    </script>
+  </head>
+  <body>
+    <div id="gate"></div>
+    <script type="module" src="./android-consent-probe.ts"></script>
+  </body>
+</html>

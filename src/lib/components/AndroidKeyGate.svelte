@@ -81,14 +81,28 @@
      `busy`: an effect that reads what it writes re-runs itself until Svelte
      gives up, which is a mistake this codebase has already made once
      (boot.svelte.ts). Never answered asks first, rather than firing or
-     waiting - answering is what the other two decisions are for. */
+     waiting - answering is what the other two decisions are for.
+
+     But only on a path the platform can honor (ticket U08, UX22). The two
+     states below are recovery states - the cliff and a device with no
+     screen lock to bind a key to - and on either, firing the prompt or
+     asking the question can only cover the one screen that says what to
+     do. Returning without marking `asked` is what repairs the miss: when
+     a screen lock exists and a prompt lands on this gate again, the
+     question is asked then, once, and a choice already made still counts. */
   let asked = false;
   $effect(() => {
     if (asked) return;
-    asked = true;
+    if (invalidated) return;
+    if (refusal?.wayForward === 'setDeviceLock') return;
     const decision = bioGateDecision(prefs.bioOptIn);
-    if (decision === 'auto') void authenticate(false);
-    else if (decision === 'ask') consentOpen = true;
+    if (decision === 'auto') {
+      asked = true;
+      void authenticate(false);
+    } else if (decision === 'ask') {
+      asked = true;
+      consentOpen = true;
+    }
   });
 
   let explanation = $derived(
