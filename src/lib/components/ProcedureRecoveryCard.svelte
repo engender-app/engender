@@ -237,11 +237,11 @@
     {/if}
   </div>
 
-  <!-- Under the rail, which is where the journey's own line ends: the rail
-       draws the consult behind you and the date ahead of you, and this
-       names the next one in words (audit item 13). `aria-hidden` on the
-       rail is why it has to be written as well as drawn - the same reason
-       the consult count below is kept. -->
+  <!-- Between the reading and the rail: the block says how far off the
+       operation is, this says what happens before it, and the rail draws
+       both without words (audit item 13). `aria-hidden` on the rail is why
+       the consult has to be written as well as drawn - the same reason the
+       consult count below it is kept. -->
   {#if nextConsultLine}
     <p class="proc-next" data-procedure-next={procedure.id}>{nextConsultLine}</p>
   {/if}

@@ -380,13 +380,16 @@
                this screen's own comment said a query answering with a
                screenful of records is better finished on the search screen,
                and then never linked there. The last row does, carrying the
-               query with it. -->
+               query with it - the debounced one, not what is in the box this
+               instant, so the row never quotes a word the rows above it have
+               not answered yet (the same discipline `settled` keeps for the
+               count and the notice). -->
           <div class="rows-divide" transition:disclose={{ skip: leaving }}>
             <ListRow
               key="hub-search-handoff"
               data-hub-search-handoff
               icon="search"
-              title={m.hub_search_handoff({ query: typed })}
+              title={m.hub_search_handoff({ query: debouncedQuery })}
               subtitle={m.hub_search_handoff_sub()}
               href={`/search?q=${encodeURIComponent(typed)}`}
             />
