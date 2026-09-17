@@ -567,7 +567,7 @@ test('the hub draws its groups in order and leaves out the ones with nothing in 
 
   assert.deepEqual(
     sections.map((section) => section.key),
-    ['body', 'health', 'transition', 'support', 'media']
+    ['health', 'transition', 'support', 'media']
   );
 });
 
@@ -703,8 +703,9 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  assert.deepEqual(group('body'), ['measurements']);
-  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
+  // `body` is gone and its one row opens Health (audit item 10).
+  assert.deepEqual(group('body'), []);
+  assert.deepEqual(group('health'), ['measurements', 'care', 'surgery', 'appointments']);
   assert.deepEqual(group('transition'), [
     'milestones',
     'tryouts',
