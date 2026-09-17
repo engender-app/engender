@@ -77,8 +77,7 @@ describe('the two folds read the whole journal, said once, and only when they dr
    (src/lib/data/careSpine.test.ts, src/lib/data/journal/hormoneCurve.test.ts). */
 describe('the spine draws one lane per running regimen', () => {
   it('draws every running episode, in railEpisodes order', () => {
-    expect(care).toContain("import {\n    careSpine,\n    railEpisodes,");
-    expect(care).toContain('railEpisodes(activeEpisodesAt(episodesQuery.rows, startOfDayTimestamp(today)))');
+    expect(care).toContain('careQuery.value?.lanes ?? []');
     expect(care).toMatch(/\{#each spine\.lanes as lane, index \(lane\.episodeId\)\}/);
   });
 
@@ -104,7 +103,8 @@ describe('the spine draws one lane per running regimen', () => {
 
   it('reads one lane once, so a lane and its block cannot state two different days', () => {
     expect(care).toContain('let lanes = $derived(');
-    expect(care.match(/doseFactsFor\(episode\)/g)).toHaveLength(1);
+    expect(care).toContain('liveQuery((j) => readCare(j, today))');
+    expect(care).toContain('<ReadGate read={careRead}');
   });
 
   it('gives every block a Log button that opens the dose sheet on that block’s own drug', () => {
