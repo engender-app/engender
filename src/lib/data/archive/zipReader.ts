@@ -17,10 +17,10 @@
    reason: it is the same number either way, the total this reader is about
    to hold in memory at once.
 
-   `names()` decompresses nothing regardless of the ceiling - its filter
-   always returns false, which walks the central directory and stops
-   there - so listing an archive's members is safe however large any one
-   of them claims to be.
+   Opening scans the central directory without decompressing anything.
+   Duplicate names are rejected before any member can be read; otherwise
+   two payloads could share one cache key and evade the running total.
+   `names()` returns the scanned names, regardless of their declared sizes.
 
    `read` caches its result per name, and not only to avoid decompressing
    twice: a caller that reads the same member more than once - a preview
@@ -74,19 +74,21 @@ export interface ZipReader {
     being imported, not one per member - the running total is what catches
     many small members that individually look harmless. */
 export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_CEILING_BYTES): ZipReader {
+  const names = new Set<string>();
+  unzipSync(bytes, {
+    filter: (entry) => {
+      if (names.has(entry.name)) throw new Error('duplicate ZIP member name');
+      names.add(entry.name);
+      return false;
+    }
+  });
+
   let total = 0;
   const cache = new Map<string, Uint8Array | null>();
 
   return {
     names(): string[] {
-      const found: string[] = [];
-      unzipSync(bytes, {
-        filter: (entry) => {
-          found.push(entry.name);
-          return false;
-        }
-      });
-      return found;
+      return [...names];
     },
 
     read(name: string): Uint8Array | null {
