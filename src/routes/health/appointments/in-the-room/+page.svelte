@@ -102,7 +102,7 @@
         )
       );
     }
-    holdRoomAnswers(todaysAppointment.id, jotted, { ...answers });
+    holdRoomAnswers({ appointmentId: todaysAppointment.id, answers: jotted, byItemId: { ...answers } });
   });
 
   function step(by: number) {
