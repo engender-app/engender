@@ -23,20 +23,20 @@ describe('Sheet initial focus contract', () => {
   });
 
   it('passes preventScroll: true on initial focus and tab trap invocations', () => {
-    expect(sheetFile).toContain('(field ?? node).focus({ preventScroll: true })');
+    expect(sheetFile).toContain('(firstFocusable(node) ?? node).focus({ preventScroll: true })');
     expect(overlayLockFile).toContain('target.focus({ preventScroll: true })');
   });
 
   it('intercepts tab navigation before introend settles', () => {
-    expect(overlayLockFile).toContain('!container.contains(document.activeElement)');
+    expect(overlayLockFile).toContain('owningRegion === -1');
   });
 
-  it('still reaches the lock and the trap from the sheet itself', () => {
+  it('still reaches the lock and shared overlay owner from the sheet itself', () => {
     // The two above are only Sheet's guarantees while Sheet is still wired
     // to the module that carries them.
     expect(sheetFile).toContain("from './overlayLock'");
     expect(sheetFile).toContain('lockBackground');
-    expect(sheetFile).toContain('trapFocus(sheetEl, e)');
+    expect(sheetFile).toContain('registerOverlay(node, { dismiss: close })');
   });
 });
 
