@@ -13,6 +13,7 @@
      (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
      sure I still have it". */
   import { m } from '$lib/paraglide/messages';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { journalDataKey } from '$lib/stores/boot.svelte';
@@ -29,6 +30,7 @@
       Held in one place and never written anywhere else. */
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
+  let pendingDeparture = $state<(() => void) | null>(null);
   let busy = $state(false);
 
   /* Only the Android path marks the clip sensitive and takes it back, so
@@ -87,6 +89,25 @@
       toast(m.rk_failed());
     }
   }
+
+  function leaveShownKey() {
+    const leave = pendingDeparture;
+    pendingDeparture = null;
+    shown = null;
+    leave?.();
+  }
+
+  beforeNavigate((navigation) => {
+    if (shown === null) return;
+    navigation.cancel();
+    // An unload gets the browser's own confirmation because a sheet cannot
+    // wait across a reload, closed tab or external navigation.
+    if (navigation.willUnload || pendingDeparture) return;
+    pendingDeparture = () => {
+      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
+      else if (navigation.to) void goto(navigation.to.url);
+    };
+  });
 </script>
 
 <div class="screen">
@@ -119,6 +140,7 @@
           type="button"
           data-recovery-key-done
           onclick={() => {
+            pendingDeparture = null;
             shown = null;
             toast(m.rk_made_toast());
           }}>{m.rk_done()}</button
@@ -178,6 +200,27 @@
   {/if}
 </Sheet>
 
+<Sheet
+  open={pendingDeparture !== null}
+  title={m.rk_leave_title()}
+  onClose={() => (pendingDeparture = null)}
+>
+  <p class="ob-text">{m.rk_leave_body()}</p>
+  <div class="rk-departure-actions">
+    <button
+      class="btn btn-primary"
+      type="button"
+      data-keep-writing-recovery-key
+      onclick={() => (pendingDeparture = null)}
+    >
+      {m.rk_keep_writing()}
+    </button>
+    <button class="btn btn-danger" type="button" data-leave-recovery-key onclick={leaveShownKey}>
+      {m.rk_leave()}
+    </button>
+  </div>
+</Sheet>
+
 <style>
   /* Single-consumer classes live with their consumer (scripts/check-screens-classes.mjs). */
   .rk-shown-title {
@@ -218,5 +261,11 @@
     font-size: var(--text-sm);
     line-height: 1.5;
     margin: 0 0 var(--space-4);
+  }
+
+  .rk-departure-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 </style>
