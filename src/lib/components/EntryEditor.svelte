@@ -76,8 +76,8 @@
     /** The appointment this new entry debriefs, by id (phase 6 ticket 08,
         rekeyed from a date by ticket 58), arriving as a query param the
         same way `seedMood` does. Applies the hidden `appointment_debrief`
-        template once on mount and, once the entry is first saved, links it
-        back to the appointment (`recordDebriefEntry`) - never on an edit
+        template once on mount and links the saved entry back to the
+        appointment in the same transaction - never on an edit
         of an existing entry, the same "creation aid, not an editing one"
         rule the prompt and the template sheet already follow. */
     debriefForAppointment?: string;
@@ -151,14 +151,14 @@
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
      `existing` and kept in its own local state rather than `entryDraft`:
-     starring is its own mutation (entries.ts, setEntryStarred), never part
-     of a content save, and `loaded`'s deliberately empty table list (see
+     starring an existing entry is its own mutation (setEntryStarred), and
+     `loaded`'s deliberately empty table list (see
      above) means it will not refresh itself from elsewhere either.
 
      A new entry has no id to write `setEntryStarred` against yet, so
      toggling one before the first save only flips this local flag - ticket
-     18's "starred before it is saved". `saveEntry` below applies it once
-     `upsertEntry` has handed back an id. An existing entry keeps writing
+     18's "starred before it is saved". The journal includes that flag in
+     the creation transaction. An existing entry keeps writing
      immediately, the same as it always has. */
   let starred = $state(false);
 
@@ -235,6 +235,7 @@
   }
 
   $effect(() => {
+    if (entryDraft.savedId !== undefined) return;
     const snapshot = serializeDraft(entryDraft);
     if (!mirrorRead) return;
     void draftStore.write(snapshot);
@@ -717,8 +718,28 @@
   });
 
   let moodMissing = $derived(entryDraft.mood == null);
+  let savedDestination = $state('/');
+  let navigationFailed = $state(false);
+  let savedContinue = $state<HTMLAnchorElement>();
+
+  async function leaveSavedEntry() {
+    try {
+      await goto(savedDestination);
+      return true;
+    } catch (error) {
+      console.error('could not navigate after saving the entry', error);
+      navigationFailed = true;
+      await tick();
+      savedContinue?.focus();
+      return false;
+    }
+  }
 
   async function saveEntry() {
+    if (entryDraft.savedId !== undefined) {
+      await leaveSavedEntry();
+      return;
+    }
     /* The requirement is on the button's own label while it is unmet
        ("Pick a mood to save"), so a tap here fires no toast: it hands the
        focus to the faces, which are on the same bar, and that is the whole
@@ -730,53 +751,25 @@
     }
     if (saving) return; // a second tap while the worker is writing
     saving = true;
+    const moodOnly = entryDraft.hasMoodOnlyContent;
+    const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
+    let id: number;
     try {
-      const id = await journal.entries.upsertEntry(entryDraft.toUpsert());
-      /* A star set before this entry ever had an id (ticket 18): there was
-         nothing for `toggleStarred` to write against yet, so it only
-         flipped the local flag, and this is that flag's first chance to
-         land. An existing entry never reaches here still starred-but-
-         unwritten - `toggleStarred` already wrote it the moment it was
-         pressed - so this is a no-op for every save but a new one's. */
-      if (entryId == null && starred) {
-        await journal.entries.setEntryStarred(id, true);
-      }
-      /* Ticket 16 (phase 8 deepening): the mirror's job is to survive an
-         *unsaved* draft. Once the write has landed there is nothing left to
-         restore, so clearing only on unmount (below) left a killed process
-         between here and there holding a mirror whose removedPhotoIds/
-         removedRecordingIds/removedVideoIds already named rows this save
-         just deleted - reapplied on resume, a re-save with no further edits
-         then threw `unknown photo: ${id}` (entries.ts, ADR-0053). */
-      draftStore.clear();
-      if (entryId == null && debriefForAppointment != null) {
-        await journal.checklists.recordDebriefEntry(id, debriefForAppointment);
-      }
-      /* A quick log (seedMood set) that is still mood-only at save time
-         offers to fill in the active preset's scales too, right on Home
-         (ticket 13, beta B2) - the entry id travels there as a query param
-         since the save already navigates there, the way `seedMood` and
-         `celebrate` also arrive as query params (though those are read
-         directly; this one is consumed once and stripped from the URL by
-         +page.svelte, since the sheet must not reopen on a reload or the
-         back button). Offering that sheet replaces the "Add details" nudge
-         below rather than stacking alongside it - both are the same kind of
-         post-save suggestion, and showing both would ask for the same thing
-         twice. */
-      const offerDims = seedMood != null && entryDraft.hasMoodOnlyContent && vocabulary.activeDimensions.length > 0;
-      await goto(offerDims ? `/?quickLogDims=${id}` : '/');
-      if (offerDims) {
-        toast(m.saved(), { kind: 'saved' });
-      } else if (prefs.entryNudges && entryDraft.hasMoodOnlyContent) {
-        toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
-      } else {
-        toast(m.saved(), { kind: 'saved' });
-      }
+      id = await entryDraft.save(journal.entries, { starred, debriefForAppointment });
     } catch (error) {
       console.error('could not save the entry', error);
       toast(m.entry_save_failed());
+      return;
     } finally {
       saving = false;
+    }
+    draftStore.clear();
+    savedDestination = offerDims ? `/?quickLogDims=${id}` : '/';
+    if (!await leaveSavedEntry()) return;
+    if (!offerDims && prefs.entryNudges && moodOnly) {
+      toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
+    } else {
+      toast(m.saved(), { kind: 'saved' });
     }
   }
 
@@ -820,7 +813,7 @@
     back={existing ? `/day/${day}` : '/'}
   >
     {#snippet actions()}
-      {#if existing}
+      {#if existing && entryDraft.savedId === undefined}
         <!-- The star left this header for the save bar (ticket 18): a new
              entry can be starred before it exists, which this header
              cannot offer since it is only drawn `{#if existing}`. -->
@@ -850,6 +843,19 @@
     {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
   </p>
 
+  {#if entryDraft.savedId !== undefined}
+    <Notice
+      key="entry-saved"
+      data-entry-saved
+      {role}
+      title={m.saved()}
+      text={navigationFailed ? m.entry_saved_navigation_failed() : undefined}
+      aria-live="polite"
+    />
+    <a class="btn btn-primary" href={savedDestination} data-entry-saved-continue bind:this={savedContinue}>
+      <span>{m.entry_saved_continue()}</span>
+    </a>
+  {:else}
   {#if prompt && !promptDismissed}
     <Notice
       icon="sparkle"
@@ -1369,6 +1375,7 @@
         aria-label={starred ? m.unstar_entry() : m.star_entry()}
         aria-pressed={starred}
         data-save-star
+        disabled={saving || entryDraft.savedId !== undefined}
         onclick={toggleStarred}
       >
         <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
@@ -1380,13 +1387,14 @@
         class:is-unmet={moodMissing}
         data-save
         data-save-unmet={moodMissing ? 'mood' : undefined}
-        disabled={saving}
+        disabled={saving || entryDraft.savedId !== undefined}
         onclick={saveEntry}
       >
         <span>{moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
     </div>
   </SaveBar>
+  {/if}
   {/if}
 
   <Sheet bind:open={templateSheetOpen} title={m.use_template()}>

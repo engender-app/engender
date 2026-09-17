@@ -51,6 +51,9 @@ import { refreshActiveFlag } from '../../src/lib/theme/activeFlag.svelte.ts';
 import EntryEditor from '../../src/lib/components/EntryEditor.svelte';
 import { mountInto, publishFixture } from './mount.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
+import { failNextNavigation } from './app-navigation-stub.ts';
+import { toasts } from '../../src/lib/stores/toasts.svelte.ts';
+import { m } from '../../src/lib/paraglide/messages.js';
 
 import '../../src/lib/theme/fonts.css';
 import '../../src/lib/theme/base.css';
@@ -126,17 +129,48 @@ async function applyAndSave(journal: Journal, epochDay: number, templateIds: str
 
     const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
     save.click();
-    /* Waited out on the screen's own `saving` flag rather than by polling
+    /* Waited out on the screen's committed state rather than by polling
        the journal for the entry. A read issued while the save's transaction
        is open goes into the same driver's statement queue and runs *inside*
        it, so a poll can land between the entry row and its tag and dimension
        rows and come back with an entry that has neither - which is exactly
        what this check would then report as a template that applied nothing. */
-    await until(() => (save.disabled ? null : true), 'the save to finish');
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
     const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
     return { tags: entry.tags, dims: entry.dims, note: entry.note, presentationId: entry.presentationId };
   } finally {
     await screen.remove();
+  }
+}
+
+async function saveWithNavigationFailure(journal: Journal) {
+  const epochDay = 19_003;
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: 'visit-1' }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
+    const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
+    failNextNavigation();
+    save.click();
+    const notice = await until(() => {
+      const notice = target.querySelector('[data-entry-saved]');
+      return notice?.textContent?.includes(m.entry_saved_navigation_failed()) ? notice : null;
+    }, 'saved entry navigation recovery');
+    await until(() => target.querySelector('[data-save]') ? null : true, 'the saved editor to leave');
+    const entries = await journal.entries.entriesForDay(epochDay);
+    return {
+      entryCount: entries.length,
+      starred: entries[0].starred,
+      debriefLinked: await journal.checklists.getDebriefEntryId('visit-1') === entries[0].id,
+      truthfulNotice: notice.textContent!.includes(m.saved()),
+      saveOffered: target.querySelector('[data-save]') !== null,
+      saveFailureReported: toasts.some((item) => item.message === m.entry_save_failed()),
+      recoveryHref: target.querySelector('[data-entry-saved-continue]')?.getAttribute('href')
+    };
+  } catch (error) {
+    await screen.remove();
+    throw error;
   }
 }
 
@@ -195,6 +229,7 @@ async function run() {
     onBlank: await applyAndSave(journal, BLANK_DAY, [template.id]),
     overAFilledDraft: await applyAndSave(journal, OVER_A_FILLED_DRAFT_DAY, [groundwork.id, template.id]),
     namingWhatIsHidden: await applyAndSave(journal, HIDDEN_DAY, [hiddenTemplate.id]),
+    navigationFailure: await saveWithNavigationFailure(journal),
     shownPresentationId: shown.id,
     hiddenPresentationId: concealed.id
   };

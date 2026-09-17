@@ -15,6 +15,7 @@ import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
 import type { EntrySection } from './entrySections';
 import type { Entry, EntryTemplate } from './types';
 import type {
+  EntriesArea,
   EntryCycleEventInput,
   EntryDoseLogInput,
   EntryEffectMarkerInput,
@@ -28,6 +29,8 @@ import type { EditorRecording } from '$lib/stores/voiceRecording';
 import type { EditorVideo } from '$lib/stores/videoRecording';
 
 export interface EntryDraft {
+  /** A committed draft is consumed. Further save attempts return this id. */
+  savedId: number | undefined;
   /** The entry being edited, unset for a new one. `toUpsert()` reads this
       so the caller need not carry it alongside the draft. */
   id: number | undefined;
@@ -108,6 +111,7 @@ export interface EntryDraft {
   /** The exact upsertEntry payload for the draft as it stands, including the
       photo, recording and video-note attach and remove lists. */
   toUpsert(): EntryInput;
+  save(entries: Pick<EntriesArea, 'upsertEntry'>, creation?: Pick<EntryInput, 'starred' | 'debriefForAppointment'>): Promise<number>;
 }
 
 /** A blank draft for `epochDay`, or one hydrated from `existing` - the
@@ -122,6 +126,7 @@ function loggedRegionCount(bodyRegions: Record<string, number>): number {
 
 export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: number | null): EntryDraft {
   return {
+    savedId: undefined,
     id: existing?.id,
     epochDay: existing?.epochDay ?? epochDay,
     timestamp: existing?.timestamp ?? 0,
@@ -268,7 +273,27 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.openSection = section;
     },
 
+    async save(entries, creation) {
+      if (this.savedId !== undefined) return this.savedId;
+      const id = await entries.upsertEntry({ ...this.toUpsert(), ...creation });
+      this.savedId = id;
+      this.id = id;
+      this.photos = [];
+      this.recordings = [];
+      this.videos = [];
+      this.removedPhotoIds = [];
+      this.removedRecordingIds = [];
+      this.removedVideoIds = [];
+      this.tryoutFeltSense = null;
+      this.doseLog = null;
+      this.procedureRecovery = null;
+      this.effectMarker = null;
+      this.cycleEvent = null;
+      return id;
+    },
+
     toUpsert() {
+      if (this.savedId !== undefined) throw new Error('entry draft already saved');
       const payload: EntryInput = {
         id: this.id,
         epochDay: this.epochDay,

@@ -301,8 +301,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   entries: classify<Journal['entries']>()({
     writes: {
       // Photos, recordings and video notes as well as the entry: a save
-      // carries additions and removals of all three.
-      upsertEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
+      // carries additions and removals of all three, plus a debrief link.
+      upsertEntry: ['entry', 'photo', 'voiceRecording', 'videoNote', 'checklist'],
       // Trashes the entry rather than removing it (phase 5 ticket 19), but
       // still takes it out of every other read here, the same as before.
       deleteEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
