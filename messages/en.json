@@ -307,6 +307,8 @@
   "hub_screen_title": "Health, steps, support and media",
   "hub_search_placeholder": "Search what you track",
   "hub_search_clear": "Clear the search",
+  "hub_search_handoff": "Search your journal for “{query}”",
+  "hub_search_handoff_sub": "Filters, dates and day cards live there",
   "hub_line_today": "Logged today",
   "hub_line_last": "Last logged {gap} ago",
   "hub_line_quiet": "Nothing logged for {gap}",

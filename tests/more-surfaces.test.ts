@@ -34,13 +34,17 @@ describe('what the More hub is built from', () => {
     expect(markup).toMatch(/<ScreenHeader\s[^>]*titleHidden/);
   });
 
-  it('draws its rows from two templated ListRows, the grouped one and the searched one', () => {
-    /* Two, since redesign ticket 15: the row the grouped index draws and the
-       row a search match draws. The Settings row that used to be the second
-       one is gone (the assertion below), and the record hits' row is not
-       self-closing - it carries a trailing snippet for the hit's date. */
+  it('draws its rows from three templated ListRows, the grouped one, the searched one and the handoff', () => {
+    /* Two since redesign ticket 15 - the row the grouped index draws and the
+       row a search match draws - and a third since audit item 11, the one
+       row that carries a record query to the search screen. The Settings row
+       that used to be the second one is gone (the assertion below), and the
+       record hits' row is not self-closing: it carries a trailing snippet
+       for the hit's date. */
     const rowTags = markup.match(/<ListRow\b[^>]*\/>/gs) ?? [];
-    expect(rowTags.length).toBe(2);
+    expect(rowTags.length).toBe(3);
+    expect(markup).toContain('data-hub-search-handoff');
+    expect(markup).toContain('/search?q=');
   });
 
   it('holds no Settings row and no pointer to preferences (redesign tickets 09 and 15)', () => {
@@ -133,16 +137,19 @@ describe('what the More hub is built from', () => {
     /* A title or a line written inline here is one `hubLabels.ts`'s full
        `Record` over the row keys cannot see missing. So every `m.` call left
        in the screen is named, and none of them is a row's own words: the
-       hidden screen title, the search box's own label, and the five strings
-       the results share with the search screen, which reads the same
-       registry (redesign ticket 15). */
+       hidden screen title, the search box's own label, the strings the
+       results share with the search screen, which reads the same registry
+       (redesign ticket 15), and the row that hands a record query over to
+       that screen (audit item 11). `m.list_more` went with the paging
+       button the same item deleted. */
     const paraglide = [...new Set(more.match(/\bm\.[a-z_]+\(/g) ?? [])];
 
     expect(paraglide.sort()).toEqual([
       'm.hub_screen_title(',
       'm.hub_search_clear(',
+      'm.hub_search_handoff(',
+      'm.hub_search_handoff_sub(',
       'm.hub_search_placeholder(',
-      'm.list_more(',
       'm.no_results(',
       'm.no_results_body(',
       'm.results_count(',
