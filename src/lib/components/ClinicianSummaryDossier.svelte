@@ -333,7 +333,7 @@
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>{rd.route}</td>
-                  <td class="num">{m.exposure_days_count({ days: String(rd.days) })}</td>
+                  <td class="num">{m.exposure_medication_days_count({ days: String(rd.days) })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -342,6 +342,9 @@
         {#if overflowCount(dossier.exposure.routeDays) > 0}
           {@render truncateNote(overflowCount(dossier.exposure.routeDays))}
         {/if}
+        <p class="dossier-footnote" data-dossier-route-days-note>
+          {m.exposure_route_days_note()}
+        </p>
       {/if}
 
       {#if dossier.exposure.regimenDays.length}
@@ -362,7 +365,7 @@
                   <td><strong>{regd.drug}</strong></td>
                   <td class="num">{regd.dose} {regd.doseUnit}</td>
                   <td>{regd.route}</td>
-                  <td class="num">{m.exposure_days_count({ days: String(regd.days) })}</td>
+                  <td class="num">{m.exposure_medication_days_count({ days: String(regd.days) })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -371,6 +374,9 @@
         {#if overflowCount(dossier.exposure.regimenDays) > 0}
           {@render truncateNote(overflowCount(dossier.exposure.regimenDays))}
         {/if}
+        <p class="dossier-footnote" data-dossier-regimen-days-note>
+          {m.exposure_regimen_days_note()}
+        </p>
       {/if}
     </section>
   {/if}

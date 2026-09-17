@@ -66,3 +66,17 @@ test('a dose change to a new episode on the same route still folds into one rout
   assert.deepEqual(counters.routeDays, [{ route: 'im', days: 20 }]);
   assert.equal(counters.regimenDays.length, 2);
 });
+
+test('two concurrent medications over 90 days produce 90 days each (summed 180 medication-days)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate', route: 'oral', endEpochDay: 19089 });
+  await episode(journal, 19000, { drug: 'spironolactone', route: 'oral', dose: 100, endEpochDay: 19089 });
+
+  const counters = await journal.exposure.getCounters(19000, 19089);
+
+  // 90 calendar days total, but two concurrent oral episodes produce 180 oral days in routeDays
+  assert.deepEqual(counters.routeDays, [{ route: 'oral', days: 180 }]);
+  assert.equal(counters.regimenDays.length, 2);
+  assert.equal(counters.regimenDays[0].days, 90);
+  assert.equal(counters.regimenDays[1].days, 90);
+});
