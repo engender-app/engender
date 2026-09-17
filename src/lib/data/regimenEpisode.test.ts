@@ -7,9 +7,10 @@ import {
   attributeDrug,
   drugSpans,
   earliestEpisode,
+  expectedDosesOnDay,
   nearestActiveEpisode
 } from './regimenEpisode.ts';
-import type { DoseEvent, DosePause, DoseSchedule } from './types.ts';
+import type { DoseEvent, DosePause, DoseSchedule, DoseScheduleAmount } from './types.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (
@@ -305,4 +306,71 @@ test("nearestActiveEpisode scopes a pause to its own episode - one episode's pau
      1) - e2's today is untouched by a pause that isn't its own, so it stays
      open (distance 0) and wins outright, not a tie. */
   assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [e1PausedToday], [], 200, 30), e2);
+});
+
+/* expectedDosesOnDay: what a schedule expects on one day, with the episode
+   named (phase 11 ticket 20, audit item 12). */
+
+const everyThirdDay = (episodeId: string, dosesPerDay = 1, amounts: DoseScheduleAmount[] | null = null): DoseSchedule => ({
+  id: `s-${episodeId}`,
+  episodeId,
+  recurrence: { kind: 'everyNDays', everyNDays: 3 },
+  dosesPerDay,
+  doseAmounts: amounts,
+  autoLogFromEpochDay: null
+});
+
+test('expectedDosesOnDay names the drug and the amount the schedule expects that day', () => {
+  const e1 = episode('e1', 200, null, 'estradiol valerate');
+  const schedules = [everyThirdDay('e1', 1, [{ dose: 2, doseUnit: 'mg' }])];
+
+  assert.deepEqual(expectedDosesOnDay([e1], schedules, [], 203), [
+    { episodeId: 'e1', drug: 'estradiol valerate', amount: { dose: 2, doseUnit: 'mg' }, indexInDay: 0, dosesPerDay: 1 }
+  ]);
+  // A day the schedule does not reach says nothing rather than guessing.
+  assert.deepEqual(expectedDosesOnDay([e1], schedules, [], 204), []);
+});
+
+test('expectedDosesOnDay says nothing for a daily schedule, the way a mark does not', () => {
+  /* ADR-0067's own rule, restated for the day view: a slot on every day is
+     wallpaper, and listing one here would disagree with the calendar cell
+     that carries no mark. */
+  const e1 = episode('e1', 200, null, 'estradiol');
+  assert.deepEqual(expectedDosesOnDay([e1], [daily('e1')], [], 203), []);
+});
+
+test('expectedDosesOnDay drops a day one of that episode own pauses covers, and only that episode', () => {
+  const e1 = episode('e1', 200, null, 'estradiol');
+  const e2 = episode('e2', 200, null, 'spironolactone');
+  const schedules = [everyThirdDay('e1'), everyThirdDay('e2')];
+  const pause: DosePause = { id: 'p1', episodeId: 'e1', startEpochDay: 202, endEpochDay: 204, reason: 'planned' };
+
+  assert.deepEqual(
+    expectedDosesOnDay([e1, e2], schedules, [pause], 203).map((dose) => dose.episodeId),
+    ['e2']
+  );
+});
+
+test('expectedDosesOnDay carries every slot of a twice-daily schedule, numbered', () => {
+  const e1 = episode('e1', 200, null, 'estradiol');
+  const schedules = [everyThirdDay('e1', 2, [{ dose: 2, doseUnit: 'mg' }, { dose: 1, doseUnit: 'mg' }])];
+
+  assert.deepEqual(
+    expectedDosesOnDay([e1], schedules, [], 203).map((dose) => [dose.indexInDay, dose.dosesPerDay, dose.amount?.dose]),
+    [
+      [0, 2, 2],
+      [1, 2, 1]
+    ]
+  );
+});
+
+test('expectedDosesOnDay reads the day itself, so an episode starting later still expects its doses', () => {
+  /* The day view describes a day, not today: an episode that has not begun
+     yet expects nothing now and something then. */
+  const later = episode('later', 300, null, 'progesterone');
+  assert.deepEqual(expectedDosesOnDay([later], [everyThirdDay('later')], [], 250), []);
+  assert.deepEqual(
+    expectedDosesOnDay([later], [everyThirdDay('later')], [], 303).map((dose) => dose.drug),
+    ['progesterone']
+  );
 });
