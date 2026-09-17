@@ -164,12 +164,18 @@ describe('what the door and its groups are called', () => {
     expect(catalogue('pl').hub_group_transition).toBe('Kroki');
   });
 
-  it("names the same five groups in the hidden screen title, which is what the title is for", () => {
+  it("names the same four groups in the hidden screen title, which is what the title is for", () => {
     /* `hubRows.ts` says this string goes stale the moment a group is added,
        renamed or reordered. The rename is exactly that moment. */
-    expect(catalogue('en').hub_screen_title).toBe('Body, health, steps, support and media');
-    expect(catalogue('pl').hub_screen_title).toBe('Ciało, zdrowie, kroki, wsparcie i media');
-    expect(HUB_GROUP_KEYS).toHaveLength(5);
+    expect(catalogue('en').hub_screen_title).toBe('Health, steps, support and media');
+    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, kroki, wsparcie i media');
+    expect(HUB_GROUP_KEYS).toHaveLength(4);
+
+    // The folded group's own heading goes with it, in both catalogues
+    // (audit item 10) - a string nothing renders is a string that goes
+    // stale where nobody sees it.
+    expect(catalogue('en').hub_group_body).toBeUndefined();
+    expect(catalogue('pl').hub_group_body).toBeUndefined();
   });
 
   it('keeps no string for the Settings row that left the door', () => {
@@ -233,9 +239,14 @@ describe('every row the hub carries', () => {
      browser is a fourth tab on the voice screen now rather than a screen of
      its own, `/media/voice/memos` redirects there, and `voice-benchmark`'s
      own href drops `?tab=record` since that is already the screen's
-     default tab. Nineteen rows now. */
+     default tab. Nineteen rows now.
+
+     Audit item 10 folded the `body` group into `health`: it was one row
+     under a heading, and the row is what says what it is about. Nothing
+     about the row itself moved - the same key, icon and address - so this
+     table changes in one column. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
-    ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
+    ['measurements', 'ruler', '/body/measurements', 'health', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['appointments', 'check', '/health/appointments', 'health', 'read'],

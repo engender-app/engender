@@ -151,7 +151,7 @@
      here rather than in `hubSections` itself, which the More hub still
      draws whole: this is a question about what to track, and the hub is
      navigation to everything regardless. */
-  const TRACKABLE_GROUPS = new Set<HubSection['key']>(['body', 'health', 'transition']);
+  const TRACKABLE_GROUPS = new Set<HubSection['key']>(['health', 'transition']);
   const today = todayEpochDay();
   let sections = $derived(
     hubSections({ todayEpochDay: today, lastWrites: {}, states: {}, forward: {} }).filter((section) =>
