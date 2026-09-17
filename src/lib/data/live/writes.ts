@@ -867,6 +867,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // joined to it (doses.ts), so ending an episode changes what they answer.
     reads: {
       getDoses: ['dose'],
+      getDoseById: ['dose'],
+      hasDosesBefore: ['dose'],
       getSchedules: ['dose', 'regimen'],
       getPauses: ['dose', 'regimen'],
       // The comparison reads the episode history as well: which episode is in

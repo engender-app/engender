@@ -142,6 +142,16 @@ export interface DosesArea {
       because every caller has a range: the log shows recent doses, the
       adherence view a schedule's window. */
   getDoses(fromEpochDay: number, toEpochDay: number): Promise<DoseEvent[]>;
+  /** A single dose by its travelling uuid, or null if none exists
+      (phase 11 ticket 18). The dose log screen uses this to resolve a
+      deep link that lands outside the initial 90-day window: the
+      timestamp tells it how far back to extend the range, without
+      loading the whole history to find out. */
+  getDoseById(id: string): Promise<DoseEvent | null>;
+  /** Whether any dose exists with a timestamp earlier than
+      `fromEpochDay`'s start of day (phase 11 ticket 18). Used by the
+      dose log to decide whether to offer the Earlier control. */
+  hasDosesBefore(fromEpochDay: number): Promise<boolean>;
   /** Returns the dose's id. Updating an unknown id throws. */
   upsertDose(input: DoseEventInput): Promise<string>;
   /** A dose is a logged event like a lab result, so it deletes rather than
@@ -376,6 +386,22 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         [startOfDayTimestamp(fromEpochDay), startOfDayTimestamp(toEpochDay + 1)]
       );
       return rows.map(toDoseEvent);
+    },
+
+    async getDoseById(id) {
+      const rows = await driver.query<DoseRow>(
+        `SELECT ${DOSE_COLUMNS} FROM dose_event WHERE uuid = ?`,
+        [id]
+      );
+      return rows.length > 0 ? toDoseEvent(rows[0]) : null;
+    },
+
+    async hasDosesBefore(fromEpochDay) {
+      const rows = await driver.query<{ c: number }>(
+        'SELECT 1 AS c FROM dose_event WHERE timestamp < ? LIMIT 1',
+        [startOfDayTimestamp(fromEpochDay)]
+      );
+      return rows.length > 0;
     },
 
     async countConsumingDosesByDrug(ranges) {
