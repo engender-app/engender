@@ -36,6 +36,7 @@ type DetailDraft<TRecord, TDraft> = {
   readonly loading: boolean;
   /** True when that read rejected. */
   readonly failed: boolean;
+  retry(): void;
   /** A read that needs this record to run at all - the entries inside a
       tryout's date range. It is only called once there is a record, and it
       is `loading` until the answer on hand was read for the id on the
@@ -94,6 +95,7 @@ export function detailDraft<TRecord, TDraft extends object>(
     get failed() {
       return query.failed;
     },
+    retry: () => query.retry(),
     readingRecord<V>(read: (journal: Journal, record: TRecord) => Promise<V>): LiveQuery<V> {
       /* Tagged with the id it was read for, the same way the record's own
          read above is. `null` is a run that had no record yet and so asked

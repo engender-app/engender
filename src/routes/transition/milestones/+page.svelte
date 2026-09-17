@@ -30,7 +30,7 @@
      is a redirect to here now. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
-  import { goto } from '$app/navigation';
+  import { goto, afterNavigate } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
@@ -176,8 +176,20 @@
     record.openEditor(existing);
   }
 
-  let sourceId = $derived(page.url.searchParams.get('edit'));
+  let restoredId = $state<string | null>(null);
+  export const snapshot = {
+    capture: () => record.editor?.id ?? null,
+    restore: (id: string | null) => { restoredId = id; }
+  };
+  afterNavigate(({ type }) => { if (type !== 'popstate') restoredId = null; });
+  let sourceId = $derived(restoredId ?? page.url.searchParams.get('edit'));
   let sourceMilestone = $derived(sorted.find((mi) => mi.id === sourceId));
+
+  function milestoneOriginHref(href: string, id: string): string {
+    const source = new URL(page.url);
+    source.searchParams.set('edit', id);
+    return withSourceReturn(href, source);
+  }
 
   /* A milestone shows at most one photo, so its "list" is that one slot or
      none - the same shape a stored photo's own id would have, whether it
@@ -395,7 +407,7 @@
           icon="sparkle"
           key="milestone-provenance"
           text={editingOrigin.text}
-          action={editingOrigin.href ? { label: m.prov_open_source(), href: withSourceReturn(editingOrigin.href, page.url) } : undefined}
+          action={editingOrigin.href ? { label: m.prov_open_source(), href: milestoneOriginHref(editingOrigin.href, editor.id!) } : undefined}
         />
       {/if}
       <Field label={m.ms_name_label()} id="ms-name">
