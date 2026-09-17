@@ -81,10 +81,10 @@
      they are compared against, and what fell outside either. */
   const SECTION_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
-  /** How far back the log and the comparison look. A window rather than the
-      whole history because both reads are per-day and a journal years deep
-      has no screen that shows all of it at once. */
+  /** How far back the log and the comparison look. Initial window is 90
+      days, extendable via Earlier or deep link (phase 11 ticket 18). */
   const WINDOW_DAYS = 90;
+  let windowDays = $state(WINDOW_DAYS);
   /** How far nearestActiveEpisode may search either side of today for a
       schedule's nearest open slot (ticket 40) - a different question from
       WINDOW_DAYS above (how much history the log and comparison show), not
@@ -93,10 +93,13 @@
       would find a "nearest" slot the page has no doses to check against. */
   const NEAREST_SLOT_RADIUS_DAYS = WINDOW_DAYS;
   const today = todayEpochDay();
-  const from = today - WINDOW_DAYS;
+  let from = $derived(today - windowDays);
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let dosesQuery = liveList((j) => j.doses.getDoses(from, today));
+  let hasOlderDosesQuery = liveQuery((j) => j.doses.hasDosesBefore(from));
+  let hasOlderDoses = $derived(hasOlderDosesQuery.value ?? false);
+
   /** Read separately from the windowed `dosesQuery` above (ticket 10): a
       rotation site's last use routinely predates the log's 90-day window,
       and "never used" has to mean never, not merely not in that window. */
@@ -111,7 +114,36 @@
   let doses = $derived(dosesQuery.rows);
   let schedules = $derived(schedulesQuery.rows);
   let pauses = $derived(pausesQuery.rows);
-  let loading = $derived(episodesQuery.loading || dosesQuery.loading);
+
+  /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18):
+     resolve the dose by its UUID directly so a dose outside the initial
+     90 days can be reached by expanding the window to contain it, and a
+     missing or deleted dose can show an explicit unavailable notice
+     instead of scrolling to an unrelated recent row. */
+  const deepLinkedDoseId = hashRowId();
+  let deepLinkedDoseQuery = liveQuery((j) =>
+    deepLinkedDoseId ? j.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
+  );
+
+  let deepLinkedDoseUnavailable = $derived(
+    Boolean(deepLinkedDoseId && !deepLinkedDoseQuery.loading && !deepLinkedDoseQuery.value)
+  );
+
+  $effect(() => {
+    const dose = deepLinkedDoseQuery.value;
+    if (dose) {
+      const doseEpochDay = epochDayFromTimestamp(dose.timestamp);
+      const daysAgo = today - doseEpochDay;
+      if (daysAgo > windowDays) {
+        const needed = Math.max(WINDOW_DAYS, Math.ceil(daysAgo / WINDOW_DAYS) * WINDOW_DAYS);
+        windowDays = needed;
+      }
+    }
+  });
+
+  let loading = $derived(
+    episodesQuery.loading || dosesQuery.loading || (Boolean(deepLinkedDoseId) && deepLinkedDoseQuery.loading)
+  );
 
   /* Newest first, each row carrying the episode it was attributed to. Derived
      rather than resolved in the row: `attributeDose` was called per rendered
@@ -121,16 +153,13 @@
     [...doses].reverse().map((dose) => ({ dose, attribution: attributeDose(episodes, dose) }))
   );
 
-  /* The clinician summary links a dose across a hash (phase 8 features
-     ticket 67) - read once, the same "one visit to one screen" rule
-     BatchedList's own `path` follows, since a hash arriving mid-visit would
-     mean a fresh navigation had already replaced this component. Resolved to
-     a position in `logRows` because that is what BatchedList's `focusIndex`
-     wants: the same array the list slices from, not the id itself. */
-  const deepLinkedDoseId = hashRowId();
   let deepLinkedDoseIndex = $derived(
     deepLinkedDoseId ? logRows.findIndex(({ dose }) => dose.id === deepLinkedDoseId) : -1
   );
+
+  function loadEarlier() {
+    windowDays += WINDOW_DAYS;
+  }
 
   let view = $state<'log' | 'schedule'>('log');
   /** The old intro, folded under the tab bar rather than printed over every
@@ -349,7 +378,13 @@
      all once the log batches (ticket 67) - this only has to wait for the
      layout scrollToHash's own settle loop already handles. */
   $effect(() => {
-    if (!loading && view === 'log') scrollToHash();
+    if (!loading && view === 'log' && !deepLinkedDoseUnavailable) {
+      if (deepLinkedDoseId) {
+        if (deepLinkedDoseIndex >= 0) scrollToHash();
+      } else {
+        scrollToHash();
+      }
+    }
   });
 
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
@@ -618,6 +653,17 @@
     await journal.doses.deleteDose(editor.id);
     editor = null;
   }
+  let returnHref = $derived.by(() => {
+    const lane = page.url.searchParams.get('lane');
+    const date = page.url.searchParams.get('date');
+    if (lane || date) {
+      const params = new URLSearchParams();
+      if (lane) params.set('lane', lane);
+      if (date) params.set('date', date);
+      return `/care?${params.toString()}`;
+    }
+    return '/more';
+  });
 </script>
 
 <div class="screen">
@@ -629,7 +675,7 @@
        exactly. The header goes back where there is something to go back to
        and takes the hub where there is not, which is the answer for a
        screen with two doors rather than a third hardcoded one. -->
-  <ScreenHeader title={m.doses()} back="/more">
+  <ScreenHeader title={m.doses()} back={returnHref}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
@@ -671,9 +717,20 @@
   {#if loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else if view === 'log'}
+    {#if deepLinkedDoseUnavailable}
+      <div class="screen-part" data-dose-unavailable>
+        <Notice
+          icon="info"
+          key="dose-unavailable"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
+          title={m.dose_unavailable_title()}
+          text={m.dose_unavailable_body()}
+        />
+      </div>
+    {/if}
     {#if doses.length}
       <div class="screen-part">
-        <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
+        <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
         <BatchedList
           items={logRows}
           key="doses"
@@ -700,7 +757,7 @@
                    sees between two rows, and the hairline rule matches
                    adjacent siblings (kit.css). -->
               {#key sourceNote}
-                <div class="rows-divide" out:crossfade>
+                <div class="rows-divide" class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
                 <ListRow
                   key={dose.id}
                   data-dose={dose.id}
@@ -773,6 +830,9 @@
             {/each}
           {/snippet}
         </BatchedList>
+        {#if hasOlderDoses}
+          {@render earlierControl()}
+        {/if}
       </div>
     {:else}
       <div class="screen-part">
@@ -784,8 +844,19 @@
           text={m.doses_empty_body()}
           action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
         />
+        {#if hasOlderDoses}
+          {@render earlierControl()}
+        {/if}
       </div>
     {/if}
+
+    {#snippet earlierControl()}
+      <div class="doses-earlier-wrap">
+        <button class="btn btn-soft doses-earlier" data-doses-earlier onclick={loadEarlier}>
+          <span>{m.doses_earlier()}</span>
+        </button>
+      </div>
+    {/snippet}
   {:else}
     {#if activeDrugChoices.length > 1}
       <!-- Only drawn while more than one regimen is active (ticket 15): with
@@ -1474,5 +1545,18 @@
     min-width: 6ch;
     max-width: 8ch;
     color: var(--text-2);
+  }
+
+  .rows-divide.is-target-dose {
+    background: var(--surface-2);
+    border-radius: var(--r-block);
+  }
+
+  .doses-earlier-wrap {
+    margin-top: var(--space-3);
+  }
+
+  .doses-earlier {
+    width: 100%;
   }
 </style>
