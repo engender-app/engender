@@ -443,6 +443,10 @@
   "skip": "Skip",
   "not_now": "Not now",
   "cancel": "Cancel",
+  "record_discard_title": "Discard unsaved changes?",
+  "record_discard_body": "Your changes have not been saved.",
+  "record_keep_editing": "Keep editing",
+  "record_save_failed": "Could not save. Your changes are still here. Try again.",
   "n_years": [
     {
       "declarations": [

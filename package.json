@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
     "test:sheet-focus": "VITE_DEMO=1 npm run build && node tests/sheet-focus-check.mjs",
+    "test:record-dismissal": "node tests/record-dismissal-check.mjs",
     "test:read-failures": "node tests/read-failures.mjs",
     "gallery:read-failures": "node tests/read-failures.mjs --gallery",
     "test:android": "node tests/android-tier/run.mjs",
