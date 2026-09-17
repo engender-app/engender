@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
+  import { sourceReturnTo } from '$lib/navigation/sourceRecord';
+  import { smartBack } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick } from 'svelte';
   import { goto } from '$app/navigation';
@@ -724,7 +728,9 @@
 
   async function leaveSavedEntry() {
     try {
-      await goto(savedDestination);
+      const returnTo = sourceReturnTo(page.url);
+      if (returnTo) smartBack(returnTo);
+      else await goto(savedDestination);
       return true;
     } catch (error) {
       console.error('could not navigate after saving the entry', error);
@@ -764,7 +770,7 @@
       saving = false;
     }
     draftStore.clear();
-    savedDestination = offerDims ? `/?quickLogDims=${id}` : '/';
+    savedDestination = sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
     if (!await leaveSavedEntry()) return;
     if (!offerDims && prefs.entryNudges && moodOnly) {
       toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
@@ -808,7 +814,7 @@
        as the href the header falls back to on a deep link or a reload
        (NAV-005, CARPET-05). -->
   <ScreenHeader
-    title={existing ? m.entry() : m.new_entry()}
+    title={entryId != null ? m.entry() : m.new_entry()}
     screen="entry"
     back={existing ? `/day/${day}` : '/'}
   >
@@ -839,6 +845,8 @@
       {/if}
     {/snippet}
   </ScreenHeader>
+  <SourceRecordHandoff id={entryId == null ? null : String(entryId)} ready={!loaded.loading && !loaded.failed} found={!!existing} />
+
   <p class="editor-date">
     {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
   </p>
@@ -871,12 +879,13 @@
     </button>
   {/if}
 
-  <!-- An existing entry has to arrive before the draft can hold it, so the
-       editor waits rather than showing an empty form that fills itself in
-       under the user's hands. A new entry has nothing to wait for. -->
+  <!-- Wait for the existing entry before showing its draft. -->
+  {#if loaded.failed}
+    <Notice title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
+  {/if}
   {#if loaded.loading}
     <Skeleton variant="block" count={3} />
-  {:else}
+  {:else if entryId == null || existing}
   <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
        mode, two sliders and thirty tag chips - about 1900px down on the
        audit's render - and the save was gated on the mood picker three

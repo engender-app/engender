@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { replaceRoute } from '$lib/navigation/smart-back';
+  import { page } from '$app/state';
+  import { withSourceReturn } from '$lib/navigation/sourceRecord';
   /* One document (phase 8 features ticket 52, ADR-0065).
 
      This is the only screen in the app that draws a document's page at all.
@@ -174,7 +177,9 @@
      line and keeps the export, which is the honest thing to offer for a
      file this app cannot draw. */
   let pages = $state<OpenPdf | null>(null);
-  let pageNumber = $state(1);
+  let requestedPage = $derived(Number(page.url.searchParams.get('page')));
+  let pageNumber = $derived(pages && Number.isSafeInteger(requestedPage) && requestedPage > 0
+    ? Math.min(requestedPage, pages.pageCount) : 1);
   let unreadable = $state(false);
 
   $effect(() => {
@@ -188,7 +193,6 @@
         if (stale) return open.close();
         opened = open;
         pages = open;
-        pageNumber = 1;
       },
       (error) => {
         if (stale) return;
@@ -319,7 +323,9 @@
     const next = pageNumber + by;
     if (next < 1 || next > pages.pageCount) return;
     turnedBy = by;
-    pageNumber = next;
+    const url = new URL(page.url);
+    url.searchParams.set('page', String(next));
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
   };
 
   const fileSize = (bytes: number): string =>
@@ -501,7 +507,7 @@
                 icon={DOCUMENT_TARGET_ICON[target!.kind]}
                 title={resolved.text}
                 subtitle={documentTargetKindLabel(target!.kind)}
-                href={resolved.href}
+                href={withSourceReturn(resolved.href, page.url)}
                 action={{
                   icon: 'pencil',
                   label: m.document_link_change(),

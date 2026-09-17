@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* One tryout, on the surface kit (phase 5 UX ticket 25).
 
      Four cards became four named areas, which is the call ticket 22 made
@@ -265,6 +266,9 @@
 
 <div class="screen">
   <ScreenHeader title={detail.isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/transition/tryouts" />
+  <SourceRecordHandoff id={detail.isNew ? null : detail.id} ready={!detail.loading && !detail.failed} found={!!detail.record} />
+
+  {#if detail.isNew || detail.record}
 
   <div>
     <Field label={m.tryout_kind_label()} legend>
@@ -478,4 +482,5 @@
     onConfirm={(options) => answerAdoptOffer('confirm', options)}
     onDismiss={() => void answerAdoptOffer('decline', null)}
   />
+  {/if}
 </div>

@@ -15,6 +15,7 @@ const photo = (id: string, source: LibraryPhoto['source'], epochDay: number): Li
   epochDay,
   source,
   ownerName: null,
+  ownerId: id,
   starred: false
 });
 

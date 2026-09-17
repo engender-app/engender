@@ -3937,5 +3937,10 @@
   "strip_day_state": "{day}: {state}",
   "dilation_nothing_expected": "Nothing expected",
   "strip_day_today_state": "Today, {state}",
-  "strip_week_nothing": "Nothing this week"
+  "strip_week_nothing": "Nothing this week",
+  "source_record_unavailable": "This record is unavailable",
+  "source_record_unavailable_hint": "It may have been deleted from this journal.",
+  "source_record_return": "Back to source",
+  "photo_open_owner": "Open record",
+  "photo_library_view": "View photo"
 }
