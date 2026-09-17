@@ -11,7 +11,7 @@
    the property every test here is checking. */
 
 import assert from 'node:assert/strict';
-import { strToU8, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync } from 'fflate';
 import { test } from 'vitest';
 import { openZip, ZipTooLargeError } from './zipReader.ts';
 
@@ -95,10 +95,65 @@ test('reading the same member twice bills the running total once, not twice', ()
   });
   const reader = openZip(bytes, 500);
 
-  assert.equal(reader.read('a.json')!.length, 200);
+  const first = reader.read('a.json')!;
+  assert.equal(first.length, 200);
   // Would be 200 + 200 + 200 = 600 > 500 if the first member were billed
   // again here - it must not be, so the real total (200 + 200 = 400)
   // stays under the ceiling.
-  assert.equal(reader.read('a.json')!.length, 200);
+  assert.strictEqual(reader.read('a.json'), first);
   assert.equal(reader.read('b.json')!.length, 200);
+});
+
+/** Rename b.txt in both ZIP headers; zipSync's object input cannot encode duplicates. */
+function duplicateMembers(): Uint8Array {
+  const bytes = zipSync({
+    'a.txt': [strToU8('aaaaaaaa'), { level: 6 }],
+    'b.txt': [strToU8('bbbbbbbb'), { level: 6 }],
+    'c.txt': [strToU8('c'), { level: 6 }]
+  });
+  for (let i = 0; i + 46 < bytes.length; i++) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset + i);
+    const signature = view.getUint32(0, true);
+    const nameOffset = signature === 0x04034b50 ? 30 : signature === 0x02014b50 ? 46 : 0;
+    if (nameOffset && bytes[i + nameOffset] === 0x62) bytes[i + nameOffset] = 0x61;
+  }
+  return bytes;
+}
+
+test('two duplicate eight-byte members are rejected before any read under a ten-byte ceiling', () => {
+  assert.throws(() => openZip(duplicateMembers(), 10), /duplicate ZIP member name/);
+});
+
+for (const requestedName of ['a.txt', 'c.txt', 'missing.txt']) {
+  test(`duplicates reject reads starting with ${requestedName}, even above their total size`, () => {
+    assert.throws(() => openZip(duplicateMembers(), 100).read(requestedName), /duplicate ZIP member name/);
+  });
+}
+
+test('duplicate validation precedes decompression of either duplicate payload', () => {
+  const bytes = duplicateMembers();
+  // Unsupported compression would throw if either duplicate reached decompression.
+  for (let i = 0; i + 46 < bytes.length; i++) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset + i);
+    if (view.getUint32(0, true) === 0x02014b50 && bytes[i + 46] === 0x61) {
+      view.setUint16(10, 99, true);
+    }
+  }
+  assert.throws(() => unzipSync(bytes), /unknown compression type/);
+  assert.throws(() => openZip(bytes, 100), /duplicate ZIP member name/);
+});
+
+test('many distinct members exhaust the shared budget without charging cached reads again', () => {
+  const bytes = zipSync(Object.fromEntries(
+    Array.from({ length: 100 }, (_, i) => [`${i}.txt`, strToU8('12345678')])
+  ));
+  const reader = openZip(bytes, 10 * 8);
+  assert.equal(reader.names().length, 100);
+  for (let i = 0; i < 10; i++) {
+    const first = reader.read(`${i}.txt`)!;
+    assert.equal(first.length, 8);
+    assert.strictEqual(reader.read(`${i}.txt`), first);
+  }
+  assert.throws(() => reader.read('10.txt'), ZipTooLargeError);
+  assert.throws(() => reader.read('99.txt'), ZipTooLargeError);
 });
