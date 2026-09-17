@@ -14,10 +14,10 @@
    attributeDose are the two questions everything else in this file used to
    answer with resolveEpisodeAt alone. */
 
-import { nearestOpenSlotDistance } from './doseSchedule';
+import { expectedSlots, isDailySchedule, nearestOpenSlotDistance, pauseCoversDay } from './doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { rangesFromCuts, spanCoversDay } from './span';
-import type { DoseEvent, DoseSchedule, DosePause, RegimenEpisode } from './types';
+import type { DoseEvent, DoseSchedule, DosePause, DoseScheduleAmount, RegimenEpisode } from './types';
 
 /** Whether `episode` is in effect on `day`: started on or before it, and
     either still open (`endEpochDay` null) or ends on or after it. Delegates
@@ -216,4 +216,61 @@ export function nearestActiveEpisode(
   const nearest = Math.min(...known.map((d) => d.distance));
   const winners = known.filter((d) => d.distance === nearest);
   return winners.length === 1 ? winners[0].episode : null;
+}
+
+/** One slot a schedule expects on a given day, with the episode it belongs
+    to named (phase 11 ticket 20, audit item 12). `dayAhead` answers which
+    days carry a slot and stops there - ADR-0067's mark is a day and a kind
+    and never an amount - so the forward day view asks this instead when it
+    has a day in hand and owes the person what is expected on it. */
+export interface ExpectedDose {
+  episodeId: string;
+  drug: string;
+  amount: DoseScheduleAmount | null;
+  /** Which of the day's slots this is, and how many there are - the pair
+      `adherence_slot_numbered` already words. */
+  indexInDay: number;
+  dosesPerDay: number;
+}
+
+/** Every slot the active schedules expect on `epochDay`, in episode order.
+    The same loop `dayAhead`'s own `doseSlot` section runs, carrying the
+    episode and the slot's amount rather than throwing them away: episodes
+    active on the day, their schedule, that schedule's slots, minus the days
+    a pause of that episode's own covers.
+
+    A daily schedule is skipped here for the reason it is skipped there - a
+    slot on every day is wallpaper rather than a fact, and a day view that
+    listed one would disagree with the mark that is not on its calendar
+    cell.
+
+    `activeEpisodesAt` is asked about the day itself rather than about
+    today: this describes a day, and an episode that starts next week is
+    what that day expects even though it expects nothing now. */
+export function expectedDosesOnDay(
+  episodes: readonly RegimenEpisode[],
+  schedules: readonly DoseSchedule[],
+  pauses: readonly DosePause[],
+  epochDay: number
+): ExpectedDose[] {
+  const expected: ExpectedDose[] = [];
+
+  for (const episode of activeEpisodesAt(episodes, startOfDayTimestamp(epochDay))) {
+    const schedule = schedules.find((s) => s.episodeId === episode.id);
+    if (!schedule || isDailySchedule(schedule)) continue;
+    const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
+
+    for (const slot of expectedSlots(schedule, episode.startEpochDay, epochDay, epochDay)) {
+      if (ownPauses.some((pause) => pauseCoversDay(pause, slot.epochDay))) continue;
+      expected.push({
+        episodeId: episode.id,
+        drug: episode.drug,
+        amount: slot.amount,
+        indexInDay: slot.indexInDay,
+        dosesPerDay: schedule.dosesPerDay
+      });
+    }
+  }
+
+  return expected;
 }

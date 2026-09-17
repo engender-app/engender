@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* Dilation: a taper typed in, its session log, and the chart against day
-     since surgery (phase 8 features ticket 12, CONTEXT: "Taper").
+  /* Dilation: a taper typed in and its session log (phase 8 features
+     ticket 12, CONTEXT: "Taper").
 
      Two records, one screen, the same split doses.ts draws between a
      schedule and what was actually logged against it. The schedule is
@@ -28,7 +28,12 @@
      size (DIRECTION.md rule 16), and the gap rows run under that for the
      week the strip is showing, today excepted because it is already drawn
      above them. Tapping a cell opens the same sheet tapping a gap row
-     opens, so the write path is the one that was already here. */
+     opens, so the write path is the one that was already here.
+
+     The chart ("Sessions since surgery") is gone (audit item 7): sessions
+     since surgery is a count on nearly every day, a flat line at 1 for
+     months, and the strip plus today's own row already say everything it
+     said. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -36,39 +41,31 @@
   import AreaFinish from '$lib/components/AreaFinish.svelte';
   import DayStrip from '$lib/components/DayStrip.svelte';
   import { stripWindow, type DayMark } from '$lib/components/dayStrip';
-  import AreaChart from '$lib/components/kit/AreaChart.svelte';
-  import ChartCard from '$lib/components/kit/ChartCard.svelte';
-  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { plotDaySeriesGroup } from '$lib/charts/dayAxis';
-  import { dayAxisEnds, dayAxisScrubLabel } from '$lib/components/kit/dayAxisLabel';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import { expectedSessionDays } from '$lib/data/taperSchedule';
+  import { dilationEligible, expectedSessionDays } from '$lib/data/taperSchedule';
   import type { TaperSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* `chart` takes 0, the only index guaranteed to be a colour on every
-     palette (roles.ts) - the data line must never land on trans' achromatic
-     middle stripe the way index 2 would. */
-  const SECTION_ROLE = { chart: 0, strip: 0, schedule: 1, sessions: 2 };
-
-  /* The strip's fill is a colour carrying a value, so it takes role 0 with
-     the chart rather than the sessions' own stripe (ticket 44). Index 2 is
+  /* The strip's fill is a colour carrying a value, so it takes role 0
+     (roles.ts) rather than the sessions' own stripe (ticket 44). Index 2 is
      trans' achromatic middle band, and a logged day filled in white on a
      near-white page is a day drawn as nothing - the same rule the calendar
      states for its own three readings of a day. */
+  const SECTION_ROLE = { strip: 0, schedule: 1, sessions: 2 };
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const today = todayEpochDay();
@@ -79,46 +76,34 @@
   let sessionsQuery = liveList((j) => j.taper.getSessions());
   let sessions = $derived(sessionsQuery.rows);
 
+  /* Which procedure the taper follows (audit item 7: it used to carry its
+     own "surgery day", a second copy of a date the procedure already
+     has, and the audit found the two disagreeing). Read alongside the
+     taper rather than joined into it here - `journal.taper.getTaper()`
+     already reads the join for `procedureId`, and this list is what a
+     picker among more than one eligible procedure needs besides. */
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let procedures = $derived(proceduresQuery.rows);
+  let eligibleProcedures = $derived(procedures.filter(dilationEligible));
+  let followedProcedure = $derived(procedures.find((p) => p.id === taper?.procedureId) ?? null);
+
   let sessionsByDay = $derived(new Map(sessions.map((s) => [s.epochDay, s])));
   let expectedDays = $derived(taper ? expectedSessionDays(taper, today) : []);
-
-  /** One point per day a session was logged, value the count that day - so
-      a rare double session shows rather than collapsing into the same "a
-      session happened" as a single one. Days with none are absent rather
-      than zero: an average over a folded range should read from the days
-      that did have a session, not be pulled down by the empty ones
-      `expectedDays` already renders as gaps elsewhere on this screen. */
-  let sessionSeries = $derived.by(() => {
-    const perDay = new Map<number, number>();
-    for (const s of sessions) perDay.set(s.epochDay, (perDay.get(s.epochDay) ?? 0) + 1);
-    return [...perDay].map(([day, value]) => ({ day, value, count: 1 }));
-  });
-
-  /* Folded through the same mechanism the other re-keyed charts use
-     (dayAxis.ts, ticket 16), rather than one raw point per day: a taper
-     runs for months, and a card sized for thirty marks should not be asked
-     to draw two hundred. */
-  let plot = $derived(
-    taper
-      ? plotDaySeriesGroup(
-          [sessionSeries],
-          { type: 'anchored', anchorEpochDay: taper.surgeryEpochDay, todayEpochDay: today },
-          Math.max(1, today - taper.surgeryEpochDay + 1)
-        )[0]
-      : undefined
-  );
-  let chartMax = $derived(Math.max(1, ...(plot?.points.map((p) => p.y) ?? [])));
 
   /* The schedule editor. Inline rather than a RecordSheet: there is one
      taper, never a list, so there is nothing here for a sheet's own
      new/edit/delete triple to distinguish. */
   let editingSchedule = $state(false);
-  let surgeryDayInput = $state(dateInputValueFromEpochDay(today));
+  /* Which procedure the schedule being edited will follow. Null only while
+     more than one is eligible and none has been picked yet - with exactly
+     one, there is nothing to ask, and `scheduleCanSave` refuses to save
+     around the gap either way. */
+  let selectedProcedureId = $state<string | null>(null);
   let startDayInput = $state(dateInputValueFromEpochDay(today));
   let stagesInput = $state<{ everyNDays: string; days: string }[]>([]);
 
   function openScheduleEditor() {
-    surgeryDayInput = dateInputValueFromEpochDay(taper?.surgeryEpochDay ?? today);
+    selectedProcedureId = taper?.procedureId ?? (eligibleProcedures.length === 1 ? eligibleProcedures[0].id : null);
     startDayInput = dateInputValueFromEpochDay(taper?.startEpochDay ?? today);
     stagesInput = (taper?.stages ?? []).map((s) => ({ everyNDays: String(s.everyNDays), days: String(s.days) }));
     if (stagesInput.length === 0) stagesInput = [{ everyNDays: '', days: '' }];
@@ -137,14 +122,16 @@
      the plan, expecting nothing for its days (taperSchedule.ts) - so this
      only rules out a negative or blank one, never zero. */
   let scheduleCanSave = $derived(
-    stagesInput.length > 0 && stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
+    selectedProcedureId !== null &&
+      stagesInput.length > 0 &&
+      stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
   );
 
   async function saveSchedule() {
-    if (!scheduleCanSave) return;
+    if (!scheduleCanSave || !selectedProcedureId) return;
     await journal.taper.upsertTaper({
       id: taper?.id,
-      surgeryEpochDay: epochDayFromDateInputValueOrToday(surgeryDayInput),
+      procedureId: selectedProcedureId,
       startEpochDay: epochDayFromDateInputValueOrToday(startDayInput),
       stages: stagesInput.map((s) => ({ everyNDays: Number(s.everyNDays), days: Number(s.days) }))
     });
@@ -224,9 +211,27 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if taperQuery.loading}
+  <!-- Both reads, not the taper's alone: which notice the empty screen owes
+       depends on the procedure list, and a screen that answered before it
+       arrived would show the wrong one and then swap it. -->
+  {#if taperQuery.loading || proceduresQuery.loading}
     <div class="screen-part" out:crossfade>
       <Skeleton variant="line" count={3} />
+    </div>
+  {:else if !taper && eligibleProcedures.length === 0}
+    <!-- A schedule names the procedure it follows (audit item 7), so with
+         none to name there is nothing to type in yet - and the editor would
+         open on a save it could never enable. Says so, and sends the person
+         to the screen that fixes it. -->
+    <div class="screen-part">
+      <Notice
+        icon="flask"
+        key="dilation-no-procedure"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
+        title={m.dilation_no_procedure_title()}
+        text={m.dilation_no_procedure_body()}
+        action={{ label: m.dilation_no_procedure_action(), primary: true, href: '/health/surgery' }}
+      />
     </div>
   {:else if !taper && !editingSchedule}
     <div class="screen-part">
@@ -242,11 +247,21 @@
   {:else if editingSchedule}
     <div class="screen-part">
       <SectionHeading text={m.dilation_schedule_heading()} />
-      <Field label={m.dilation_surgery_day_label()} id="dilation-surgery-day">
-        {#snippet children(id)}
-          <DatePicker name="dilation-surgery-day" bind:value={surgeryDayInput} {id} />
-        {/snippet}
-      </Field>
+      {#if eligibleProcedures.length > 1}
+        <!-- A picker only where there is a real choice to make (audit item
+             7): with exactly one eligible procedure, `openScheduleEditor`
+             already selected it and there is nothing here to ask. -->
+        <Field label={m.dilation_procedure_label()} legend>
+          {#snippet children()}
+            <Segmented
+              name={m.dilation_procedure_label()}
+              options={eligibleProcedures.map((p) => ({ value: p.id, label: p.name }))}
+              value={selectedProcedureId ?? eligibleProcedures[0].id}
+              onChange={(v) => (selectedProcedureId = v)}
+            />
+          {/snippet}
+        </Field>
+      {/if}
       <Field label={m.dilation_start_day_label()} id="dilation-start-day">
         {#snippet children(id)}
           <DatePicker name="dilation-start-day" bind:value={startDayInput} {id} />
@@ -398,32 +413,17 @@
           data-schedule
           icon="flask"
           title={m.dilation_surgery_day_label()}
-          subtitle={dayLong(taper.surgeryEpochDay)}
+          subtitle={[
+            followedProcedure?.name,
+            followedProcedure?.surgeryEpochDay != null
+              ? dayLong(followedProcedure.surgeryEpochDay)
+              : m.dilation_procedure_date_unset()
+          ]}
           aria-label={m.dilation_schedule_edit_aria()}
           onclick={openScheduleEditor}
         />
       </ListCard>
     </div>
-
-    <ChartCard
-      heading={m.dilation_chart_title()}
-      kind="dilation-sessions"
-      role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
-    >
-      {#if plot && plot.points.length > 0}
-        <AreaChart
-          points={plot.points}
-          min={0}
-          max={chartMax}
-          {...dayAxisEnds(plot, plot.points[0].x, plot.points[plot.points.length - 1].x)}
-          formatValue={(v) => String(Math.round(v))}
-          scrubLabel={dayAxisScrubLabel(plot)}
-          ariaLabel={m.dilation_chart_aria()}
-        />
-      {:else}
-        <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
-      {/if}
-    </ChartCard>
 
     <!-- Saying you are done dilating (phase 8 features ticket 04, ADR-0052) -
          the finish control lives on `taperSessions`, never on the schedule:

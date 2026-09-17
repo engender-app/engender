@@ -1063,6 +1063,33 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
   }
 }
 
+/** The dilation taper schedule (ticket 12; schema v83 gave it the procedure
+    link). Insert-if-absent by uuid, resolving that link the way
+    `applyAppointments` below does and needing `procedures` applied first for
+    the same reason.
+
+    A taper naming a procedure this journal does not hold is dropped rather
+    than kept link-less: `procedure_id` is NOT NULL, and the schedule says
+    nothing on its own - its whole reading is days since that procedure's
+    surgery. Unreachable from a whole archive, where the procedure travels
+    beside it. */
+export async function applyTaper({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM taper');
+
+  for (const taper of journal.taper) {
+    if (present.has(taper.id)) continue;
+
+    const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [taper.procedureId]);
+    if (!rows[0]) continue;
+
+    await driver.run(
+      `INSERT INTO taper (uuid, procedure_id, start_epoch_day, stages, updated_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [taper.id, rows[0].id, taper.startEpochDay, taper.stagesJson, ts]
+    );
+  }
+}
+
 /** Appointments (ticket 57, ADR-0066). Insert-if-absent by uuid like every
     other user-owned row; the only thing it resolves is the procedure link,
     which travels as that procedure's uuid and so needs `procedures` to have

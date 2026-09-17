@@ -10,6 +10,7 @@
   } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
+  import { ui } from '$lib/stores/ui.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
   import { isReducedMotion } from '$lib/motion/tokens';
@@ -896,7 +897,16 @@
   {#if vocabulary.visiblePresentations.length > 0}
     <SectionHeading text={m.presentation_label()}>
       {#snippet action()}
-        <a class="kit-heading-action" href="/settings/presentations">{m.presentations_manage()}</a>
+        <!-- In place (audit item 6): raises the same sheet Settings' own
+             Tracking row opens, rather than navigating there and back. -->
+        <button
+          type="button"
+          class="kit-heading-action"
+          data-manage-presentations
+          onclick={() => (ui.raisedManager = 'modes')}
+        >
+          {m.presentations_manage()}
+        </button>
       {/snippet}
     </SectionHeading>
     <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
@@ -1382,7 +1392,19 @@
   <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
     <SectionHeading text={m.use_template()}>
       {#snippet action()}
-        <a class="kit-heading-action" href="/settings/entry-templates">{m.entry_templates_manage()}</a>
+        <!-- In place (audit item 6): closes this picker and raises the
+             manager sheet directly, rather than navigating there and back. -->
+        <button
+          type="button"
+          class="kit-heading-action"
+          data-manage-entry-templates
+          onclick={() => {
+            templateSheetOpen = false;
+            ui.raisedManager = 'templates';
+          }}
+        >
+          {m.entry_templates_manage()}
+        </button>
       {/snippet}
     </SectionHeading>
     <ListCard {role}>

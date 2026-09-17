@@ -29,6 +29,12 @@ export interface NavigationFacts {
   /** Whether a sheet was open over the screen the navigation left from, so
       whatever was tapped was inside a modal rather than on the screen. */
   fromSheet: boolean;
+  /** What settings chrome (`/settings`) borrows to light a tab (audit item
+      4, chrome-tab-origin.ts) - threaded in rather than read here so this
+      stays a pure table its own test can call directly. `''` where nothing
+      has lit a tab yet, which reads as a tab change like any other unknown
+      route. */
+  chromeOrigin: string;
 }
 
 /**
@@ -40,14 +46,14 @@ export interface NavigationFacts {
  * it.
  */
 export function screenTransition(facts: NavigationFacts): ScreenTransition {
-  const { from, to, type, delta, isChromeless, fromSheet } = facts;
+  const { from, to, type, delta, isChromeless, fromSheet, chromeOrigin } = facts;
 
   /* A cold start has nothing to come from, and the gates are not part of
      the app's navigation - they render instead of it. */
   if (from === null || isChromeless) return 'none';
   if (from === to) return 'none';
 
-  if (isBack(from, to, type, delta)) {
+  if (isBack(from, to, type, delta, chromeOrigin)) {
     /* Out of the editor the transform runs backwards, which is the pattern
        being symmetric rather than a second decision: the same two boxes
        swap which one is arriving. Symmetric in the carve-out too: a screen
@@ -123,7 +129,7 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
   /* Within one tab the app is a stack, across tabs it is four peers. That
      is the whole rule, and it is why the tab table is the one that answers
      this rather than a second list of "detail routes" kept beside it. */
-  return activeTabKey(from) === activeTabKey(to) ? 'shared-axis' : 'fade-through';
+  return activeTabKey(from, chromeOrigin) === activeTabKey(to, chromeOrigin) ? 'shared-axis' : 'fade-through';
 }
 
 /** The one surface carved out of the container transform (Alicja,
@@ -164,7 +170,7 @@ function isEntryEditor(path: string): boolean {
    middle-clicks and shows its target), and those arrive as a forward
    navigation to a shorter path. Treating only the first as back would send
    the header arrow sliding the wrong way on almost every screen. */
-function isBack(from: string, to: string, type: string, delta?: number): boolean {
+function isBack(from: string, to: string, type: string, delta: number | undefined, chromeOrigin: string): boolean {
   if (type === 'popstate') return (delta ?? 0) < 0;
   /* Home is every tab's ancestor by string, and reaching it is a tab
      change rather than a step up, so it is excluded by hand. */
@@ -181,5 +187,5 @@ function isBack(from: string, to: string, type: string, delta?: number): boolean
      direction off the bottom of an easing curve reads as a yank (Alicja,
      2026-08-28: "no sliding up animation there at all... a smooth quick
      transition like when I click on any other 'more' tab and go back"). */
-  return to === '/more' && activeTabKey(from) === 'settings';
+  return to === '/more' && activeTabKey(from, chromeOrigin) === 'settings';
 }

@@ -416,25 +416,6 @@ beforeAll(async () => {
   )) as string;
   await drive('sizeRecords', 'deleteRecord', () => journal.sizeRecords.deleteRecord(secondSizeRecordId));
 
-  // --- taper --------------------------------------------------------------
-  await drive('taper', 'upsertTaper', () =>
-    journal.taper.upsertTaper({
-      surgeryEpochDay: 19950,
-      startEpochDay: 19955,
-      stages: [
-        { everyNDays: 1, days: 14 },
-        { everyNDays: 3, days: 30 }
-      ]
-    })
-  );
-  const taperSessionId = (await drive('taper', 'upsertSession', () =>
-    journal.taper.upsertSession({ epochDay: 19955, note: 'first one, went fine' })
-  )) as string;
-  const secondTaperSessionId = (await drive('taper', 'upsertSession', () =>
-    journal.taper.upsertSession({ epochDay: 19956, note: '' })
-  )) as string;
-  await drive('taper', 'deleteSession', () => journal.taper.deleteSession(secondTaperSessionId));
-
   // --- reminders ------------------------------------------------------
   const reminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
@@ -748,10 +729,32 @@ beforeAll(async () => {
     journal.procedures.upsertProcedure({
       name: 'top surgery',
       surgeryEpochDay: 20050,
-      notes: 'drains out on day five'
+      notes: 'drains out on day five',
+      // Dilation-eligible (kind stays 'custom'), so the taper section below
+      // has a procedure to name rather than needing one of its own.
+      dilationOptIn: true
     })
   )) as string;
   await drive('procedures', 'setNotes', () => journal.procedures.setNotes(procedureId, 'drains out day 5, no fever'));
+
+  // --- taper --------------------------------------------------------------
+  await drive('taper', 'upsertTaper', () =>
+    journal.taper.upsertTaper({
+      procedureId,
+      startEpochDay: 19955,
+      stages: [
+        { everyNDays: 1, days: 14 },
+        { everyNDays: 3, days: 30 }
+      ]
+    })
+  );
+  const taperSessionId = (await drive('taper', 'upsertSession', () =>
+    journal.taper.upsertSession({ epochDay: 19955, note: 'first one, went fine' })
+  )) as string;
+  const secondTaperSessionId = (await drive('taper', 'upsertSession', () =>
+    journal.taper.upsertSession({ epochDay: 19956, note: '' })
+  )) as string;
+  await drive('taper', 'deleteSession', () => journal.taper.deleteSession(secondTaperSessionId));
   await drive('procedures', 'addConsult', () => journal.procedures.addConsult(procedureId, 19950));
   const secondConsultId = (await drive('procedures', 'addConsult', () =>
     journal.procedures.addConsult(procedureId, 19960)

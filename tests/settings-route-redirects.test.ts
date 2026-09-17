@@ -18,10 +18,19 @@
 
    Redesign ticket 51 (ADR-0084) runs two of ADR-0036's own stubs backwards:
    modes and entry templates are reference areas, and both moved onto
-   Settings rather than off it. The old /settings/presentations and
-   /settings/entry-templates stubs are gone - those are the real screens
-   now - and /transition/presentations and /practice/entry-templates carry
-   the stub instead, pointing back in.
+   Settings rather than off it. /transition/presentations and
+   /practice/entry-templates carry the stub instead, pointing back in.
+
+   Audit item 6 (this ticket) turns ticket 51's own two real screens into
+   stubs a second time, the other direction again: modes and entry
+   templates are sheets raised over Settings now
+   (VocabularyManagerSheets.svelte), not screens at all, so
+   /settings/presentations and /settings/entry-templates redirect to
+   `/settings?raise=modes`/`?raise=templates` - a query param rather than
+   a plain address, since which sheet to raise is not itself a route. A
+   bookmark to the pre-51 address still lands in two hops
+   (/transition/presentations to /settings/presentations to /settings, sheet
+   raised) rather than one; nothing added a third stub to shorten it.
 
    Redesign ticket 62 does the same to the third of them, and one step
    further: /transition/words is not a screen at all any more, since the
@@ -116,6 +125,20 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ],
   ['settings/surgery', () => import('../src/routes/settings/surgery/+page.ts'), '/health/surgery'],
   ['settings/dilation', () => import('../src/routes/settings/dilation/+page.ts'), '/health/dilation'],
+  /* Audit item 6: modes and entry templates are sheets over Settings now,
+     not screens, so their own former addresses redirect a second time -
+     the query param is which sheet to raise, read once by
+     /settings/+page.svelte. */
+  [
+    'settings/presentations',
+    () => import('../src/routes/settings/presentations/+page.ts'),
+    '/settings?raise=modes'
+  ],
+  [
+    'settings/entry-templates',
+    () => import('../src/routes/settings/entry-templates/+page.ts'),
+    '/settings?raise=templates'
+  ],
   /* Phase 11 all-four-doors ticket 12 (ADR-0066): the prep list is a section
      of the visit screen now rather than a screen beside it, so its own
      address is a stub. `settings/appointment-prep` is repointed at the visit

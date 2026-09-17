@@ -351,3 +351,24 @@ export function customInclusiveRange(
 export function crossesCalendarYear(fromEpochDay: number, toEpochDay: number): boolean {
   return localDateFromEpochDay(fromEpochDay).getFullYear() !== localDateFromEpochDay(toEpochDay).getFullYear();
 }
+
+export type RelativeDay =
+  | { kind: 'today' }
+  | { kind: 'tomorrow' }
+  | { kind: 'in'; days: number }
+  | { kind: 'passed'; days: number };
+
+/** How far `epochDay` is from `onEpochDay`, named the way a reminder's
+    schedule reads it (audit item 2: "in 0 days" and "in 1 days" said
+    nothing a person says). Today and tomorrow are their own words rather
+    than the general case of "in n days", and a day already gone is named
+    as passed instead of clamped to zero - the arithmetic alone, with
+    `reminderLabel.ts`'s paraglide layer above it supplying the words
+    (ADR-0016). */
+export function relativeDayFromToday(epochDay: number, onEpochDay: number): RelativeDay {
+  const days = epochDay - onEpochDay;
+  if (days === 0) return { kind: 'today' };
+  if (days === 1) return { kind: 'tomorrow' };
+  if (days > 1) return { kind: 'in', days };
+  return { kind: 'passed', days: -days };
+}

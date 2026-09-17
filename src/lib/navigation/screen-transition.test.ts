@@ -7,6 +7,7 @@ const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string 
   type: 'link',
   isChromeless: false,
   fromSheet: false,
+  chromeOrigin: '',
   ...over
 });
 
@@ -22,6 +23,12 @@ describe('choosing a tier-2 pattern', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690' }))).toBe('shared-axis');
     expect(screenTransition(nav({ from: '/stats', to: '/body-map' }))).toBe('shared-axis');
     expect(screenTransition(nav({ from: '/more', to: '/care/labs' }))).toBe('shared-axis');
+    // /settings borrows a tab rather than owning one (audit item 4); /more
+    // already lit 'settings' a moment ago, which is what chromeOrigin
+    // carries into a screen reached from it.
+    expect(screenTransition(nav({ from: '/more', to: '/settings', chromeOrigin: 'settings' }))).toBe(
+      'shared-axis'
+    );
   });
 
   it('reads a route that lights another tab as a tab change, not a detail', () => {

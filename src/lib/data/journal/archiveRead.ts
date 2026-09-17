@@ -50,6 +50,7 @@ import type {
   ArchiveRoadmapCheck,
   ArchiveTag,
   ArchiveTagGroup,
+  ArchiveTaper,
   ArchiveTryout,
   ArchiveTryoutPhoto,
   ArchiveVideoNote,
@@ -657,6 +658,31 @@ export async function readAppointments({ driver }: SectionRead): Promise<Archive
     kind: row.kind,
     place: row.place,
     note: row.note
+  }));
+}
+
+/* The taper's own procedure link, joined for the reason the one above is
+   (schema v83): `procedure_id` is a rowid, and the uuid is what the
+   importing device can match a procedure by. An INNER JOIN, unlike
+   appointments' - the column is NOT NULL, so a row with no procedure to
+   join cannot exist. */
+export async function readTaper({ driver }: SectionRead): Promise<ArchiveTaper[]> {
+  const rows = await driver.query<{
+    uuid: string;
+    procedure_uuid: string;
+    start_epoch_day: number;
+    stages: string;
+  }>(
+    `SELECT t.uuid AS uuid, p.uuid AS procedure_uuid, t.start_epoch_day AS start_epoch_day,
+            t.stages AS stages
+       FROM taper t JOIN procedure p ON p.id = t.procedure_id
+      ORDER BY t.id`
+  );
+  return rows.map((row) => ({
+    id: row.uuid,
+    procedureId: row.procedure_uuid,
+    startEpochDay: row.start_epoch_day,
+    stagesJson: row.stages
   }));
 }
 

@@ -8,7 +8,19 @@
    answers "what day was a session expected", and stops. Whether one was
    logged against it, and what that means, is the screen's own question. */
 
-import type { Taper, TaperStage } from './types';
+import type { Procedure, Taper, TaperStage } from './types';
+
+/** Whether a procedure is one dilation can follow (audit item 7): the
+    surgery screen's own gate for offering the Dilation row at all
+    (surgery/+page.svelte), and the schedule editor's own gate for which
+    procedures it offers a taper to name (dilation/+page.svelte). Only a
+    `custom` kind carries its own opt-in - none of the compiled-in kinds
+    can be guessed to include dilation except vaginoplasty (types.ts's own
+    note on `Procedure`). Named once so the two screens and schema v83's
+    migration cannot drift on what "eligible" means. */
+export function dilationEligible(procedure: Pick<Procedure, 'kind' | 'dilationOptIn'>): boolean {
+  return procedure.kind === 'vaginoplasty' || (procedure.kind === 'custom' && procedure.dilationOptIn);
+}
 
 /** The days `stages` expects a session on, starting at `startEpochDay` and
     stopping at `todayEpochDay` - never past it, since a taper has no

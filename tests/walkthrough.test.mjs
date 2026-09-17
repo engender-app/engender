@@ -1990,7 +1990,9 @@ try {
      group inside a list is named by 15/600 in the secondary ink - the same
      drawing the permissions step already used for its two groups. */
   const areaHeadings = (await page.locator('[data-setup-caption]').allTextContents()).map((t) => t.trim());
-  if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
+  /* Two, not three, since audit item 10: the Body group was one row and is
+     folded into Health, so this step lists what the door lists. */
+  if (areaHeadings.join() !== ['Health', 'Steps'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
@@ -4806,13 +4808,21 @@ try {
   await page.locator('[data-list-row="words"]').click();
   await page.waitForURL('**/settings/words');
 
+  // Modes and entry templates stopped being screens of their own (audit
+  // item 6): each row now raises a sheet over Settings rather than
+  // navigating, so the URL settles back on /settings and the manager's own
+  // content is what proves the row worked.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="entry-templates"]').click();
-  await page.waitForURL('**/settings/entry-templates');
+  await page.waitForURL('**/settings');
+  await page.locator('[data-entry-template]').first().waitFor();
+  await page.keyboard.press('Escape');
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="presentations"]').click();
-  await page.waitForURL('**/settings/presentations');
+  await page.waitForURL('**/settings');
+  await page.locator('[data-add]').waitFor();
+  await page.keyboard.press('Escape');
 
   /* Safe space and Support and resources are one group now, and the hub
      draws no Practice heading at all. Asserted on the section handle rather
@@ -6696,11 +6706,11 @@ try {
   // give: the persona's own paper is already in this list.
   await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, readableBefore);
 
-  /* The list is still text, deliberately (ADR-0065): the page a document
-     carries never appears in it, however drawable that page turned out. */
-  if (await page.locator('[data-list-row] img').count()) {
-    throw new Error('the documents list is drawing page images');
-  }
+  /* The list draws each document's own page since audit item 9 - ADR-0065's
+     amendment, which the audit asked for after measuring what a column of
+     identical paper glyphs cost. A PDF's thumbnail is its first page, drawn
+     once at import, so a filed PDF has one waiting. */
+  await page.waitForSelector('[data-list-row] img', { timeout: 15000 });
 
   const opinionRows = page.locator('[data-list-row]');
   const opinion = (await opinionRows.allTextContents()).findIndex((text) => text.includes('Opinia psychiatryczna'));

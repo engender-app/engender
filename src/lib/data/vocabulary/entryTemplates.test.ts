@@ -10,7 +10,9 @@ import {
   withBuiltInEntryTemplates,
   applyEntryTemplateToDraft,
   debriefOfferVisible,
-  resolveBuiltInWording
+  resolveBuiltInWording,
+  templateSummaryKeys,
+  TEMPLATE_SUMMARY_MAX
 } from './entryTemplates.ts';
 import type { DebriefOfferState } from './entryTemplates.ts';
 import type { EntryTemplate } from '../types.ts';
@@ -196,4 +198,36 @@ test('dismissing this appointment stops the offer for good', () => {
 
 test('an entry already recorded as the debrief stops the offer for good', () => {
   expect(debriefOfferVisible(ready({ debriefEntryId: 7 }))).toBe(false);
+});
+
+/* Audit item 5: the templates list stated fifteen names with nothing else
+   on the row. Keys only here - dimensionName/tagLabel resolve the words
+   and both import paraglide (ADR-0016), which this module does not. */
+test('names dimensions before tags, and nothing is left over under the max', () => {
+  const t = builtIn('t1', { dims: { euphoria_dysphoria: 80 }, tags: ['g-euphoria', 'e-happy'] });
+
+  expect(templateSummaryKeys(t)).toEqual({
+    shown: [
+      { kind: 'dim', key: 'euphoria_dysphoria' },
+      { kind: 'tag', key: 'g-euphoria' },
+      { kind: 'tag', key: 'e-happy' }
+    ],
+    rest: 0
+  });
+});
+
+test('a template with nothing set names nothing, with no leftover count either', () => {
+  expect(templateSummaryKeys(builtIn('t1'))).toEqual({ shown: [], rest: 0 });
+});
+
+test(`caps names at ${TEMPLATE_SUMMARY_MAX} and counts the rest`, () => {
+  const t = builtIn('t1', {
+    dims: { euphoria_dysphoria: 80 },
+    tags: ['g-euphoria', 'e-happy', 'g-gendered-ok', 'a-friends']
+  });
+
+  const { shown, rest } = templateSummaryKeys(t);
+
+  expect(shown).toHaveLength(TEMPLATE_SUMMARY_MAX);
+  expect(rest).toBe(2);
 });

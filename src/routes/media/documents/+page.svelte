@@ -2,13 +2,17 @@
   /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065; phase
      10 redesign ticket 58).
 
-     A row never draws the page itself - that is ADR-0065's decision and it
-     is about the room the phone is held in rather than about the schema: a
-     grid of thumbnails of scanned diagnoses would be the most glanceable
-     screen in the app. Disguise is branding only and a per-document hide
-     flag is out (ADR-0063), so layout is what carries it - the page image
-     lives one deliberate tap away, on the document's own screen. What
-     changed under ticket 58: a row now also carries the kind (a PDF and a
+     A row draws the page's own thumbnail since audit item 9. ADR-0065 had
+     said it never would - a list of scanned diagnoses is the most
+     glanceable screen in the app, and disguise is branding only with no
+     per-document hide flag (ADR-0063), so layout was carrying what the
+     branding could not. What the audit measured is that it was not
+     carrying it: paper is what this screen holds, every row wore the same
+     glyph, and telling two of them apart meant opening both - which is the
+     one thing the rule was there to avoid a person doing in a waiting
+     room. The ADR's own note carries the reversal. The full page still
+     lives a deliberate tap away; what a row shows is a 48px crop of its
+     top. What changed under ticket 58: a row also carries the kind (a PDF and a
      photograph wear different marks, `documents`/`image` from the existing
      icon set - no new glyph, ADR-0065's ban is on the page, not on saying
      which file format it is) and, where the paper is filed under
@@ -41,6 +45,7 @@
      worse than asking. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import DocumentThumb from '$lib/components/DocumentThumb.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -190,17 +195,29 @@
 
       {#each groups as group (group.kind)}
         <div class="screen-part" data-documents-group={group.kind}>
-          <SectionHeading text={groupHeading(group.kind)} />
+          <!-- A heading names which pile this is, and with only one pile
+               there is nothing to tell apart - "Not linked to anything"
+               over the whole list read as a reprimand for filing paper
+               without attaching it (audit item 9). -->
+          {#if groups.length > 1 || group.kind !== 'unattached'}
+            <SectionHeading text={groupHeading(group.kind)} />
+          {/if}
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each group.documents as document (document.id)}
               {@const kind = documentKind(document.fileName)}
               <ListRow
                 key={document.id}
-                icon={kind.icon}
                 title={document.title}
                 subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
                 href={`/media/documents/${document.id}`}
-              />
+              >
+                <!-- The page itself where there is one, and the kind mark
+                     the row used to draw where there is not (audit item 9;
+                     ADR-0065's own note carries the reversal). -->
+                {#snippet leading()}
+                  <DocumentThumb fileName={document.fileName} title={document.title} />
+                {/snippet}
+              </ListRow>
             {/each}
           </ListCard>
         </div>
