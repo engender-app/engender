@@ -70,7 +70,8 @@
     changes,
     anchorEpochDay,
     todayEpochDay,
-    onOpen
+    onOpen,
+    onRecord
   }: {
     /** Only the changes that carry a marker, already joined to their
         catalogue entry by the screen: an axis of what somebody noticed has
@@ -81,6 +82,7 @@
     anchorEpochDay: number | null;
     todayEpochDay: number;
     onOpen: (key: string, kind: NoticedChangeKind) => void;
+    onRecord?: () => void;
   } = $props();
 
   let axis = $derived(noticedAxis(changes, anchorEpochDay, todayEpochDay));
@@ -178,7 +180,14 @@
      under text that was already painted has the text arriving in a single
      frame - a yank by the standing rule, and two arrivals for one thing. -->
 <div class="noticed-axis" data-noticed-axis in:wipe={{ authored: true }}>
-  <p class="na-summary">{summary}</p>
+  <div class="na-header">
+    <p class="na-summary">{summary}</p>
+    {#if onRecord}
+      <button type="button" class="btn btn-soft press na-record-btn" data-record-change onclick={onRecord}>
+        <span>{m.effect_record_change()}</span>
+      </button>
+    {/if}
+  </div>
 
   <!-- The uncovering above runs left to right across this too, so the line
        and every mark on it arrive in the order they happened and no dot is
@@ -242,8 +251,21 @@
     --na-inset: 11px;
   }
 
-  .na-summary {
+  .na-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
     margin: 0 0 var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .na-summary {
+    margin: 0;
+  }
+
+  .na-record-btn {
+    flex-shrink: 0;
   }
 
   .na-plot {
