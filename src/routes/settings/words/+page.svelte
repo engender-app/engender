@@ -22,6 +22,7 @@
      phase 8 ticket 33 moved it to the hub, so the redirect that carried
      /settings/words to /transition/words is gone and the old link is a real
      screen again. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -35,10 +36,20 @@
 
   let ignoredQuery = liveQuery((j) => j.wordIgnore.getIgnoredWords());
   let words = $derived([...(ignoredQuery.value ?? new Set<string>())].sort());
+  let returnParam = $derived(page.url.searchParams.get('return'));
+  let returnHref = $derived(returnParam || '/stats/words');
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} back="/settings" screen="words" />
+  <ScreenHeader title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} back={returnParam || '/settings'} screen="words" />
+
+  {#if returnParam}
+    <div class="words-return-row">
+      <a class="words-return-link" href={returnHref} data-words-return-reading>
+        {m.words_return_to_reading()}
+      </a>
+    </div>
+  {/if}
 
   {#if ignoredQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
@@ -62,3 +73,23 @@
     </ListCard>
   {/if}
 </div>
+
+<style>
+  .words-return-row {
+    margin-bottom: var(--space-3);
+  }
+
+  .words-return-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .words-return-link:hover {
+    text-decoration: underline;
+  }
+</style>
