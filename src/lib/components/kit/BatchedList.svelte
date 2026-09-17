@@ -85,6 +85,17 @@
   let shown = $derived(items.slice(0, shownCount(batches, items.length)));
   let remaining = $derived(remainingCount(batches, items.length));
 
+  /* When focusIndex resolves asynchronously after mount, expand batches so
+     the target row is rendered in the DOM for scrollToHash (phase 11 ticket 18). */
+  $effect(() => {
+    if (focusIndex !== null && focusIndex !== undefined && focusIndex >= 0) {
+      const needed = batchesFor(focusIndex);
+      if (needed > batches) {
+        batches = needed;
+      }
+    }
+  });
+
   /* Built here rather than in the markup so the kit's own rule can see it:
      tests/kit-surfaces.test.ts reads a component's markup for bare copy and
      cannot tell a message call carrying an argument object from a string. */

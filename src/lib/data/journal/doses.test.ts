@@ -855,3 +855,93 @@ test('an auto-logged dose names its episode\'s drug, so two regimens at once sta
   assert.equal(written.drug, 'estradiol');
   assert.equal(attributeDose(await journal.regimen.getEpisodes(), written).episode?.drug, 'estradiol');
 });
+
+test('getDoseById returns a dose by its UUID, or null when unknown or deleted (ticket 18)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.doses.upsertDose({
+    timestamp: at(19000, 8),
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg'
+  });
+
+  const found = await journal.doses.getDoseById(id);
+  assert.ok(found);
+  assert.equal(found.id, id);
+  assert.equal(found.dose, 2);
+
+  assert.equal(await journal.doses.getDoseById('00000000-0000-0000-0000-000000000000'), null);
+
+  await journal.doses.deleteDose(id);
+  assert.equal(await journal.doses.getDoseById(id), null);
+});
+
+test('hasDosesBefore checks whether doses predate a given epoch day (ticket 18)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.doses.hasDosesBefore(19000), false);
+
+  await journal.doses.upsertDose({
+    timestamp: at(19000, 8),
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg'
+  });
+
+  assert.equal(await journal.doses.hasDosesBefore(19000), false);
+  assert.equal(await journal.doses.hasDosesBefore(19001), true);
+  assert.equal(await journal.doses.hasDosesBefore(19100), true);
+});
+
+test('older dose reachability across the 90-day window boundary without duplicates (ticket 18)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const today = 19180;
+  // Recent dose within 90-day window [19090, 19180]
+  const recentId = await journal.doses.upsertDose({
+    timestamp: at(19150, 8),
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg'
+  });
+  // Dose exactly on boundary
+  const boundaryId = await journal.doses.upsertDose({
+    timestamp: at(19090, 8),
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg'
+  });
+  // Historical dose 150 days ago (outside 90-day window)
+  const olderId = await journal.doses.upsertDose({
+    timestamp: at(19030, 8),
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg'
+  });
+
+  // Initial 90-day window includes recent and boundary, but not older
+  const initial = await journal.doses.getDoses(today - 90, today);
+  const initialIds = initial.map((d) => d.id);
+  assert.ok(initialIds.includes(recentId));
+  assert.ok(initialIds.includes(boundaryId));
+  assert.ok(!initialIds.includes(olderId));
+
+  // Direct lookup finds the older dose
+  const olderDose = await journal.doses.getDoseById(olderId);
+  assert.ok(olderDose);
+  assert.equal(olderDose.id, olderId);
+
+  // hasDosesBefore detects the older dose
+  assert.equal(await journal.doses.hasDosesBefore(today - 90), true);
+
+  // Moving earlier by 90 days (180-day window) reveals older dose without duplicates
+  const expanded = await journal.doses.getDoses(today - 180, today);
+  const expandedIds = expanded.map((d) => d.id);
+  assert.ok(expandedIds.includes(recentId));
+  assert.ok(expandedIds.includes(boundaryId));
+  assert.ok(expandedIds.includes(olderId));
+  // Verify no duplicates
+  assert.equal(new Set(expandedIds).size, expandedIds.length);
+  assert.equal(expandedIds.length, 3);
+
+  // No doses exist before day 19030
+  assert.equal(await journal.doses.hasDosesBefore(today - 180), false);
+});
