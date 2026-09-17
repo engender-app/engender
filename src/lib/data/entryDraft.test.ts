@@ -404,3 +404,20 @@ test('a picked photo carrying an epochDayOverride (ticket 47) passes through toU
   assert.deepEqual(draft.toUpsert().attachPhotos, [{ ...photo(9), epochDayOverride: 19000 }]);
 });
 
+
+test('applyTemplate fills its chips and opens none (ticket 19)', () => {
+  const draft = createEntryDraft(20_001);
+  draft.setOpenSection('tags');
+  draft.applyTemplate({
+    id: 't',
+    name: 't',
+    tags: ['e-happy'],
+    dims: {},
+    noteScaffold: '',
+    presentationId: null,
+    builtIn: false,
+    hidden: false
+  } as never);
+  assert.deepEqual(draft.tags, ['e-happy']);
+  assert.equal(draft.openSection, null);
+});

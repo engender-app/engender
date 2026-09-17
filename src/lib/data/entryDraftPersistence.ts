@@ -14,6 +14,7 @@
 
 import { copyBodyRegions } from './bodyMap';
 import type { EntryDraft } from './entryDraft';
+import { isEntrySection, type EntrySection } from './entrySections';
 import type {
   EntryCycleEventInput,
   EntryDoseLogInput,
@@ -39,6 +40,9 @@ export interface PersistedEntryDraft {
   effectMarker?: EntryEffectMarkerInput | null;
   cycleEvent?: EntryCycleEventInput | null;
   presentationId?: string | null;
+  /** The chip open under the note (ticket 19). Optional because a mirror
+      written before the chips existed has none, and reads as nothing open. */
+  openSection?: EntrySection | null;
 }
 
 /** The subset of `draft` that is worth mirroring outside the component. */
@@ -62,7 +66,8 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
       : null,
     effectMarker: draft.effectMarker ? { ...draft.effectMarker } : null,
     cycleEvent: draft.cycleEvent ? { ...draft.cycleEvent } : null,
-    presentationId: draft.presentationId
+    presentationId: draft.presentationId,
+    openSection: draft.openSection
   };
 }
 
@@ -98,4 +103,7 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.effectMarker = persisted.effectMarker ? { ...persisted.effectMarker } : null;
   draft.cycleEvent = persisted.cycleEvent ? { ...persisted.cycleEvent } : null;
   draft.presentationId = persisted.presentationId ?? null;
+  /* Checked rather than trusted: the mirror is hand-editable storage, and a
+     chip name this build no longer draws would open nothing forever. */
+  draft.openSection = isEntrySection(persisted.openSection) ? persisted.openSection : null;
 }
