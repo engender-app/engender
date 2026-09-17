@@ -118,9 +118,8 @@ class Buffered {
 export interface ByteReader {
   /** Exactly `n` bytes, or CorruptArchiveError if the stream ends first. */
   readExactly(n: number): Promise<Uint8Array<ArrayBuffer>>;
-  /** Everything left. Only for the last chunk, whose length is whatever
-      remains - it is the one read that is not bounded by the chunk size. */
-  readRest(): Promise<Uint8Array<ArrayBuffer>>;
+  /** Up to `n` bytes, or fewer if the stream ends first. */
+  readAtMost(n: number): Promise<Uint8Array<ArrayBuffer>>;
   /** True when the stream has no bytes left. Pulls from the source to find
       out, so it also runs whatever checks the source makes on its way to
       being exhausted. */
@@ -151,9 +150,9 @@ export function byteReader(source: AsyncIterable<Uint8Array>): ByteReader {
       return buffered.take(n);
     },
 
-    async readRest() {
-      while (await pull());
-      return buffered.take(buffered.length);
+    async readAtMost(n) {
+      while (buffered.length < n && (await pull()));
+      return buffered.take(Math.min(n, buffered.length));
     },
 
     async atEnd() {
@@ -315,7 +314,8 @@ export async function* frameArchive(
 
 /** The decrypted body, chunk by chunk. Every chunk but the last is exactly
     `chunkSize` plaintext, so their framed lengths are known; the last one
-    is whatever remains, which is what makes appended bytes fail its tag. */
+    may be shorter. Extra bytes beyond a full final frame are refused before
+    decryption; appended bytes within that limit fail authentication. */
 export async function* unframeArchive(
   reader: ByteReader,
   header: ArchiveHeader,
@@ -325,8 +325,11 @@ export async function* unframeArchive(
   for (let index = 0; index < header.totalChunks; index++) {
     const last = index === header.totalChunks - 1;
     const framed = last
-      ? await reader.readRest()
+      ? await reader.readAtMost(NONCE_LENGTH + header.chunkSize + TAG_LENGTH)
       : await reader.readExactly(NONCE_LENGTH + header.chunkSize + TAG_LENGTH);
+    if (last && !(await reader.atEnd())) {
+      throw new CorruptArchiveError('the final archive chunk exceeds its declared size');
+    }
     if (framed.length <= NONCE_LENGTH + TAG_LENGTH) {
       throw new CorruptArchiveError(`the archive ends before chunk ${index + 1} of ${header.totalChunks}`);
     }
