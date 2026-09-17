@@ -5,6 +5,17 @@
    The entry editor is the first fixture to mount a whole screen rather than a
    gallery of parts, and a screen navigates - saving an entry ends in
    `goto('/')`, and its back button is `smartBack`, which is another goto.
-   Resolving rather than throwing keeps the save's own `await` moving; where
-   the editor went is the router's business and no fixture here asserts on it. */
-export async function goto(_url: string): Promise<void> {}
+   Resolves by default. The save-recovery probe can fail the next navigation
+   to exercise the editor after a successful commit. */
+let failNext = false;
+
+export function failNextNavigation() {
+  failNext = true;
+}
+
+export async function goto(_url: string): Promise<void> {
+  if (failNext) {
+    failNext = false;
+    throw new Error('injected navigation failure');
+  }
+}

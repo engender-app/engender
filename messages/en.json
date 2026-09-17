@@ -2116,6 +2116,8 @@
   "slider_aria": "{name}: {low} to {high}",
   "slider_unset": "-",
   "entry_save_failed": "Couldn’t save this entry.",
+  "entry_saved_navigation_failed": "Your entry is saved, but the next screen couldn’t open.",
+  "entry_saved_continue": "Go to Today",
   "entry_tryout_felt_sense_title": "Tryout: {name}",
   "entry_tryout_sentiment_euphoric": "Euphoric",
   "entry_tryout_sentiment_affirming": "Affirming",

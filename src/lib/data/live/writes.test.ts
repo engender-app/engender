@@ -22,8 +22,8 @@ test('a write announces exactly the tables it touched, and hands its result back
 
   assert.equal(typeof id, 'number');
   // Photos, recordings and video notes too, because a save carries
-  // additions and removals of all three.
-  assert.deepEqual(announced, [['entry', 'photo', 'voiceRecording', 'videoNote']]);
+  // additions and removals of all three, plus a debrief link.
+  assert.deepEqual(announced, [['entry', 'photo', 'voiceRecording', 'videoNote', 'checklist']]);
 });
 
 test('hiding or finishing an area announces it, and a read of the states announces nothing', async () => {
