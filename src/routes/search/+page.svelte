@@ -432,7 +432,7 @@
   let savedQuestionsQuery = liveList((j) => j.savedQuestions.getSavedQuestions());
   let savedQuestions = $derived(savedQuestionsQuery.rows);
 
-  let recentSearchList = $state<string[]>(typeof window !== 'undefined' ? listRecentSearches() : []);
+  let recentSearchList = $state<string[]>(listRecentSearches());
 
   function runRecentSearch(term: string) {
     query = term;
