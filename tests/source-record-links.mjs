@@ -149,7 +149,9 @@ try {
       await journal.milestones.upsertMilestone({ id: milestone, name: 'Edited exact milestone', epochDay: 15000,
         procedureId: kind === 'procedure' ? id : null, roadmapGoalKey: kind === 'goal' ? id : null });
     }, { milestone: fixture.milestone, kind, id: fixture[kind] });
-    await visit(`/transition/milestones?edit=${fixture.milestone}`);
+    await visit('/transition/milestones');
+    await page.locator('[data-ms-log-toggle]').click();
+    await page.locator(`[data-milestone="${fixture.milestone}"]`).click();
     await page.locator('#ms-name').waitFor();
     await page.getByRole('dialog').locator('[data-notice-action]').first().click();
     if (kind === 'procedure') await page.locator(`[data-recovery-log="${fixture.procedure}"]`).waitFor();
@@ -160,8 +162,29 @@ try {
     await page.locator('[data-source-return]').click();
     await page.locator('#ms-name').waitFor();
     await page.keyboard.press('Escape');
+    await visit('/media/photos');
   }
   await visit('/media/photos');
+  const tryoutPhoto = fixture.ownerPhotos.find((photo) => photo.source === 'tryout');
+  await page.evaluate(async () => {
+    const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+    const j = bootState.journal;
+    const readTryouts = j.tryouts.getTryouts.bind(j.tryouts);
+    window.tryoutReadFails = true;
+    j.tryouts.getTryouts = async () => {
+      if (window.tryoutReadFails) throw new Error('injected tryout read failure');
+      return readTryouts();
+    };
+    const { attachJournal, journalIsOpen } = await import('/src/lib/data/live/journal.svelte.ts');
+    attachJournal(j); journalIsOpen();
+  });
+  await visit(`/transition/tryouts/${tryoutPhoto.ownerId}?returnTo=${encodeURIComponent('/media/photos')}`);
+  await page.getByRole('button', { name: 'Try again', exact: true }).waitFor();
+  assert.equal(await page.locator('[name="tr-label"]').count(), 0);
+  await page.evaluate(() => { window.tryoutReadFails = false; });
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.locator('[name="tr-label"]').waitFor();
+  await page.locator('[data-source-return]').click();
   const missing = '00000000-0000-4000-8000-000000000000';
   const missingRoutes = [
     `/transition/milestones?edit=${missing}`, `/health/surgery?procedure=${missing}`,

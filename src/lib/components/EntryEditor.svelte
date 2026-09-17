@@ -881,7 +881,7 @@
 
   <!-- Wait for the existing entry before showing its draft. -->
   {#if loaded.failed}
-    <Notice title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
+    <Notice key="entry-read" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
   {/if}
   {#if loaded.loading}
     <Skeleton variant="block" count={3} />
