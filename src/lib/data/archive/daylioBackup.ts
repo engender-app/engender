@@ -245,10 +245,11 @@ export function detectDaylioBackup(file: Uint8Array): boolean {
     ceiling's running total covers the whole backup rather than resetting
     per member. */
 function openBackup(file: Uint8Array): { payload: Record_; names: Set<string>; reader: ZipReader } {
-  const reader = openZip(file);
+  let reader: ZipReader;
   let names: Set<string>;
   let member: Uint8Array | null;
   try {
+    reader = openZip(file);
     names = new Set(zipNames(reader));
     member = names.has(BACKUP_MEMBER) ? zipRead(reader, BACKUP_MEMBER) : null;
   } catch (cause) {
