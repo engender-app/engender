@@ -386,18 +386,8 @@
     if (entryId == null && noteEl) noteEl.focus({ preventScroll: true });
   });
 
-  /* Mode takes a chip only while there is a mode to pick, the same gate the
-     section had as a heading. The other six always have something to open. */
-  let sections = $derived(
-    ENTRY_SECTIONS.filter((section) => section !== 'mode' || vocabulary.visiblePresentations.length > 0)
-  );
-
   function sectionName(section: EntrySection): string {
     switch (section) {
-      case 'mode':
-        return m.presentation_label();
-      case 'gender':
-        return m.gender_label();
       case 'tags':
         return m.tags_label();
       case 'body':
@@ -411,12 +401,8 @@
     }
   }
 
-  let presentationName = $derived(
-    vocabulary.visiblePresentations.find((p) => p.id === entryDraft.presentationId)?.name ?? null
-  );
-
   function stateOf(section: EntrySection): string | null {
-    return sectionState(section, entryDraft, { presentationName, dimOrder: dims.map((d) => d.dim.key) });
+    return sectionState(section, entryDraft);
   }
 
   /* A second tap on the open chip closes it; a tap on another chip swaps
@@ -907,13 +893,67 @@
     bind:value={entryDraft.note}
   ></textarea>
 
-  <!-- One chip per section, each a key (DIRECTION.md rule 13): its name,
-       and under it what the section holds once it holds something - so a
-       saved entry reads as a summary line under its note. A chip opens its
-       section directly under the row and closes it on a second tap; one
+  <!-- Mode and Gender stay open on the page (Alicja, on the spike,
+       17 September 2026: "some of the sections should be always-on, for
+       example gender and mode"). They keep the headings and the "manage"
+       and "change" links redesign ticket 51 gave them. -->
+  {#if vocabulary.visiblePresentations.length > 0}
+    <SectionHeading text={m.presentation_label()}>
+      {#snippet action()}
+        <a class="kit-heading-action" href="/settings/presentations">{m.presentations_manage()}</a>
+      {/snippet}
+    </SectionHeading>
+    <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
+      {#each vocabulary.visiblePresentations as p (p.id)}
+        {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+        <button
+          type="button"
+          class="contextual-chip presentation-chip press"
+          class:is-active={entryDraft.presentationId === p.id}
+          {...roleAttrs(role)}
+          role="radio"
+          aria-checked={entryDraft.presentationId === p.id}
+          onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
+        >
+          {p.name}
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  <SectionHeading text={m.gender_label()}>
+    {#snippet action()}
+      <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
+    {/snippet}
+  </SectionHeading>
+  <!-- Nothing ticked and nothing kept from this entry is a resting state,
+       not a gap: somebody can reach it by unticking five boxes, and a mood,
+       tags, a note and a photo are still an entry. The section says what it
+       is rather than leaving a heading over nothing (phase 5 ticket 35).
+
+       One line or the other, never both. "However it feels right now, there
+       are no wrong answers" is reassurance about answering the sliders, and
+       with no sliders under it it was reassurance about nothing, stacked on
+       top of the line explaining why they are missing. -->
+  {#if dims.length === 0}
+    <p class="editor-hint" data-no-scales>{m.editor_no_scales()}</p>
+  {:else}
+    <p class="editor-hint">{m.gender_hint()}</p>
+  {/if}
+  {#each dims as { dim, ticked } (dim.key)}
+    <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
+    {#if !ticked}
+      <p class="editor-hint editor-hint-tight">{m.scale_not_ticked()}</p>
+    {/if}
+  {/each}
+
+  <!-- One chip per folded section, each a key (DIRECTION.md rule 13): its
+       name, and under it what the section holds once it holds something -
+       so a saved entry reads as a summary line under its note. A chip opens
+       its section directly under the row and closes it on a second tap; one
        section at a time. -->
   <div class="editor-chips" data-editor-chips role="group" bind:this={chipRowEl}>
-    {#each sections as section (section)}
+    {#each ENTRY_SECTIONS as section (section)}
       {@const state = stateOf(section)}
       {@const open = entryDraft.openSection === section}
       <button
@@ -938,58 +978,6 @@
        new one opens - two heights travelling, never a cut. A transition is
        local and does not play on first render, so a draft restored with a
        chip open draws it without a movement the person did not make. -->
-  {#if entryDraft.openSection === 'mode'}
-    <div class="editor-section" id="editor-section-mode" data-editor-section="mode" transition:disclose>
-      <div class="editor-section-head">
-        <a class="kit-heading-action" href="/settings/presentations">{m.presentations_manage()}</a>
-      </div>
-      <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
-        {#each vocabulary.visiblePresentations as p (p.id)}
-          {@const role = roleAt(activeFlag.roles, p.roleIndex)}
-          <button
-            type="button"
-            class="contextual-chip presentation-chip press"
-            class:is-active={entryDraft.presentationId === p.id}
-            {...roleAttrs(role)}
-            role="radio"
-            aria-checked={entryDraft.presentationId === p.id}
-            onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
-          >
-            {p.name}
-          </button>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  {#if entryDraft.openSection === 'gender'}
-    <div class="editor-section" id="editor-section-gender" data-editor-section="gender" transition:disclose>
-      <!-- Nothing ticked and nothing kept from this entry is a resting state,
-           not a gap: somebody can reach it by unticking five boxes, and a mood,
-           tags, a note and a photo are still an entry. The section says what it
-           is rather than leaving a heading over nothing (phase 5 ticket 35).
-
-           One line or the other, never both. "However it feels right now, there
-           are no wrong answers" is reassurance about answering the sliders, and
-           with no sliders under it it was reassurance about nothing, stacked on
-           top of the line explaining why they are missing. -->
-      <div class="editor-section-head">
-        {#if dims.length === 0}
-          <p class="editor-hint" data-no-scales>{m.editor_no_scales()}</p>
-        {:else}
-          <p class="editor-hint">{m.gender_hint()}</p>
-        {/if}
-        <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
-      </div>
-      {#each dims as { dim, ticked } (dim.key)}
-        <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
-        {#if !ticked}
-          <p class="editor-hint editor-hint-tight">{m.scale_not_ticked()}</p>
-        {/if}
-      {/each}
-    </div>
-  {/if}
-
   {#if entryDraft.openSection === 'tags'}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags" transition:disclose>
       <TagPicker
@@ -1585,9 +1573,9 @@
     font-family: var(--font-body);
   }
 
-  /* The chip row: one key per section (DIRECTION.md rule 13). Blocks with
-     a 1px outline edge and the app's one corner, wrapping to a second line
-     at 390px rather than scrolling - a row you have to scroll hides the
+  /* The chip row: one key per folded section (DIRECTION.md rule 13).
+     Blocks with a 1px outline edge and the app's one corner, wrapping at
+     390px rather than scrolling - a row you have to scroll hides the
      question you came for, and "one tap away" has to mean visible. The
      open chip takes the chosen block's 3px `--text` edge, drawn as an
      inset outline so no chip moves when one opens. */
@@ -1595,7 +1583,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    margin: var(--space-4) 0 0;
+    margin: var(--space-5) 0 0;
   }
   .editor-chip {
     display: flex;
@@ -1633,22 +1621,11 @@
   }
 
   /* The section a chip opens sits on the page under the row, 20 below it
-     (rule 1's gap between blocks) and 20 above whatever follows. Its one
-     line of chrome is the head: the section's hint at the left and the
-     "manage"/"change" link ticket 51 kept at the right, where the heading's
-     action used to be. */
+     (rule 1's gap between blocks) and 20 above whatever follows. The chip
+     is its heading. */
   .editor-section {
     margin: var(--space-5) 0;
   }
-  .editor-section-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-3);
-    min-height: var(--touch-target);
-  }
-  .editor-section-head .editor-hint { margin: 0; align-self: center; }
-  .editor-section-head :global(.kit-heading-action) { flex: none; }
 
   /* The faces' room on the bar: five 32px faces at 36px each, then the
      star, then Save taking the rest. The picked face's 1.18 scale and the

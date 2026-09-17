@@ -90,10 +90,10 @@ async function openNewestEntry() {
   await booted();
 }
 
-/* Phase 11 ticket 19: the editor's structured sections - mode, gender,
-   tags, body map, photos, voice, video - sit behind a chip row under the
-   note and open one at a time, so a flow that reaches into one opens its
-   chip first. Idempotent: a chip already open is left open. */
+/* Phase 11 ticket 19: the editor's folded sections - tags, body map,
+   photos, voice, video - sit behind a chip row under the note and open one
+   at a time, so a flow that reaches into one opens its chip first. Mode
+   and gender stay on the page. Idempotent: a chip already open is left open. */
 async function openSection(section) {
   const chip = page.locator(`[data-section-chip="${section}"]`);
   await chip.waitFor();
@@ -328,7 +328,6 @@ try {
 /* 3. slider keyboard interaction */
 try {
   await fresh('/entry/new/today');
-  await openSection('gender');
   const thumb = page.locator('[data-slider]').first();
   await thumb.focus();
   // A number, not "anything but the unset marker": comparing against the
@@ -371,7 +370,6 @@ try {
    path. */
 try {
   await fresh('/entry/new/today');
-  await openSection('gender');
   await page.waitForSelector('[data-slider]');
   const values = () =>
     page.locator('[data-slider]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-valuenow')));
@@ -1650,7 +1648,6 @@ try {
   // And it reaches the entry screen like any built-in.
   await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
   await booted();
-  await openSection('gender');
   const names = await page.locator('[data-dim-name]').allTextContents();
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
   ok('a custom scale previews, saves ticked, and appears like a built-in');
@@ -2649,7 +2646,6 @@ try {
      claim the checklist makes. */
   await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
   await booted();
-  await openSection('gender');
   const drawn = await page.locator('[data-dim-name]').count();
   if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
 
@@ -2690,7 +2686,6 @@ try {
   await page.keyboard.press('Escape');
   await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
   await booted();
-  await openSection('gender');
   await page.waitForSelector('[data-no-scales]');
   if (await page.locator('[data-dim-name]').count()) {
     throw new Error('the editor drew a scale with none ticked');
@@ -3655,7 +3650,6 @@ try {
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
   await openNewestEntry();
-  await openSection('gender');
   await page.waitForSelector('[data-dim-value]');
   // Asserted as "is this a number", not against the unset marker's wording:
   // that marker is ordinary UI copy and changed once already (ticket 31).
@@ -3679,7 +3673,6 @@ try {
   await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
   await openNewestEntry();
-  await openSection('gender');
   await page.waitForSelector('[data-dim-value]');
   const values = await page.locator('[data-dim-value]').allTextContents();
   if (values.some((v) => Number.isFinite(Number(v.trim())))) {

@@ -234,8 +234,14 @@ test('the open chip travels with the draft, so a resumed entry lands where the p
   assert.equal(serializeDraft(draft).openSection, 'tags');
 
   const fresh = createEntryDraft(20_001);
-  applyPersistedDraft(fresh, { ...serializeDraft(draft), openSection: 'gender' });
-  assert.equal(fresh.openSection, 'gender');
+  applyPersistedDraft(fresh, { ...serializeDraft(draft), openSection: 'photos' });
+  assert.equal(fresh.openSection, 'photos');
+
+  /* A chip this build no longer draws - mode and gender left the row for
+     the page - reads as nothing open rather than opening nothing forever. */
+  const stale = createEntryDraft(20_001);
+  applyPersistedDraft(stale, { ...serializeDraft(draft), openSection: 'gender' as never });
+  assert.equal(stale.openSection, null);
 
   /* A mirror from before the chip existed carries no field, and reads as
      nothing open rather than as undefined. */
