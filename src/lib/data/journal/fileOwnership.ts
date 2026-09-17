@@ -32,7 +32,7 @@ function owner<Row extends Record<string, unknown>>(
     async read(driver: SqliteDriver, scope: 'archive' | 'cleanup') {
       const rows = await driver.query<Row>(scope === 'archive'
         ? archiveQuery
-        : `SELECT * FROM ${table}`);
+        : `SELECT ${fileColumns.join(', ')} FROM ${table}`);
       return { rows, names: rows.flatMap(names) };
     }
   };
@@ -71,6 +71,11 @@ export const FILE_OWNERS = {
     'SELECT uuid, tryout_id, epoch_day, file_path FROM tryout_photo ORDER BY tryout_id, epoch_day, id',
     photoNames
   ),
+  documentFiles: owner<DocumentFileRow>(
+    'document', ['file_path'],
+    'SELECT file_path FROM document ORDER BY epoch_day, id',
+    (row) => documentFilesOf(row.file_path)
+  ),
   recordings: owner<RecordingRow>(
     'voice_recording', ['file_path'],
     `SELECT v.uuid, v.file_path, v.entry_id FROM voice_recording v
@@ -78,11 +83,6 @@ export const FILE_OWNERS = {
        WHERE e.trashed_at IS NULL
        ORDER BY v.order_index, v.id`,
     singleName
-  ),
-  benchmarkFiles: owner<BenchmarkFileRow>(
-    'voice_benchmark', ['passage_file_path', 'vowel_file_path'],
-    'SELECT passage_file_path, vowel_file_path FROM voice_benchmark ORDER BY epoch_day, id',
-    (row) => row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path]
   ),
   videos: owner<VideoRow>(
     'video_note', ['file_path'],
@@ -92,10 +92,10 @@ export const FILE_OWNERS = {
        ORDER BY n.order_index, n.id`,
     singleName
   ),
-  documentFiles: owner<DocumentFileRow>(
-    'document', ['file_path'],
-    'SELECT file_path FROM document ORDER BY epoch_day, id',
-    (row) => documentFilesOf(row.file_path)
+  benchmarkFiles: owner<BenchmarkFileRow>(
+    'voice_benchmark', ['passage_file_path', 'vowel_file_path'],
+    'SELECT passage_file_path, vowel_file_path FROM voice_benchmark ORDER BY epoch_day, id',
+    (row) => row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path]
   ),
 };
 
