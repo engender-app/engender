@@ -79,7 +79,9 @@ export interface EntryDraft {
       way `setDim` does, a note scaffold only ever fills an empty note, and
       a template's own presentation replaces the draft's when it has one.
       Every value it sets is a plain field afterwards - `toggleTag`/`setDim`
-      edit it same as anything the person picked themselves. The merge math
+      edit it same as anything the person picked themselves. It also closes
+      whichever chip was open (ticket 19), so what it set reads off the
+      chips' states rather than off one section. The merge math
       itself is `applyEntryTemplateToDraft` (vocabulary/entryTemplates.ts),
       the same pure seam ticket 08's debrief offer reads. */
   applyTemplate(template: EntryTemplate): void;
@@ -193,6 +195,9 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.dims = merged.dims;
       this.note = merged.note;
       this.presentationId = merged.presentationId;
+      /* A template fills its chips and opens none (ticket 19): what it set
+         is read off the chips' states, not off a section it chose to open. */
+      this.openSection = null;
     },
 
     toggleBodyRegion(key) {
