@@ -115,7 +115,11 @@ export function detailDraft<TRecord, TDraft extends object>(
         },
         get failed() {
           return dependent.failed;
-        }
+        },
+        get stale() {
+          return mine !== undefined && dependent.stale;
+        },
+        retry: () => dependent.retry()
       };
     }
   };
