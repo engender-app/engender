@@ -41,15 +41,11 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import {
     careSpine,
-    railEpisodes,
-    scheduleDoseFacts,
-    SPINE_FORWARD_DAYS,
     type SpineMark,
     type SpineMarkKind
   } from '$lib/data/careSpine';
@@ -58,21 +54,19 @@
     epochDayFromDateInputValue,
     epochDayFromDateInputValueOrToday,
     ongoingWindowRange,
-    startOfDayTimestamp,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay } from '$lib/data/dates';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { resolveCurveDrug } from '$lib/data/hormoneDrug';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
-  import { depletingStocks, drugsMatch } from '$lib/data/stockProjection';
+  import { drugsMatch } from '$lib/data/stockProjection';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import { CLINICIAN_DOSSIER_INCLUSION_KEYS } from '$lib/data/export/clinicianSummaryData';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -93,91 +87,14 @@
      mark and have no room for more. */
   const dayWithWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
 
-  /* The whole dose log rather than a window, the way /doses reads it for
-     rotation-site recency: "the last dose" has to mean the last one, and a
-     window would report none for anyone who paused for longer than it.
-     careSpine clamps a dose older than the rail's reach to its left end and
-     flags it, so an old dose reads as old rather than as absent. */
-  let dosesQuery = liveList((j) => j.doses.getDoses(0, today));
-  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
-  /* Every episode's own schedule and pauses, read whole (doses.ts: both are
-     small, one row per episode) rather than through getComparison, which
-     answers "the sole active episode" and gives up the moment a second one
-     is active - the exact case this screen draws a lane each for. */
-  let schedulesQuery = liveList((j) => j.doses.getSchedules());
-  let pausesQuery = liveList((j) => j.doses.getPauses());
-  let stockQuery = liveList((j) => j.stock.getProjections(today));
-  let latestLabQuery = liveQuery((j) => j.labs.getLatestResult());
-
-  /* Every one of those six reads has to have answered before the rail means
-     anything: a spine drawn while the stock query is still out would settle
-     without its run-out marks and then jump. The rail is one object rather
-     than a list, so this is a Skeleton against a `.loading` of its own rather
-     than a ReadGate (tests/feature-screens.test.ts holds the choice between
-     the two). */
-  let loading = $derived(
-    dosesQuery.loading ||
-      episodesQuery.loading ||
-      schedulesQuery.loading ||
-      pausesQuery.loading ||
-      stockQuery.loading ||
-      latestLabQuery.loading
-  );
-
-  /* Which regimens are running today, in the order their lanes are drawn
-     (careSpine.ts: curve drugs first so the lane the curve reads sits
-     nearest the labs row, then oldest first). Every one of them gets a lane
-     and a block; none of them is "other". */
-  let laneEpisodes = $derived(railEpisodes(activeEpisodesAt(episodesQuery.rows, startOfDayTimestamp(today))));
-  let latestLab = $derived(latestLabQuery.value ?? null);
-
-  /* Every tracked stock with an actionable day inside the rail's forward
-     reach, through the helper Home's stock notice uses - passed the rail's
-     own horizon instead of the notice threshold, so this asks "is there a
-     day on this line" rather than "is one close". A day further out than
-     the rail simply has no mark; the block's own stock line still states
-     what is left. `actionableEpochDay` is the reorder-by day where a lead
-     time is set and the run-out day itself where none is (redesign phase 10
-     ticket 16), so the rail and Home's notice always name the same day. */
-  let depleting = $derived(depletingStocks(stockQuery.rows, today, SPINE_FORWARD_DAYS));
-  /* Paired to a lane by the same rule the projection itself pairs a dose to
-     a stock by (stockProjection.ts's `drugsMatch`), rather than by a second
-     comparison written here. */
-  const runOutFor = (drug: string) => depleting.find((row) => drugsMatch(row.entry.drug, drug)) ?? null;
-
-  /* Ticket 09: what used to be the whole of /settings/exposure - a range
-     picker over three counters - is one fact per lane now, over a window
-     that just states itself rather than inviting a pick (ADR-0084, "a fact
-     with its unit and window, no comparison"). Fixed at
-     exposureCounters.ts's own default range rather than reusing
-     DOSES_WINDOW_DAYS, which answers a different question. */
-  const DOSE_TOTAL_WINDOW_DAYS = 90;
-  let doseTotalQuery = liveQuery((j) => j.exposure.getCounters(today - DOSE_TOTAL_WINDOW_DAYS + 1, today));
-
-  const scheduleForEpisode = (episode: RegimenEpisode) =>
-    schedulesQuery.rows.find((schedule) => schedule.episodeId === episode.id) ?? null;
-  const pausesForEpisode = (episode: RegimenEpisode) =>
-    pausesQuery.rows.filter((pause) => pause.episodeId === episode.id);
-  const doseFactsFor = (episode: RegimenEpisode) =>
-    scheduleDoseFacts(episode, episodesQuery.rows, scheduleForEpisode(episode), dosesQuery.rows, pausesForEpisode(episode), today);
-
-  /** One running regimen, with everything the lane above and the block below
-      both read. Built once per episode rather than twice, so a lane and its
-      block can never state two different next doses. */
-  let lanes = $derived(
-    laneEpisodes.map((episode) => ({
-      episode,
-      ...doseFactsFor(episode),
-      runOut: runOutFor(episode.drug),
-      /* Every matching total the window found for this drug - ordinarily
-         one, since a route change mid-window is rare. */
-      doseTotals: (doseTotalQuery.value?.doseTotals ?? []).filter((total) => total.drug === episode.drug)
-    }))
-  );
-
-  /* Carried over from /settings/stock's own note (ADR-0046): about every
-     projection the sheet's list below shows, not any one drug's. */
-  let stockExcludedDoses = $derived(stockQuery.rows.reduce((total, row) => total + row.projection.excludedDoses, 0));
+  let careQuery = liveQuery((j) => readCare(j, today));
+  // A successful answer exists even when no medication has been recorded.
+  let careRead = liveListIn(careQuery, (care) => [care]);
+  let lanes = $derived(careQuery.value?.lanes ?? []);
+  let latestLab = $derived(careQuery.value?.latestLab ?? null);
+  let stock = $derived(careQuery.value?.stock ?? []);
+  let stockExcludedDoses = $derived(careQuery.value?.stockExcludedDoses ?? 0);
+  const runOutFor = (drug: string) => lanes.find((lane) => drugsMatch(lane.episode.drug, drug))?.runOut ?? null;
 
   /* The stock editor (Recorded, Opened, window), off Care rather than its
      own screen (ADR-0084) - the same shape the dose panel's own Log sheet
@@ -472,7 +389,7 @@
       the same sentence a second time - it draws only what no lane covers,
       and the list behind it is still the whole drawer. */
   let unlanedStock = $derived(
-    stockQuery.rows.filter((row) => !lanes.some((lane) => drugsMatch(lane.episode.drug, row.entry.drug)))
+    stock.filter((row) => !lanes.some((lane) => drugsMatch(lane.episode.drug, row.entry.drug)))
   );
 
   /* Mood between injections (phase 5 ticket 09, moved here whole by
@@ -543,9 +460,10 @@
 <div class="screen">
   <ScreenHeader title={m.care_title()} back="/more" screen="care" />
 
-  {#if loading}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else if spine}
+  <ReadGate read={careRead} variant="block" count={1}>
+    {#snippet empty()}{/snippet}
+    {#snippet rows()}
+  {#if spine}
     <ChartCard heading={m.care_rail_heading()} kind="care-spine" role={roleAt(activeFlag.roles, AREA_ROLE.rail)}>
       <div class="care-rail" data-care-rail>
         <!-- Today and the draw head the rail, once, and their guides run
@@ -690,7 +608,6 @@
        appeared a couple of hundred milliseconds early and pushed the
        skeleton down the screen, which is what read as a yank rather than a
        fade. -->
-  {#if !loading}
     {#each lanes as lane (lane.episode.id)}
       {@const route = blockRoute(lane.episode)}
       <div class="care-regimen-block" data-care-regimen-block={lane.episode.drug}>
@@ -736,7 +653,7 @@
                  it sits mid-sentence (ticket 09's own spec gives the line in
                  lowercase: "48 mg intramuscular in the last 90 days"). */
               route: label.charAt(0).toLowerCase() + label.slice(1),
-              days: String(DOSE_TOTAL_WINDOW_DAYS)
+              days: String(CARE_DOSE_TOTAL_WINDOW_DAYS)
             })}
           </p>
         {/each}
@@ -766,7 +683,6 @@
         </a>
       </div>
     {/each}
-  {/if}
 
   <SectionHeading text={m.care_group_hormones()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
@@ -804,7 +720,7 @@
         })}
         onclick={openStockList}
       />
-    {:else if stockQuery.rows.length === 0}
+    {:else if stock.length === 0}
       <ListRow key="stock" icon="package" title={m.regimen_stock_link()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
     {/if}
     <!-- Ticket 59: the summary is an export over these readings, not one of
@@ -822,6 +738,8 @@
       href="/health/clinician-summary"
     />
   </ListCard>
+    {/snippet}
+  </ReadGate>
 
   <!-- Mood between injections (redesign ticket 05: moved off a general
        stats door, since this is a regimen reading and Care is where the
@@ -1027,9 +945,9 @@
         {/if}
       </div>
     {:else}
-      {#if stockQuery.rows.length}
+      {#if stock.length}
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
-          {#each stockQuery.rows as row (row.entry.id)}
+          {#each stock as row (row.entry.id)}
             {@const rowRunOut = stockRunOutLabel(row.projection, today)}
             <ListRow
               key={row.entry.id}
