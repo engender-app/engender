@@ -2386,6 +2386,9 @@ await block('ticket redesign-30 the lock step splits in two', 2, async () => {
 
 // --- Ticket U08: automatic-unlock consent behind viable authentication ------
 await block('ticket U08 browser tier', 16, async () => {
+  /* 16 ok/fail calls: 9 matrix cells, the gate-held invariant, no-lock
+     silence, three-outcome distinguishability, ask-once-with-focus,
+     choice-preserved, never-re-asked, accepted-survives-repair. */
   const r = await load('/android-consent.html', 'android-consent-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2425,9 +2428,10 @@ await block('ticket U08 browser tier', 16, async () => {
     ok('no-lock with consent unanswered: nothing asked, nothing fired');
   else fail('no-lock asks nothing before repair', JSON.stringify({ asked: u.askedBeforeRepair, fired: u.autoBeforeRepair }));
 
-  if (u.cancelledOfferedRetry && !r.matrix['invalidated-unanswered'].consentSheet)
-    ok('a cancelled prompt offers retry while the invalidated key offers reset - still two different screens');
-  else fail('cancellation and key loss stay distinguishable', JSON.stringify({ cancelled: u.cancelledOfferedRetry }));
+  if (u.cancelledOfferedRetry && u.failedStayedRetryGate && !r.matrix['invalidated-unanswered'].consentSheet)
+    ok('cancelled and failed prompts offer retry while the invalidated key offers reset - three distinguishable states');
+  else
+    fail('cancellation, failure and key loss stay distinguishable', JSON.stringify({ cancelled: u.cancelledOfferedRetry, failed: u.failedStayedRetryGate }));
 
   if (u.askedAfterRepair && u.focusInSheet)
     ok('after repair the question is asked once, and focus lands inside the sheet');
