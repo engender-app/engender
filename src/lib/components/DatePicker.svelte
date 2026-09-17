@@ -59,6 +59,9 @@
       minDate: min || undefined,
       maxDate: max || undefined,
       disableMobile: true,
+      // Flatpickr dismisses on touchstart, before Android can cancel a Back
+      // gesture. Outside dismissal below waits for a completed click.
+      ignoredFocusElements: [document.body],
       locale: pickerLocale(),
       onChange: (dates) => {
         const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
@@ -79,6 +82,13 @@
         releaseOverlay = null;
       }
     });
+    const dismissOutside = (event: MouseEvent) => {
+      if (!picker?.isOpen || !(event.target instanceof Node)) return;
+      if (picker.calendarContainer.contains(event.target)
+        || (picker.altInput ?? node).contains(event.target)) return;
+      picker.close();
+    };
+    document.addEventListener('click', dismissOutside);
     /* The id belongs on the field a person sees and a label points at; the
        hidden original keeps the name for whatever submits it. The instance
        goes on both, so anything holding the visible field - a label, a
@@ -94,6 +104,7 @@
     }
     return {
       destroy() {
+        document.removeEventListener('click', dismissOutside);
         releaseOverlay?.();
         releaseOverlay = null;
         picker?.destroy();
