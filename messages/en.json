@@ -1,4 +1,8 @@
 {
+  "read_failed": "Couldn't read your journal",
+  "read_refresh_failed": "Couldn't refresh your journal",
+  "read_stale_body": "Showing the last result. Recent changes may be missing.",
+  "read_retry": "Try again",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_name": "enGender",
   "nav_calendar": "Calendar",
@@ -107,7 +111,7 @@
   "trash_empty_title": "Trash is empty",
   "trash_empty_body": "A deleted entry shows up here for 30 days before it's gone for good.",
   "trash_read_failed_title": "Couldn't read the trash",
-  "trash_read_failed_body": "This is not the same as an empty trash. Nothing was deleted by the failure, so whatever was waiting here is still waiting. Leave the screen and come back to try again.",
+  "trash_read_failed_body": "This read failure did not delete any entries. Try again to read the trash.",
   "trash_restore": "Restore",
   "trash_restored_toast": "Entry restored",
   "trash_days_left": [
@@ -1959,7 +1963,7 @@
   "photo_day_prompt_save": "Save",
   "photo_day_prompt_skip": "Skip",
   "pj_read_failed_title": "Couldn't read your photos",
-  "pj_read_failed_body": "This is not the same as having no photos. Leave the screen and come back to try again.",
+  "pj_read_failed_body": "Try again to read your photos.",
   "photo_picker_failed": "Couldn’t open the photo picker.",
   "vc_compare": "Compare",
   "vc_earlier": "Earlier benchmark",

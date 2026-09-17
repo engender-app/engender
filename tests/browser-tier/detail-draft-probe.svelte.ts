@@ -127,14 +127,18 @@ async function run() {
         },
         get failed() {
           return taggedQuery.failed;
-        }
+        },
+        get stale() {
+          return answersFor(taggedQuery.value, tryoutId) && taggedQuery.stale;
+        },
+        retry: () => taggedQuery.retry()
       },
       (answer) => answer.hits
     );
 
     $effect(() => {
-      const raw = gateBranch(rawEntries, false);
-      const gated = gateBranch(gatedEntries, false);
+      const raw = gateBranch(rawEntries);
+      const gated = gateBranch(gatedEntries);
       rawBranches.push(raw);
       gatedBranches.push(gated);
       if (raw === 'rows' && gated === 'rows') settled = true;
