@@ -94,12 +94,9 @@
     if (checklistQuery.loading || appointmentsQuery.loading) return;
     if (restoredFor !== todaysAppointment.id) {
       restoredFor = todaysAppointment.id;
-      Object.assign(
-        answers,
-        restoreRoomAnswers(
-          todaysAppointment.id,
-          items.map((item) => item.id)
-        )
+      answers = restoreRoomAnswers(
+        todaysAppointment.id,
+        items.map((item) => item.id)
       );
     }
     holdRoomAnswers({ appointmentId: todaysAppointment.id, answers: jotted, byItemId: { ...answers } });
