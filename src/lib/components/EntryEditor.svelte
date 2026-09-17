@@ -720,7 +720,6 @@
   let moodMissing = $derived(entryDraft.mood == null);
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
-  let savedContinue = $state<HTMLAnchorElement>();
 
   async function leaveSavedEntry() {
     try {
@@ -730,7 +729,7 @@
       console.error('could not navigate after saving the entry', error);
       navigationFailed = true;
       await tick();
-      savedContinue?.focus();
+      document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
       return false;
     }
   }
@@ -850,11 +849,9 @@
       {role}
       title={m.saved()}
       text={navigationFailed ? m.entry_saved_navigation_failed() : undefined}
+      action={{ label: m.entry_saved_continue(), href: savedDestination, primary: true }}
       aria-live="polite"
     />
-    <a class="btn btn-primary" href={savedDestination} data-entry-saved-continue bind:this={savedContinue}>
-      <span>{m.entry_saved_continue()}</span>
-    </a>
   {:else}
   {#if prompt && !promptDismissed}
     <Notice

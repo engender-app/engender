@@ -166,7 +166,7 @@ async function saveWithNavigationFailure(journal: Journal) {
       truthfulNotice: notice.textContent!.includes(m.saved()),
       saveOffered: target.querySelector('[data-save]') !== null,
       saveFailureReported: toasts.some((item) => item.message === m.entry_save_failed()),
-      recoveryHref: target.querySelector('[data-entry-saved-continue]')?.getAttribute('href')
+      recoveryHref: target.querySelector('[data-entry-saved] a')?.getAttribute('href')
     };
   } catch (error) {
     await screen.remove();
