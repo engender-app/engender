@@ -18,7 +18,7 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const more = read('src/routes/more/+page.svelte');
 const markup = more.replace(/<script[\s\S]*?<\/script>/g, '');
-const personalEffects = read('src/routes/practice/personal-effects/+page.svelte');
+const personalEffects = read('src/routes/care/changes/+page.svelte');
 
 describe('what the More hub is built from', () => {
   it('takes its surfaces from the kit and draws no card or list-group of its own', () => {
@@ -85,9 +85,11 @@ describe('what the More hub is built from', () => {
   });
 
   it('asks nothing about cycle tracking, since it draws no cycle row (ADR-0043)', () => {
-    /* The row is hosted by /practice/personal-effects now (ticket 16 put it on
+    /* The row is hosted by /care/changes now (ticket 16 put it on
        /health/side-effects, ticket 13 moved it again with the rest of what
-       that screen drew), which was already gating its own cycle block on
+       that screen drew, and ticket 21 moved the screen's own address off
+       the retired Practice prefix), which was already gating its own
+       cycle block on
        `cycleTrackingVisible`. ADR-0043's decision is unchanged and stronger
        for it: the hub cannot show a cycle prompt at all, rather than showing
        one behind a rule it had to fetch an episode list to evaluate. */
@@ -241,16 +243,16 @@ describe('every row the hub carries', () => {
     ['appointments', 'check', '/health/appointments', 'health', 'read'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
     ['tryouts', 'tag', '/transition/tryouts', 'transition', 'read'],
-    ['voice-benchmark', 'curve', '/practice/voice', 'transition', 'read'],
-    ['wear', 'clock', '/practice/wear', 'transition', 'read'],
+    ['voice-benchmark', 'curve', '/voice', 'transition', 'read'],
+    ['wear', 'clock', '/body/wear', 'transition', 'read'],
     ['hair-removal', 'shuffle', '/body/hair-removal', 'transition', 'read'],
     ['roadmap', 'globe', '/transition/roadmap', 'transition', 'written'],
     ['letters', 'book', '/transition/letters', 'transition', 'written'],
     ['doubt', 'heart', '/doubt', 'support', 'written'],
-    ['resources', 'info', '/practice/resources', 'support', 'written'],
+    ['resources', 'info', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
-    ['effects', 'eye', '/practice/personal-effects', 'care', 'read'],
+    ['effects', 'eye', '/care/changes', 'care', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
     ['cycle-events', 'calendar', '/health/cycle-events', 'effects', 'read'],
     ['dilation', 'flask', '/health/dilation', 'surgery', 'read']

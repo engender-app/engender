@@ -90,6 +90,16 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/media/photos')).toBe('settings');
   });
 
+  /* All-four-doors ticket 21: the retired Practice prefix's own screens
+     moved to addresses that say which door group holds them, and the tab
+     they light is unchanged - `/voice` alone got no door prefix. */
+  it('lights settings for every address the retired Practice prefix left behind', () => {
+    expect(activeTabKey('/care/changes')).toBe('settings');
+    expect(activeTabKey('/body/wear')).toBe('settings');
+    expect(activeTabKey('/support/resources')).toBe('settings');
+    expect(activeTabKey('/voice')).toBe('settings');
+  });
+
   it('lights home for the doubt journal', () => {
     expect(activeTabKey('/doubt')).toBe('home');
   });

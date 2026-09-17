@@ -44,7 +44,7 @@
        on /health/side-effects, which was already asking that question for
        the cycle block it draws, so the gate is that screen's alone and this
        file has no special case left. Ticket 13 moved the cycle block again,
-       onto /practice/personal-effects with the rest of what side effects
+       onto /care/changes with the rest of what side effects
        screen drew - the gate travelled with it rather than being restated.
      - the finished group, and the day it shows.
 
@@ -140,7 +140,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
     Three of the four are drawn by `HostedRows.svelte`, which reads
     `rowsHostedBy` below. `cycle-events` is the exception and stays written by
-    hand, now on /practice/personal-effects (it moved there with the rest of
+    hand, now on /care/changes (it moved there with the rest of
     what /health/side-effects drew): it sits inside a block that screen
     already gates on `cycleTrackingVisible`, its way-in row carries copy
     about the chart behind it rather than the standing line, and
@@ -156,7 +156,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     Transition an era is still drawn, as a band rather than a row. */
 export const HUB_ROW_HOSTS = {
   care: '/care',
-  effects: '/practice/personal-effects',
+  effects: '/care/changes',
   surgery: '/health/surgery'
 } as const;
 
@@ -326,7 +326,7 @@ const ROWS = [
     icon: 'curve',
     /* No `?tab=record`: the flow's own tab is already the screen's default,
        so the two addresses opened on the same tab (ticket 17). */
-    href: '/practice/voice',
+    href: '/voice',
     home: 'transition',
     /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
        together - but only the benchmarks have a last write here, since a
@@ -344,7 +344,7 @@ const ROWS = [
   {
     key: 'wear',
     icon: 'clock',
-    href: '/practice/wear',
+    href: '/body/wear',
     home: 'transition',
     areas: ['wearSessions'],
     finishes: 'wear',
@@ -402,7 +402,7 @@ const ROWS = [
     /* `info` rather than the `globe` it shared with the roadmap. */
     key: 'resources',
     icon: 'info',
-    href: '/practice/resources',
+    href: '/support/resources',
     home: 'support',
     areas: [],
     finishes: null,
@@ -473,7 +473,7 @@ const ROWS = [
        reasoning), the way `hair-progress` already does for its own two. */
     key: 'effects',
     icon: 'eye',
-    href: '/practice/personal-effects',
+    href: '/care/changes',
     home: 'care',
     areas: ['personalEffects', 'sideEffects'],
     finishes: 'effects',
@@ -502,7 +502,7 @@ const ROWS = [
        Ticket 16 took the row off the hub, and the gate went with it rather
        than being weakened: /health/side-effects drew a cycle block behind
        `cycleTrackingVisible`, and that block's own way in was the only one.
-       Ticket 13 moved the block again, onto /practice/personal-effects with
+       Ticket 13 moved the block again, onto /care/changes with
        the rest of what that screen drew, so this row's home moved with it -
        the gate itself is untouched, and the hub still cannot show a cycle
        prompt at all. */
@@ -898,7 +898,7 @@ export function hubSections(reading: HubReading): HubSection[] {
     `cycleEvents` is outside `HideableArea` precisely so that nothing here
     can reverse the decision, and the row's *positive* gate - an active
     testosterone regimen or an explicit opt-in - belongs to
-    /practice/personal-effects, which is the only screen that asks. A search
+    /care/changes, which is the only screen that asks. A search
     that answered "Cycle events" to somebody the app has decided not to ask
     about cycles would put that prompt back on the hub through the box, which
     is exactly what ticket 16 took off it.
@@ -967,7 +967,7 @@ export function hubSectionRoleIndex(key: HubSection['key']): number {
     person said it ended. `HostedRows.svelte` reads this and applies
     `rowHidden` and `rowLine` over the area record, so the rule lives once -
     except for `cycle-events`, which that component excludes by key and
-    /practice/personal-effects draws by hand instead (ADR-0043). */
+    /care/changes draws by hand instead (ADR-0043). */
 export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
   return HUB_ROWS.filter((row) => row.home === host);
 }

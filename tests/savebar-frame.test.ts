@@ -59,9 +59,9 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
       'src/lib/components/VoiceBenchmarkFlow.svelte',
       'src/lib/components/VoicePractice.svelte',
       'src/routes/media/photos/export/+page.svelte',
-      'src/routes/practice/voice/+page.svelte',
       'src/routes/settings/dimension/+page.svelte',
       'src/routes/settings/reminders/[id]/+page.svelte',
+      'src/routes/voice/+page.svelte',
       'src/routes/wrapped/[cadence]/share/+page.svelte'
     ]);
     expect(count).toBe(10);

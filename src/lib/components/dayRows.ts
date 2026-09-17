@@ -133,7 +133,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'mic',
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
       subtitle: m.day_voice_benchmark(),
-      href: '/practice/voice?tab=compare'
+      href: '/voice?tab=compare'
     })),
 
   measurements: (day) =>
@@ -168,7 +168,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'zap',
       title: effect.name,
       subtitle: severityName(effect.severity) ?? undefined,
-      href: '/practice/personal-effects'
+      href: '/care/changes'
     })),
 
   personalEffects: (day) =>
@@ -179,7 +179,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       // Earned: without it the row reads as something logged today rather
       // than as the day someone put to when it started.
       subtitle: m.day_first_noticed(),
-      href: '/practice/personal-effects'
+      href: '/care/changes'
     })),
 
   cycleEvents: (day) =>
@@ -224,7 +224,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
         // The kind rather than the screen's name (ticket 50): a day row is
         // about one session, and a session is always one of the three.
         subtitle: session.note || wearKindLabel(session.kind),
-        href: '/practice/wear'
+        href: '/body/wear'
       };
     }),
 

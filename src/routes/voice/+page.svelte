@@ -561,7 +561,7 @@
 
   <!-- The metric reference (phase 8 features ticket 27, ADR-0060; a sheet
        rather than its own screen since ticket 17). Reference data like
-       `/practice/resources`: the table is compiled in, so there is nothing
+       `/support/resources`: the table is compiled in, so there is nothing
        to wait for and nothing that can be empty - only the figure each
        section opens with reads the journal, through `anchors`, already
        fetched for the compare tab above. -->

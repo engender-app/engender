@@ -61,7 +61,13 @@ const TAB_ROUTES: TabRoute[] = [
      ticket 43), and it is listed here rather than left to the fallback so
      that the tab the old address lights is the tab it lands on. Left with
      Look back, where the rail used to live, the indicator would have
-     travelled one tab and back while the redirect resolved. */
+     travelled one tab and back while the redirect resolved.
+
+     `/support` and `/voice` joined in ticket 21, when the retired Practice
+     prefix's screens moved to addresses that say which door group holds
+     them (ADR-0072) - `/voice` alone got no door prefix, but the tab it
+     lights is unchanged. `/practice` itself stays, since the directory
+     still holds this ticket's redirect stubs. */
   {
     key: 'settings',
     prefixes: [
@@ -73,6 +79,8 @@ const TAB_ROUTES: TabRoute[] = [
       '/body',
       '/health',
       '/transition',
+      '/support',
+      '/voice',
       '/practice',
       '/media'
     ]

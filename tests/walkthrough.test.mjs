@@ -4041,7 +4041,7 @@ try {
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
     '/transition/roadmap', '/transition/letters', '/transition/tryouts',
     '/settings/eras',
-    '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
+    '/voice', '/body/wear', '/care/changes', '/support/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
@@ -4199,20 +4199,20 @@ try {
     ['/health/cycle-events', 'cycle-events-empty'],
     // The merged screen (ticket 13) - side effects keep their own
     // empty-state marker under the same roof as the changes axis.
-    ['/practice/personal-effects', 'side-effects-empty'],
+    ['/care/changes', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
     ['/health/dilation', 'dilation-schedule-empty'],
     ['/health/appointments', 'appointment-prep-empty'],
     ['/transition/milestones', 'milestones-empty'],
     ['/transition/letters', 'letters-empty'],
     ['/transition/tryouts', 'tryouts-empty'],
-    /* `/practice/voice` is not on this list, and still is not now that the
+    /* `/voice` is not on this list, and still is not now that the
        fixture writes benchmarks (redesign ticket 42): its remaining empty
        notice belongs to the compare tab, and the route opens on the record
        tab, so a check here would pass without ever reaching the thing it is
        about. The voice screen's own walk is below and asks the compare tab
        directly. */
-    ['/practice/wear', 'wear-empty'],
+    ['/body/wear', 'wear-empty'],
     /* `/settings/stock` is not on this list any more (ticket 09, ADR-0084):
        the stock editor is a sheet off Care's own regimen block now, closed
        by default, so a bare page load of `/care` never renders its
@@ -4292,7 +4292,7 @@ try {
      for thirty seconds and then blame the screen. The figure itself, with
      its bands, its source and its caveat, is asserted in the browser tier
      against an oscillator (tests/browser-tier/voice-benchmark-probe.ts). */
-  await page.goto(BASE + '/practice/voice', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/voice', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-vb-passage]');
   await page.locator('[data-segment="practise"]').click();
   await page.waitForSelector('[data-comfort-band]');
@@ -4352,7 +4352,7 @@ try {
      app can say is that the route boots at all - `/doses` sticks at
      "booting" in a production build while every test in the node tier
      passes - so this walks to the old address by URL, which redirects to
-     `/practice/voice?metric=pitch` and opens the sheet there, and reads
+     `/voice?metric=pitch` and opens the sheet there, and reads
      what it drew. */
   await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-sheet] [data-metric="pitch"]');
@@ -4420,7 +4420,7 @@ try {
    and that no row on the screen falls outside the week the strip is
    drawing. */
 try {
-  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
 
   await page.waitForSelector('[data-week-cell]', { timeout: 8000 });
@@ -4574,7 +4574,7 @@ try {
    existed. If that regressed, the row the next block looks for would
    already be gone. */
 try {
-  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-wear-running]', { timeout: 8000 });
 
   /* Ticket 50, ADR-0064: fullFixture's running session is a binder one nine
@@ -4734,7 +4734,7 @@ try {
      through the control on the area's own screen rather than by writing an
      `area_state` row, because the whole claim is that the two surfaces
      agree. */
-  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
   await page.locator('[data-area-finish]').click();
   await page.waitForSelector('[data-area-finish-confirm]', { timeout: 8000 });
@@ -4751,7 +4751,7 @@ try {
   }
   // Still one tap away, and the screen behind it still works.
   await page.locator('[data-list-row="wear"]').click();
-  await page.waitForURL('**/practice/wear');
+  await page.waitForURL('**/body/wear');
   await page.waitForSelector('[data-area-finished]', { timeout: 8000 });
 
   // Put it back, so nothing after this walks a hub with a finished area in it.
@@ -4782,7 +4782,7 @@ try {
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
   await page.locator('[data-list-row="effects"]').click();
-  await page.waitForURL('**/practice/personal-effects');
+  await page.waitForURL('**/care/changes');
 
   // ... and the other change hanging off the same screen.
   await page.locator('[data-list-row="hair-progress"]').click();
@@ -4867,7 +4867,7 @@ try {
 
   // ... and it is still the row it was: one tap to its own screen.
   await page.locator('[data-hub-results] [data-list-row="wear"]').click();
-  await page.waitForURL('**/practice/wear');
+  await page.waitForURL('**/body/wear');
 
   /* A row this door does not draw. Seven areas are drawn on a screen of
      their own (phase 9 carpet ticket 16) and this is the only index with a
@@ -6060,7 +6060,7 @@ try {
      gate, and `all-cycle-events` is a handle this flow goes on to wait for -
      so its absence here means something (ADR-0029, and a deleted handle
      cannot assert it is gone). */
-  await fresh('/practice/personal-effects');
+  await fresh('/care/changes');
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
     throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
   }
@@ -6087,7 +6087,7 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // Back off, so the next flow starts from the default and the testosterone
@@ -6119,7 +6119,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
 
-  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
@@ -6136,7 +6136,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
   ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
 } catch (e) { fail('cycle tracking testosterone', e); }
@@ -6146,7 +6146,7 @@ try {
   /* The personal effects onset nudge (phase 5 ticket 49).
      Absent on a fresh journal with no regimen. Once an active regimen
      episode with a literature onset window is added, opening the fan shows
-     the effects row; tapping it navigates to /practice/personal-effects and closes
+     the effects row; tapping it navigates to /care/changes and closes
      the fan. When the anchor is moved past the onset window (>12 months),
      the row is absent again. */
   const localIso = (daysAgo = 0) => {
@@ -6203,7 +6203,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
   await page.locator('[data-choose="effects"]').click();
-  await page.waitForFunction(() => window.location.pathname === '/practice/personal-effects', null, { timeout: 8000 });
+  await page.waitForFunction(() => window.location.pathname === '/care/changes', null, { timeout: 8000 });
   /* Detached rather than an instant count (see flow 18's own note): the
      fan's cards carry their own out:fanOut transition, so a plain count
      right after the tap can still catch it mid-fade. */
@@ -6228,7 +6228,7 @@ try {
   }
   await page.locator('[data-nav-fab]').click();
 
-  ok('quick add: personal effects nudge appears only during onset window and navigates to /practice/personal-effects');
+  ok('quick add: personal effects nudge appears only during onset window and navigates to /care/changes');
 
   /* The axis at the top of "changes you've noticed" (phase 10 redesign
      ticket 57). It runs on the journal this flow has just left behind - a
@@ -6241,7 +6241,7 @@ try {
      the same sheet the row below it opens, and that clearing the marker takes
      the mark off the line. The arithmetic behind the positions is
      noticedAxis.test.ts's. */
-  await page.goto(BASE + '/practice/personal-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-noticed-axis]');
   if ((await page.locator('[data-noticed-mark]').count()) !== 0) {
     throw new Error('the axis drew a mark on a journal with nothing marked');
@@ -6299,7 +6299,7 @@ try {
   await page.locator('[data-choose="wear"]').click();
   await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
 
-  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await booted();
   /* [data-skeleton] used to match nothing - Skeleton.svelte only ever wrote
      `class="skeleton"` - so this wait was a no-op from its first tick
