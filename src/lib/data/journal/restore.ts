@@ -21,6 +21,18 @@
         transaction so that a failure leaves the database exactly as it was,
         rather than as the next boot would have made it.
 
+   An import from another app (`commitImport` below) adds two things to that
+   same transaction rather than after it: the counts it will report, measured
+   either side of the apply, and the import_log row that records them. That
+   is the whole of pre-production audit A1. Taking either afterwards meant a
+   failure there rejected an import whose rows were already committed, so the
+   person saw a failure message over data that was really on disk, the
+   history had no record of it, and nothing invalidated the live reads still
+   showing the old journal - with "import the file again" as the obvious and
+   duplicating next move. Nothing fallible may run between the commit and the
+   resolved promise, because that promise is what the write registry treats
+   as permission to announce the tables (live/writes.ts).
+
    Nothing here deletes a file, ever (ADR-0011). Every failure before the
    commit is therefore a no-op: the old journal is completely intact and the
    only cost is dead files until the next boot's orphan sweep reclaims them
@@ -59,7 +71,7 @@ import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { reconcileBuiltInsWithin } from './reconcile';
-import { aliasLegacyConsults } from './archiveApply';
+import { aliasLegacyConsults, recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
 import { now } from './support';
 
@@ -144,6 +156,28 @@ async function writeArchiveFiles(
   }
 }
 
+/** What an import from another app reports and records, settled inside the
+    transaction that writes its rows (audit A1, module header).
+
+    `counting` names each number the result carries and the SQL tables whose
+    growth across the apply is that number: `{ entries: ['entry'] }` comes
+    back as `{ entries: 12 }`. Measured rather than taken from the preview,
+    though a preview is defined as the exact work a commit performs: the
+    preview resolves against a snapshot read before the person confirmed, and
+    a row added in between turns one of its "new" rows into one the merge
+    skips. The audit's word for the number a commit hands back is "truthful",
+    and a measurement of the rows that landed is the only thing that stays
+    true across that window.
+
+    The table names are this module's callers' own literals, never anything
+    an archive carried. */
+export interface ImportCommit {
+  /** The history row's source, named by the source registry rather than
+      spelled a second time here (archive/sources.ts). */
+  source: string;
+  counting: Record<string, readonly string[]>;
+}
+
 export async function restoreArchive(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -151,23 +185,81 @@ export async function restoreArchive(
   contents: RestoreContents,
   onProgress?: OnRestoreProgress
 ): Promise<void> {
+  await restoreWithin(driver, files, mode, contents, onProgress);
+}
+
+/** A Merge that also measures what it added and writes the import history
+    for it, all inside the one transaction (audit A1). Returns the counts by
+    the names `commit.counting` gave them - the same object the history row
+    keeps, so the result a screen shows and the record settings shows cannot
+    describe two different imports. */
+export async function commitImport(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  contents: RestoreContents,
+  commit: ImportCommit,
+  onProgress?: OnRestoreProgress
+): Promise<Record<string, number>> {
+  return restoreWithin(driver, files, 'merge', contents, onProgress, commit);
+}
+
+async function restoreWithin(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  mode: RestoreMode,
+  contents: RestoreContents,
+  onProgress?: OnRestoreProgress,
+  commit?: ImportCommit
+): Promise<Record<string, number>> {
   const journal = aliasLegacyConsults(contents.journal);
   assertRestorable(journal);
 
   await writeArchiveFiles(files, contents.files, contents.fileCount ?? 0, onProgress);
 
+  let added: Record<string, number> = {};
   await driver.transaction(async () => {
     // Seeding first, unconditionally, and inside this transaction with
     // everything else (reconcile.ts explains the second entry point).
     await reconcileBuiltInsWithin(driver);
     if (mode === 'replace') await discardJournalRows(driver);
+    /* Counted after the reconcile and the discard rather than at the top of
+       the transaction: a built-in this boot seeded, and a Replace's own
+       emptying, are not rows the archive added. */
+    const before = commit ? await countRows(driver, commit.counting) : null;
     // Which sections there are and what has to be inserted before what are
     // the registry's (archiveSections.ts), not this function's - and so is
     // how many there are to count against.
     await applyArchiveJournal({ driver, mode, journal, ts: now() }, undefined, (done, total) =>
       onProgress?.({ stage: 'rows', done, total })
     );
+    if (commit && before) {
+      const after = await countRows(driver, commit.counting);
+      added = Object.fromEntries(Object.keys(before).map((name) => [name, after[name] - before[name]]));
+      await recordImport(driver, commit.source, added);
+    }
   });
+  return added;
+}
+
+/** How many rows each counted name's tables hold between them. A query per
+    table rather than one assembled statement: no list here is longer than
+    two, and both halves of the subtraction run inside a transaction that is
+    already open, so this is a handful of index-free counts on a device that
+    has just written far more than it is now counting. */
+async function countRows(
+  driver: SqliteDriver,
+  counting: ImportCommit['counting']
+): Promise<Record<string, number>> {
+  const counted: Record<string, number> = {};
+  for (const [name, tables] of Object.entries(counting)) {
+    let rows = 0;
+    for (const table of tables) {
+      const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`);
+      rows += row.n;
+    }
+    counted[name] = rows;
+  }
+  return counted;
 }
 
 /** The backup health drill (ticket 28): proves a chosen archive still

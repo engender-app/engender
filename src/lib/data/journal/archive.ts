@@ -27,7 +27,7 @@
 
 import { filesOf, thumbFileName } from '../photos/names';
 import { documentFilesOf } from './documents';
-import type { OnRestoreProgress, RestoreContents, RestoreMode } from './restore';
+import type { ImportCommit, OnRestoreProgress, RestoreContents, RestoreMode } from './restore';
 import {
   daylioPreview,
   type DaylioCommitResult,
@@ -45,8 +45,6 @@ import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { NormalizedPhoto } from './photos';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
-import { IMPORT_LOG_COLUMNS, importLogRow } from './archiveApply';
-import { mintUuid, now } from './support';
 
 interface TransTracksCommitResult {
   milestonesAdded: number;
@@ -79,11 +77,9 @@ export interface ArchiveSnapshot {
   readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
-/** What a committed backup import added, taken from the preview rather
-    than measured again afterwards: the preview is defined as the exact
-    work a commit performs, and re-reading the whole journal twice to
-    subtract seven numbers would be a second answer to a question that
-    already has one. */
+/** What a committed backup import added. Every commit below reports its
+    counts the same way - measured over the tables it writes, inside the
+    transaction that writes them (restore.ts's `commitImport`, audit A1). */
 interface DaylioBackupCommitResult {
   entriesAdded: number;
   milestonesAdded: number;
@@ -162,10 +158,11 @@ export interface ArchiveArea {
 
 /** restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/
     payload.ts, an 82KB chunk that otherwise rides every eager path into this
-    file (ticket 21's audit, ticket 27). One wrapper rather than repeating
-    `await import('./restore')` at each of the eight call sites below - a
-    dynamic import of the same specifier already resolves from the module
-    loader's own cache, so there is nothing here worth memoizing by hand. */
+    file (ticket 21's audit, ticket 27). One wrapper per entry point rather
+    than repeating `await import('./restore')` at each of the eight call
+    sites below - a dynamic import of the same specifier already resolves
+    from the module loader's own cache, so there is nothing here worth
+    memoizing by hand. */
 async function restoreArchive(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -177,17 +174,27 @@ async function restoreArchive(
   return restore.restoreArchive(driver, files, mode, contents, onProgress);
 }
 
-/** One import_log row, direct rather than through the ordinary merge: this
-    record is not content a device might already have and skip (ADR-0002's
-    own insert-if-absent shape) - it is a new fact every time, minted here
-    the way any other user-owned row is (ticket 03). */
-async function recordImport(driver: SqliteDriver, source: string, counts: Record<string, number>): Promise<void> {
-  const ts = now();
-  await driver.run(
-    `INSERT INTO import_log (${IMPORT_LOG_COLUMNS}) VALUES (?, ?, ?, ?, ?)`,
-    importLogRow({ id: mintUuid(), source, counts, importedAt: ts }, ts)
-  );
+/** The same wrapper for the other entry point: a Merge that measures what it
+    added and writes the import history inside the same transaction (audit
+    A1). Each commit below names the tables its own counts are measured over
+    - the only place in this area that spells a SQL table, and deliberately
+    so: these are the numbers the commit hands back, and a count of "entries"
+    that named a section rather than a table would be one indirection away
+    from the rows it is claiming to have written. */
+async function commitImport(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  contents: RestoreContents,
+  commit: ImportCommit,
+  onProgress?: OnRestoreProgress
+): Promise<Record<string, number>> {
+  const restore = await import('./restore');
+  return restore.commitImport(driver, files, contents, commit, onProgress);
 }
+
+/** No photos, for the sources whose file is rows all the way down: the
+    restore is all rows and its progress is the section count alone. */
+const noFiles = (): AsyncIterable<{ name: string; bytes: Uint8Array }> => (async function* () {})();
 
 export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): ArchiveArea {
   /** The manifest for a plain list of file names, minus whatever the store
@@ -234,28 +241,15 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       if (preview.unmappedMoodLabels.length > 0) {
         throw new Error(`Daylio mood ${preview.unmappedMoodLabels.join(', ')} is not mapped; nothing was imported`);
       }
-      const before = await area.snapshot();
-      await restoreArchive(
+      // A CSV export carries no photos (daylio.ts).
+      const added = await commitImport(
         driver,
         files,
-        'merge',
-        {
-          journal: preview.journal,
-          // A CSV export carries no photos (daylio.ts), so this restore is
-          // all rows and its progress is the section count alone.
-          files: (async function* () {})()
-        },
+        { journal: preview.journal, files: noFiles() },
+        { source: 'daylio', counting: { entries: ['entry'], tags: ['tag'] } },
         onProgress
       );
-      const after = await area.snapshot();
-      const result = {
-        entriesAdded: after.journal.entries.length - before.journal.entries.length,
-        tagsAdded:
-          after.journal.tagGroups.flatMap((group) => group.tags).length -
-          before.journal.tagGroups.flatMap((group) => group.tags).length
-      };
-      await recordImport(driver, 'daylio', { entries: result.entriesAdded, tags: result.tagsAdded });
-      return result;
+      return { entriesAdded: added.entries, tagsAdded: added.tags };
     },
 
     async importLog() {
@@ -306,29 +300,31 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
          from preview.photoCount, so the denominator cannot disagree with
          the numerator if either ever changes. */
       const fileCount = preview.assets.reduce((n, asset) => n + (asset.kind === 'photo' ? 2 : 1), 0);
-      await restoreArchive(
+      /* A preview somebody abandoned, and an import that threw on an
+         undecodable photo, both leave no record: neither reaches the
+         transaction the history row is written in (ticket 03, audit A1).
+         An attachment is a photo row or a recording row, which is what
+         "attachments" counts on the way back out. */
+      const added = await commitImport(
         driver,
         files,
-        'merge',
         { journal: preview.journal, files: assetFiles(), fileCount },
+        {
+          source: 'daylio-backup',
+          counting: {
+            entries: ['entry'],
+            milestones: ['milestone'],
+            tags: ['tag'],
+            attachments: ['photo', 'voice_recording']
+          }
+        },
         onProgress
       );
-      /* The source name is the registry's own (archive/sources.ts), so the
-         log names what read the file rather than a second spelling of it.
-         Written after restore and never before: a preview somebody
-         abandoned, and an import that threw on an undecodable photo, both
-         leave no record because neither reached here (ticket 03). */
-      await recordImport(driver, 'daylio-backup', {
-        entries: preview.entryCount,
-        milestones: preview.milestoneCount,
-        tags: preview.newTagCount,
-        attachments: preview.photoCount + preview.audioCount
-      });
       return {
-        entriesAdded: preview.entryCount,
-        milestonesAdded: preview.milestoneCount,
-        tagsAdded: preview.newTagCount,
-        attachmentsAdded: preview.photoCount + preview.audioCount
+        entriesAdded: added.entries,
+        milestonesAdded: added.milestones,
+        tagsAdded: added.tags,
+        attachmentsAdded: added.attachments
       };
     },
 
@@ -337,26 +333,22 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async commitTransTracksImport(preview, normalize) {
-      const before = await area.snapshot();
-      await restoreArchive(driver, files, 'merge', {
-        journal: preview.journal,
-        files: (async function* () {
-          for (const [fileName, raw] of preview.rawPhotos) {
-            const normalized = await normalize(raw);
-            yield { name: fileName, bytes: normalized.full };
-            yield { name: thumbFileName(fileName), bytes: normalized.thumb };
-          }
-        })()
-      });
-      const after = await area.snapshot();
-      const result = {
-        milestonesAdded: after.journal.milestones.length - before.journal.milestones.length,
-        // Every TransTracks photo becomes exactly one synthetic entry
-        // (transtracks.ts), so diffing entries is diffing photos here.
-        photosAdded: after.journal.entries.length - before.journal.entries.length
-      };
-      await recordImport(driver, 'transtracks', { milestones: result.milestonesAdded, photos: result.photosAdded });
-      return result;
+      const added = await commitImport(
+        driver,
+        files,
+        {
+          journal: preview.journal,
+          files: (async function* () {
+            for (const [fileName, raw] of preview.rawPhotos) {
+              const normalized = await normalize(raw);
+              yield { name: fileName, bytes: normalized.full };
+              yield { name: thumbFileName(fileName), bytes: normalized.thumb };
+            }
+          })()
+        },
+        { source: 'transtracks', counting: { milestones: ['milestone'], photos: ['photo'] } }
+      );
+      return { milestonesAdded: added.milestones, photosAdded: added.photos };
     },
 
     async previewDayOneImport(bytes, naming) {
@@ -364,25 +356,22 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async commitDayOneImport(preview, normalize) {
-      const photosOf = (journal: ArchiveJournal) => journal.entries.reduce((n, e) => n + e.photos.length, 0);
-      const before = await area.snapshot();
-      await restoreArchive(driver, files, 'merge', {
-        journal: preview.journal,
-        files: (async function* () {
-          for (const [fileName, raw] of preview.rawPhotos) {
-            const normalized = await normalize(raw);
-            yield { name: fileName, bytes: normalized.full };
-            yield { name: thumbFileName(fileName), bytes: normalized.thumb };
-          }
-        })()
-      });
-      const after = await area.snapshot();
-      const result = {
-        entriesAdded: after.journal.entries.length - before.journal.entries.length,
-        photosAdded: photosOf(after.journal) - photosOf(before.journal)
-      };
-      await recordImport(driver, 'dayone', { entries: result.entriesAdded, photos: result.photosAdded });
-      return result;
+      const added = await commitImport(
+        driver,
+        files,
+        {
+          journal: preview.journal,
+          files: (async function* () {
+            for (const [fileName, raw] of preview.rawPhotos) {
+              const normalized = await normalize(raw);
+              yield { name: fileName, bytes: normalized.full };
+              yield { name: thumbFileName(fileName), bytes: normalized.thumb };
+            }
+          })()
+        },
+        { source: 'dayone', counting: { entries: ['entry'], photos: ['photo'] } }
+      );
+      return { entriesAdded: added.entries, photosAdded: added.photos };
     },
 
     async previewTrackAndGraphImport(csv) {
@@ -390,18 +379,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async commitTrackAndGraphImport(preview) {
-      const before = await area.snapshot();
-      await restoreArchive(driver, files, 'merge', {
-        journal: preview.journal,
-        files: (async function* () {})()
-      });
-      const after = await area.snapshot();
-      const result = {
-        measurementsAdded: after.journal.measurements.length - before.journal.measurements.length,
-        typesAdded: after.journal.measurementTypes.length - before.journal.measurementTypes.length
-      };
-      await recordImport(driver, 'trackAndGraph', { measurements: result.measurementsAdded, types: result.typesAdded });
-      return result;
+      const added = await commitImport(
+        driver,
+        files,
+        { journal: preview.journal, files: noFiles() },
+        { source: 'trackAndGraph', counting: { measurements: ['measurement'], types: ['measurement_type'] } }
+      );
+      return { measurementsAdded: added.measurements, typesAdded: added.types };
     },
 
     async previewPixelsImport(file) {
@@ -409,20 +393,13 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async commitPixelsImport(preview) {
-      const before = await area.snapshot();
-      await restoreArchive(driver, files, 'merge', {
-        journal: preview.journal,
-        files: (async function* () {})()
-      });
-      const after = await area.snapshot();
-      const result = {
-        entriesAdded: after.journal.entries.length - before.journal.entries.length,
-        tagsAdded:
-          after.journal.tagGroups.flatMap((group) => group.tags).length -
-          before.journal.tagGroups.flatMap((group) => group.tags).length
-      };
-      await recordImport(driver, 'pixels', { entries: result.entriesAdded, tags: result.tagsAdded });
-      return result;
+      const added = await commitImport(
+        driver,
+        files,
+        { journal: preview.journal, files: noFiles() },
+        { source: 'pixels', counting: { entries: ['entry'], tags: ['tag'] } }
+      );
+      return { entriesAdded: added.entries, tagsAdded: added.tags };
     },
 
     async snapshot() {
