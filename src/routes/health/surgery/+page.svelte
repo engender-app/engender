@@ -11,6 +11,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { dilationEligible } from '$lib/data/taperSchedule';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
@@ -626,7 +627,7 @@
        17 replaces it with the real one: a vaginoplasty, or a custom
        procedure whose own dilation toggle is on. Vulvoplasty is deliberately
        not in this OR - there is no canal to keep (ticket 17's own list). -->
-  {#if procedures.some((p) => p.kind === 'vaginoplasty' || (p.kind === 'custom' && p.dilationOptIn))}
+  {#if procedures.some(dilationEligible)}
     <HostedRows host="surgery" card />
   {/if}
 

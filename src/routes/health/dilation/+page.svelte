@@ -46,6 +46,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -53,7 +54,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import { expectedSessionDays } from '$lib/data/taperSchedule';
+  import { dilationEligible, expectedSessionDays } from '$lib/data/taperSchedule';
   import type { TaperSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -75,6 +76,17 @@
   let sessionsQuery = liveList((j) => j.taper.getSessions());
   let sessions = $derived(sessionsQuery.rows);
 
+  /* Which procedure the taper follows (audit item 7: it used to carry its
+     own "surgery day", a second copy of a date the procedure already
+     has, and the audit found the two disagreeing). Read alongside the
+     taper rather than joined into it here - `journal.taper.getTaper()`
+     already reads the join for `procedureId`, and this list is what a
+     picker among more than one eligible procedure needs besides. */
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let procedures = $derived(proceduresQuery.rows);
+  let eligibleProcedures = $derived(procedures.filter(dilationEligible));
+  let followedProcedure = $derived(procedures.find((p) => p.id === taper?.procedureId) ?? null);
+
   let sessionsByDay = $derived(new Map(sessions.map((s) => [s.epochDay, s])));
   let expectedDays = $derived(taper ? expectedSessionDays(taper, today) : []);
 
@@ -82,12 +94,16 @@
      taper, never a list, so there is nothing here for a sheet's own
      new/edit/delete triple to distinguish. */
   let editingSchedule = $state(false);
-  let surgeryDayInput = $state(dateInputValueFromEpochDay(today));
+  /* Which procedure the schedule being edited will follow. Null only while
+     more than one is eligible and none has been picked yet - with exactly
+     one, there is nothing to ask, and `scheduleCanSave` refuses to save
+     around the gap either way. */
+  let selectedProcedureId = $state<string | null>(null);
   let startDayInput = $state(dateInputValueFromEpochDay(today));
   let stagesInput = $state<{ everyNDays: string; days: string }[]>([]);
 
   function openScheduleEditor() {
-    surgeryDayInput = dateInputValueFromEpochDay(taper?.surgeryEpochDay ?? today);
+    selectedProcedureId = taper?.procedureId ?? (eligibleProcedures.length === 1 ? eligibleProcedures[0].id : null);
     startDayInput = dateInputValueFromEpochDay(taper?.startEpochDay ?? today);
     stagesInput = (taper?.stages ?? []).map((s) => ({ everyNDays: String(s.everyNDays), days: String(s.days) }));
     if (stagesInput.length === 0) stagesInput = [{ everyNDays: '', days: '' }];
@@ -106,14 +122,16 @@
      the plan, expecting nothing for its days (taperSchedule.ts) - so this
      only rules out a negative or blank one, never zero. */
   let scheduleCanSave = $derived(
-    stagesInput.length > 0 && stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
+    selectedProcedureId !== null &&
+      stagesInput.length > 0 &&
+      stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
   );
 
   async function saveSchedule() {
-    if (!scheduleCanSave) return;
+    if (!scheduleCanSave || !selectedProcedureId) return;
     await journal.taper.upsertTaper({
       id: taper?.id,
-      surgeryEpochDay: epochDayFromDateInputValueOrToday(surgeryDayInput),
+      procedureId: selectedProcedureId,
       startEpochDay: epochDayFromDateInputValueOrToday(startDayInput),
       stages: stagesInput.map((s) => ({ everyNDays: Number(s.everyNDays), days: Number(s.days) }))
     });
@@ -193,9 +211,27 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if taperQuery.loading}
+  <!-- Both reads, not the taper's alone: which notice the empty screen owes
+       depends on the procedure list, and a screen that answered before it
+       arrived would show the wrong one and then swap it. -->
+  {#if taperQuery.loading || proceduresQuery.loading}
     <div class="screen-part" out:crossfade>
       <Skeleton variant="line" count={3} />
+    </div>
+  {:else if !taper && eligibleProcedures.length === 0}
+    <!-- A schedule names the procedure it follows (audit item 7), so with
+         none to name there is nothing to type in yet - and the editor would
+         open on a save it could never enable. Says so, and sends the person
+         to the screen that fixes it. -->
+    <div class="screen-part">
+      <Notice
+        icon="flask"
+        key="dilation-no-procedure"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
+        title={m.dilation_no_procedure_title()}
+        text={m.dilation_no_procedure_body()}
+        action={{ label: m.dilation_no_procedure_action(), primary: true, href: '/health/surgery' }}
+      />
     </div>
   {:else if !taper && !editingSchedule}
     <div class="screen-part">
@@ -211,11 +247,21 @@
   {:else if editingSchedule}
     <div class="screen-part">
       <SectionHeading text={m.dilation_schedule_heading()} />
-      <Field label={m.dilation_surgery_day_label()} id="dilation-surgery-day">
-        {#snippet children(id)}
-          <DatePicker name="dilation-surgery-day" bind:value={surgeryDayInput} {id} />
-        {/snippet}
-      </Field>
+      {#if eligibleProcedures.length > 1}
+        <!-- A picker only where there is a real choice to make (audit item
+             7): with exactly one eligible procedure, `openScheduleEditor`
+             already selected it and there is nothing here to ask. -->
+        <Field label={m.dilation_procedure_label()} legend>
+          {#snippet children()}
+            <Segmented
+              name={m.dilation_procedure_label()}
+              options={eligibleProcedures.map((p) => ({ value: p.id, label: p.name }))}
+              value={selectedProcedureId ?? eligibleProcedures[0].id}
+              onChange={(v) => (selectedProcedureId = v)}
+            />
+          {/snippet}
+        </Field>
+      {/if}
       <Field label={m.dilation_start_day_label()} id="dilation-start-day">
         {#snippet children(id)}
           <DatePicker name="dilation-start-day" bind:value={startDayInput} {id} />
@@ -367,7 +413,12 @@
           data-schedule
           icon="flask"
           title={m.dilation_surgery_day_label()}
-          subtitle={dayLong(taper.surgeryEpochDay)}
+          subtitle={[
+            followedProcedure?.name,
+            followedProcedure?.surgeryEpochDay != null
+              ? dayLong(followedProcedure.surgeryEpochDay)
+              : m.dilation_procedure_date_unset()
+          ]}
           aria-label={m.dilation_schedule_edit_aria()}
           onclick={openScheduleEditor}
         />

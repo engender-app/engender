@@ -1236,15 +1236,23 @@ export interface TaperStage {
 
 /** The dilation schedule the person has typed in (ticket 12). One per
     journal: `startEpochDay` is when the stage sequence begins, which is
-    usually a few days after `surgeryEpochDay` rather than the same day -
-    the two are kept apart because the chart's axis (day since surgery) and
-    the schedule's own clock (day since the taper started) answer different
-    questions. Editable in place, because a surgeon changes the plan; the
-    expansion to expected sessions is pure arithmetic over this and today
+    usually a few days after the procedure's own surgery date rather than
+    the same day.
+
+    Names which procedure it follows rather than carrying a surgery date of
+    its own (audit item 7, schema v83): the taper used to keep a second copy
+    of that date, and the audit found it disagreeing with the procedure's
+    own - "Surgery day 27 February 2026" on this screen, "11 August 2025" on
+    the surgery screen for the same procedure. `procedureId` is the single
+    source now; the screen reads the linked procedure's date, and there is
+    no reconciliation left to get wrong.
+
+    Editable in place, because a surgeon changes the plan; the expansion to
+    expected sessions is pure arithmetic over this and today
     (taperSchedule.ts) and is never itself stored (ADR-0010). */
 export interface Taper {
   id: string;
-  surgeryEpochDay: number;
+  procedureId: string;
   startEpochDay: number;
   stages: TaperStage[];
 }
