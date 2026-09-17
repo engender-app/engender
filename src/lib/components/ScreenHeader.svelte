@@ -36,6 +36,14 @@
      and stops being a second visible label directly above the first group
      heading (DIRECTION.md 3d). The More hub is the case that motivates it.
 
+     Where that leaves the field holding nothing but the door's own contents
+     - no visible title, no back control, no actions - the band above them
+     falls to the same 16 that sits under them (`is-field-only`). The 40 up
+     there is the room a 48px title needs above it, and with the title
+     hidden it was paying for a line that is not drawn: the audit of
+     15 September measured 88px of empty colour above the Transition door's
+     search box, of a 155px field.
+
      `field` is what a door puts *in* the field beside its title, which
      DIRECTION.md rule 7 gives a different answer for per door: the
      Transition door holds a search input there and nothing else (redesign
@@ -110,6 +118,7 @@
 <header
   class="screen-header {klass}"
   class:is-collapsed={titleHidden && !back && !actions && !field}
+  class:is-field-only={titleHidden && !back && !actions && !!field}
   class:is-chrome={chrome}
   data-screen-header
 >

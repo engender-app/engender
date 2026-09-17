@@ -203,26 +203,6 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     });
   }
 
-  // Dilation: a surgery well inside the tracking window, a daily stage
-  // easing to every third day, and most - not all - of the expected
-  // sessions actually logged, so the gap rendering has something real to
-  // show (ticket 12).
-  const surgeryEpochDay = today - 200;
-  const taperStart = surgeryEpochDay + 5;
-  const taper = {
-    surgeryEpochDay,
-    startEpochDay: taperStart,
-    stages: [
-      { everyNDays: 1, days: 14 },
-      { everyNDays: 3, days: 300 }
-    ]
-  };
-  await journal.taper.upsertTaper(taper);
-  for (const day of expectedSessionDays(taper, today)) {
-    if (r() < 0.15) continue;
-    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? 'a bit more resistance today' : '' });
-  }
-
   const hairStages = ['1', '2', '2a', '3', '3v', '3a', '4', '4a'];
   let hairPhotoCount = 0;
   for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
@@ -405,6 +385,25 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   }
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
 
+  // Dilation: names the same procedure above rather than carrying its own
+  // surgery day (audit item 7, schema v83) - a daily stage easing to every
+  // third day, and most - not all - of the expected sessions actually
+  // logged, so the gap rendering has something real to show (ticket 12).
+  const taperStart = today - 400 + 5;
+  const taper = {
+    procedureId,
+    startEpochDay: taperStart,
+    stages: [
+      { everyNDays: 1, days: 14 },
+      { everyNDays: 3, days: 300 }
+    ]
+  };
+  await journal.taper.upsertTaper(taper);
+  for (const day of expectedSessionDays(taper, today)) {
+    if (r() < 0.15) continue;
+    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? 'a bit more resistance today' : '' });
+  }
+
   // A document attached to the procedure, kind PDF - so documentGroups.ts
   // has a group to draw beside the persona's own unlinked referral, and the
   // PDF thumbnail path (rather than a photo document's) has something to
@@ -418,10 +417,13 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   );
   await journal.documents.setDocumentTarget(preOpClearanceId, { kind: 'procedure', id: procedureId });
 
-  // A second procedure, still ahead of its surgery date with a consult
-  // already behind it - `open` (ProcedureRecoveryCard.svelte) is everything
-  // but the archived phase, so this is what puts a full-size, still-running
-  // rail beside the first procedure's collapsed, archived one.
+  // A second procedure, still ahead of its surgery date with one consult
+  // behind it and one still to come - `open` (ProcedureRecoveryCard.svelte)
+  // is everything but the archived phase, so this is what puts a full-size,
+  // still-running rail beside the first procedure's collapsed, archived
+  // one. The consult ahead is what gives that card its forward line (audit
+  // item 13): with both consults behind it, the card that is meant to say
+  // what is next has nothing to say.
   const secondProcedureId = await journal.procedures.upsertProcedure({
     name: 'facial feminization surgery',
     kind: 'facial_feminization',
@@ -429,6 +431,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     notes: 'Consult went well, surgeon proposed a date.'
   });
   await journal.procedures.addConsult(secondProcedureId, today - 10);
+  await journal.procedures.addConsult(secondProcedureId, today + 12);
 
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
   for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {

@@ -216,8 +216,17 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.measurements.setMeasurementTypeHidden('underbust', true);
   await journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20000, value: 41, unit: 'cm' });
   await journal.sizeRecords.upsertRecord({ epochDay: 20000, category: 'pants', size: '32', brand: 'Levi\'s', fitNote: 'true to size' });
-  await journal.taper.upsertTaper({
+  // Its own procedure (audit item 7, schema v83): the taper names which
+  // procedure it dilates for rather than carrying a surgery day of its
+  // own, and the checklist's own procedure above is `chest_reconstruction`
+  // - not dilation-eligible - so this is a second, minimal one.
+  const dilationProcedure = await journal.procedures.upsertProcedure({
+    name: 'vaginoplasty',
     surgeryEpochDay: 19950,
+    kind: 'vaginoplasty'
+  });
+  await journal.taper.upsertTaper({
+    procedureId: dilationProcedure,
     startEpochDay: 19955,
     stages: [
       { everyNDays: 1, days: 14 },

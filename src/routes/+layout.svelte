@@ -58,10 +58,13 @@
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
+  import { activeTabKey } from '$lib/navigation/active-tab';
+  import { chromeTabOrigin, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
+  import VocabularyManagerSheets from '$lib/components/VocabularyManagerSheets.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders } from '$lib/reminders/android-bridge';
@@ -223,6 +226,11 @@
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
     recordNavigation(navigation.type, navigation.delta);
+    /* What the gear will borrow next time it opens settings chrome
+       (ADR-0076, audit item 4) - noted from every settled navigation, not
+       only ones into a tab, since a screen already inside settings can
+       still carry the tab it borrowed forward (chrome-tab-origin.ts). */
+    if (navigation.to) noteTabVisit(activeTabKey(navigation.to.url.pathname, chromeTabOrigin()));
     /* A screen you have not read starts at the top; one you are coming back
        to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
@@ -304,7 +312,8 @@
          `aria-modal` are Sheet's own contract with assistive tech and
          cannot be renamed at all, and any future modal that sets them
          honestly is a modal for this purpose too. */
-      fromSheet: document.querySelector('[role="dialog"][aria-modal="true"]') !== null
+      fromSheet: document.querySelector('[role="dialog"][aria-modal="true"]') !== null,
+      chromeOrigin: chromeTabOrigin()
     });
     /* Before the capture below, and on every navigation rather than only the
        animated ones: a card left wearing the container name is pulled out of
@@ -786,6 +795,7 @@
     </main>
 
     <QuickAdd />
+    <VocabularyManagerSheets />
 
     <Toasts />
   </div>

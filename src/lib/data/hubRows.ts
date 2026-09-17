@@ -99,11 +99,21 @@ import { ROW_FORWARD_KEYS, type RowForward, type RowForwardKey, type RowForwardM
     resource list and Safe Space, which is five answers to five different
     questions. Its rows went to the groups they were always about, and the two
     that are about somebody needing help rather than tracking anything got a
-    group that says so. */
-/* hub_screen_title (messages/*.json) names these five by hand for the
+    group that says so.
+
+    `body` is gone (audit item 10). It had been one row - measurements and
+    sizes - under a heading, so the door paid a heading's height and a
+    group's gap to say "Body" once and then say "Measurements and sizes",
+    which is the same fact at two sizes. The row is in `health` now, beside
+    the other readings somebody takes of themselves, and the door shows two
+    more rows on arrival for it. Four groups is the floor here rather than a
+    target: the audit's own warning is that the answer is not fewer, deeper
+    rows - /care earned its depth by opening on five live reads and no other
+    group has the equivalent. */
+/* hub_screen_title (messages/*.json) names these four by hand for the
    hub's own hidden screen title - add, rename or reorder a group here and
    that string goes stale until it's edited too (ticket 08). */
-export const HUB_GROUP_KEYS = ['body', 'health', 'transition', 'support', 'media'] as const;
+export const HUB_GROUP_KEYS = ['health', 'transition', 'support', 'media'] as const;
 
 export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
@@ -233,7 +243,7 @@ export interface HubRowSpec {
         above, so reading this list top to bottom is reading the hub and then
         reading what came off it. */
 const ROWS = [
-  // --- Body ----------------------------------------------------------------
+  // --- Health --------------------------------------------------------------
   {
     /* Two areas behind one row since phase 10 redesign ticket 61, the
        shape `hair-progress` has always had. Sizes were a row of their own
@@ -241,17 +251,20 @@ const ROWS = [
        one screen in Body that had a chart, a scrub and a protocol card -
        two halves of one question about the same body, split. The row
        reports whichever half was written last, and reads finished only
-       when both are. */
+       when both are.
+
+       In Health since audit item 10, and first in it: it was the whole of
+       the Body group, which cost a heading to say "Body" over a row that
+       says "Measurements and sizes". A reading somebody takes of their own
+       body sits among the other readings rather than in a group of one. */
     key: 'measurements',
     icon: 'ruler',
     href: '/body/measurements',
-    home: 'body',
+    home: 'health',
     areas: ['measurements', 'sizeRecords'],
     finishes: 'measurements',
     line: 'read'
   },
-
-  // --- Health --------------------------------------------------------------
   {
     /* Deepening ticket 07 put labs, the regimen, the hormone curve and the
        dose log behind this one row, and what earned that tap is that /care

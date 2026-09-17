@@ -107,10 +107,71 @@ ALTER TABLE dose_event ADD COLUMN source TEXT NOT NULL DEFAULT 'person';
 ALTER TABLE dose_schedule ADD COLUMN auto_log_from_epoch_day INTEGER;
 `;
 
+/* v83 (audit item 7): the taper's own "surgery day" is retired. It was a
+   second copy of a date the procedure it dilates for already carries -
+   the audit's own finding: the taper said 27 February 2026, the procedure
+   that hosted it said 11 August 2025 - and a taper now names which
+   procedure it follows instead, reading that record's date rather than
+   keeping one of its own that can drift.
+
+   `taper` has at most one row (getTaper's own "ORDER BY id LIMIT 1"), so
+   linking it needs no disambiguation on its own side, only which
+   procedure it should point at. Any procedure the surgery screen already
+   gates the whole dilation feature on (kind = 'vaginoplasty', or 'custom'
+   with its own dilation toggle on - taperSchedule.ts's
+   dilationEligible, the surgery screen's own gate) qualifies; the first
+   one by id is picked deterministically where more than one does, the
+   same way SCHEMA_V81's own both-axes row took a deterministic side
+   rather than asking.
+
+   Where the chosen procedure's date disagrees with the taper's own, the
+   taper's wins - it is what this screen actually showed a person - and is
+   copied onto the procedure before the column that held it is dropped.
+
+   A taper with no qualifying procedure at all cannot exist through the
+   screen (the schedule editor cannot open without one to attach to), so
+   the INSERT's join intentionally drops such a row rather than guessing a
+   procedure for it - the same trust in the write layer SCHEMA_V80's own
+   note states for an unrecognised `kind`. */
+const SCHEMA_V83 = `
+ALTER TABLE taper RENAME TO taper_v82;
+
+CREATE TABLE taper (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  procedure_id    INTEGER NOT NULL REFERENCES procedure(id) ON DELETE CASCADE,
+  start_epoch_day INTEGER NOT NULL,
+  stages          TEXT NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+
+UPDATE procedure
+SET surgery_epoch_day = (SELECT surgery_epoch_day FROM taper_v82 LIMIT 1)
+WHERE id = (
+  SELECT id FROM procedure
+  WHERE kind = 'vaginoplasty' OR (kind = 'custom' AND dilation_opt_in = 1)
+  ORDER BY id LIMIT 1
+)
+AND EXISTS (SELECT 1 FROM taper_v82)
+AND surgery_epoch_day IS NOT (SELECT surgery_epoch_day FROM taper_v82 LIMIT 1);
+
+INSERT INTO taper (id, uuid, procedure_id, start_epoch_day, stages, updated_at)
+SELECT t.id, t.uuid, p.id, t.start_epoch_day, t.stages, t.updated_at
+FROM taper_v82 t
+JOIN (
+  SELECT id FROM procedure
+  WHERE kind = 'vaginoplasty' OR (kind = 'custom' AND dilation_opt_in = 1)
+  ORDER BY id LIMIT 1
+) p;
+
+DROP TABLE taper_v82;
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA },
   { version: 79, sql: SCHEMA_V79 },
   { version: 80, sql: SCHEMA_V80 },
   { version: 81, sql: SCHEMA_V81 },
-  { version: 82, sql: SCHEMA_V82 }
+  { version: 82, sql: SCHEMA_V82 },
+  { version: 83, sql: SCHEMA_V83 }
 ];

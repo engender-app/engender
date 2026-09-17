@@ -59,6 +59,29 @@ export function resolveBuiltInWording(
   };
 }
 
+/** How many dimensions and tags the settings list names on a template's row
+    before it switches to a count (audit item 5: fifteen rows of names with
+    nothing else on the line). Three, the same as a chart's annotation
+    caption (chartAnnotation.ts's own CAPTION_NAMES) - sized against Polish,
+    whose tag and dimension labels run longer than English's own. */
+export const TEMPLATE_SUMMARY_MAX = 3;
+
+/** Which of a template's dimensions and tags its row names, and how many
+    are left over. Pure and key-only - dimensionName/tagLabel resolve the
+    words, and both import paraglide (ADR-0016), which this module does
+    not. Dimensions first, then tags, in the record's own order, since
+    neither this function nor its caller has an opinion about which of the
+    two matters more. */
+export function templateSummaryKeys(
+  t: Pick<EntryTemplate, 'dims' | 'tags'>
+): { shown: Array<{ kind: 'dim' | 'tag'; key: string }>; rest: number } {
+  const all: Array<{ kind: 'dim' | 'tag'; key: string }> = [
+    ...Object.keys(t.dims).map((key) => ({ kind: 'dim' as const, key })),
+    ...t.tags.map((key) => ({ kind: 'tag' as const, key }))
+  ];
+  return { shown: all.slice(0, TEMPLATE_SUMMARY_MAX), rest: Math.max(all.length - TEMPLATE_SUMMARY_MAX, 0) };
+}
+
 /* withBuiltInEntryTemplates stays exported only for its own test (AU-09
    test-only review). */
 export function withBuiltInEntryTemplates(existing: EntryTemplate[]): EntryTemplate[] {

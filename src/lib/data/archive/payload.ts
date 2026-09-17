@@ -249,15 +249,18 @@ interface ArchiveSizeRecord {
 
 /** The dilation taper schedule (phase 8 features ticket 12, CONTEXT:
     "Taper"). One row, since the app models one taper at a time; the array
-    shape is only what every flat section travels as. `stagesJson` is the
-    stage sequence as JSON text, exactly as the `taper` table itself stores
-    it (taper.ts) - a flat table's own columns travel as they are stored
-    (FlatColumn has no transform for a column that is not a scalar
-    already), and the stage sequence is scalar to both. Never the
-    expansion: that stays derived and never travels (ADR-0010). */
-interface ArchiveTaper {
+    shape is only what a section travels as. `stagesJson` is the stage
+    sequence as JSON text, exactly as the `taper` table itself stores it
+    (taper.ts), and the stage sequence is scalar to both. Never the
+    expansion: that stays derived and never travels (ADR-0010).
+
+    `procedureId` is the uuid of the procedure the taper dilates for
+    (schema v83), not the rowid the column holds on a device - the same
+    trade `ArchiveAppointment` makes for the same link, and the reason
+    neither is a flat section. */
+export interface ArchiveTaper {
   id: string;
-  surgeryEpochDay: number;
+  procedureId: string;
   startEpochDay: number;
   stagesJson: string;
 }

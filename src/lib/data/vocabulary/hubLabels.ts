@@ -94,7 +94,6 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
 };
 
 const GROUP_HEADING: Record<HubGroupKey | 'finished', () => string> = {
-  body: m.hub_group_body,
   health: m.hub_group_health,
   transition: m.hub_group_transition,
   support: m.hub_group_support,

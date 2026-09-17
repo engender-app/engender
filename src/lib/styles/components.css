@@ -265,6 +265,20 @@
   margin: 0;
   min-height: 0;
 }
+/* A field holding only what the door put there - hidden title, no back
+   control, no actions - keeps the 16 under its contents and drops the 40
+   above them to match (audit item 10). That 40 is the room the 48px title
+   needs above it; with no title drawn it was 88px of empty colour above the
+   Transition door's search box, of a 155px field. The minimum goes with it,
+   or the band keeps the height a title's line would have taken. */
+.screen-header.is-field-only .screen-field {
+  padding-top: var(--space-4);
+  min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
+}
+.screen > .screen-header.is-field-only > .screen-field {
+  padding-top: calc(var(--space-4) + var(--inset-top));
+  min-height: calc(var(--space-4) + var(--inset-top) + var(--touch-target) + var(--space-4));
+}
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
    starts at the screen's own content edge instead of 48px inside it, and the

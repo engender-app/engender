@@ -17,6 +17,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { activeTabKey } from '$lib/navigation/active-tab';
+  import { chromeTabOrigin } from '$lib/navigation/chrome-tab-origin';
   import { appWordmark, hubTabLabel } from '$lib/disguise/identity';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -69,7 +70,7 @@
   const LEADING = NAV.slice(0, 2);
   const TRAILING = NAV.slice(2);
 
-  let activeKey = $derived(activeTabKey(page.url.pathname));
+  let activeKey = $derived(activeTabKey(page.url.pathname, chromeTabOrigin()));
 
   /* Which mark the add control is wearing. All three are rendered and
      stacked rather than swapped, because swapping one <Icon> for another is

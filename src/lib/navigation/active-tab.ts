@@ -53,9 +53,9 @@ const TAB_ROUTES: TabRoute[] = [
 
      The five prefixes below joined here in features ticket 33, when the 23
      hub rows still living at /settings/<slug> moved to their own
-     HubGroupKey-named address - /settings itself stays, since the
-     redirects, /settings/reminders[/...] and the hand-written
-     Appearance/Tracking/Privacy sections all remain there.
+     HubGroupKey-named address. `/settings` itself is no longer one of
+     them: audit item 4 took it out of this group entirely, and the note
+     under this table says what it lights instead.
 
      `/timeline` is a stub redirecting to /transition/milestones (redesign
      ticket 43), and it is listed here rather than left to the fallback so
@@ -71,7 +71,6 @@ const TAB_ROUTES: TabRoute[] = [
   {
     key: 'settings',
     prefixes: [
-      '/settings',
       '/timeline',
       '/more',
       '/doses',
@@ -87,7 +86,39 @@ const TAB_ROUTES: TabRoute[] = [
   }
 ];
 
-export function activeTabKey(path: string): string {
+/* Audit item 4: `/settings` used to sit in the table above, in the fourth
+   door's own group, so opening it from Today's gear (ADR-0076 - settings
+   is chrome, reached from a persistent control, not a tab) lit the fourth
+   tab and read as having left Today. Settings itself has no tab of its
+   own: it borrows whichever one was lit before the gear was pressed,
+   which the caller carries in `chromeOrigin` (chrome-tab-origin.ts) since
+   this function stays pure for its own tests. A fresh deep link, with
+   nothing to borrow, lights none. */
+const CHROME_PREFIX = '/settings';
+
+/* Eras, ticket 51's third reference area (ADR-0084), hosted under Settings
+   without becoming a preference - the fourth door's own content, just
+   filed under a different address. Chrome-borrowing it would mean the
+   tab following whichever screen the person happened to be on, which
+   answers a different question than "where does Settings' own reference
+   data live" - it keeps the fixed tab its hub row lit before ticket 51
+   moved it. Modes and entry templates, ticket 51's other two, are not
+   here any more: audit item 6 turned them into sheets raised over
+   Settings, so `/settings/presentations` and `/settings/entry-templates`
+   redirect before either ever reaches this function as a live pathname. */
+const SETTINGS_REFERENCE_AREA_PREFIXES = ['/settings/eras'];
+
+/* The word ignore list kept its old address (`/settings/words` redirects
+   here, ADR-0036) but never belonged to the fourth door either: it
+   configures Look back's own reading (redesign ticket 62), and its own
+   back arrow already said so before the tab bar did. Checked ahead of
+   the general chrome check, which would otherwise borrow a tab for it. */
+const WORDS_PREFIX = '/settings/words';
+
+export function activeTabKey(path: string, chromeOrigin = ''): string {
   if (path === '/') return 'home';
+  if (path.startsWith(WORDS_PREFIX)) return 'stats';
+  if (SETTINGS_REFERENCE_AREA_PREFIXES.some((prefix) => path.startsWith(prefix))) return 'settings';
+  if (path.startsWith(CHROME_PREFIX)) return chromeOrigin;
   return TAB_ROUTES.find((route) => route.prefixes.some((prefix) => path.startsWith(prefix)))?.key ?? '';
 }

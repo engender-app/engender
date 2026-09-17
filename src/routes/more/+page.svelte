@@ -125,10 +125,11 @@
   });
   let sections = $derived(hubSections(reading));
 
-  /** One page of record hits, and what "show more" asks for again. Twenty
-      rather than the search screen's thirty: this is a door, and a query that
-      answers with a screenful of records is a query better finished on the
-      search screen. */
+  /** How many record hits the door shows at all. Twenty rather than the
+      search screen's thirty, and no second page since audit item 11: this is
+      a door, a query that answers with a screenful of records is a query
+      better finished on the search screen, and the row under the list goes
+      there rather than reading twenty more here. */
   const PAGE = 20;
   /** How long the record read waits after the last keystroke (the search
       screen's own interval, phase 8 audit ticket 15): long enough that typing
@@ -140,7 +141,6 @@
 
   let query = $state('');
   let debouncedQuery = $state('');
-  let pages = $state(1);
   /** The box itself, so clearing it can put the cursor back in it. */
   let box = $state<HTMLInputElement | undefined>(undefined);
 
@@ -159,13 +159,6 @@
       debouncedQuery = typed;
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  });
-
-  /* Back to the first page whenever the question changes, or a two-word query
-     would read a hundred rows to draw its first screen. */
-  $effect(() => {
-    debouncedQuery;
-    pages = 1;
   });
 
   /** The areas whose name contains what is in the box, flat: all
@@ -188,14 +181,12 @@
   const NOTHING_FOUND = { hits: [], total: 0 };
   let records = liveQuery((j) => {
     const asked = debouncedQuery;
-    const limit = PAGE * pages;
     if (!asked) return Promise.resolve(NOTHING_FOUND);
-    return j.textSearch.search({ query: asked, today, startEpochDay: null, endEpochDay: null, limit });
+    return j.textSearch.search({ query: asked, today, startEpochDay: null, endEpochDay: null, limit: PAGE });
   });
 
   let found = $derived(records.value ?? NOTHING_FOUND);
   let hitRows = $derived(searchHitRows(found.hits, debouncedQuery));
-  let hitsRemaining = $derived(Math.max(0, found.total - found.hits.length));
   /* One count over both halves. Stating the areas alone while five letters
      sat underneath it would be the screen describing part of what it found. */
   let resultCount = $derived(matches.length + found.total);
@@ -383,12 +374,27 @@
               </ListRow>
             </div>
           {/each}
+          <!-- Where a query like this is actually finished (audit item 11).
+               The door used to page its own hits twenty at a time with no
+               filters and no date range, which is a second, weaker search -
+               this screen's own comment said a query answering with a
+               screenful of records is better finished on the search screen,
+               and then never linked there. The last row does, carrying the
+               query with it - the debounced one, not what is in the box this
+               instant, so the row never quotes a word the rows above it have
+               not answered yet (the same discipline `settled` keeps for the
+               count and the notice). -->
+          <div class="rows-divide" transition:disclose={{ skip: leaving }}>
+            <ListRow
+              key="hub-search-handoff"
+              data-hub-search-handoff
+              icon="search"
+              title={m.hub_search_handoff({ query: debouncedQuery })}
+              subtitle={m.hub_search_handoff_sub()}
+              href={`/search?q=${encodeURIComponent(typed)}`}
+            />
+          </div>
         </ListCard>
-        {#if hitsRemaining > 0}
-          <button class="btn btn-soft" data-hub-hits-more onclick={() => (pages += 1)}>
-            <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
-          </button>
-        {/if}
       {/if}
 
       {#if foundNothing}

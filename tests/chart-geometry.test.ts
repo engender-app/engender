@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { areaPath } from '../src/lib/charts/areaPath';
 import {
   bridgeGaps,
+  gutterLabels,
   lerpSamples,
   paddedSeries,
   readoutCorner,
@@ -283,5 +284,24 @@ describe('readoutCorner', () => {
 
   it('takes the top-left corner for a reading in the bottom-right', () => {
     expect(readoutCorner(80, 80, width, height)).toEqual({ left: true, below: false });
+  });
+});
+
+describe('gutterLabels', () => {
+  const round = (v: number) => String(Math.round(v));
+
+  it('drops the mid label on a 0-to-1 count domain, where it rounds to the max', () => {
+    // "1, 1, 0" (audit item 1): a tally with at most one reading a day
+    // rounds its 0.5 midpoint up to the same digits as the top of the
+    // scale.
+    expect(gutterLabels(0, 1, round)).toEqual({ max: '1', mid: null, min: '0' });
+  });
+
+  it('keeps the mid label once the domain is wide enough to round distinctly', () => {
+    expect(gutterLabels(0, 10, round)).toEqual({ max: '10', mid: '5', min: '0' });
+  });
+
+  it('drops the mid label on a single-point domain, where it rounds to both ends', () => {
+    expect(gutterLabels(4, 4, round)).toEqual({ max: '4', mid: null, min: '4' });
   });
 });

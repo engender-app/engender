@@ -22,6 +22,13 @@
      wants what is true now above the records, however long the records
      are.
 
+     The two readings sit together at the top rather than each above its
+     own log (audit item 8): the size lines used to open the sizes half,
+     directly on top of a log that repeated the same two records as rows,
+     so the screen said each change twice within 100px. The protocol card
+     is below them for the other half of the same finding - 200px of how to
+     hold a tape measure came before anything the screen actually knew.
+
      The measurements half is not given a heading of its own. The screen's
      title says both words already, a second 28px "Body measurements"
      directly under a 48px "Measurements and sizes" is the screen saying
@@ -307,6 +314,41 @@
   </ScreenHeader>
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
+  <!-- What is true now, before anything explains how to measure or lists
+       what was measured (audit item 8): the span for the picked type and,
+       under it, every size that changed. Both readings sit here rather than
+       each above its own list - the size lines used to sit on top of the
+       log that repeats the same two records as rows. -->
+  {#if span || changes.length}
+    <div class="screen-part">
+      {#if span}
+        <dl class="span" data-measurement-span transition:disclose>
+          <div><dt>{m.measurement_span_start()}</dt><dd>{fmtValue(span.start)}</dd></div>
+          <div><dt>{m.measurement_span_current()}</dt><dd>{fmtValue(span.current)}</dd></div>
+          <div><dt>{m.measurement_span_change()}</dt><dd>{fmtChange(span.change)}</dd></div>
+        </dl>
+      {/if}
+
+      {#if changes.length}
+        <div class="changes" data-size-changes transition:disclose>
+          {#each changes as change (sizeLabelKey(change.category, change.brand))}
+            <p class="change">
+              <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
+              <span class="change-says">
+                {m.size_change_line({
+                  from: change.from.size,
+                  fromDate: monthLabel(change.from.epochDay),
+                  to: change.to.size,
+                  toDate: monthLabel(change.to.epochDay)
+                })}
+              </span>
+            </p>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   {#if !prefs.measurementProtocolDismissed && PROTOCOL[type]}
     <div class="screen-part">
       <Notice
@@ -324,14 +366,6 @@
   <ReadGate read={measurementsQuery} variant="block" count={1}>
     {#snippet rows()}
       <div class="screen-part">
-        {#if span}
-          <dl class="span" data-measurement-span transition:disclose>
-            <div><dt>{m.measurement_span_start()}</dt><dd>{fmtValue(span.start)}</dd></div>
-            <div><dt>{m.measurement_span_current()}</dt><dd>{fmtValue(span.current)}</dd></div>
-            <div><dt>{m.measurement_span_change()}</dt><dd>{fmtChange(span.change)}</dd></div>
-          </dl>
-        {/if}
-
         <ChartCard
           heading={vocabulary.measurementTypeName(type)}
           kind="measurements-{type}"
@@ -424,24 +458,6 @@
   <ReadGate read={sizesQuery} variant="line" count={3}>
     {#snippet rows()}
       <div class="screen-part">
-        {#if changes.length}
-          <div class="changes" data-size-changes transition:disclose>
-            {#each changes as change (sizeLabelKey(change.category, change.brand))}
-              <p class="change">
-                <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
-                <span class="change-says">
-                  {m.size_change_line({
-                    from: change.from.size,
-                    fromDate: monthLabel(change.from.epochDay),
-                    to: change.to.size,
-                    toDate: monthLabel(change.to.epochDay)
-                  })}
-                </span>
-              </p>
-            {/each}
-          </div>
-        {/if}
-
         {#if category === 'all'}
           {#each sizeGroups as g (g.category)}
             <SectionHeading text={garmentCategoryName(g.category)} />
@@ -629,6 +645,13 @@
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-3);
     margin: 0;
+  }
+
+  /* The hairline is between the two readings, never under the block: what
+     comes after it draws its own top line - a Notice is flush between two
+     of them (rule 4) - and two hairlines a few pixels apart read as a
+     stray band rather than as a boundary. */
+  .span:not(:last-child) {
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--hairline);
   }
@@ -647,21 +670,6 @@
        in the same columns whatever the value - otherwise Start and Current
        shift against each other every time a figure changes width. */
     font-variant-numeric: tabular-nums;
-  }
-
-  /* The category filter is the sizes half's picker and the change lines
-     are what it picks, so the two are one block. `.kit-filter`'s own
-     bottom padding plus the 20 between blocks put 36 between a control and
-     the reading it governs, which read as two unrelated things - the same
-     call `.kit-reading-controls` makes for the axis picker and its range.
-     16 above the lines, which is the 20 the block rhythm asks for less the
-     4 the first line's own padding brings. */
-  .screen > .kit-filter {
-    padding-bottom: 0;
-  }
-
-  .changes {
-    border-bottom: 1px solid var(--hairline);
   }
 
   .change {

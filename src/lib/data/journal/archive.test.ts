@@ -870,6 +870,9 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
   appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],
+  // procedure_id for the same reason, since schema v83 gave the taper the
+  // procedure it dilates for in place of a surgery day of its own.
+  taper: ['uuid', 'procedure_id', 'start_epoch_day', 'stages'],
   // Read once for the file manifest, the same reason hair_photo above is
   // hand-written.
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
