@@ -2048,8 +2048,17 @@ try {
       throw new Error(`the web build has no ${key} and should not list one`);
     }
   }
-  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
-    throw new Error('the list does not end on the fact that there is no internet permission');
+  /* The closer is platform copy (UI/UX ticket 09): the web build must not
+     borrow Android's no-internet-permission promise, and must instead own
+     the browser's own truth - downloads the app, fetches the lab scanner's
+     engine once, sends nothing written. Both sentences carry "sent
+     anywhere", which is the part both platforms may claim. */
+  const closer = await page.locator('[data-no-internet]').textContent();
+  if (!/sent anywhere|wysyłane/.test(closer)) {
+    throw new Error('the web closer does not state where written data goes: ' + closer);
+  }
+  if (/internet permission|uprawnienia do internetu/.test(closer)) {
+    throw new Error('the web closer borrows the Android-only no-internet-permission claim: ' + closer);
   }
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
@@ -4085,8 +4094,14 @@ try {
   if (onScreen.join() !== expected.join()) {
     throw new Error('the settings screen draws a different list: ' + onScreen.join());
   }
-  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
-    throw new Error('the settings screen drops the no-internet line');
+  /* Same platform copy as the setup step (UI/UX ticket 09): the permanent
+     home of the list owes the same web truth, not the Android promise. */
+  const settingsCloser = await page.locator('[data-no-internet]').textContent();
+  if (!/sent anywhere|wysyłane/.test(settingsCloser)) {
+    throw new Error('the settings closer does not state where written data goes: ' + settingsCloser);
+  }
+  if (/internet permission|uprawnienia do internetu/.test(settingsCloser)) {
+    throw new Error('the settings closer borrows the Android-only no-internet-permission claim: ' + settingsCloser);
   }
   await expectNoHorizontalOverflow('[data-app-viewport]');
   ok('the permissions list has a permanent home in Settings, drawn from the same component');

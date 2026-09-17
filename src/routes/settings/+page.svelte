@@ -533,6 +533,7 @@
         <Switch
           checked={prefs.lockOnLeave}
           label={m.lock_on_leave_title()}
+          disabled={!hasAccessSecret}
           onChange={(v) => {
             prefs.lockOnLeave = v;
           }}
@@ -570,7 +571,12 @@
       </div>
       <p class="small">{m.about_license()}</p>
       <p class="small">
-        <strong>{m.about_no_network_title()}</strong> {m.about_no_network_body()}
+        <!-- Platform copy (UI/UX ticket 09): the no-requests claim is
+             Android's, bought by holding no internet permission. The web
+             app is itself something the browser downloads, so its sentence
+             is about what is sent rather than what is fetched. -->
+        <strong>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</strong>
+        {isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}
       </p>
       <p class="small">{m.about_attribution()}</p>
       <p class="small">
