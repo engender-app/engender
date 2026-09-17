@@ -11,6 +11,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
+    "test:date-picker": "VITE_DEMO=1 npm run build && node tests/date-picker-check.mjs",
+    "gallery:date-picker": "VITE_DEMO=1 npm run build && node tests/date-picker-check.mjs --gallery",
     "test:sheet-focus": "VITE_DEMO=1 npm run build && node tests/sheet-focus-check.mjs",
     "test:record-dismissal": "node tests/record-dismissal-check.mjs",
     "test:recovery-key-departure": "node tests/recovery-key-departure-check.mjs",
