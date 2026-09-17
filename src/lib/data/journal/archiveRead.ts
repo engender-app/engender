@@ -11,13 +11,8 @@
    for the two reasons archive.ts's header gives - travelling identity, and
    one query per table for the whole journal instead of one per row.
 
-   Eight tables are read once and handed to every section that needs them,
-   rather than queried per section: photo, voice_recording, video_note,
-   hair_photo, hair_removal_photo, procedure_photo, tryout_photo and
-   document. The file manifest is built from the same rows (archive.ts), so
-   a second read would be a second answer to the same question. `document`
-   is the one of the eight read for the manifest alone - its rows travel
-   through readFlatTable like any other flat area's. */
+   File-owning rows and their names come from fileOwnership.ts so archive
+   sections and the manifest use the same reads. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { ProcedureKind } from '../types';
@@ -59,91 +54,15 @@ import type {
 import { bool, domainIdOf } from './support';
 import { columnsOf, type FlatTable } from './archiveTable';
 
-export type PhotoRow = {
-  uuid: string;
-  file_path: string;
-  entry_id: number | null;
-  milestone_id: number | null;
-  starred: number;
-  epoch_day_override: number | null;
-};
-export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
-export type VideoRow = { uuid: string; file_path: string; entry_id: number };
-export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
-export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
-type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
-type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
-/** A document's file, for the manifest alone (phase 8 features ticket 52).
-    Its rows travel through `readFlatTable` like any other flat area's; what
-    cannot come from there is the file manifest, which archive.ts assembles
-    by hand and which needs the names before the section is read. */
-type DocumentFileRow = { file_path: string };
-/** A benchmark names two files, and the second one is absent on a take that
-    skipped the vowel (phase 5 deepening ticket 15). */
-type BenchmarkFileRow = { passage_file_path: string; vowel_file_path: string | null };
+import { readFileOwnership } from './fileOwnership';
+export type { PhotoRow, RecordingRow, VideoRow, HairPhotoRow, HairRemovalPhotoRow } from './fileOwnership';
+import type { PhotoRow, RecordingRow, VideoRow } from './fileOwnership';
 
-/** What every section reader is given: the connection, and the nine
-    file-owning tables read once up front. */
-export interface SectionRead {
-  driver: SqliteDriver;
-  photos: PhotoRow[];
-  recordings: RecordingRow[];
-  videos: VideoRow[];
-  hairPhotos: HairPhotoRow[];
-  hairRemovalPhotos: HairRemovalPhotoRow[];
-  procedurePhotos: ProcedurePhotoRow[];
-  tryoutPhotos: TryoutPhotoRow[];
-  benchmarkFiles: BenchmarkFileRow[];
-  documentFiles: DocumentFileRow[];
-}
+export type SectionRead = Omit<Awaited<ReturnType<typeof readRowContext>>, 'fileNames'>;
 
-/** The shared reads, in one place so the manifest and the sections that name
-    files work from the same rows. */
-export async function readRowContext(driver: SqliteDriver): Promise<SectionRead> {
-  return {
-    driver,
-    // A trashed entry's photo/recording is excluded here, not only from the
-    // entries section below - archive.ts builds its file manifest straight
-    // from these rows, and trash is out of scope for archives entirely
-    // (phase 5 ticket 19).
-    photos: await driver.query<PhotoRow>(
-      `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id, p.starred, p.epoch_day_override FROM photo p
-       LEFT JOIN entry e ON e.id = p.entry_id
-       WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
-       ORDER BY p.order_index, p.id`
-    ),
-    hairPhotos: await driver.query<HairPhotoRow>(
-      'SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id'
-    ),
-    hairRemovalPhotos: await driver.query<HairRemovalPhotoRow>(
-      'SELECT uuid, session_id, file_path FROM hair_removal_photo ORDER BY session_id, id'
-    ),
-    procedurePhotos: await driver.query<ProcedurePhotoRow>(
-      'SELECT uuid, procedure_id, epoch_day, file_path FROM procedure_photo ORDER BY procedure_id, epoch_day, id'
-    ),
-    tryoutPhotos: await driver.query<TryoutPhotoRow>(
-      'SELECT uuid, tryout_id, epoch_day, file_path FROM tryout_photo ORDER BY tryout_id, epoch_day, id'
-    ),
-    recordings: await driver.query<RecordingRow>(
-      `SELECT v.uuid, v.file_path, v.entry_id FROM voice_recording v
-       JOIN entry e ON e.id = v.entry_id
-       WHERE e.trashed_at IS NULL
-       ORDER BY v.order_index, v.id`
-    ),
-    benchmarkFiles: await driver.query<BenchmarkFileRow>(
-      'SELECT passage_file_path, vowel_file_path FROM voice_benchmark ORDER BY epoch_day, id'
-    ),
-    videos: await driver.query<VideoRow>(
-      `SELECT n.uuid, n.file_path, n.entry_id FROM video_note n
-       JOIN entry e ON e.id = n.entry_id
-       WHERE e.trashed_at IS NULL
-       ORDER BY n.order_index, n.id`
-    ),
-    // The file names only. A document's own rows come out through
-    // readFlatTable below, from its descriptor; this read exists so the
-    // manifest and the section work from the same table in one pass.
-    documentFiles: await driver.query<DocumentFileRow>('SELECT file_path FROM document ORDER BY epoch_day, id')
-  };
+export async function readRowContext(driver: SqliteDriver) {
+  const ownership = await readFileOwnership(driver, 'archive');
+  return { driver, ...ownership.rows, fileNames: ownership.names };
 }
 
 /** Every row of a flat area's table, in the order its descriptor asks for,
