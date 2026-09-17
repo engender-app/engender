@@ -32,7 +32,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { appointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
-  import { holdRoomAnswers } from '$lib/stores/inTheRoom';
+  import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
   import { smartBack } from '$lib/navigation/smart-back';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -79,9 +79,30 @@
 
   /* Held as it is typed rather than on the way out, so a back gesture in the
      middle of a visit loses nothing (stores/inTheRoom.ts). Nothing is
-     written to the journal here and nothing reaches storage. */
+     written to the journal here and nothing reaches storage.
+
+     Restored once per appointment, before the first publish: this screen's
+     own `answers` starts empty on every mount, and without restoring first
+     this effect would publish that emptiness and overwrite whatever a
+     previous visit to this screen had held. Gated on both reads having
+     landed - `items` is `[]` both before the checklist has loaded and after
+     it has loaded empty, and restoring against the former would drop every
+     held answer for good. */
+  let restoredFor: string | null = null;
   $effect(() => {
-    if (todaysAppointment) holdRoomAnswers(todaysAppointment.id, jotted);
+    if (!todaysAppointment) return;
+    if (checklistQuery.loading || appointmentsQuery.loading) return;
+    if (restoredFor !== todaysAppointment.id) {
+      restoredFor = todaysAppointment.id;
+      Object.assign(
+        answers,
+        restoreRoomAnswers(
+          todaysAppointment.id,
+          items.map((item) => item.id)
+        )
+      );
+    }
+    holdRoomAnswers(todaysAppointment.id, jotted, { ...answers });
   });
 
   function step(by: number) {
