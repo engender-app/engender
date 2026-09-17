@@ -117,6 +117,33 @@ try {
   await back();
   await page.waitForURL((url) => url.pathname === '/');
   console.log('PASS native Back navigates when no surface remains');
+
+  await navigate('/settings/recovery-key');
+  if (await page.locator('[data-make-recovery-key]').count()) {
+    await page.locator('[data-make-recovery-key]').click();
+  } else {
+    await page.locator('[data-list-row="replace-recovery-key"]').click();
+    await page.locator('[data-confirm-replace]').click();
+  }
+  const recoveryKey = (await page.locator('[data-recovery-key]').innerText()).trim();
+  await back();
+  await page.locator('[data-keep-writing-recovery-key]').waitFor();
+  await page.locator('[data-keep-writing-recovery-key]').click();
+  assert.equal((await page.locator('[data-recovery-key]').innerText()).trim(), recoveryKey);
+  await back();
+  await page.locator('[data-leave-recovery-key]').click();
+  await page.waitForURL((url) => url.pathname === '/');
+  console.log('PASS native Back keeps the recovery key visible until deliberate Leave');
+
+  await navigate('/settings/recovery-key');
+  await page.locator('[data-list-row="replace-recovery-key"]').click();
+  await page.locator('[data-confirm-replace]').click();
+  await page.locator('[data-recovery-key-done]').click();
+  await back();
+  await page.waitForURL((url) => url.pathname === '/');
+  assert.equal(await page.locator('[data-keep-writing-recovery-key]').count(), 0);
+  console.log('PASS acknowledged recovery key does not intercept native Back');
+
   await back();
   const activity = adb('shell', 'dumpsys', 'activity', 'activities');
   const resumed = activity.split('\n').filter((line) => /mResumedActivity|topResumedActivity/.test(line)).join('\n');
