@@ -7,8 +7,113 @@ import assert from 'node:assert/strict';
 import { createEntryDraft } from './entryDraft.ts';
 import type { Entry, EntryTemplate } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
+import { journalWithBuiltIns } from './journal/test-support.ts';
+import { openJournal } from './journal/journal.ts';
+import { fakeFileStore } from './photos/test-support/fake-file-store.ts';
 
 const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thumb: new Uint8Array([n]) });
+
+test('a committed draft cannot repeat attachments or a contextual dose after navigation fails', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const draft = createEntryDraft(100, undefined, 4);
+  draft.addPhoto(photo(1));
+  draft.addRecording(new Uint8Array([2]));
+  draft.addVideo(new Uint8Array([3]));
+  draft.setDoseLog({ dose: 2, doseUnit: 'mg' });
+  const creation = { starred: true, debriefForAppointment: 'appointment-1' };
+  const saveAndNavigate = async () => {
+    const id = await draft.save(journal.entries, creation);
+    assert.equal(draft.savedId, id);
+    assert.equal(draft.doseLog, null);
+    assert.deepEqual(draft.photos, []);
+    assert.deepEqual(draft.recordings, []);
+    assert.deepEqual(draft.videos, []);
+    throw new Error('navigation failed');
+  };
+
+  await assert.rejects(saveAndNavigate(), /navigation failed/);
+  await assert.rejects(saveAndNavigate(), /navigation failed/);
+  const [entry] = await journal.entries.entriesForDay(100);
+  assert.equal(await journal.entries.countAll(), 1);
+  assert.equal(entry.photos.length, 1);
+  assert.equal(entry.recordings.length, 1);
+  assert.equal(entry.videos.length, 1);
+  assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
+  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), entry.id);
+  assert.throws(() => draft.toUpsert(), /already saved/);
+});
+
+test('a failed commit preserves an edited draft and its removals for retry', async () => {
+  const { db } = await journalWithBuiltIns();
+  let failCommit = false;
+  const journal = openJournal({
+    ...db,
+    transaction: (work) => db.transaction(async () => {
+      const result = await work();
+      if (failCommit) throw new Error('injected commit failure');
+      return result;
+    })
+  }, fakeFileStore());
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100, timestamp: 8_640_000_000, mood: 4, attachPhotos: [photo(1)],
+    attachRecordings: [new Uint8Array([2])], attachVideos: [new Uint8Array([3])]
+  });
+  const original = (await journal.entries.getEntry(id))!;
+  const draft = createEntryDraft(100, original);
+  draft.removePhoto(0);
+  draft.removeRecording(0);
+  draft.removeVideo(0);
+  draft.addPhoto(photo(4));
+  draft.setDoseLog({ dose: 2, doseUnit: 'mg' });
+  draft.setNote('Edited note');
+  const pending = draft.toUpsert();
+
+  failCommit = true;
+  await assert.rejects(draft.save(journal.entries), /injected commit failure/);
+  assert.equal(draft.savedId, undefined);
+  assert.deepEqual(draft.toUpsert(), pending);
+  assert.deepEqual(await journal.entries.getEntry(id), original);
+  assert.deepEqual(await journal.doses.getDoses(100, 100), []);
+
+  failCommit = false;
+  assert.equal(await draft.save(journal.entries), id);
+  assert.equal(await draft.save(journal.entries), id);
+  const entry = (await journal.entries.getEntry(id))!;
+  assert.equal(entry.note, 'Edited note');
+  assert.equal(entry.photos.length, 1);
+  assert.notEqual(entry.photos[0].id, original.photos[0].id);
+  assert.deepEqual(entry.recordings, []);
+  assert.deepEqual(entry.videos, []);
+  assert.deepEqual(draft.removedPhotoIds, []);
+  assert.deepEqual(draft.removedRecordingIds, []);
+  assert.deepEqual(draft.removedVideoIds, []);
+  assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
+});
+
+test('saving consumes every contextual creation action', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const tryoutId = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
+  const procedureId = await journal.procedures.upsertProcedure({ name: 'Surgery', surgeryEpochDay: 95 });
+  const effect = await journal.personalEffects.addCustomEffectType('Skin');
+  const draft = createEntryDraft(100, undefined, 4);
+  draft.setTryoutFeltSense({ tryoutId, mood: 5 });
+  draft.setDoseLog({ dose: 2, doseUnit: 'mg' });
+  draft.setProcedureRecovery({ procedureId, notes: 'Healing', photo: photo(1) });
+  draft.setEffectMarker({ effect: effect.key });
+  draft.setCycleEvent({ kind: 'spotting' });
+
+  await draft.save(journal.entries);
+  assert.equal(draft.tryoutFeltSense, null);
+  assert.equal(draft.doseLog, null);
+  assert.equal(draft.procedureRecovery, null);
+  assert.equal(draft.effectMarker, null);
+  assert.equal(draft.cycleEvent, null);
+  await draft.save(journal.entries);
+  assert.equal((await journal.feltSense.forTryout(tryoutId)).length, 1);
+  assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
+  assert.equal((await journal.personalEffects.getMarkers()).length, 1);
+  assert.equal((await journal.cycleEvents.getCycleEvents()).length, 1);
+});
 
 const template = (overrides: Partial<EntryTemplate> = {}): EntryTemplate => ({
   id: 'tpl',

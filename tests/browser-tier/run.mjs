@@ -2169,7 +2169,7 @@ await block('ticket 29 browser tier', 6, async () => {
    the merge produced survives the save into the tables - and the first is
    also the third's positive control. The third is the only one of the three
    testing a rule that lives in the component. */
-await block('phase 8 audit ticket 25 entry editor', 4, async () => {
+await block('phase 8 audit ticket 25 entry editor', 5, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2212,6 +2212,16 @@ await block('phase 8 audit ticket 25 entry editor', 4, async () => {
   if (r.hiddenPresentationId && r.hiddenPresentationId !== r.shownPresentationId)
     ok('and the hidden presentation the third template named is a real row, not one the journal never had');
   else fail('the hidden presentation is a real row', JSON.stringify(r));
+
+  eq('a committed entry survives navigation failure and offers navigation rather than another save', r.navigationFailure, {
+    entryCount: 1,
+    starred: true,
+    debriefLinked: true,
+    truthfulNotice: true,
+    saveOffered: false,
+    saveFailureReported: false,
+    recoveryHref: '/'
+  });
 });
 
 /* Phase 8 features ticket 55: the PDF renderer.
