@@ -19,7 +19,7 @@
 
 import { BODY_REGION_MIDPOINT } from '../bodyMap';
 import type { WordFrequencySource } from '../wordFrequency';
-import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats';
+const GOOD_DAY_REGION_EUPHORIA_FLOOR = 50;
 import {
   BAD_MOMENT_MOOD_CEILING,
   BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
@@ -31,6 +31,7 @@ import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
+import type { ChecklistsArea } from './checklists';
 import {
   insertStagedPhoto,
   photosByEntry,
@@ -312,7 +313,11 @@ type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: strin
 type RemovedRecordingRow = { uuid: string; entry_id: number; file_path: string };
 type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
 
-export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): EntriesArea {
+export function makeEntriesArea(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  checklists?: Pick<ChecklistsArea, 'recordDebriefEntry'>
+): EntriesArea {
   const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
     const entries = Object.entries(dims);
     if (entries.length === 0) return [];
@@ -1234,9 +1239,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           await insertStagedVideo(driver, entryId, video);
         }
         await commitContextual(input, contextual, input.epochDay!);
-        if (input.debriefForAppointment != null) {
-          const { makeChecklistsArea } = await import('./checklists');
-          await makeChecklistsArea(driver).recordDebriefEntry(entryId, input.debriefForAppointment);
+        if (input.debriefForAppointment != null && checklists) {
+          await checklists.recordDebriefEntry(entryId, input.debriefForAppointment);
         }
         return entryId;
       });

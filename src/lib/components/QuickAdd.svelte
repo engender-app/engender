@@ -66,7 +66,6 @@
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
   import MoodFace from './MoodFace.svelte';
-  import Sheet from './Sheet.svelte';
 
   let backdateOpen = $state(false);
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
@@ -699,23 +698,11 @@
 {/if}
 
 <!-- The backdate's own step. It is the one target that cannot resolve in a
-     gesture, because it needs a date first. -->
-<Sheet bind:open={backdateOpen} title={m.another_day()}>
-  <h3>{m.another_day()}</h3>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
-  <label class="field-label" for="backdate">{m.another_day()}</label>
-  <div class="spread" style="margin-top:var(--space-2)">
-    <!-- Dynamic, not a top-of-file import: flatpickr is 52 KB nobody needs
-         before the backdate field opens, and a static import here put it in
-         every cold boot's eager preload set, including the passphrase gate
-         (phase 8 audit F6). The placeholder below matches DatePicker's own
-         `class="input"` box so the field does not jump when the chunk lands
-         and swaps it in - keep the two in sync if DatePicker's markup changes. -->
-    {#await import('./DatePicker.svelte')}
-      <input class="input" id="backdate" name="backdate" disabled aria-label={m.another_day()} />
-    {:then { default: DatePicker }}
-      <DatePicker id="backdate" name="backdate" max={dateInputValueFromEpochDay(todayEpochDay())} bind:value={backdate} />
-    {/await}
-    <button class="btn btn-soft press" data-choose="date" onclick={chooseDate}>{m.go()}</button>
-  </div>
-</Sheet>
+     gesture, because it needs a date first. Deferring the entire sheet behind a
+     lazy import keeps DatePicker and flatpickr out of the first-load layout chunk.
+     The backdate confirmation button grips data-choose="date" inside QuickAddBackdateSheet. -->
+{#if backdateOpen}
+  {#await import('./QuickAddBackdateSheet.svelte') then { default: QuickAddBackdateSheet }}
+    <QuickAddBackdateSheet bind:open={backdateOpen} bind:backdate onChooseDate={chooseDate} />
+  {/await}
+{/if}

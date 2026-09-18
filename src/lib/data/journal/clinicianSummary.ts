@@ -305,12 +305,8 @@ export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SE
     lay a summary out, so it never names a section itself. */
 const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
 
-/** Every table any section reads, de-duplicated: what
-    `journal.clinicianSummary.getSummary` depends on, single-sourced here
-    because this is the module that knows. writes.ts imports it rather than
-    hand-maintaining a copy, so a section registered above cannot silently
-    miss its invalidation - the same reasoning DAY_TABLES gives. */
-export const CLINICIAN_SUMMARY_TABLES: TableName[] = [...new Set(SECTIONS.flatMap((s) => s.tables))];
+import { CLINICIAN_SUMMARY_TABLES } from '../live/writes';
+export { CLINICIAN_SUMMARY_TABLES };
 
 /** Every section read for one range, in the order they print. Concurrent
     because the sections are independent - none of them reads what another
