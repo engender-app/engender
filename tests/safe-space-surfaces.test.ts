@@ -1,7 +1,7 @@
 /* Surface and contract tests for Safe space (ticket 52, ADR-0040).
 
    Phase 10 redesign ticket 47 split the screen these were written against.
-   `/doubt` opens on the breathing exercise and nothing else; the statistics,
+   `/doubt` offers personal support before the breathing exercise; the statistics,
    the charts, the counterevidence pool, the snapshots, the letters, the
    photos and the comfort list are each one tap down, on their own route.
 
@@ -62,14 +62,8 @@ describe('what Safe Space is built from', () => {
     expect(doubt).toContain("from '$lib/components/BreathingExercise.svelte'");
   });
 
-  /* Ticket 47's own contract, and the reason for the split: the screen a
-     person reaches on their worst day opens on the calming tool, the same
-     way every time, with nothing above it and nothing to wait for. */
-  it('opens on the breath and holds nothing else that has to be scrolled past', () => {
+  it('keeps the breathing tool available without a separate heading', () => {
     expect(markup).toContain('<BreathingExercise');
-    /* The breath is the first thing under the header, so there is nothing
-       between the field and it. */
-    expect(markup).toMatch(/<ScreenHeader[\s\S]*?\/>\s*(<!--[\s\S]*?-->\s*)*<div class="breath-stage">/);
     // No section heading over it: the field says where this is.
     expect(doubt).not.toContain("from '$lib/components/kit/SectionHeading.svelte'");
   });
