@@ -1,8 +1,10 @@
 <script lang="ts">
   import PhotoViewer from '$lib/components/PhotoViewer.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { rovingRadio } from '$lib/components/rovingRadio';
+  import { isReducedMotion } from '$lib/motion/tokens';
   /* Staging against a published scale, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
 
@@ -195,12 +197,103 @@
   function setWipePair(next: ComparePair) {
     comparing = [photos[next.left].id, photos[next.right].id];
   }
+
+  let activeSection = $state<'staging' | 'photos'>('staging');
+  let savedStagingScrollY = $state<number | null>(null);
+
+  const sectionOptions = $derived([
+    { value: 'staging', label: m.hair_stage_section_title() },
+    { value: 'photos', label: m.hair_jump_photos() }
+  ]);
+
+  function jumpToSection(section: 'staging' | 'photos' | string) {
+    activeSection = section === 'photos' ? 'photos' : 'staging';
+    if (activeSection === 'photos') {
+      savedStagingScrollY = window.scrollY;
+      const el = document.getElementById('hair-photos');
+      if (!el) return;
+      el.scrollIntoView({
+        behavior: isReducedMotion() ? 'auto' : 'smooth',
+        block: 'start'
+      });
+      const focusTarget = el.querySelector<HTMLElement>('h2') ?? el;
+      focusTarget.setAttribute('tabindex', '-1');
+      focusTarget.focus({ preventScroll: true });
+    } else {
+      if (savedStagingScrollY !== null) {
+        window.scrollTo({
+          top: savedStagingScrollY,
+          behavior: isReducedMotion() ? 'auto' : 'smooth'
+        });
+      } else {
+        const el = document.getElementById('hair-staging');
+        if (el) {
+          el.scrollIntoView({
+            behavior: isReducedMotion() ? 'auto' : 'smooth',
+            block: 'start'
+          });
+        }
+      }
+      const stagingEl = document.getElementById('hair-staging');
+      const focusTarget = stagingEl?.querySelector<HTMLElement>('h2') ?? stagingEl;
+      if (focusTarget) {
+        focusTarget.setAttribute('tabindex', '-1');
+        focusTarget.focus({ preventScroll: true });
+      }
+    }
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    if (dosesQuery.loading) return;
+    if (window.location.hash === '#hair-photos') {
+      jumpToSection('photos');
+    }
+  });
+
+  $effect(() => {
+    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+    if (dosesQuery.loading) return;
+    const stagesEl = document.getElementById('hair-staging');
+    const photosEl = document.getElementById('hair-photos');
+    if (!stagesEl || !photosEl) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (entry.target.id === 'hair-photos') {
+              activeSection = 'photos';
+            } else if (entry.target.id === 'hair-staging') {
+              activeSection = 'staging';
+            }
+          }
+        }
+      },
+      { rootMargin: '0px 0px -60% 0px' }
+    );
+
+    observer.observe(stagesEl);
+    observer.observe(photosEl);
+    return () => observer.disconnect();
+  });
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.hair_progress()} back="/care/changes" subtitle={m.hair_intro()} />
   <SourceRecordHandoff id={sourceId} ready={!photosQuery.loading && !photosQuery.failed} found={!!sourcePhoto} onOpen={() => { viewing = sourcePhoto!; }} />
   <PhotoViewer photo={viewing} onClose={() => { viewing = null; }} />
+
+  <div data-hair-jump>
+    <Segmented
+      name={m.hair_jump_label()}
+      options={sectionOptions}
+      value={activeSection}
+      onChange={jumpToSection}
+      compact
+      key="hair-sections"
+    />
+  </div>
 
   {#if dosesQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
@@ -221,7 +314,7 @@
       />
     </div>
 
-    <SectionHeading text={m.hair_stage_section_title()}>
+    <SectionHeading id="hair-staging" text={m.hair_stage_section_title()}>
       {#snippet action()}
         <button class="icon-btn press" data-add-stage aria-label={m.hair_stage_add_aria()} onclick={() => stageRecord.openEditor(null)}>
           <Icon name="plus" size={20} />
@@ -270,7 +363,18 @@
 
     <p class="muted small">{m.hair_scale_source()}</p>
 
-    <SectionHeading text={m.hair_photo_section_title()} />
+    <SectionHeading id="hair-photos" text={m.hair_photo_section_title()}>
+      {#snippet action()}
+        <button
+          class="icon-btn press"
+          data-jump-staging
+          aria-label={m.hair_jump_staging_aria()}
+          onclick={() => jumpToSection('staging')}
+        >
+          <span class="jump-up"><Icon name="chevronDown" size={20} /></span>
+        </button>
+      {/snippet}
+    </SectionHeading>
 
     {#if photoDue}
       <div data-photo-due>
@@ -454,5 +558,10 @@
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
+  }
+
+  .jump-up {
+    display: inline-flex;
+    transform: rotate(180deg);
   }
 </style>
