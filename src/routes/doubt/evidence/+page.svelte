@@ -150,7 +150,9 @@
         key="no-counterevidence"
         title={m.doubt_no_counterevidence_title()}
         text={m.doubt_no_counterevidence_body()}
+        action={{ label: m.safe_space_browse_entries(), href: "/calendar", primary: true }}
       />
+      <a class="btn btn-soft btn-block" href="/doubt/comfort">{m.comfort_list_title()}</a>
     {/snippet}
   </ReadGate>
 
