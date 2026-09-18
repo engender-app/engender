@@ -41,3 +41,7 @@ Each pair shows the unchanged baseline and the rejected compact proposal. The ch
 - Svelte analyzer reviewed the unchanged Today component and suggested existing effect refactors. No effect or state ownership changes belong to this retain decision.
 
 No new data-model or spacing tests were added. This decision does not claim participant testing, a new accessibility audit, native-device verification, or new palette/locale/zoom coverage. Those surfaces are unchanged. The remaining tradeoff is explicit: the inline mood strip needs scrolling on busy timer days, while fixed Quick add remains available.
+
+## Review
+
+Standards review found no blockers and suggested formatting the capture script; that cleanup is applied. Spec review found no missing requirements or scope expansion. Both reviews used `git diff main...HEAD` against main at `d8da8389`. Today's route, Quick add, and navigation were unchanged between the captured baseline and that main tip.
