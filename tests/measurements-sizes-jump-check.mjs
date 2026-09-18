@@ -107,18 +107,24 @@ try {
 
   await page.screenshot({ path: `${outDir}/01-arrival.png` });
 
-  // Pick the hips dimension and open an editor with an unsaved value
+  // Pick the hips dimension and open an editor with an unsaved value;
+  // the date field arrives prefilled with today
   await page.locator('[data-segment="hips"]').click();
   const hipsChecked = await page.locator('[data-segment="hips"]').getAttribute('aria-checked');
   assert.equal(hipsChecked, 'true', 'Hips should be the selected dimension');
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet] input[name="measurement-value"]');
   await page.locator('[data-sheet] input[name="measurement-value"]').fill('55.5');
+  // The visible date field is flatpickr's alt input; the bound input it
+  // fronts carries the draft's date and is what preservation is about
+  const dateBefore = await page.locator('[data-sheet] input[name="measurement-date"]').inputValue();
+  assert(dateBefore, 'The new editor should arrive with a date');
 
   // While the editor is open it owns the screen: the jump control sits
   // under the sheet's scrim, so a tap there cannot jump away from the
   // draft (the sheet's own dismissal policy, not the jump's, decides
-  // what happens to an unsaved input)
+  // what happens to an unsaved input), and the draft's value and date
+  // are still exactly as left
   const blocked = await page.evaluate(() => {
     const jump = document.querySelector('[data-measurements-jump] [data-segment="sizes"]');
     const box = jump.getBoundingClientRect();
@@ -127,6 +133,7 @@ try {
   });
   assert(blocked, 'An open editor must block the jump control');
   assert.equal(await page.locator('[data-sheet] input[name="measurement-value"]').inputValue(), '55.5');
+  assert.equal(await page.locator('[data-sheet] input[name="measurement-date"]').inputValue(), dateBefore);
 
   // Closing a changed draft offers the discard choice, and only then is
   // the jump reachable - switching preserves the selected dimension
@@ -166,7 +173,7 @@ try {
     Math.abs(scrollAfter - scrollBefore) < 5,
     `Jumping back should restore the scroll offset, got ${scrollAfter} vs ${scrollBefore}`
   );
-  const readingBack = await frameBox('#measurements-reading');
+  const readingBack = await frameBox('#measurements-picker');
   assert(readingBack && readingBack.top < 600, `Measurements anchor should be back in view, got top=${readingBack?.top}`);
   const backActive = await page
     .locator('[data-measurements-jump] [data-segment="measurements"]')
@@ -179,14 +186,14 @@ try {
   // view as arrows move through it. The picker is the radiogroup inside
   // the measurements anchor - the jump's own Segmented is a radiogroup
   // too, and it sits earlier in the screen.
-  const typeGroup = () => page.evaluate(() => document.querySelector('#measurements-reading [role="radiogroup"]'));
+  const typeGroup = () => page.evaluate(() => document.querySelector('#measurements-picker [role="radiogroup"]'));
   assert.notEqual(await typeGroup(), null, 'The measurements anchor should hold the type picker');
-  await page.evaluate(() => document.querySelector('#measurements-reading [role="radiogroup"]').focus());
+  await page.evaluate(() => document.querySelector('#measurements-picker [role="radiogroup"]').focus());
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   const keyboardState = await page.evaluate(() => {
-    const group = document.querySelector('#measurements-reading [role="radiogroup"]');
+    const group = document.querySelector('#measurements-picker [role="radiogroup"]');
     const focus = document.activeElement;
     const onTrack = group.contains(focus);
     if (!onTrack) return { onTrack };
@@ -210,11 +217,11 @@ try {
   await visit('/body/measurements');
   await page.waitForSelector('[data-measurement]');
   const overflow = await page.evaluate(() => {
-    const group = document.querySelector('#measurements-reading [role="radiogroup"]');
+    const group = document.querySelector('#measurements-picker [role="radiogroup"]');
     const active = group.querySelector('[aria-checked="true"]');
     const activeBox = active.getBoundingClientRect();
     const trackBox = group.getBoundingClientRect();
-    const hint = document.querySelector('#measurements-reading .segmented-hint-end, #measurements-reading .segmented-hint-start');
+    const hint = document.querySelector('#measurements-picker .segmented-hint-end, #measurements-picker .segmented-hint-start');
     return {
       canScroll: group.classList.contains('can-scroll'),
       hintPresent: Boolean(hint),
@@ -230,10 +237,10 @@ try {
 
   // And the long custom label is reachable by keyboard: arrows carry it
   // into view
-  await page.evaluate(() => document.querySelector('#measurements-reading [role="radiogroup"]').focus());
+  await page.evaluate(() => document.querySelector('#measurements-picker [role="radiogroup"]').focus());
   for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
   const customInView = await page.evaluate(() => {
-    const group = document.querySelector('#measurements-reading [role="radiogroup"]');
+    const group = document.querySelector('#measurements-picker [role="radiogroup"]');
     const focus = document.activeElement;
     if (!group.contains(focus)) return false;
     const box = focus.getBoundingClientRect();
@@ -241,6 +248,20 @@ try {
     return box.left >= track.left - 1 && box.right <= track.right + 1;
   });
   assert(customInView, 'Keyboard must carry the focused custom label into view');
+
+  // The shared contract's 48px floor holds for everything this ticket
+  // added: the jump segments and the way back on the sizes heading
+  const hitHeights = await page.evaluate(() => {
+    const heights = [];
+    for (const el of document.querySelectorAll(
+      '[data-measurements-jump] .segment, [data-jump-measurements]'
+    )) {
+      heights.push(el.getBoundingClientRect().height);
+    }
+    return heights;
+  });
+  assert(hitHeights.length >= 3, 'Jump segments and the way back should all be present');
+  for (const h of hitHeights) assert(h >= 48, `Interactive targets must meet the 48px floor, got ${h}`);
 
   await page.screenshot({ path: `${outDir}/04-320-polish.png` });
 

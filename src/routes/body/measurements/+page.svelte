@@ -312,10 +312,12 @@
 
      A jump, not a task switch: nothing here unmounts, so the selected
      type, the open editor and its unsaved draft ride along unchanged.
-     The measurements anchor is the type picker (this half has no heading
-     of its own, and the comment up top explains why it never got one);
-     its focus target is the picker's own radiogroup, which already
-     carries the group's name. The sizes anchor is the log's heading.
+     The measurements anchor (`#measurements-picker`) is the type picker
+     itself - this half has no heading of its own, and the comment up top
+     explains why it never got one - so the anchor is named for the one
+     element it wraps, and its focus target is that picker's radiogroup,
+     which already carries the group's name. The sizes anchor is the
+     log's heading.
 
      Jumping away remembers the scroll offset, and jumping back restores
      it: the chart and the log are long, and a person who jumped from deep
@@ -350,9 +352,9 @@
       if (region && savedReadingScroll !== null) {
         region.scrollTo({ top: savedReadingScroll, behavior: motion });
       } else {
-        document.getElementById('measurements-reading')?.scrollIntoView({ behavior: motion, block: 'start' });
+        document.getElementById('measurements-picker')?.scrollIntoView({ behavior: motion, block: 'start' });
       }
-      const el = document.getElementById('measurements-reading');
+      const el = document.getElementById('measurements-picker');
       if (el) focusAnchor(el);
     }
   }
@@ -364,7 +366,7 @@
       still arriving at the bottom edge. */
   $effect(() => {
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
-    const reading = document.getElementById('measurements-reading');
+    const reading = document.getElementById('measurements-picker');
     const sizes = document.getElementById('sizes-log');
     if (!reading || !sizes) return;
     const observer = new IntersectionObserver(
@@ -372,7 +374,7 @@
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           if (entry.target.id === 'sizes-log') activeSection = 'sizes';
-          else if (entry.target.id === 'measurements-reading') activeSection = 'measurements';
+          else if (entry.target.id === 'measurements-picker') activeSection = 'measurements';
         }
       },
       { rootMargin: '0px 0px -60% 0px' }
@@ -404,7 +406,7 @@
       key="measurement-sections"
     />
   </div>
-  <div id="measurements-reading">
+  <div id="measurements-picker">
     <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
   </div>
 
