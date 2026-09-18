@@ -417,11 +417,9 @@ export async function generateLongJournal(
       // A video note on about one entry in a hundred (ADR-0034) - raw webm bytes,
       // ensuring all photo library sources are exercised.
       const attachVideos =
-        summary.videoNotes === 0 && day === firstEpochDay + 20
+        (summary.videoNotes === 0 && day === firstEpochDay + 20) || random() < 0.01
           ? [demoVideoBytes(random)]
-          : random() < 0.01
-            ? [demoVideoBytes(random)]
-            : undefined;
+          : undefined;
       if (attachVideos) summary.videoNotes++;
 
       // A body region on roughly one entry in six, its value clearing
@@ -624,9 +622,18 @@ export async function generateLongJournal(
     doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
     autoLogFromEpochDay: null
   });
+  const thirdPauseStart = lastEpochDay - 25;
+  const thirdPauseEnd = lastEpochDay - 18;
+  await journal.doses.upsertPause({
+    episodeId: thirdEpisodeId,
+    startEpochDay: thirdPauseStart,
+    endEpochDay: thirdPauseEnd,
+    reason: 'accidental'
+  });
   let injectionCount = 0;
   for (let day = thirdEpisodeStartEpochDay; day <= lastEpochDay; day++) {
     if (weekdayOfEpochDay(day) !== 0) continue;
+    if (day >= thirdPauseStart && day <= thirdPauseEnd) continue;
     if (random() < 0.05) continue;
     await journal.doses.upsertDose({
       timestamp: (day * 24 + 19) * 3_600_000,
