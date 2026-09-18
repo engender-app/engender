@@ -1300,13 +1300,12 @@ try {
   await page.waitForSelector('[data-photo-cell] img');
   const thumbnailSrc = await page.locator('[data-photo-cell] img').first().getAttribute('src');
   if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
+  await page.locator('[data-segment="compare"]').click();
   const photoCells = page.locator('[data-photo-cell]');
   if ((await photoCells.count()) < 4) throw new Error('not enough photos to exercise both compare controls');
   await photoCells.nth(0).click();
   await photoCells.nth(2).click();
-  // The mode control is a segmented Browse/Compare now (ticket 11), matching
-  // the voice screen's own tabs - not the primary button this used to be.
-  await page.locator('[data-segment="compare"]').click();
+  await page.locator('[data-compare-open]').click();
   /* One frame with a draggable divider, not two thumbnails side by side
      (redesign ticket 55). Both dates are pinned to the frame's own corners,
      and the four earlier/later controls move each side through the
@@ -7147,18 +7146,17 @@ try {
 
   // Two photographs from two different tables, which is the comparison
   // neither the hair screen nor the surgery screen can offer.
+  await page.locator('[data-segment="compare"]').click();
   await page.locator('[data-photo-source="hair"] [data-photo-cell]').first().click();
   await page.locator('[data-photo-chip="everything"]').click();
   await page.waitForSelector('[data-photo-source="procedure"]');
   await page.locator('[data-photo-source="procedure"] [data-photo-cell]').first().click();
-  await page.locator('[data-segment="compare"]').click();
+  await page.locator('[data-compare-open]').click();
   await page.waitForSelector('[data-photo-wipe]');
   if ((await page.locator('[data-wipe-date]').count()) !== 2) {
     throw new Error('the wipe inside the library did not open on two photographs');
   }
-  /* Out of the wipe by its own control rather than by the segmented pair,
-     which the compare view does not draw - it is a screen with a back arrow
-     and this button, not a tab. */
+  // Closing comparison returns to the library with its selection intact.
   await page.locator('[data-photos-back-to-all]').click();
   await page.waitForSelector('[data-photo-key]');
 

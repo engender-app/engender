@@ -36,14 +36,6 @@ export function toComparePair(selected: string[], photos: Identified[]): Compare
   return { left: index.get(ordered[0])!, right: index.get(ordered[1])! };
 }
 
-export function toggleCompareAnchor(selected: string[], anchorId: string, photos: Identified[]): string[] {
-  const ordered = orderAnchorsByJourney(selected, photos);
-  if (!photos.some((photo) => photo.id === anchorId)) return ordered;
-  if (ordered.includes(anchorId)) return ordered.filter((id) => id !== anchorId);
-  if (ordered.length < TWO_ANCHORS) return orderAnchorsByJourney([...ordered, anchorId], photos);
-  return orderAnchorsByJourney([ordered[1], anchorId], photos);
-}
-
 /** The pair one press of an earlier/later control lands on, or null where
     that press has nowhere to go - which is also what disables the control,
     so the two questions have one answer rather than two that can disagree.

@@ -129,6 +129,8 @@ const openCompare = async (pick) => {
   await page.locator('[data-segment="compare"]').click();
   const picked = await pick();
   if (!picked) return false;
+  const theme = await page.locator('html').getAttribute('data-theme');
+  await cropFixed(`selection-${theme}`, '[data-compare-progress]', 470, 'Two selected photos and explicit comparison action');
   await page.locator('[data-compare-open]').click();
   await page.waitForSelector('[data-photo-wipe]');
   await page.waitForTimeout(800);
