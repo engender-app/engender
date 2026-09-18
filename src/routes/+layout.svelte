@@ -28,8 +28,7 @@
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { ui } from '$lib/stores/ui.svelte';
-  import { saveBar } from '$lib/stores/saveBar.svelte';
+  import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { bootState, recoveryUnlock, restorePreviousJournal, retryBoot, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -40,18 +39,14 @@
   } from '$lib/stores/boot-state';
   import { registerServiceWorker } from '$lib/pwa/register';
   import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
-  import { App as AndroidAppPlugin } from '@capacitor/app';
-  import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
-  import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
-  import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';
   import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
-  import { markScreenArrival } from '$lib/motion/reveal';
+  import { markScreenArrival } from '$lib/motion/screenArrival';
 
   /* Mark screen arrival at layout script execution time so initial cold-mount
      components rendering during boot treat their mount as part of screen
@@ -64,18 +59,11 @@
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
-  import VocabularyManagerSheets from '$lib/components/VocabularyManagerSheets.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
-  import { androidReminders } from '$lib/reminders/android-bridge';
-  import { affirmationLines } from '$lib/reminders/affirmations';
-  import { androidDisguise } from '$lib/disguise/android-bridge';
-  import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
-  import { androidScreenCapture } from '$lib/lock/screen-capture-bridge';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import Progress from '$lib/components/Progress.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
@@ -83,16 +71,13 @@
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
-  import { startAutoExportScheduler, stopAutoExportScheduler } from '$lib/data/archive/auto-export-scheduler';
-  import {
-    startRetrospectiveNotificationsScheduler,
-    stopRetrospectiveNotificationsScheduler
-  } from '$lib/data/retrospective-notifications-scheduler';
 
   let { children } = $props();
 
   if (isAndroid()) {
-    assertAndroidRuntimePluginRegistry();
+    void import('$lib/android/plugin-registry').then(({ assertAndroidRuntimePluginRegistry }) => {
+      assertAndroidRuntimePluginRegistry();
+    });
   }
 
   /* Started here rather than from an $effect so that boot's first step -
@@ -507,7 +492,8 @@
     if (!isReadyState(bootState) || locked || !prefs.onboarded) return;
     if (path !== '/') return;
     const day = todayEpochDay();
-    void readReturnGap(journal, day).then(async (since) => {
+    void import('$lib/data/comingBackReads').then(async ({ readReturnGap, readWhatIsWaiting }) => {
+      const since = await readReturnGap(journal, day);
       if (since === null || prefs.comingBackSeenSince === since) return;
       if (!(await readWhatIsWaiting(journal, day, since))) return;
       if (page.url.pathname !== '/') return;
@@ -516,19 +502,35 @@
   });
 
   $effect(() => {
-    if (isReadyState(bootState) && !locked) {
-      startAutoExportScheduler();
-      return () => stopAutoExportScheduler();
+    if (isReadyState(bootState) && !locked && isAndroid()) {
+      let cancelled = false;
+      let stop: (() => void) | undefined;
+      void import('$lib/data/archive/auto-export-scheduler').then((m) => {
+        if (cancelled) return;
+        m.startAutoExportScheduler();
+        stop = m.stopAutoExportScheduler;
+      });
+      return () => {
+        cancelled = true;
+        stop?.();
+      };
     }
-    stopAutoExportScheduler();
   });
 
   $effect(() => {
-    if (isReadyState(bootState) && !locked) {
-      startRetrospectiveNotificationsScheduler();
-      return () => stopRetrospectiveNotificationsScheduler();
+    if (isReadyState(bootState) && !locked && isAndroid()) {
+      let cancelled = false;
+      let stop: (() => void) | undefined;
+      void import('$lib/data/retrospective-notifications-scheduler').then((m) => {
+        if (cancelled) return;
+        m.startRetrospectiveNotificationsScheduler();
+        stop = m.stopRetrospectiveNotificationsScheduler;
+      });
+      return () => {
+        cancelled = true;
+        stop?.();
+      };
     }
-    stopRetrospectiveNotificationsScheduler();
   });
   /* Putting the pre-migration copy back (ticket 04). Only reachable from the
      boot-failure notice, and only when boot found a copy to put back. */
@@ -600,63 +602,91 @@
     const disguise = prefs.disguise;
     const quickExit = prefs.quickExit;
     const allowScreenCapture = prefs.allowScreenCapture;
-    if (!ready) return;
+    if (!ready || !isAndroid()) return;
 
-    return startAndroidPlatformSync({
-      isAndroid,
-      isReady: () => isReadyState(bootState),
-      todayEpochDay,
-      prefs: {
-        checkInEnabled,
-        checkInTime,
-        checkInAffirmationsEnabled,
-        hideNotificationTitles,
-        remindersEnabled,
-        wearElapsedEnabled,
-        quietHoursEnabled,
-        quietHoursStart,
-        quietHoursEnd,
-        disguise,
-        quickExit,
-        allowScreenCapture
-      },
-      journal: {
-        reminders: journal.reminders,
-        entries: journal.entries,
-        stock: journal.stock,
-        journalingPauses: journal.journalingPauses,
-        areaStates: journal.areaStates
-      },
-      onTablesWritten,
-      androidReminders,
-      androidDisguise,
-      androidQuickExit,
-      androidScreenCapture,
-      androidBackButton: AndroidAppPlugin,
-      // Hidden built-ins and this language's custom lines are read fresh on
-      // every call (phase 5 ticket 15) rather than captured once here, so a
-      // change lands on the next sync without needing this effect to restart.
-      affirmationLines: () =>
-        affirmationLines(
-          new Set(vocabulary.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
-          vocabulary.customAffirmations(getLocale()).map((a) => a.text)
-        ),
-      reminderTexts: () => ({
-        channelReminders: m.reminders(),
-        channelCheckIn: m.checkin_title(),
-        checkInTitle: m.checkin_title(),
-        /* The question itself, not the Settings row's subtitle: that one
-           ends in the mechanic ("skipped on days you already logged"),
-           which is what a person reading the row needs and not what a
-           notification should say. */
-        checkInBody: m.checkin_notification_body()
-      }),
-      isValidLaunchRoute: isValidAndroidLaunchRoute,
-      currentPathname: () => page.url.pathname,
-      goto,
-      replaceRoute,
-      navigationDepth
-    });
+    let cleanup: (() => void) | undefined;
+    let unmounted = false;
+    void Promise.all([
+      import('$lib/android/platform-sync'),
+      import('@capacitor/app'),
+      import('$lib/reminders/android-bridge'),
+      import('$lib/disguise/android-bridge'),
+      import('$lib/lock/quick-exit-bridge'),
+      import('$lib/lock/screen-capture-bridge'),
+      import('$lib/reminders/affirmations')
+    ]).then(
+      ([
+        { startAndroidPlatformSync },
+        { App: androidBackButton },
+        { androidReminders },
+        { androidDisguise },
+        { androidQuickExit },
+        { androidScreenCapture },
+        { affirmationLines }
+      ]) => {
+        if (unmounted) return;
+        cleanup = startAndroidPlatformSync({
+          isAndroid,
+          isReady: () => isReadyState(bootState),
+          todayEpochDay,
+          prefs: {
+            checkInEnabled,
+            checkInTime,
+            checkInAffirmationsEnabled,
+            hideNotificationTitles,
+            remindersEnabled,
+            wearElapsedEnabled,
+            quietHoursEnabled,
+            quietHoursStart,
+            quietHoursEnd,
+            disguise,
+            quickExit,
+            allowScreenCapture
+          },
+          journal: {
+            reminders: journal.reminders,
+            entries: journal.entries,
+            stock: journal.stock,
+            journalingPauses: journal.journalingPauses,
+            areaStates: journal.areaStates
+          },
+          onTablesWritten,
+          androidReminders,
+          androidDisguise,
+          androidQuickExit,
+          androidScreenCapture,
+          androidBackButton,
+          // Hidden built-ins and this language's custom lines are read fresh on
+          // every call (phase 5 ticket 15) rather than captured once here, so a
+          // change lands on the next sync without needing this effect to restart.
+          affirmationLines: () =>
+            affirmationLines(
+              new Set(vocabulary.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
+              vocabulary.customAffirmations(getLocale()).map((a) => a.text)
+            ),
+          reminderTexts: () => ({
+            channelReminders: m.reminders(),
+            channelCheckIn: m.checkin_title(),
+            checkInTitle: m.checkin_title(),
+            /* The question itself, not the Settings row's subtitle: that one
+               ends in the mechanic ("skipped on days you already logged"),
+               which is what a person reading the row needs and not what a
+               notification should say. */
+            checkInBody: m.checkin_notification_body()
+          }),
+          isValidLaunchRoute: isValidAndroidLaunchRoute,
+          currentPathname: () => page.url.pathname,
+          goto,
+          replaceRoute,
+          navigationDepth
+        });
+      }
+    );
+
+    return () => {
+      unmounted = true;
+      cleanup?.();
+    };
   });
 </script>
 
@@ -684,7 +714,7 @@
   <div
     class="app"
     data-app-root
-    use:hoverHints
+    {@attach (node) => hoverHints(node)?.destroy}
     class:disguised={prefs.disguise}
     class:is-chromeless={chromeless}
     data-boot={bootState.status}
@@ -707,7 +737,9 @@
             <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
               <span>{m.boot_restore_action()}</span>
             </button>
-            <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
+            {#await import('$lib/components/Progress.svelte') then { default: Progress }}
+              <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
+            {/await}
             {#if restoreFailed}
               <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
             {/if}
@@ -805,7 +837,11 @@
     </main>
 
     <QuickAdd />
-    <VocabularyManagerSheets />
+    {#if ui.raisedManager}
+      {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
+        <VocabularyManagerSheets />
+      {/await}
+    {/if}
 
     <Toasts />
   </div>

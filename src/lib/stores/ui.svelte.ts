@@ -47,3 +47,6 @@ export const ui = $state({
       Settings, before raising it the same way. */
   raisedManager: null as 'modes' | 'templates' | null
 });
+
+/* How many bars the frame is holding (carpet 26). */
+export const saveBar = $state({ count: 0 });

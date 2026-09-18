@@ -42,7 +42,8 @@ export const COLUMN = '[data-app-column]';
    because mounting and unmounting interleave: a screen that replaces its
    foot with another one has both mounted for the moment between the new
    node's action running and the old node's teardown. */
-export const saveBar = $state({ count: 0 });
+import { saveBar } from './ui.svelte';
+export { saveBar };
 
 /**
  * Svelte action: host this node in the app column instead of in the screen,

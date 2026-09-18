@@ -22,24 +22,10 @@ import {
   ENTRY_TEMPLATES
 } from '../vocabulary/builtins';
 import { builtInTemplateHidden } from '../vocabulary/entryTemplates';
-import { now } from './support';
+import { RECONCILE_TABLES } from '../live/writes';
+export { RECONCILE_TABLES };
 
-/** The tables this module writes, single-sourced here because this is the
-    module that knows: writes.ts imports it rather than hand-maintaining its
-    own copy, so a built-in table added above cannot silently miss its
-    invalidation (ticket 28). Reconciling usually finds nothing to do, and
-    announcing these three tables for a no-op is cheaper than asking it to
-    report what it actually changed. */
-export const RECONCILE_TABLES: TableName[] = [
-  'tag',
-  'dimension',
-  'affirmation',
-  'bodyRegion',
-  'measurementType',
-  'effectCategory',
-  'personalEffectType',
-  'entryTemplate'
-];
+const now = (): number => Date.now();
 
 async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<string>> {
   const rows = await driver.query<{ key: string }>(`SELECT key FROM ${table} WHERE key IS NOT NULL`);

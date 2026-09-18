@@ -31,7 +31,6 @@
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import Progress from '$lib/components/Progress.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import {
     bootState,
@@ -288,7 +287,9 @@
          bar's own label now, and Progress.svelte makes it the live region,
          so the announcement it added survives the retrofit. -->
     <div class="gate-progress">
-      <Progress run={conversion} label={progressLine} handle="conversion" />
+      {#await import('$lib/components/Progress.svelte') then { default: Progress }}
+        <Progress run={conversion} label={progressLine} handle="conversion" />
+      {/await}
     </div>
     <!-- True, and worth saying: every step is written down before it
          happens, so a closed tab or a dead battery resumes rather than
