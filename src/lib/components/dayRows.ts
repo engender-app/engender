@@ -40,7 +40,7 @@ import {
   moodName,
   severityName
 } from '$lib/data/vocabulary/labels';
-import { routeLabel, statusLabel } from '$lib/data/vocabulary/doseLabels';
+import { doseRowTitle, statusLabel } from '$lib/data/vocabulary/doseLabels';
 import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
 /** One line in the day's context list. `subtitle` is the earned exception
@@ -123,12 +123,6 @@ const SECTION_ROWS: Record<
          route it always has, and never borrows today's regimen. */
       const fact = doseDrugs?.get(dose.id);
       const drug = fact?.drug ?? null;
-      /* The drug leads where one resolved, so concurrent regimens at the
-         same amount and route are two rows before either is opened
-         (phase 11 ticket 19). */
-      const title = drug
-        ? `${drug} ${dose.dose} ${dose.doseUnit}, ${routeLabel(dose.route)}`
-        : `${dose.dose} ${dose.doseUnit}, ${routeLabel(dose.route)}`;
       /* Earned subtitle, twice over: a skipped dose is not the dose the
          schedule expected, and a dose nothing attributes to says so
          rather than reading as if the current regimen covered it. */
@@ -142,7 +136,7 @@ const SECTION_ROWS: Record<
       return {
         key: `dose-${dose.id}`,
         icon: 'clock',
-        title,
+        title: doseRowTitle(drug, dose, ', '),
         subtitle: subtitle || undefined,
         href: '/care/doses'
       };

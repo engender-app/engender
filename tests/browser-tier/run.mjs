@@ -1734,13 +1734,12 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
   );
 
   const named = (drug) => doseRowTexts.find((row) => row.title?.startsWith(drug));
-  const estradiol = named('Estradiol valerate');
-  const spiro = named('Spironolactone');
-  if (estradiol && spiro && estradiol.key !== spiro.key)
-    ok('three concurrent doses at one amount and route stay identifiable by name');
-  else fail('three concurrent doses at one amount and route stay identifiable by name', JSON.stringify(doseRowTexts));
+  const names = ['Estradiol valerate', 'Spironolactone', 'Progesterone'].map(named);
+  if (names.every(Boolean) && new Set(names.map((row) => row.key)).size === 3)
+    ok('three concurrent medications at one amount and route stay identifiable by name');
+  else fail('three concurrent medications at one amount and route stay identifiable by name', JSON.stringify(doseRowTexts));
 
-  const ambiguous = doseRowTexts.find((row) => row.key === 'dose-cd3');
+  const ambiguous = doseRowTexts.find((row) => row.key === 'dose-cd4');
   if (
     ambiguous &&
     ambiguous.title?.startsWith('50 mg') &&
@@ -1749,7 +1748,7 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
     ok('a dose two regimens could both explain says so instead of naming one');
   else fail('a dose two regimens could both explain says so instead of naming one', JSON.stringify(ambiguous));
 
-  const uncovered = doseRowTexts.find((row) => row.key === 'dose-cd4');
+  const uncovered = doseRowTexts.find((row) => row.key === 'dose-cd5');
   if (
     uncovered &&
     uncovered.title?.startsWith('50 mg') &&
