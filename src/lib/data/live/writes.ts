@@ -868,7 +868,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   tally: classify<Journal['tally']>()({
     writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: { getEvents: ['tally'], getEventsOnDay: ['tally'], lastWriteEpochDay: ['tally'] }
+    reads: { getEvents: ['tally'], getEventsOnDay: ['tally'], lastWriteEpochDay: ['tally'], latestEvent: ['tally'] }
   }),
   regimen: classify<Journal['regimen']>()({
     writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },

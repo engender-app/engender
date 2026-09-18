@@ -55,3 +55,37 @@ test('deleting a tally event is idempotent', async () => {
 
   assert.deepEqual(await journal.tally.getEvents('misgendered'), []);
 });
+
+test('the newest event of one kind is the one undo reverses', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.tally.latestEvent('misgendered'), null);
+
+  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+  const newest = await journal.tally.log({ epochDay: 102, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 101, kind: 'correctly_gendered' });
+
+  const latest = await journal.tally.latestEvent('misgendered');
+  assert.equal(latest?.id, newest);
+  assert.equal(latest?.kind, 'misgendered');
+
+  await journal.tally.deleteEvent(newest);
+  assert.equal((await journal.tally.latestEvent('misgendered'))?.epochDay, 100);
+});
+
+test('a same-day tie resolves to one of the tied events, then to its sibling', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+  const second = await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+
+  // Taps are indistinguishable, so which id wins the tie is not observable
+  // - only that it is one of today's, and that undo then falls to the other.
+  const latest = await journal.tally.latestEvent('misgendered');
+  assert.ok(latest);
+  assert.ok([first, second].includes(latest.id));
+
+  await journal.tally.deleteEvent(latest.id);
+  const sibling = await journal.tally.latestEvent('misgendered');
+  assert.ok(sibling);
+  assert.notEqual(sibling.id, latest.id);
+  assert.equal(sibling.epochDay, 100);
+});
