@@ -2590,7 +2590,7 @@
   "journey_anchor_row_badge": "Liczone od tego miejsca",
   "journey_anchor_since": "Od {name}",
   "curve_title": "Krzywa hormonalna",
-  "curve_intro": "Co wiadomo o estradiolu i testosteronie między dawkami: dopasowany zakres tam, gdzie pozwalają na to opublikowane dane, i kształt poglądowy tam, gdzie nie pozwalają. Twoje wyniki leżą na wierzchu obu krzywych, a krzywa jest tylko tłem do ich czytania. Bez norm i bez porad.",
+  "curve_intro": "Dopasowane zakresy i poglądowe kształty pokazują, na co pozwalają badania. Wyniki zostają takie, jak zapisano. Ten widok jest tłem dla Twoich wpisów, nie celem ani poradą.",
   "curve_injectable_heading": "Dopasowane do opublikowanych badań",
   "curve_window_label": "Okno",
   "curve_window_30": "30 dni",
