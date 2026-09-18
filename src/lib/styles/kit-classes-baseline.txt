@@ -4,7 +4,7 @@
 # --update` after moving a class out or deliberately accepting a new one.
 has-dismiss
 has-overlay
-is-hovered
+is-inline
 is-leader
 is-overlay
 is-ticked
@@ -96,6 +96,7 @@ kit-tile
 kit-tile-dismiss
 kit-tile-main
 kit-tile-note
+kit-tile-note-text
 kit-tile-title
 kit-tile-value
 kit-tiles
@@ -105,7 +106,7 @@ kit-year-label
 kit-year-rows
 mood-face
 otd-photos
+screen-header
 segmented
 skeleton-stack
-stats-caption
 wrapped-photos
