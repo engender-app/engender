@@ -105,6 +105,8 @@
      object and its content is what crossfades. */
   let earlierStack = $state<string[]>([]);
   let laterStack = $state<string[]>([]);
+  let earlierFailed = $state(false);
+  let laterFailed = $state(false);
   let earlierShape = $state<PhotoShape | null>(null);
   let laterShape = $state<PhotoShape | null>(null);
 
@@ -116,21 +118,19 @@
   const minted: string[] = [];
 
   /* One read per side, abandoned if the side changes under it. */
-  function load(fileName: string | null, show: (url: string) => void): (() => void) | undefined {
+  function load(fileName: string | null, show: (url: string) => void, fail: () => void): (() => void) | undefined {
     if (!fileName || !wipeable) return;
 
     let stale = false;
     readPhoto(fileName).then(
       (bytes) => {
-        if (stale || !bytes) return;
+        if (stale) return;
+        if (!bytes) { fail(); return; }
         const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
         minted.push(url);
         show(url);
       },
-      // A file written under another key throws out of the store rather
-      // than reading as null (encrypted-file-store.ts). The plate is
-      // already showing what it was showing, so there is nothing to do.
-      () => {}
+      () => { if (!stale) fail(); }
     );
 
     return () => {
@@ -138,8 +138,22 @@
     };
   }
 
-  $effect(() => load(earlier?.fileName ?? null, (url) => (earlierStack = [url])));
-  $effect(() => load(later?.fileName ?? null, (url) => (laterStack = [url])));
+  $effect(() => {
+    earlierFailed = false;
+    earlierShape = null;
+    return load(earlier?.fileName ?? null, (url) => (earlierStack = [url]), () => {
+      earlierStack = [];
+      earlierFailed = true;
+    });
+  });
+  $effect(() => {
+    laterFailed = false;
+    laterShape = null;
+    return load(later?.fileName ?? null, (url) => (laterStack = [url]), () => {
+      laterStack = [];
+      laterFailed = true;
+    });
+  });
 
   /* Nothing tracked in the body, so this runs once and its teardown is the
      screen being left. Svelte skips outros when a component is destroyed,
@@ -213,7 +227,10 @@
 </script>
 
 <div class="wipe" data-photo-wipe {...roleAttrs(role)}>
-  {#if wipeable}
+  {#if earlierFailed || laterFailed}
+    <p role="status" data-wipe-unavailable>{m.photo_unreadable()}</p>
+  {/if}
+  {#if wipeable && !earlierFailed && !laterFailed}
     <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
       <div class="wipe-plate">
         {#each laterStack as url (url)}
@@ -222,6 +239,7 @@
             src={url}
             alt={m.ph_cell_aria({ date: date(later) })}
             onload={(event) => (laterShape = shapeOf(event))}
+            onerror={() => (laterFailed = true)}
             in:fade={{ duration: motionDuration('--dur-fast') }}
             out:fade={{ duration: motionDuration('--dur-fast') }}
             onoutroend={() => URL.revokeObjectURL(url)}
@@ -235,6 +253,7 @@
             src={url}
             alt={m.ph_cell_aria({ date: date(earlier) })}
             onload={(event) => (earlierShape = shapeOf(event))}
+            onerror={() => (earlierFailed = true)}
             in:fade={{ duration: motionDuration('--dur-fast') }}
             out:fade={{ duration: motionDuration('--dur-fast') }}
             onoutroend={() => URL.revokeObjectURL(url)}
@@ -269,7 +288,7 @@
         </span>
       </div>
     </div>
-  {:else}
+  {:else if !wipeable}
     <!-- Nothing to wipe between, so the two photographs go side by side
          and each keeps its own date under it. -->
     <div class="wipe-pair" data-wipe-fallback>

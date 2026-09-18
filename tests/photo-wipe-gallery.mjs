@@ -175,10 +175,11 @@ const setDivider = async (percent) => {
 const openCompare = async () => {
   await settle('/media/photos');
   await page.waitForSelector('[data-photo-cell] img');
+  await page.locator('[data-segment="compare"]').click();
   const cells = page.locator('[data-photo-cell]');
   await cells.nth(0).click();
   await cells.nth(3).click();
-  await page.locator('[data-segment="compare"]').click();
+  await page.locator('[data-compare-open]').click();
 };
 
 try {

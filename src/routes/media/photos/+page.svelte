@@ -31,6 +31,7 @@
      full JPEG bytes through readPhoto (PhotoWipe.svelte) and a `.webm` is
      not a frame. Its tile plays it instead of picking it. */
   import { tick } from 'svelte';
+  import { collapse } from '$lib/motion/reveal';
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
@@ -40,8 +41,7 @@
   import type { ComparePair } from '$lib/data/photos/compare-state';
   import {
     orderAnchorsByJourney,
-    toComparePair,
-    toggleCompareAnchor
+    toComparePair
   } from '$lib/data/photos/compare-state';
   import {
     chipsFor,
@@ -98,16 +98,17 @@
 
   let selected = $state<string[]>([]);
   let comparing = $state(false);
+  let selecting = $state(false);
   let viewingId = $derived(page.url.searchParams.get('photo'));
   let viewing = $derived(library.find((photo) => photo.id === viewingId) ?? null);
   let playing = $derived(viewing?.source === 'video' ? viewing : null);
   let ownerHref = $derived(viewing ? withSourceReturn(photoOwnerHref(viewing), page.url) : undefined);
 
   export const snapshot = {
-    capture: () => ({ selected: [...selected], comparing }),
-    restore: (value: { selected: string[]; comparing: boolean }) => {
+    capture: () => ({ selected: [...selected], selecting }),
+    restore: (value: { selected: string[]; selecting: boolean }) => {
       selected = value.selected;
-      comparing = value.comparing;
+      selecting = value.selecting;
     }
   };
 
@@ -157,7 +158,8 @@
   });
 
   function toggle(id: string) {
-    selected = toggleCompareAnchor(selected, id, comparable);
+    if (selected.includes(id)) selected = selected.filter((anchor) => anchor !== id);
+    else if (selected.length < 2) selected = [...selected, id];
   }
 
   /* The wipe owns which two photographs it is showing and hands back the
@@ -168,21 +170,9 @@
     selected = [comparable[next.left].id, comparable[next.right].id];
   }
 
-  /* The mode control (ticket 11): a segmented Browse/Compare, matching how
-     the voice screen switches its own tabs, in place of the primary button
-     this used to be. "Compare" only ever takes hold once two photos are
-     picked - same gate the button enforced by only rendering with a pair -
-     so tapping it early is a no-op rather than a jump to a screen with
-     nothing to show. */
-  function setComparing(next: boolean) {
-    if (next) {
-      if (pair) comparing = true;
-      // Else a no-op: nothing is ready to compare yet, and the segmented
-      // control's own value (bound to `comparing`) simply does not move.
-    } else {
-      comparing = false;
-      selected = [];
-    }
+  function setSelecting(next: boolean) {
+    selecting = next;
+    if (!next) selected = [];
   }
 
   let gridEl = $state<HTMLElement>();
@@ -283,39 +273,6 @@
 </script>
 
 <div class="screen">
-  {#if comparing && pair}
-    <ScreenHeader title={m.ph_compare()} back={() => (comparing = false)} />
-    <p class="compare-gap" data-compare-gap>{gapLabel}</p>
-    <PhotoWipe
-      photos={comparable}
-      {pair}
-      onPair={setPair}
-      role={roleAt(activeFlag.roles, 0)}
-      date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-      note={photoOwnerLine}
-    />
-    {#if rangeSummaries.length}
-      <SectionHeading text={m.ph_measurements_title()} />
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each rangeSummaries as s (s.type)}
-          <ListRow
-            static
-            data-range-measurement={s.type}
-            title={vocabulary.measurementTypeName(s.type)}
-            subtitle={s.first.id === s.last.id
-              ? `${s.first.value} ${s.first.unit}`
-              : `${s.first.value} ${s.first.unit} → ${s.last.value} ${s.last.unit}`}
-          />
-        {/each}
-      </ListCard>
-    {/if}
-
-    <div>
-      <button class="btn btn-soft press" data-photos-back-to-all onclick={() => setComparing(false)}>
-        <span>{m.ph_back_to_all()}</span>
-      </button>
-    </div>
-  {:else}
     <ScreenHeader title={m.progress_photos()} back="/more" />
     <div class="screen-part">
       <Segmented
@@ -324,33 +281,37 @@
           { value: 'browse', label: m.ph_tab_browse() },
           { value: 'compare', label: m.ph_tab_compare() }
         ]}
-        value={comparing && pair ? 'compare' : 'browse'}
-        onChange={(v) => setComparing(v === 'compare')}
+        value={selecting ? 'compare' : 'browse'}
+        onChange={(v) => setSelecting(v === 'compare')}
         compact
         key="photos-tab"
       />
     </div>
+    {#if selecting}
+      <div class="compare-selection" transition:collapse>
+        <p role="status" data-compare-progress>{m.ph_selection_count({ count: orderedSelected.length })}</p>
+        <p class="muted small">{selected.length < 2 ? m.ph_pick_two() : m.ph_selection_full()}</p>
+        {#each selected as id (id)}
+          {@const anchor = comparable.find((photo) => photo.id === id)}
+          <div class="compare-anchor" transition:collapse>
+            <span>
+              {#if anchor}
+                {photoSourceLabel(anchor.source)}, {cellDate(anchor)}
+                {#if !shown.some((photo) => photo.id === id)}<small class="muted">{m.ph_selection_filtered()}</small>{/if}
+              {:else}
+                <span role="status" data-anchor-unavailable>{m.ph_selection_unavailable()}</span>
+              {/if}
+            </span>
+            <button class="btn btn-soft press" data-anchor-remove={id} onclick={() => toggle(id)} aria-label={m.ph_selection_remove({ photo: anchor ? `${photoSourceLabel(anchor.source)}, ${cellDate(anchor)}` : m.ph_selection_unavailable() })}>{m.ph_selection_remove_short()}</button>
+          </div>
+        {/each}
+        <button class="btn btn-primary press" data-compare-open disabled={!pair} onclick={() => (comparing = true)}>{m.ph_compare()}</button>
+      </div>
+    {/if}
     <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
-        {#if comparing && !pair}
-          <!-- Reachable when a live update drops one of the two anchors
-               while the full compare view is open (code review, ticket 11):
-               `comparing` survives the fall back to this grid, but this
-               branch never draws the compare view, so the segmented control
-               above reads its value off `comparing && pair` rather than
-               `comparing` alone - otherwise it would say "Compare" over a
-               screen showing the grid and this very reset notice. -->
-          <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
-        {/if}
         <p class="photo-count" data-photo-count>{m.ph_count({ count: shown.length })}</p>
-        <p class="muted small" style="margin-bottom:var(--space-4)">
-          {orderedSelected.length === 0
-            ? m.ph_pick_two()
-            : orderedSelected.length === 1
-              ? m.ph_one_selected()
-              : m.ph_two_selected()}
-        </p>
         <div class="photo-library">
           <div class="photo-grid" bind:this={gridEl}>
             {#each shown as p (p.id)}
@@ -381,14 +342,15 @@
                   <button
                     class="photo-cell"
                     data-photo-cell
-                    class:is-selected={orderedSelected.includes(p.id)}
-                    aria-pressed={orderedSelected.includes(p.id)}
+                    class:is-selected={selecting && selected.includes(p.id)}
+                    aria-pressed={selecting ? selected.includes(p.id) : undefined}
+                    disabled={selecting && selected.length === 2 && !selected.includes(p.id)}
                     aria-label={m.ph_cell_aria_sourced({ source: photoSourceLabel(p.source), date: cellDate(p) })}
-                    onclick={() => toggle(p.id)}
+                    onclick={() => selecting ? toggle(p.id) : viewPhoto(p.id)}
                   >
                     <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
                     <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-                    {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+                    {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
                   </button>
                   {#if datedByItsOwner(p)}
                     <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} onclick={() => openDayEditor(p)}>
@@ -396,7 +358,7 @@
                     </button>
                   {/if}
                   </div>
-                  <button class="btn btn-soft press photo-view-action" data-photo-view={p.id} onclick={() => viewPhoto(p.id)}>{m.photo_library_view()}</button>
+                  {#if selecting}<button class="btn btn-soft press photo-view-action" data-photo-view={p.id} onclick={() => viewPhoto(p.id)}>{m.photo_library_view()}</button>{/if}
                 {/if}
               </div>
             {/each}
@@ -436,10 +398,46 @@
         </div>
       {/snippet}
     </ReadGate>
-  {/if}
+
+  <Sheet open={comparing} title={m.ph_compare()} onClose={() => (comparing = false)}>
+    {#if pair}
+    <p class="compare-gap" data-compare-gap>{gapLabel}</p>
+    <PhotoWipe
+      photos={comparable}
+      {pair}
+      onPair={setPair}
+      role={roleAt(activeFlag.roles, 0)}
+      date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
+      note={photoOwnerLine}
+    />
+    {#if rangeSummaries.length}
+      <SectionHeading text={m.ph_measurements_title()} />
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each rangeSummaries as s (s.type)}
+          <ListRow
+            static
+            data-range-measurement={s.type}
+            title={vocabulary.measurementTypeName(s.type)}
+            subtitle={s.first.id === s.last.id
+              ? `${s.first.value} ${s.first.unit}`
+              : `${s.first.value} ${s.first.unit} → ${s.last.value} ${s.last.unit}`}
+          />
+        {/each}
+      </ListCard>
+    {/if}
+
+    <div>
+      <button class="btn btn-soft press" data-photos-back-to-all onclick={() => (comparing = false)}>
+        <span>{m.ph_back_to_all()}</span>
+      </button>
+    </div>
+    {:else}
+      <p role="status">{m.ph_selection_unavailable()}</p>
+    {/if}
+  </Sheet>
 
   <SourceRecordHandoff id={viewingId} ready={!libraryQuery.loading && !libraryQuery.failed} found={!!viewing} />
-  <PhotoViewer photo={viewing?.source !== 'video' ? viewing : null} {ownerHref} onClose={() => viewPhoto(null)} />
+  <PhotoViewer caption={viewing ? `${photoSourceLabel(viewing.source)}, ${cellDate(viewing)}` : undefined} photo={viewing?.source !== 'video' ? viewing : null} {ownerHref} onClose={() => viewPhoto(null)} />
 
   <Sheet open={playing !== null} title={m.ph_video_title()} onClose={() => viewPhoto(null)}>
     {#if playing}
@@ -467,6 +465,11 @@
 </div>
 
 <style>
+  .compare-selection { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+  .compare-anchor { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .compare-anchor small { display: block; }
+  .compare-anchor .btn { flex-shrink: 0; }
+
   /* The day-edit affordance on a browse cell (ticket 47): a sibling of
      .photo-cell rather than a change to it, so export/+page.svelte's own
      .photo-cell button - screens.css's shared class - keeps meaning
