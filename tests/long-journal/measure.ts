@@ -35,6 +35,7 @@ import { offeredWrappedPeriod } from '../../src/lib/data/wrapped.ts';
 import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { analyseNotes, countWords } from '../../src/lib/data/wordFrequency.ts';
+import { readCare } from '../../src/lib/data/careReads.ts';
 import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import type { LongJournalSummary } from './generate.ts';
 
@@ -387,9 +388,9 @@ export async function measureLongJournal(
   // a screenful - about twenty - where this asks for every photo in the
   // journal, and the queue sends whatever it was asked for as one
   // readMany. What the two share is the path, not the width of it.
-  let photos!: Awaited<ReturnType<Journal['photos']['inJournal']>>;
+  let photos!: Awaited<ReturnType<Journal['photoLibrary']['inJournal']>>;
   await measure('photo-grid-list', 'photo grid, listing every photo', async () => {
-    photos = await journal.photos.inJournal();
+    photos = await journal.photoLibrary.inJournal();
     return { result: photos, detail: `${photos.length} photos` };
   });
 
@@ -397,9 +398,12 @@ export async function measureLongJournal(
   await measure('photo-grid-thumbs', 'photo grid, reading every thumbnail', async () => {
     /* Kept rather than counted. A mounted grid holds decoded thumbnails
        (PhotoThumb), so returning only a byte total would let this
-       measurement do less than the screen it claims to represent. */
+       measurement do less than the screen it claims to represent.
+       Desktop query timing is not Android frame or decode performance. */
     const loaded = await Promise.all(
-      photos.flatMap((photo) => (photo.fileName ? [readThumbnail(photo.fileName)] : []))
+      photos
+        .filter((photo) => photo.source !== 'video')
+        .flatMap((photo) => (photo.fileName ? [readThumbnail(photo.fileName)] : []))
     );
     const thumbs = loaded.filter((thumb) => thumb !== null);
     const bytes = thumbs.reduce((total, thumb) => total + thumb.length, 0);
@@ -959,6 +963,21 @@ export async function measureLongJournal(
     return {
       result: [gap, waiting],
       detail: `gap ${gap ?? 'none'} in the fixture, ${waiting?.items.length ?? 0} items waiting in a ${RETURN_GAP_DAYS}-day one`
+    };
+  });
+
+  await mount('mount-care', 'Care, the lanes and stock cards that compose its overview', async () => {
+    /* Care's overview screen (src/routes/care/+page.svelte) mounts one
+       live query, `readCare(journal, today)`, which asks for every dose,
+       episode, schedule, pause, stock projection, lab result and dose total
+       the screen needs and composes them into lanes and run-out projections. */
+    const care = await readCare(journal, today);
+
+    return {
+      result: care,
+      detail:
+        `${care.lanes.length} lanes, ${care.stock.length} stock projections, ` +
+        `${care.stockExcludedDoses} excluded doses, lab ${care.latestLab ? 'present' : 'none'}`
     };
   });
 
