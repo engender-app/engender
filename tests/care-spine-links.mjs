@@ -187,11 +187,34 @@ export async function verifyCareSpineLinks() {
     // Verify add modal is NOT open
     assert.equal(await page.locator('[data-record-sheet]').count(), 0, 'new dose modal not open');
 
-    // Tap Back, verify return to /care with source lane preserved
+    // Tap Back, verify return to /care with the lane back in view, source
+    // lane highlighted - the position itself is scroll-region.ts's.
     await page.locator('[data-screen-back]').click();
     await page.waitForURL('**/care**');
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-care-lane="Estradiol"]');
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.top >= 0 && r.top < window.innerHeight;
+      },
+      { timeout: 5000 }
+    );
     await page.locator('[data-care-lane="Estradiol"].is-source-lane').waitFor({ timeout: 5000 });
     assert.equal(await estradiolLane.evaluate((el) => el.classList.contains('is-source-lane')), true, 'source lane highlighted');
+
+    // 2b. Same handoff on a third concurrent drug: Sertraline's own last
+    // dose opens Sertraline's own recorded event.
+    await sertralineLane.locator('a.care-mark[data-care-mark="lastDose"]').click();
+    await page.waitForURL('**/care/doses**');
+    const sertralineUrl = new URL(page.url());
+    assert.equal(sertralineUrl.searchParams.get('drug'), 'Sertraline');
+    assert.equal(sertralineUrl.searchParams.get('dose'), fixture.sertralineDoseId);
+    const sertralineTarget = page.locator(`.rows-divide.is-target-dose [data-dose="${fixture.sertralineDoseId}"]`);
+    await sertralineTarget.waitFor({ timeout: 5000 });
+    await page.locator('[data-screen-back]').click();
+    await page.waitForURL('**/care**');
+    await page.locator('[data-care-lane="Sertraline"].is-source-lane').waitFor({ timeout: 5000 });
 
     // 3. Test nextDose mark on Progesterone lane:
     // Tapping nextDose opens the schedule view for that drug - the coming
@@ -275,10 +298,11 @@ export async function verifyCareSpineLinks() {
       'stale schedule link lands on the named comparison, not a fake unavailable'
     );
 
-    // 6c: Deleted/non-existent lab in labs view
+    // 6c: Deleted/non-existent lab in labs view - the shared unavailable
+    // state SourceRecordHandoff renders for every source link's target.
     await visit('/care/labs?date=20000&lab=00000000-0000-0000-0000-000000000000');
-    await page.waitForSelector('[data-lab-unavailable]');
-    assert.equal(await page.locator('[data-lab-unavailable]').count(), 1, 'data-lab-unavailable shown');
+    await page.waitForSelector('[data-notice="source-unavailable"]');
+    assert.equal(await page.locator('[data-notice="source-unavailable"]').count(), 1, 'data-lab-unavailable shown');
 
     assert.equal(errors.length, 0, `errors: ${errors.join(', ')}`);
     console.log('PASS Care spine links: concurrent regimens, facts, window expansion, return navigation, and unavailable states');
