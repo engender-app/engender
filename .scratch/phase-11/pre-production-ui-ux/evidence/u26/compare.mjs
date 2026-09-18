@@ -19,11 +19,11 @@ try {
  console.log('seed: existing persona');
  for(const days of [3,6,12]) {await settlePage(page,base,'/health/appointments','light');await page.locator('[data-add]').click(); const d=new Date();d.setDate(d.getDate()+days); await fillDate(page,'#appointment-date',d.toISOString().slice(0,10));await page.fill('#appointment-kind',`Visit ${days}`);await page.locator('[data-save-appointment]').click();}
  await capture('baseline-busy'); await capture('compact-busy',true);
- await home(); await page.locator('[data-nav-fab]').click(); await page.locator('[data-choose="wear"]').click();await page.waitForTimeout(600); 
+ await home(); await page.locator('[data-nav-fab]').click(); await page.locator('[data-choose="wear"]').click();await page.waitForTimeout(600);
  await capture('baseline-timer');await capture('compact-timer',true);
  await home();await page.locator('[data-nav-fab]').click();await page.locator('[data-fan-target="mood-3"]').click();await page.waitForURL('**/entry/new/today?seedMood=3');results.push({task:'busy timer: fixed Quick add then mood',result:'entry editor, 2 taps, no scrolling'});
  await home(); await page.evaluate(()=>document.querySelector('[data-fill-coming-back]').click());await page.waitForURL('**/coming-back',{timeout:180000});await page.waitForTimeout(600);await page.screenshot({path:`${out}/return-after-gap.png`});await page.locator('[data-coming-back-done]').click(); await capture('baseline-return');await capture('compact-return',true);
  await page.evaluate(()=>{const select=[...document.querySelectorAll('.demo-bar select')].find(x=>[...x.options].some(o=>o.value==='first-run'));select.value='first-run';select.dispatchEvent(new Event('change',{bubbles:true}));});await page.waitForURL('**/onboarding');await page.waitForFunction(()=>!document.querySelector('[data-demo-busy]'));await page.locator('[data-leave-setup]').click();await capture('baseline-empty');await capture('compact-empty',true);
- 
+
  await writeFile(`${out}/metrics.json`,JSON.stringify(results,null,2));
 } finally {await browser.close();await app.close();}
