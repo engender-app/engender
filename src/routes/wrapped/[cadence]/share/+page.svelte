@@ -172,14 +172,13 @@
         </div>
       </div>
     {:else}
-      <!-- The reason the button is off sits under the switches it is about,
-           not under the card at the bottom of the screen (Alicja,
-           2026-08-25). -->
-      {#if nothingPicked}
-        <p class="share-note">{m.wrapped_share_none_selected()}</p>
-      {/if}
-      <div class="share-stage" bind:this={cardHost}>
+      <div class="share-stage" class:share-stage-empty={nothingPicked} bind:this={cardHost}>
         <WrappedCard {content} />
+        {#if nothingPicked}
+          <div class="share-empty-preview" data-empty-preview role="status">
+            <p>{m.wrapped_share_empty_preview()}</p>
+          </div>
+        {/if}
       </div>
       <!-- On the navigation bar rather than in the page: this is the screen's
            one commitment, it is the same bar the entry editor's save sits on,

@@ -2322,7 +2322,7 @@
   "wrapped_share_title": "Wrapped card",
   "wrapped_share_picker_title": "What to show on the card",
   "wrapped_share_element_palette": "Palette colours",
-  "wrapped_share_none_selected": "Pick something to make a card.",
+  "wrapped_share_empty_preview": "Choose an item above to fill this preview. Nothing is shared until you tap Share.",
   "wrapped_share_preview_alt": "The card you just made",
   "on_this_day": "On this day",
   "on_this_day_settings_sub": "Look back on a good day from a month, six months or a year ago.",

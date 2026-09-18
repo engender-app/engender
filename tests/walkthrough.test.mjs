@@ -3352,6 +3352,26 @@ try {
     .getAttribute('href');
   if (activeTab !== '/wrapped/year') throw new Error('the switcher marks ' + activeTab + ' as current');
 
+  /* The share picker opens with an honest, private empty preview. Selecting
+     and clearing an item changes that same preview; neither state sends
+     anything, and the arbitrary range keeps sharing unavailable. */
+  await fresh('/wrapped/month/share');
+  await page.waitForSelector('[data-empty-preview]');
+  const emptyPreview = await page.locator('[data-empty-preview]').innerText();
+  if (!/fill this preview|wypełnić podgląd/i.test(emptyPreview)) {
+    throw new Error('the empty share preview does not explain what to do');
+  }
+  if (await page.locator('[data-share]').count()) throw new Error('an empty share preview can share automatically');
+  const countSwitch = page.getByRole('switch', { name: /entries|wpis/i }).first();
+  await countSwitch.click();
+  await page.waitForSelector('[data-wrapped-stat]');
+  if (await page.locator('[data-empty-preview]').count()) throw new Error('selecting content left the empty preview message');
+  if (await page.locator('[data-share]').count()) throw new Error('selecting content shared automatically');
+  await countSwitch.click();
+  await page.waitForSelector('[data-empty-preview]');
+  await fresh('/wrapped/range/share');
+  if (!(await page.locator('[data-notice-title]').count())) throw new Error('range sharing became available');
+
   await fresh('/wrapped/nonsense');
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('an unknown cadence should say so');
   if (await page.locator('[data-segmented="wrapped-cadences"]').count()) {
