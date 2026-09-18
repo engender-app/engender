@@ -25,11 +25,18 @@ describe('what was jotted in the room', () => {
     expect(roomAnswersFor('appt-2')).toEqual([]);
   });
 
-  it('holds one visit at a time', () => {
+  it('holds both visits of one day, each under its own appointment', () => {
     holdRoomAnswers({ appointmentId: 'appt-1', answers: [answer('Ask about the dose', 'staying as it is')], byItemId: { 'item-1': 'staying as it is' } });
     holdRoomAnswers({ appointmentId: 'appt-2', answers: [answer('Bloods', 'in a month')], byItemId: { 'item-2': 'in a month' } });
-    expect(roomAnswersFor('appt-1')).toEqual([]);
+    expect(roomAnswersFor('appt-1')).toEqual([answer('Ask about the dose', 'staying as it is')]);
     expect(roomAnswersFor('appt-2')).toEqual([answer('Bloods', 'in a month')]);
+  });
+
+  it('keeps a deleted appointment\'s answers out of the other visit\'s debrief', () => {
+    holdRoomAnswers({ appointmentId: 'deleted', answers: [answer('Ask about the dose', 'staying as it is')], byItemId: { 'item-1': 'staying as it is' } });
+    holdRoomAnswers({ appointmentId: 'remaining', answers: [], byItemId: {} });
+    expect(roomAnswersFor('remaining')).toEqual([]);
+    expect(restoreRoomAnswers('remaining', ['item-1'])).toEqual({});
   });
 });
 

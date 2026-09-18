@@ -17,6 +17,8 @@
     "test:record-dismissal": "node tests/record-dismissal-check.mjs",
     "test:recovery-key-departure": "node tests/recovery-key-departure-check.mjs",
     "test:source-record-links": "node tests/source-record-links.mjs",
+    "test:chosen-appointment": "node tests/chosen-appointment.mjs",
+    "gallery:chosen-appointment": "node tests/chosen-appointment.mjs --gallery",
     "gallery:source-record-links": "node tests/source-record-links.mjs --gallery",
     "test:read-failures": "node tests/read-failures.mjs",
     "gallery:read-failures": "node tests/read-failures.mjs --gallery",

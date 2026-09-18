@@ -18,7 +18,11 @@
 
    Keyed by appointment, because the pre-fill path is (checklists.ts, ticket
    58): answers held for one appointment must never surface in another's
-   debrief. */
+   debrief. One entry per appointment rather than one held at a time
+   (ticket 12, audit I3): the one-at-a-time rule assumed the room had to
+   guess which visit a day meant, and the room now asks - so a day with
+   two visits holds two answer sets, and which one a debrief means is
+   settled by the appointment id the deep link already carries. */
 import type { DebriefAnswer } from '../data/journal/debriefNote';
 
 interface HeldRoomAnswers {
@@ -27,23 +31,24 @@ interface HeldRoomAnswers {
   byItemId: Record<string, string>;
 }
 
-let held: HeldRoomAnswers | null = null;
+const held = new Map<string, HeldRoomAnswers>();
 
-/** Replaces whatever was held. A visit at a time: opening the screen for a
-    different appointment is a different visit, and holding both would mean
-    deciding later which one a debrief meant.
+/** Holds this appointment's answers, replacing only its own earlier entry.
+    Still process-lifetime module state: nothing is written to the journal
+    here and nothing is mirrored to storage, so what somebody said in a
+    consulting room does not outlive the process that heard it.
 
     `byItemId` is the same answers keyed by checklist item id rather than by
     question text - what a remounted room screen restores from (ticket 05,
     audit I2), since `answers` alone has already dropped the id a screen
     needs to put a jotting back under the field it was typed into. */
 export function holdRoomAnswers(entry: HeldRoomAnswers): void {
-  held = entry;
+  held.set(entry.appointmentId, entry);
 }
 
 /** What was jotted for this appointment, or nothing. */
 export function roomAnswersFor(appointmentId: string): DebriefAnswer[] {
-  return held?.appointmentId === appointmentId ? held.answers : [];
+  return held.get(appointmentId)?.answers ?? [];
 }
 
 /** The held answers for `appointmentId`, narrowed to `itemIds` - what a
@@ -53,7 +58,7 @@ export function roomAnswersFor(appointmentId: string): DebriefAnswer[] {
     no longer in `itemIds` is dropped, not carried over to whatever now sits
     in its old place. */
 export function restoreRoomAnswers(appointmentId: string, itemIds: string[]): Record<string, string> {
-  const byItemId = held?.appointmentId === appointmentId ? held.byItemId : {};
+  const byItemId = held.get(appointmentId)?.byItemId ?? {};
   const restored: Record<string, string> = {};
   for (const id of itemIds) {
     if (byItemId[id] !== undefined) restored[id] = byItemId[id];
