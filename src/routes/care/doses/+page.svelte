@@ -64,6 +64,7 @@
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
+  import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -203,10 +204,14 @@
   let activeDrugChoices = $derived([...new Set(activeEpisodes.map((e) => e.drug))]);
 
   /** Which regimen the schedule view compares against, while more than one
-      episode is active at once (ticket 15): the person's own stored pick,
-      when it still names one of the active drugs, or else the same default
-      `activeEpisode` above already resolves to for the new-dose editor.
-      Always one of `activeDrugChoices`, or null with none of them - a
+      episode is active at once (ticket 15). Order of claim: the pick made
+      on this visit, then the one a Care spine link named (`?drug=`, phase
+      11 ticket 14), then the person's own stored pick, then the same
+      default `activeEpisode` above already resolves to for the new-dose
+      editor. The local pick exists so a link's drug can outrank the stored
+      preference without writing it - and so the picker keeps answering
+      after the link's drug stops being one of the active choices. Always
+      one of `activeDrugChoices`, or null with none of them - a
       `prefs.adherenceRegimenPick` left over from a regimen that has since
       ended is never handed to `getComparison` as though still active. */
   let pickedRegimenDrug = $state<string | null>(null);
@@ -683,21 +688,8 @@
     await journal.doses.deleteDose(editor.id);
     editor = null;
   }
-  let returnHref = $derived.by(() => {
-    /* The lane a Care spine mark was tapped from, under either name: `drug`
-         is what a schedule link carries for its own picker, `lane` what
-         earlier links carried - both name the same drug, and both come home
-         as `lane`, which is the word Care's rail knows it by. */
-    const lane = page.url.searchParams.get('lane') ?? page.url.searchParams.get('drug');
-    const date = page.url.searchParams.get('date');
-    if (lane || date) {
-      const params = new URLSearchParams();
-      if (lane) params.set('lane', lane);
-      if (date) params.set('date', date);
-      return `/care?${params.toString()}`;
-    }
-    return '/more';
-  });
+  /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
+  let returnHref = $derived(careLaneReturnHref(page.url));
 </script>
 
 <div class="screen">

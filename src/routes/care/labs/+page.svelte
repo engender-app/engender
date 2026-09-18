@@ -17,6 +17,8 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
+  import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
@@ -63,16 +65,14 @@
 
   let unitsOpen = $state(false);
 
-  /* Deep link handling (phase 11 ticket 14):
-     resolve the lab result by its UUID directly so the screen switches to
-     the analyte the result belongs to and scrolls to the highlighted row,
-     or displays an explicit unavailable notice if missing/deleted. */
+  /* Deep link handling (phase 11 ticket 14): resolve the lab result by its
+     UUID directly so the screen switches to the analyte the result belongs
+     to and scrolls to the highlighted row. A missing or deleted result gets
+     the unavailable state SourceRecordHandoff renders for every source
+     link's target (phase 11 ticket 11). */
   let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
   let deepLinkedLabQuery = liveQuery((j) =>
     deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
-  );
-  let deepLinkedLabUnavailable = $derived(
-    Boolean(deepLinkedLabId && !deepLinkedLabQuery.loading && !deepLinkedLabQuery.value)
   );
 
   /* No hormone assumed: the screen opens on whatever the journal actually
@@ -102,24 +102,13 @@
   });
 
   $effect(() => {
-    if (!resultsQuery.loading && deepLinkedLabId && !deepLinkedLabUnavailable) {
+    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
       scrollToHash();
     }
   });
 
-  let returnHref = $derived.by(() => {
-    /* The lane a Care spine mark was tapped from (its `drug`), and the day
-         the mark named - back to Care with both, or to the hub. */
-    const lane = page.url.searchParams.get('lane') ?? page.url.searchParams.get('drug');
-    const date = page.url.searchParams.get('date');
-    if (lane || date) {
-      const params = new URLSearchParams();
-      if (lane) params.set('lane', lane);
-      if (date) params.set('date', date);
-      return `/care?${params.toString()}`;
-    }
-    return '/more';
-  });
+  /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
+  let returnHref = $derived(careLaneReturnHref(page.url));
 
   /* The list is every result this analyte has, in order. The charts are those
      same results split by unit (ticket 02): a value in ng/dL and one in
@@ -433,16 +422,14 @@
     {/snippet}
   </ScreenHeader>
 
-  {#if deepLinkedLabUnavailable}
-    <div class="screen-part" data-lab-unavailable>
-      <Notice
-        icon="info"
-        key="lab-unavailable"
-        title={m.source_record_unavailable()}
-        text={m.source_record_unavailable_hint()}
-      />
-    </div>
-  {/if}
+  <!-- The unavailable state is the shared one (SourceRecordHandoff, ticket
+       11): same notice every source-linked screen shows for a record that is
+       no longer there. -->
+  <SourceRecordHandoff
+    id={deepLinkedLabId}
+    ready={!deepLinkedLabQuery.loading}
+    found={deepLinkedLabQuery.value !== null}
+  />
 
   <ReadGate read={usedQuery} variant="block" count={1}>
     {#snippet rows()}

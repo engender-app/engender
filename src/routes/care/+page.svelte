@@ -1,5 +1,6 @@
 <script lang="ts">
   import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
+  import { page } from '$app/state';
   /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
      surface, so it lives in the More hub rather than under /settings).
 
@@ -214,11 +215,13 @@
   }
 
   /* The lane a spine mark was tapped from, for one return: written as a
-       mark leaves, read once here. The highlight answers "which lane did I
-       come back to" and is gone the next time Care opens for another
+       mark leaves, read once here - and, when the trip came in through a
+       link rather than history-back, from the `?lane=` the dose and lab
+       screens' own back hrefs carry. The highlight answers "which lane did
+       I come back to" and is gone the next time Care opens for another
        reason; the scroll position itself is scroll-region.ts's, which is
        what puts that lane in view. */
-  let sourceLane = $state(takeSourceLane());
+  let sourceLane = $state(takeSourceLane() ?? page.url.searchParams.get('lane'));
 
   let spine = $derived(
     careSpine(
@@ -264,22 +267,27 @@
      editor directly. lastDose opens the recorded dose event itself, nextDose
      the schedule view that expects it - the comparison is a past-facing
      adherence read, so the coming slot is context, not a row to land on
-     (journal/doses.ts getComparison) - and labDraw the drawn result. */
+     (journal/doses.ts getComparison) - and labDraw the drawn result.
+
+     A record id travels twice, as `?dose=`/`?lab=` and as the hash: the
+     hash is what scrollToHash consumes once it has scrolled (scroll-region
+     .ts), the param is what keeps the deep link - and its unavailable
+     state - alive after that. */
   const markHref = (mark: SpineMark, drug: string | null): string | null => {
     if (mark.kind === 'today' || mark.kind === 'runOut') return null;
     const params = new URLSearchParams();
     params.set('date', String(mark.epochDay));
     if (drug !== null) params.set('drug', drug);
+    if (mark.kind === 'nextDose') {
+      params.set('view', 'schedule');
+      return `/care/doses?${params.toString()}`;
+    }
     if (mark.kind === 'labDraw') {
       if (mark.recordId) params.set('lab', mark.recordId);
       return `/care/labs?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
     }
-    if (mark.kind === 'lastDose') {
-      if (mark.recordId) params.set('dose', mark.recordId);
-      return `/care/doses?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
-    }
-    params.set('view', 'schedule');
-    return `/care/doses?${params.toString()}`;
+    if (mark.recordId) params.set('dose', mark.recordId);
+    return `/care/doses?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
   };
 
   /* A lane's marks say which drug they belong to out loud: the lane's name
@@ -1198,7 +1206,9 @@
   /* The lane the reader came back to from a dose or lab record: the same
      answer the log and labs screens give their linked row (surface-2,
      rounded), so returning names the lane the same way every other screen
-     names its target. */
+     names its target. It appears with the screen's own arrival rather than
+     moving after settle - ADR-0078's concern is a settled view changing in
+     place, and this is part of the entrance. */
   .care-lane.is-source-lane {
     background: var(--surface-2);
     border-radius: var(--r-block);

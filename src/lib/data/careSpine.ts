@@ -112,11 +112,13 @@ export interface SpineMark {
       takes the lowest row with space for it, and a mark pushed out keeps a
       stem back to the line. Collisions are resolved inside one lane and
       among the shared marks separately, because the two never print on the
-      same row (the shared captions head the rail; a lane's hang under its
-      own line). */
+   same row (the shared captions head the rail; a lane's hang under its
+   own line). */
   labelRow: number;
-  /** The backing journal record UUID (e.g. dose event or lab result), or null. */
-  recordId?: string | null;
+  /** The backing journal record the mark stands for - a dose event or a
+      lab result - or null where the kind has none (today, next dose,
+      run-out). */
+  recordId: string | null;
 }
 
 /** One running drug's own line: its name, and its own three readings placed
