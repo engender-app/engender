@@ -26,7 +26,7 @@ describe('measurements sizes jump contract (pre-production UI/UX 29)', () => {
   });
 
   it('anchors the measurements picker and the sizes heading', () => {
-    expect(measurements).toContain('id="measurements-reading"');
+    expect(measurements).toContain('id="measurements-picker"');
     expect(measurements).toMatch(/<SectionHeading id="sizes-log"/);
   });
 
