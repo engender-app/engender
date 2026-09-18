@@ -43,6 +43,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { ui } from '$lib/stores/ui.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import {
     defaultSpan,
@@ -228,7 +229,8 @@
   {#if railLoading}
     <Skeleton variant="block" count={1} />
   {:else if railStart === null}
-    <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()} />
+    <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()}
+      action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }} />
   {:else if span}
     <div class="lookback-rail" data-lookback-rail>
       <SpanTimeline
@@ -346,6 +348,12 @@
         </span>
       {/if}
     </div>
+
+    {#if !recapQuery.loading && !recapQuery.failed && !enoughEntries}
+      <div transition:disclose>
+        <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
+      </div>
+    {/if}
 
     <!-- The readings, as tiles. Each component draws its own tile off its
          own read and stays absent where the span holds nothing for it;

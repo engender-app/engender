@@ -18,6 +18,8 @@
     "test:recovery-key-departure": "node tests/recovery-key-departure-check.mjs",
     "test:document-reader": "node tests/document-reader.mjs",
     "gallery:document-reader": "node tests/document-reader.mjs --gallery",
+    "test:photo-export": "node tests/photo-export.mjs",
+    "gallery:photo-export": "node tests/photo-export.mjs --gallery",
     "test:source-record-links": "node tests/source-record-links.mjs",
     "test:chosen-appointment": "node tests/chosen-appointment.mjs",
     "gallery:chosen-appointment": "node tests/chosen-appointment.mjs --gallery",

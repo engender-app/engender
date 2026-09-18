@@ -258,9 +258,30 @@
 <div class="screen">
   <ScreenHeader title={m.pj_title()} back="/media/photos" />
 
-  <ReadGate read={libraryQuery} variant="block" count={2}>
-    {#snippet rows()}
+  {#snippet picker()}
       <div class="screen-part">
+        <SectionHeading text={m.pj_output_title()} />
+        {#if canRecord}
+          <Segmented
+            name={m.pj_output_title()}
+            value={output}
+            onChange={(v) => (output = v as JourneyOutput)}
+            options={[
+              { value: 'collage', label: m.pj_output_collage() },
+              { value: 'timelapse', label: m.pj_output_timelapse() }
+            ]}
+            key="journey-output"
+          />
+        {/if}
+        <p class="muted small">
+          {#if output === 'collage'}
+            {m.pj_collage_hint()}
+            {#if !canRecord}{' '}{m.pj_timelapse_unavailable()}{/if}
+          {:else}
+            {m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}
+          {/if}
+        </p>
+
         <SectionHeading text={m.pj_range_title()} />
         <div class="compare-picker-grid">
           <label for="pj-start">{m.recap_custom_start_label()}</label>
@@ -270,13 +291,18 @@
         </div>
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
+        <p class="small">{m.pj_selected_count({ count: selected.length })}</p>
         <p class="muted small">
-          {#if !range}
-            {m.recap_custom_range_required()}
-          {:else if selected.length === 0}
+          {#if photos.length === 0}
             {m.pj_none_in_range()}
+          {:else if !range}
+            {m.recap_custom_range_required()}
+          {:else if shown.length === 0}
+            {m.pj_none_in_range()}
+          {:else if selected.length === 0}
+            {m.pj_select_photo()}
           {:else}
-            {m.pj_count({ count: selected.length })} {m.pj_leave_out_hint()}
+            {m.pj_leave_out_hint()}
           {/if}
         </p>
 
@@ -304,28 +330,6 @@
           </div>
         {/if}
 
-        <SectionHeading text={m.pj_output_title()} />
-        {#if canRecord}
-          <Segmented
-            name={m.pj_output_title()}
-            value={output}
-            onChange={(v) => (output = v as JourneyOutput)}
-            options={[
-              { value: 'collage', label: m.pj_output_collage() },
-              { value: 'timelapse', label: m.pj_output_timelapse() }
-            ]}
-            key="journey-output"
-          />
-        {/if}
-        <p class="muted small">
-          {#if output === 'collage'}
-            {m.pj_collage_hint()}
-            {#if !canRecord}{' '}{m.pj_timelapse_unavailable()}{/if}
-          {:else}
-            {m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}
-          {/if}
-        </p>
-
         {#if previewUrl && showing}
           <div class="journey-preview" use:reveal>
             {#if output === 'collage'}
@@ -348,26 +352,20 @@
             </div>
           </div>
         {:else}
-          <SaveBar>
+          <SaveBar arrange="stack">
+            <p class="small journey-summary" role="status">{m.pj_selected_count({ count: selected.length })}</p>
             <button class="btn btn-primary press" data-generate disabled={running || selected.length === 0} onclick={make}>
-              <span>{m.pj_generate()}</span>
+              <span>{output === 'collage' ? m.pj_make_collage() : m.pj_make_timelapse()}</span>
             </button>
           </SaveBar>
           <Progress run={progress} label={m.pj_running()} handle="journey" />
         {/if}
       </div>
-    {/snippet}
-    {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="image"
-          key="journey-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.ph_empty_title()}
-          text={m.ph_empty_body()}
-        />
-      </div>
-    {/snippet}
+  {/snippet}
+
+  <ReadGate read={libraryQuery} variant="block" count={2}>
+    {#snippet rows()}{@render picker()}{/snippet}
+    {#snippet empty()}{@render picker()}{/snippet}
     {#snippet failed()}
       <div class="screen-part">
         <Notice
@@ -383,6 +381,10 @@
 </div>
 
 <style>
+  .journey-summary {
+    margin: 0;
+  }
+
   .journey-preview {
     margin-top: var(--space-4);
   }
