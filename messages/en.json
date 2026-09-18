@@ -2783,21 +2783,6 @@
   "pj_open": "Make a collage or timelapse",
   "pj_title": "Collage and timelapse",
   "pj_range_title": "Which photos",
-  "pj_count": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} photo in this range.",
-        "countPlural=other": "{count} photos in this range."
-      }
-    }
-  ],
   "pj_leave_out_hint": "Tap a photo to leave it out.",
   "pj_none_in_range": "No photos in this range.",
   "pj_output_title": "What to make",
@@ -2821,6 +2806,10 @@
     }
   ],
   "pj_timelapse_unavailable": "This browser can't record video, so a collage is the option here.",
+  "pj_selected_count": "Selected photos: {count}",
+  "pj_select_photo": "Select at least one photo to make your file.",
+  "pj_make_collage": "Make collage",
+  "pj_make_timelapse": "Make timelapse",
   "pj_generate": "Make it",
   "pj_stays_here": "Nothing has left this device. The file is only in this screen until you share or save it.",
   "pj_share": "Share or save",
