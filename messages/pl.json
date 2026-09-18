@@ -1695,6 +1695,8 @@
   "cycle_event_delete_sheet": "Usuń wydarzenie cyklu",
   "cycle_event_delete_q": "Usunąć wpis {kind} z {date}?",
   "cycle_event_delete_hint": "Tego nie da się cofnąć.",
+  "cycle_event_history_title": "Historia cyklu",
+  "cycle_event_history_range": "{from} do {to}",
   "cycle_event_range_start_label": "Od",
   "cycle_event_range_end_label": "Do",
   "cycle_event_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć wykres.",
