@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/state';
+  import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
   /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
      surface, so it lives in the More hub rather than under /settings).
 
@@ -213,16 +213,12 @@
     stockEditor = null;
   }
 
-  let sourceLane = $derived(page.url.searchParams.get('lane'));
-
-  $effect(() => {
-    if (sourceLane && spine) {
-      const el = document.getElementById(`care-lane-${sourceLane}`);
-      if (el) {
-        el.scrollIntoView({ block: 'nearest' });
-      }
-    }
-  });
+  /* The lane a spine mark was tapped from, for one return: written as a
+       mark leaves, read once here. The highlight answers "which lane did I
+       come back to" and is gone the next time Care opens for another
+       reason; the scroll position itself is scroll-region.ts's, which is
+       what puts that lane in view. */
+  let sourceLane = $state(takeSourceLane());
 
   let spine = $derived(
     careSpine(
@@ -265,29 +261,25 @@
   /* Where a mark goes when it is tapped: the surface the reading came from,
      with drug, date and record identity preserved. Today and runOut have no
      href: today is where the reader is, and runOut opens its lane's stock
-     editor directly. */
+     editor directly. lastDose opens the recorded dose event itself, nextDose
+     the schedule view that expects it - the comparison is a past-facing
+     adherence read, so the coming slot is context, not a row to land on
+     (journal/doses.ts getComparison) - and labDraw the drawn result. */
   const markHref = (mark: SpineMark, drug: string | null): string | null => {
     if (mark.kind === 'today' || mark.kind === 'runOut') return null;
     const params = new URLSearchParams();
     params.set('date', String(mark.epochDay));
-    if (drug !== null) {
-      params.set('drug', drug);
-      params.set('lane', drug);
-    }
+    if (drug !== null) params.set('drug', drug);
     if (mark.kind === 'labDraw') {
       if (mark.recordId) params.set('lab', mark.recordId);
-      params.set('returnTo', '/care');
       return `/care/labs?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
     }
     if (mark.kind === 'lastDose') {
       if (mark.recordId) params.set('dose', mark.recordId);
       return `/care/doses?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
     }
-    if (mark.kind === 'nextDose') {
-      params.set('view', 'schedule');
-      return `/care/doses?${params.toString()}#slot-${mark.epochDay}`;
-    }
-    return null;
+    params.set('view', 'schedule');
+    return `/care/doses?${params.toString()}`;
   };
 
   /* A lane's marks say which drug they belong to out loud: the lane's name
@@ -556,13 +548,7 @@
           {/if}
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
-            <div
-              class="care-lane"
-              data-care-lane={lane.drug}
-              id={`care-lane-${lane.drug}`}
-              class:is-source-lane={lane.drug === sourceLane}
-              {...laneAttrs(index, labelRows(lane.marks))}
-            >
+            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={lane.drug === sourceLane} {...laneAttrs(index, labelRows(lane.marks))}>
               <!-- The name labels its own line from the left, above it
                    rather than beside it: a name column would take around a
                    hundred of the three hundred and thirty pixels a 390px
@@ -606,14 +592,15 @@
                           <span class="care-when">{dayLabel(mark.epochDay)}</span>
                         </button>
                       {:else if href}
+                        <!-- The lane is remembered for the return trip the
+                             header's history-back makes, so coming back
+                             names the lane the reader was sent from. -->
                         <a
                           class="care-mark"
                           data-care-mark={mark.kind}
                           {href}
                           aria-label={markAria(mark, what, lane.drug)}
-                          onclick={() => {
-                            history.replaceState(history.state, '', `/care?lane=${encodeURIComponent(lane.drug)}`);
-                          }}
+                          onclick={() => rememberSourceLane(lane.drug)}
                         >
                           <span class="care-what">{what}</span>
                           <span class="care-when">{dayLabel(mark.epochDay)}</span>
@@ -1207,6 +1194,14 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+  }
+  /* The lane the reader came back to from a dose or lab record: the same
+     answer the log and labs screens give their linked row (surface-2,
+     rounded), so returning names the lane the same way every other screen
+     names its target. */
+  .care-lane.is-source-lane {
+    background: var(--surface-2);
+    border-radius: var(--r-block);
   }
   /* The drug the line belongs to, in its own stripe: the lane's colour and
      its name say the same thing, so neither is carrying it alone - two lanes

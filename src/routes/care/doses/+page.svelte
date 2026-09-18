@@ -131,11 +131,6 @@
   );
 
   let targetSlotDate = $derived(page.url.searchParams.get('date'));
-  let targetSlotUnavailable = $derived.by(() => {
-    if (view !== 'schedule' || !targetSlotDate || comparisonQuery.loading) return false;
-    if (!scheduleView || scheduleView.reason !== null) return true;
-    return !scheduleView.comparison.rows.some((r) => String(r.slot.epochDay) === targetSlotDate);
-  });
 
   $effect(() => {
     const dose = deepLinkedDoseQuery.value;
@@ -145,18 +140,6 @@
       if (daysAgo > windowDays) {
         const needed = Math.max(WINDOW_DAYS, Math.ceil(daysAgo / WINDOW_DAYS) * WINDOW_DAYS);
         windowDays = needed;
-      }
-    } else {
-      const dateParam = page.url.searchParams.get('date');
-      if (dateParam) {
-        const targetDay = parseInt(dateParam, 10);
-        if (!isNaN(targetDay)) {
-          const daysAgo = today - targetDay;
-          if (daysAgo > windowDays) {
-            const needed = Math.max(WINDOW_DAYS, Math.ceil(daysAgo / WINDOW_DAYS) * WINDOW_DAYS);
-            windowDays = needed;
-          }
-        }
       }
     }
   });
@@ -429,7 +412,7 @@
       } else {
         scrollToHash();
       }
-    } else if (!comparisonQuery.loading && view === 'schedule' && !targetSlotUnavailable) {
+    } else {
       scrollToHash();
     }
   });
@@ -701,9 +684,11 @@
     editor = null;
   }
   let returnHref = $derived.by(() => {
-    const returnTo = page.url.searchParams.get('returnTo');
-    if (returnTo && returnTo.startsWith('/care')) return returnTo;
-    const lane = page.url.searchParams.get('lane');
+    /* The lane a Care spine mark was tapped from, under either name: `drug`
+         is what a schedule link carries for its own picker, `lane` what
+         earlier links carried - both name the same drug, and both come home
+         as `lane`, which is the word Care's rail knows it by. */
+    const lane = page.url.searchParams.get('lane') ?? page.url.searchParams.get('drug');
     const date = page.url.searchParams.get('date');
     if (lane || date) {
       const params = new URLSearchParams();
@@ -932,16 +917,6 @@
         />
       </div>
     {/if}
-    {#if targetSlotUnavailable}
-      <div class="screen-part" data-slot-unavailable>
-        <Notice
-          icon="info"
-          key="slot-unavailable"
-          title={m.source_record_unavailable()}
-          text={m.source_record_unavailable_hint()}
-        />
-      </div>
-    {/if}
     {#if comparisonQuery.loading}
       <!-- The comparison is one read, so the schedule view waits for it rather
            than deciding on half an answer: the old shape read four lists and
@@ -981,12 +956,12 @@
           {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
         </p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-          {#each [...comparison.comparison.rows].reverse() as row, idx (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-            <div
-              id={`slot-${row.slot.epochDay}`}
-              class="rows-divide"
-              class:is-target-slot={String(row.slot.epochDay) === targetSlotDate}
-            >
+          {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
+            <!-- The linked slot's own day, where the comparison reaches it: a
+                 next dose for later than today has no row here yet - the
+                 comparison is a past-facing read - so the highlight only ever
+                 names a day that exists. -->
+            <div class="rows-divide" class:is-target-slot={String(row.slot.epochDay) === targetSlotDate}>
               <ListRow
                 static
                 data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}

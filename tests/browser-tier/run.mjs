@@ -2528,5 +2528,11 @@ await block('Cross-area source records', 1, async () => {
   ok('document targets, photo owners, provenance, deleted targets and return context');
 });
 
+await block('Care spine links keep drug and date context', 1, async () => {
+  const { verifyCareSpineLinks } = await import('../care-spine-links.mjs');
+  await verifyCareSpineLinks();
+  ok('concurrent drugs, recorded and scheduled dose facts, labs, unavailable states and lane return');
+});
+
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);

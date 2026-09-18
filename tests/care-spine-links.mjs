@@ -160,9 +160,9 @@ export async function verifyCareSpineLinks() {
     const lanes = page.locator('.care-lane');
     assert.equal(await lanes.count(), 3, '3 lanes rendered for 3 concurrent regimens');
 
-    const estradiolLane = page.locator('#care-lane-Estradiol');
-    const progesteroneLane = page.locator('#care-lane-Progesterone');
-    const sertralineLane = page.locator('#care-lane-Sertraline');
+    const estradiolLane = page.locator('[data-care-lane="Estradiol"]');
+    const progesteroneLane = page.locator('[data-care-lane="Progesterone"]');
+    const sertralineLane = page.locator('[data-care-lane="Sertraline"]');
     assert.equal(await estradiolLane.count(), 1, 'Estradiol lane exists');
     assert.equal(await progesteroneLane.count(), 1, 'Progesterone lane exists');
     assert.equal(await sertralineLane.count(), 1, 'Sertraline lane exists');
@@ -178,7 +178,6 @@ export async function verifyCareSpineLinks() {
     // Verify URL carries drug and dose
     const dosesUrl = new URL(page.url());
     assert.equal(dosesUrl.searchParams.get('drug'), 'Estradiol');
-    assert.equal(dosesUrl.searchParams.get('lane'), 'Estradiol');
     assert.equal(dosesUrl.searchParams.get('dose'), fixture.estradiolDoseId);
 
     // Verify target dose row is highlighted
@@ -191,10 +190,13 @@ export async function verifyCareSpineLinks() {
     // Tap Back, verify return to /care with source lane preserved
     await page.locator('[data-screen-back]').click();
     await page.waitForURL('**/care**');
+    await page.locator('[data-care-lane="Estradiol"].is-source-lane').waitFor({ timeout: 5000 });
     assert.equal(await estradiolLane.evaluate((el) => el.classList.contains('is-source-lane')), true, 'source lane highlighted');
 
     // 3. Test nextDose mark on Progesterone lane:
-    // Tapping nextDose opens schedule view for that specific drug and slot date.
+    // Tapping nextDose opens the schedule view for that drug - the coming
+    // slot is context for the rhythm, not a row the past-facing comparison
+    // can land on, so no row highlight and no unavailable notice.
     const progNextDoseMark = progesteroneLane.locator('a.care-mark[data-care-mark="nextDose"]');
     assert.equal(await progNextDoseMark.count(), 1, 'Progesterone has nextDose mark');
     await progNextDoseMark.click();
@@ -203,16 +205,30 @@ export async function verifyCareSpineLinks() {
     const schedUrl = new URL(page.url());
     assert.equal(schedUrl.searchParams.get('view'), 'schedule');
     assert.equal(schedUrl.searchParams.get('drug'), 'Progesterone');
-    assert.equal(schedUrl.searchParams.get('lane'), 'Progesterone');
 
-    // Verify schedule view shows Progesterone
+    // Verify schedule view compares against Progesterone
     await page.waitForSelector('[data-slot]');
-    const targetSlot = page.locator('.rows-divide.is-target-slot');
-    assert.equal(await targetSlot.count(), 1, 'target slot row is highlighted');
+    assert.equal(
+      await page.locator('.screen-part p', { hasText: 'Progesterone' }).count(),
+      1,
+      'schedule context names Progesterone'
+    );
+    // The highlight names the mark's day only where the past-facing
+    // comparison reaches it: a next dose of today has its slot row, a later
+    // one is context only.
+    const slotDate = Number(schedUrl.searchParams.get('date'));
+    assert.equal(
+      await page.locator('.rows-divide.is-target-slot').count(),
+      slotDate <= fixture.today ? 1 : 0,
+      'slot highlighted exactly where the comparison reaches that day'
+    );
+    assert.equal(await page.locator('[data-dose-unavailable]').count(), 0, 'no unavailable notice for a scheduled fact');
 
     // Tap Back, verify return to /care with Progesterone lane highlighted
     await page.locator('[data-screen-back]').click();
     await page.waitForURL('**/care**');
+    await page.waitForSelector('[data-care-lane="Progesterone"]', { timeout: 10000 });
+    await page.locator('[data-care-lane="Progesterone"].is-source-lane').waitFor({ timeout: 5000 });
     assert.equal(await progesteroneLane.evaluate((el) => el.classList.contains('is-source-lane')), true, 'Progesterone source lane highlighted');
 
     // 4. Test labDraw mark on shared head:
@@ -224,7 +240,7 @@ export async function verifyCareSpineLinks() {
 
     const labsUrl = new URL(page.url());
     assert.equal(labsUrl.searchParams.get('lab'), fixture.labId);
-    assert.equal(labsUrl.searchParams.get('returnTo'), '/care');
+    assert.equal(labsUrl.searchParams.get('drug'), null, 'shared mark names no lane');
 
     // Verify target lab row highlighted
     const targetLab = page.locator(`button.kit-row.is-target-lab[data-lab-result="${fixture.labId}"]`);
@@ -246,10 +262,18 @@ export async function verifyCareSpineLinks() {
     await page.waitForSelector('[data-dose-unavailable]');
     assert.equal(await page.locator('[data-dose-unavailable]').count(), 1, 'data-dose-unavailable shown');
 
-    // 6b: Unavailable slot date in schedule view
-    await visit('/care/doses?view=schedule&date=10000&drug=Estradiol');
-    await page.waitForSelector('[data-slot-unavailable]');
-    assert.equal(await page.locator('[data-slot-unavailable]').count(), 1, 'data-slot-unavailable shown');
+    // 6b: Schedule link naming a drug no active episode carries - the marks
+    // only exist for running lanes, so a stale name arrives only by an old
+    // link. It falls back to a stated comparison rather than faking an
+    // unavailable record: the regimen the screen does compare against is
+    // named out loud.
+    await visit('/care/doses?view=schedule&date=10000&drug=Nonexistent');
+    await page.waitForSelector('[data-slot]');
+    assert.equal(
+      await page.locator('.screen-part p', { hasText: 'Estradiol' }).count(),
+      1,
+      'stale schedule link lands on the named comparison, not a fake unavailable'
+    );
 
     // 6c: Deleted/non-existent lab in labs view
     await visit('/care/labs?date=20000&lab=00000000-0000-0000-0000-000000000000');
