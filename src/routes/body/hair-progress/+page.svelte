@@ -199,35 +199,61 @@
   }
 
   let activeSection = $state<'staging' | 'photos'>('staging');
+  let savedStagingScrollY = $state<number | null>(null);
 
   const sectionOptions = $derived([
-    { value: 'staging', label: m.hair_jump_staging() },
+    { value: 'staging', label: m.hair_stage_section_title() },
     { value: 'photos', label: m.hair_jump_photos() }
   ]);
 
-  function jumpToSection(section: string) {
+  function jumpToSection(section: 'staging' | 'photos' | string) {
     activeSection = section === 'photos' ? 'photos' : 'staging';
-    const targetId = activeSection === 'photos' ? 'hair-photos' : 'hair-staging';
-    const el = document.getElementById(targetId);
-    if (!el) return;
-    el.scrollIntoView({
-      behavior: isReducedMotion() ? 'auto' : 'smooth',
-      block: 'start'
-    });
-    const focusTarget = el.querySelector<HTMLElement>('h2') ?? el;
-    focusTarget.setAttribute('tabindex', '-1');
-    focusTarget.focus({ preventScroll: true });
+    if (activeSection === 'photos') {
+      savedStagingScrollY = window.scrollY;
+      const el = document.getElementById('hair-photos');
+      if (!el) return;
+      el.scrollIntoView({
+        behavior: isReducedMotion() ? 'auto' : 'smooth',
+        block: 'start'
+      });
+      const focusTarget = el.querySelector<HTMLElement>('h2') ?? el;
+      focusTarget.setAttribute('tabindex', '-1');
+      focusTarget.focus({ preventScroll: true });
+    } else {
+      if (savedStagingScrollY !== null) {
+        window.scrollTo({
+          top: savedStagingScrollY,
+          behavior: isReducedMotion() ? 'auto' : 'smooth'
+        });
+      } else {
+        const el = document.getElementById('hair-staging');
+        if (el) {
+          el.scrollIntoView({
+            behavior: isReducedMotion() ? 'auto' : 'smooth',
+            block: 'start'
+          });
+        }
+      }
+      const stagingEl = document.getElementById('hair-staging');
+      const focusTarget = stagingEl?.querySelector<HTMLElement>('h2') ?? stagingEl;
+      if (focusTarget) {
+        focusTarget.setAttribute('tabindex', '-1');
+        focusTarget.focus({ preventScroll: true });
+      }
+    }
   }
 
   $effect(() => {
     if (typeof window === 'undefined') return;
-    if (window.location.hash === '#hair-photos' || page.url.searchParams.get('section') === 'photos') {
+    if (dosesQuery.loading) return;
+    if (window.location.hash === '#hair-photos') {
       jumpToSection('photos');
     }
   });
 
   $effect(() => {
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+    if (dosesQuery.loading) return;
     const stagesEl = document.getElementById('hair-staging');
     const photosEl = document.getElementById('hair-photos');
     if (!stagesEl || !photosEl) return;
@@ -258,7 +284,7 @@
   <SourceRecordHandoff id={sourceId} ready={!photosQuery.loading && !photosQuery.failed} found={!!sourcePhoto} onOpen={() => { viewing = sourcePhoto!; }} />
   <PhotoViewer photo={viewing} onClose={() => { viewing = null; }} />
 
-  <div class="hair-jump" data-hair-jump>
+  <div data-hair-jump>
     <Segmented
       name={m.hair_jump_label()}
       options={sectionOptions}

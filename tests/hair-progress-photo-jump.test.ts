@@ -13,7 +13,6 @@ describe('hair progress photo jump contract (pre-production UI/UX 27)', () => {
   it('supplies translation keys in both English and Polish catalogues', () => {
     const keys = [
       'hair_jump_label',
-      'hair_jump_staging',
       'hair_jump_photos',
       'hair_jump_staging_aria'
     ];
@@ -25,10 +24,14 @@ describe('hair progress photo jump contract (pre-production UI/UX 27)', () => {
     }
   });
 
+  it('reuses hair_stage_section_title for the staging option to avoid duplication', () => {
+    expect(hairProgress).toContain('m.hair_stage_section_title()');
+  });
+
   it('renders an in-page section choice with Segmented', () => {
     expect(hairProgress).toContain("from '$lib/components/Segmented.svelte'");
     expect(hairProgress).toContain('data-hair-jump');
-    expect(hairProgress).toMatch(/<Segmented\b[^>]*compact/);
+    expect(hairProgress).toMatch(/<Segmented[\s\S]*?compact/);
   });
 
   it('anchors the staging and photo sections with identifiers', () => {
