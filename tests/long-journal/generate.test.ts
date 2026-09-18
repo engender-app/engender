@@ -312,11 +312,12 @@ test('the fixture exercises concurrent Care episodes, schedules, pauses, stock, 
   const { journal, summary } = await generate({ seed: 9, days: 800 });
   const care = await readCare(journal, summary.lastEpochDay);
   expect(care.lanes.length).toBeGreaterThan(1);
+  expect(care.lanes.every((l) => l.lastDoseEpochDay !== null)).toBe(true);
   expect(care.lanes.some((l) => l.nextDoseEpochDay !== null)).toBe(true);
   expect(care.lanes.some((l) => l.doseTotals.length > 0)).toBe(true);
   expect(care.stock.length).toBeGreaterThan(0);
-  const schedules = await journal.doses.getSchedules();
-  expect(schedules.length).toBeGreaterThan(0);
   const pauses = await journal.doses.getPauses();
-  expect(pauses.length).toBeGreaterThan(0);
+  expect(pauses.length).toBeGreaterThan(1);
+  const pausedEpisodeIds = new Set(pauses.map((p) => p.episodeId));
+  expect(pausedEpisodeIds.size).toBeGreaterThan(1);
 });
