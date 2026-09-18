@@ -76,8 +76,13 @@ try {
       }, { palette, theme });
       await page.locator('[data-room-visit]').click();
       await page.locator(`[data-visit-pick="${ids[1]}"]`).waitFor();
+      await page.waitForTimeout(600);
+      await page.evaluate(() => {
+        for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
+      });
       await page.screenshot({ path: `.claude/room-choice-shots/${palette}-${theme}.png` });
       await page.keyboard.press('Escape');
+      await page.waitForTimeout(600);
     }
   }
 

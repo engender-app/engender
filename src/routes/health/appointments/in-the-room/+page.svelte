@@ -39,10 +39,10 @@
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { appointmentsOnDay, chosenVisitOnDay } from '$lib/data/journal/appointments';
+  import { appointmentsOnDay, chosenAppointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
   import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
-  import { smartBack } from '$lib/navigation/smart-back';
+  import { smartBack, replaceRoute } from '$lib/navigation/smart-back';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -61,7 +61,7 @@
   let items = $derived(checklistQuery.rows);
 
   /* The appointment this room is, resolved by the rule the room owns
-     (chosenVisitOnDay, appointments.ts): the visit chosen below when the
+     (chosenAppointmentOnDay, appointments.ts): the visit chosen below when the
      day holds more than one, the one visit when the day holds exactly one,
      and none when the day is ambiguous and unchosen - or when the chosen
      visit was deleted or moved off the day, where falling back to
@@ -75,26 +75,26 @@
      screen says so by not offering a field rather than by taking one and
      dropping it. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
-  let todaysVisits = $derived(appointmentsOnDay(appointmentsQuery.rows, today));
-  let ambiguousDay = $derived(todaysVisits.length > 1);
+  let todaysAppointments = $derived(appointmentsOnDay(appointmentsQuery.rows, today));
+  let ambiguousDay = $derived(todaysAppointments.length > 1);
 
   // Keep the selection on the route so returning from a debrief restores it.
-  let chosenVisitId = $derived(page.url.searchParams.get('appointment'));
-  let visit = $derived(chosenVisitOnDay(appointmentsQuery.rows, today, chosenVisitId));
+  let chosenAppointmentId = $derived(page.url.searchParams.get('appointment'));
+  let visit = $derived(chosenAppointmentOnDay(appointmentsQuery.rows, today, chosenAppointmentId));
 
-  let visitSheet = $state(false);
+  let appointmentSheet = $state(false);
 
-  function pickVisit(id: string) {
+  function pickAppointment(id: string) {
     const url = new URL(page.url);
     url.searchParams.set('appointment', id);
-    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
-    visitSheet = false;
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
+    appointmentSheet = false;
   }
 
   // Pin even an automatic choice before the live list can change underneath it.
   $effect(() => {
-    if (visit && chosenVisitId === null && !appointmentsQuery.loading && !appointmentsQuery.failed) {
-      pickVisit(visit.id);
+    if (visit && chosenAppointmentId === null && !appointmentsQuery.loading && !appointmentsQuery.failed) {
+      pickAppointment(visit.id);
     }
   });
 
@@ -195,12 +195,13 @@
              answering starts and states the choice the field under it keys
              off; a day with one booking needs no step and shows nothing
              here. -->
-        {#if ambiguousDay || (chosenVisitId !== null && !visit && todaysVisits.length > 0)}
+        {#if ambiguousDay || (chosenAppointmentId !== null && !visit && todaysAppointments.length > 0)}
           <button
             class="room-visit"
             data-room-visit
-            aria-label={visit ? m.in_the_room_visit_change_aria() : m.in_the_room_visit_choose()}
-            onclick={() => (visitSheet = true)}
+            aria-haspopup="dialog"
+            aria-expanded={appointmentSheet}
+            onclick={() => (appointmentSheet = true)}
           >
             <span class="room-visit-name">
               {#if visit}
@@ -288,17 +289,17 @@
        day's visits as rows, the same shape the visit screen lists them in,
        and nothing else - the prep list is standing and shared (ADR-0066),
        so what is being chosen here is only whose room this is. -->
-  <Sheet open={visitSheet} title={m.in_the_room_visit_sheet()} onClose={() => (visitSheet = false)}>
+  <Sheet open={appointmentSheet} title={m.in_the_room_visit_sheet()} onClose={() => (appointmentSheet = false)}>
     <h3>{m.in_the_room_visit_sheet()}</h3>
     <ListCard>
-      {#each todaysVisits as appointment (appointment.id)}
+      {#each todaysAppointments as appointment (appointment.id)}
         <ListRow
           key={appointment.id}
           data-visit-pick={appointment.id}
           icon="calendar"
           title={nameOf(appointment)}
           subtitle={appointment.place ?? undefined}
-          onclick={() => pickVisit(appointment.id)}
+          onclick={() => pickAppointment(appointment.id)}
         />
       {/each}
     </ListCard>
