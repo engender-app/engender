@@ -2199,7 +2199,7 @@
   "notif_quiet_to": "Until",
   "notif_quiet_held": "A notification due inside quiet hours waits for them to end. Nothing is dropped.",
   "notif_web_title": "Phone notifications need the Android app",
-  "notif_web_body": "The switches on this list set what the app may show inside the app, and they work in this browser. A browser cannot fire a notification while the app is closed, so reminders, the check-in and backup notices reach your phone only from the Android app.",
+  "notif_web_body": "The switches on this list set what the app may show on its own screens, and they work in this browser. A browser cannot fire a notification while the app is closed, so reminders, the check-in and backup notices reach your phone only from the Android app.",
   "tile_wear_title": "Wear timer",
   "tile_wear_sub": "Shows how long the current wear session has been running.",
   "tile_dose_title": "Dose panel",
