@@ -2376,7 +2376,7 @@
   "wrapped_share_title": "Karta bilansu",
   "wrapped_share_picker_title": "Co pokazać na karcie",
   "wrapped_share_element_palette": "Paleta kolorów",
-  "wrapped_share_none_selected": "Wybierz coś, żeby zrobić kartę.",
+  "wrapped_share_empty_preview": "Wybierz element powyżej, żeby wypełnić podgląd. Nic nie zostanie udostępnione, dopóki nie wybierzesz „Udostępnij”.",
   "wrapped_share_preview_alt": "Zrobiona przed chwilą karta",
   "on_this_day": "Wspomnienia",
   "on_this_day_settings_sub": "Przypomina dobry dzień sprzed miesiąca, pół roku albo roku.",
