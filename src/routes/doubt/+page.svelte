@@ -13,7 +13,7 @@
      distressed reader arrived at, and it asked them to scroll past their
      own charts to reach the breathing exercise.
 
-     Nothing was cut. The screen opens on the breath, full bleed, and
+     Nothing was cut. The screen keeps the breath, full bleed, and
      everything it held is one tap down, in the order safeSpaceWays.ts
      states and explains. The sections themselves moved wholesale into
      /doubt/moments, /doubt/comfort, /doubt/evidence and /doubt/readings
@@ -26,7 +26,10 @@
      The five ways and their order do not move - what a person taps here is
      what they tapped before.
 
-     **Always the breath, never chosen by how you arrived.** A surface that
+     Personal support is now linked above the breath, so it is reachable
+     on a short screen without starting the exercise (UI/UX ticket 14).
+
+     **The same choices, however you arrived.** A surface that
      opens differently depending on whether you came from the tile, the hub
      or a launch intent is one you cannot learn, and learning it is the
      whole point for a person who is not in a state to read. Same screen

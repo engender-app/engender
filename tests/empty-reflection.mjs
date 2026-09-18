@@ -85,6 +85,11 @@ try {
     await visit('/stats');
     await page.locator('[data-lookback-thin]').waitFor();
     await capture(`${locale}-sparse-stats`);
+    for (const width of [430, 1280, 195]) {
+      await page.setViewportSize({ width, height: 844 });
+      await capture(`${locale}-sparse-stats-${width}`);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('.screen .btn').filter({ hasText: locale === 'en' ? 'New entry' : 'Nowy wpis' }).click();
     await page.locator('[data-fan]').waitFor();
     await page.keyboard.press('Escape');

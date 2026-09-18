@@ -350,7 +350,9 @@
     </div>
 
     {#if !recapQuery.loading && !recapQuery.failed && !enoughEntries}
-      <button class="btn btn-soft" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
+      <div transition:disclose>
+        <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
+      </div>
     {/if}
 
     <!-- The readings, as tiles. Each component draws its own tile off its
