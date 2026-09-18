@@ -88,6 +88,7 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { disclose } from '$lib/motion/reveal';
+  import { isReducedMotion } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -299,6 +300,89 @@
     remove: (id) => journal.sizeRecords.deleteRecord(id),
     findById: (id) => sizeRecords.find((r) => r.id === id)
   });
+
+  /* --- The way down and the way back (phase 11 ticket 29) ---------------
+
+     Sizes used to be discoverable only by scrolling: the screen's title
+     says both words, but the size log itself sat a full screen and a
+     chart below the fold, so a person arriving for clothing sizes had to
+     scroll to learn the task existed. A compact Segmented under the
+     header names both halves and jumps between them - the same pattern
+     hair-progress uses for its staging and photographs halves.
+
+     A jump, not a task switch: nothing here unmounts, so the selected
+     type, the open editor and its unsaved draft ride along unchanged.
+     The measurements anchor (`#measurements-picker`) is the type picker
+     itself - this half has no heading of its own, and the comment up top
+     explains why it never got one - so the anchor is named for the one
+     element it wraps, and its focus target is that picker's radiogroup,
+     which already carries the group's name. The sizes anchor is the
+     log's heading.
+
+     Jumping away remembers the scroll offset, and jumping back restores
+     it: the chart and the log are long, and a person who jumped from deep
+     in the measurement history should land back in it, not at the top.
+     The offset is read off the app's own scroll region, which is what
+     actually scrolls here - the window never does. */
+  let activeSection = $state<'measurements' | 'sizes'>('measurements');
+  let savedReadingScroll = $state<number | null>(null);
+
+  const sectionOptions = $derived([
+    { value: 'measurements', label: m.measurements_jump_measurements() },
+    { value: 'sizes', label: m.size_log() }
+  ]);
+
+  function focusAnchor(el: HTMLElement) {
+    const target = el.querySelector<HTMLElement>('[role="radiogroup"], h2') ?? el;
+    target.setAttribute('tabindex', '-1');
+    target.focus({ preventScroll: true });
+  }
+
+  function jumpToSection(section: string) {
+    activeSection = section === 'sizes' ? 'sizes' : 'measurements';
+    const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
+    const motion = isReducedMotion() ? 'auto' : 'smooth';
+    if (activeSection === 'sizes') {
+      savedReadingScroll = region?.scrollTop ?? null;
+      const el = document.getElementById('sizes-log');
+      if (!el) return;
+      el.scrollIntoView({ behavior: motion, block: 'start' });
+      focusAnchor(el);
+    } else {
+      if (region && savedReadingScroll !== null) {
+        region.scrollTo({ top: savedReadingScroll, behavior: motion });
+      } else {
+        document.getElementById('measurements-picker')?.scrollIntoView({ behavior: motion, block: 'start' });
+      }
+      const el = document.getElementById('measurements-picker');
+      if (el) focusAnchor(el);
+    }
+  }
+
+  /* Scrolling is also choosing: a person who walks down the screen has
+      picked the sizes half by the time its heading crosses the upper
+      band, and the pill should say so. The lower 60% is excluded so the
+      choice lands when a section is actually being read, not while it is
+      still arriving at the bottom edge. */
+  $effect(() => {
+    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+    const reading = document.getElementById('measurements-picker');
+    const sizes = document.getElementById('sizes-log');
+    if (!reading || !sizes) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          if (entry.target.id === 'sizes-log') activeSection = 'sizes';
+          else if (entry.target.id === 'measurements-picker') activeSection = 'measurements';
+        }
+      },
+      { rootMargin: '0px 0px -60% 0px' }
+    );
+    observer.observe(reading);
+    observer.observe(sizes);
+    return () => observer.disconnect();
+  });
 </script>
 
 <div class="screen">
@@ -312,7 +396,19 @@
       </button>
     {/snippet}
   </ScreenHeader>
-  <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
+  <div data-measurements-jump>
+    <Segmented
+      name={m.measurements_jump_label()}
+      options={sectionOptions}
+      value={activeSection}
+      onChange={jumpToSection}
+      compact
+      key="measurement-sections"
+    />
+  </div>
+  <div id="measurements-picker">
+    <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
+  </div>
 
   <!-- What is true now, before anything explains how to measure or lists
        what was measured (audit item 8): the span for the picked type and,
@@ -420,11 +516,21 @@
     {/snippet}
   </ReadGate>
 
-  <SectionHeading text={m.size_log()}>
+  <SectionHeading id="sizes-log" text={m.size_log()}>
     {#snippet action()}
-      <button class="icon-btn press" data-add-size aria-label={m.size_log_add_aria()} onclick={() => size.openEditor(null)}>
-        <Icon name="plus" size={22} />
-      </button>
+      <span class="heading-actions">
+        <button
+          class="icon-btn press"
+          data-jump-measurements
+          aria-label={m.measurements_jump_back_aria()}
+          onclick={() => jumpToSection('measurements')}
+        >
+          <span class="jump-up"><Icon name="chevronDown" size={20} /></span>
+        </button>
+        <button class="icon-btn press" data-add-size aria-label={m.size_log_add_aria()} onclick={() => size.openEditor(null)}>
+          <Icon name="plus" size={22} />
+        </button>
+      </span>
     {/snippet}
   </SectionHeading>
 
@@ -698,5 +804,19 @@
     margin-top: var(--space-1);
     font-size: var(--text-lg);
     font-weight: var(--weight-bold);
+  }
+
+  /* The sizes heading carries two controls - the way back up and the log's
+      own add - and they travel as one group at the line's far end rather
+      than spreading apart under the heading's space-between. */
+  .heading-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .jump-up {
+    display: inline-flex;
+    transform: rotate(180deg);
   }
 </style>
