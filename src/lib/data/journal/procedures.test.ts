@@ -106,6 +106,22 @@ test('procedure checklist is owned by the procedure and cleans up on delete', as
   assert.equal(await journal.procedures.getChecklist(id), undefined);
 });
 
+test('deleting a procedure removes its dilation schedule', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+
+  const id = await journal.procedures.upsertProcedure({ name: 'vaginoplasty', kind: 'vaginoplasty' });
+  await journal.taper.upsertTaper({
+    procedureId: id,
+    startEpochDay: 20000,
+    stages: [{ everyNDays: 1, days: 30 }]
+  });
+
+  await journal.procedures.deleteProcedure(id);
+  assert.equal(await journal.taper.getTaper(), null);
+});
+
 test('recording surgery day as a transition milestone links milestone to procedure (ADR-0045)', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
