@@ -1980,10 +1980,7 @@
   "ph_tab_browse": "Przeglądaj",
   "ph_tab_compare": "Porównaj",
   "ph_back_to_all": "Wróć do wszystkich zdjęć",
-  "ph_compare_reset": "Jedno z wybranych zdjęć już nie jest dostępne. Wybierz ponownie dwa punkty.",
   "ph_pick_two": "Wybierz dwa, żeby je porównać.",
-  "ph_one_selected": "Jedno wybrane. Wybierz drugie, żeby porównać.",
-  "ph_two_selected": "Dwa wybrane.",
   "ph_cell_aria": "Zdjęcie z {date}",
   "ph_empty_title": "Jeszcze bez zdjęć",
   "ph_empty_body": "Zdjęcia dodane do wpisów i kamieni milowych zbierają się tutaj. Kiedyś zestawienie „kiedyś i teraz” będzie tego warte.",
@@ -4073,5 +4070,11 @@
   "saved_question_query": "Szukany tekst: {query}",
   "saved_question_no_query": "Bez szukanego tekstu. Wyszukiwanie obejmuje tylko wpisy.",
   "saved_question_tag": "Tag: {tag}",
-  "saved_question_missing_tag": "Usunięty tag"
+  "saved_question_missing_tag": "Usunięty tag",
+  "ph_selection_remove_short": "Usuń",
+  "ph_selection_count": "Wybrane: {count}/2",
+  "ph_selection_full": "Usuń zdjęcie z wyboru, aby wybrać inne.",
+  "ph_selection_filtered": "Poza bieżącym filtrem",
+  "ph_selection_unavailable": "Wybrane zdjęcie nie jest już dostępne.",
+  "ph_selection_remove": "Usuń z porównania: {photo}"
 }

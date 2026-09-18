@@ -4,8 +4,7 @@ import {
   openingPair,
   orderAnchorsByJourney,
   stepPair,
-  toComparePair,
-  toggleCompareAnchor
+  toComparePair
 } from './compare-state.ts';
 import type { DatedPhoto } from '../journal/photos.ts';
 
@@ -19,23 +18,6 @@ const photos = (): DatedPhoto[] => [
 test('ordering is deterministic by journey chronology, not pick order', () => {
   assert.deepEqual(orderAnchorsByJourney(['p3', 'p1'], photos()), ['p1', 'p3']);
   assert.deepEqual(orderAnchorsByJourney(['p4', 'p2'], photos()), ['p2', 'p4']);
-});
-
-test('selecting a third anchor replaces the older anchor deterministically', () => {
-  let selected: string[] = [];
-  selected = toggleCompareAnchor(selected, 'p3', photos());
-  selected = toggleCompareAnchor(selected, 'p1', photos());
-  assert.deepEqual(selected, ['p1', 'p3']);
-
-  selected = toggleCompareAnchor(selected, 'p4', photos());
-  assert.deepEqual(selected, ['p3', 'p4']);
-});
-
-test('tapping a selected anchor toggles it off into partial selection', () => {
-  let selected = ['p2', 'p4'];
-  selected = toggleCompareAnchor(selected, 'p2', photos());
-  assert.deepEqual(selected, ['p4']);
-  assert.equal(toComparePair(selected, photos()), null);
 });
 
 test('missing anchors are dropped instead of breaking compare state', () => {

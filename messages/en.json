@@ -1932,10 +1932,7 @@
   "ph_tab_browse": "Browse",
   "ph_tab_compare": "Compare",
   "ph_back_to_all": "Back to all photos",
-  "ph_compare_reset": "One selected photo is no longer available. Pick two anchors again.",
   "ph_pick_two": "Select two to compare.",
-  "ph_one_selected": "One selected. Pick a second to compare.",
-  "ph_two_selected": "Two selected.",
   "ph_cell_aria": "Photo from {date}",
   "ph_empty_title": "No photos yet",
   "ph_empty_body": "Photos you attach to entries and milestones gather here, and one day “then vs now” will be worth it.",
@@ -3951,5 +3948,11 @@
   "saved_question_query": "Search text: {query}",
   "saved_question_no_query": "No search text. Only entries are searched.",
   "saved_question_tag": "Tag: {tag}",
-  "saved_question_missing_tag": "Deleted tag"
+  "saved_question_missing_tag": "Deleted tag",
+  "ph_selection_remove_short": "Remove",
+  "ph_selection_count": "Selected: {count}/2",
+  "ph_selection_full": "Remove a photo to choose another.",
+  "ph_selection_filtered": "Outside the current filter",
+  "ph_selection_unavailable": "Selected photo is no longer available.",
+  "ph_selection_remove": "Remove from comparison: {photo}"
 }
