@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
+  import { page } from '$app/state';
   /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
      surface, so it lives in the More hub rather than under /settings).
 
@@ -212,14 +214,25 @@
     stockEditor = null;
   }
 
+  /* The lane a spine mark was tapped from, for one return: written as a
+       mark leaves, read once here - and, when the trip came in through a
+       link rather than history-back, from the `?lane=` the dose and lab
+       screens' own back hrefs carry. The highlight answers "which lane did
+       I come back to" and is gone the next time Care opens for another
+       reason; the scroll position itself is scroll-region.ts's, which is
+       what puts that lane in view. */
+  let sourceLane = $state(takeSourceLane() ?? page.url.searchParams.get('lane'));
+
   let spine = $derived(
     careSpine(
       {
         labDrawEpochDay: latestLab?.epochDay ?? null,
+        labDrawId: latestLab?.id ?? null,
         lanes: lanes.map((lane) => ({
           episodeId: lane.episode.id,
           drug: lane.episode.drug,
           lastDoseEpochDay: lane.lastDoseEpochDay,
+          lastDoseId: lane.lastDoseId,
           nextDoseEpochDay: lane.nextDoseEpochDay,
           runOutEpochDay: lane.runOut?.actionableEpochDay ?? null
         }))
@@ -249,18 +262,32 @@
   };
 
   /* Where a mark goes when it is tapped: the surface the reading came from,
-     which is the whole of what makes the rail worth a tap. Today is the one
-     mark that is not a link - it is where the reader is, not somewhere to
-     go - and it renders as plain text rather than as a link that does
-     nothing. runOut has no href either: /settings/stock stopped being a
-     screen (ADR-0084), and the mark opens the same sheet its lane's stock
-     line does. */
-  const MARK_HREF: Record<SpineMarkKind, string | null> = {
-    labDraw: '/care/labs',
-    lastDose: '/care/doses',
-    today: null,
-    nextDose: '/care/doses',
-    runOut: null
+     with drug, date and record identity preserved. Today and runOut have no
+     href: today is where the reader is, and runOut opens its lane's stock
+     editor directly. lastDose opens the recorded dose event itself, nextDose
+     the schedule view that expects it - the comparison is a past-facing
+     adherence read, so the coming slot is context, not a row to land on
+     (journal/doses.ts getComparison) - and labDraw the drawn result.
+
+     A record id travels twice, as `?dose=`/`?lab=` and as the hash: the
+     hash is what scrollToHash consumes once it has scrolled (scroll-region
+     .ts), the param is what keeps the deep link - and its unavailable
+     state - alive after that. */
+  const markHref = (mark: SpineMark, drug: string | null): string | null => {
+    if (mark.kind === 'today' || mark.kind === 'runOut') return null;
+    const params = new URLSearchParams();
+    params.set('date', String(mark.epochDay));
+    if (drug !== null) params.set('drug', drug);
+    if (mark.kind === 'nextDose') {
+      params.set('view', 'schedule');
+      return `/care/doses?${params.toString()}`;
+    }
+    if (mark.kind === 'labDraw') {
+      if (mark.recordId) params.set('lab', mark.recordId);
+      return `/care/labs?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
+    }
+    if (mark.recordId) params.set('dose', mark.recordId);
+    return `/care/doses?${params.toString()}${mark.recordId ? `#${mark.recordId}` : ''}`;
   };
 
   /* A lane's marks say which drug they belong to out loud: the lane's name
@@ -477,13 +504,14 @@
         <div class="care-head" style="--care-rows: {labelRows(spine.shared)}">
           {#each spine.shared as mark (mark.kind)}
             {@const what = markLabel(mark.kind)}
+            {@const href = markHref(mark, null)}
             <div class="care-at" style={`--care-at: ${mark.position}; --care-row: ${mark.labelRow}`}>
               <div class="care-at-inner" class:is-beyond={mark.beyondSpan} style={`--care-settle: ${Math.abs(mark.position - 0.5).toFixed(3)}`}>
-                {#if MARK_HREF[mark.kind]}
+                {#if href}
                   <a
                     class="care-mark"
                     data-care-mark={mark.kind}
-                    href={MARK_HREF[mark.kind]}
+                    {href}
                     aria-label={markAria(mark, what, null)}
                   >
                     <span class="care-what">{what}</span>
@@ -528,7 +556,7 @@
           {/if}
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
-            <div class="care-lane" data-care-lane={lane.drug} {...laneAttrs(index, labelRows(lane.marks))}>
+            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={lane.drug === sourceLane} {...laneAttrs(index, labelRows(lane.marks))}>
               <!-- The name labels its own line from the left, above it
                    rather than beside it: a name column would take around a
                    hundred of the three hundred and thirty pixels a 390px
@@ -548,6 +576,7 @@
                      would outrank :active and make every mark unpressable. -->
                 {#each lane.marks as mark (mark.kind)}
                   {@const what = markLabel(mark.kind, leadTimeDays)}
+                  {@const href = markHref(mark, lane.drug)}
                   <div class="care-at" style={`--care-at: ${mark.position}; --care-row: ${mark.labelRow}`}>
                     <div
                       class="care-at-inner"
@@ -570,12 +599,16 @@
                           <span class="care-what">{what}</span>
                           <span class="care-when">{dayLabel(mark.epochDay)}</span>
                         </button>
-                      {:else}
+                      {:else if href}
+                        <!-- The lane is remembered for the return trip the
+                             header's history-back makes, so coming back
+                             names the lane the reader was sent from. -->
                         <a
                           class="care-mark"
                           data-care-mark={mark.kind}
-                          href={MARK_HREF[mark.kind]}
+                          {href}
                           aria-label={markAria(mark, what, lane.drug)}
+                          onclick={() => rememberSourceLane(lane.drug)}
                         >
                           <span class="care-what">{what}</span>
                           <span class="care-when">{dayLabel(mark.epochDay)}</span>
@@ -1169,6 +1202,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+  }
+  /* The lane the reader came back to from a dose or lab record: the same
+     answer the log and labs screens give their linked row (surface-2,
+     rounded), so returning names the lane the same way every other screen
+     names its target. It appears with the screen's own arrival rather than
+     moving after settle - ADR-0078's concern is a settled view changing in
+     place, and this is part of the entrance. */
+  .care-lane.is-source-lane {
+    background: var(--surface-2);
+    border-radius: var(--r-block);
   }
   /* The drug the line belongs to, in its own stripe: the lane's colour and
      its name say the same thing, so neither is carrying it alone - two lanes

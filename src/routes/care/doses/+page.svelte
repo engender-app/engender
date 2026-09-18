@@ -64,6 +64,7 @@
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
+  import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -121,7 +122,7 @@
      90 days can be reached by expanding the window to contain it, and a
      missing or deleted dose can show an explicit unavailable notice
      instead of scrolling to an unrelated recent row. */
-  const deepLinkedDoseId = hashRowId();
+  let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
   let deepLinkedDoseQuery = liveQuery((j) =>
     deepLinkedDoseId ? j.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
   );
@@ -129,6 +130,8 @@
   let deepLinkedDoseUnavailable = $derived(
     Boolean(deepLinkedDoseId && !deepLinkedDoseQuery.loading && !deepLinkedDoseQuery.value)
   );
+
+  let targetSlotDate = $derived(page.url.searchParams.get('date'));
 
   $effect(() => {
     const dose = deepLinkedDoseQuery.value;
@@ -170,7 +173,11 @@
     windowDays += WINDOW_DAYS;
   }
 
-  let view = $state<'log' | 'schedule'>('log');
+  let view = $state<'log' | 'schedule'>(page.url.searchParams.get('view') === 'schedule' ? 'schedule' : 'log');
+  $effect(() => {
+    const v = page.url.searchParams.get('view');
+    if (v === 'schedule' || v === 'log') view = v;
+  });
   /** The old intro, folded under the tab bar rather than printed over every
       row (ticket 09). Closed by default: the log opens on the log. */
   let attributionOpen = $state(false);
@@ -197,13 +204,21 @@
   let activeDrugChoices = $derived([...new Set(activeEpisodes.map((e) => e.drug))]);
 
   /** Which regimen the schedule view compares against, while more than one
-      episode is active at once (ticket 15): the person's own stored pick,
-      when it still names one of the active drugs, or else the same default
-      `activeEpisode` above already resolves to for the new-dose editor.
-      Always one of `activeDrugChoices`, or null with none of them - a
+      episode is active at once (ticket 15). Order of claim: the pick made
+      on this visit, then the one a Care spine link named (`?drug=`, phase
+      11 ticket 14), then the person's own stored pick, then the same
+      default `activeEpisode` above already resolves to for the new-dose
+      editor. The local pick exists so a link's drug can outrank the stored
+      preference without writing it - and so the picker keeps answering
+      after the link's drug stops being one of the active choices. Always
+      one of `activeDrugChoices`, or null with none of them - a
       `prefs.adherenceRegimenPick` left over from a regimen that has since
       ended is never handed to `getComparison` as though still active. */
+  let pickedRegimenDrug = $state<string | null>(null);
   let selectedRegimenDrug = $derived.by(() => {
+    if (pickedRegimenDrug && activeDrugChoices.includes(pickedRegimenDrug)) return pickedRegimenDrug;
+    const urlDrug = page.url.searchParams.get('drug');
+    if (urlDrug && activeDrugChoices.includes(urlDrug)) return urlDrug;
     const picked = prefs.adherenceRegimenPick;
     if (picked && activeDrugChoices.includes(picked)) return picked;
     return activeEpisode?.drug ?? activeDrugChoices[0] ?? null;
@@ -402,6 +417,8 @@
       } else {
         scrollToHash();
       }
+    } else {
+      scrollToHash();
     }
   });
 
@@ -671,17 +688,8 @@
     await journal.doses.deleteDose(editor.id);
     editor = null;
   }
-  let returnHref = $derived.by(() => {
-    const lane = page.url.searchParams.get('lane');
-    const date = page.url.searchParams.get('date');
-    if (lane || date) {
-      const params = new URLSearchParams();
-      if (lane) params.set('lane', lane);
-      if (date) params.set('date', date);
-      return `/care?${params.toString()}`;
-    }
-    return '/more';
-  });
+  /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
+  let returnHref = $derived(careLaneReturnHref(page.url));
 </script>
 
 <div class="screen">
@@ -893,7 +901,10 @@
           name={m.adherence_drug_label()}
           value={selectedRegimenDrug ?? ''}
           options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
-          onChange={(v) => (prefs.adherenceRegimenPick = v)}
+          onChange={(v) => {
+            pickedRegimenDrug = v;
+            prefs.adherenceRegimenPick = v;
+          }}
           key="doses-regimen"
         />
       </div>
@@ -938,24 +949,30 @@
         </p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
           {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-            <ListRow
-              static
-              data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
-              title={fmtDayLong(row.slot.epochDay)}
-              subtitle={[
-                comparison.schedule.dosesPerDay > 1 &&
-                  m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
-                row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
-              ]}
-            >
-              {#snippet trailing()}
-                {#if row.dose}
-                  {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
-                {:else}
-                  {m.adherence_nothing_logged()}
-                {/if}
-              {/snippet}
-            </ListRow>
+            <!-- The linked slot's own day, where the comparison reaches it: a
+                 next dose for later than today has no row here yet - the
+                 comparison is a past-facing read - so the highlight only ever
+                 names a day that exists. -->
+            <div class="rows-divide" class:is-target-slot={String(row.slot.epochDay) === targetSlotDate}>
+              <ListRow
+                static
+                data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
+                title={fmtDayLong(row.slot.epochDay)}
+                subtitle={[
+                  comparison.schedule.dosesPerDay > 1 &&
+                    m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
+                  row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
+                ]}
+              >
+                {#snippet trailing()}
+                  {#if row.dose}
+                    {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
+                  {:else}
+                    {m.adherence_nothing_logged()}
+                  {/if}
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
 
@@ -1565,7 +1582,8 @@
     color: var(--text-2);
   }
 
-  .rows-divide.is-target-dose {
+  .rows-divide.is-target-dose,
+  .rows-divide.is-target-slot {
     background: var(--surface-2);
     border-radius: var(--r-block);
   }

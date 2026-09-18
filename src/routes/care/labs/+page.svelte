@@ -14,7 +14,11 @@
      across the plot now names each reading as the finger passes it. The
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
+  import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
@@ -61,6 +65,16 @@
 
   let unitsOpen = $state(false);
 
+  /* Deep link handling (phase 11 ticket 14): resolve the lab result by its
+     UUID directly so the screen switches to the analyte the result belongs
+     to and scrolls to the highlighted row. A missing or deleted result gets
+     the unavailable state SourceRecordHandoff renders for every source
+     link's target (phase 11 ticket 11). */
+  let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
+  let deepLinkedLabQuery = liveQuery((j) =>
+    deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
+  );
+
   /* No hormone assumed: the screen opens on whatever the journal actually
      has, and stays empty until getMostRecentAnalyte resolves (ticket 37). */
   let analyte = $state('');
@@ -79,9 +93,22 @@
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (usedQuery.loading || mostRecentQuery.loading) return;
+    if (deepLinkedLabQuery.value) {
+      analyte = deepLinkedLabQuery.value.analyte;
+      return;
+    }
+    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
+
+  $effect(() => {
+    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
+      scrollToHash();
+    }
+  });
+
+  /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
+  let returnHref = $derived(careLaneReturnHref(page.url));
 
   /* The list is every result this analyte has, in order. The charts are those
      same results split by unit (ticket 02): a value in ng/dL and one in
@@ -381,7 +408,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.lab_results()} back="/more" subtitle={m.labs_intro()}>
+  <ScreenHeader title={m.lab_results()} back={returnHref} subtitle={m.labs_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-preferred-units aria-label={m.labs_preferred_units_title()} onclick={() => (unitsOpen = true)}>
         <Icon name="settings" size={20} />
@@ -394,6 +421,15 @@
       </button>
     {/snippet}
   </ScreenHeader>
+
+  <!-- The unavailable state is the shared one (SourceRecordHandoff, ticket
+       11): same notice every source-linked screen shows for a record that is
+       no longer there. -->
+  <SourceRecordHandoff
+    id={deepLinkedLabId}
+    ready={!deepLinkedLabQuery.loading}
+    found={deepLinkedLabQuery.value !== null}
+  />
 
   <ReadGate read={usedQuery} variant="block" count={1}>
     {#snippet rows()}
@@ -461,6 +497,8 @@
           {#each [...results].reverse() as r (r.id)}
             <button
               class="kit-row"
+              class:is-target-lab={r.id === deepLinkedLabId}
+              id={r.id}
               data-lab-result={r.id}
               aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
               onclick={() => record.openEditor(r)}
@@ -732,3 +770,10 @@
     </div>
   </Sheet>
 </div>
+
+<style>
+  .kit-row.is-target-lab {
+    background: var(--surface-2);
+    border-radius: var(--r-block);
+  }
+</style>

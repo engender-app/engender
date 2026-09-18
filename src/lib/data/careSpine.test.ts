@@ -510,11 +510,39 @@ test("a concurrent unrelated schedule's dose does not become this episode's last
 test('no schedule for an episode means no next dose, but last dose still reads', () => {
   const solo = episode();
   const facts = scheduleDoseFacts(solo, [solo], null, [dose(TODAY - 3)], [], TODAY);
-  assert.deepEqual(facts, { lastDoseEpochDay: TODAY - 3, nextDoseEpochDay: null });
+  assert.deepEqual(facts, { lastDoseEpochDay: TODAY - 3, lastDoseId: `d-${TODAY - 3}`, nextDoseEpochDay: null });
 });
 
 test("next dose still asks doseSchedule.ts's own arithmetic, scoped to this episode's id", () => {
   const solo = episode({ startEpochDay: TODAY - 14 });
   const facts = scheduleDoseFacts(solo, [solo], schedule(), [], [], TODAY);
   assert.equal(facts.nextDoseEpochDay, TODAY);
+});
+
+test('careSpine marks carry the backing record IDs for last dose and lab draw', () => {
+  const spine = careSpine(
+    {
+      labDrawEpochDay: TODAY - 10,
+      labDrawId: 'lab-123',
+      lanes: [
+        {
+          episodeId: 'ep-1',
+          drug: 'estradiol',
+          lastDoseEpochDay: TODAY - 2,
+          lastDoseId: 'dose-456',
+          nextDoseEpochDay: TODAY + 5,
+          runOutEpochDay: null
+        }
+      ]
+    },
+    TODAY
+  )!;
+  assert.ok(spine);
+  const labMark = spine.shared.find((m) => m.kind === 'labDraw');
+  assert.equal(labMark?.recordId, 'lab-123');
+  const laneMarks = spine.lanes[0].marks;
+  const lastDoseMark = laneMarks.find((m) => m.kind === 'lastDose');
+  assert.equal(lastDoseMark?.recordId, 'dose-456');
+  const nextDoseMark = laneMarks.find((m) => m.kind === 'nextDose');
+  assert.equal(nextDoseMark?.recordId, null);
 });
