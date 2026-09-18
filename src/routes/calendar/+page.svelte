@@ -666,7 +666,7 @@
   .cal-controls > button { flex: none; }
   .cal-controls :global(.kit-chart-pick) { margin-right: auto; min-width: 0; }
 
-  @container (max-width: 400px) {
+  @container (max-width: 480px) {
     .cal-controls { flex-wrap: wrap; }
     .cal-controls :global(.kit-chart-pick) { flex: 1; }
     .cal-open { width: 100%; }
