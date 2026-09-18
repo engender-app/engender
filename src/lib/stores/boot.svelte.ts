@@ -36,7 +36,6 @@ import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
 import { todayEpochDay } from '../data/epochDay';
-import { ROUTE_OPTIONS } from '../data/vocabulary/doseLabels';
 import { hydrateReference } from '../data/live/reference.svelte';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import {
@@ -65,8 +64,7 @@ import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import type { JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
-import { setVideoFiles } from './videoFiles';
-import { setVoiceFiles } from './voiceFiles';
+import { setVideoFiles, setVoiceFiles } from './voiceFiles';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
@@ -678,6 +676,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
        It announces what it wrote for the same reason the purge does - the
        dose log and Today are live while this runs. */
     autoLogDueDoses: async () => {
+      const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
       const written = await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
       if (written > 0) bump(tablesWrittenBy('doses', 'autoLogDueDoses'));
     },

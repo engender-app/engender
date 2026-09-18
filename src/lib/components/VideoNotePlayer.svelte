@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { readVideoNote } from '$lib/stores/videoFiles';
+  import { readVideoNote } from '$lib/stores/voiceFiles';
   import { m } from '$lib/paraglide/messages';
   import { wipe } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';

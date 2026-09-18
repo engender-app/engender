@@ -22,8 +22,7 @@
    outro's finished event does arrive, calls `remove()` on nodes that are
    already detached, which is a no-op. Held to that shape by
    outgoingScreen.test.ts. */
-
-import { LEAVING } from './foot';
+export const LEAVING = 'data-savebar-leaving';
 
 const SCREENS = '[data-app-scroll-region] .screen';
 /* The foot is in the app column rather than in the screen since carpet 26,

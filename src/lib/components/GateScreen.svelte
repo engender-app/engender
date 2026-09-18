@@ -95,7 +95,7 @@
        greeting to a refusal it has to name - and each of those has to travel
        rather than jump. -->
   <div class="gate step-field-host" {...rest}>
-    <div class="gate-field step-field" data-gate-field use:blindEdge>
+    <div class="gate-field step-field" data-gate-field {@attach (node) => blindEdge(node)?.destroy}>
       <!-- The paint, split from the box that measures it (ticket 28's
            mechanism): a block a window tall whose bottom edge is a clip, so
            the edge moves without a frame ever deforming the two bottom

@@ -19,7 +19,6 @@
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
   import { isReducedMotion } from '$lib/motion/tokens';
-  import { readLabResultsInRange } from '$lib/data/journal/clinicianSummary';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
@@ -340,6 +339,7 @@
     // function's own two reads, rather than whichever happens to resolve
     // last.
     await persistedRestore;
+    const { readLabResultsInRange } = await import('$lib/data/journal/clinicianSummary');
     const appointment = await journal.appointments.getAppointment(appointmentId);
     const [labs, sideEffects] = appointment
       ? await Promise.all([

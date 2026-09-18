@@ -73,7 +73,6 @@ import type { PhotoFileStore } from '../photos/photo-file-store';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
-import { now } from './support';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -229,7 +228,7 @@ async function restoreWithin(
     // Which sections there are and what has to be inserted before what are
     // the registry's (archiveSections.ts), not this function's - and so is
     // how many there are to count against.
-    await applyArchiveJournal({ driver, mode, journal, ts: now() }, undefined, (done, total) =>
+    await applyArchiveJournal({ driver, mode, journal, ts: Date.now() }, undefined, (done, total) =>
       onProgress?.({ stage: 'rows', done, total })
     );
     if (commit && before) {

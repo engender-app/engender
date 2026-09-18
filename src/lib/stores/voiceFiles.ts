@@ -7,6 +7,7 @@
 import type { PhotoFileStore } from '../data/journal/journal';
 
 let store: PhotoFileStore | null = null;
+let videoStore: PhotoFileStore | null = null;
 
 export function setVoiceFiles(files: PhotoFileStore): void {
   store = files;
@@ -17,4 +18,15 @@ export function setVoiceFiles(files: PhotoFileStore): void {
     same way PhotoThumb treats a missing photo file. */
 export async function readRecording(fileName: string): Promise<Uint8Array | null> {
   return store ? store.read(fileName) : null;
+}
+
+export function setVideoFiles(files: PhotoFileStore): void {
+  videoStore = files;
+}
+
+/** A stored video note's bytes, or null when there is no store yet, no file,
+    or the file is gone - VideoNotePlayer.svelte treats all three the way
+    VoicePlayer treats a missing recording. */
+export async function readVideoNote(fileName: string): Promise<Uint8Array | null> {
+  return videoStore ? videoStore.read(fileName) : null;
 }
