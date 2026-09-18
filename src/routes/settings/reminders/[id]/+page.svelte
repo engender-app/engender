@@ -19,6 +19,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
+  import { isAndroid } from '$lib/platform';
 
   const TYPES = [
     { value: 'med', label: m.rem_type_med() },
@@ -55,7 +56,10 @@
      (reminder-rule.json): the preview cannot promise a moment that will not
      fire. Only an elapsed one-off has no occurrence left, and ruleFromDraft()
      dates a one-off forward every time it is called, so there is always a
-     moment here to show. */
+     moment here to show. On web the same line is labelled as the saved
+     schedule rather than as a firing (ticket 13): a browser stores the
+     rule and cannot ring it, so the same arithmetic reads as data. */
+  let isWeb = $derived(!isAndroid());
   let nextPreview = $derived.by(() => {
     return new Intl.DateTimeFormat(intlLocale(), {
       weekday: 'short',
@@ -115,15 +119,26 @@
       <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v as RecurrenceChoice)} />
     {/snippet}
   </Field>
-  <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
+  <p class="next-preview">
+    <Icon name="clock" size={14} />
+    {#if isWeb}{m.rem_next_web({ when: nextPreview })}{:else}{m.rem_next({ when: nextPreview })}{/if}
+  </p>
 
-  <div class="notice notice-info">
-    <Icon name="info" size={20} />
-    <div class="notice-body">
-      {m.rem_alarm_note()}
-      <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
+  {#if isWeb}
+    <!-- Ticket 13: the same truth the list screen opens with, above the one
+         action that commits the record. Editing stored data stays allowed;
+         what the notice separates is keeping a rule from promising a ring
+         this device cannot deliver. -->
+    <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
+  {:else}
+    <div class="notice notice-info">
+      <Icon name="info" size={20} />
+      <div class="notice-body">
+        {m.rem_alarm_note()}
+        <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
+      </div>
     </div>
-  </div>
+  {/if}
 
   <SaveBar>
     <button class="btn btn-primary" data-save onclick={saveReminder}>

@@ -37,8 +37,11 @@
      does not keep. The show column carries no such limit - a notice or a
      card is in-app UI, not an OS notification - so it stays live on web,
      and so do the four prompts; only the notify slot on each row, the
-     permission notice and the two notification-only cards below the list
-     drop out. */
+     permission notice and the two notification-only cards after the list
+     drop out. What takes their place on web sits above the rows it
+     explains (ticket 13): the platform notice opens the screen, so every
+     row's Show toggle is read beside the explanation of why there is no
+     second toggle, not three sections later. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -143,6 +146,13 @@
 <div class="screen" data-screen>
   <ScreenHeader title={m.notif_title()} back="/settings" subtitle={m.notif_sub()} />
 
+  {#if isWeb}
+    <!-- The in-app/phone distinction first, where the list it governs can
+         be read next to it (ticket 13): the switches below are real, and
+         what they do not do is reach a phone. -->
+    <Notice icon="info" key="notifications-web" title={m.notif_web_title()} text={m.notif_web_body()} />
+  {/if}
+
   {#if !isWeb}
     <div class="registry-heads" aria-hidden="true">
       <span class="registry-head">{m.notif_col_show()}</span>
@@ -199,9 +209,7 @@
     {/each}
   </ListCard>
 
-  {#if isWeb}
-    <Notice icon="info" key="notifications-web" title={m.notif_web_title()} text={m.notif_web_body()} />
-  {:else}
+  {#if !isWeb}
     {#if notifyStatus.notifications === 'denied' && anyNotifyOn}
       <Notice
         icon="alert"

@@ -81,7 +81,16 @@
   </ScreenHeader>
 
   {#if isWeb}
-    <p class="muted small" style="text-align:center">{m.rem_web_list_note()} {m.rem_web_note()}</p>
+    <!-- Ticket 13: the limitation notice is the handoff. A browser holds
+         the rows as data (ADR-0063); the action is the transfer task the
+         text describes, not another sentence about it. -->
+    <Notice
+      icon="bell"
+      key="reminders-web"
+      title={m.rem_web_list_note()}
+      text={m.rem_web_note()}
+      action={{ label: m.export_import(), href: '/settings/export' }}
+    />
 
     {#if reminders.rows.length === 0}
       <Notice icon="bell" key="reminders-empty" title={m.rem_empty_title()} text={m.rem_empty_body()} />
