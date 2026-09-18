@@ -25,18 +25,30 @@
 
      WHY THE ANSWERS ARE PER QUESTION. One free note loses which answer went
      with which question, and that pairing is the whole value of reading
-     this back at debrief time. */
+     this back at debrief time.
+
+     WHICH VISIT (ticket 12, audit I3). A day can hold two appointments, and
+     which room somebody is sitting in is a fact only they have. One visit
+     needs no step: it is the room's own appointment. Two put one quiet
+     control above the question and nothing else changes - the prep list
+     stays standing and shared (ADR-0066), and the answers and the debrief
+     handoff key off the chosen visit rather than off whichever row the
+     journal happened to list first. */
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { appointmentOnDay } from '$lib/data/journal/appointments';
+  import { appointmentsOnDay, chosenVisitOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
   import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
   import { smartBack } from '$lib/navigation/smart-back';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { wipe } from '$lib/motion/reveal';
@@ -48,10 +60,13 @@
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
 
-  /* The appointment this room is: the one on today, or none. Read through
-     the same boundary index the prep screen and the debrief offer share
-     (appointments.ts), so the three cannot disagree about which appointment
-     is which.
+  /* The appointment this room is, resolved by the rule the room owns
+     (chosenVisitOnDay, appointments.ts): the visit chosen below when the
+     day holds more than one, the one visit when the day holds exactly one,
+     and none when the day is ambiguous and unchosen - or when the chosen
+     visit was deleted or moved off the day, where falling back to
+     whichever visit is left would attach this room's answers to a visit
+     the person never chose (ticket 12, audit I3).
 
      None is an ordinary state, not a failure. The list is standing and
      unowned (ADR-0066), so reading it on a day with nothing booked is
@@ -60,13 +75,51 @@
      screen says so by not offering a field rather than by taking one and
      dropping it. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
-  let todaysAppointment = $derived(appointmentOnDay(appointmentsQuery.rows, today));
+  let todaysVisits = $derived(appointmentsOnDay(appointmentsQuery.rows, today));
+  let ambiguousDay = $derived(todaysVisits.length > 1);
+
+  // Keep the selection on the route so returning from a debrief restores it.
+  let chosenVisitId = $derived(page.url.searchParams.get('appointment'));
+  let visit = $derived(chosenVisitOnDay(appointmentsQuery.rows, today, chosenVisitId));
+
+  let visitSheet = $state(false);
+
+  function pickVisit(id: string) {
+    const url = new URL(page.url);
+    url.searchParams.set('appointment', id);
+    void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+    visitSheet = false;
+  }
+
+  // Pin even an automatic choice before the live list can change underneath it.
+  $effect(() => {
+    if (visit && chosenVisitId === null && !appointmentsQuery.loading && !appointmentsQuery.failed) {
+      pickVisit(visit.id);
+    }
+  });
+
+  /** What a row or the control calls a visit: whatever the person named
+      it, or the record's own name when they did not. The place rides under
+      it rather than in a second line, the same pairing the visit screen's
+      rows use. */
+  const nameOf = (appointment: { kind: string | null }) => appointment.kind ?? m.appointments_untitled();
 
   let index = $state(0);
   /* Keyed by item id rather than by position: the list is live, and an item
      deleted from the prep screen in another tab must not slide somebody
      else's answer onto a different question. */
-  let answers = $state<Record<string, string>>({});
+  /* Drafts per visit, because two appointments on one day are two visits
+     and each holds its own answers (ticket 12, audit I3): switching the
+     choice above switches which set the field reads, and nothing typed
+     under one visit can land under another. Restored into from what was
+     held (below), so a remount finds them again (ticket 05, audit I2). */
+  let drafts = $state<Record<string, Record<string, string>>>({});
+  let visitDrafts = $derived((visit ? drafts[visit.id] : undefined) ?? {});
+
+  function setAnswer(itemId: string, value: string) {
+    if (!visit) return;
+    drafts = { ...drafts, [visit.id]: { ...drafts[visit.id], [itemId]: value } };
+  }
 
   let current = $derived(items[Math.min(index, Math.max(items.length - 1, 0))]);
   let atFirst = $derived(index <= 0);
@@ -74,33 +127,32 @@
 
   /* One read of the pairing rule, for the two things that ask about it: what
      travels to the debrief, and whether the way out has anything to carry. */
-  let jotted = $derived(answeredQuestions(items, answers));
-  let carrying = $derived(todaysAppointment !== null && jotted.length > 0);
+  let jotted = $derived(answeredQuestions(items, visitDrafts));
+  let carrying = $derived(visit !== null && jotted.length > 0);
 
-  /* Held as it is typed rather than on the way out, so a back gesture in the
-     middle of a visit loses nothing (stores/inTheRoom.ts). Nothing is
+  /* Held as they are typed rather than on the way out, so a back gesture in
+     the middle of a visit loses nothing (stores/inTheRoom.ts). Nothing is
      written to the journal here and nothing reaches storage.
 
-     Restored once per appointment, before the first publish: this screen's
-     own `answers` starts empty on every mount, and without restoring first
-     this effect would publish that emptiness and overwrite whatever a
-     previous visit to this screen had held. Gated on both reads having
-     landed - `items` is `[]` both before the checklist has loaded and after
-     it has loaded empty, and restoring against the former would drop every
-     held answer for good. A failed read is not an empty journal either, so
-     it must not restore or publish an empty map. */
-  let restoredFor: string | null = null;
+     Restored once per visit, before the first publish: a visit's first entry
+     in `drafts` is what was held for it, so a remount finds what this
+     process already heard. Gated on both reads having landed - `items` is
+     `[]` both before the checklist has loaded and after it has loaded
+     empty, and restoring against the former would drop every held answer
+     for good. A failed read is not an empty journal either, so it must not
+     restore or publish an empty draft. */
   $effect(() => {
-    if (!todaysAppointment) return;
+    if (!visit) return;
     if (checklistQuery.loading || appointmentsQuery.loading || checklistQuery.failed || appointmentsQuery.failed) return;
-    if (restoredFor !== todaysAppointment.id) {
-      restoredFor = todaysAppointment.id;
-      answers = restoreRoomAnswers(
-        todaysAppointment.id,
+    let mine = drafts[visit.id];
+    if (!mine) {
+      mine = restoreRoomAnswers(
+        visit.id,
         items.map((item) => item.id)
       );
+      drafts = { ...drafts, [visit.id]: mine };
     }
-    holdRoomAnswers({ appointmentId: todaysAppointment.id, answers: jotted, byItemId: { ...answers } });
+    holdRoomAnswers({ appointmentId: visit.id, answers: answeredQuestions(items, mine), byItemId: { ...mine } });
   });
 
   function step(by: number) {
@@ -110,11 +162,12 @@
   function leave() {
     /* The one control, with one of two destinations, and the label above it
        says which: something jotted goes on into the debrief through the
-       offer's own deep link, so the answers land in the entry rather than
-       waiting for a prompt that cannot appear until the day is over
-       (mostRecentPastAppointment, appointments.ts). Nothing jotted goes back
-       where the person came from. */
-    if (carrying && todaysAppointment) goto(`/entry/new/today?debriefFor=${todaysAppointment.id}`);
+       offer's own deep link, carrying the chosen visit's own id, so the
+       answers land in that visit's entry rather than waiting for a prompt
+       that cannot appear until the day is over (mostRecentPastAppointment,
+       appointments.ts). Nothing jotted goes back where the person came
+       from. */
+    if (carrying && visit) goto(`/entry/new/today?debriefFor=${visit.id}`);
     else smartBack('/health/appointments');
   }
 </script>
@@ -136,6 +189,30 @@
   <ReadGate read={checklistQuery} variant="block" count={1}>
     {#snippet rows()}
       <div class="room-stage" data-in-the-room>
+        <!-- Only when the day is ambiguous (ticket 12, audit I3): which
+             visit these answers belong to is a fact only the person has.
+             One control above the question, so it is reachable before any
+             answering starts and states the choice the field under it keys
+             off; a day with one booking needs no step and shows nothing
+             here. -->
+        {#if ambiguousDay || (chosenVisitId !== null && !visit && todaysVisits.length > 0)}
+          <button
+            class="room-visit"
+            data-room-visit
+            aria-label={visit ? m.in_the_room_visit_change_aria() : m.in_the_room_visit_choose()}
+            onclick={() => (visitSheet = true)}
+          >
+            <span class="room-visit-name">
+              {#if visit}
+                {nameOf(visit)}{visit.place ? ` · ${visit.place}` : ''}
+              {:else}
+                {m.in_the_room_visit_choose()}
+              {/if}
+            </span>
+            <Icon name="chevronDown" size={18} />
+          </button>
+        {/if}
+
         <!-- aria-live, because moving between questions replaces the text in
              place and never moves focus. Focus stays where it is on purpose:
              pulling it into the field would raise the keyboard over the very
@@ -150,8 +227,11 @@
              The list is standing and can be read any day (ADR-0066), and on
              a day with nothing booked there is no debrief for a jotting to
              reach - a field that took what somebody typed and dropped it on
-             the way out would be the worst of the three options. -->
-        {#if todaysAppointment}
+             the way out would be the worst of the three options. An
+             ambiguous day with nothing chosen yet is the same state for the
+             same reason: until the visit is named, nowhere has been named
+             for an answer to land. -->
+        {#if visit}
           <Field label={m.in_the_room_answer_label()} id="room-answer">
             {#snippet children(id)}
               <textarea
@@ -161,8 +241,8 @@
                 rows="3"
                 data-room-answer
                 placeholder={m.in_the_room_answer_placeholder()}
-                value={answers[current.id] ?? ''}
-                oninput={(event) => (answers[current.id] = event.currentTarget.value)}
+                value={visitDrafts[current.id] ?? ''}
+                oninput={(event) => setAnswer(current.id, event.currentTarget.value)}
               ></textarea>
             {/snippet}
           </Field>
@@ -203,6 +283,26 @@
       />
     {/snippet}
   </ReadGate>
+
+  <!-- The choice itself, offered only where the day is ambiguous: the
+       day's visits as rows, the same shape the visit screen lists them in,
+       and nothing else - the prep list is standing and shared (ADR-0066),
+       so what is being chosen here is only whose room this is. -->
+  <Sheet open={visitSheet} title={m.in_the_room_visit_sheet()} onClose={() => (visitSheet = false)}>
+    <h3>{m.in_the_room_visit_sheet()}</h3>
+    <ListCard>
+      {#each todaysVisits as appointment (appointment.id)}
+        <ListRow
+          key={appointment.id}
+          data-visit-pick={appointment.id}
+          icon="calendar"
+          title={nameOf(appointment)}
+          subtitle={appointment.place ?? undefined}
+          onclick={() => pickVisit(appointment.id)}
+        />
+      {/each}
+    </ListCard>
+  </Sheet>
 </div>
 
 <style>
@@ -230,6 +330,35 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
+  }
+
+  /* Which visit these answers belong to (ticket 12, audit I3). Quiet on
+     purpose: it sits above the largest text in the app and must not compete
+     with it, so it reads as a line of small text that happens to open the
+     choice, not as a fourth control. Left-aligned rather than centred under
+     the question, because it states a fact about the day ("morning, at the
+     clinic") rather than asking anything. The hit area is the full-height
+     row it occupies, which clears the touch floor without padding the pill
+     out to a button's size. */
+  .room-visit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    align-self: flex-start;
+    min-height: var(--touch-target);
+    margin-top: calc((var(--touch-target) - 1.5em) / -2);
+    padding: 0 var(--space-2);
+    margin-left: calc(var(--space-2) * -1);
+    border: 0;
+    background: none;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .room-visit-name {
+    min-width: 0;
+    text-align: left;
   }
 
   /* The question takes the whole upper block and sits in the middle of it,
