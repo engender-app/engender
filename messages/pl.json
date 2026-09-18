@@ -3885,6 +3885,8 @@
   "document_missing_action": "Wróć do dokumentów",
   "day_document": "Dokument",
   "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz",
+  "document_enlarge_page": "Powiększ stronę do 200%",
+  "document_fit_page": "Dopasuj stronę",
   "document_page_alt": "Kartka: {title}",
   "document_page_count": "Strona {page} z {pages}",
   "document_page_prev": "Poprzednia strona",
