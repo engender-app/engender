@@ -1,6 +1,6 @@
-# Single-consumer classes screens.css already carried when ticket 16 added
-# this check (or accepted since) - the long tail future screen tickets move
-# out one at a time. Regenerate with `node scripts/check-screens-classes.mjs
+# Single-consumer classes src/lib/styles/screens.css already carried when this check
+# started covering it (or accepted since) - the long tail future tickets
+# move out one at a time. Regenerate with `node scripts/check-screens-classes.mjs
 # --update` after moving a class out or deliberately accepting a new one.
 compare-metrics
 compare-metrics-header
@@ -12,37 +12,24 @@ day-add
 drag-dots
 entry-days
 gate
-gate-form
-gate-mark
-gate-modes
-gate-modes-ico
-gate-note
+gate-field
+gate-page
 gate-progress
 gate-title
-home
-home-hero
-is-alert
-is-on
-kit-chart
-kit-list
 kit-notice
 lab-context
 lab-mixed-list
 manage-tags-link
-milestone-face
 mood-preset-grid
 next-preview
 otd-photos
-photo-thumb
+pin-dots
+pin-pad
 rive-stage
 screen-gate
-search-box
 search-chips
-search-count
 search-filter-dates
 search-filter-label
-search-hint
-search-input
 settings-pad
 settings-unit-row
 share-note
@@ -50,10 +37,8 @@ share-preview
 share-stage
 starred-photo-cell
 starred-photo-unstar
-stats-caption
 stats-interval
 stats-interval-input
-stats-open
 value-row
 video-preview
 wrapped-card

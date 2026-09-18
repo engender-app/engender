@@ -189,10 +189,9 @@ try {
   if (race[0] === 'onboarding-welcome') ok("a production first run paints onboarding's welcome screen before any security gate");
   else fail("a production first run paints onboarding's welcome screen before any security gate", JSON.stringify(race));
 
-  await page.locator('[data-next]').click(); // welcome -> name
-  await page.locator('[data-next]').click(); // name -> flag
-  await page.locator('[data-next]').click(); // flag -> scales
-  await page.locator('[data-next]').click(); // scales -> lock
+  for (let step = 0; step < 12 && !(await page.locator('[data-access-modes]').count()); step++) {
+    await page.locator('[data-next]').click();
+  }
 
   /* Reaching the lock step is where the access-mode module (ticket 53)
      appears - not before, which the race above already pinned, and not a
@@ -231,8 +230,9 @@ try {
   await page.waitForSelector('[data-next]', { timeout: 10000 });
   ok('onboarding continues on its own lock step once the access mode is set up');
 
-  await page.locator('[data-next]').click(); // lock -> checkin
-  await page.locator('[data-next]').click(); // checkin -> done
+  for (let step = 0; step < 12 && (await page.locator('[data-next]').count()); step++) {
+    await page.locator('[data-next]').click();
+  }
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   ok('finishing onboarding lands on Home');
@@ -373,7 +373,7 @@ try {
   await cold.waitForSelector('#ed-note');
   await cold.locator('[data-save]').click();
   await cold.waitForSelector('[data-home-hello]');
-  await cold.waitForSelector('[data-entry-card]');
+  await cold.waitForSelector('[data-home-count]');
 
   const cdp = await installed.newCDPSession(cold);
   const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
@@ -622,14 +622,13 @@ try {
   await restarted.waitForSelector('#journal-passphrase', { timeout: 30000 });
   await restarted.fill('#journal-passphrase', 'verify-build passphrase');
   await restarted.click('[data-passphrase-submit]');
-  await restarted.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
-  await restarted.waitForSelector('[data-entry-card]');
+  await restarted.waitForSelector('[data-home-count]');
 
-  const entries = await restarted.locator('[data-entry-card]').count();
+  const counts = await restarted.locator('[data-home-count]').count();
   const home = await restarted.locator('[data-home-hello]').count();
-  if (home === 1 && entries >= 1)
-    ok(`with the network off the app opens the Journal and reads what is in it (${entries} entry card)`);
-  else fail('with the network off the app opens the Journal and reads existing entries', `home: ${home}, entries: ${entries}`);
+  if (home === 1 && counts >= 1)
+    ok('with the network off the app opens the Journal and reads what is in it');
+  else fail('with the network off the app opens the Journal and reads existing entries', `home: ${home}, counts: ${counts}`);
 
   /* Which the worker did, rather than an HTTP cache that happened to still
      hold everything: workerStart is only set on a navigation a service

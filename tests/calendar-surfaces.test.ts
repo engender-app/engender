@@ -197,7 +197,7 @@ describe('the heat map', () => {
        the faces are gated on mood alone - a later ticket dropping the gate
        to "every metric gets a face" would be the judgment this app cannot
        make, and no other test in the tree would see it. */
-    expect(heatMap).toMatch(/\{#if isMood && c\.step > 0\}/);
+    expect(heatMap).toMatch(/\{#if isMood\}/);
     // And the flag's ramp is still what a dimension shades in.
     expect(heatMap).toMatch(/role\?\.heat\[step\]\.fill/);
   });

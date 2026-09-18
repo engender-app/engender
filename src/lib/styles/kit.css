@@ -468,31 +468,6 @@
   cursor: pointer;
 }
 
-/* A row action whose meaning no glyph carries says it in words instead
-   (ListRow's own `text`). The square becomes a pill wide enough for them,
-   still at the row's full height, so the target only ever grows. */
-.kit-row-act.has-text {
-  width: auto;
-  min-width: var(--touch-target);
-  grid-auto-flow: column;
-  gap: var(--space-1);
-  padding-inline: var(--space-3);
-}
-
-/* The words are drawn as a chip rather than as bare text: an icon button
-   reads as a control from its glyph, and a word at the end of a row that is
-   already three lines of words does not. --r-block is the app's one corner
-   (phase 10, rule 5), and the outline is what every other pressable surface
-   in the kit uses - no shadow, which this kit does not have. */
-.kit-row-act-text {
-  padding: 4px 10px;
-  border: 1px solid var(--outline);
-  border-radius: var(--r-block);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-}
-
 /* ---------- the filter line ----------
 
    A label and one control, sitting on the page rather than in a card:
@@ -1465,9 +1440,9 @@ a.kit-entry:active {
   /* The row answers a held finger sliding across it (MoodChips), which the
      browser would otherwise claim as a scroll. */
   touch-action: none;
-  transition-property: color;
-  transition-duration: var(--dur-fast);
-  transition-timing-function: var(--ease-out);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    --mood-mag var(--dur-med) var(--ease-out);
 }
 
 .kit-mood .mood-face {
@@ -2269,16 +2244,6 @@ button.kit-strip-day .kit-strip-cell {
 /* The other three corners readoutCorner can choose. Each is one axis
    flipped off the top-right default above, so the two combine freely into
    all four. */
-.kit-area-readout.is-left {
-  right: auto;
-  left: 0;
-  align-items: flex-start;
-}
-
-.kit-area-readout.is-below {
-  top: auto;
-  bottom: 0;
-}
 
 .kit-area-readout b {
   font-size: var(--text-sm);
@@ -2330,16 +2295,6 @@ button.kit-strip-day .kit-strip-cell {
   margin-top: 2px;
 }
 
-/* The free-text half of a reading - a metric's own name, or when it was
-   taken - next to a number that is never allowed to shrink. Capped and
-   ellipsized like an annotation's own name (below): the plate around it is
-   now held to half the plot, and an unbounded name could otherwise still
-   force it wider than that; the shared cap lives on the selector pair below.
-   `min-width: 0` here overrides the flex/grid default that would rather
-   overflow than shrink a line below its own content. */
-.kit-area-readout-text {
-  min-width: 0;
-}
 
 /* Which line is which (phase 6 ticket 12). The app's second legend, and the
    second named departure from DIRECTION.md's chart rules - the first is the
@@ -2396,7 +2351,6 @@ button.kit-strip-day .kit-strip-cell {
    together instead of guessing a `ch` count small enough for every plot
    width the kit is asked to draw at. Shared with .kit-area-readout-text
    above, which caps for the same reason. */
-.kit-area-readout-text,
 .kit-area-readout-annotation {
   display: block;
   max-width: 100%;
@@ -2768,38 +2722,6 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 
-/* The day and its note, at the same place in the row whichever copy this
-   is: the one on the card and the one the mark clips have to land on the
-   same pixel or the words look doubled at the bar's end. */
-.kit-bars.is-inline .kit-bar-inside {
-  position: absolute;
-  left: var(--space-3);
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-
-.kit-bars.is-inline .kit-bar-mark .kit-bar-inside,
-.kit-bars.is-inline .kit-bar-mark .kit-bar-name,
-.kit-bars.is-inline .kit-bar-mark .kit-bar-note {
-  color: var(--role-fill-ink);
-}
-
-.kit-bars.is-inline .kit-bar-note {
-  margin-top: 0;
-  line-height: 1.2;
-}
-
-/* Right, so the figures line up on their last digit down the card: the
-   column is fixed and 85 is a character narrower than 100. */
-.kit-bars.is-inline .kit-bar-value {
-  grid-column: 2;
-  margin-left: 0;
-  text-align: right;
-}
 
 /* --- the year, a day at a time ---
 

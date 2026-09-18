@@ -1033,6 +1033,16 @@
 </div>
 
 <style>
+  .stats-inline-note {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-body);
+    color: var(--text-2);
+  }
+  .stats-inline-note:first-child {
+    margin: 0 0 var(--space-3);
+  }
+
   /* One regimen, named under the rail: what one of its lines is a line
      about. Not a ListRow in a card of its own - that is a third stacked
      container on a 390px screen for one fact, and DIRECTION.md 2b is about

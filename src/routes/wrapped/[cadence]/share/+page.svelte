@@ -191,3 +191,28 @@
     {/if}
   {/if}
 </div>
+
+<style>
+  .share-stage-empty :global(.wrapped-card) {
+    min-height: 176px;
+    display: grid;
+    place-items: center;
+  }
+
+  .share-empty-preview {
+    position: absolute;
+    inset: 1px;
+    display: grid;
+    place-items: center;
+    padding: var(--space-5);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .share-empty-preview p {
+    max-width: 28ch;
+    margin: 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+  }
+</style>

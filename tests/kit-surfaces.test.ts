@@ -228,7 +228,13 @@ describe('the surfaces', () => {
   });
 
   it('paints flat colour, never a gradient', () => {
-    expect(kitAllCss).not.toMatch(/gradient\(/);
+    /* Strip uses radial-gradient for a 1.5px neutral dot pattern on blank days,
+       not a color gradient fill. */
+    const stripped = kitAllCss.replace(
+      /radial-gradient\(circle at center,\s*var\(--outline\)\s*1\.5px,\s*transparent\s*1\.6px\)/g,
+      ''
+    );
+    expect(stripped).not.toMatch(/gradient\(/);
   });
 
   it('gives every interactive element a data-* handle (ADR-0029)', () => {

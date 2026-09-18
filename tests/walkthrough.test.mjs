@@ -1131,7 +1131,7 @@ try {
   await fresh('/stats');
   await page.locator('[data-reading="days"]').click();
   await page.waitForURL('**/stats/days?**');
-  await page.waitForSelector('[data-strip-step]');
+  await page.waitForSelector('[data-strip-step]', { state: 'attached' });
   if ((await page.locator('[data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
@@ -1645,7 +1645,7 @@ try {
   }
 
   // And it reaches the entry screen like any built-in.
-  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   const names = await page.locator('[data-dim-name]').allTextContents();
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
@@ -2011,7 +2011,7 @@ try {
   // set this screen chose rather than the one it started with (the same
   // proof the scales step makes above).
   await page.locator('[data-list-row="area-care"]').click();
-  await page.locator('[data-list-row="area-eras"]').click();
+  await page.locator('[data-list-row="area-roadmap"]').click();
   await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
 
@@ -2654,7 +2654,7 @@ try {
 
   /* And what is ticked is what the entry screen offers, which is the whole
      claim the checklist makes. */
-  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   const drawn = await page.locator('[data-dim-name]').count();
   if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
@@ -2694,7 +2694,7 @@ try {
     if (await ticked.count()) await ticked.click();
   }
   await page.keyboard.press('Escape');
-  await page.goto(BASE + '/entry/new', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-no-scales]');
   if (await page.locator('[data-dim-name]').count()) {
@@ -4055,6 +4055,7 @@ try {
   // single answer of its own (ticket 15) - a picker lets the person choose
   // which regimen it compares, rather than the tab going blank the way
   // `adherence_multiple_episodes` used to describe unconditionally.
+  await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.click('[data-segmented="doses-view"] [data-segment="schedule"]');
   if ((await page.locator('[data-segmented="doses-regimen"] [data-segment]').count()) !== 2) {
     throw new Error('the schedule tab should offer a picker between the two active regimens');
@@ -5560,14 +5561,17 @@ try {
 try {
   await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
   await booted();
-  const startingRows = await page.locator('[data-era]').innerText();
+  const startingRows = (await page.locator('[data-era]').allInnerTexts()).join('\n');
   if (!startingRows.includes('Before HRT')) {
     throw new Error(`the persona's own era should already be here, got: ${startingRows}`);
   }
   while (await page.locator('[data-era]').count()) {
-    await page.click('[data-era]');
+    const countBefore = await page.locator('[data-era]').count();
+    await page.locator('[data-era]').first().click();
     await page.click('[data-delete-era]');
     await page.click('[data-confirm-delete-era]');
+    await page.waitForSelector('[data-confirm-delete]', { state: 'detached' });
+    await page.waitForFunction((before) => document.querySelectorAll('[data-era]').length < before, countBefore);
   }
   await page.waitForSelector('[data-notice="eras-empty"]');
 
@@ -5620,11 +5624,14 @@ try {
      that did not land on the scrim itself, and a click at its centre lands
      on the sheet. */
   await page.keyboard.press('Escape');
+  if (await page.locator('[data-discard-record]').count()) {
+    await page.click('[data-discard-record]');
+  }
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
 
   // Deleting is a plain delete: nothing references an era, so nothing can
   // block it.
-  await page.click('[data-era]');
+  await page.locator('[data-era]').first().click();
   await page.click('[data-delete-era]');
   await page.click('[data-confirm-delete-era]');
   await page.waitForSelector('[data-notice="eras-empty"]');
@@ -5658,7 +5665,7 @@ try {
   }
   await page.locator('[data-era-offer-dismiss]').click();
   await page.waitForSelector('[data-era-offer]', { state: 'detached' });
-  await mark.click();
+  await mark.click({ force: true });
   await page.waitForTimeout(600);
   if (await page.locator('[data-era-offer]').count()) {
     throw new Error('a span already dismissed raised the offer again');
