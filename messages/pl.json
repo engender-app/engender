@@ -3945,6 +3945,8 @@
   "in_the_room_empty_title": "Nie ma jeszcze o co pytać",
   "in_the_room_empty_body": "Ten ekran pokazuje pytania z listy pojedynczo, na tyle duże, żeby dało się je czytać w trakcie rozmowy. Najpierw dodaj pytanie.",
   "in_the_room_empty_action": "Otwórz listę pytań",
+  "in_the_room_visit_sheet": "Która to wizyta?",
+  "in_the_room_visit_choose": "Wybierz wizytę",
   "debrief_room_heading": "Twoje pytania:",
   "progress_percent": "{percent}%",
   "progress_stop": "Przerwij",
