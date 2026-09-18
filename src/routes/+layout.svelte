@@ -455,6 +455,16 @@
     refreshActiveFlag(document, prefs.disguise);
   });
 
+  /* Document language (pre-production audit U1). app.html ships `lang="en"`
+     as a valid fallback; this stamps the resolved locale so assistive
+     technology pronounces in the right language after a cold start on a
+     Polish preference or a browser whose navigator.language is Polish.
+     setLocale() reloads the page, so a language switch re-enters here
+     with the new value rather than needing a reactive update. */
+  $effect(() => {
+    document.documentElement.lang = getLocale();
+  });
+
   /* First-run gate: onboarding is the entire first-run experience (F16).
      Held until boot is ready, because `onboarded` lives in SQLite (ticket
      06) and is not in the small set mirrored outside it - before the
