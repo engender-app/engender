@@ -16,7 +16,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { cycleEventKindName } from '$lib/data/vocabulary/labels';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import {
     todayEpochDay,
     epochDayFromDateInputValue,
@@ -34,6 +34,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
   import DayStrip from '$lib/components/DayStrip.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { stripWindow, type DayMark } from '$lib/components/dayStrip';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -62,6 +63,7 @@
   let range = $derived(
     customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput))
   );
+  let historyEnds = $derived(range ? fmtRangeEnds(range.start, range.end) : null);
 
   let eventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
   let events = $derived(eventsQuery.rows);
@@ -214,6 +216,13 @@
     </div>
 
     <div class="screen-part">
+      <SectionHeading text={m.cycle_event_history_title()}>
+        {#snippet action()}
+          {#if historyEnds}
+            <span class="muted small" data-cycle-event-history-range>{m.cycle_event_history_range(historyEnds)}</span>
+          {/if}
+        {/snippet}
+      </SectionHeading>
       <!-- The chart is not in a card. It is the only thing in this area of
            the screen, and a box drawn around the one thing on a screen is
            what DIRECTION.md 2b names as making a screen read as generic -
