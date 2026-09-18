@@ -128,18 +128,34 @@ describe('the notify column on web', () => {
        column and the four prompts are unaffected: a notice, a card and a
        nudge are in-app UI, not notifications. */
     expect(screenMarkup).toContain('{#if isWeb}');
-    const web = screenMarkup.slice(screenMarkup.indexOf('{#if isWeb}'), screenMarkup.indexOf('{:else}'));
+    const web = screenMarkup.slice(screenMarkup.indexOf('{#if isWeb}'), screenMarkup.indexOf('{/if}'));
     expect(web).toContain('notif_web_title');
     expect(web).not.toContain('<Switch');
   });
 
-  it('carries quiet hours and the disguise only on the platform that can fire', () => {
-    const androidOnly = screenMarkup.slice(screenMarkup.indexOf('{:else}'));
-    expect(androidOnly).toContain('data-quiet-hours');
-    expect(androidOnly).toContain('prefs.quietHoursEnabled');
-    expect(androidOnly).toContain('prefs.hideNotificationTitles');
+  it('explains the platform beside the rows it governs (ticket 13)', () => {
+    /* The web notice sits above the registry card, not below the prompts:
+       "every visible row has an action or a nearby explanation" is about
+       distance, and an explanation after another section was the audit's
+       finding. */
+    const notice = screenMarkup.indexOf('key="notifications-web"');
+    const rows = screenMarkup.indexOf('{#each ROWS as row (row.key)}');
+    expect(notice).toBeGreaterThanOrEqual(0);
+    expect(notice).toBeLessThan(rows);
   });
 
+  it('keeps phone-only controls on the platform that can fire (ticket 13)', () => {
+    /* Quiet hours, hidden titles and the denied-permission notice follow
+       the notify column out on web, under one gate after the prompts. */
+    const tail = screenMarkup.slice(screenMarkup.indexOf('m.notif_prompts_heading()'));
+    expect(tail).toContain('{#if !isWeb}');
+    expect(tail).toContain('data-quiet-hours');
+    expect(tail).toContain('prefs.hideNotificationTitles');
+    expect(tail).toContain('retro_notify_capabilities_title');
+  });
+});
+
+describe('what only Android carries', () => {
   it('says that a held notification is held rather than dropped', () => {
     expect(screenMarkup).toContain('notif_quiet_held');
   });
