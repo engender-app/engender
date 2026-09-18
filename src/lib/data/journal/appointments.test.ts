@@ -8,7 +8,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
-import { soonestFutureAppointment, mostRecentPastAppointment, appointmentsOnDay, chosenVisitOnDay } from './appointments.ts';
+import { soonestFutureAppointment, mostRecentPastAppointment, appointmentsOnDay, chosenAppointmentOnDay } from './appointments.ts';
 import type { Appointment } from '../types.ts';
 
 test('an appointment carries a day, a kind, a place and a note, and edits', async () => {
@@ -298,29 +298,29 @@ test('appointmentsOnDay reads the day whole, oldest first', () => {
   );
 });
 
-test('chosenVisitOnDay resolves the visit the room belongs to', () => {
+test('chosenAppointmentOnDay resolves the visit the room belongs to', () => {
   const today = 20100;
   // Nothing booked, on either side of the boundary: rehearsal, no visit.
-  assert.equal(chosenVisitOnDay([], today, null), null);
-  assert.equal(chosenVisitOnDay([at(20099, 'yesterday'), at(20101, 'tomorrow')], today, null), null);
+  assert.equal(chosenAppointmentOnDay([], today, null), null);
+  assert.equal(chosenAppointmentOnDay([at(20099, 'yesterday'), at(20101, 'tomorrow')], today, null), null);
   // One visit on the day: no choice step, the first-on-day fallback.
   assert.deepEqual(
-    chosenVisitOnDay([at(20099, 'yesterday'), at(20100, 'today'), at(20200, 'later')], today, null),
+    chosenAppointmentOnDay([at(20099, 'yesterday'), at(20100, 'today'), at(20200, 'later')], today, null),
     at(20100, 'today')
   );
   // A deleted or moved selection must not fall back to the remaining visit.
   assert.equal(
-    chosenVisitOnDay([at(20100, 'today')], today, 'booked-elsewhere'),
+    chosenAppointmentOnDay([at(20100, 'today')], today, 'booked-elsewhere'),
     null
   );
   // Two on the day: the chosen one, whichever half of the day it is.
   assert.deepEqual(
-    chosenVisitOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, 'afternoon'),
+    chosenAppointmentOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, 'afternoon'),
     at(20100, 'afternoon')
   );
   // Two on the day and nothing chosen: ambiguous, the screen must ask.
-  assert.equal(chosenVisitOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, null), null);
+  assert.equal(chosenAppointmentOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, null), null);
   // The chosen one deleted from a day that still holds another: neither,
   // because falling back would attach this room to the other visit.
-  assert.equal(chosenVisitOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, 'deleted'), null);
+  assert.equal(chosenAppointmentOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, 'deleted'), null);
 });

@@ -125,7 +125,7 @@ export function appointmentsOnDay(appointments: Appointment[], epochDay: number)
 
 /** Resolve an explicit choice, or the day's only visit when none was made.
     A deleted or moved selection must never fall back to another visit. */
-export function chosenVisitOnDay(
+export function chosenAppointmentOnDay(
   appointments: Appointment[],
   epochDay: number,
   chosenId: string | null
