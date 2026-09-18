@@ -52,6 +52,16 @@ export function makePaperPdf(pages) {
   );
 }
 
+/** Dense 11pt pages for reading at phone width, with distinct page footers. */
+export function makeDensePdf() {
+  return pdfFromStreams([1, 2, 3].map((page) => [
+    'BT /F1 20 Tf 40 790 Td (CITY CLINIC - REFERRAL) Tj ET',
+    ...Array.from({ length: 48 }, (_, line) =>
+      `BT /F1 11 Tf 40 ${760 - line * 14} Td (Line ${line + 1}: Bring previous results and the appointment letter.) Tj ET`),
+    `BT /F1 14 Tf 40 45 Td (Page ${page} of 3 - reference ${page}026) Tj ET`
+  ].join('\n')));
+}
+
 /** Text a standard face can actually draw. The fourteen standard fonts are
     WinAnsi, which has no ą, ę, ł or ż, and a PDF that wanted them would
     need an embedded face and an encoding table - a lot of fixture for a

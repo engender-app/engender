@@ -7,8 +7,8 @@
      This is the only screen in the app that draws a document's page at all.
      The list behind it is deliberately text (ADR-0065), so the tap that
      lands here is what the person chose to show themselves, and the image
-     goes at the top of the screen where they are already looking rather
-     than behind a further control.
+     follows its stored title, date and owner. Editable metadata stays
+     below the reader.
 
      The two fields are editable for one reason: the title is the only
      handle anything has on a document - the list shows it, search matches
@@ -52,6 +52,7 @@
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { nameSlug } from '$lib/data/fold';
+  import { fmtDay } from '$lib/data/dates';
   import { openPdf, type OpenPdf } from '$lib/data/documents/pdf';
   import { documentThumbName, isPdfDocument } from '$lib/data/journal/documents';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -100,6 +101,16 @@
   }
 
   let isPdf = $derived(stored ? isPdfDocument(stored.fileName) : false);
+  let enlarged = $derived(page.url.searchParams.get('zoom') === '2');
+  let reader = $state<HTMLDivElement | null>(null);
+
+  function toggleZoom() {
+    const url = new URL(page.url);
+    if (enlarged) url.searchParams.delete('zoom');
+    else url.searchParams.set('zoom', '2');
+    reader?.scrollTo(0, 0);
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
+  }
 
   /* The page, drawn at whatever shape it is rather than through PhotoThumb.
      That primitive is a fixed square tile with a caption across the bottom,
@@ -108,12 +119,10 @@
      already in the field below. So the read and the blob's lifetime are
      here, the same two moves PhotoThumb makes, with the aspect left alone.
 
-     The thumbnail, for either kind of document: an image's from
-     normalisation, a PDF's its first page drawn at import (ticket 55).
-     Read under the name the area derives rather than through
-     `readThumbnail`, whose `.jpg` rewrite would hand a PDF its own bytes
-     back under a JPEG's type (photos/names.ts). For a PDF this is what is
-     on screen until the renderer has a page of its own. */
+     Images use their full stored resolution for enlargement. A PDF uses
+     its import thumbnail until the renderer has a page of its own. The
+     PDF thumbnail name comes from the area rather than readThumbnail,
+     whose extension rewrite would read the PDF bytes as a JPEG. */
   let pageUrl = $state<string | null>(null);
 
   $effect(() => {
@@ -122,7 +131,9 @@
 
     let stale = false;
     let objectUrl: string | null = null;
-    readThumbnailFile(documentThumbName(fileName)).then(
+    const bytes = !isPdfDocument(fileName)
+      ? readPhoto(fileName) : readThumbnailFile(documentThumbName(fileName));
+    bytes.then(
       (bytes) => {
         if (stale || !bytes) return;
         objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
@@ -249,6 +260,7 @@
 
   let renderEdge = $derived.by(() => {
     if (frameWidth === 0 || typeof window === 'undefined') return 0;
+    if (enlarged) return RENDER_CAP;
     const sheetHeight = window.innerHeight * SHEET_VIEWPORT_SHARE;
     const devicePixels = Math.max(frameWidth, sheetHeight) * (window.devicePixelRatio || 1);
     return Math.min(RENDER_CAP, Math.ceil(devicePixels / RENDER_STEP) * RENDER_STEP);
@@ -323,6 +335,7 @@
     const next = pageNumber + by;
     if (next < 1 || next > pages.pageCount) return;
     turnedBy = by;
+    reader?.scrollTo(0, 0);
     const url = new URL(page.url);
     url.searchParams.set('page', String(next));
     void replaceRoute(url, { noScroll: true, keepFocus: true });
@@ -386,7 +399,31 @@
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <!-- The page itself, at the top of the screen the tap opened. The
+    <div class="screen-part stack-3 doc-identity" data-document-identity>
+      <h2>{stored.title}</h2>
+      <p class="muted">
+        <time datetime={dateInputValueFromEpochDay(stored.epochDay)}>
+          {fmtDay(stored.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+        </time>
+      </p>
+      {#if resolved?.state === 'found'}
+        <ListCard>
+          <ListRow
+            key="document-owner"
+            icon={DOCUMENT_TARGET_ICON[target!.kind]}
+            title={resolved.text}
+            subtitle={documentTargetKindLabel(target!.kind)}
+            href={withSourceReturn(resolved.href, page.url)}
+          />
+        </ListCard>
+      {:else if resolved?.state === 'loading'}
+        <Skeleton variant="line" count={1} />
+      {:else}
+        <p class="muted small">{resolved ? m.document_target_gone() : m.document_link_none()}</p>
+      {/if}
+    </div>
+
+    <!-- The page follows its stored identity. The
          canvas is always mounted and only sometimes the thing on screen:
          a page cannot be drawn into an element that appears once it has
          been drawn. Behind it, in order, the thumbnail from import and
@@ -394,13 +431,23 @@
          not be drawn at all is left with. -->
     <div
       class="screen-part doc-page"
-      style="--doc-sheet-height: {SHEET_VIEWPORT_SHARE * 100}vh"
+      style="--doc-sheet-height: {SHEET_VIEWPORT_SHARE * 100}vh; --doc-zoom-width: {frameWidth * 2}px"
       bind:clientWidth={frameWidth}
     >
       <!-- The sheet and the control that turns it are one column, so the
            pager is exactly as wide as the page it belongs to rather than
            as wide as the screen. -->
       <div class="doc-sheet">
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (The scroll region needs focus for native keyboard panning.) -->
+        <div
+          class="doc-reader"
+          class:enlarged
+          data-document-reader
+          bind:this={reader}
+          role="region"
+          aria-label={m.document_page_alt({ title: stored.title })}
+          tabindex={enlarged ? 0 : undefined}
+        >
         <canvas
           class="doc-page-canvas"
           class:drawn={pageDrawn}
@@ -424,9 +471,15 @@
           {/if}
         {/if}
 
+        </div>
+        {#if pageDrawn || pageUrl}
+          <button class="btn btn-soft press" data-document-zoom onclick={toggleZoom}>
+            {enlarged ? m.document_fit_page() : m.document_enlarge_page()}
+          </button>
+        {/if}
+
         {#if pages}
-          <!-- Pages and nothing else (ADR-0065): no zoom, no rotation, no
-               grid of every page, and no text under any of them.
+          <!-- The reader draws only page pixels, without a text layer.
 
                The count shows for a one-page document too, because "Page 1
                of 1" is how a person knows they have seen the whole thing;
@@ -600,6 +653,14 @@
 </div>
 
 <style>
+  .doc-identity h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-display);
+    overflow-wrap: anywhere;
+  }
+
   /* The page sits on its own, centred, with nothing drawn around it: a box
      around the one picture on the screen is what DIRECTION.md 2b names as
      making a screen read as generic. The corner radius is the sheet's own,
@@ -629,6 +690,7 @@
   }
 
   .doc-page-image {
+    display: block;
     width: auto;
     height: auto;
   }
@@ -638,10 +700,32 @@
      The gap is tight on purpose: the pager belongs to the page above it,
      and the file's own block below is a screen-part away. */
   .doc-sheet {
+    width: 100%;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-1);
+  }
+
+  .doc-reader {
+    max-height: var(--doc-sheet-height);
+    overflow: auto;
+  }
+
+  .doc-reader > :is(img, canvas, .doc-page-empty) {
+    margin-inline: auto;
+  }
+
+  .doc-reader.enlarged {
+    height: var(--doc-sheet-height);
+  }
+
+  .doc-reader.enlarged > :is(img, canvas) {
+    width: var(--doc-zoom-width);
+    max-width: none;
+    max-height: none;
+    margin: 0;
   }
 
   /* Mounted from the start and hidden until there is a page on it, so that
@@ -662,17 +746,18 @@
      the eye lands on, and the two chevrons sit at the ends of the page's
      own width so a thumb finds them in the same place on every page. */
   .doc-pager {
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--touch-target) minmax(0, 1fr) var(--touch-target);
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-1);
+    text-align: center;
   }
 
   /* With nothing to turn, the count is the only thing in the row, and a
      lone label pushed to one end would read as a label that lost its
      control. */
   .doc-pager.one-page {
-    justify-content: center;
+    grid-template-columns: 1fr;
   }
 
   .doc-page-count {
