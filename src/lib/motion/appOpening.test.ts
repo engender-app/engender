@@ -3,7 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { openApp } from './appOpening';
 
 /** The blind's own element, as the carry treats it: a style bag. */
-const el = () => ({ style: {} as Record<string, string> });
+const el = () => {
+  const props = new Map<string, string>();
+  const style: any = {
+    props,
+    setProperty(name: string, value: string) {
+      props.set(name, value);
+    },
+    removeProperty(name: string) {
+      props.delete(name);
+    }
+  };
+  return { style };
+};
 
 /** A document with one field, a root that records what is stamped on it, and
     a `startViewTransition` that hands back the callback so a test can drive
@@ -11,7 +23,7 @@ const el = () => ({ style: {} as Record<string, string> });
 function fakeDocument({ present = true } = {}) {
   const blind = el();
   const field = {
-    style: {} as Record<string, string>,
+    ...el(),
     getBoundingClientRect: () => ({ height: 78 }),
     querySelector: () => blind,
     querySelectorAll: () => []
@@ -82,14 +94,16 @@ describe('the app opening', () => {
     expect(doc.blind.style.viewTransitionName).toBe('blind');
   });
 
-  it('publishes the two heights only once the app has mounted', async () => {
+  it('publishes --blind-from before capture and the settle delta once the app has mounted', async () => {
     const doc = fakeDocument();
     openApp(() => {}, doc.as);
-    /* `swap()` is what publishes them, and it may not run before the commit:
-       the incoming field has to exist to be measured. */
-    expect(doc.root.style.props.get('--blind-from')).toBeUndefined();
-    await doc.update();
+    /* Published before the outgoing capture so the blind-slide keyframe
+       does not fallback to 0px (Alicja, 2026-09-10). The delta between the
+       two heights is published in swap() once the incoming screen has mounted. */
     expect(doc.root.style.props.get('--blind-from')).toBe('78px');
+    expect(doc.root.style.props.get('--blind-delta')).toBeUndefined();
+    await doc.update();
+    expect(doc.root.style.props.get('--blind-delta')).toBeDefined();
   });
 
   it('stamps the pattern for app.css and takes it off at the end', async () => {

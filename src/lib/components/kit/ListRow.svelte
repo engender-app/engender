@@ -206,3 +206,22 @@
 {:else}
   <button type="button" class="kit-row" data-list-row={key} data-no-press {onclick} {...rest}>{@render body()}</button>
 {/if}
+
+<style>
+  .kit-row-act.has-text {
+    width: auto;
+    min-width: var(--touch-target);
+    grid-auto-flow: column;
+    gap: var(--space-1);
+    padding-inline: var(--space-3);
+  }
+
+  .kit-row-act-text {
+    padding: 4px 10px;
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+</style>

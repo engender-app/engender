@@ -823,7 +823,7 @@
                      shows what the selection puts on Today, in registry order, and explains
                      that unselected areas stay in Transition and where to change pins later. -->
                 <div class="setup-areas-preview" data-setup-areas-preview>
-                  <p class="setup-caption" data-setup-caption>{m.ob_areas_preview_title()}</p>
+                  <p class="setup-caption">{m.ob_areas_preview_title()}</p>
                   <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
                     {#if previewPins.length > 0}
                       {#each previewPins as pinKey (pinKey)}

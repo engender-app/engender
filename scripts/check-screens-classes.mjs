@@ -60,7 +60,13 @@ const SHEETS = [
       /* GateScreen.svelte's exported gateBodyClass() composes this into six
          gates' own class={...} expressions - never a literal "is-long"
          this script's attribute grep can find. */
-      'is-long'
+      'is-long',
+      /* GateScreen.svelte is the single shell for all six gates; .gate-page:has(.pin-pad)
+         centers the PIN pad across the gate window. */
+      'gate-page',
+      'gate-field',
+      'pin-pad',
+      'pin-dots'
     ])
   },
   {
@@ -73,7 +79,11 @@ const SHEETS = [
          see. */
       'kit-tile-act',
       'kit-notice-act',
-      'kit-notice-cta'
+      'kit-notice-cta',
+      /* Sibling selector .screen-header + .kit-heading references ScreenHeader */
+      'screen-header',
+      /* direction-contract.test.ts asserts .kit-tile-note-text clamp in kit.css */
+      'kit-tile-note-text'
     ])
   },
   {
@@ -98,15 +108,27 @@ const SHEETS = [
       'nextMonthDay',
       /* flatpickr's own popup markup, themed here rather than replaced -
          same blind spot, the library builds these elements itself. */
+      'date-picker-calendar',
+      'date-picker-entry',
       'flatpickr-calendar',
       'flatpickr-months',
+      'flatpickr-month',
       'flatpickr-current-month',
       'flatpickr-monthDropdown-months',
       'flatpickr-monthDropdown-month',
       'flatpickr-prev-month',
       'flatpickr-next-month',
+      'flatpickr-weekdays',
       'flatpickr-weekday',
+      'flatpickr-days',
       'flatpickr-day',
+      'dayContainer',
+      'flatpickr-innerContainer',
+      'flatpickr-rContainer',
+      'numInputWrapper',
+      'cur-year',
+      /* Prototype light-sweep trigger on .btn-primary, exercised in controls gallery */
+      'is-swiping',
       /* Skeleton.svelte:26 builds `class="skeleton-{variant} stagger-in"` -
          a literal string with an embedded expression, not a bare
          `class="skeleton-card"` this script's token split can match (it

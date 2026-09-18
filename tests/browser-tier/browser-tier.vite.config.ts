@@ -85,6 +85,11 @@ interface ServerResponse {
 
 export default defineConfig({
   root: import.meta.dirname,
+  server: {
+    fs: {
+      strict: false
+    }
+  },
   /* The app's static directory, so the kit gallery (phase 5 ticket 20) draws
      in Nunito and Outfit rather than in whatever the machine's system-ui
      happens to be. Type is half of what that page is reviewed for, and every

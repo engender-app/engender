@@ -163,3 +163,33 @@
     {/if}
   {/each}
 </div>
+
+<style>
+  .kit-bars.is-inline .kit-bar-inside {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    white-space: nowrap;
+  }
+
+  .kit-bars.is-inline .kit-bar-mark .kit-bar-inside,
+  .kit-bars.is-inline .kit-bar-mark .kit-bar-name,
+  .kit-bars.is-inline .kit-bar-mark .kit-bar-note {
+    color: var(--role-fill-ink);
+  }
+
+  .kit-bars.is-inline .kit-bar-note {
+    margin-top: 0;
+    line-height: 1.2;
+  }
+
+  .kit-bars.is-inline .kit-bar-value {
+    grid-column: 2;
+    margin-left: 0;
+    text-align: right;
+  }
+</style>

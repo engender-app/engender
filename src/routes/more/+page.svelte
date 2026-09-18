@@ -427,3 +427,35 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .hub-count {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: 0;
+  }
+  :global(.screen) > .hub-count {
+    margin-bottom: 0;
+  }
+  .hub-count-line {
+    display: block;
+    margin-bottom: var(--space-5);
+  }
+  .field-search-clear {
+    flex: 0 0 auto;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    margin-right: calc(-1 * var(--space-3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+  }
+  :global(.screen-field) .field-search-clear:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+  }
+</style>

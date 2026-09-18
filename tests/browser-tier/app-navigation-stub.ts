@@ -19,3 +19,5 @@ export async function goto(_url: string): Promise<void> {
     throw new Error('injected navigation failure');
   }
 }
+
+export function afterNavigate(_callback: (navigation: unknown) => void): void {}

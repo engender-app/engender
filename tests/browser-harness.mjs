@@ -88,7 +88,7 @@ export function createReporter() {
   const fail = (name, detail) => {
     checks++;
     failures++;
-    const message = detail instanceof Error ? (detail.message ?? String(detail)).split('\n')[0] : detail;
+    const message = detail instanceof Error ? (detail.message ?? String(detail)) : detail;
     console.log('FAIL', name, '—', message);
   };
   const finish = (passMessage) => {
