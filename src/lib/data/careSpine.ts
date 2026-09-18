@@ -112,9 +112,13 @@ export interface SpineMark {
       takes the lowest row with space for it, and a mark pushed out keeps a
       stem back to the line. Collisions are resolved inside one lane and
       among the shared marks separately, because the two never print on the
-      same row (the shared captions head the rail; a lane's hang under its
-      own line). */
+   same row (the shared captions head the rail; a lane's hang under its
+   own line). */
   labelRow: number;
+  /** The backing journal record the mark stands for - a dose event or a
+      lab result - or null where the kind has none (today, next dose,
+      run-out). */
+  recordId: string | null;
 }
 
 /** One running drug's own line: its name, and its own three readings placed
@@ -175,6 +179,7 @@ export interface LaneFacts {
   episodeId: string;
   drug: string;
   lastDoseEpochDay: number | null;
+  lastDoseId?: string | null;
   nextDoseEpochDay: number | null;
   runOutEpochDay: number | null;
 }
@@ -184,7 +189,18 @@ export interface LaneFacts {
     always has today. */
 interface SpineFacts {
   labDrawEpochDay: number | null;
+  labDrawId?: string | null;
   lanes: readonly LaneFacts[];
+}
+
+/** The most recent dose that actually happened, or null when none did. */
+export function lastLoggedDose(doses: readonly DoseEvent[]): DoseEvent | null {
+  let latest: DoseEvent | null = null;
+  for (const dose of doses) {
+    if (dose.status === 'skipped') continue;
+    if (latest === null || dose.timestamp > latest.timestamp) latest = dose;
+  }
+  return latest;
 }
 
 /** The day of the most recent dose that actually happened, or null when
@@ -193,13 +209,8 @@ interface SpineFacts {
 /* lastLoggedDoseDay stays exported only for its own test (AU-09 test-only
    review). */
 export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
-  let latest: number | null = null;
-  for (const dose of doses) {
-    if (dose.status === 'skipped') continue;
-    const day = epochDayFromTimestamp(dose.timestamp);
-    if (latest === null || day > latest) latest = day;
-  }
-  return latest;
+  const latest = lastLoggedDose(doses);
+  return latest ? epochDayFromTimestamp(latest.timestamp) : null;
 }
 
 /** The first slot from here to the rail's forward reach with nothing logged
@@ -227,12 +238,14 @@ export function nextExpectedSlot(
   return adherence(slots, doses, pauses).rows.find((row) => row.dose === null)?.slot ?? null;
 }
 
+type MarkEntry = { kind: SpineMarkKind; epochDay: number; recordId?: string | null };
+
 /** The days one set of captions has to share, in reading order: earlier
     first, and ties in `KIND_ORDER` so a draw and a dose on one day always
     come out in the same order. */
-function orderedDays(days: readonly [SpineMarkKind, number][]): [SpineMarkKind, number][] {
-  return [...days].sort(([kindA, dayA], [kindB, dayB]) =>
-    dayA === dayB ? KIND_ORDER.indexOf(kindA) - KIND_ORDER.indexOf(kindB) : dayA - dayB
+function orderedDays(days: readonly MarkEntry[]): MarkEntry[] {
+  return [...days].sort((a, b) =>
+    a.epochDay === b.epochDay ? KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) : a.epochDay - b.epochDay
   );
 }
 
@@ -253,27 +266,34 @@ function orderedDays(days: readonly [SpineMarkKind, number][]): [SpineMarkKind, 
     two days are. That is what buys back the room the one-lane spine used to
     spend pushing today and next dose onto opposite sides of the line. */
 function placeMarks(
-  days: readonly [SpineMarkKind, number][],
+  days: readonly MarkEntry[],
   todayEpochDay: number,
   fromEpochDay: number,
   toEpochDay: number
 ): SpineMark[] {
   const lastInRow: number[] = [];
-  return orderedDays(days).map(([kind, epochDay]) => {
+  return orderedDays(days).map(({ kind, epochDay, recordId }) => {
     const position = positionOf(epochDay, todayEpochDay, fromEpochDay, toEpochDay);
     let labelRow = lastInRow.findIndex((last) => position - last >= MIN_LABEL_GAP);
     if (labelRow === -1) labelRow = lastInRow.length;
     lastInRow[labelRow] = position;
-    return { kind, epochDay, position, beyondSpan: epochDay < fromEpochDay || epochDay > toEpochDay, labelRow };
+    return {
+      kind,
+      epochDay,
+      position,
+      beyondSpan: epochDay < fromEpochDay || epochDay > toEpochDay,
+      labelRow,
+      recordId: recordId ?? null
+    };
   });
 }
 
 /** One lane's own three days, whichever of them it has. */
-function laneDays(lane: LaneFacts): [SpineMarkKind, number][] {
-  const days: [SpineMarkKind, number][] = [];
-  if (lane.lastDoseEpochDay !== null) days.push(['lastDose', lane.lastDoseEpochDay]);
-  if (lane.nextDoseEpochDay !== null) days.push(['nextDose', lane.nextDoseEpochDay]);
-  if (lane.runOutEpochDay !== null) days.push(['runOut', lane.runOutEpochDay]);
+function laneDays(lane: LaneFacts): MarkEntry[] {
+  const days: MarkEntry[] = [];
+  if (lane.lastDoseEpochDay !== null) days.push({ kind: 'lastDose', epochDay: lane.lastDoseEpochDay, recordId: lane.lastDoseId ?? null });
+  if (lane.nextDoseEpochDay !== null) days.push({ kind: 'nextDose', epochDay: lane.nextDoseEpochDay });
+  if (lane.runOutEpochDay !== null) days.push({ kind: 'runOut', epochDay: lane.runOutEpochDay });
   return days;
 }
 
@@ -293,15 +313,15 @@ function laneDays(lane: LaneFacts): [SpineMarkKind, number][] {
     still gets drawn against the reach a far-off run-out on another lane
     opened up. */
 export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine | null {
-  const sharedDays: [SpineMarkKind, number][] = [['today', todayEpochDay]];
-  if (facts.labDrawEpochDay !== null) sharedDays.push(['labDraw', facts.labDrawEpochDay]);
+  const sharedDays: MarkEntry[] = [{ kind: 'today', epochDay: todayEpochDay }];
+  if (facts.labDrawEpochDay !== null) sharedDays.push({ kind: 'labDraw', epochDay: facts.labDrawEpochDay, recordId: facts.labDrawId ?? null });
 
   const laneEntries = facts.lanes.map((lane) => ({ lane, days: laneDays(lane) })).filter(({ days }) => days.length > 0);
   const everyDay = [...sharedDays, ...laneEntries.flatMap(({ days }) => days)];
   if (everyDay.length < 2) return null;
 
-  const earliest = Math.min(...everyDay.map(([, day]) => day));
-  const latest = Math.max(...everyDay.map(([, day]) => day));
+  const earliest = Math.min(...everyDay.map(({ epochDay }) => epochDay));
+  const latest = Math.max(...everyDay.map(({ epochDay }) => epochDay));
   const fromEpochDay = Math.max(todayEpochDay - SPINE_BACK_DAYS, Math.min(todayEpochDay - SPINE_MIN_BACK_DAYS, earliest));
   const toEpochDay = Math.min(todayEpochDay + SPINE_FORWARD_DAYS, Math.max(todayEpochDay + SPINE_MIN_FORWARD_DAYS, latest));
 
@@ -368,12 +388,14 @@ export function scheduleDoseFacts(
   doses: readonly DoseEvent[],
   pauses: readonly DosePause[],
   todayEpochDay: number
-): { lastDoseEpochDay: number | null; nextDoseEpochDay: number | null } {
+): { lastDoseEpochDay: number | null; lastDoseId: string | null; nextDoseEpochDay: number | null } {
   const drug = episode.drug.trim();
   const ownDoses = doses.filter((dose) => attributeDrug(episodes, dose).drug?.trim() === drug);
-  const lastDoseEpochDay = lastLoggedDoseDay(ownDoses);
+  const lastDose = lastLoggedDose(ownDoses);
+  const lastDoseEpochDay = lastDose ? epochDayFromTimestamp(lastDose.timestamp) : null;
+  const lastDoseId = lastDose?.id ?? null;
 
-  if (!schedule) return { lastDoseEpochDay, nextDoseEpochDay: null };
+  if (!schedule) return { lastDoseEpochDay, lastDoseId, nextDoseEpochDay: null };
 
   const dosesFromToday = doses.filter(
     (dose) =>
@@ -381,5 +403,5 @@ export function scheduleDoseFacts(
       attributeDose(episodes, dose).episode?.id === episode.id
   );
   const nextSlot = nextExpectedSlot(schedule, episode.startEpochDay, dosesFromToday, pauses, todayEpochDay);
-  return { lastDoseEpochDay, nextDoseEpochDay: nextSlot?.epochDay ?? null };
+  return { lastDoseEpochDay, lastDoseId, nextDoseEpochDay: nextSlot?.epochDay ?? null };
 }
