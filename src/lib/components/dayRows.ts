@@ -59,6 +59,17 @@ export interface DayRow {
   count?: number;
 }
 
+/** What the route resolves for one logged dose before the rows are worded:
+    exactly `attributeDrug`'s answer for it (regimenEpisode.ts, at the
+    dose's own timestamp - never whichever regimen is active today). A day
+    row needs the drug's name and the day read reads no episodes
+    (day.ts's DAY_OPT_OUTS: a span), so the facts travel in from the route
+    rather than the read growing one. */
+export interface DoseDrugFact {
+  drug: string | null;
+  ambiguous: boolean;
+}
+
 const HAIR_PROGRESS = '/body/hair-progress';
 const MILESTONES = '/transition/milestones';
 const SURGERY = '/health/surgery';
@@ -90,7 +101,10 @@ function groupedBy<T>(items: readonly T[], key: (item: T) => string): T[][] {
     and the day card draws them (DayCard/DayEntry, the same timeline Home
     uses), so they are deliberately not rows - a declaration rather than an
     omission, which is the point of writing it as a full Record. */
-const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
+const SECTION_ROWS: Record<
+  DaySectionKey,
+  (day: DayRecords, doseDrugs?: ReadonlyMap<string, DoseDrugFact>) => DayRow[]
+> = {
   entries: () => [],
 
   milestones: (day) =>
@@ -102,16 +116,37 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       photo: milestone.photo ?? undefined
     })),
 
-  doses: (day) =>
-    day.doses.map((dose) => ({
-      key: `dose-${dose.id}`,
-      icon: 'clock',
-      title: `${dose.dose} ${dose.doseUnit}, ${routeLabel(dose.route)}`,
-      // A dose that was skipped or changed is not the dose the schedule
-      // expected, and the row would otherwise read as though it were.
-      subtitle: dose.status === 'taken' ? undefined : statusLabel(dose.status),
-      href: '/care/doses'
-    })),
+  doses: (day, doseDrugs) =>
+    day.doses.map((dose) => {
+      /* The route's resolved fact for this dose, or nothing while it is
+         still in flight - a row without its fact states the amount and
+         route it always has, and never borrows today's regimen. */
+      const fact = doseDrugs?.get(dose.id);
+      const drug = fact?.drug ?? null;
+      /* The drug leads where one resolved, so concurrent regimens at the
+         same amount and route are two rows before either is opened
+         (phase 11 ticket 19). */
+      const title = drug
+        ? `${drug} ${dose.dose} ${dose.doseUnit}, ${routeLabel(dose.route)}`
+        : `${dose.dose} ${dose.doseUnit}, ${routeLabel(dose.route)}`;
+      /* Earned subtitle, twice over: a skipped dose is not the dose the
+         schedule expected, and a dose nothing attributes to says so
+         rather than reading as if the current regimen covered it. */
+      const subtitle = [
+        dose.status === 'taken' ? '' : statusLabel(dose.status),
+        drug === null && fact?.ambiguous ? m.doses_ambiguous_episode() : '',
+        drug === null && fact && !fact.ambiguous ? m.doses_no_episode() : ''
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      return {
+        key: `dose-${dose.id}`,
+        icon: 'clock',
+        title,
+        subtitle: subtitle || undefined,
+        href: '/care/doses'
+      };
+    }),
 
   labResults: (day) =>
     day.labResults.map((result) => ({
@@ -339,7 +374,9 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
 
     Off DAY_SECTION_KEYS rather than a sequence written out here, so the
     order rows appear in is the order sections are declared in, and a section
-    moved there moves here with it. */
-export function dayRows(day: DayRecords): DayRow[] {
-  return DAY_SECTION_KEYS.flatMap((key) => SECTION_ROWS[key](day));
+    moved there moves here with it. `doseDrugs` carries what the route
+    resolved for the day's logged doses; without it the dose rows state
+    amount and route only. */
+export function dayRows(day: DayRecords, doseDrugs?: ReadonlyMap<string, DoseDrugFact>): DayRow[] {
+  return DAY_SECTION_KEYS.flatMap((key) => SECTION_ROWS[key](day, doseDrugs));
 }

@@ -3996,8 +3996,27 @@ try {
   await page.click('[data-dose-drug="Spironolactone"]');
   await page.click('[data-save-dose]');
   await page.waitForSelector('[data-dose]');
-  const doseRow = await page.locator('[data-dose]').first().innerText();
-  if (!doseRow.includes('Spironolactone')) throw new Error(`the logged dose should be labelled Spironolactone, got: ${doseRow}`);
+  // The name leads the title (phase 11 ticket 19), not the trailing
+  // attribution label: a concurrent journal must tell its doses apart
+  // before either is opened.
+  const doseRowTitle = await page
+    .locator('[data-dose]')
+    .first()
+    .locator('[data-row-title]')
+    .innerText();
+  if (!doseRowTitle.startsWith('Spironolactone 100 mg'))
+    throw new Error(`the logged dose should lead its title with the drug, got: ${doseRowTitle}`);
+
+  // The day view says the same thing about the same record: the row on
+  // /day/today leads with the drug too, resolved at the dose's own
+  // timestamp rather than read off the active regimen.
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-day-row^="dose-"]');
+  const dayDoseTitles = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-day-row^="dose-"] [data-row-title]')].map((el) => el.textContent ?? '')
+  );
+  if (!dayDoseTitles.some((title) => title.startsWith('Spironolactone 100 mg')))
+    throw new Error(`the day row should lead with the drug, got: ${dayDoseTitles.join(' | ')}`);
 
   // With both episodes still active, the schedule-comparison tab has no
   // single answer of its own (ticket 15) - a picker lets the person choose

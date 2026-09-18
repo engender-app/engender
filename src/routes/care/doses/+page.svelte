@@ -29,7 +29,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt, attributeDose, nearestActiveEpisode } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -145,12 +145,17 @@
     episodesQuery.loading || dosesQuery.loading || (Boolean(deepLinkedDoseId) && deepLinkedDoseQuery.loading)
   );
 
-  /* Newest first, each row carrying the episode it was attributed to. Derived
-     rather than resolved in the row: `attributeDose` was called per rendered
-     row, which re-scanned the whole episode list on every render, and the
-     reversed copy was rebuilt with it. */
+  /* Newest first, each row carrying the episode it was attributed to and
+     the drug that attribution names. Derived rather than resolved in the
+     row: `attributeDose` was called per rendered row, which re-scanned the
+     whole episode list on every render, and the reversed copy was rebuilt
+     with it. */
   let logRows = $derived(
-    [...doses].reverse().map((dose) => ({ dose, attribution: attributeDose(episodes, dose) }))
+    [...doses].reverse().map((dose) => ({
+      dose,
+      attribution: attributeDose(episodes, dose),
+      drug: attributeDrug(episodes, dose).drug
+    }))
   );
 
   let deepLinkedDoseIndex = $derived(
@@ -233,6 +238,14 @@
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
+
+  /** The row's title: the drug it carries leading, where one resolved, so
+      concurrent regimens at the same amount and route are two rows before
+      either is opened (phase 11 ticket 19). `attributeDrug` at the dose's
+      own timestamp - the same resolution the trailing attribution label
+      speaks for, never whichever regimen happens to be active today. */
+  const doseTitleOf = (dose: DoseEvent, drug: string | null): string =>
+    `${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`;
 
   /** How long an auto-logged dose keeps its one-tap correction (ticket 11).
       A month is long enough to cover a person opening the app after a
@@ -738,7 +751,7 @@
           focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
         >
           {#snippet rows(shownRows)}
-            {#each shownRows as { dose, attribution } (dose.id)}
+            {#each shownRows as { dose, attribution, drug } (dose.id)}
               {@const site = siteOf(dose)}
               {@const sourceNote = sourceNoteOf(dose)}
               <!-- Keyed on what the row says about itself, so correcting an
@@ -763,7 +776,7 @@
                   data-dose={dose.id}
                   id={dose.id}
                   icon="clock"
-                  title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                  title={doseTitleOf(dose, drug)}
                   subtitle={[
                     [
                       whenOf(dose),
@@ -966,10 +979,11 @@
           <p class="muted small">{m.adherence_unmatched_note()}</p>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
             {#each comparison.comparison.unmatched as dose (dose.id)}
+              {@const unmatchedDrug = attributeDrug(episodes, dose).drug}
               <ListRow
                 static
                 data-unmatched={dose.id}
-                title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                title={doseTitleOf(dose, unmatchedDrug)}
                 subtitle={whenOf(dose)}
               />
             {/each}
