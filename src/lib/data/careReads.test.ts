@@ -16,13 +16,14 @@ test('Care keeps the actual last dose across episode changes and outside the tot
   await journal.regimen.upsertEpisode(episode);
   const current = await journal.regimen.upsertEpisode({ ...episode, dose: 3,
     startEpochDay: TODAY - 100, endEpochDay: null, endReason: null });
-  await journal.doses.upsertDose({ timestamp: startOfDayTimestamp(TODAY - 150),
+  const doseId = await journal.doses.upsertDose({ timestamp: startOfDayTimestamp(TODAY - 150),
     drug: episode.drug, route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
 
   const care = await readCare(journal, TODAY);
   assert.equal(care.lanes.length, 1);
   assert.equal(care.lanes[0].episode.id, current);
   assert.equal(care.lanes[0].lastDoseEpochDay, TODAY - 150);
+  assert.equal(care.lanes[0].lastDoseId, doseId);
   assert.deepEqual(care.lanes[0].doseTotals, []);
   assert.equal(care.lanes[0].runOut, null);
   assert.equal(care.latestLab, null);

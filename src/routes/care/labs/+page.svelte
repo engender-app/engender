@@ -14,7 +14,9 @@
      across the plot now names each reading as the finger passes it. The
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
@@ -61,6 +63,18 @@
 
   let unitsOpen = $state(false);
 
+  /* Deep link handling (phase 11 ticket 14):
+     resolve the lab result by its UUID directly so the screen switches to
+     the analyte the result belongs to and scrolls to the highlighted row,
+     or displays an explicit unavailable notice if missing/deleted. */
+  let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
+  let deepLinkedLabQuery = liveQuery((j) =>
+    deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
+  );
+  let deepLinkedLabUnavailable = $derived(
+    Boolean(deepLinkedLabId && !deepLinkedLabQuery.loading && !deepLinkedLabQuery.value)
+  );
+
   /* No hormone assumed: the screen opens on whatever the journal actually
      has, and stays empty until getMostRecentAnalyte resolves (ticket 37). */
   let analyte = $state('');
@@ -79,8 +93,32 @@
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (usedQuery.loading || mostRecentQuery.loading) return;
+    if (deepLinkedLabQuery.value) {
+      analyte = deepLinkedLabQuery.value.analyte;
+      return;
+    }
+    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
+  });
+
+  $effect(() => {
+    if (!resultsQuery.loading && deepLinkedLabId && !deepLinkedLabUnavailable) {
+      scrollToHash();
+    }
+  });
+
+  let returnHref = $derived.by(() => {
+    const returnTo = page.url.searchParams.get('returnTo');
+    if (returnTo && returnTo.startsWith('/care')) return returnTo;
+    const lane = page.url.searchParams.get('lane');
+    const date = page.url.searchParams.get('date');
+    if (lane || date) {
+      const params = new URLSearchParams();
+      if (lane) params.set('lane', lane);
+      if (date) params.set('date', date);
+      return `/care?${params.toString()}`;
+    }
+    return '/more';
   });
 
   /* The list is every result this analyte has, in order. The charts are those
@@ -381,7 +419,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.lab_results()} back="/more" subtitle={m.labs_intro()}>
+  <ScreenHeader title={m.lab_results()} back={returnHref} subtitle={m.labs_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-preferred-units aria-label={m.labs_preferred_units_title()} onclick={() => (unitsOpen = true)}>
         <Icon name="settings" size={20} />
@@ -394,6 +432,17 @@
       </button>
     {/snippet}
   </ScreenHeader>
+
+  {#if deepLinkedLabUnavailable}
+    <div class="screen-part" data-lab-unavailable>
+      <Notice
+        icon="info"
+        key="lab-unavailable"
+        title={m.source_record_unavailable()}
+        text={m.source_record_unavailable_hint()}
+      />
+    </div>
+  {/if}
 
   <ReadGate read={usedQuery} variant="block" count={1}>
     {#snippet rows()}
@@ -461,6 +510,8 @@
           {#each [...results].reverse() as r (r.id)}
             <button
               class="kit-row"
+              class:is-target-lab={r.id === deepLinkedLabId}
+              id={r.id}
               data-lab-result={r.id}
               aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
               onclick={() => record.openEditor(r)}
@@ -732,3 +783,10 @@
     </div>
   </Sheet>
 </div>
+
+<style>
+  .kit-row.is-target-lab {
+    background: var(--surface-2);
+    border-radius: var(--r-block);
+  }
+</style>

@@ -957,6 +957,7 @@ beforeAll(async () => {
   await driveRead('labs', 'getLatestResult', () => journal.labs.getLatestResult());
   await driveRead('labs', 'getResults', () => journal.labs.getResults('estradiol'));
   await driveRead('labs', 'getResultsOnDay', () => journal.labs.getResultsOnDay(20004));
+  await driveRead('labs', 'getResultById', () => journal.labs.getResultById('11111111-1111-4111-8111-111111111111'));
   await driveRead('labs', 'getSeries', () => journal.labs.getSeries('estradiol'));
   await driveRead('labs', 'lastWriteEpochDay', () => journal.labs.lastWriteEpochDay(20004));
   await driveRead('measurements', 'getMeasurements', () => journal.measurements.getMeasurements(shoulders.key));
