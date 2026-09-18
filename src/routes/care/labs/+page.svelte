@@ -108,9 +108,9 @@
   });
 
   let returnHref = $derived.by(() => {
-    const returnTo = page.url.searchParams.get('returnTo');
-    if (returnTo && returnTo.startsWith('/care')) return returnTo;
-    const lane = page.url.searchParams.get('lane');
+    /* The lane a Care spine mark was tapped from (its `drug`), and the day
+         the mark named - back to Care with both, or to the hub. */
+    const lane = page.url.searchParams.get('lane') ?? page.url.searchParams.get('drug');
     const date = page.url.searchParams.get('date');
     if (lane || date) {
       const params = new URLSearchParams();
