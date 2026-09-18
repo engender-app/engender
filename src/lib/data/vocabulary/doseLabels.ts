@@ -15,7 +15,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { ApplicationSiteKey, InjectionSiteKey, RouteOption } from '$lib/data/doseSchedule';
-import type { DoseRoute, DoseStatus, EpisodeEndReason, InjectionVehicle, PauseReason } from '$lib/data/types';
+import type { DoseEvent, DoseRoute, DoseStatus, EpisodeEndReason, InjectionVehicle, PauseReason } from '$lib/data/types';
 import type { RegimenTemplateKey } from './builtins';
 
 const INJECTION_SITE_LABELS: Record<InjectionSiteKey, () => string> = {
@@ -143,3 +143,15 @@ export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'im', 'sc', 
 export const STATUS_OPTIONS: { value: DoseStatus; label: string }[] = (['taken', 'skipped', 'changed'] as const).map(
   (status) => ({ value: status, label: statusLabel(status) })
 );
+
+/** A dose row's title: the drug it carries leading, where one resolved, so
+    concurrent regimens at the same amount and route are two records before
+    either is opened (phase 11 ticket 19). One wording rule for every
+    surface that shows a dose as a row; `separator` keeps each surface's
+    own way of joining amount and route - the day row's comma, the log's
+    middot. */
+export const doseRowTitle = (
+  drug: string | null,
+  dose: Pick<DoseEvent, 'dose' | 'doseUnit' | 'route'>,
+  separator = ' · '
+): string => `${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}${separator}${routeLabel(dose.route)}`;

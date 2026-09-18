@@ -51,6 +51,7 @@
     ROUTE_OPTIONS,
     STATUS_OPTIONS,
     applicationSiteLabel,
+    doseRowTitle,
     injectionSiteLabel,
     pauseReasonLabel,
     routeLabel,
@@ -146,10 +147,13 @@
   );
 
   /* Newest first, each row carrying the episode it was attributed to and
-     the drug that attribution names. Derived rather than resolved in the
-     row: `attributeDose` was called per rendered row, which re-scanned the
+     the drug that goes with it. Derived rather than resolved in the row:
+     `attributeDose` was called per rendered row, which re-scanned the
      whole episode list on every render, and the reversed copy was rebuilt
-     with it. */
+     with it. The drug is `attributeDrug`'s answer rather than the
+     attribution's: it also tolerates two active episodes agreeing on one
+     drug and takes a dose's own name as-is, which is what a row needs
+     when the episode alone is ambiguous but the drug is not. */
   let logRows = $derived(
     [...doses].reverse().map((dose) => ({
       dose,
@@ -226,6 +230,15 @@
     })
   );
   let scheduleView = $derived(comparisonQuery.value ?? null);
+  /** The doses the comparison could not place, each with the drug its own
+     attribution resolves - derived, not asked per rendered row, the same
+     rule logRows above follows. */
+  let unmatchedRows = $derived(
+    (scheduleView?.reason === null ? scheduleView.comparison.unmatched : []).map((dose) => ({
+      dose,
+      drug: attributeDrug(episodes, dose).drug
+    }))
+  );
 
   /* Null when the row has no site rather than when the route has none: a
      dose imported without one shows no site line instead of a blank bullet. */
@@ -238,14 +251,6 @@
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
-
-  /** The row's title: the drug it carries leading, where one resolved, so
-      concurrent regimens at the same amount and route are two rows before
-      either is opened (phase 11 ticket 19). `attributeDrug` at the dose's
-      own timestamp - the same resolution the trailing attribution label
-      speaks for, never whichever regimen happens to be active today. */
-  const doseTitleOf = (dose: DoseEvent, drug: string | null): string =>
-    `${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`;
 
   /** How long an auto-logged dose keeps its one-tap correction (ticket 11).
       A month is long enough to cover a person opening the app after a
@@ -776,7 +781,7 @@
                   data-dose={dose.id}
                   id={dose.id}
                   icon="clock"
-                  title={doseTitleOf(dose, drug)}
+                  title={doseRowTitle(drug, dose)}
                   subtitle={[
                     [
                       whenOf(dose),
@@ -978,12 +983,11 @@
           <SectionHeading text={m.adherence_unmatched_heading()} />
           <p class="muted small">{m.adherence_unmatched_note()}</p>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-            {#each comparison.comparison.unmatched as dose (dose.id)}
-              {@const unmatchedDrug = attributeDrug(episodes, dose).drug}
+            {#each unmatchedRows as { dose, drug } (dose.id)}
               <ListRow
                 static
                 data-unmatched={dose.id}
-                title={doseTitleOf(dose, unmatchedDrug)}
+                title={doseRowTitle(drug, dose)}
                 subtitle={whenOf(dose)}
               />
             {/each}
