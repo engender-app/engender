@@ -233,7 +233,45 @@
     ]
   };
 
-  const DAYS: Record<string, DayRecords> = { sparse, typical, maximal };
+  /* Concurrent doses that differ by name alone (phase 11 ticket 19): three
+     drugs taken the same way at the same amount, plus one two regimens
+     could both explain and one no episode ever covered. The named rows are
+     identical but for the drug, which is the fact the day view has to
+     carry. DOSE_DRUGS is what the route resolves with attributeDrug and
+     hands the component; the fixture states it directly because there is
+     no journal behind this page. */
+  const concurrentDose = (id: string, hour: number, minute = 0) => ({
+    id,
+    timestamp: at(hour, minute),
+    dose: 50,
+    doseUnit: 'mg',
+    status: 'taken' as const,
+    source: 'person' as const,
+    scheduled: null,
+    drug: null,
+    route: 'oral' as const
+  });
+  const concurrent: DayRecords = {
+    ...empty(),
+    doses: [
+      concurrentDose('cd1', 8),
+      concurrentDose('cd2', 8, 30),
+      concurrentDose('cd3', 9),
+      concurrentDose('cd4', 10),
+      concurrentDose('cd5', 11)
+    ]
+  };
+  const DOSE_DRUGS = new Map([
+    ['d1', { drug: 'Estradiol valerate', ambiguous: false }],
+    ['d2', { drug: null, ambiguous: true }],
+    ['cd1', { drug: 'Estradiol valerate', ambiguous: false }],
+    ['cd2', { drug: 'Spironolactone', ambiguous: false }],
+    ['cd3', { drug: 'Progesterone', ambiguous: false }],
+    ['cd4', { drug: null, ambiguous: true }],
+    ['cd5', { drug: null, ambiguous: false }]
+  ]);
+
+  const DAYS: Record<string, DayRecords> = { sparse, typical, maximal, concurrent };
 
   /* The maximal day's own claim, counted rather than left to its comment:
      every registered section with something in it. Registering an area
@@ -277,6 +315,7 @@
     <DayRecordsView
       epochDay={DAY}
       {records}
+      doseDrugs={DOSE_DRUGS}
       entriesRole={roleAt(activeFlag.roles, 0)}
       alsoRole={roleAt(activeFlag.roles, 1)}
     />

@@ -29,7 +29,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt, attributeDose, nearestActiveEpisode } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -51,6 +51,7 @@
     ROUTE_OPTIONS,
     STATUS_OPTIONS,
     applicationSiteLabel,
+    doseRowTitle,
     injectionSiteLabel,
     pauseReasonLabel,
     routeLabel,
@@ -145,12 +146,20 @@
     episodesQuery.loading || dosesQuery.loading || (Boolean(deepLinkedDoseId) && deepLinkedDoseQuery.loading)
   );
 
-  /* Newest first, each row carrying the episode it was attributed to. Derived
-     rather than resolved in the row: `attributeDose` was called per rendered
-     row, which re-scanned the whole episode list on every render, and the
-     reversed copy was rebuilt with it. */
+  /* Newest first, each row carrying the episode it was attributed to and
+     the drug that goes with it. Derived rather than resolved in the row:
+     `attributeDose` was called per rendered row, which re-scanned the
+     whole episode list on every render, and the reversed copy was rebuilt
+     with it. The drug is `attributeDrug`'s answer rather than the
+     attribution's: it also tolerates two active episodes agreeing on one
+     drug and takes a dose's own name as-is, which is what a row needs
+     when the episode alone is ambiguous but the drug is not. */
   let logRows = $derived(
-    [...doses].reverse().map((dose) => ({ dose, attribution: attributeDose(episodes, dose) }))
+    [...doses].reverse().map((dose) => ({
+      dose,
+      attribution: attributeDose(episodes, dose),
+      drug: attributeDrug(episodes, dose).drug
+    }))
   );
 
   let deepLinkedDoseIndex = $derived(
@@ -221,6 +230,15 @@
     })
   );
   let scheduleView = $derived(comparisonQuery.value ?? null);
+  /** The doses the comparison could not place, each with the drug its own
+     attribution resolves - derived, not asked per rendered row, the same
+     rule logRows above follows. */
+  let unmatchedRows = $derived(
+    (scheduleView?.reason === null ? scheduleView.comparison.unmatched : []).map((dose) => ({
+      dose,
+      drug: attributeDrug(episodes, dose).drug
+    }))
+  );
 
   /* Null when the row has no site rather than when the route has none: a
      dose imported without one shows no site line instead of a blank bullet. */
@@ -738,7 +756,7 @@
           focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
         >
           {#snippet rows(shownRows)}
-            {#each shownRows as { dose, attribution } (dose.id)}
+            {#each shownRows as { dose, attribution, drug } (dose.id)}
               {@const site = siteOf(dose)}
               {@const sourceNote = sourceNoteOf(dose)}
               <!-- Keyed on what the row says about itself, so correcting an
@@ -763,7 +781,7 @@
                   data-dose={dose.id}
                   id={dose.id}
                   icon="clock"
-                  title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                  title={doseRowTitle(drug, dose)}
                   subtitle={[
                     [
                       whenOf(dose),
@@ -965,11 +983,11 @@
           <SectionHeading text={m.adherence_unmatched_heading()} />
           <p class="muted small">{m.adherence_unmatched_note()}</p>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-            {#each comparison.comparison.unmatched as dose (dose.id)}
+            {#each unmatchedRows as { dose, drug } (dose.id)}
               <ListRow
                 static
                 data-unmatched={dose.id}
-                title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                title={doseRowTitle(drug, dose)}
                 subtitle={whenOf(dose)}
               />
             {/each}

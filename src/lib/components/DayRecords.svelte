@@ -48,14 +48,15 @@
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
-  import { dayRows, type DayRow } from './dayRows';
+  import { dayRows, type DayRow, type DoseDrugFact } from './dayRows';
 
   let {
     epochDay,
     records,
     entriesRole,
     alsoRole,
-    marginNotesByEntry
+    marginNotesByEntry,
+    doseDrugs
   }: {
     epochDay: number;
     records: DayRecords;
@@ -71,10 +72,15 @@
         with none still draws its own "add a note" affordance, which needs
         no read at all. */
     marginNotesByEntry?: Map<number, MarginNote[]>;
+    /** One `attributeDrug` answer per logged dose, resolved by the route
+        (phase 11 ticket 19). Omitted, every dose row states the amount and
+        route alone - the same gallery probe has no episodes to attribute
+        with, and a row must never borrow today's regimen to fill the gap. */
+    doseDrugs?: ReadonlyMap<string, DoseDrugFact>;
   } = $props();
 
   let entries = $derived(records.entries);
-  let alsoRows = $derived(dayRows(records));
+  let alsoRows = $derived(dayRows(records, doseDrugs));
 
   /* A day's context list is capped, and the rest is one tap away (Alicja,
      2026-08-31, against the maximal day's twenty-one rows). Five is what the
