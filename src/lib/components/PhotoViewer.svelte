@@ -12,7 +12,8 @@
   let {
     photo,
     onClose,
-    ownerHref
+    ownerHref,
+    caption
   }: {
     /** Null keeps the sheet closed. `bytes` is what the editor passes for a
         photo just picked, which has no stored file until the entry is
@@ -20,13 +21,16 @@
     photo: (Pick<Photo, 'fileName'> & { bytes?: Uint8Array }) | null;
     onClose: () => void;
     ownerHref?: string;
+    caption?: string;
   } = $props();
 
   let url = $state<string | null>(null);
+  let failed = $state(false);
 
   $effect(() => {
     const current = photo;
     url = null;
+    failed = false;
     if (!current) return;
 
     if (current.bytes) {
@@ -36,15 +40,16 @@
     }
 
     const fileName = current.fileName;
-    if (!fileName) return;
+    if (!fileName) { failed = true; return; }
 
     let objectUrl: string | null = null;
     let stale = false;
     readPhoto(fileName).then((loaded) => {
-      if (stale || !loaded) return;
+      if (stale) return;
+      if (!loaded) { failed = true; return; }
       objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'image/jpeg' }));
       url = objectUrl;
-    });
+    }).catch(() => { if (!stale) failed = true; });
     return () => {
       stale = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -53,9 +58,11 @@
 </script>
 
 <Sheet open={photo !== null} title={m.photo_view_title()} {onClose}>
-  {#if url}
+  {#if caption}<p>{caption}</p>{/if}
+  {#if failed}<p role="status">{m.photo_unreadable()}</p>{/if}
+  {#if url && !failed}
     <div class="photo-viewer-frame" data-photo-viewer>
-      <img src={url} alt={m.photo_alt()} />
+      <img src={url} alt={m.photo_alt()} onerror={() => (failed = true)} />
     </div>
   {/if}
   {#if ownerHref}

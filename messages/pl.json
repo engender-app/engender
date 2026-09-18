@@ -4073,5 +4073,11 @@
   "saved_question_query": "Szukany tekst: {query}",
   "saved_question_no_query": "Bez szukanego tekstu. Wyszukiwanie obejmuje tylko wpisy.",
   "saved_question_tag": "Tag: {tag}",
-  "saved_question_missing_tag": "Usunięty tag"
+  "saved_question_missing_tag": "Usunięty tag",
+  "ph_selection_remove_short": "Usuń",
+  "ph_selection_count": "Wybrane: {count}/2",
+  "ph_selection_full": "Usuń zdjęcie z wyboru, aby wybrać inne.",
+  "ph_selection_filtered": "Poza bieżącym filtrem",
+  "ph_selection_unavailable": "Wybrane zdjęcie nie jest już dostępne.",
+  "ph_selection_remove": "Usuń z porównania: {photo}"
 }

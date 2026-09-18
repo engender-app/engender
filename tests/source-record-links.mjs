@@ -90,6 +90,7 @@ try {
     await page.locator('[data-row-main="document-target"]').waitFor();
   }
   await visit('/media/photos');
+  await page.locator('[data-segment="compare"]').click();
   await page.locator('[data-photo-cell]').nth(0).click();
   await page.locator('[data-photo-cell]').nth(1).click();
   for (const photo of fixture.ownerPhotos) {

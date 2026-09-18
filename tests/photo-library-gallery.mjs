@@ -126,9 +126,10 @@ const seed = async () => {
 const openCompare = async (pick) => {
   await settle('/media/photos');
   await page.waitForSelector('[data-photo-cell] img');
+  await page.locator('[data-segment="compare"]').click();
   const picked = await pick();
   if (!picked) return false;
-  await page.locator('[data-segment="compare"]').click();
+  await page.locator('[data-compare-open]').click();
   await page.waitForSelector('[data-photo-wipe]');
   await page.waitForTimeout(800);
   return true;
