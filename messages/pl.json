@@ -2711,6 +2711,7 @@
   "resources_intro": "Numery i adresy, które warto mieć, kiedy nie ma jak ich wyszukać. Nic się tu nie pobiera, więc ten ekran działa bez zasięgu.",
   "resources_group_pl": "Polska",
   "resources_group_int": "Po angielsku",
+  "resources_jump_label": "Przejdź do grupy",
   "resources_call": "Zadzwoń: {name}",
   "resources_open": "Otwórz: {name}",
   "resources_reviewed": "Sprawdzono {date}. Godziny zmieniają się częściej niż numery.",

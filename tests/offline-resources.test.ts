@@ -83,3 +83,16 @@ test('every outbound link opens outside the app', () => {
   expect(outbound.length).toBeGreaterThan(0);
   expect(outbound.filter((a) => !a.includes('target="_blank"'))).toEqual([]);
 });
+
+/* The directory stays complete: geographic links are document fragments,
+   not a filter or a second route. Each target is its group's heading, so a
+   keyboard user arrives at named content rather than an anonymous list. */
+test('geographic jumps address every directory group by its heading', () => {
+  const screen = readFileSync(join(rootPath, SCREEN), 'utf8');
+
+  expect(screen).toContain('aria-label={m.resources_jump_label()}');
+  expect(screen).toContain("id: 'resources-pl'");
+  expect(screen).toContain("id: 'resources-int'");
+  expect(screen).toContain('href={`#${group.id}`}');
+  expect(screen).toContain('id={group.id} focusable text={group.title()}');
+});
