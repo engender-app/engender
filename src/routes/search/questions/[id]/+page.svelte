@@ -24,6 +24,9 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
+  import { moodName } from '$lib/data/vocabulary/labels';
+  import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { disclose } from '$lib/motion/reveal';
   import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -49,10 +52,12 @@
   let questions = $derived(questionsQuery.rows);
   let question = $derived(questions.find((q) => q.id === id));
 
+  let criteriaOpen = $state(false);
   let pages = $state(1);
   let hitPages = $state(1);
   $effect(() => {
     id;
+    criteriaOpen = false;
     pages = 1;
     hitPages = 1;
     drawnIds = new Set();
@@ -189,12 +194,54 @@
       {/snippet}
     </ScreenHeader>
 
+    <button
+      class="btn btn-soft"
+      data-saved-question-criteria
+      aria-expanded={criteriaOpen}
+      aria-controls="saved-question-definition"
+      onclick={() => (criteriaOpen = !criteriaOpen)}
+    >
+      <Icon name="tag" size={20} /><span>{m.saved_question_criteria()}</span>
+    </button>
+    {#if criteriaOpen}
+      <div id="saved-question-definition" class="search-definition" data-saved-question-definition transition:disclose>
+        <p>{question.queryText ? m.saved_question_query({ query: question.queryText }) : m.saved_question_no_query()}</p>
+        <ul>
+          {#each question.tagIds as tagId (tagId)}
+            <li>{m.saved_question_tag({ tag: vocabulary.tag(tagId)?.label ?? m.saved_question_missing_tag() })}</li>
+          {/each}
+          {#each question.moods as mood (mood)}
+            <li>{m.search_filter_mood_chip({ mood: moodName(mood) })}</li>
+          {/each}
+          {#if question.startEpochDay != null}
+            <li>{m.search_filter_start_chip({ date: dateInputValueFromEpochDay(question.startEpochDay) })}</li>
+          {/if}
+          {#if question.endEpochDay != null}
+            <li>{m.search_filter_end_chip({ date: dateInputValueFromEpochDay(question.endEpochDay) })}</li>
+          {/if}
+          {#if question.hasNote}<li>{m.search_filter_has_note()}</li>{/if}
+          {#if question.hasPhoto}<li>{m.search_filter_has_photo()}</li>{/if}
+        </ul>
+      </div>
+    {/if}
+    <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
+    <p class="search-hint">{m.search_filters_date_scope()}</p>
+
     <div aria-live="polite">
       {#if loading}
         <Skeleton variant="card" count={3} />
       {:else if !foundNothing}
         <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 
+        {#if hitRows.length}
+          <SectionHeading text={m.search_entries_heading()} />
+        {/if}
+        <p class="search-count" data-search-entry-count>
+          {hitRows.length ? m.results_count({ count: total }) : m.search_entries_count({ count: total })}
+        </p>
+        {#if !hits.length}
+          <p class="search-hint">{m.search_no_results_filtered()}</p>
+        {/if}
         {#if hits.length}
           <!-- A draw from the question currently being asked, not a mode of
                its own (spec.md's own line) - the same control /search's own
@@ -202,9 +249,6 @@
           <button class="btn btn-soft search-random" data-search-random onclick={drawRandom}>
             <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
           </button>
-          {#if hitRows.length}
-            <SectionHeading text={m.search_entries_heading()} />
-          {/if}
           <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
           {#if remaining > 0}
             <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
@@ -215,6 +259,7 @@
 
         {#if hitRows.length}
           <SectionHeading text={m.search_elsewhere_heading()} />
+          <p class="search-count" data-search-other-count>{m.results_count({ count: elsewhereResults.total })}</p>
           <ListCard role={hitsRole}>
             {#each hitRows as row (row.key)}
               <ListRow
@@ -276,3 +321,13 @@
     <Notice icon="bookmark" key="saved-question-gone" title={m.saved_question_gone_title()} text={m.saved_question_gone_body()} />
   {/if}
 </div>
+
+<style>
+  .search-definition {
+    overflow-wrap: anywhere;
+    font-size: var(--text-sm);
+  }
+  .search-definition ul {
+    padding-inline-start: var(--space-5);
+  }
+</style>

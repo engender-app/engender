@@ -441,40 +441,38 @@
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.search()} screen="search" back="/calendar">
-    {#snippet actions()}
-      <!-- Starred and saved questions left this header with ticket 18:
-           both are reachable from this screen's own body now (the
-           filter sheet's Starred toggle, the opening state's saved-
-           question chips), not from a second door beside the filter
-           icon. -->
-      <button
-        class="icon-btn"
-        aria-label={m.search_filters()}
-        data-filter-toggle
-        aria-pressed={filtersOpen}
-        onclick={() => (filtersOpen = !filtersOpen)}
-      >
-        <Icon name="tag" />
-      </button>
-    {/snippet}
-  </ScreenHeader>
+  <ScreenHeader title={m.search()} screen="search" back="/calendar" />
 
-  <div class="search-box">
-    <Icon name="search" size={20} />
-    <!-- svelte-ignore a11y_autofocus — a search screen's single purpose is this field -->
-    <input
-      class="search-input"
-      id="q"
-      name="q"
-      type="search"
-      placeholder={m.search_placeholder()}
-      aria-label={m.search()}
-      autocomplete="off"
-      autofocus
-      bind:value={query}
-    />
+  <div class="search-controls">
+    <div class="search-box">
+      <Icon name="search" size={20} />
+      <!-- svelte-ignore a11y_autofocus — a search screen's single purpose is this field -->
+      <input
+        class="search-input"
+        id="q"
+        name="q"
+        type="search"
+        placeholder={m.search_placeholder()}
+        aria-label={m.search()}
+        autocomplete="off"
+        autofocus
+        bind:value={query}
+      />
+    </div>
+
+    <button
+      class="btn btn-soft"
+      data-filter-toggle
+      aria-haspopup="dialog"
+      aria-expanded={filtersOpen}
+      onclick={() => (filtersOpen = true)}
+    >
+      <Icon name="tag" size={20} />
+      <span>{m.search_filters_count({ count: activeFilterChips.length })}</span>
+    </button>
   </div>
+  <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
+  <p class="search-hint">{m.search_filters_date_scope()}</p>
 
   {#if activeFilterChips.length}
     <!-- The one thing that has to stay on the screen once the filters left
@@ -568,6 +566,8 @@
              the same unstar affordance, shown now under this screen's own
              Starred toggle instead of behind a second door. -->
         <SectionHeading text={m.starred_shelf_photos_label()} />
+        <p class="search-count">{m.results_count({ count: starredPhotos.length })}</p>
+        <p class="search-hint">{m.search_starred_photos_scope()}</p>
         <div class="photo-grid" data-starred-photos>
           {#each starredPhotos as p (p.id)}
             <div class="starred-photo-cell">
@@ -581,15 +581,16 @@
         </div>
       {/if}
 
+      {#if hitRows.length || (starredOnly && starredPhotos.length)}
+        <SectionHeading text={m.search_entries_heading()} />
+      {/if}
+      <p class="search-count" data-search-entry-count>
+        {hitRows.length || (starredOnly && starredPhotos.length) ? m.results_count({ count: total }) : m.search_entries_count({ count: total })}
+      </p>
+      {#if !hits.length}
+        <p class="search-hint">{m.search_no_results_filtered()}</p>
+      {/if}
       {#if hits.length}
-        <!-- The heading appears only when something else was found too. Over
-             a screen of nothing but day cards it would be a name for the
-             only thing there is, which is the framework DayRecords.svelte
-             refuses for the same reason - photos count as something else
-             now too. -->
-        {#if hitRows.length || (starredOnly && starredPhotos.length)}
-          <SectionHeading text={m.search_entries_heading()} />
-        {/if}
         <EntryDays {groups} {role} {marginNotesByEntry} />
         {#if remaining > 0}
           <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
@@ -600,6 +601,7 @@
 
       {#if hitRows.length}
         <SectionHeading text={m.search_elsewhere_heading()} />
+        <p class="search-count" data-search-other-count>{m.results_count({ count: elsewhereResults.total })}</p>
         <ListCard role={hitsRole}>
           {#each hitRows as row (row.key)}
             <ListRow
@@ -640,7 +642,7 @@
          see is guessing, and this is the screen's own wording rather than a
          new line of copy. -->
     {#if hasCriteria && !loading}
-      <p class="search-count" data-filter-count>{m.results_count({ count: foundTotal })}</p>
+      <p class="search-count" data-filter-count>{m.search_entries_count({ count: total })}</p>
     {/if}
 
     <!-- Said here rather than left to be inferred: these four are entry
@@ -733,3 +735,15 @@
     </div>
   </Sheet>
 </div>
+
+<style>
+  .search-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .search-controls .search-box {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+</style>
