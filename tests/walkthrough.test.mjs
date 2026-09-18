@@ -5888,8 +5888,19 @@ try {
 
   if ((await spoken()).length) throw new Error('the tally status spoke before any action');
 
+  /* Reading the screen writes nothing: navigating here and moving the
+     range - both reads - leave the status silent and both counters where
+     the seed put them. */
+  await page.locator('[data-segmented="tally-range"] [data-segment="90"]').click();
+  await page.waitForTimeout(500);
+  if ((await spoken()).length) throw new Error('reading the screen spoke');
+  await page.locator('[data-segmented="tally-range"] [data-segment="30"]').click();
+  await page.waitForTimeout(500);
+  if ((await spoken()).length) throw new Error('reading the screen spoke');
+
   /* Repeated actions and repeated undos, each answered with the new value:
-     1 seeded, 2, 3, back down to the zero the seed never shows. */
+     1 seeded, 2, 3, back down to the zero the seed never shows - and one
+     more log on top of zero, because an empty counter must still answer. */
   await page.locator('[data-tally-log="misgendered"]').click();
   const afterLog = await nextSpoken(await spoken());
   startsWithKind(afterLog, 'Misgendered');
@@ -5913,10 +5924,15 @@ try {
   const afterZero = await nextSpoken(afterSecondUndo);
   if (count(afterZero) !== 0) throw new Error(`the zero-count undo announced "${afterZero}"`);
 
+  /* And zero is not a dead end: one more log on top of it answers one. */
+  await page.locator('[data-tally-log="misgendered"]').click();
+  const afterRevive = await nextSpoken(afterZero);
+  if (count(afterRevive) !== 1) throw new Error(`logging onto zero announced "${afterRevive}"`);
+
   /* The other counter is independent: its actions move only their own
      count, which the misgendered numbers above no longer explain. */
   await page.locator('[data-tally-log="correctly_gendered"]').click();
-  const correctLog = await nextSpoken(afterZero);
+  const correctLog = await nextSpoken(afterRevive);
   startsWithKind(correctLog, 'Correctly gendered');
   if (count(correctLog) !== 2) throw new Error(`logging correct gendering announced "${correctLog}"`);
 
@@ -5924,9 +5940,9 @@ try {
   const correctUndo = await nextSpoken(correctLog);
   if (count(correctUndo) !== 1) throw new Error(`correct gendering's undo announced "${correctUndo}"`);
 
-  /* Reading the screen never writes: this flow only navigated, read and
-     pressed the labelled actions - the numbers above are what the actions
-     moved, and nothing moved on its own. */
+  /* Reading the screen never writes: this flow navigated, moved the range,
+     read and pressed the labelled actions - the numbers above are what the
+     actions moved, and nothing moved on its own. */
   ok('tally: each counter logs and undos beside its own chart, announces the changed value, and reaches zero honestly');
 } catch (e) { fail('tally in-context actions', e); }
 

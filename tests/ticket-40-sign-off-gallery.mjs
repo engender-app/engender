@@ -2,9 +2,10 @@
    /tally with its two new action rows, the sign-off surface.
 
    trans, light and dark, only (2026-09-14 standing rule), at 390px, plus
-   one 320px light shot for the label wrap. Everything here is over the
-   fill-every-feature fixture, which layers no tally events of its own, so
-   both counters show the persona's seed - one in-range event each - and
+   320px light shots in both languages for the label wrap - the Polish undo
+   label is the longest line the row has to hold. Everything here is over
+   the fill-every-feature fixture, which layers no tally events of its own,
+   so both counters show the persona's seed - one in-range event each - and
    the undo controls render enabled.
 
      VITE_DEMO=1 npm run build
@@ -102,14 +103,21 @@ await page.waitForSelector('[data-tally-log="misgendered"]');
 await full('tally-dark-390');
 
 /* The narrow end: both buttons must keep the 48px floor and wrap rather
-   than squeeze when the Polish labels run long - the wrap is what this
-   shot is for (English here; the lengths that matter are checkable, the
-   wrap behaviour is the same either way). */
+   than squeeze when the labels run long - the wrap is what this shot is
+   for, in both languages, Polish's undo label being the longest. */
 await setLook('trans', 'light');
 await settle('/tally');
 await page.waitForSelector('[data-tally-log="misgendered"]');
 await page.setViewportSize({ width: 320, height: foldHeight });
 await full('tally-light-320');
+
+await settle('/settings');
+await page.locator('[data-segment="pl"]').click();
+await page.waitForTimeout(800);
+await settle('/tally');
+await page.waitForSelector('[data-tally-log="misgendered"]');
+await page.setViewportSize({ width: 320, height: foldHeight });
+await full('tally-light-320-pl');
 
 if (errors.length) {
   console.error('pageerrors:', errors);
