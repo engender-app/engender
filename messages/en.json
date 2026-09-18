@@ -215,7 +215,7 @@
   "search_area_felt_sense": "Felt sense",
   "search_entries_heading": "Entries",
   "search_elsewhere_heading": "Elsewhere in the journal",
-  "search_filters_entries_only": "Tags, moods, notes and photos narrow entries only.",
+  "search_filters_entries_only": "Tags, moods, notes, photos and stars filter entries only.",
   "results_count": [
     {
       "declarations": [
@@ -3939,5 +3939,14 @@
   "source_record_unavailable_hint": "It may have been deleted from this journal.",
   "source_record_return": "Back to source",
   "photo_open_owner": "Open record",
-  "photo_library_view": "View photo"
+  "photo_library_view": "View photo",
+  "search_filters_count": "Filters ({count})",
+  "search_entries_count": "Entries: {count}",
+  "search_filters_date_scope": "Dates also filter dated records in other areas.",
+  "search_starred_photos_scope": "All starred photos, regardless of the search or entry filters.",
+  "saved_question_criteria": "Search criteria",
+  "saved_question_query": "Search text: {query}",
+  "saved_question_no_query": "No search text. Only entries are searched.",
+  "saved_question_tag": "Tag: {tag}",
+  "saved_question_missing_tag": "Deleted tag"
 }

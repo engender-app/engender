@@ -237,7 +237,7 @@
   "search_area_felt_sense": "Odczucia",
   "search_entries_heading": "Wpisy",
   "search_elsewhere_heading": "Poza wpisami",
-  "search_filters_entries_only": "Tagi, nastroje, notatki i zdjęcia zawężają tylko wpisy.",
+  "search_filters_entries_only": "Tagi, nastrój, notatki, zdjęcia i gwiazdki filtrują tylko wpisy.",
   "results_count": [
     {
       "declarations": [
@@ -4061,5 +4061,14 @@
   "source_record_unavailable_hint": "Być może został usunięty z dziennika.",
   "source_record_return": "Wróć do źródła",
   "photo_open_owner": "Otwórz zapis",
-  "photo_library_view": "Zobacz zdjęcie"
+  "photo_library_view": "Zobacz zdjęcie",
+  "search_filters_count": "Filtry ({count})",
+  "search_entries_count": "Wpisy: {count}",
+  "search_filters_date_scope": "Zakres dat obejmuje też rekordy z datą w innych obszarach.",
+  "search_starred_photos_scope": "Wszystkie zdjęcia z gwiazdką, niezależnie od wyszukiwanego tekstu i filtrów wpisów.",
+  "saved_question_criteria": "Kryteria wyszukiwania",
+  "saved_question_query": "Szukany tekst: {query}",
+  "saved_question_no_query": "Bez szukanego tekstu. Wyszukiwanie obejmuje tylko wpisy.",
+  "saved_question_tag": "Tag: {tag}",
+  "saved_question_missing_tag": "Usunięty tag"
 }
