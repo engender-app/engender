@@ -1651,6 +1651,8 @@
   "cycle_event_delete_sheet": "Delete cycle event",
   "cycle_event_delete_q": "Delete the {kind} entry from {date}?",
   "cycle_event_delete_hint": "This cannot be undone.",
+  "cycle_event_history_title": "Cycle history",
+  "cycle_event_history_range": "{from} to {to}",
   "cycle_event_range_start_label": "From",
   "cycle_event_range_end_label": "To",
   "cycle_event_range_required": "Choose a start and end date to see the chart.",
