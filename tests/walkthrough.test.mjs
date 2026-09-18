@@ -3812,9 +3812,23 @@ try {
      track needs that track's own segment first. */
   await page.locator('[data-segment="legal"]').click();
 
+  /* Ticket 42: track context belongs with selected panel, rather than in a
+     separate summary that still names the first track after a switch. */
+  const legalPanel = page.locator('[data-track-panel="legal"]:not([hidden])');
+  if (!/steps? left/.test(await legalPanel.locator('[data-roadmap-track-steps="legal"]').innerText())) {
+    throw new Error('the selected legal track has no remaining-step context');
+  }
+
+  await page.locator('[data-open-goal="pl-legal-written-reasons"]').click();
+  await page.waitForSelector('[data-goal-sheet-status]');
+  await page.keyboard.press('Escape');
+
   const target = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target.click(); // unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
+  if (!/steps? left/.test(await legalPanel.locator('[data-roadmap-track-steps="legal"]').innerText())) {
+    throw new Error('the legal remaining-step context disappeared after changing a goal');
+  }
 
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
