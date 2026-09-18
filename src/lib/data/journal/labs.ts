@@ -80,6 +80,8 @@ export interface LabsArea {
       last one saved off one slip is the one a person was most recently
       looking at. */
   getLatestResult(): Promise<LabResult | null>;
+  /** Retrieve a lab result by its UUID, or null when not found. */
+  getResultById(id: string): Promise<LabResult | null>;
   /** The draw day of the most recent result at or before `todayEpochDay`, or
       null if there is none (phase 8 features ticket 03, lastWrite.ts). Its
       own bounded `MAX` rather than `getLatestResult` above: that one is
@@ -226,6 +228,14 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
     async getLatestResult() {
       const rows = await driver.query<LabRow>(
         `SELECT ${LAB_COLUMNS} FROM lab_result ORDER BY epoch_day DESC, updated_at DESC, id DESC LIMIT 1`
+      );
+      return rows[0] ? toLabResult(rows[0]) : null;
+    },
+
+    async getResultById(id) {
+      const rows = await driver.query<LabRow>(
+        `SELECT ${LAB_COLUMNS} FROM lab_result WHERE uuid = ? LIMIT 1`,
+        [id]
       );
       return rows[0] ? toLabResult(rows[0]) : null;
     },

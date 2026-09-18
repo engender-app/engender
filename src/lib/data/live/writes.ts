@@ -547,6 +547,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getLatestResult: ['lab'],
       getResults: ['lab'],
       getResultsOnDay: ['lab'],
+      getResultById: ['lab'],
       getSeries: ['lab'],
       lastWriteEpochDay: ['lab']
     }

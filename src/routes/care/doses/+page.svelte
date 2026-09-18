@@ -121,7 +121,7 @@
      90 days can be reached by expanding the window to contain it, and a
      missing or deleted dose can show an explicit unavailable notice
      instead of scrolling to an unrelated recent row. */
-  const deepLinkedDoseId = hashRowId();
+  let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
   let deepLinkedDoseQuery = liveQuery((j) =>
     deepLinkedDoseId ? j.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
   );
@@ -129,6 +129,13 @@
   let deepLinkedDoseUnavailable = $derived(
     Boolean(deepLinkedDoseId && !deepLinkedDoseQuery.loading && !deepLinkedDoseQuery.value)
   );
+
+  let targetSlotDate = $derived(page.url.searchParams.get('date'));
+  let targetSlotUnavailable = $derived.by(() => {
+    if (view !== 'schedule' || !targetSlotDate || comparisonQuery.loading) return false;
+    if (!scheduleView || scheduleView.reason !== null) return true;
+    return !scheduleView.comparison.rows.some((r) => String(r.slot.epochDay) === targetSlotDate);
+  });
 
   $effect(() => {
     const dose = deepLinkedDoseQuery.value;
@@ -138,6 +145,18 @@
       if (daysAgo > windowDays) {
         const needed = Math.max(WINDOW_DAYS, Math.ceil(daysAgo / WINDOW_DAYS) * WINDOW_DAYS);
         windowDays = needed;
+      }
+    } else {
+      const dateParam = page.url.searchParams.get('date');
+      if (dateParam) {
+        const targetDay = parseInt(dateParam, 10);
+        if (!isNaN(targetDay)) {
+          const daysAgo = today - targetDay;
+          if (daysAgo > windowDays) {
+            const needed = Math.max(WINDOW_DAYS, Math.ceil(daysAgo / WINDOW_DAYS) * WINDOW_DAYS);
+            windowDays = needed;
+          }
+        }
       }
     }
   });
@@ -170,7 +189,11 @@
     windowDays += WINDOW_DAYS;
   }
 
-  let view = $state<'log' | 'schedule'>('log');
+  let view = $state<'log' | 'schedule'>(page.url.searchParams.get('view') === 'schedule' ? 'schedule' : 'log');
+  $effect(() => {
+    const v = page.url.searchParams.get('view');
+    if (v === 'schedule' || v === 'log') view = v;
+  });
   /** The old intro, folded under the tab bar rather than printed over every
       row (ticket 09). Closed by default: the log opens on the log. */
   let attributionOpen = $state(false);
@@ -203,7 +226,11 @@
       Always one of `activeDrugChoices`, or null with none of them - a
       `prefs.adherenceRegimenPick` left over from a regimen that has since
       ended is never handed to `getComparison` as though still active. */
+  let pickedRegimenDrug = $state<string | null>(null);
   let selectedRegimenDrug = $derived.by(() => {
+    if (pickedRegimenDrug && activeDrugChoices.includes(pickedRegimenDrug)) return pickedRegimenDrug;
+    const urlDrug = page.url.searchParams.get('drug');
+    if (urlDrug && activeDrugChoices.includes(urlDrug)) return urlDrug;
     const picked = prefs.adherenceRegimenPick;
     if (picked && activeDrugChoices.includes(picked)) return picked;
     return activeEpisode?.drug ?? activeDrugChoices[0] ?? null;
@@ -402,6 +429,8 @@
       } else {
         scrollToHash();
       }
+    } else if (!comparisonQuery.loading && view === 'schedule' && !targetSlotUnavailable) {
+      scrollToHash();
     }
   });
 
@@ -672,6 +701,8 @@
     editor = null;
   }
   let returnHref = $derived.by(() => {
+    const returnTo = page.url.searchParams.get('returnTo');
+    if (returnTo && returnTo.startsWith('/care')) return returnTo;
     const lane = page.url.searchParams.get('lane');
     const date = page.url.searchParams.get('date');
     if (lane || date) {
@@ -893,8 +924,21 @@
           name={m.adherence_drug_label()}
           value={selectedRegimenDrug ?? ''}
           options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
-          onChange={(v) => (prefs.adherenceRegimenPick = v)}
+          onChange={(v) => {
+            pickedRegimenDrug = v;
+            prefs.adherenceRegimenPick = v;
+          }}
           key="doses-regimen"
+        />
+      </div>
+    {/if}
+    {#if targetSlotUnavailable}
+      <div class="screen-part" data-slot-unavailable>
+        <Notice
+          icon="info"
+          key="slot-unavailable"
+          title={m.source_record_unavailable()}
+          text={m.source_record_unavailable_hint()}
         />
       </div>
     {/if}
@@ -937,25 +981,31 @@
           {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
         </p>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-          {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-            <ListRow
-              static
-              data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
-              title={fmtDayLong(row.slot.epochDay)}
-              subtitle={[
-                comparison.schedule.dosesPerDay > 1 &&
-                  m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
-                row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
-              ]}
+          {#each [...comparison.comparison.rows].reverse() as row, idx (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
+            <div
+              id={`slot-${row.slot.epochDay}`}
+              class="rows-divide"
+              class:is-target-slot={String(row.slot.epochDay) === targetSlotDate}
             >
-              {#snippet trailing()}
-                {#if row.dose}
-                  {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
-                {:else}
-                  {m.adherence_nothing_logged()}
-                {/if}
-              {/snippet}
-            </ListRow>
+              <ListRow
+                static
+                data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
+                title={fmtDayLong(row.slot.epochDay)}
+                subtitle={[
+                  comparison.schedule.dosesPerDay > 1 &&
+                    m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
+                  row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
+                ]}
+              >
+                {#snippet trailing()}
+                  {#if row.dose}
+                    {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
+                  {:else}
+                    {m.adherence_nothing_logged()}
+                  {/if}
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
 
@@ -1565,7 +1615,8 @@
     color: var(--text-2);
   }
 
-  .rows-divide.is-target-dose {
+  .rows-divide.is-target-dose,
+  .rows-divide.is-target-slot {
     background: var(--surface-2);
     border-radius: var(--r-block);
   }
