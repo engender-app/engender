@@ -2844,23 +2844,6 @@
   "pj_open": "Zrób kolaż albo film poklatkowy",
   "pj_title": "Kolaż i film poklatkowy",
   "pj_range_title": "Które zdjęcia",
-  "pj_count": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} zdjęcie w tym zakresie.",
-        "countPlural=few": "Zdjęcia w tym zakresie: {count}.",
-        "countPlural=many": "Zdjęcia w tym zakresie: {count}.",
-        "countPlural=other": "Zdjęcia w tym zakresie: {count}."
-      }
-    }
-  ],
   "pj_leave_out_hint": "Dotknij zdjęcia, żeby je pominąć.",
   "pj_none_in_range": "Brak zdjęć w tym zakresie.",
   "pj_output_title": "Co ma powstać",
@@ -2886,6 +2869,10 @@
     }
   ],
   "pj_timelapse_unavailable": "Ta przeglądarka nie nagra filmu, więc zostaje kolaż.",
+  "pj_selected_count": "Wybrane zdjęcia: {count}",
+  "pj_select_photo": "Wybierz co najmniej jedno zdjęcie, aby utworzyć plik.",
+  "pj_make_collage": "Utwórz kolaż",
+  "pj_make_timelapse": "Utwórz film poklatkowy",
   "pj_generate": "Utwórz",
   "pj_stays_here": "Nic nie opuściło tego urządzenia. Plik jest tylko na tym ekranie, dopóki go nie wyślesz albo nie zapiszesz.",
   "pj_share": "Wyślij albo zapisz",
