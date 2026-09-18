@@ -55,3 +55,19 @@ test('deleting a tally event is idempotent', async () => {
 
   assert.deepEqual(await journal.tally.getEvents('misgendered'), []);
 });
+
+test('the newest event of one kind is the one undo reverses', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.tally.latestEvent('misgendered'), null);
+
+  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+  const newest = await journal.tally.log({ epochDay: 102, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 101, kind: 'correctly_gendered' });
+
+  const latest = await journal.tally.latestEvent('misgendered');
+  assert.equal(latest?.id, newest);
+  assert.equal(latest?.kind, 'misgendered');
+
+  await journal.tally.deleteEvent(newest);
+  assert.equal((await journal.tally.latestEvent('misgendered'))?.epochDay, 100);
+});

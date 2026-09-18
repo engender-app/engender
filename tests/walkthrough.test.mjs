@@ -5828,6 +5828,108 @@ try {
   ok('quick add: a dose reaches the dose log with its editor already open');
 } catch (e) { fail('quick add dose', e); }
 
+/* In-context tally actions on /tally (phase 11 ticket 40). The two counters'
+   own log and undo sit under their own charts, so the screen that reads a
+   tally can also write one without knowing the quick-add fan exists.
+
+   Placed here, before the access-mode flows, for the same reason the
+   recovery-key flow dodges fresh(): those flows leave the journal gated, and
+   a gated journal has no demo bar to reset with. The jump below restores
+   the fill-every-feature state the suite has run on since its early flows,
+   so nothing this walk wrote before this point outlives it - which puts
+   one misgendered event and one correct-gendering event inside the default
+   30-day range (fullFixture layers no tally events of its own), and every
+   expected value below is seed-count + taps rather than arithmetic over
+   what earlier flows happened to log.
+
+   Every step is asserted through the live region's changed value, and that
+   is less indirect than it looks: the announcement is computed after the
+   write from the same stats.tallyTrend read the chart draws, so a number
+   here is the counter's real size over the range on screen.
+
+   Waits on a change from the text it read before each click, never on
+   non-empty: the region holds the previous announcement between steps, and
+   "non-empty" would race the clear-then-set that makes a repeated identical
+   value speak twice. */
+try {
+  await fresh('/tally');
+  await page.click('[data-fill-every-feature]');
+  await page.waitForURL(BASE + '/more');
+  await booted();
+  await fresh('/tally');
+
+  const status = page.locator('[data-tally-status]');
+  const spoken = async () => ((await status.textContent()) ?? '').trim();
+  /* The announcement clears before each write and is set after it - that
+     window is what makes a repeated identical value speak twice - so the
+     wait here is for a parseable value that differs from the one read
+     before the click, never merely for "changed": on a busy worker the
+     cleared half of the window is long enough to answer "changed" all by
+     itself. */
+  const nextSpoken = async (prev) => {
+    await page.waitForFunction(
+      (p) => {
+        const text = (document.querySelector('[data-tally-status]')?.textContent ?? '').trim();
+        return /:\s*\d+$/.test(text) && text !== p;
+      },
+      prev,
+      { timeout: 8000 }
+    );
+    return spoken();
+  };
+  const count = (text) => {
+    const match = text.match(/:\s*(\d+)$/);
+    if (!match) throw new Error(`the tally announcement carried no count: "${text}"`);
+    return Number(match[1]);
+  };
+  const startsWithKind = (text, kind) => {
+    if (!text.startsWith(kind)) throw new Error(`the announcement "${text}" is not ${kind}'s`);
+  };
+
+  if ((await spoken()).length) throw new Error('the tally status spoke before any action');
+
+  /* Repeated actions and repeated undos, each answered with the new value:
+     1 seeded, 2, 3, back down to the zero the seed never shows. */
+  await page.locator('[data-tally-log="misgendered"]').click();
+  const afterLog = await nextSpoken(await spoken());
+  startsWithKind(afterLog, 'Misgendered');
+  if (count(afterLog) !== 2) throw new Error(`logging misgendered announced "${afterLog}"`);
+
+  await page.locator('[data-tally-log="misgendered"]').click();
+  const afterSecondLog = await nextSpoken(afterLog);
+  if (count(afterSecondLog) !== 3) throw new Error(`a second log announced "${afterSecondLog}"`);
+
+  await page.locator('[data-tally-undo="misgendered"]').click();
+  const afterUndo = await nextSpoken(afterSecondLog);
+  if (count(afterUndo) !== 2) throw new Error(`the first undo announced "${afterUndo}"`);
+
+  await page.locator('[data-tally-undo="misgendered"]').click();
+  const afterSecondUndo = await nextSpoken(afterUndo);
+  if (count(afterSecondUndo) !== 1) throw new Error(`the second undo announced "${afterSecondUndo}"`);
+
+  /* The last undo removes the seed's own newest event, so the visible count
+     lands on zero and says so - a zero count is an answer, not a blank. */
+  await page.locator('[data-tally-undo="misgendered"]').click();
+  const afterZero = await nextSpoken(afterSecondUndo);
+  if (count(afterZero) !== 0) throw new Error(`the zero-count undo announced "${afterZero}"`);
+
+  /* The other counter is independent: its actions move only their own
+     count, which the misgendered numbers above no longer explain. */
+  await page.locator('[data-tally-log="correctly_gendered"]').click();
+  const correctLog = await nextSpoken(afterZero);
+  startsWithKind(correctLog, 'Correctly gendered');
+  if (count(correctLog) !== 2) throw new Error(`logging correct gendering announced "${correctLog}"`);
+
+  await page.locator('[data-tally-undo="correctly_gendered"]').click();
+  const correctUndo = await nextSpoken(correctLog);
+  if (count(correctUndo) !== 1) throw new Error(`correct gendering's undo announced "${correctUndo}"`);
+
+  /* Reading the screen never writes: this flow only navigated, read and
+     pressed the labelled actions - the numbers above are what the actions
+     moved, and nothing moved on its own. */
+  ok('tally: each counter logs and undos beside its own chart, announces the changed value, and reaches zero honestly');
+} catch (e) { fail('tally in-context actions', e); }
+
 try {
   /* The appointment record (phase 8 features ticket 57, ADR-0066): write a
      visit down, edit it, and throw it away.
