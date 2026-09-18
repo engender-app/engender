@@ -16,6 +16,8 @@
     "test:sheet-focus": "VITE_DEMO=1 npm run build && node tests/sheet-focus-check.mjs",
     "test:record-dismissal": "node tests/record-dismissal-check.mjs",
     "test:recovery-key-departure": "node tests/recovery-key-departure-check.mjs",
+    "test:photo-export": "node tests/photo-export.mjs",
+    "gallery:photo-export": "node tests/photo-export.mjs --gallery",
     "test:source-record-links": "node tests/source-record-links.mjs",
     "test:chosen-appointment": "node tests/chosen-appointment.mjs",
     "gallery:chosen-appointment": "node tests/chosen-appointment.mjs --gallery",
