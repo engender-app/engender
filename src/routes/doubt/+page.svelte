@@ -67,12 +67,8 @@
 <div class="screen screen-safe-space">
   <ScreenHeader title={m.safe_space_title()} back="/more" screen="safe-space" />
 
-  <!-- The breath takes the whole of what is left, which on a 390x844 phone
-       is the screen. No section heading over it: the field already says
-       where this is, and a second title between the field and the ring is
-       the chrome the ticket set out to clear. The eight references the
-       component's own note lists draw the ring straight on the page with a
-       phase word and one control, and nothing else painted. -->
+  <a class="btn btn-soft btn-block" href="/doubt/comfort">{m.comfort_list_title()}</a>
+
   <div class="breath-stage">
     <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
   </div>
