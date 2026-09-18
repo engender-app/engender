@@ -412,14 +412,13 @@
           key="dilation-schedule"
           data-schedule
           icon="flask"
-          title={m.dilation_surgery_day_label()}
+          title={m.dilation_schedule_edit_action()}
           subtitle={[
             followedProcedure?.name,
             followedProcedure?.surgeryEpochDay != null
               ? dayLong(followedProcedure.surgeryEpochDay)
               : m.dilation_procedure_date_unset()
           ]}
-          aria-label={m.dilation_schedule_edit_aria()}
           onclick={openScheduleEditor}
         />
       </ListCard>
