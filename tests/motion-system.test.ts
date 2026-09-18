@@ -1035,14 +1035,14 @@ describe('ticket 28: the field is a blind over the content', () => {
      blind's own curve, so a mark keeps its distance from the edge and
      cannot be left hanging outside the field (Alicja, round one). The ride
      is `translate` and the leave is `transform`, which is what lets the two
-     animations sit on one element without overwriting each other. */
+     animations sit on one element without overwriting each other.
+     Opening sun appears independently without riding the blind overshoot (ticket 99). */
   it('rides everything painted on the field with the blind, on the blind\'s own curve', () => {
     const ride = 'var(--dur-slow) var(--blind-ease, var(--ease-out)) both';
     for (const [selector, keyframe] of [
       ['::view-transition-old(*.field-part)', 'blind-lead'],
       ['::view-transition-new(*.field-part)', 'blind-follow'],
-      ['::view-transition-old(*.sun-ring)', 'blind-lead'],
-      ['::view-transition-new(*.sun-ring)', 'blind-follow']
+      ['::view-transition-old(*.sun-ring)', 'blind-lead']
     ]) {
       expect(declarations(ruleOf(app, selector)?.body ?? '').animation, selector).toContain(
         `${keyframe} ${ride}`
@@ -1104,7 +1104,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     const closes = declarations(ruleOf(app, '::view-transition-old(*.sun-ring)')?.body ?? '');
     const opens = declarations(ruleOf(app, '::view-transition-new(*.sun-ring)')?.body ?? '');
     expect(closes.animation).toContain('sun-ring-close var(--dur-fast) var(--ease-in-out) both');
-    expect(opens.animation).toContain('sun-ring-open var(--dur-fast) var(--ease-out) both');
+    expect(opens.animation).toContain('sun-ring-open var(--dur-sun-open) var(--ease-out) both');
     for (const name of ['sun-ring-close', 'sun-ring-open']) {
       for (const frame of frames(keyframesOf(app, name)!.body)) {
         expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(['scale']);

@@ -209,12 +209,28 @@ try {
     const page = browser.pages()[0] ?? (await browser.newPage());
     page.on('request', (request) => requests.push(request));
 
+    const PASSPHRASE = 'hosting verify passphrase';
     await page.goto(origin, { waitUntil: 'networkidle' });
-    await page.waitForSelector('#journal-passphrase', { timeout: 15000 });
-    await page.fill('#journal-passphrase', 'hosting verify passphrase');
-    await page.fill('#journal-passphrase-confirm', 'hosting verify passphrase');
-    await page.click('[data-passphrase-submit]');
+    await page.waitForSelector('[data-next]', { timeout: 15000 });
+    for (let step = 0; step < 12 && !(await page.locator('[data-access-modes]').count()); step++) {
+      await page.locator('[data-next]').click();
+    }
+    await page.waitForSelector('[data-access-modes]', { timeout: 15000 });
+    await page.locator('[data-list-row="passphrase"]').click();
+    await page.waitForSelector('[data-access-chosen="passphrase"]');
+    await page.click('[data-access-continue]');
+    await page.waitForSelector('[data-access-secret="passphrase"]');
+    await page.fill('#am-passphrase', PASSPHRASE);
+    await page.fill('#am-passphrase-confirm', PASSPHRASE);
+    await page.click('[data-access-submit]');
     await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+
+    await page.waitForSelector('[data-next]', { timeout: 15000 });
+    for (let step = 0; step < 12 && (await page.locator('[data-next]').count()); step++) {
+      await page.locator('[data-next]').click();
+    }
+    await page.locator('[data-finish]').click();
+    await page.waitForSelector('[data-home-hello]', { timeout: 15000 });
 
     const cdp = await browser.newCDPSession(page);
     const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');

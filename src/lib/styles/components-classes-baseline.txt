@@ -10,6 +10,7 @@ cal-num
 can-scroll
 can-scroll-end
 can-scroll-start
+card
 chart-area
 chart-dot
 chart-line
@@ -43,13 +44,16 @@ fan-mood
 fan-mood-label
 fan-moods
 fan-scrim
+has-back-actions
 header-action
 is-alive
 is-armed
+is-carried
 is-catching
+is-chrome
 is-collapsed
-is-dragging
 is-fan-open
+is-field-only
 is-filled
 is-ghost
 is-here
@@ -67,6 +71,8 @@ mood-dot
 mood-face
 mood-face-disc
 mood-face-eye
+mood-face-gaze
+mood-face-look
 mood-face-mouth
 mood-label
 mood-picker
@@ -75,8 +81,6 @@ nav-add
 onion-frame
 onion-layer
 onion-opacity
-photo-label
-photo-thumb
 pin-dot
 pin-dots
 pin-key
@@ -87,11 +91,11 @@ rail-add
 rive-stage
 screen-back
 screen-field
+screen-field-slot
 screen-header
 screen-header-row
 screen-subtitle
 screen-title
-section-aside
 section-title
 segment
 segment-pill
@@ -123,7 +127,6 @@ switch-thumb
 switch-track
 tag-chip-wrap
 tag-group
-tag-group-name
 tag-info-btn
 toast
 toast-action

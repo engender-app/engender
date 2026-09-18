@@ -727,6 +727,25 @@
     visibility: hidden;
   }
 
+  .kit-area-readout.is-left {
+    right: auto;
+    left: 0;
+    align-items: flex-start;
+  }
+
+  .kit-area-readout.is-below {
+    top: auto;
+    bottom: 0;
+  }
+
+  .kit-area-readout-text {
+    min-width: 0;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
      ring around a reading already drawn, in the chosen presentation's own
      colour rather than the chart's. Hollow, so the dot or line underneath

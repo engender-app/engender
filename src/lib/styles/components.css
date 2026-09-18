@@ -384,29 +384,10 @@
   outline-offset: -2px;
 }
 .screen-field .search-input:focus-visible { outline: none; }
-.screen-field .field-search-clear:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
-}
 /* The browser's own clear cross is 16px, is drawn by Chromium and by
    nothing else, and would be the one control on the screen under the touch
    floor. The field draws its own instead (the button beside the input). */
 .screen-field .search-input::-webkit-search-cancel-button { display: none; }
-/* A 48px target for a 20px glyph, and no wider than that: it sits inside
-   the box's own padding, so the row is icon, input, cross. */
-.field-search-clear {
-  flex: 0 0 auto;
-  width: var(--touch-target);
-  height: var(--touch-target);
-  margin-right: calc(-1 * var(--space-3));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: none;
-  color: var(--text);
-  cursor: pointer;
-}
 /* On the web the field is a banner across the column rather than a block
    meeting the window's edges, so it takes the radius on all four corners.
    Rule 7's chrome case takes its one platform branch here too (carpet 25):
@@ -1189,8 +1170,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    delay before an answer. At 150 the row still reads as snapping to each new
    size. The same number covers the release, so the row settles back at the
    speed it rose. */
-.mood-btn,
-.kit-mood {
+.mood-btn {
   transition: --mood-mag var(--dur-med) var(--ease-out);
 }
 

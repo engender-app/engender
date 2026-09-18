@@ -22,7 +22,6 @@
   border: var(--role-hairline);
 }
 /* ---------- Entry editor and friends ---------- */
-.editor-heading { font-size: var(--text-md); font-weight: var(--weight-bold); margin: 0 0 var(--space-3); font-family: var(--font-body); }
 
 /* The entry editor's save bar and every other screen's foot left screens.css
    with carpet 26: a foot is the frame's now, drawn as `.app-savebar` in
@@ -248,28 +247,6 @@
 .day-add .btn { width: 100%; }
 
 /* ---------- The Transition door ----------
-
-   The count above the results, which exists to be announced rather than
-   read: a list changing under a box somebody is typing into says nothing to
-   a screen reader on its own (redesign ticket 15). It is in the document at
-   rest, empty, because a live region has to be there before its content
-   changes for the change to be announced - and an empty one may not take a
-   block's margin with it. */
-.hub-count {
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  margin: 0;
-}
-/* The region itself takes no room and no margin: the line inside it does,
-   and opens and closes it (redesign ticket 25). An empty region used to
-   leave the flow and a searching one used to reserve its line at once,
-   and each of those was a frame in which the list under it jumped. The
-   screen's 20 sits on the line so it travels with it. */
-.screen > .hub-count { margin-bottom: 0; }
-.hub-count-line {
-  display: block;
-  margin-bottom: var(--space-5);
-}
 
 /* ---------- Search ---------- */
 .search-box {
@@ -899,17 +876,6 @@
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
 
-/* The journey anchor, which was a card. One quiet line under the range
-   control: it is a fact about where you are rather than a reading of the
-   period, and it is not a hero metric (the slop audit). The streak sat
-   beside it until phase 8 UX ticket 01. */
-.stats-caption {
-  margin: var(--space-3) var(--space-1) 0;
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-
 /* The "pick a start and end day" notice sat a hairline under the second
    picker (Alicja, 2026-08-25). A card and the remark about it are two
    things, and two things get the space two things get. */
@@ -931,16 +897,6 @@
 
    ChartCard takes no prop for a paragraph and does not need one; this is
    body content, which is what its `children` slot is for. */
-.stats-inline-note {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-body);
-  color: var(--text-2);
-}
-
-.stats-inline-note:first-child {
-  margin: 0 0 var(--space-3);
-}
 
 /* The custom interval's length, as that chart's one control on the
    heading's line - where the metric picker sits on the chart above it. It
@@ -1041,29 +997,6 @@
 
 /* ---------- The wrapped share card's screen ---------- */
 .share-stage { position: relative; margin-top: var(--space-4); }
-
-.share-stage-empty .wrapped-card {
-  min-height: 176px;
-  display: grid;
-  place-items: center;
-}
-
-.share-empty-preview {
-  position: absolute;
-  inset: 1px;
-  display: grid;
-  place-items: center;
-  padding: var(--space-5);
-  text-align: center;
-  pointer-events: none;
-}
-
-.share-empty-preview p {
-  max-width: 28ch;
-  margin: 0;
-  color: var(--text-2);
-  font-size: var(--text-sm);
-}
 
 .share-preview {
   margin-top: var(--space-4);
