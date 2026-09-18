@@ -196,6 +196,8 @@ jobs:
         run: |
           mkdir -p ci-logs
           npm run test:browser 2>&1 | tee ci-logs/browser-tier.log
+      - name: Dilation schedule action
+        run: npm run test:dilation-schedule-action
       - name: Walkthroughs
         run: npm run test:walkthrough 2>&1 | tee ci-logs/walkthrough.log
       - name: Built app
