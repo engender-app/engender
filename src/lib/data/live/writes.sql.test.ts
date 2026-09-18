@@ -981,6 +981,7 @@ beforeAll(async () => {
   await driveRead('tally', 'getEvents', () => journal.tally.getEvents('misgendered'));
   await driveRead('tally', 'getEventsOnDay', () => journal.tally.getEventsOnDay(20000));
   await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
+  await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered'));
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
   await driveRead('doses', 'getDoses', () => journal.doses.getDoses(0, 30000));
   await driveRead('doses', 'getDoseById', () => journal.doses.getDoseById('00000000-0000-0000-0000-000000000000'));
