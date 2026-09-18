@@ -48,6 +48,7 @@
   import {
     POLISH_PACK,
     roadmapSections,
+    roadmapStepsLeft,
     whereYouAreInRoadmap,
     type RoadmapGoalKey,
     type RoadmapTrack
@@ -340,18 +341,6 @@
   {#if !loaded}
     <div out:crossfade><Skeleton variant="line" count={4} /></div>
   {:else}
-    <!-- Rule 16: the reading before the records. whereYouAre is null only
-         when every track is dismissed, which the switcher and the panels
-         below still draw fine with nothing current to name. -->
-    {#if whereYouAre}
-      <div class="roadmap-here" data-roadmap-here>
-        <p class="roadmap-here-track">{roadmapTrackName(whereYouAre.track)}</p>
-        <p class="roadmap-here-left">{m.roadmap_track_steps_left({ n: whereYouAre.stepsLeft })}</p>
-      </div>
-    {/if}
-
-    <p class="roadmap-track-intro muted small">{m.roadmap_intro()}</p>
-
     <Segmented
       name={m.roadmap_track_switch_label()}
       key="roadmap-track"
@@ -381,14 +370,19 @@
                pressed"); a toggle button earns aria-pressed when its label
                holds still, and this one does not. `data-dismissed` carries
                the state for the stylesheet and the tests instead. -->
-          <button
-            class="roadmap-track-btn"
-            data-track-toggle={track}
-            data-dismissed={section.dismissed}
-            onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
-          >
-            {section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}
-          </button>
+          <div class="roadmap-track-meta">
+            <span class="roadmap-track-steps" data-roadmap-track-steps={track}>
+              {m.roadmap_track_steps_left({ n: roadmapStepsLeft(section, (key) => statuses[key] ?? 'unchecked') })}
+            </span>
+            <button
+              class="roadmap-track-btn"
+              data-track-toggle={track}
+              data-dismissed={section.dismissed}
+              onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
+            >
+              {section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}
+            </button>
+          </div>
         {/snippet}
       </SectionHeading>
       {#if section.dismissed}
@@ -664,30 +658,6 @@
     margin: 0 0 var(--space-2);
   }
 
-  /* Rule 16's own shape: a display-face reading of what is true now, the
-     same weight Care's spine gives the drug it names (care/+page.svelte's
-     .care-regimen-drug/.care-regimen-detail). */
-  .roadmap-here {
-    margin: 0 0 var(--space-4);
-  }
-
-  .roadmap-here-track {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-display);
-  }
-
-  .roadmap-here-left {
-    margin: var(--space-1) 0 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
-
-  .roadmap-track-intro {
-    margin: 0 0 var(--space-3);
-  }
-
   .roadmap-sources {
     margin: var(--space-5) 0 0;
   }
@@ -772,6 +742,23 @@
     padding: 0 var(--space-2);
     margin-right: calc(var(--space-2) * -1);
     border-radius: var(--r-block);
+  }
+
+  /* Track name, remaining count and dismissal stay one header. At narrow
+     widths the heading wraps before either context label is clipped. */
+  .roadmap-track-meta {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .roadmap-track-steps {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    white-space: nowrap;
   }
 
   /* Put back is the way out of a state rather than a second action, so it
