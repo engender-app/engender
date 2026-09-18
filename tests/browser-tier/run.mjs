@@ -1712,6 +1712,53 @@ await block('phase 5 deepening ticket 21 day composition', 9, async () => {
   else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
 });
 
+/* Phase 11 ticket 19: a dose row names the drug it carries, so concurrent
+   regimens at the same amount and route stay two rows before either is
+   opened, and a dose nothing attributes to says so instead of inventing a
+   name. The fixture states the attribution facts directly - they are what
+   the route resolves with attributeDrug and passes down; what this drives
+   is the wording, which lives in dayRows.ts and is the part a node-tier
+   test cannot reach (dayRows.ts imports paraglide and $lib). */
+await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
+  await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
+  await page.selectOption('select[aria-label="Day"]', 'concurrent');
+  await page.waitForTimeout(120);
+
+  const doseRowTexts = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-day-row^="dose-"]')].map((row) => ({
+      key: row.getAttribute('data-day-row'),
+      title: row.querySelector('.kit-row-title')?.textContent ?? null,
+      subs: [...row.querySelectorAll('.kit-row-sub')].map((sub) => sub.textContent ?? '')
+    }))
+  );
+
+  const named = (drug) => doseRowTexts.find((row) => row.title?.startsWith(drug));
+  const estradiol = named('Estradiol valerate');
+  const spiro = named('Spironolactone');
+  if (estradiol && spiro && estradiol.key !== spiro.key)
+    ok('three concurrent doses at one amount and route stay identifiable by name');
+  else fail('three concurrent doses at one amount and route stay identifiable by name', JSON.stringify(doseRowTexts));
+
+  const ambiguous = doseRowTexts.find((row) => row.key === 'dose-cd3');
+  if (
+    ambiguous &&
+    ambiguous.title?.startsWith('50 mg') &&
+    ambiguous.subs.some((sub) => sub.includes('More than one regimen was active'))
+  )
+    ok('a dose two regimens could both explain says so instead of naming one');
+  else fail('a dose two regimens could both explain says so instead of naming one', JSON.stringify(ambiguous));
+
+  const uncovered = doseRowTexts.find((row) => row.key === 'dose-cd4');
+  if (
+    uncovered &&
+    uncovered.title?.startsWith('50 mg') &&
+    uncovered.subs.some((sub) => sub.includes('No regimen episode covers this date'))
+  )
+    ok('a dose older than every episode says so rather than borrowing today’s regimen');
+  else fail('a dose older than every episode says so rather than borrowing today’s regimen', JSON.stringify(uncovered));
+});
+
 // --- Phase 5 deepening ticket 15: the voice benchmark engine ---------------
 await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');

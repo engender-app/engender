@@ -96,7 +96,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { dayAheadRows } from '$lib/components/dayAheadRows';
-  import { expectedDosesOnDay } from '$lib/data/regimenEpisode';
+  import { attributeDrug, expectedDosesOnDay } from '$lib/data/regimenEpisode';
   import Icon from '$lib/components/Icon.svelte';
   import DayRecordsView from '$lib/components/DayRecords.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -198,6 +198,24 @@
   let marginNotesRead = liveQuery((j) => j.marginNotes.forEntries(entryIds));
   let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
 
+  /* Which drug each logged dose carries (phase 11 ticket 19): a day row
+     names it, so concurrent regimens at the same amount and route stay
+     two records there too. attributeDrug at each dose's own timestamp -
+     the same question the dose log asks its rows - never the regimen
+     active today. Chained off the day read the way the margin notes
+     above are, because the registry reads doses but deliberately no
+     episodes (day.ts's DAY_OPT_OUTS: a span); a day with no doses needs
+     neither read, and until this lands the rows state amount and route
+     only rather than borrowing a name. */
+  let dayDoses = $derived(day?.doses ?? []);
+  let doseDrugsRead = liveQuery(async (j) => {
+    const doses = dayDoses;
+    if (doses.length === 0) return null;
+    const episodes = await j.regimen.getEpisodes();
+    return new Map(doses.map((dose) => [dose.id, attributeDrug(episodes, dose)]));
+  });
+  let doseDrugs = $derived(doseDrugsRead.value ?? undefined);
+
   /* What the gate branches on: a day is empty when no section has a row,
      which is not something a single list read can say for itself. Flattening
      every section is the emptiness test and nothing else - the two halves of
@@ -266,7 +284,7 @@
          front of a day that may hold nothing would flash on every future
          day somebody opens. -->
     {#if hasRecords}
-      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} />
+      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} {doseDrugs} />
     {/if}
   {:else}
     <ReadGate read={everythingLogged} variant="card" count={2}>
@@ -274,7 +292,7 @@
         <!-- `day!` because the gate renders this snippet only once the read
              has landed with something, which the compiler cannot see across a
              snippet boundary. -->
-        <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} />
+        <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} {doseDrugs} />
       {/snippet}
       {#snippet empty()}
         <Notice
