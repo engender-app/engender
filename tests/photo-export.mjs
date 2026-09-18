@@ -105,6 +105,26 @@ try {
   assert.equal(await page.evaluate(() => window.deliveries), 1, 'only explicit sharing delivers');
   await page.locator('[data-again]').click();
   console.log('PASS formats, selected output pixels, exclusions, preview return, zero selection, explicit sharing');
+  await page.evaluate(() => {
+    document.querySelector('.demo-bar')?.remove();
+    document.body.classList.remove('has-demo-bar');
+    for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
+  });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
+  assert.equal(await page.evaluate(() => visualViewport.scale), 2);
+  await page.getByRole('radio', { name: 'Timelapse', exact: true }).focus();
+  await page.keyboard.press('Space');
+  assert.equal(await page.locator('.photo-cell[aria-pressed="true"]').count(), 1);
+  await page.getByRole('radio', { name: 'Collage', exact: true }).focus();
+  await page.keyboard.press('Space');
+  await page.locator('[data-generate]').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('[data-share]').waitFor();
+  await page.locator('[data-again]').focus();
+  await page.keyboard.press('Enter');
+  await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
+  console.log('PASS format, generate and preview return at 200% page scale');
   await page.locator('.photo-cell[aria-pressed="false"]').click();
   const gallery = process.argv.includes('--gallery');
   const out = '.claude/photo-export-shots';
