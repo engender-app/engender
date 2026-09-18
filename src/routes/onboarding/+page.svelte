@@ -69,11 +69,11 @@
   import { createProgress } from '$lib/components/progress.svelte';
   import { wipe } from '$lib/motion/reveal';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
-  import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
+  import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '$lib/data/pinnedRows';
+  import { hubRow, hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { HOME_AREA_ROLE, roleAt, tileRoleAt } from '$lib/theme/roles';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -126,6 +126,7 @@
      whatever it answered last time, not the app's own default. */
   let areas = $state<string[] | null>(null);
   let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
+  let previewPins = $derived(defaultPins(tickedAreas));
 
   function toggleArea(key: string) {
     areas = tickedAreas.includes(key)
@@ -815,6 +816,42 @@
                      one heading and it is the question. The permissions step
                      names its own two groups the same way, which is where
                      this drawing comes from. -->
+                <!-- A concise preview of the resulting Today pins (phase 11 ticket 22):
+                     shows what the selection puts on Today, in registry order, and explains
+                     that unselected areas stay in Transition and where to change pins later. -->
+                <div class="setup-areas-preview" data-setup-areas-preview>
+                  <p class="setup-caption" data-setup-caption>{m.ob_areas_preview_title()}</p>
+                  <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
+                    {#if previewPins.length > 0}
+                      {#each previewPins as pinKey (pinKey)}
+                        {@const r = hubRow(pinKey)}
+                        <ListRow
+                          key={`preview-${pinKey}`}
+                          icon={r.icon}
+                          title={hubRowTitle(pinKey)}
+                          static={true}
+                          chevron={false}
+                          data-preview-pin={pinKey}
+                        />
+                      {/each}
+                    {:else}
+                      <ListRow
+                        key="preview-empty"
+                        title={m.home_edit_none()}
+                        static={true}
+                        chevron={false}
+                      />
+                    {/if}
+                    <ListRow
+                      key="preview-edit"
+                      icon="pencil"
+                      title={previewPins.length > 0 ? m.home_pinned_edit() : m.home_pinned_edit_empty()}
+                      static={true}
+                      chevron={false}
+                    />
+                  </ListCard>
+                </div>
+
                 <div class="setup-areas">
                   {#each sections as section (section.key)}
                     <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
@@ -1279,6 +1316,10 @@
   }
   .setup-caption:first-child {
     margin-top: 0;
+  }
+  .setup-areas-preview {
+    display: flex;
+    flex-direction: column;
   }
   .setup-areas {
     display: flex;
