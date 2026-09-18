@@ -261,7 +261,10 @@
 <!-- The mark at legend size, on both kinds of chart. -->
 {#snippet markerLegend(shown: number)}
   {#if shown > 0}
-    <span class="legend-item"><span class="legend-marker"></span>{m.curve_legend_markers()}</span>
+    <details class="curve-legend-detail">
+      <summary class="legend-item"><span class="legend-marker"></span>{m.curve_legend_markers()}</summary>
+      <p>{m.curve_markers_note()}</p>
+    </details>
   {/if}
 {/snippet}
 
@@ -379,8 +382,15 @@
           />
 
           <div class="curve-legend">
-            <span class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</span>
-            <span class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</span>
+            <details class="curve-legend-detail">
+              <summary class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</summary>
+              <p>{m.curve_band_note()}</p>
+              <p>{m.curve_source()}</p>
+            </details>
+            <details class="curve-legend-detail">
+              <summary class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</summary>
+              <p>{m.curve_intro()}</p>
+            </details>
             {@render markerLegend(markersFor(curve.ester).length)}
           </div>
 
@@ -422,10 +432,6 @@
       <p class="muted small curve-note">{m.curve_band_note()}</p>
     {/if}
 
-    {#if markers.length > 0}
-      <p class="muted small curve-note" data-curve-markers-note>{m.curve_markers_note()}</p>
-    {/if}
-
     {#if view.qualitative.sections.length > 0}
       <SectionHeading text={m.curve_qual_heading()} />
       <!-- Keyed by hormone and route together: the same route on the two
@@ -463,7 +469,10 @@
             />
 
             <div class="curve-legend">
-              <span class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</span>
+              <details class="curve-legend-detail">
+                <summary class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</summary>
+                <p>{m.curve_qual_note()}</p>
+              </details>
               {@render markerLegend(markersFor(curve.key).length)}
             </div>
 
@@ -488,7 +497,6 @@
         {/each}
       {/each}
 
-      <p class="muted small curve-note">{m.curve_qual_note()}</p>
     {/if}
 
     <div class="curve-fit">
@@ -569,9 +577,6 @@
     {/if}
 
     <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
-    {#if view.injectable.charts.length > 0}
-      <p class="muted small curve-note">{m.curve_source()}</p>
-    {/if}
   {/if}
 </div>
 
@@ -597,9 +602,25 @@
   }
 
   .legend-item {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
+    min-height: var(--touch-target);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .legend-item::-webkit-details-marker {
+    display: none;
+  }
+
+  .curve-legend-detail {
+    min-width: 0;
+  }
+
+  .curve-legend-detail p {
+    max-width: 48ch;
+    margin: 0 0 var(--space-3);
   }
 
   .legend-band {
