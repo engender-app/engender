@@ -31,6 +31,7 @@
      full JPEG bytes through readPhoto (PhotoWipe.svelte) and a `.webm` is
      not a frame. Its tile plays it instead of picking it. */
   import { tick } from 'svelte';
+  import { collapse } from '$lib/motion/reveal';
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
@@ -287,12 +288,12 @@
       />
     </div>
     {#if selecting}
-      <div class="compare-selection">
+      <div class="compare-selection" transition:collapse>
         <p role="status" data-compare-progress>{m.ph_selection_count({ count: orderedSelected.length })}</p>
         <p class="muted small">{selected.length < 2 ? m.ph_pick_two() : m.ph_selection_full()}</p>
         {#each selected as id (id)}
           {@const anchor = comparable.find((photo) => photo.id === id)}
-          <div class="compare-anchor">
+          <div class="compare-anchor" transition:collapse>
             <span>
               {#if anchor}
                 {photoSourceLabel(anchor.source)}, {cellDate(anchor)}

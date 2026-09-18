@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 
@@ -90,10 +91,55 @@ try {
   assert.match(await page.locator('[data-compare-progress]').innerText(), /1\/2/);
   await page.locator('[data-photo-chip="everything"]').click();
   await tile(entry.id).click();
+  if (process.argv.includes('--gallery')) {
+    const out = process.env.PHOTO_COMPARE_SHOTS ?? '.claude/photo-compare-shots';
+    await mkdir(out, { recursive: true });
+    for (const language of ['en', 'pl']) for (const width of [320, 390, 430, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(async language => {
+        const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+        const { setLocale } = await import('/src/lib/paraglide/runtime.js');
+        prefs.language = language;
+        setLocale(language, { reload: false });
+      }, language);
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.locator('[data-app-root][data-boot="ready"]').waitFor();
+      await page.evaluate(() => {
+        document.querySelector('.demo-bar')?.remove();
+        document.body.classList.remove('has-demo-bar');
+        for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
+      });
+      await page.locator('[data-segment="browse"]').click();
+      await page.locator('[data-segment="compare"]').click();
+      await tile(entry.id).click();
+      await tile(hair.id).click();
+      await page.locator('[data-compare-progress]').evaluate(el => el.scrollIntoView({ block: 'start' }));
+      assert.equal(await page.locator('html').getAttribute('lang'), language);
+      assert.equal(await page.locator('[data-compare-open]').isEnabled(), true);
+      await page.screenshot({ path: `${out}/selection-${language}-${width}.png` });
+      assert.equal(await page.locator('[data-app-scroll-region]').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+    }
+    await page.evaluate(async () => {
+      const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+      prefs.language = 'en';
+      const { setLocale } = await import('/src/lib/paraglide/runtime.js');
+      setLocale('en', { reload: false });
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.locator('[data-segment="browse"]').click();
+    await page.locator('[data-segment="compare"]').click();
+    await tile(entry.id).click();
+    await tile(hair.id).click();
+  }
+  await page.locator('[data-compare-open]').click();
+  await page.locator('[data-photo-wipe]').waitFor();
   await page.evaluate(async id => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     await journal.entries.deleteEntry(id);
   }, entry.ownerId);
+  await page.getByRole('dialog').getByRole('status').filter({ hasText: 'no longer available' }).waitFor();
+  assert.equal(await page.locator('[data-photo-wipe]').count(), 0);
+  await page.keyboard.press('Escape');
   await page.locator('[data-anchor-unavailable]').waitFor();
   assert.equal(await page.locator('[data-compare-open]').isDisabled(), true);
   await page.locator(`[data-anchor-remove="${entry.id}"]`).click();
