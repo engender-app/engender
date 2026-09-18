@@ -24,8 +24,9 @@ describe('the reminders list on web', () => {
   it('hands the archive explanation a direct Export/import link', () => {
     /* The limitation notice is where a web reader learns the data moves in
        an encrypted export; the link is the task itself, not a second
-       explanation of it. */
-    const web = listMarkup.slice(listMarkup.indexOf('{#if isWeb}'), listMarkup.indexOf('{:else}'));
+       explanation of it. Bounded at the Android check-in block because the
+       web branch carries an inner {:else} of its own (the empty state). */
+    const web = listMarkup.slice(listMarkup.indexOf('{#if isWeb}'), listMarkup.indexOf('data-checkin'));
     expect(web).toContain('key="reminders-web"');
     expect(web).toContain('m.rem_web_list_note()');
     expect(web).toContain('m.rem_web_note()');
@@ -65,8 +66,10 @@ describe('the reminder editor on web', () => {
 describe('the reminders list on Android', () => {
   it('keeps the granted, denied and battery explanations where they were', () => {
     /* Ticket 13 moves nothing on Android: the denied notice keeps its two
-       request actions, and the battery note keeps its own link. */
-    const android = listMarkup.slice(listMarkup.indexOf('{:else}'));
+       request actions, and the battery note keeps its own link. The slice
+       starts at the Android check-in block, the first markup past the
+       web/Android branch, not at the first {:else} (the empty state's). */
+    const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
     expect(android).toContain("status.notifications === 'denied' || status.exactAlarms === 'denied'");
     expect(android).toContain('m.rem_capabilities_title()');
     expect(android).toContain('requestNotifications');

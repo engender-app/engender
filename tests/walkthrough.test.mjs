@@ -2857,6 +2857,24 @@ try {
   ok('web reminders note');
 } catch (e) { fail('reminders web', e); }
 
+/* 15b. the web editor names its preview as saved schedule and promises no
+   ring, and the list's Export/import handoff comes back (ticket 13). The
+   handoff lives on the list's notice; the editor is reached by direct
+   visit, which is exactly the path the audit took. */
+try {
+  await page.goto(BASE + '/settings/reminders/new', { waitUntil: 'networkidle' });
+  await booted();
+  const editor = await page.textContent('.screen');
+  if (!editor.includes('Saved schedule')) throw new Error('the web editor does not name the preview as saved schedule');
+  if (editor.includes('Exact alarms survive reboots')) throw new Error('the web editor promises Android alarm delivery');
+  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
+  await page.locator('[data-notice="reminders-web"] [data-notice-action]').click();
+  await page.waitForFunction(() => location.pathname === '/settings/export');
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === '/settings/reminders');
+  ok('web reminders: saved-schedule editor, no reboot promise, export handoff returns');
+} catch (e) { fail('web reminder editor', e); }
+
 /* 16. preferences survive a reload and land before first paint (ticket 06) */
 try {
   await page.setViewportSize({ width: 440, height: 940 });
