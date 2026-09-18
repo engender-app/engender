@@ -67,7 +67,7 @@ try {
   assert.equal(await identity.locator('time').getAttribute('datetime'), '2024-10-03');
   await visit(`/media/documents/${fixture.first}`);
   await page.locator('[data-document-page-canvas="drawn"]').waitFor();
-  await page.getByRole('button', { name: 'Enlarge page to 200%', exact: true }).click();
+  await page.getByRole('button', { name: 'Enlarge page', exact: true }).click();
   const reader = page.getByRole('region', { name: `The page of ${fixture.title}`, exact: true });
   await page.waitForFunction(() => {
     const region = document.querySelector('[data-document-reader]');
@@ -96,7 +96,7 @@ try {
   await page.locator('[data-export-document]').click();
   assert.deepEqual(new Uint8Array(await readFile(await (await download).path())), pdf, 'export preserves original PDF bytes');
   await page.getByRole('button', { name: 'Fit page', exact: true }).click();
-  await page.getByRole('button', { name: 'Enlarge page to 200%', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Enlarge page', exact: true }).waitFor();
   // Browser magnification remains independent of the reader's own enlargement.
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
@@ -144,8 +144,16 @@ try {
       await page.locator('[data-page-forward]').click();
       await page.waitForURL((url) => url.searchParams.get('page') === '3');
       await page.locator('[data-document-page-canvas="drawn"]').waitFor();
-      await page.waitForFunction(() => document.querySelector('[data-document-page-canvas]')?.width === 2048);
-      if (gallery) await page.screenshot({ path: `.claude/document-reader-shots/reader-${language}-${width}.png` });
+      await page.waitForFunction(() => {
+        const canvas = document.querySelector('[data-document-page-canvas]');
+        return canvas && Math.max(canvas.width, canvas.height) === 2048;
+      });
+      if (gallery) {
+        await page.waitForTimeout(300);
+        await page.locator('[data-document-page-canvas="drawn"]').waitFor();
+        await page.locator('.doc-pager').waitFor();
+        await page.screenshot({ path: `.claude/document-reader-shots/reader-${language}-${width}.png` });
+      }
     }
     await page.setViewportSize({ width: 390, height: 844 });
     if (gallery) for (const disguise of [false, true]) for (const palette of PALETTES) for (const theme of ['light', 'dark']) {

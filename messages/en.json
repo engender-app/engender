@@ -3785,7 +3785,7 @@
   "document_missing_action": "Back to documents",
   "day_document": "Document",
   "hub_sub_documents": "Opinions, referrals and rulings you have been given",
-  "document_enlarge_page": "Enlarge page to 200%",
+  "document_enlarge_page": "Enlarge page",
   "document_fit_page": "Fit page",
   "document_page_alt": "The page of {title}",
   "document_page_count": "Page {page} of {pages}",
