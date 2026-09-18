@@ -207,10 +207,17 @@ export function whereYouAreInRoadmap<K extends string, C extends { readonly stat
   const live = sections.filter((section) => !section.dismissed);
   if (live.length === 0) return null;
 
-  const stepsLeft = (section: RoadmapSection<K, C>) =>
-    section.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length +
-    section.customGoals.filter((goal) => goal.status === 'unchecked').length;
+  const current = live.find((section) => roadmapStepsLeft(section, statusOf) > 0) ?? live[live.length - 1];
+  return { track: current.track, stepsLeft: roadmapStepsLeft(current, statusOf) };
+}
 
-  const current = live.find((section) => stepsLeft(section) > 0) ?? live[live.length - 1];
-  return { track: current.track, stepsLeft: stepsLeft(current) };
+/** Remaining work in one visible track. The screen uses this for the track
+    somebody selected, while `whereYouAreInRoadmap` uses it to choose the
+    initial track. */
+export function roadmapStepsLeft<K extends string, C extends { readonly status: RoadmapGoalStatus }>(
+  section: RoadmapSection<K, C>,
+  statusOf: (key: K) => RoadmapGoalStatus
+): number {
+  return section.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length +
+    section.customGoals.filter((goal) => goal.status === 'unchecked').length;
 }

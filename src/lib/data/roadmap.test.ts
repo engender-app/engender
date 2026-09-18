@@ -10,6 +10,7 @@ import {
   ROADMAP_TRACKS,
   goalsInTrack,
   roadmapSections,
+  roadmapStepsLeft,
   whereYouAreInRoadmap,
   type RoadmapPack
 } from './roadmap.ts';
@@ -212,6 +213,19 @@ test('with nothing ticked yet, where you are is the pack\'s first track', () => 
   const here = whereYouAreInRoadmap(sections, allUnchecked);
 
   expect(here).toEqual({ track: 'social', stepsLeft: goalsInTrack(POLISH_PACK, 'social').length });
+});
+
+test('a selected track reports its own remaining steps, including custom goals', () => {
+  const sections = roadmapSections(POLISH_PACK, CUSTOM.map((goal) => ({ ...goal, status: 'unchecked' as const })), []);
+  const legal = sections.find((section) => section.track === 'legal')!;
+  const statuses: Record<string, RoadmapGoalStatus> = Object.fromEntries(
+    legal.goals.map((goal) => [goal.key, 'checked' as const])
+  );
+
+  expect(roadmapStepsLeft(legal, (key) => statuses[key] ?? 'unchecked')).toBe(0);
+  expect(roadmapStepsLeft(sections.find((section) => section.track === 'medical')!, (key) => statuses[key] ?? 'unchecked')).toBe(
+    goalsInTrack(POLISH_PACK, 'medical').length + 1
+  );
 });
 
 test('a resolved track is skipped for the next live one with something left', () => {
