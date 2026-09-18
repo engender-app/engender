@@ -2651,6 +2651,7 @@
   "resources_intro": "Numbers and addresses worth having when there is no way to look them up. Nothing here is fetched, so this screen works with no signal.",
   "resources_group_pl": "Poland",
   "resources_group_int": "English language",
+  "resources_jump_label": "Jump to group",
   "resources_call": "Call {name}",
   "resources_open": "Open {name}",
   "resources_reviewed": "Checked {date}. Hours change more often than numbers do.",

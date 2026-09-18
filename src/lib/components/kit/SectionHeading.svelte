@@ -11,6 +11,7 @@
   let {
     text,
     id,
+    focusable = false,
     action
   }: {
     text: string;
@@ -19,6 +20,8 @@
         on the letters screen's Open section). Omitted everywhere else - a
         heading needs no id to name an area, only to be addressed by one. */
     id?: string;
+    /** Lets a same-page link move keyboard focus onto the named area. */
+    focusable?: boolean;
     /** A control for the area as a whole, right-aligned on the heading's own
         line: a link out of it, an add button, or a state the whole area
         carries (the roadmap's "not my path" per track). Not a row's control
@@ -30,7 +33,11 @@
   } = $props();
 </script>
 
-<div class="kit-heading" data-section-heading {id}>
-  <h2>{text}</h2>
+<div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
+  {#if focusable}
+    <h2 {id} tabindex="-1">{text}</h2>
+  {:else}
+    <h2>{text}</h2>
+  {/if}
   {#if action}{@render action()}{/if}
 </div>

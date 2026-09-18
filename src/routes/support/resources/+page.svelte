@@ -25,9 +25,9 @@
   import { RESOURCES_REVIEWED_ON, resourcesFor, type ResourceRegion } from '$lib/resources/directory';
   import { resourceDescription, resourceHours } from '$lib/resources/labels';
 
-  const GROUPS: { region: ResourceRegion; title: () => string }[] = [
-    { region: 'pl', title: m.resources_group_pl },
-    { region: 'int', title: m.resources_group_int }
+  const GROUPS: { region: ResourceRegion; id: string; title: () => string }[] = [
+    { region: 'pl', id: 'resources-pl', title: m.resources_group_pl },
+    { region: 'int', id: 'resources-int', title: m.resources_group_int }
   ];
 
   /* A tel: URI takes no spaces, but the number on screen keeps them: one is
@@ -50,8 +50,14 @@
 <div class="screen">
   <ScreenHeader title={m.resources_title()} back="/more" subtitle={m.resources_intro()} />
 
+  <nav class="resource-jumps" aria-label={m.resources_jump_label()}>
+    {#each GROUPS as group (group.region)}
+      <a class="resource-jump" href={`#${group.id}`}>{group.title()}</a>
+    {/each}
+  </nav>
+
   {#each GROUPS as group, i (group.region)}
-    <SectionHeading text={group.title()} />
+    <SectionHeading id={group.id} focusable text={group.title()} />
     <ListCard role={roleAt(activeFlag.roles, i)}>
       {#each resourcesFor(group.region) as resource (resource.key)}
         <!-- Hand-rolled rather than ListRow (ticket 16): a third band of
@@ -110,6 +116,36 @@
 </div>
 
 <style>
+  /* Fragments keep every bundled resource in one offline document. They do
+     not select or hide a group, and native links retain keyboard navigation
+     without a second focus or scroll state to keep in sync. */
+  .resource-jumps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .resource-jump {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    background: var(--surface-2);
+    color: var(--role-ink);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+  }
+
+  .resource-jump:hover { border-color: var(--outline); }
+
+  :global(#resources-pl),
+  :global(#resources-int) {
+    scroll-margin-top: var(--space-5);
+  }
+
   /* The row holds a name, what the service is, and the ways to reach it,
      so it grows instead of centring in one touch target. */
   .resource-row {
