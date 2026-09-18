@@ -2530,7 +2530,7 @@
   "journey_anchor_row_badge": "Counting from here",
   "journey_anchor_since": "Since {name}",
   "curve_title": "Hormone curve",
-  "curve_intro": "What's known about estradiol and testosterone between doses: a fitted range where published data allows one, an illustrative shape where it doesn't. Your own results sit on top of either curve, and the curve is only context for reading them. No targets and no advice.",
+  "curve_intro": "Fitted ranges and illustrative shapes show what research can support. Your results stay as recorded. This view is context for your records, not targets or advice.",
   "curve_injectable_heading": "Fitted to published studies",
   "curve_window_label": "Window",
   "curve_window_30": "30 days",
