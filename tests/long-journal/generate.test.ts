@@ -12,6 +12,7 @@
 import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../../src/lib/data/journal/test-support.ts';
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
+import { readCare } from '../../src/lib/data/careReads.ts';
 import { generateLongJournal, type LongJournalSummary } from './generate.ts';
 import { bytePatternPhoto } from './test-support.ts';
 
@@ -253,6 +254,7 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
 
   expect(summary.voiceRecordings).toBeGreaterThan(0);
   expect(await journal.voice.inJournal()).toHaveLength(summary.voiceRecordings);
+  expect(summary.videoNotes).toBeGreaterThan(0);
 });
 
 test('the summary reports the counts a benchmark run prints', async () => {
@@ -292,8 +294,30 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'tagWordEntries',
       'tryouts',
       'tryoutWideOpenStartEpochDay',
+      'videoNotes',
       'voiceRecordings',
       'wearSessions'
     ].sort()
   );
+});
+
+test('the fixture exercises all photo owners through the unified photo library', async () => {
+  const { journal } = await generate({ seed: 9, days: 800 });
+  const library = await journal.photoLibrary.inJournal();
+  const sources = new Set(library.map((p) => p.source));
+  expect(sources).toEqual(new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']));
+});
+
+test('the fixture exercises concurrent Care episodes, schedules, pauses, stock, doses and totals', async () => {
+  const { journal, summary } = await generate({ seed: 9, days: 800 });
+  const care = await readCare(journal, summary.lastEpochDay);
+  expect(care.lanes.length).toBeGreaterThan(1);
+  expect(care.lanes.every((l) => l.lastDoseEpochDay !== null)).toBe(true);
+  expect(care.lanes.some((l) => l.nextDoseEpochDay !== null)).toBe(true);
+  expect(care.lanes.some((l) => l.doseTotals.length > 0)).toBe(true);
+  expect(care.stock.length).toBeGreaterThan(0);
+  const pauses = await journal.doses.getPauses();
+  expect(pauses.length).toBeGreaterThan(1);
+  const pausedEpisodeIds = new Set(pauses.map((p) => p.episodeId));
+  expect(pausedEpisodeIds.size).toBeGreaterThan(1);
 });
