@@ -42,7 +42,7 @@ import { BUILT_IN_DIMENSIONS, BUILT_IN_MEASUREMENT_TYPES, BUILT_IN_PERSONAL_EFFE
 import { GARMENT_CATEGORIES } from '../../src/lib/data/garmentCategories.ts';
 import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
-import { demoAudioBytes } from '../../src/lib/data/demoAudioBytes.ts';
+import { demoAudioBytes, demoVideoBytes } from '../../src/lib/data/demoAudioBytes.ts';
 
 /** Days in ten years, two of them leap. The unit is in the name because the
     option it is passed to takes days, and `{ days: TEN_YEARS }` read as
@@ -113,6 +113,7 @@ export interface LongJournalSummary {
   stockEntries: number;
   checklistItems: number;
   voiceRecordings: number;
+  videoNotes: number;
   /** Standalone appointments, seeded at a quarterly cadence (phase 8
       features ticket 59). Not counting the surgery's own two consults,
       which are appointments too (ADR-0066) but come from `addConsult`
@@ -362,6 +363,7 @@ export async function generateLongJournal(
     stockEntries: 0,
     checklistItems: 0,
     voiceRecordings: 0,
+    videoNotes: 0,
     appointments: 0,
     documents: 0,
     tryoutWideOpenStartEpochDay: 0,
@@ -412,6 +414,16 @@ export async function generateLongJournal(
       const attachRecordings = random() < 0.005 ? [demoAudioBytes(random)] : undefined;
       if (attachRecordings) summary.voiceRecordings++;
 
+      // A video note on about one entry in a hundred (ADR-0034) - raw webm bytes,
+      // ensuring all photo library sources are exercised.
+      const attachVideos =
+        summary.videoNotes === 0 && day === firstEpochDay + 20
+          ? [demoVideoBytes(random)]
+          : random() < 0.01
+            ? [demoVideoBytes(random)]
+            : undefined;
+      if (attachVideos) summary.videoNotes++;
+
       // A body region on roughly one entry in six, its value clearing
       // GOOD_DAY_REGION_EUPHORIA_FLOOR (as a slider position: 75 or above)
       // about half the time - a mix, not an always-true or always-false
@@ -441,7 +453,8 @@ export async function generateLongJournal(
         tags,
         bodyRegions,
         attachPhotos,
-        attachRecordings
+        attachRecordings,
+        attachVideos
       });
       summary.entries++;
     }
@@ -469,8 +482,12 @@ export async function generateLongJournal(
   for (let i = 0; i < MILESTONE_NAMES.length; i++) {
     const day = firstEpochDay + i * milestoneStep + between(0, Math.min(20, milestoneStep));
     if (day > lastEpochDay + 400) break;
-    await journal.milestones.upsertMilestone({ name: MILESTONE_NAMES[i], epochDay: day });
+    const milestoneId = await journal.milestones.upsertMilestone({ name: MILESTONE_NAMES[i], epochDay: day });
     summary.milestones++;
+    if (i % 2 === 0) {
+      await journal.photos.attach({ milestoneId }, await makePhoto(summary.photos));
+      summary.photos++;
+    }
   }
 
   // Hair-progress stagings, spread across the decade rather than clustered:
@@ -519,8 +536,17 @@ export async function generateLongJournal(
     doseAmounts: REGIMEN_DOSE_AMOUNTS,
     autoLogFromEpochDay: null
   });
+  const pauseStart = lastEpochDay - 45;
+  const pauseEnd = lastEpochDay - 32;
+  await journal.doses.upsertPause({
+    episodeId,
+    startEpochDay: pauseStart,
+    endEpochDay: pauseEnd,
+    reason: 'planned'
+  });
   for (let day = regimenStartEpochDay; day <= lastEpochDay; day++) {
     if (!REGIMEN_WEEKDAYS.includes(weekdayOfEpochDay(day))) continue;
+    if (day >= pauseStart && day <= pauseEnd) continue;
     if (random() < 0.05) continue;
     const amount = REGIMEN_DOSE_AMOUNTS[summary.doseEvents % REGIMEN_DOSE_AMOUNTS.length];
     await journal.doses.upsertDose({

@@ -93,7 +93,7 @@ console.log(
     `${summary.doseEvents} dose events. ` +
     `Written in ${(generatedInMs / 1000).toFixed(0)}s.`
 );
-console.log('');
+console.log('Desktop query timing is not Android frame or decode performance.\n');
 
 const pad = (text, width) => String(text).padEnd(width);
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)}KB`;
