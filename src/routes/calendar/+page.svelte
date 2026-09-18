@@ -440,12 +440,6 @@
   </ScreenHeader>
 
   {#if hasEntries}
-    <!-- One line of controls, in both states and in the same place in both:
-         the two month steps, the metric this month is coloured by, and the
-         control that opens it. The picker is named by the words it used to
-         print beside itself - the line has room for one label or four
-         controls, and Home's own picker has been named this way since it
-         went on a heading's line. -->
     <div class="cal-controls">
       <button class="icon-btn press" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => step(-1)}>
         <Icon name="chevronLeft" size={22} />
@@ -462,14 +456,14 @@
         onPick={(value) => selectMetric(value === 'mood' ? null : value)}
       />
       <button
-        class="icon-btn press cal-open"
+        class="btn btn-soft press cal-open"
         class:is-open={monthOpen}
         aria-expanded={monthOpen}
         aria-controls="calendar-month"
-        aria-label={monthOpen ? m.cal_close_month() : m.cal_open_month()}
         data-cal-open
         onclick={toggleMonth}
       >
+        <span>{monthOpen ? m.cal_close_month() : m.cal_open_month()}</span>
         <Icon name="chevronDown" size={22} />
       </button>
     </div>
@@ -663,24 +657,20 @@
 
   /* ---------- The month's controls, and the month ---------- */
 
-  /* One line, and the same line in both states: the two month steps, the
-     metric, and the control that opens the month. 12 under the field rather
-     than 20, because it is the field's own line of controls and not the next
-     block down (rule 1). */
   .cal-controls {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     margin: var(--space-3) 0;
   }
-  /* The picker takes the room the two labels it stands in for used to, so
-     the control that opens the month lands on the screen's right edge where
-     a disclosure belongs - and it is the one thing on the line that gives
-     room back. The three controls are 48px targets and a flex row would
-     shrink them under the floor to fit "Dysphoria <-> euphoria" at 320px;
-     the picker truncates its own label instead, which it already does. */
-  .cal-controls > .icon-btn { flex: none; }
+  .cal-controls > button { flex: none; }
   .cal-controls :global(.kit-chart-pick) { margin-right: auto; min-width: 0; }
+
+  @container (max-width: 400px) {
+    .cal-controls { flex-wrap: wrap; }
+    .cal-controls :global(.kit-chart-pick) { flex: 1; }
+    .cal-open { width: 100%; }
+  }
 
   /* The strip or the grid, and everything the grid brings with it. Its
      height is animated on the way between the two (see toggleMonth) and
