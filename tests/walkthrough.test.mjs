@@ -2864,7 +2864,7 @@ try {
 try {
   await page.goto(BASE + '/settings/reminders/new', { waitUntil: 'networkidle' });
   await booted();
-  const editor = await page.textContent('.screen');
+  const editor = await page.textContent('[data-screen]');
   if (!editor.includes('Saved schedule')) throw new Error('the web editor does not name the preview as saved schedule');
   if (editor.includes('Exact alarms survive reboots')) throw new Error('the web editor promises Android alarm delivery');
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
