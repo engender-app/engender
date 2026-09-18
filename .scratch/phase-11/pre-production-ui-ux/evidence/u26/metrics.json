@@ -1,0 +1,239 @@
+[
+  {
+    "name": "baseline-persona",
+    "mood": {
+      "top": 568.90625,
+      "bottom": 684.90625,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": null,
+    "agenda": {
+      "top": 258.125,
+      "bottom": 472.515625,
+      "height": 214.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "baseline-busy",
+    "mood": {
+      "top": 688.90625,
+      "bottom": 804.90625,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": null,
+    "agenda": {
+      "top": 258.125,
+      "bottom": 592.515625,
+      "height": 334.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "compact-busy",
+    "mood": {
+      "top": 664.90625,
+      "bottom": 780.90625,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": null,
+    "agenda": {
+      "top": 258.125,
+      "bottom": 568.515625,
+      "height": 310.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "baseline-timer",
+    "mood": {
+      "top": 831.25,
+      "bottom": 947.25,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": {
+      "top": 258.125,
+      "bottom": 380.46875,
+      "height": 122.34375
+    },
+    "agenda": {
+      "top": 400.46875,
+      "bottom": 734.859375,
+      "height": 334.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "compact-timer",
+    "mood": {
+      "top": 807.25,
+      "bottom": 923.25,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": {
+      "top": 258.125,
+      "bottom": 380.46875,
+      "height": 122.34375
+    },
+    "agenda": {
+      "top": 400.46875,
+      "bottom": 710.859375,
+      "height": 310.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "task": "busy timer: fixed Quick add then mood",
+    "result": "entry editor, 2 taps, no scrolling"
+  },
+  {
+    "name": "baseline-return",
+    "mood": {
+      "top": 872,
+      "bottom": 988,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": {
+      "top": 258.125,
+      "bottom": 399.21875,
+      "height": 141.09375
+    },
+    "agenda": {
+      "top": 419.21875,
+      "bottom": 775.609375,
+      "height": 356.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "compact-return",
+    "mood": {
+      "top": 840,
+      "bottom": 956,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": {
+      "top": 258.125,
+      "bottom": 399.21875,
+      "height": 141.09375
+    },
+    "agenda": {
+      "top": 419.21875,
+      "bottom": 743.609375,
+      "height": 324.390625
+    },
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "baseline-empty",
+    "mood": {
+      "top": 325.515625,
+      "bottom": 441.515625,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": null,
+    "agenda": null,
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  },
+  {
+    "name": "compact-empty",
+    "mood": {
+      "top": 325.515625,
+      "bottom": 441.515625,
+      "height": 116
+    },
+    "quickAdd": {
+      "top": 777,
+      "bottom": 833,
+      "height": 56
+    },
+    "timer": null,
+    "agenda": null,
+    "pins": [
+      "/body/measurements",
+      "/care",
+      "/transition/milestones",
+      "/transition/tryouts"
+    ]
+  }
+]

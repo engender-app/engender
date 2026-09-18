@@ -750,7 +750,7 @@
   "ob_leave": "Od razu do aplikacji",
   "ob_welcome_title": "Witaj",
   "ob_welcome_def": "en·gen·der /ɪnˈdʒendə(r)/ czas.: powołać do istnienia.",
-  "ob_welcome_body": "Dziennik nastrojów, poczucia płci, tagów i zdjęć. Zły dzień potrafi sprawić, że wszystko wygląda gorzej, niż jest. Wpisy pamiętają, jak było naprawdę. Wszystko zostaje na tym urządzeniu. Bez konta, bez chmury, bez śledzenia.",
+  "ob_welcome_body": "Dziennik nastroju, odczuć związanych z płcią, tagów i zdjęć. Wpisy zachowują twoje zapiski z tamtego czasu. Możesz do nich wrócić w dowolnej chwili. Wszystko zostaje na tym urządzeniu. Bez konta, chmury i śledzenia.",
   "ob_start_setup": "Zaczynajmy",
   "ob_have_backup": "Mam już kopię",
   "ob_restore_title": "Gdzie jest twoja kopia?",
@@ -2395,8 +2395,9 @@
   "tally_correctly_gendered": "Zwrócono się do mnie dobrze",
   "tally_trend_title": "Licznik",
   "tally_trend_sub": "Misgenderowanie i poprawne zwracanie się, w czasie.",
-  "doubt_no_counterevidence_title": "Brak oznaczonych wpisów",
-  "doubt_no_counterevidence_body": "Oznacz wpis jako euforię lub dodaj gwiazdkę, a pojawi się tutaj, gdy przyjdzie trudniejszy moment.",
+  "safe_space_browse_entries": "Przeglądaj wpisy",
+  "doubt_no_counterevidence_title": "Nie ma jeszcze zapisanych chwil",
+  "doubt_no_counterevidence_body": "Tutaj pojawiają się wpisy z tagiem euforii lub gwiazdką.",
   "doubt_save_snapshot": "Zachowaj to na później",
   "doubt_snapshots_title": "Zapisane chwile",
   "doubt_snapshot_delete_sheet": "Usuń zapisaną chwilę",
@@ -2844,23 +2845,6 @@
   "pj_open": "Zrób kolaż albo film poklatkowy",
   "pj_title": "Kolaż i film poklatkowy",
   "pj_range_title": "Które zdjęcia",
-  "pj_count": [
-    {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
-      "match": {
-        "countPlural=one": "{count} zdjęcie w tym zakresie.",
-        "countPlural=few": "Zdjęcia w tym zakresie: {count}.",
-        "countPlural=many": "Zdjęcia w tym zakresie: {count}.",
-        "countPlural=other": "Zdjęcia w tym zakresie: {count}."
-      }
-    }
-  ],
   "pj_leave_out_hint": "Dotknij zdjęcia, żeby je pominąć.",
   "pj_none_in_range": "Brak zdjęć w tym zakresie.",
   "pj_output_title": "Co ma powstać",
@@ -2886,6 +2870,10 @@
     }
   ],
   "pj_timelapse_unavailable": "Ta przeglądarka nie nagra filmu, więc zostaje kolaż.",
+  "pj_selected_count": "Wybrane zdjęcia: {count}",
+  "pj_select_photo": "Wybierz co najmniej jedno zdjęcie, aby utworzyć plik.",
+  "pj_make_collage": "Utwórz kolaż",
+  "pj_make_timelapse": "Utwórz film poklatkowy",
   "pj_generate": "Utwórz",
   "pj_stays_here": "Nic nie opuściło tego urządzenia. Plik jest tylko na tym ekranie, dopóki go nie wyślesz albo nie zapiszesz.",
   "pj_share": "Wyślij albo zapisz",
