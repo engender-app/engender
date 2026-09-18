@@ -16,19 +16,19 @@ export type { PhotoFileStore } from '../photos/photo-file-store';
 import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import type { ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
-import { makeChartAnnotationsArea, type ChartAnnotationsArea } from './chartAnnotations';
+import type { ChartAnnotationsArea } from './chartAnnotations';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
-import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
+import type { ClinicianSummaryArea } from './clinicianSummary';
 import { makeAreaStatesArea, type AreaStatesArea } from './areaStates';
-import { makeComfortItemsArea, type ComfortItemsArea } from './comfortItems';
-import { makeJournalBookArea, type JournalBookArea } from './journalBook';
-import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
+import type { ComfortItemsArea } from './comfortItems';
+import type { JournalBookArea } from './journalBook';
+import type { CorrelationCardsArea } from './correlationCards';
 import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
 import { makeDayArea, type DayArea } from './day';
 import { makeDayAheadArea, type DayAheadArea } from './dayAhead';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDocumentsArea, type DocumentsArea } from './documents';
-import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
+import type { DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCategories';
 import { makeEntriesArea, type EntriesArea } from './entries';
@@ -37,7 +37,7 @@ import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
 import type { HormoneCurveArea } from './hormoneCurve';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
-import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
+import type { IntervalMoodPatternArea } from './intervalMoodPattern';
 import { makeErasArea, type ErasArea } from './eras';
 import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
 import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
@@ -49,15 +49,15 @@ import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
-import { makePhotoLibraryArea, type PhotoLibraryArea } from './photoLibrary';
+import type { PhotoLibraryArea } from './photoLibrary';
 import { makePresentationsArea, type PresentationsArea } from './presentations';
 import { makeEntryTemplatesArea, type EntryTemplatesArea } from './entryTemplates';
 import { makeAppointmentsArea, type AppointmentsArea } from './appointments';
 import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
-import { makeRoadmapArea, type RoadmapArea } from './roadmap';
-import { makeSavedQuestionsArea, type SavedQuestionsArea } from './savedQuestions';
+import type { RoadmapArea } from './roadmap';
+import type { SavedQuestionsArea } from './savedQuestions';
 import { makeMarginNotesArea, type MarginNotesArea } from './marginNotes';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
@@ -71,10 +71,9 @@ import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { makeVideoArea, type VideoArea } from './videoNotes';
 import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchmarks';
-import { makeVoicePracticeTakesArea, type VoicePracticeTakesArea } from './voicePracticeTakes';
+import type { VoicePracticeTakesArea } from './voicePracticeTakes';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
-import { makeWordIgnoreArea, type WordIgnoreArea } from './wordIgnore';
-import { reconcileBuiltIns } from './reconcile';
+import type { WordIgnoreArea } from './wordIgnore';
 import { deferredArea } from './deferredArea';
 
 /** Every write below that addresses a row by id answers the unknown-id
@@ -419,8 +418,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const appointments = makeAppointmentsArea(driver);
   const procedures = makeProceduresArea(driver, files, checklists, milestones, appointments);
   const letters = makeLettersArea(driver);
-  const entries = makeEntriesArea(driver, files);
-  const doubtJournal = makeDoubtJournalArea(driver);
+  const entries = makeEntriesArea(driver, files, checklists);
   const feltSense = makeFeltSenseArea(driver);
   const tags = makeTagsArea(driver);
   const measurements = makeMeasurementsArea(driver);
@@ -434,15 +432,11 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const hairRemoval = makeHairRemovalArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
-  const voicePracticeTakes = makeVoicePracticeTakesArea(driver);
   const journalingPauses = makeJournalingPausesArea(driver);
-  const savedQuestions = makeSavedQuestionsArea(driver);
   const marginNotes = makeMarginNotesArea(driver);
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
-  const wordIgnore = makeWordIgnoreArea(driver);
   const documents = makeDocumentsArea(driver, files);
-  const comfortItems = makeComfortItemsArea(driver);
   const areaStates = makeAreaStatesArea(driver);
 
   return {
@@ -453,13 +447,17 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     dimensions,
     milestones,
     photos: makePhotosArea(driver, files),
-    photoLibrary: makePhotoLibraryArea(driver),
+    photoLibrary: deferredArea<PhotoLibraryArea>(async () =>
+      (await import('./photoLibrary')).makePhotoLibraryArea(driver)
+    )(['inJournal', 'starred']),
     documents,
     presentations: makePresentationsArea(driver),
     entryTemplates: makeEntryTemplatesArea(driver),
     voice: makeVoiceArea(driver),
     voiceBenchmarks,
-    voicePracticeTakes,
+    voicePracticeTakes: deferredArea<VoicePracticeTakesArea>(async () =>
+      (await import('./voicePracticeTakes')).makeVoicePracticeTakesArea(driver)
+    )(['getTakes', 'getTakesOnDay', 'lastWriteEpochDay', 'addTake', 'deleteTake']),
     videos: makeVideoArea(driver),
     labs,
     measurements,
@@ -480,35 +478,43 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     sideEffects,
     cycleEvents,
     journalingPauses,
-    savedQuestions,
+    savedQuestions: deferredArea<SavedQuestionsArea>(async () =>
+      (await import('./savedQuestions')).makeSavedQuestionsArea(driver)
+    )(['getSavedQuestions', 'upsertSavedQuestion', 'deleteSavedQuestion']),
     marginNotes,
     eras,
     eraMutes,
-    wordIgnore,
-    chartAnnotations: makeChartAnnotationsArea({
-      appointments,
-      areaStates,
-      milestones,
-      regimen,
-      doses,
-      journalingPauses,
-      tryouts,
-      procedures,
-      eras,
-      sideEffects,
-      stats
-    }),
+    wordIgnore: deferredArea<WordIgnoreArea>(async () =>
+      (await import('./wordIgnore')).makeWordIgnoreArea(driver)
+    )(['getIgnoredWords', 'setWordIgnored']),
+    chartAnnotations: deferredArea<ChartAnnotationsArea>(async () =>
+      (await import('./chartAnnotations')).makeChartAnnotationsArea({
+        appointments,
+        areaStates,
+        milestones,
+        regimen,
+        doses,
+        journalingPauses,
+        tryouts,
+        procedures,
+        eras,
+        sideEffects,
+        stats
+      })
+    )(['getAnnotations', 'getCurveMarkers']),
     wearSessions,
-    clinicianSummary: makeClinicianSummaryArea({
-      areaStates,
-      regimen,
-      doses,
-      labs,
-      exposure,
-      sideEffects,
-      checklists,
-      procedures
-    }),
+    clinicianSummary: deferredArea<ClinicianSummaryArea>(async () =>
+      (await import('./clinicianSummary')).makeClinicianSummaryArea({
+        areaStates,
+        regimen,
+        doses,
+        labs,
+        exposure,
+        sideEffects,
+        checklists,
+        procedures
+      })
+    )(['getSummary']),
     day: makeDayArea({
       entries,
       milestones,
@@ -562,25 +568,47 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       doses
     }),
     textSearch: makeTextSearchArea(driver),
-    journalBook: makeJournalBookArea({ entries, milestones, sideEffects, stats, tags }),
+    journalBook: deferredArea<JournalBookArea>(async () =>
+      (await import('./journalBook')).makeJournalBookArea({ entries, milestones, sideEffects, stats, tags })
+    )(['getBook']),
     personalEffects,
     effectCategories: makeEffectCategoriesArea(driver),
     hairProgress,
     hairRemoval,
     procedures,
     appointments,
-    doubtJournal,
-    comfortItems,
+    doubtJournal: deferredArea<DoubtJournalArea>(async () =>
+      (await import('./doubtJournal')).makeDoubtJournalArea(driver)
+    )(['getSnapshots', 'saveSnapshot', 'deleteSnapshot']),
+    comfortItems: deferredArea<ComfortItemsArea>(async () =>
+      (await import('./comfortItems')).makeComfortItemsArea(driver)
+    )(['getItems', 'addItem', 'editItem', 'deleteItem', 'reorder']),
     areaStates,
     feltSense,
     tryouts,
     letters,
     revisits: makeRevisitsArea(driver),
-    roadmap: makeRoadmapArea(driver),
+    roadmap: deferredArea<RoadmapArea>(async () =>
+      (await import('./roadmap')).makeRoadmapArea(driver)
+    )([
+      'getGoalStatuses',
+      'setGoalStatus',
+      'getCustomGoals',
+      'addCustomGoal',
+      'setCustomGoalStatus',
+      'updateCustomGoalText',
+      'deleteCustomGoal',
+      'getDismissedTracks',
+      'setTrackDismissed'
+    ]),
     checklists,
     stats,
-    correlationCards: makeCorrelationCardsArea(stats, doses, dimensions),
-    intervalMoodPattern: makeIntervalMoodPatternArea(stats, doses),
+    correlationCards: deferredArea<CorrelationCardsArea>(async () =>
+      (await import('./correlationCards')).makeCorrelationCardsArea(stats, doses, dimensions)
+    )(['getCards']),
+    intervalMoodPattern: deferredArea<IntervalMoodPatternArea>(async () =>
+      (await import('./intervalMoodPattern')).makeIntervalMoodPatternArea(stats, doses)
+    )(['dayOfInterval', 'byCustomInterval']),
     /* Deferred (ticket 03), and the larger of the two: the pack, read, apply
        and section machinery plus five importers, none of which a screen
        reaches before somebody opens settings and asks to export or import. */
@@ -604,7 +632,10 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       'replace',
       'merge'
     ]),
-    reconcileBuiltIns: () => reconcileBuiltIns(driver),
+    reconcileBuiltIns: async () => {
+      const { reconcileBuiltIns } = await import('./reconcile');
+      return reconcileBuiltIns(driver);
+    },
     discardEverything: async () => {
       const { discardJournalRows } = await import('./restore');
       await driver.transaction(() => discardJournalRows(driver));

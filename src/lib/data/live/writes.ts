@@ -26,12 +26,32 @@
 
 import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
-import { CLINICIAN_SUMMARY_TABLES } from '../journal/clinicianSummary';
 import { DAY_TABLES } from '../journal/day';
 import { DAY_AHEAD_TABLES } from '../journal/dayAhead';
 import { LAST_WRITE_TABLES } from '../journal/lastWrite';
 import { SEARCH_TABLES } from '../journal/textSearch';
-import { RECONCILE_TABLES } from '../journal/reconcile';
+
+export const CLINICIAN_SUMMARY_TABLES: TableName[] = [
+  'regimen',
+  'dose',
+  'lab',
+  'sideEffect',
+  'procedure',
+  'appointment',
+  'checklist',
+  'areaState'
+];
+
+export const RECONCILE_TABLES: TableName[] = [
+  'tag',
+  'dimension',
+  'affirmation',
+  'bodyRegion',
+  'measurementType',
+  'effectCategory',
+  'personalEffectType',
+  'entryTemplate'
+];
 
 /** Every table there is, in one place: what an import rewrites, and what
     journal.svelte.ts keeps a version per.

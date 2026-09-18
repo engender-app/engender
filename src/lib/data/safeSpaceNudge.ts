@@ -7,18 +7,21 @@
    Clears permanently for that instance when dismissed or when Safe Space is opened from it.
    A fresh qualifying entry produces its own, independent nudge. */
 
-import { BUILT_IN_TAG_GROUPS } from './vocabulary/builtins';
-
 export const BAD_MOMENT_MOOD_CEILING = 1;
 export const BAD_MOMENT_REGION_DYSPHORIA_FLOOR = 50;
 
-const dysphoriaGroup = BUILT_IN_TAG_GROUPS.find((g) => g.key === 'dysphoria_type');
 export const DYSPHORIA_TAG_KEYS: readonly string[] = [
   'g-soc-dys',
   'g-body-dys',
   'g-transphobia',
   'g-misgendered',
-  ...(dysphoriaGroup ? dysphoriaGroup.tags : [])
+  'dt-physical',
+  'dt-biochemical',
+  'dt-social',
+  'dt-societal',
+  'dt-sexual',
+  'dt-presentational',
+  'dt-existential'
 ];
 
 /** Whether the Safe Space nudge live tile should be shown on Home. */
