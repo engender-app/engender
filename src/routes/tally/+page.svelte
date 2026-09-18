@@ -10,9 +10,10 @@
      would make one day's single tap as tall as another day's five, and the
      two are counts of the same kind of thing. */
   import { m } from '$lib/paraglide/messages';
+  import type { TallyKind } from '$lib/data/types';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
-  import { liveList } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery, journal } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
@@ -87,6 +88,71 @@
   });
   // A count is a whole number, whatever the scale's top happens to be.
   const whole = (v: number) => String(Math.round(v));
+
+  /* The two counters' own actions, beside their own charts (phase 11 ticket
+     40): the same two operations quick add's fan runs (journal.tally.log at
+     today, no context - CONTEXT: "Tally event"), plus the existing undo,
+     which is the flat area's delete. Nothing here combines, edits or
+     backdates a count: a tap is logged and never edited, so the only thing
+     to reverse is the last tap of that kind, which `latestEvent` names.
+
+     Reading never writes: both actions run from a button's onclick and
+     nothing else - the charts, the range switch and the presentation chip
+     all stay reads. */
+  let misLatestQuery = liveQuery((j) => j.tally.latestEvent('misgendered'));
+  let correctLatestQuery = liveQuery((j) => j.tally.latestEvent('correctly_gendered'));
+
+  let announcement = $state('');
+  /* The kind with a write in flight. Both of one kind's buttons wait on it,
+     so two rapid undos cannot read the same `latestEvent` and spend the
+     second on an id the first already deleted - the journal's delete is
+     idempotent, so nothing would break, but the second tap would undo
+     nothing while saying it did. */
+  let busy = $state<TallyKind | null>(null);
+
+  const kindName = (kind: TallyKind) =>
+    kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered();
+
+  /* The announcement is the changed value, not the fact of a tap: the
+     counter's new size over the range on screen, read the same way the
+     chart above the buttons reads it. Cleared before the write and set
+     after it, which is what makes a second identical action speak again -
+     a live region announces a change of text, and setting the same string
+     twice is not one (quick add's status region runs the same rule). */
+  async function speakCount(kind: TallyKind) {
+    const rows = await journal.stats.tallyTrend(kind, from, today);
+    const count = rows.reduce((sum, p) => sum + p.value, 0);
+    announcement = m.tally_count_spoken({ kind: kindName(kind), count: String(count) });
+  }
+
+  async function run(kind: TallyKind, write: () => Promise<unknown>) {
+    if (busy) return;
+    busy = kind;
+    announcement = '';
+    try {
+      await write();
+      await speakCount(kind);
+    } catch (error) {
+      console.error(`tally: ${kind} was not written`, error);
+      announcement = m.quick_add_failed();
+    } finally {
+      busy = null;
+    }
+  }
+
+  const logTally = (kind: TallyKind) =>
+    void run(kind, () => journal.tally.log({ epochDay: todayEpochDay(), kind }));
+
+  /* Undo is whichever event is that kind's newest - never an id captured
+     when the component mounted, so it stays correct across actions from
+     quick add or Home while this screen is open: the live query re-reads on
+     every tally write, whoever made it. */
+  const undoTally = (kind: TallyKind) => {
+    const latest = kind === 'misgendered' ? misLatestQuery.value : correctLatestQuery.value;
+    if (!latest) return;
+    void run(kind, () => journal.tally.deleteEvent(latest.id));
+  };
+
 </script>
 
 <div class="screen">
@@ -121,6 +187,30 @@
       />
     </ChartCard>
 
+    <!-- This counter's own actions, under this counter's chart: the row sits
+         beside the count it changes, so no label has to say which of the two
+         it moves. Undo is enabled exactly while that kind has an event to
+         remove - a zero count has nothing to undo, and a disabled button is
+         how that is shown (.btn:disabled). -->
+    <div class="tally-actions">
+      <button
+        class="btn btn-soft"
+        data-tally-log="misgendered"
+        disabled={busy === 'misgendered'}
+        onclick={() => logTally('misgendered')}
+      >
+        {m.tally_log_misgendered()}
+      </button>
+      <button
+        class="btn btn-ghost"
+        data-tally-undo="misgendered"
+        disabled={busy === 'misgendered' || !misLatestQuery.value}
+        onclick={() => undoTally('misgendered')}
+      >
+        {m.tally_undo_misgendered()}
+      </button>
+    </div>
+
     <ChartCard
       heading={m.tally_correctly_gendered()}
       kind="tally-correctly-gendered"
@@ -139,5 +229,41 @@
         ariaLabel={m.tally_correctly_gendered()}
       />
     </ChartCard>
+
+    <div class="tally-actions">
+      <button
+        class="btn btn-soft"
+        data-tally-log="correctly_gendered"
+        disabled={busy === 'correctly_gendered'}
+        onclick={() => logTally('correctly_gendered')}
+      >
+        {m.tally_log_correctly_gendered()}
+      </button>
+      <button
+        class="btn btn-ghost"
+        data-tally-undo="correctly_gendered"
+        disabled={busy === 'correctly_gendered' || !correctLatestQuery.value}
+        onclick={() => undoTally('correctly_gendered')}
+      >
+        {m.tally_undo_correctly_gendered()}
+      </button>
+    </div>
   {/if}
 </div>
+
+<!-- The half of the action a sighted person watches the chart perform. Always
+     in the DOM rather than rendered with the outcome, because a live region
+     only announces a change of text inside a region that was already there
+     (quick add's status region runs the same shape). -->
+<p class="visually-hidden" role="status" aria-live="polite" data-tally-status>{announcement}</p>
+
+<style>
+  /* Two related actions, one row, and the row wraps rather than squeezing
+     when the labels run long in Polish - both buttons keep the 48px floor
+     (--touch-target on .btn), so a wrap is the only honest fit at 320px. */
+  .tally-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+</style>
