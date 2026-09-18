@@ -82,7 +82,7 @@
   }
 </script>
 
-<div class="screen">
+<div class="screen" data-screen>
   <ScreenHeader title={detail.isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
 
   {#if origin}
