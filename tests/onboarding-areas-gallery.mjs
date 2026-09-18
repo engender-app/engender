@@ -35,7 +35,7 @@ async function shoot(name) {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
   });
   const tall = await page.evaluate(() => {
-    const s = document.querySelector('[data-app-scroll-region]');
+    const s = document.querySelector('[data-setup-answers]') ?? document.querySelector('[data-app-scroll-region]');
     return Math.min(window.innerHeight + (s.scrollHeight - s.clientHeight) + 40, 8000);
   });
   await page.setViewportSize({ width: 390, height: tall });
@@ -94,7 +94,7 @@ await shoot('areas-default-ticked');
 // A default unticked and something outside it ticked, so the row that
 // changed and the one that did not are both on screen at once.
 await page.locator('[data-list-row="area-care"]').click();
-await page.locator('[data-list-row="area-eras"]').click();
+await page.locator('[data-list-row="area-letters"]').click();
 await page.waitForTimeout(400);
 await shoot('areas-custom-ticked');
 
