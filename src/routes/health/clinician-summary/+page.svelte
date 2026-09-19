@@ -35,6 +35,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -123,12 +124,18 @@
      drift from what printing. "Included" rather than the fixed nine and
      however-many-drugs-exist: with every switch on by default the two
      numbers agree, and the row only starts saying something different from
-     "everything" once a switch does. */
+     "everything" once a switch does.
+
+     Ticket 34: the same text is also the print action's own summary, in
+     the foot under the preview. Both surfaces read this one derived, so
+     "what will be included" has one wording, not two that a later change
+     can pull apart - the row wraps it in the affordance tail that opens
+     the sheet, the foot states it bare. */
   let includedSectionCount = $derived(
     CLINICIAN_DOSSIER_INCLUSION_KEYS.filter((key) => inclusion[key]).length
   );
   let includedDrugCount = $derived(drugNames.length - excludedDrugs.size);
-  let settingsRowText = $derived.by(() => {
+  let scopeText = $derived.by(() => {
     if (!range) return m.clinician_summary_range_required();
     const rangeText = m.clinician_summary_settings_range({
       start: dayLong(range.start),
@@ -136,12 +143,12 @@
     });
     const sections = m.clinician_summary_settings_sections({ n: includedSectionCount });
     return drugNames.length > 0
-      ? m.clinician_summary_settings_row({
+      ? m.clinician_summary_scope({
           range: rangeText,
           sections,
           drugs: m.clinician_summary_settings_drugs({ n: includedDrugCount })
         })
-      : m.clinician_summary_settings_row_no_drugs({ range: rangeText, sections });
+      : m.clinician_summary_scope_no_drugs({ range: rangeText, sections });
   });
 
   function include(key: ClinicianDossierInclusionKey, value: boolean) {
@@ -166,7 +173,7 @@
        left to give it. -->
   <div class="no-print settings-row-wrap">
     <ListRow
-      title={settingsRowText}
+      title={range ? m.clinician_summary_settings_row({ scope: scopeText }) : scopeText}
       key="clinician-summary-settings"
       data-settings-row
       onclick={() => (controlsOpen = true)}
@@ -203,15 +210,22 @@
       {/if}
     </div>
     {#if dossier}
-      <!-- Under the page, not inside it and not floating over it: the
-           page is the thing being sent, the button is the act of sending
-           it. The only verb this screen has (ticket 08) - the header
-           carried a second print control before this ticket, sitting
-           beside a control that opened nothing but the same action. -->
-      <button class="btn btn-primary btn-block summary-print no-print" data-summary-print onclick={printSummary}>
-        <Icon name="share" size={18} />
-        <span>{m.clinician_summary_print()}</span>
-      </button>
+      <!-- Ticket 34: the act of sending the page lives in the frame's foot
+           (SaveBar), beside the scope it would send - the preview runs for
+           many sections, and an action at its end is one every scroll has
+           to finish before it can be reached. The foot is the column's flex
+           sibling rather than a bar floating over it (carpet 26), so the
+           one verb this screen has (ticket 08) stays reachable at every
+           scroll position and covers nothing - and its scope line is the
+           same derived the settings row above reads, so the two can never
+           say different things. -->
+      <SaveBar arrange="stack">
+        <p class="small muted summary-scope no-print" role="status">{scopeText}</p>
+        <button class="btn btn-primary no-print" data-summary-print onclick={printSummary}>
+          <Icon name="share" size={18} />
+          <span>{m.clinician_summary_print()}</span>
+        </button>
+      </SaveBar>
     {/if}
   {/if}
 </div>
@@ -339,22 +353,20 @@
   }
 
   /* Flush (DIRECTION.md rule 4): no `--surface` ground and no `--r-block`
-     corner - those are `.card`'s (components.css), the box rule 4 spends
-     its own carpet tickets retiring screen by screen. Just the foot gets a
-     hairline, marking where the dossier ends and the print action begins;
-     the top is named instead, by the SectionHeading above, which is what
-     actually reads (see the comment on the markup). */
+      corner - those are `.card`'s (components.css), the box rule 4 spends
+      its own carpet tickets retiring screen by screen. Just the foot gets a
+      hairline, marking where the dossier ends - the print action moved
+      below that edge into the frame's own foot (ticket 34); the top is
+      named instead, by the SectionHeading above, which is what
+      actually reads (see the comment on the markup). */
   .summary-page {
     padding-top: var(--space-2);
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--hairline);
   }
 
-  /* Under the page, not inside it and not floating over it (Mobbin's own
-     pattern for a document about to be handed over): the page is the
-     thing being sent, the button is the act of sending it. */
-  .summary-print {
-    margin-top: var(--space-4);
+  .summary-scope {
+    margin: 0;
   }
 
   @media print {
