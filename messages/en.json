@@ -2125,9 +2125,6 @@
   "compare_mode_era": "Era",
   "compare_pick_era": "Pick an era",
   "compare_entries_label": "Entries logged",
-  "compare_shortcut_title": "Compare with preceding period",
-  "compare_shortcut_body": "Compare {current} with the preceding period: {preceding}.",
-  "compare_shortcut_action": "Use this span",
   "stats_range_group": "Range",
   "insight_row_sub": "{count} entries · avg {with} with · {without} without",
   "insight_sheet_capped": "Showing the {shown} most recent. More entries carry this tag in this range.",
@@ -3055,22 +3052,6 @@
   "journal_book_range_end_label": "End date",
   "journal_book_range_required": "Pick a start and end date to see the print.",
   "journal_book_print": "Print",
-  "journal_book_scope": "{range}, {parts}",
-  "journal_book_scope_parts": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "{n} part",
-        "nPlural=other": "{n} parts"
-      }
-    }
-  ],
   "journal_book_include_title": "What goes in",
   "journal_book_include_note": "Only what you tick here is printed.",
   "journal_book_part_entries": "Entries",
@@ -3078,6 +3059,10 @@
   "journal_book_part_dysphoria_euphoria_tags": "Dysphoria/euphoria tags",
   "journal_book_empty": "Nothing to print for this range.",
   "journal_book_range": "{from} to {to}",
+  "journal_book_scope": "{range}. {parts}",
+  "journal_book_scope_parts": "Includes: {parts}",
+  "journal_book_scope_parts_all": "Includes all parts",
+  "journal_book_scope_parts_none": "No parts included",
   "stats_day_by_day": "Day by day",
   "stats_scales_now": "Each scale, this period",
   "stats_mood_days": "Days at each mood",
@@ -3592,23 +3577,14 @@
       }
     }
   ],
-  "clinician_summary_settings_drugs": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "{n} drug",
-        "nPlural=other": "{n} drugs"
-      }
-    }
-  ],
-  "clinician_summary_scope": "{range}, {sections}, {drugs}",
-  "clinician_summary_scope_no_drugs": "{range}, {sections}",
+  "clinician_summary_scope": "{range}. {sections}. {drugs}",
+  "clinician_summary_scope_no_drugs": "{range}. {sections}",
+  "clinician_summary_scope_sections": "Sections: {sections}",
+  "clinician_summary_scope_sections_all": "All sections included",
+  "clinician_summary_scope_sections_none": "No sections included",
+  "clinician_summary_scope_drugs": "Drugs: {drugs}",
+  "clinician_summary_scope_drugs_all": "All drugs included",
+  "clinician_summary_scope_drugs_none": "No drugs included",
   "clinician_summary_settings_row": "{scope}. Change",
   "clinician_summary_settings_title": "Settings",
   "clinician_summary_section_truncated": "and {count} more, all in the printed copy",

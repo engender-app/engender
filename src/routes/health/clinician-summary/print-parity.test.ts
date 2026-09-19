@@ -81,13 +81,15 @@ describe('clinician summary print parity', () => {
    long preview never separates the reader from either. */
 describe('the print foot (ticket 34)', () => {
   it('the action summary and the settings row read one shared scope, not two recomputations', () => {
-    /* One derived composes the range, section and drug counts; the row
-       wraps it in its own affordance tail. Two separately written sentences
+    /* One derived composes range, selected section names and selected drugs;
+       the row wraps it in its own affordance tail. Two separately written sentences
        about the same dossier could drift after an inclusion change - one
        cannot. */
     expect(page).toContain('let scopeText = $derived.by(');
     expect(page).toContain('m.clinician_summary_scope({');
     expect(page).toContain('m.clinician_summary_scope_no_drugs(');
+    expect(page).toContain('includedSections.map(clinicianDossierPartName).join');
+    expect(page).toContain('includedDrugNames.join');
     expect(page).toContain('m.clinician_summary_settings_row({ scope: scopeText })');
   });
 
@@ -106,10 +108,7 @@ describe('the print foot (ticket 34)', () => {
     expect(foot).toMatch(/class="btn btn-primary no-print"/);
   });
 
-  it('the old in-flow print button under the preview is gone', () => {
-    /* The `data-summary-print` handle stays (the foot's button keeps it);
-       what went is the in-flow `summary-print` class and the block it
-       styled. */
-    expect(page).not.toMatch(/class="[^"]*\bsummary-print\b/);
+  it('the old full-width in-flow print button under the preview is gone', () => {
+    expect(page).not.toMatch(/class="btn btn-primary btn-block summary-print/);
   });
 });

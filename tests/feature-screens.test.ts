@@ -440,10 +440,10 @@ describe('the two print surfaces', () => {
     const foot = book.slice(footStart, footEnd);
     expect(foot).toMatch(/class="small muted book-scope no-print"/);
     expect(foot).toMatch(/class="btn btn-primary no-print"/);
-    /* The scope names the chosen bounds and the live part count - the same
-       two inputs the book is built from, not a restatement of defaults. */
+    /* The scope names chosen bounds and included part names, not defaults. */
     expect(book).toContain('m.journal_book_scope(');
-    expect(book).toContain('m.journal_book_scope_parts({ n: includedPartCount })');
+    expect(book).toContain('includedParts.map(journalBookPartName).join');
+    expect(book).toContain('disabled={!inclusion.entries && ENTRY_DEPENDENT_PARTS.has(key)}');
   });
 });
 
@@ -492,4 +492,3 @@ describe('transient frame render flashes and bloat prevention (ticket 114)', () 
     expect(skeleton).not.toContain('stagger-in');
   });
 });
-
