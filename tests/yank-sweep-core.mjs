@@ -260,7 +260,7 @@ const SCENES = [
   { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', is: 'the disguise preview sheet opening' },
   { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', is: 'the about sheet opening' },
-  { name: 'presentations-add', at: '/settings/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
+  { name: 'presentations-add', at: '/settings?raise=modes', act: '[data-add]', is: 'the add presentation sheet opening' },
   { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
   { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
   { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
@@ -1183,8 +1183,8 @@ const HYDRATION_SCENES = [
   { name: 'entry-new-seeded', at: '/entry/new/today?seedMood=3', is: 'the editor with a mood already seeded' },
   { name: 'entry-edit', at: '/entry/{entry}', needs: 'entry', when: 'persona', is: 'an existing entry opened for editing' },
   { name: 'search', at: '/search', is: 'search and its filter sheet' },
-  { name: 'search-starred', at: '/search/starred', is: 'the starred shelf' },
-  { name: 'search-questions', at: '/search/questions', is: 'the saved-question shelf' },
+  { name: 'search-starred', at: '/search?starred=1', is: 'the starred shelf' },
+  { name: 'search-questions', at: '/search?questions=1', is: 'the saved-question shelf' },
   { name: 'search-question', at: '/search/questions/{question}', needs: 'question', when: 'persona', is: 'one saved question answered' },
   /* Stats tab */
   { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
@@ -1241,8 +1241,8 @@ const HYDRATION_SCENES = [
      (settings-route-redirects.test.ts), so they keep their addresses. */
   { name: 'voice', at: '/voice', is: 'the voice benchmark' },
   { name: 'voice-record', at: '/voice?tab=record', is: 'the benchmark record tab' },
-  { name: 'voice-metrics', at: '/practice/voice/metrics', is: 'the metric reference' },
-  { name: 'voice-memos', at: '/media/voice/memos', is: 'the memo browser' },
+  { name: 'voice-metrics', at: '/voice?metric=pitch', is: 'the metric reference' },
+  { name: 'voice-memos', at: '/voice?tab=recordings', is: 'the memo browser' },
   /* Support group (ticket 21: resources moved off the retired Practice
      prefix onto the door ADR-0072 gave it) */
   { name: 'resources', at: '/support/resources', is: 'organisations and helplines' },
@@ -1265,8 +1265,8 @@ const HYDRATION_SCENES = [
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
-  { name: 'entry-templates', at: '/settings/entry-templates', is: 'editable entry templates' },
-  { name: 'presentations', at: '/settings/presentations', is: 'the presentation catalogue' },
+  { name: 'entry-templates', at: '/settings?raise=templates', is: 'editable entry templates' },
+  { name: 'presentations', at: '/settings?raise=modes', is: 'the presentation catalogue' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
@@ -1306,7 +1306,7 @@ export const HYDRATION_NEEDS = {
   entry: { list: '/day/today', prefix: '/entry/' },
   letter: { list: '/transition/letters', prefix: '/transition/letters/' },
   tryout: { list: '/transition/tryouts', prefix: '/transition/tryouts/' },
-  question: { list: '/search/questions', prefix: '/search/questions/' },
+  question: { list: '/search?questions=1', prefix: '/search/questions/' },
   reminder: { list: '/settings/reminders', prefix: '/settings/reminders/' },
   document: { list: '/media/documents', prefix: '/media/documents/' }
 };
@@ -1353,7 +1353,11 @@ export const scrapeHrefExpression = (prefix) => `(async () => {
  *  idle bar before clicking as well as after. The 50ms is the state flush
  *  after the click, not the jump: the jump is a worker round trip and
  *  cannot finish inside it. */
-const DEMO_BAR_IDLE = `for (let i = 0; i < 120 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
+/*  The 60 s this wait once capped was a desktop number. The physical device
+    sweep (ticket 139) measured a persona seed at ~266 entries in ~15 minutes
+    on the phone - roughly one insert every 3 s through the worker - so the
+    cap now clears a 40 minute jump and only bounds a genuinely wedged bar. */
+const DEMO_BAR_IDLE = `for (let i = 0; i < 4800 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
 const AWAIT_DEMO_JUMP = `
   await sleep(50);
   ${DEMO_BAR_IDLE}
