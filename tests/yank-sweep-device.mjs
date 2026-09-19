@@ -127,6 +127,11 @@ const themes = flag('themes', 'light,dark')
 /** The hydration mode (ticket 108): the full screen inventory walked cold
  *  in both database profiles, rather than the gesture scenes. */
 const hydration = args.includes('--hydration');
+/** Trust the journal as it stands instead of re-running the demo jumps.
+    For a persona that means the reset and the fill are skipped, which on
+    a physical phone saves most of an hour of seeding; the operator answers
+    for the journal actually holding the state (ticket 139 rerun). */
+const skipSeed = args.includes('--skip-seed');
 const profiles = flag('profiles', 'persona,empty')
   .split(',')
   .filter(Boolean);
@@ -597,10 +602,18 @@ async function hydrationTokens(profile, theme) {
     return { tokens, skipped };
   }
   for (const [key, { list, prefix }] of Object.entries(HYDRATION_NEEDS)) {
-    await settle(list, theme);
-    const href = await ev(scrapeHrefExpression(prefix));
-    if (href) tokens[key] = href.split('/').pop();
-    else skipped.push(key);
+    /* One list route that will not settle is a finding for the report, not
+       a reason to lose the hours of seeding the walk sits on (ticket 139's
+       /search/questions hang): record, skip, keep walking. */
+    try {
+      await settle(list, theme);
+      const href = await ev(scrapeHrefExpression(prefix));
+      if (href) tokens[key] = href.split('/').pop();
+      else skipped.push(key);
+    } catch (err) {
+      skipped.push(key);
+      console.log(`[persona] ${key}: could not settle ${list} (${String(err).slice(0, 120)}); detail scenes skip`);
+    }
   }
   return { tokens, skipped };
 }
@@ -626,11 +639,14 @@ async function hydrationScenes() {
   for (const profile of profiles) {
     await settle('/', themes[0]);
     if (profile === 'persona') {
-      if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
+      if (skipSeed) {
+        console.log('[persona] skip-seed: trusting the journal as it stands');
+      } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
+      } else {
+        await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
       }
-      await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
       await sleep(1500);
     } else {
       /* The onboarding mount exists only here, between the jump and the
@@ -736,11 +752,14 @@ if (hydration) {
   for (const profile of profiles) {
     if (profile === 'persona') {
       await settle('/', themes[0]);
-      if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
+      if (skipSeed) {
+        console.log('[persona] skip-seed: trusting the journal as it stands');
+      } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
+      } else {
+        await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
       }
-      await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
       await sleep(1500);
     } else {
       await settle('/', themes[0]);
