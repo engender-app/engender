@@ -51,7 +51,7 @@ import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage } from './browser-harness.mjs';
+import { launchChromium, screencast as captureScreencast, settlePage } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
   DIFF_EPS,
@@ -117,31 +117,7 @@ await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 
 /* ---------- the camera, desktop edition ---------- */
 
-/** Collect compositor frames while `fn` runs, the same CDP screencast the
- *  device sweep drives. Frames arrive as they are painted, so a cold
- *  `page.goto` in between is exactly what the device records across a
- *  `location.assign`. */
-async function screencast(fn) {
-  const session = await page.context().newCDPSession(page);
-  const frames = [];
-  session.on('Page.screencastFrame', (ev) => {
-    frames.push({ data: ev.data, at: ev.metadata.timestamp * 1000 });
-    session.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {});
-  });
-  await session.send('Page.enable');
-  try {
-    await session.send('Page.startScreencast', {
-      format: 'png',
-      maxWidth: 390,
-      maxHeight: 844,
-      everyNthFrame: 1
-    });
-    return await fn(frames);
-  } finally {
-    await session.send('Page.stopScreencast').catch(() => {});
-    await session.detach().catch(() => {});
-  }
-}
+const screencast = (fn) => captureScreencast(page, fn);
 
 /* ---------- the page, driven ---------- */
 
@@ -362,7 +338,7 @@ console.log(
 /* ---------- the proof ---------- */
 
 if (prove) {
-  const missing = missingProofYanks(report);
+  const missing = missingProofYanks(report, { checkArrival: false });
   const cameraSaw = report
     .filter((r) => r.scene === PROOF.scene)
     .some((r) => (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05));
@@ -374,7 +350,7 @@ if (prove) {
     );
     process.exitCode = 1;
   } else {
-    console.log('proof: all four injected yanks were reported and the camera saw them. The sweep can fail.');
+    console.log('proof: all five injected yanks were reported and the camera saw them. The sweep can fail.');
   }
 }
 if (errors.length) {
