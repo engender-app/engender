@@ -954,7 +954,7 @@ if (prove) {
     );
     process.exitCode = 1;
   } else {
-    console.log('proof: all three style yanks and the camera saw them. The sweep can fail.');
+    console.log('proof: all four style yanks and the camera saw them. The sweep can fail.');
   }
 }
 if (errors.length) {
