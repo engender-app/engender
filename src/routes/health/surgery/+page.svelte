@@ -57,6 +57,12 @@
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
+  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedure.archived));
+  let archivedProcedures = $derived(procedures.filter((procedure) => procedure.archived));
+  let procedureGroups = $derived([
+    { key: 'ongoing', title: m.surgery_ongoing_title(), procedures: ongoingProcedures },
+    { key: 'archive', title: m.surgery_archive_title(), procedures: archivedProcedures }
+  ].filter((group) => group.procedures.length));
 
   let sourceId = $derived(page.url.searchParams.get('procedure'));
   let sourceProcedure = $derived(procedures.find((p) => p.id === sourceId));
@@ -133,15 +139,16 @@
 
   const record = recordEditor<
     Procedure,
-    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean }
+    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean; archived: boolean }
   >({
-    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false }),
+    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false, archived: false }),
     fromRecord: (procedure) => ({
       id: procedure.id,
       name: procedure.name,
       date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay),
       kind: procedure.kind,
-      dilationOptIn: procedure.dilationOptIn
+      dilationOptIn: procedure.dilationOptIn,
+      archived: procedure.archived
     }),
     async upsert(draft) {
       const name = draft.name.trim();
@@ -153,7 +160,8 @@
         // a procedure without one yet is an ordinary state here.
         surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null,
         kind: draft.kind,
-        dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn
+        dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn,
+        archived: draft.archived
       });
       selectedId = id;
       notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
@@ -285,20 +293,25 @@
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
       <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
-          {#each procedures as procedure (procedure.id)}
-            <ProcedureRecoveryCard
-              {procedure}
-              selected={selectedId === procedure.id}
-              {today}
-              linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
-              photos={photosByProcedure.get(procedure.id) ?? []}
-              checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
-              onclick={() => select(procedure)}
-              onedit={() => record.openEditor(procedure)}
-            />
-          {/each}
-        </ListCard>
+        {#each procedureGroups as group (group.key)}
+          <SectionHeading text={group.title} />
+          <div data-procedure-group={group.key}>
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
+              {#each group.procedures as procedure (procedure.id)}
+                <ProcedureRecoveryCard
+                  {procedure}
+                  selected={selectedId === procedure.id}
+                  {today}
+                  linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
+                  photos={photosByProcedure.get(procedure.id) ?? []}
+                  checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
+                  onclick={() => select(procedure)}
+                  onedit={() => record.openEditor(procedure)}
+                />
+              {/each}
+            </ListCard>
+          </div>
+        {/each}
       </div>
     {/snippet}
     {#snippet empty()}
@@ -716,6 +729,17 @@
             {/snippet}
           </Field>
         </div>
+      {/if}
+      {#if editor.id}
+        <Field label={m.surgery_archive_toggle_label()} legend spread>
+          {#snippet children()}
+            <Switch
+              checked={editor.archived}
+              label={m.surgery_archive_toggle_label()}
+              onChange={(value) => (editor.archived = value)}
+            />
+          {/snippet}
+        </Field>
       {/if}
       <ProcedureKindPicker
         open={pickingKind}

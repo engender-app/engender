@@ -92,7 +92,8 @@ const procedure: Procedure = {
   consults: [],
   notes: '',
   kind: 'vaginoplasty',
-  dilationOptIn: false
+  dilationOptIn: false,
+  archived: false
 };
 
 const letters: LetterSeal[] = [

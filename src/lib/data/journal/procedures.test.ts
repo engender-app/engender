@@ -42,6 +42,17 @@ test('a procedure defaults to a custom kind, and a compiled-in kind round-trips 
   assert.equal(updated.dilationOptIn, true);
 });
 
+test('an old procedure remains ongoing until its owner archives it', async () => {
+  const db = await migratedDb();
+  const journal = openJournal(db, fakeFileStore());
+
+  const id = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 19000 });
+  assert.equal((await journal.procedures.getProcedures())[0].archived, false);
+
+  await journal.procedures.upsertProcedure({ id, name: 'top surgery', surgeryEpochDay: 19000, archived: true });
+  assert.equal((await journal.procedures.getProcedures())[0].archived, true);
+});
+
 test('consult dates can be added and removed individually', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();

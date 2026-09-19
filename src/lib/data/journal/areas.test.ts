@@ -1353,7 +1353,8 @@ test('a procedure round-trips with a free-text name and an optional surgery date
     notes: '',
     consults: [],
     kind: 'custom',
-    dilationOptIn: false
+    dilationOptIn: false,
+    archived: false
   });
   assert.equal(procedures[2].surgeryEpochDay, null);
   assert.equal(procedures[2].id, unscheduled);

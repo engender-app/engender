@@ -1146,6 +1146,9 @@ export interface Procedure {
   notes: string;
   kind: ProcedureKind;
   dilationOptIn: boolean;
+  /** Chosen by the person. Age never decides whether a procedure belongs in
+      their archive. */
+  archived: boolean;
 }
 
 /** One consult on the way to a procedure, as the procedure's own screen
