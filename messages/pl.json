@@ -2175,9 +2175,6 @@
   "compare_mode_era": "Era",
   "compare_pick_era": "Wybierz erę",
   "compare_entries_label": "Liczba wpisów",
-  "compare_shortcut_title": "Porównaj z poprzednim okresem",
-  "compare_shortcut_body": "Porównaj {current} z poprzednim okresem: {preceding}.",
-  "compare_shortcut_action": "Użyj tego okresu",
   "stats_range_group": "Zakres",
   "insight_row_sub": "wpisy: {count} · śr. {with} z tagiem · {without} bez",
   "insight_sheet_capped": "Pokazano {shown} najnowszych. Więcej wpisów ma ten tag w tym zakresie.",
@@ -3119,24 +3116,6 @@
   "journal_book_range_end_label": "Data końcowa",
   "journal_book_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć wydruk.",
   "journal_book_print": "Drukuj",
-  "journal_book_scope": "{range}, {parts}",
-  "journal_book_scope_parts": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "{n} część",
-        "nPlural=few": "{n} części",
-        "nPlural=many": "{n} części",
-        "nPlural=other": "{n} części"
-      }
-    }
-  ],
   "journal_book_include_title": "Co wchodzi do wydruku",
   "journal_book_include_note": "Drukuje się tylko to, co tu zaznaczysz.",
   "journal_book_part_entries": "Wpisy",
@@ -3144,6 +3123,10 @@
   "journal_book_part_dysphoria_euphoria_tags": "Tagi dysforii i eufori",
   "journal_book_empty": "W tym zakresie nie ma nic do wydruku.",
   "journal_book_range": "od {from} do {to}",
+  "journal_book_scope": "{range}. {parts}",
+  "journal_book_scope_parts": "Zawiera: {parts}",
+  "journal_book_scope_parts_all": "Zawiera wszystkie części",
+  "journal_book_scope_parts_none": "Nie zawiera żadnej części",
   "stats_day_by_day": "Dzień po dniu",
   "stats_scales_now": "Każda skala w tym okresie",
   "stats_mood_days": "Dni przy każdym nastroju",
@@ -3686,25 +3669,14 @@
       }
     }
   ],
-  "clinician_summary_settings_drugs": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "{n} lek",
-        "nPlural=other": "{n} leków",
-        "nPlural=few": "{n} leki",
-        "nPlural=many": "{n} leków"
-      }
-    }
-  ],
-  "clinician_summary_scope": "{range}, {sections}, {drugs}",
-  "clinician_summary_scope_no_drugs": "{range}, {sections}",
+  "clinician_summary_scope": "{range}. {sections}. {drugs}",
+  "clinician_summary_scope_no_drugs": "{range}. {sections}",
+  "clinician_summary_scope_sections": "Sekcje: {sections}",
+  "clinician_summary_scope_sections_all": "Wszystkie sekcje są uwzględnione",
+  "clinician_summary_scope_sections_none": "Nie uwzględniono żadnej sekcji",
+  "clinician_summary_scope_drugs": "Leki: {drugs}",
+  "clinician_summary_scope_drugs_all": "Wszystkie leki są uwzględnione",
+  "clinician_summary_scope_drugs_none": "Nie uwzględniono żadnych leków",
   "clinician_summary_settings_row": "{scope}. Zmień",
   "clinician_summary_settings_title": "Ustawienia",
   "clinician_summary_section_truncated": "i jeszcze {count}, wszystkie w wersji do druku",
