@@ -46,6 +46,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -132,6 +133,23 @@
 
   const tagName = (id: string) => vocabulary.tag(id)?.label ?? id;
 
+  /* Ticket 34: what the print foot states, from the same two inputs the
+     book is built from - the chosen bounds and the live part count - so a
+     change to either rewords the foot with it, and the foot never says
+     something the next print would contradict. The parts are counted as
+     answered, not as the picker's six: unticking Entries takes its photos
+     and tags with it (include() below), and the count says so. */
+  let includedPartCount = $derived(
+    JOURNAL_BOOK_INCLUSION_KEYS.filter((key) => inclusion[key]).length
+  );
+  let scopeText = $derived.by(() => {
+    if (!range) return m.journal_book_range_required();
+    return m.journal_book_scope({
+      range: m.journal_book_range({ from: dayLong(range.start), to: dayLong(range.end) }),
+      parts: m.journal_book_scope_parts({ n: includedPartCount })
+    });
+  });
+
   /* Photos and tags qualify an entry rather than standing alone - both are
      drawn under the day they belong to - so turning entries off takes them
      with it. Otherwise ticking Photos and unticking Entries prints nothing
@@ -152,13 +170,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.journal_book_title()} back="/settings" class="no-print" subtitle={m.journal_book_intro()}>
-    {#snippet actions()}
-      <button class="icon-btn" aria-label={m.journal_book_print()} onclick={printBook}>
-        <Icon name="share" size={22} />
-      </button>
-    {/snippet}
-  </ScreenHeader>
+  <ScreenHeader title={m.journal_book_title()} back="/settings" class="no-print" subtitle={m.journal_book_intro()} />
 
   <div class="card no-print" style="margin-bottom:var(--space-4)">
     <div class="book-endpoints">
@@ -263,6 +275,21 @@
         </ListCard>
       </div>
     {/if}
+
+    <!-- Ticket 34: the print action in the frame's foot (SaveBar), beside
+         the scope it prints - the preview runs for many entries, and a
+         print control only the header held was off-screen for all of them.
+         The foot is the column's flex sibling rather than a bar floating
+         over it (carpet 26), so the one print action stays reachable at
+         every scroll position and covers nothing. It appears only once the
+         book itself has landed, so what it offers to print exists. -->
+    <SaveBar arrange="stack">
+      <p class="small muted book-scope no-print" role="status">{scopeText}</p>
+      <button class="btn btn-primary no-print" data-book-print onclick={printBook}>
+        <Icon name="share" size={18} />
+        <span>{m.journal_book_print()}</span>
+      </button>
+    </SaveBar>
   {/if}
 </div>
 
@@ -293,6 +320,10 @@
 
   .book-note {
     white-space: pre-wrap;
+  }
+
+  .book-scope {
+    margin: 0;
   }
 
   @media print {
