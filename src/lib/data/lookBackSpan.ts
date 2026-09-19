@@ -358,3 +358,15 @@ export function yearTicks(railStart: number, todayEpochDay: number): { epochDay:
   }
   return out;
 }
+
+/** The Look back door's active span across in-session visits and Back
+    restoration (phase 11 ticket 32). Plain module memory, cleared on reload. */
+let lastLookBackSpan: Span | null = null;
+
+export function getLastLookBackSpan(): Span | null {
+  return lastLookBackSpan;
+}
+
+export function setLastLookBackSpan(span: Span | null): void {
+  lastLookBackSpan = span;
+}

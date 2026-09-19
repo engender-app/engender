@@ -49,8 +49,10 @@
     defaultSpan,
     eraBands,
     eraOfferDue,
+    getLastLookBackSpan,
     historyBands,
     historyStart,
+    setLastLookBackSpan,
     spanRangeQuery,
     surgeryMarks,
     type Span
@@ -132,14 +134,24 @@
 
   /* The span, settled. Null until the rail is known, then wrapped's own
      default window; from there it is the person's. `live` is the same span
-     as the finger has it. */
-  let span = $state<Span | null>(null);
-  let live = $state<Span | null>(null);
+     as the finger has it. Restored on Back navigation (phase 11 ticket 32). */
+  let span = $state<Span | null>(getLastLookBackSpan());
+  let live = $state<Span | null>(getLastLookBackSpan());
+
   $effect(() => {
     const start = railStart;
-    if (start === null || span !== null) return;
+    if (start === null) return;
+    if (span !== null) {
+      if (span.start < start || span.end > today) {
+        span = defaultSpan(start, today);
+        live = span;
+        setLastLookBackSpan(span);
+      }
+      return;
+    }
     span = defaultSpan(start, today);
     live = span;
+    setLastLookBackSpan(span);
   });
   /* Picking an existing era counts as handled too (redesign ticket 48
      review): a stretch already named is not the "just dragged this out"
@@ -151,6 +163,7 @@
   const pickSpan = (next: Span) => {
     span = next;
     live = next;
+    setLastLookBackSpan(next);
     const isExistingEra = existingEraSpans.some((era) => era.start === next.start && era.end === next.end);
     eraOfferSpan = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
   };
