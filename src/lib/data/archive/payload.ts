@@ -463,6 +463,9 @@ export interface ArchiveProcedure {
   photos: ArchiveProcedurePhoto[];
   kind?: ProcedureKind;
   dilationOptIn?: boolean;
+  /** Absent on archives written before ticket 37; those procedures remain
+      ongoing rather than being classified from their age. */
+  archived?: boolean;
 }
 
 /** One appointment (phase 8 features ticket 57, ADR-0066). Its own section

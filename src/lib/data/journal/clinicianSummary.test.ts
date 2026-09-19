@@ -211,7 +211,8 @@ test("a procedure prints its dates, notes, recovery photo days and checklist sta
       photoEpochDays: [18002],
       checklistItems: [{ id: item.id, content: 'buy gauze', checked: true, carriedForward: false }],
       kind: 'custom',
-      dilationOptIn: false
+      dilationOptIn: false,
+      archived: false
     }
   ]);
 });
