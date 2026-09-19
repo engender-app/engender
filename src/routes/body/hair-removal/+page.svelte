@@ -3,16 +3,17 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
      ticket 25). Two lists on the screen and a third inside the editor,
-     all of them `.list-group` before this; the recency figures and the
-     session photos state something and go nowhere, so they are static
-     rows, and the sessions themselves open the editor. */
+     all of them `.list-group` before this; the recency rows open the
+     add-session form with their own area chosen (pre-production UI/UX
+     ticket 28), the session photos state something and go nowhere, so
+     they stay static rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
   import { shouldShowHairRemovalRecovery } from '$lib/data/liveTiles';
-  import { HAIR_REMOVAL_AREAS } from '$lib/data/hairRemovalAreas';
+  import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '$lib/data/hairRemovalAreas';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { HairRemovalSession, HairRemovalMethod } from '$lib/data/types';
@@ -50,6 +51,20 @@
   const PAIN_RATINGS = [1, 2, 3, 4, 5];
 
   const today = todayEpochDay();
+
+  /** The untouched draft every open starts from, named once so the
+      header's add control, a strip day and a recency row cannot drift
+      apart in their defaults. */
+  function blankDraft(area: HairRemovalAreaKey, epochDay: number = today) {
+    return {
+      date: dateInputValueFromEpochDay(epochDay),
+      area,
+      method: 'laser' as HairRemovalMethod,
+      painRating: '3',
+      cost: '',
+      provider: ''
+    };
+  }
 
   let sessionsQuery = liveList((j) => j.hairRemoval.getSessions());
   let sessions = $derived(sessionsQuery.rows);
@@ -117,21 +132,25 @@
       record.openEditor(existing);
       return;
     }
-    record.editor = {
-      date: dateInputValueFromEpochDay(epochDay),
-      area: HAIR_REMOVAL_AREAS[0],
-      method: 'laser',
-      painRating: '3',
-      cost: '',
-      provider: ''
-    };
+    record.editor = blankDraft(HAIR_REMOVAL_AREAS[0], epochDay);
+  }
+
+  /** A recency row's handoff (pre-production UI/UX ticket 28): no per-area
+      history destination exists - the body-map inspector reads the
+      dysphoria-scoped region vocabulary, which these treatment areas are
+      deliberately never merged with - so the row opens the existing
+      add-session form with its area already chosen. A seeded blank is a
+      clean baseline: nothing saves until Save, and dismissing an untouched
+      form closes it directly. */
+  function openSessionForArea(area: HairRemovalAreaKey) {
+    record.editor = blankDraft(area);
   }
 
   const record = recordEditor<
     HairRemovalSession,
     { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; cost: string; provider: string }
   >({
-    blank: () => ({ date: dateInputValueFromEpochDay(today), area: HAIR_REMOVAL_AREAS[0], method: 'laser', painRating: '3', cost: '', provider: '' }),
+    blank: () => blankDraft(HAIR_REMOVAL_AREAS[0]),
     fromRecord: (session) => ({
       id: session.id,
       date: dateInputValueFromEpochDay(session.epochDay),
@@ -212,12 +231,12 @@
           {#each HAIR_REMOVAL_AREAS as area (area)}
             {@const days = recency[area]}
             <ListRow
-              static
               data-recency={area}
               title={hairRemovalAreaName(area)}
               subtitle={days === null
                 ? m.hair_removal_area_never_used()
                 : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+              onclick={() => openSessionForArea(area)}
             />
           {/each}
         </ListCard>
