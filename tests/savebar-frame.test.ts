@@ -135,4 +135,9 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
     const sweep = read('tests/cohesion-sweep-gallery.mjs');
     expect(sweep).toContain("const AUDITED = ['.card', '.app-savebar']");
   });
+
+  it('never prints an empty SaveBar frame', () => {
+    const print = appCss.slice(appCss.indexOf('@media print'));
+    expect(print).toMatch(/\.app-savebar\s*\{\s*display:\s*none\s*!important;/);
+  });
 });

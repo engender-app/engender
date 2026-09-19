@@ -131,24 +131,39 @@
      "what will be included" has one wording, not two that a later change
      can pull apart - the row wraps it in the affordance tail that opens
      the sheet, the foot states it bare. */
-  let includedSectionCount = $derived(
-    CLINICIAN_DOSSIER_INCLUSION_KEYS.filter((key) => inclusion[key]).length
+  let includedSections = $derived(
+    CLINICIAN_DOSSIER_INCLUSION_KEYS.filter((key) => inclusion[key])
   );
-  let includedDrugCount = $derived(drugNames.length - excludedDrugs.size);
+  let includedDrugNames = $derived(drugNames.filter((drug) => !excludedDrugs.has(drug)));
+  let sectionsScope = $derived(
+    includedSections.length === 0
+      ? m.clinician_summary_scope_sections_none()
+      : includedSections.length === CLINICIAN_DOSSIER_INCLUSION_KEYS.length
+        ? m.clinician_summary_scope_sections_all()
+        : m.clinician_summary_scope_sections({
+            sections: includedSections.map(clinicianDossierPartName).join(', ')
+          })
+  );
+  let drugsScope = $derived(
+    includedDrugNames.length === 0
+      ? m.clinician_summary_scope_drugs_none()
+      : includedDrugNames.length === drugNames.length
+        ? m.clinician_summary_scope_drugs_all()
+        : m.clinician_summary_scope_drugs({ drugs: includedDrugNames.join(', ') })
+  );
   let scopeText = $derived.by(() => {
     if (!range) return m.clinician_summary_range_required();
     const rangeText = m.clinician_summary_settings_range({
       start: dayLong(range.start),
       end: dayLong(range.end)
     });
-    const sections = m.clinician_summary_settings_sections({ n: includedSectionCount });
     return drugNames.length > 0
       ? m.clinician_summary_scope({
           range: rangeText,
-          sections,
-          drugs: m.clinician_summary_settings_drugs({ n: includedDrugCount })
+          sections: sectionsScope,
+          drugs: drugsScope
         })
-      : m.clinician_summary_scope_no_drugs({ range: rangeText, sections });
+      : m.clinician_summary_scope_no_drugs({ range: rangeText, sections: sectionsScope });
   });
 
   function include(key: ClinicianDossierInclusionKey, value: boolean) {
