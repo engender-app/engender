@@ -81,7 +81,7 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { collapse, disclose, markSlotReplacement } from '$lib/motion/reveal';
+  import { collapse, disclose, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   /* A fold's label changes under a standing button - "Ready letter, Active
@@ -90,7 +90,8 @@
      simple crossfade" on the round-one flipbooks (redesign ticket 25). The
      two labels stack in one grid cell so the button keeps its width while
      they cross, and the fade is --dur-fast, which the clamp takes to zero. */
-  const labelFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
+  const labelFade = (_node: Element) =>
+    stillArriving() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
