@@ -72,6 +72,30 @@ export async function settlePage(page, base, path, theme) {
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 }
 
+/** Collect compositor frames while `fn` runs, via CDP Page.startScreencast.
+ *  Shared between tests/hydration-sweep.mjs and tests/yank-sweep.mjs. */
+export async function screencast(page, fn) {
+  const session = await page.context().newCDPSession(page);
+  const frames = [];
+  session.on('Page.screencastFrame', (ev) => {
+    frames.push({ data: ev.data, at: ev.metadata.timestamp * 1000 });
+    session.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {});
+  });
+  await session.send('Page.enable');
+  try {
+    await session.send('Page.startScreencast', {
+      format: 'png',
+      maxWidth: 390,
+      maxHeight: 844,
+      everyNthFrame: 1
+    });
+    return await fn(frames);
+  } finally {
+    await session.send('Page.stopScreencast').catch(() => {});
+    await session.detach().catch(() => {});
+  }
+}
+
 /** Collects PASS/FAIL lines in the format all three scripts already
     printed, plus the closing summary line and failure count, and `block()`
     (ticket 06) for a group of checks that has an expected roster: without

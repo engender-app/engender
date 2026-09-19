@@ -17,11 +17,13 @@ import {
   COLOR_DELTA,
   HYDRATION_NEEDS,
   HYDRATION_PX,
+  PROOF,
   TELEPORT_PX,
   colorDistance,
   findPixelYanks,
   findYanks,
   hydrationScreensFor,
+  missingProofYanks,
   parseCssColor,
   scenesFor
 } from './yank-sweep-core.mjs';
@@ -106,6 +108,180 @@ describe('findYanks', () => {
     expect(findYanks(frames, 'rows')).toContainEqual(
       expect.objectContaining({ kind: 'limbo', mark: 'mark' })
     );
+  });
+
+  describe('there-and-back shape (ticket 137)', () => {
+    it('reports a mark displaced by more than teleport floor for one frame and returned', () => {
+      const frames = [
+        ...still(6, { y: 20 }),
+        frame(mark({ y: 220 }), 96),
+        ...still(4, { y: 20 })
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'there-and-back', mark: 'mark' })
+      );
+    });
+
+    it('reports the photos-persona-light 104ms defect shape over hydration window', () => {
+      /* Six marks including .photo-thumb dropped 339px for one frame and returned */
+      const frames = [
+        frame(mark({ y: 305.6 }), 70),
+        frame(mark({ y: 305.6 }), 86),
+        frame(mark({ y: 644.6 }), 104),
+        frame(mark({ y: 305.6 }), 130),
+        frame(mark({ y: 305.6 }), 150)
+      ];
+      const yanks = findYanks(frames, 'rows', frames.length - 1, HYDRATION_PX);
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'there-and-back', mark: 'mark', at: 104 })
+      );
+    });
+
+    it('does not report when displacement is below the teleport floor', () => {
+      const frames = [
+        ...still(6, { y: 20 }),
+        frame(mark({ y: 20 + TELEPORT_PX - 1 }), 96),
+        ...still(4, { y: 20 })
+      ];
+      expect(findYanks(frames, 'rows').filter((y) => y.kind === 'there-and-back')).toEqual([]);
+    });
+
+    it('does not report when return journey does not return near start', () => {
+      /* Displaced 200px, but only returns 10px - not there-and-back */
+      const frames = [
+        ...still(6, { y: 20 }),
+        frame(mark({ y: 220 }), 96),
+        ...still(4, { y: 210 })
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks.some((y) => y.kind === 'there-and-back')).toBe(false);
+    });
+
+    it('reports when initial displacement clears teleport floor and returns to start even if return delta < teleportPx', () => {
+      /* Starts at 0, jumps to 40 (teleportPx = 40), returns to 6 (dReturn = 6 <= returnFraction = 14).
+         Return delta is |40 - 6| = 34px, which is less than 40px. */
+      const frames = [
+        ...still(6, { y: 0 }),
+        frame(mark({ y: 40 }), 96),
+        ...still(4, { y: 6 })
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'there-and-back', mark: 'mark' })
+      );
+    });
+
+    it('does not report when outside frames are in motion (animating/sliding)', () => {
+      /* 30px per frame motion with a 30px reversal */
+      const frames = [
+        frame(mark({ y: 0 }), 0),
+        frame(mark({ y: 30 }), 16),
+        frame(mark({ y: 60 }), 32),
+        frame(mark({ y: 90 }), 48),
+        frame(mark({ y: 60 }), 64),
+        frame(mark({ y: 90 }), 80),
+        frame(mark({ y: 120 }), 96)
+      ];
+      expect(findYanks(frames, 'rows').filter((y) => y.kind === 'there-and-back')).toEqual([]);
+    });
+  });
+
+  describe('arrival shape (ticket 137)', () => {
+    it('reports tree form: mark absent from start, present at >= VISIBLE in one frame, and holds', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(null, 32),
+        frame(mark({ o: 1 }), 48),
+        frame(mark({ o: 1 }), 64),
+        frame(mark({ o: 1 }), 80),
+        frame(mark({ o: 1 }), 96)
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'arrival', mark: 'mark', at: 48 })
+      );
+    });
+
+    it('reports opacity-step form: mark at <= GONE jumping to >= VISIBLE in one frame and holding', () => {
+      const frames = [
+        frame(mark({ o: 0 }), 0),
+        frame(mark({ o: 0 }), 16),
+        frame(mark({ o: 0 }), 32),
+        frame(mark({ o: 1 }), 48),
+        frame(mark({ o: 1 }), 64),
+        frame(mark({ o: 1 }), 80),
+        frame(mark({ o: 1 }), 96)
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'arrival', mark: 'mark', at: 48 })
+      );
+    });
+
+    it('reports opacity-step form: mark entering at low opacity (0.08) jumping to >= VISIBLE in one frame', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 0.08 }), 32),
+        frame(mark({ o: 1 }), 48),
+        frame(mark({ o: 1 }), 64),
+        frame(mark({ o: 1 }), 80),
+        frame(mark({ o: 1 }), 96)
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'arrival', mark: 'mark', at: 48 })
+      );
+    });
+
+    it('does not report arrivals when allowArrivals is false (hydration window)', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 1 }), 32),
+        frame(mark({ o: 1 }), 48),
+        frame(mark({ o: 1 }), 64)
+      ];
+      const yanks = findYanks(frames, 'rows', frames.length - 1, TELEPORT_PX, false);
+      expect(yanks.filter((y) => y.kind === 'arrival')).toEqual([]);
+    });
+
+    it('does not report marks present and visible from frame 0', () => {
+      const frames = [
+        frame(mark({ o: 1 }), 0),
+        frame(mark({ o: 1 }), 16),
+        frame(mark({ o: 1 }), 32),
+        frame(mark({ o: 1 }), 48)
+      ];
+      expect(findYanks(frames, 'rows').filter((y) => y.kind === 'arrival')).toEqual([]);
+    });
+
+    it('does not report smooth entrance fades', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 0.1 }), 32),
+        frame(mark({ o: 0.3 }), 48),
+        frame(mark({ o: 0.55 }), 64),
+        frame(mark({ o: 0.8 }), 80),
+        frame(mark({ o: 1 }), 96)
+      ];
+      expect(findYanks(frames, 'rows').filter((y) => y.kind === 'arrival')).toEqual([]);
+    });
+
+    it('does not report transient flicker that does not hold', () => {
+      /* Present for only 1 frame */
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 1 }), 32),
+        frame(null, 48),
+        frame(null, 64)
+      ];
+      expect(findYanks(frames, 'rows').filter((y) => y.kind === 'arrival')).toEqual([]);
+    });
   });
 
   describe('bloat - the field-blind shape (ticket 99 round 2, ticket 100)', () => {
@@ -438,6 +614,36 @@ describe('colour distance arithmetic (ticket 136)', () => {
   it('measures appearance when transitioning from transparent to opaque', () => {
     const d = colorDistance('rgba(0, 0, 0, 0)', 'rgb(255, 255, 255)');
     expect(d).toBeGreaterThan(COLOR_DELTA);
+  });
+
+  describe('missingProofYanks (ticket 137)', () => {
+    const allSix = [
+      { mark: `${PROOF.teleport}foo`, kind: 'teleport' },
+      { mark: `${PROOF.vanish}foo`, kind: 'vanish' },
+      { mark: `${PROOF.bloat}foo`, kind: 'bloat' },
+      { mark: `${PROOF.colour}foo`, kind: 'colour' },
+      { mark: `${PROOF.thereAndBack}foo`, kind: 'there-and-back' },
+      { mark: `${PROOF.arrival}foo`, kind: 'arrival' }
+    ];
+
+    it('passes when all six injected marks are present', () => {
+      const report = [{ scene: PROOF.scene, yanks: allSix }];
+      expect(missingProofYanks(report)).toEqual([]);
+    });
+
+    it('reports missing there-and-back and arrival when omitted', () => {
+      const partial = allSix.slice(0, 4); // Only the first four
+      const report = [{ scene: PROOF.scene, yanks: partial }];
+      const missing = missingProofYanks(report);
+      expect(missing).toContainEqual(expect.stringContaining('there-and-back'));
+      expect(missing).toContainEqual(expect.stringContaining('arrival'));
+    });
+
+    it('does not check arrival when checkArrival is false (hydration window)', () => {
+      const fiveYanks = allSix.filter((y) => y.kind !== 'arrival');
+      const report = [{ scene: PROOF.scene, styleYanks: fiveYanks }];
+      expect(missingProofYanks(report, { checkArrival: false })).toEqual([]);
+    });
   });
 });
 

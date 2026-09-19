@@ -89,7 +89,7 @@ import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, screencast } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import {
   BLOAT_PX,
@@ -111,6 +111,7 @@ import {
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   findYanks,
   missingProofYanks,
+  readRenderYanks,
   scenesFor,
   samplerExpression
 } from './yank-sweep-core.mjs';
@@ -216,7 +217,10 @@ for (const profile of profiles) {
           if (scene.firstRun) await firstRunTo(page, scene.firstRun);
           await page.waitForTimeout(1400);
           if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
-          const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+          const { cast, all_frames } = await screencast(page, async (cast) => {
+            const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+            return { cast, all_frames };
+          });
           /* A transition ran, so the pseudos are what the person saw, and only the
              frames it was running on are the gesture. */
           const transitioned = all_frames.some((f) => f.active);
@@ -225,6 +229,7 @@ for (const profile of profiles) {
           if (!frames.length) throw new Error('no frames to read');
           const all = findYanks(frames, instrument, frames.length - 1);
           const yanks = all.filter((y) => !EXEMPT.test(y.mark));
+          const render = await readRenderYanks(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`, undefined, { allowThin: true });
           if (args.includes('--dump'))
             await writeFile(
               `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
@@ -239,14 +244,23 @@ for (const profile of profiles) {
             instrument,
             frames: frames.length,
             sampled: all_frames.length,
+            cast: render.cast,
             from: frames[0]?.at ?? 0,
             span: frames.at(-1)?.at ?? 0,
             yanks,
+            pixelFindings: render.findings,
             suppressed: all.length - yanks.length
           });
           console.log(
-            `[${profile}-${theme}] ${scene.name} p${pass}: ${frames.length} frames read as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${yanks.length} yank(s)` +
-              (yanks.length ? `\n  ${yanks.map((y) => `${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`).join('\n  ')}` : '')
+            `[${profile}-${theme}] ${scene.name} p${pass}: ${frames.length} frames read as ${instrument === 'vt' ? 'a transition' : 'a state change'} / ${render.cast} render frames, ${yanks.length} style / ${render.findings.length} render yank(s)` +
+              (yanks.length || render.findings.length
+                ? `\n  ${[
+                    ...yanks.map((y) => `style ${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`),
+                    ...render.findings.map(
+                      (f) => `render ${f.kind} @${f.at}ms box ${f.box.w}x${f.box.h} area ${(f.areaPct * 100).toFixed(1)}%`
+                    )
+                  ].join('\n  ')}`
+                : '')
           );
         } catch (err) {
           report.push({ scene: scene.name, profile, theme, pass, error: String(err).slice(0, 300) });
@@ -276,17 +290,24 @@ await page.close();
 await browser.close();
 await app.close();
 const total = report.reduce((n, r) => n + (r.yanks?.length ?? 0), 0);
-console.log(`\n${report.length} run(s), ${total} yank(s); report in ${outDir}/report.json`);
+const renderTotal = report.reduce((n, r) => n + (r.pixelFindings?.length ?? 0), 0);
+console.log(`\n${report.length} run(s), ${total} style / ${renderTotal} render yank(s); report in ${outDir}/report.json`);
 
 if (prove) {
+  const proofRuns = report.filter((r) => r.scene === PROOF.scene);
   const missing = missingProofYanks(report);
-  if (missing.length) {
+  const cameraSaw = proofRuns.some((r) =>
+    (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05)
+  );
+  if (missing.length || !cameraSaw) {
     console.error(
-      `proof FAILED: the sweep did not report ${missing.join(' or ')}. A clean run above is not evidence of anything.`
+      `proof FAILED: ${missing.length ? `the style arithmetic did not report ${missing.join(' or ')}` : ''}` +
+        `${missing.length && !cameraSaw ? ' and ' : ''}` +
+        `${!cameraSaw ? 'the camera saw none of it' : ''}. A clean run above is not evidence of anything.`
     );
     process.exitCode = 1;
   } else {
-    console.log('proof: all four injected yanks were reported. The sweep can fail.');
+    console.log('proof: all six injected yanks were reported and the camera saw them. The sweep can fail.');
   }
 }
 if (errors.length) {
