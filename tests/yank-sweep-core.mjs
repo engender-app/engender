@@ -712,24 +712,21 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         run[i - 1]?.row &&
         run[i + 1]?.row
       ) {
-        const next = deltas[n + 1];
-        if (next.d >= teleportPx * next.steps) {
-          const dReturn = Math.hypot(run[i + 1].row.x - run[i - 1].row.x, run[i + 1].row.y - run[i - 1].row.y);
-          const returnFraction = Math.max(teleportPx * 0.35, d * 0.2);
-          if (dReturn <= returnFraction) {
-            const outside = Math.max(deltas[n - 1]?.dNorm ?? 0, deltas[n + 2]?.dNorm ?? 0);
-            const outsideRatio = TELEPORT_RATIO * Math.max(1, Math.sqrt(steps));
-            if (dNorm >= Math.max(outside, 0.25) * outsideRatio && outside <= teleportPx * 0.5) {
-              yanks.push({
-                kind: 'there-and-back',
-                mark: k,
-                frames: [i - 1, i],
-                at,
-                detail: `${Math.round(d)}px in one frame, returned on next frame`
-              });
-              n++;
-              continue;
-            }
+        const dReturn = Math.hypot(run[i + 1].row.x - run[i - 1].row.x, run[i + 1].row.y - run[i - 1].row.y);
+        const returnFraction = Math.max(teleportPx * 0.35, d * 0.2);
+        if (dReturn <= returnFraction) {
+          const outside = Math.max(deltas[n - 1]?.dNorm ?? 0, deltas[n + 2]?.dNorm ?? 0);
+          const outsideRatio = TELEPORT_RATIO * Math.max(1, Math.sqrt(steps));
+          if (dNorm >= Math.max(outside, 0.25) * outsideRatio && outside <= teleportPx * 0.5) {
+            yanks.push({
+              kind: 'there-and-back',
+              mark: k,
+              frames: [i - 1, i],
+              at,
+              detail: `${Math.round(d)}px in one frame, returned on next frame`
+            });
+            n++;
+            continue;
           }
         }
       }
@@ -859,7 +856,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         const risePerFrame = (b.o - (a ? a.o : 0)) / steps;
 
         const treeForm = !a;
-        const opacityStepForm = a && a.o <= GONE && risePerFrame >= 0.35;
+        const opacityStepForm = a && a.o < VISIBLE && risePerFrame >= 0.35;
 
         if (treeForm || opacityStepForm) {
           const holds = run[i + 1]?.row?.o >= VISIBLE && run[i + 2]?.row?.o >= VISIBLE;

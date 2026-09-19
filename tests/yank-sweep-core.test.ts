@@ -158,6 +158,20 @@ describe('findYanks', () => {
       expect(yanks.some((y) => y.kind === 'there-and-back')).toBe(false);
     });
 
+    it('reports when initial displacement clears teleport floor and returns to start even if return delta < teleportPx', () => {
+      /* Starts at 0, jumps to 40 (teleportPx = 40), returns to 6 (dReturn = 6 <= returnFraction = 14).
+         Return delta is |40 - 6| = 34px, which is less than 40px. */
+      const frames = [
+        ...still(6, { y: 0 }),
+        frame(mark({ y: 40 }), 96),
+        ...still(4, { y: 6 })
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'there-and-back', mark: 'mark' })
+      );
+    });
+
     it('does not report when outside frames are in motion (animating/sliding)', () => {
       /* 30px per frame motion with a 30px reversal */
       const frames = [
@@ -195,6 +209,22 @@ describe('findYanks', () => {
         frame(mark({ o: 0 }), 0),
         frame(mark({ o: 0 }), 16),
         frame(mark({ o: 0 }), 32),
+        frame(mark({ o: 1 }), 48),
+        frame(mark({ o: 1 }), 64),
+        frame(mark({ o: 1 }), 80),
+        frame(mark({ o: 1 }), 96)
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'arrival', mark: 'mark', at: 48 })
+      );
+    });
+
+    it('reports opacity-step form: mark entering at low opacity (0.08) jumping to >= VISIBLE in one frame', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 0.08 }), 32),
         frame(mark({ o: 1 }), 48),
         frame(mark({ o: 1 }), 64),
         frame(mark({ o: 1 }), 80),
