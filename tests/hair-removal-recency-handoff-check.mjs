@@ -38,6 +38,11 @@ page.setDefaultTimeout(15000);
 const errors = [];
 page.on('pageerror', (err) => errors.push(err.message));
 
+/* CONTEXT: epoch day is the device's local day, never a UTC one - so the
+   fixture computes it here once and hands it to the page, rather than
+   letting three evaluate blocks each derive (a possibly UTC) day. */
+const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+
 const count = () => page.evaluate(async () => {
   const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
   return (await journal.hairRemoval.getSessions()).length;
@@ -52,26 +57,22 @@ try {
   }
 
   // Fixture: two areas with different histories, one never used.
-  await page.evaluate(async () => {
+  await page.evaluate(async (today) => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    const day = 24 * 60 * 60 * 1000;
-    const today = Math.floor(Date.now() / day);
     await journal.hairRemoval.upsertSession({
       epochDay: today - 3, area: 'chin', method: 'laser', painRating: 2, cost: '', provider: 'Clinic A'
     });
     await journal.hairRemoval.upsertSession({
       epochDay: today - 30, area: 'legs', method: 'electrolysis', painRating: 4, cost: '', provider: ''
     });
-  });
+  }, today);
   assert.equal(await count(), 2, 'fixture seeded two sessions');
 
   // Custom-area fixture: the closed vocabulary rejects it at the data seam,
   // so the overview can never grow a row the current build cannot name.
-  const rejection = await page.evaluate(async () => {
+  const rejection = await page.evaluate(async (today) => {
     try {
       const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-      const day = 24 * 60 * 60 * 1000;
-      const today = Math.floor(Date.now() / day);
       await journal.hairRemoval.upsertSession({
         epochDay: today - 1, area: 'nape_custom', method: 'laser', painRating: 1, cost: '', provider: ''
       });
@@ -79,7 +80,7 @@ try {
     } catch (err) {
       return String(err?.message ?? err);
     }
-  });
+  }, today);
   assert.match(rejection ?? '', /invalid hair-removal area/, 'a custom area key is rejected by the closed vocabulary');
   assert.equal(await count(), 2, 'the rejected custom area stored nothing');
 
@@ -116,13 +117,17 @@ try {
   // Nothing saved by opening and dismissing.
   assert.equal(await count(), 2, 'opening a recency row stores nothing');
 
-  // Same proof on the second history, in the same overview position.
+  // Same proof on the second history, in the same overview position - and
+  // the close through Escape, the key that shares the overlay owner native
+  // Back consults (overlayLock.ts), landing back on the overview where it
+  // was. (Whether the Android Back key reaches that owner is the Android
+  // tier's evidence, not a browser's.)
   await page.evaluate(() => window.scrollBy(0, 40));
   const before = await page.evaluate(() => window.scrollY);
   await page.locator('[data-recency="legs"]').click();
   await page.waitForSelector('#hair-removal-area');
   assert.equal(await page.locator('#hair-removal-area').inputValue(), 'legs', 'the legs row prefills legs');
-  await page.locator('[data-close-record]').click();
+  await page.keyboard.press('Escape');
   await page.waitForSelector('#hair-removal-area', { state: 'detached' });
   assert.equal(await page.evaluate(() => window.scrollY), before, 'closing returns to the overview where it was');
 
