@@ -62,6 +62,7 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   let edge = 0;
   let ask = 0;
   let frame = 0;
+  let paintedFrame = 0;
 
   /* Where the question's own box sits inside the field, in layout terms.
      `offsetTop` rather than a client rect, because the ride is a translate
@@ -105,9 +106,15 @@ export const blindEdge: Action<HTMLElement> = (node) => {
     host.style.setProperty('--blind-edge', `${from}px`);
     host.dataset[HOLD] = '';
     cancelAnimationFrame(frame);
+    cancelAnimationFrame(paintedFrame);
     frame = requestAnimationFrame(() => {
-      delete host.dataset[HOLD];
-      host.style.setProperty('--blind-edge', `${to}px`);
+      /* A callback queued from ResizeObserver can run before the hold has
+         painted. Keep it through that frame, then release it for the edge's
+         transition. */
+      paintedFrame = requestAnimationFrame(() => {
+        delete host.dataset[HOLD];
+        host.style.setProperty('--blind-edge', `${to}px`);
+      });
     });
   });
 
@@ -116,6 +123,7 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   return {
     destroy() {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(paintedFrame);
       observer.disconnect();
       delete host.dataset[HOLD];
       /* Everything this published, given back. Setup mounts once per
