@@ -1105,6 +1105,7 @@ const HYDRATION_SCENES = [
   { name: 'search-question', at: '/search/questions/{question}', needs: 'question', when: 'persona', is: 'one saved question answered' },
   /* Stats tab */
   { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
+  { name: 'stats-reading', at: '/stats/day-by-day', is: 'a look-back reading' },
   { name: 'body-map', at: '/body-map', is: 'the body map over its range' },
   { name: 'tally', at: '/tally', is: 'the tally chart' },
   { name: 'compare', at: '/compare', is: 'then versus now' },
@@ -1150,7 +1151,7 @@ const HYDRATION_SCENES = [
   { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
-  { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
+  { name: 'eras', at: '/settings/eras', is: 'named spans of a life' },
   /* Ticket 21: the voice benchmark moved off the retired Practice prefix -
      to the root rather than under a door prefix, unlike its siblings, but
      still Transition's screen. Its metrics and memos stubs did not move
