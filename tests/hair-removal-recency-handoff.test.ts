@@ -46,9 +46,8 @@ describe('hair-removal recency area handoff contract (pre-production UI/UX 28)',
     /* The handoff draft is the blank draft with one field chosen: without
        an id the sheet is "New session", and a clean baseline means an
        untouched dismissal closes directly instead of prompting. */
-    expect(hairRemoval, 'the blank draft names its defaults once').toMatch(
-      /function blankDraft[\s\S]*?\{[\s\S]*?method: 'laser'[\s\S]*?\}/
-    );
-    expect(hairRemoval.match(/id: session\.id/)?.length).toBe(1);
+    const blankDraft = hairRemoval.match(/function blankDraft[\s\S]*?\n  \}/)?.[0] ?? '';
+    expect(blankDraft, 'the blank draft names its defaults once').toContain("method: 'laser'");
+    expect(blankDraft, 'a handoff draft is never an edit of an existing record').not.toContain('id:');
   });
 });
