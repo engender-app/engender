@@ -626,11 +626,11 @@ async function hydrationScenes() {
   for (const profile of profiles) {
     await settle('/', themes[0]);
     if (profile === 'persona') {
-      if (!(await ev(RESET_PERSONA_EXPRESSION))) {
+      if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
       }
-      await ev(FILL_EVERY_FEATURE_EXPRESSION);
+      await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
       await sleep(1500);
     } else {
       /* The onboarding mount exists only here, between the jump and the
@@ -736,11 +736,11 @@ if (hydration) {
   for (const profile of profiles) {
     if (profile === 'persona') {
       await settle('/', themes[0]);
-      if (!(await ev(RESET_PERSONA_EXPRESSION))) {
+      if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
       }
-      await ev(FILL_EVERY_FEATURE_EXPRESSION);
+      await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
       await sleep(1500);
     } else {
       await settle('/', themes[0]);
