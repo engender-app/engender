@@ -14,12 +14,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BLOAT_PX,
+  COLOR_DELTA,
   HYDRATION_NEEDS,
   HYDRATION_PX,
   TELEPORT_PX,
+  colorDistance,
   findPixelYanks,
   findYanks,
   hydrationScreensFor,
+  parseCssColor,
   scenesFor
 } from './yank-sweep-core.mjs';
 
@@ -167,6 +170,98 @@ describe('findYanks', () => {
       expect(findYanks(frames, 'rows')).toEqual([]);
     });
   });
+
+  describe('colour shape (ticket 136)', () => {
+    it('persistent abrupt change: reports a mark whose colour jumps between two still frames and stays', () => {
+      /* Resting at #888, then jumps to #e00 and stays - the redesign-07 defect shape */
+      const frames = [
+        ...still(6, { bg: '#888' }),
+        frame(mark({ bg: '#e00' }), 96),
+        ...still(4, { bg: '#e00' })
+      ];
+      expect(findYanks(frames, 'rows')).toContainEqual(
+        expect.objectContaining({ kind: 'colour', mark: 'mark' })
+      );
+    });
+
+    it('one-frame return: reports a mark whose colour flips for one frame and returns', () => {
+      /* Resting at #888, one frame at #e00, then returns to #888 */
+      const frames = [
+        ...still(6, { bg: '#888' }),
+        frame(mark({ bg: '#e00' }), 96),
+        ...still(4, { bg: '#888' })
+      ];
+      expect(findYanks(frames, 'rows')).toContainEqual(
+        expect.objectContaining({ kind: 'colour', mark: 'mark' })
+      );
+    });
+
+    it('smooth theme interpolation: does not report when colour transitions smoothly across frames', () => {
+      /* Smooth fade in lightness over 10 frames */
+      const frames = Array.from({ length: 10 }, (_, i) =>
+        frame(mark({ bg: `oklab(${0.8 - i * 0.04} 0 0)` }), i * 16)
+      );
+      expect(findYanks(frames, 'rows')).toEqual([]);
+    });
+
+    it('transparent-colour no-op: does not report when transparent colour values vary without visible change', () => {
+      /* Transparent background variations: transparent -> rgba(0,0,0,0) -> rgba(255,0,0,0) */
+      const frames = [
+        ...still(4, { bg: 'transparent' }),
+        frame(mark({ bg: 'rgba(0, 0, 0, 0)' }), 64),
+        frame(mark({ bg: 'rgba(255, 0, 0, 0)' }), 80),
+        ...still(4, { bg: 'transparent' })
+      ];
+      expect(findYanks(frames, 'rows')).toEqual([]);
+    });
+
+    it('does not report colour delta below the COLOR_DELTA floor', () => {
+      /* Small step below COLOR_DELTA (0.14) */
+      const frames = [
+        ...still(6, { bg: 'oklab(0.70 0 0)' }),
+        frame(mark({ bg: 'oklab(0.75 0 0)' }), 96),
+        ...still(4, { bg: 'oklab(0.75 0 0)' })
+      ];
+      expect(findYanks(frames, 'rows')).toEqual([]);
+    });
+
+    it('does not report colour change when whole screen recolours (theme switch)', () => {
+      /* 10 marks all change colour on the same frame */
+      const multiMarkFrame = (bg, at) => {
+        const rows = {};
+        for (let m = 0; m < 10; m++) {
+          rows[`mark-${m}`] = mark({ bg });
+        }
+        return { at, active: false, rows, vt: {} };
+      };
+      const frames = [
+        ...Array.from({ length: 5 }, (_, i) => multiMarkFrame('#888', i * 16)),
+        ...Array.from({ length: 5 }, (_, i) => multiMarkFrame('#e00', (5 + i) * 16))
+      ];
+      expect(findYanks(frames, 'rows')).toEqual([]);
+    });
+
+    it('reports a border-only control whose border colour jumps and stays', () => {
+      /* Border-only mark: no background, no text, only border */
+      const frames = [
+        ...still(6, { bg: undefined, fg: undefined, bc: '#888' }),
+        frame(mark({ bg: undefined, fg: undefined, bc: '#e00' }), 96),
+        ...still(4, { bg: undefined, fg: undefined, bc: '#e00' })
+      ];
+      expect(findYanks(frames, 'rows')).toContainEqual(
+        expect.objectContaining({ kind: 'colour', mark: 'mark' })
+      );
+    });
+
+    it('does not report when neither side has a visible border', () => {
+      const frames = [
+        ...still(6, { bg: undefined, fg: undefined, bc: undefined }),
+        frame(mark({ bg: undefined, fg: undefined, bc: undefined }), 96),
+        ...still(4, { bg: undefined, fg: undefined, bc: undefined })
+      ];
+      expect(findYanks(frames, 'rows')).toEqual([]);
+    });
+  });
 });
 
 describe('scenesFor', () => {
@@ -277,3 +372,73 @@ describe('hydrationScreensFor (ticket 108)', () => {
       );
   });
 });
+
+describe('colour distance arithmetic (ticket 136)', () => {
+  it('oklab() versus rgb(): evaluates equivalence and distance between formats accurately', () => {
+    // Exact red: rgb(255, 0, 0) in OKLab is oklab(0.627955 0.224863 0.125846)
+    const rgbRed = parseCssColor('rgb(255, 0, 0)');
+    const oklabRed = parseCssColor('oklab(0.627955 0.224863 0.125846)');
+    expect(colorDistance(rgbRed, oklabRed)).toBeCloseTo(0, 4);
+
+    // Exact white: rgb(255, 255, 255) vs oklab(1 0 0)
+    expect(colorDistance('rgb(255, 255, 255)', 'oklab(1 0 0)')).toBeCloseTo(0, 4);
+
+    // Distance between oklab and rgb forms of different colours
+    const oklabGreen = 'oklab(0.5197 0.14 -0.1)';
+    expect(colorDistance('rgb(255, 0, 0)', oklabGreen)).toBeGreaterThan(COLOR_DELTA);
+  });
+
+  it('parses rgb, rgba, oklab, color(srgb) and hex formats', () => {
+    const rgb = parseCssColor('rgb(255, 0, 0)');
+    const hex = parseCssColor('#f00');
+    expect(colorDistance(rgb, hex)).toBeCloseTo(0, 4);
+
+    const oklab = parseCssColor('oklab(0.7 0.1 -0.1)');
+    expect(oklab[0]).toBeCloseTo(0.7, 3);
+    expect(oklab[1]).toBeCloseTo(0.1, 3);
+    expect(oklab[2]).toBeCloseTo(-0.1, 3);
+    expect(oklab[3]).toBe(1);
+
+    const srgb = parseCssColor('color(srgb 1 0 0)');
+    expect(colorDistance(rgb, srgb)).toBeCloseTo(0, 4);
+  });
+
+  it('measures distance accurately for known colour defects', () => {
+    /* Nonbinary yellow to olive/brown contrast-floor defect measures ~0.39 */
+    const yellow = 'rgb(252, 244, 52)';
+    const olive = 'rgb(138, 117, 0)';
+    const dYellowOlive = colorDistance(yellow, olive);
+    expect(dYellowOlive).toBeGreaterThan(0.35);
+    expect(dYellowOlive).toBeGreaterThan(COLOR_DELTA);
+
+    /* Pure red to green hue flip (identical luma 76) measures ~0.38 */
+    const red = 'rgb(255, 0, 0)';
+    const green = 'rgb(0, 129, 0)';
+    const dRedGreen = colorDistance(red, green);
+    expect(dRedGreen).toBeGreaterThan(0.35);
+    expect(dRedGreen).toBeGreaterThan(COLOR_DELTA);
+  });
+
+  it('treats transparent-to-transparent as zero distance', () => {
+    expect(colorDistance('transparent', 'rgba(0, 0, 0, 0)')).toBe(0);
+    expect(colorDistance('rgba(255, 0, 0, 0)', 'rgba(0, 0, 0, 0)')).toBe(0);
+  });
+
+  it('ignores fully transparent paint regardless of raw RGB channels', () => {
+    // Red transparent vs green transparent: raw channels differ maximally, but both alpha 0
+    expect(colorDistance('rgba(255, 0, 0, 0)', 'rgba(0, 255, 0, 0)')).toBe(0);
+  });
+
+  it('compares rendered alpha rather than raw channels', () => {
+    // Same raw RGB, different alpha: rendered alpha produces distance
+    const d = colorDistance('rgba(255, 0, 0, 1)', 'rgba(255, 0, 0, 0.2)');
+    expect(d).toBeGreaterThan(COLOR_DELTA);
+  });
+
+  it('measures appearance when transitioning from transparent to opaque', () => {
+    const d = colorDistance('rgba(0, 0, 0, 0)', 'rgb(255, 255, 255)');
+    expect(d).toBeGreaterThan(COLOR_DELTA);
+  });
+});
+
+

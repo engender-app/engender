@@ -132,7 +132,7 @@ const profiles = flag('profiles', 'persona,empty')
   .split(',')
   .filter(Boolean);
 const passes = Number(flag('passes', '3'));
-/** Injects three defects, so the detector can be seen to find them. */
+/** Injects four defects, so the detector can be seen to find them. */
 const prove = args.includes('--prove');
 
 const SCENES = scenesFor({ prove, only });
@@ -279,11 +279,17 @@ console.log(`\n${report.length} run(s), ${total} yank(s); report in ${outDir}/re
 
 if (prove) {
   const scenes = report.filter((r) => r.scene === PROOF.scene);
-  const got = (mark, kind) => scenes.some((s) => s.yanks?.some((y) => y.mark.startsWith(mark) && y.kind === kind));
+  const got = (mark, kind) =>
+    scenes.some((s) =>
+      s.yanks?.some(
+        (y) => y.mark.startsWith(mark) && (y.kind === kind || (kind === 'colour' && y.kind === 'color'))
+      )
+    );
   const missing = [
     got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
     got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
-    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`
+    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`,
+    got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`
   ].filter(Boolean);
   if (missing.length) {
     console.error(
@@ -292,7 +298,7 @@ if (prove) {
     );
     process.exitCode = 1;
   } else {
-    console.log('proof: all three injected yanks were reported. The sweep can fail.');
+    console.log('proof: all four injected yanks were reported. The sweep can fail.');
   }
 }
 if (errors.length) {
