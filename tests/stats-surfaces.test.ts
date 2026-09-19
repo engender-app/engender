@@ -249,7 +249,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     }
     expect(stats).toContain("href={readingHref('words', resolvedSpan)}");
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
-    expect(readings.compare).toContain('href={compareStretchQuery(span, before)}');
+    expect(readings.compare).toContain('href={`/compare${spanRangeQuery(span)}`}');
   });
 
   it('has a tile only where the span holds data for it', () => {
