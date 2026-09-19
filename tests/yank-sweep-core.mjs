@@ -464,7 +464,8 @@ export function samplerExpression(act, ms, names) {
         ...(cut === undefined ? {} : { edge: Math.round((innerHeight - Number(cut)) * 10) / 10 })
       };
     };
-    const STATE_CLS = /^(is-active|is-selected|is-open|is-checked|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
+    const STATE_CLS =
+      /^(is-active|is-selected|is-open|is-fan-open|is-checked|is-ticked|press|press-add|setup-paint-was|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
     const key = (el) => {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
@@ -580,7 +581,10 @@ export function samplerExpression(act, ms, names) {
             const ownWords = [...el.childNodes].some(
               (n) => n.nodeType === 3 && n.textContent.trim().length > 0
             );
-            if (!paints && !ownWords) continue;
+            const hasVisual =
+              (el.tagName === 'BUTTON' || el.tagName === 'A') &&
+              el.querySelector('svg, img, .switch-track') !== null;
+            if (!paints && !ownWords && !hasVisual) continue;
             const k = key(el);
             /* First one wins: a repeated key inside one frame is a list of
                identical marks, and following the first is enough to see a
@@ -841,8 +845,11 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
        Two forms:
        1. Tree form: mark absent from start of scene, then present at >= VISIBLE.
        2. Opacity-step form: mark at <= GONE jumping to >= VISIBLE in one frame (rise >= 0.35/frame).
-       In both forms, must hold for several frames (at least 2 subsequent frames). */
+       In both forms, must hold for several frames (at least 2 subsequent frames).
+       Marks that travel into place (e.g. bottom sheet rising from below the viewport)
+       are animating to their destination, not arriving there unannounced. */
     if (allowArrivals) {
+      const resting = run[settles]?.row ?? present.at(-1)?.row;
       for (let i = 1; i < run.length; i++) {
         const a = run[i - 1].row;
         const b = run[i].row;
@@ -861,16 +868,22 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         if (treeForm || opacityStepForm) {
           const holds = run[i + 1]?.row?.o >= VISIBLE && run[i + 2]?.row?.o >= VISIBLE;
           if (holds) {
-            yanks.push({
-              kind: 'arrival',
-              mark: k,
-              frames: [i - 1, i],
-              at: run[i].at,
-              detail: a
-                ? `opacity ${a.o} to ${b.o} in one frame`
-                : `arrived at opacity ${b.o} with no transition`
-            });
-            break;
+            const postDeltas = deltas.filter((d) => d.i > i);
+            const travel = postDeltas.reduce((sum, d) => sum + d.d, 0);
+            const distFromRest = resting ? Math.hypot(b.x - resting.x, b.y - resting.y) : 0;
+            const isTravelling = travel >= teleportPx || distFromRest >= teleportPx;
+            if (!isTravelling) {
+              yanks.push({
+                kind: 'arrival',
+                mark: k,
+                frames: [i - 1, i],
+                at: run[i].at,
+                detail: a
+                  ? `opacity ${a.o} to ${b.o} in one frame`
+                  : `arrived at opacity ${b.o} with no transition`
+              });
+              break;
+            }
           }
         }
       }

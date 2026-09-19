@@ -282,6 +282,35 @@ describe('findYanks', () => {
       ];
       expect(findYanks(frames, 'rows').filter((y) => y.kind === 'arrival')).toEqual([]);
     });
+
+    it('does not report an element that mounts and travels into place (sliding sheet)', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 1, y: 800 }), 32),
+        frame(mark({ o: 1, y: 600 }), 48),
+        frame(mark({ o: 1, y: 400 }), 64),
+        frame(mark({ o: 1, y: 200 }), 80),
+        frame(mark({ o: 1, y: 100 }), 96)
+      ];
+      expect(findYanks(frames, 'rows').filter((y) => y.kind === 'arrival')).toEqual([]);
+    });
+
+    it('reports arrival if element mounts and stays at resting destination', () => {
+      const frames = [
+        frame(null, 0),
+        frame(null, 16),
+        frame(mark({ o: 1, y: 100 }), 32),
+        frame(mark({ o: 1, y: 100 }), 48),
+        frame(mark({ o: 1, y: 100 }), 64),
+        frame(mark({ o: 1, y: 100 }), 80),
+        frame(mark({ o: 1, y: 100 }), 96)
+      ];
+      const yanks = findYanks(frames, 'rows');
+      expect(yanks).toContainEqual(
+        expect.objectContaining({ kind: 'arrival', mark: 'mark', at: 32 })
+      );
+    });
   });
 
   describe('bloat - the field-blind shape (ticket 99 round 2, ticket 100)', () => {
