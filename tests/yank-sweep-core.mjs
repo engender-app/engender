@@ -60,6 +60,119 @@ export const HYDRATION_SETTLE_MS = 1600;
  *  neighbours of a genuine hydration pop are still rather than sliding. */
 export const HYDRATION_PX = 24;
 
+/** The colour difference threshold in OKLab space. OKLab Euclidean distance
+ *  is perceptual: 0.02 is a just-noticeable difference, 0.05 is a subtle shift,
+ *  0.10-0.14 is a distinct step, and the yellow-to-olive contrast-floor defect
+ *  caught by eye in redesign-07 measures ~0.39. Red-to-green hue flips measure ~0.38.
+ *  At 0.14, normal sub-pixel antialiasing and smooth easing transitions remain well
+ *  below the threshold, while true sudden colour flips are caught.
+ *  OKLab rather than sRGB because sRGB euclidean distance distorts perceived differences
+ *  between dark and light theme pairs, whereas OKLab scales uniformly with human vision
+ *  and matches the colour space used by the app's tokens and stylesheets. */
+export const COLOR_DELTA = 0.14;
+/** When more than this many marks on the screen change colour on the exact same frame,
+ *  it is a screen-wide theme or palette switch rather than a component colour defect.
+ *  A theme switch changes every colour on the screen at once (ticket 136); component
+ *  colour defects affect only the component's own marks. */
+export const GLOBAL_RECOLOUR_MARKS = 6;
+
+function srgbToLinear(c) {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+}
+
+function rgbToOklab(r, g, b, alpha = 1) {
+  const lr = srgbToLinear(r);
+  const lg = srgbToLinear(g);
+  const lb = srgbToLinear(b);
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+    alpha
+  ];
+}
+
+/** Parses a CSS colour string (rgb, rgba, oklab, color(srgb ...), hex, transparent)
+ *  into [L, a, b, alpha] in OKLab space. */
+export function parseCssColor(str) {
+  if (!str || str === 'transparent') return [0, 0, 0, 0];
+  const s = str.trim();
+  if (s.startsWith('#')) {
+    const raw = s.slice(1);
+    if (raw.length === 3 || raw.length === 4) {
+      const r = parseInt(raw[0] + raw[0], 16);
+      const g = parseInt(raw[1] + raw[1], 16);
+      const b = parseInt(raw[2] + raw[2], 16);
+      const a = raw.length === 4 ? parseInt(raw[3] + raw[3], 16) / 255 : 1;
+      return rgbToOklab(r, g, b, a);
+    }
+    if (raw.length === 6 || raw.length === 8) {
+      const r = parseInt(raw.slice(0, 2), 16);
+      const g = parseInt(raw.slice(2, 4), 16);
+      const b = parseInt(raw.slice(4, 6), 16);
+      const a = raw.length === 8 ? parseInt(raw.slice(6, 8), 16) / 255 : 1;
+      return rgbToOklab(r, g, b, a);
+    }
+  }
+  const rgbMatch = /^rgba?\(\s*([\d.]+%?)\s*[, ]\s*([\d.]+%?)\s*[, ]\s*([\d.]+%?)\s*(?:[,/]\s*([\d.]+%?))?\s*\)$/i.exec(s);
+  if (rgbMatch) {
+    const parseChan = (v) => (v.endsWith('%') ? (parseFloat(v) * 255) / 100 : parseFloat(v));
+    const parseAlpha = (v) => (v === undefined ? 1 : v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v));
+    return rgbToOklab(parseChan(rgbMatch[1]), parseChan(rgbMatch[2]), parseChan(rgbMatch[3]), parseAlpha(rgbMatch[4]));
+  }
+  const oklabMatch = /^oklab\(\s*([\d.]+%?)\s+([-\d.]+%?)\s+([-\d.]+%?)\s*(?:\/\s*([\d.]+%?))?\s*\)$/i.exec(s);
+  if (oklabMatch) {
+    const parseL = (v) => (v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v));
+    const parseAB = (v) => (v.endsWith('%') ? (parseFloat(v) * 0.4) / 100 : parseFloat(v));
+    const parseAlpha = (v) => (v === undefined ? 1 : v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v));
+    return [
+      parseL(oklabMatch[1]),
+      parseAB(oklabMatch[2]),
+      parseAB(oklabMatch[3]),
+      parseAlpha(oklabMatch[4])
+    ];
+  }
+  const srgbMatch = /^color\(\s*srgb\s+([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+%?)\s*(?:\/\s*([\d.]+%?))?\s*\)$/i.exec(s);
+  if (srgbMatch) {
+    const parseChan = (v) => (v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v)) * 255;
+    const parseAlpha = (v) => (v === undefined ? 1 : v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v));
+    return rgbToOklab(parseChan(srgbMatch[1]), parseChan(srgbMatch[2]), parseChan(srgbMatch[3]), parseAlpha(srgbMatch[4]));
+  }
+  return [0, 0, 0, 0];
+}
+
+/** Premultiplied Euclidean distance in OKLab space, rendered-alpha aware.
+ *  Fully transparent paints (alpha <= 0.001) are ignored: raw RGB channels
+ *  of transparent paint have zero perceptual effect. Rendered alpha is compared
+ *  rather than raw channels, so fading in/out or appearance/disappearance is
+ *  measured in proportion to rendered visibility. */
+export function colorDistance(c1Str, c2Str) {
+  if (!c1Str && !c2Str) return 0;
+  if (c1Str === c2Str) return 0;
+  const c1 = typeof c1Str === 'string' ? parseCssColor(c1Str) : c1Str;
+  const c2 = typeof c2Str === 'string' ? parseCssColor(c2Str) : c2Str;
+  if (!c1 || !c2) return 0;
+  const a1 = c1[3] ?? 1;
+  const a2 = c2[3] ?? 1;
+  if (a1 <= 0.001 && a2 <= 0.001) return 0;
+  const L1 = c1[0] * a1, chA1 = c1[1] * a1, chB1 = c1[2] * a1;
+  const L2 = c2[0] * a2, chA2 = c2[1] * a2, chB2 = c2[2] * a2;
+  const dAlpha = a1 - a2;
+  return Math.hypot(L1 - L2, chA1 - chA2, chB1 - chB2, dAlpha * 0.5);
+}
+
+export function markColorDelta(a, b) {
+  if (!a || !b) return 0;
+  const dBg = a.bg || b.bg ? colorDistance(a.bg, b.bg) : 0;
+  const dFg = a.fg || b.fg ? colorDistance(a.fg, b.fg) : 0;
+  const dBc = a.bc || b.bc ? colorDistance(a.bc, b.bc) : 0;
+  return Math.max(dBg, dFg, dBc);
+}
+
 /** The names the app hands to a view transition: the blind, the field that
     contains it (ticket 99 round 2 named it so its clip survives
     promotion), the page under it, the bar, then one per mark printed on
@@ -77,13 +190,14 @@ export const VT_NAMES = [
   ...Array.from({ length: 8 }, (_, i) => `sun-b-${i}`)
 ];
 
-/** The scene --prove adds, and the three marks it expects back. Kept beside
+/** The scene --prove adds, and the four marks it expects back. Kept beside
     the injection below so the two cannot drift apart. */
 export const PROOF = {
   scene: 'proof-injected-yanks',
   teleport: '.yank-proof-jump|',
   vanish: '.yank-proof-cut|',
-  bloat: '.yank-proof-bloat|'
+  bloat: '.yank-proof-bloat|',
+  colour: '.yank-proof-colour|'
 };
 
 /* Each scene is a rest, a gesture, and what the gesture is supposed to be.
@@ -196,7 +310,7 @@ const SCENES = [
  *  when the run is out to show the sweep can fail, narrowed to `only`. */
 export function scenesFor({ prove = false, only = [] } = {}) {
   const scenes = prove
-    ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'three marks built to be wrong, so the arithmetic can be seen to catch them' }, ...SCENES]
+    ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'four marks built to be wrong, so the arithmetic can be seen to catch them' }, ...SCENES]
     : SCENES;
   return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
 }
@@ -206,10 +320,11 @@ export function scenesFor({ prove = false, only = [] } = {}) {
     that it is read off the pseudos rather than off the tree. */
 export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast/;
 
-/** The three deliberately wrong marks. All sit among real neighbours: the
+/** The four deliberately wrong marks. All sit among real neighbours: the
     jump slides smoothly before it teleports, the cut fades part of the way
-    before it is taken off screen, and the bloat rests at its own size while
-    everything around it is still. Driven from a rAF loop of their own,
+    before it is taken off screen, the bloat rests at its own size while
+    everything around it is still, and the colour mark sits at rest before
+    flipping sharply and staying. Driven from a rAF loop of their own,
     started by the gesture the scene names.
 
     An expression string, not a function value, so the devtools socket on
@@ -231,6 +346,8 @@ export const INJECT_PROOF_EXPRESSION =
     cut.style.top = '240px';
     const bloat = make('yank-proof-bloat');
     bloat.style.top = '280px';
+    const colour = make('yank-proof-colour');
+    colour.style.top = '320px';
     window.__yankProof = () => {
       let frame = 0;
       const tick = () => {
@@ -242,6 +359,9 @@ export const INJECT_PROOF_EXPRESSION =
         /* Eight frames at the resting 24px, one frame a window-tall 520 -
            the field-blind's own shape, on a mark built to have it. */
         bloat.style.height = frame === 9 ? '520px' : '24px';
+        /* Eight frames at resting #888, then sudden flip to #e00 and stays -
+           the redesign-07 colour defect shape. */
+        colour.style.background = frame <= 8 ? '#888' : '#e00';
         if (frame < 14) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -336,10 +456,14 @@ export function samplerExpression(act, ms, names) {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
       const scope =
+        el.getAttribute?.('data-swatch') ??
+        el.getAttribute?.('data-mood-swatch') ??
         el.getAttribute?.('data-tile') ??
         el.getAttribute?.('data-segment') ??
         el.getAttribute?.('data-goal') ??
         el.getAttribute?.('data-list-row') ??
+        el.closest?.('[data-swatch]')?.getAttribute('data-swatch') ??
+        el.closest?.('[data-mood-swatch]')?.getAttribute('data-mood-swatch') ??
         el.closest?.('[data-tile]')?.getAttribute('data-tile') ??
         el.closest?.('[data-segmented]')?.getAttribute('data-segmented') ??
         el.closest?.('[data-goal]')?.getAttribute('data-goal') ??
@@ -458,12 +582,19 @@ export function samplerExpression(act, ms, names) {
             let o = Number(cs.opacity);
             for (let up = el.parentElement; up && up !== live; up = up.parentElement)
               o *= Number(getComputedStyle(up).opacity);
+            const borderVisible =
+              cs.borderTopWidth !== '0px' &&
+              cs.borderTopStyle !== 'none' &&
+              !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.borderTopColor);
             rows[k] = {
               x: Math.round(box.x * 10) / 10,
               y: Math.round(box.y * 10) / 10,
               w: Math.round(box.width * 10) / 10,
               h: Math.round(box.height * 10) / 10,
-              o: Math.round(o * 1000) / 1000
+              o: Math.round(o * 1000) / 1000,
+              bg: cs.backgroundColor,
+              fg: cs.color,
+              ...(borderVisible ? { bc: cs.borderTopColor } : {})
             };
           }
         }
@@ -504,6 +635,21 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
   for (const f of frames) for (const k of Object.keys(f[instrument])) keys.add(k);
   const yanks = [];
 
+  /* Pre-check frame transitions for global recolouring (theme or palette switch).
+     If many marks change colour on the exact same frame, the entire screen recoloured at once. */
+  const recolouredOnFrame = new Map();
+  for (let i = 1; i < frames.length; i++) {
+    let count = 0;
+    const aRows = frames[i - 1][instrument] ?? {};
+    const bRows = frames[i][instrument] ?? {};
+    for (const k of Object.keys(aRows)) {
+      const a = aRows[k];
+      const b = bRows[k];
+      if (a && b && markColorDelta(a, b) >= COLOR_DELTA) count++;
+    }
+    recolouredOnFrame.set(i, count);
+  }
+
   for (const k of keys) {
     const run = frames.map((f, i) => ({ i, at: f.at, row: f[instrument][k] ?? null }));
     const present = run.filter((r) => r.row);
@@ -541,6 +687,57 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         at,
         detail: `${Math.round(d)}px in one frame, ${Math.round(around * 10) / 10}px in the frames either side`
       });
+    }
+
+    /* Colour jumps and one-frame flips against still neighbours (ticket 136).
+       Normalized by time delta so dropped frames do not artificially inflate rate. */
+    const colorDeltas = [];
+    for (let i = 1; i < run.length; i++) {
+      const a = run[i - 1].row;
+      const b = run[i].row;
+      if (!a || !b) continue;
+      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const steps = Math.max(1, dt / 16);
+      const dc = markColorDelta(a, b);
+      colorDeltas.push({ i, dc, dcNorm: dc / steps, steps, at: run[i].at });
+    }
+
+    for (let n = 0; n < colorDeltas.length; n++) {
+      const { i, dc, dcNorm, steps, at } = colorDeltas[n];
+      if (dc < COLOR_DELTA * steps) continue;
+      if ((recolouredOnFrame.get(i) ?? 0) >= GLOBAL_RECOLOUR_MARKS) continue;
+
+      const around = Math.max(colorDeltas[n - 1]?.dcNorm ?? 0, colorDeltas[n + 1]?.dcNorm ?? 0);
+      const ratio = TELEPORT_RATIO * Math.max(1, Math.sqrt(steps));
+      const stepChange = dcNorm >= Math.max(around, 0.02) * ratio;
+
+      let returned = false;
+      if (
+        n + 1 < colorDeltas.length &&
+        colorDeltas[n + 1].i === i + 1 &&
+        run[i - 1]?.row &&
+        run[i + 1]?.row &&
+        colorDeltas[n + 1].dc >= COLOR_DELTA * colorDeltas[n + 1].steps
+      ) {
+        const returnDist = markColorDelta(run[i - 1].row, run[i + 1].row);
+        const outside = Math.max(colorDeltas[n - 1]?.dcNorm ?? 0, colorDeltas[n + 2]?.dcNorm ?? 0);
+        if (returnDist < COLOR_DELTA * 0.5 && outside <= COLOR_DELTA * 0.25) {
+          returned = true;
+        }
+      }
+
+      if (stepChange || returned) {
+        yanks.push({
+          kind: 'colour',
+          mark: k,
+          frames: [i - 1, i],
+          at,
+          detail: returned
+            ? `colour delta ${Math.round(dc * 100) / 100} in one frame, returned on next frame`
+            : `colour delta ${Math.round(dc * 100) / 100} in one frame, ${Math.round(around * 100) / 100} in the frames either side`
+        });
+        if (returned) n++;
+      }
     }
 
     /* Vanishing: full opacity to nothing, or out of the tree from full
@@ -1035,7 +1232,7 @@ export const HYDRATION_NEEDS = {
  *  narrowed to `only`. */
 export function hydrationScreensFor({ prove = false, only = [] } = {}) {
   const scenes = prove
-    ? [{ name: PROOF.scene, at: '/', is: 'three marks built to be wrong, so the arithmetic can be seen to catch them' }, ...HYDRATION_SCENES]
+    ? [{ name: PROOF.scene, at: '/', is: 'four marks built to be wrong, so the arithmetic can be seen to catch them' }, ...HYDRATION_SCENES]
     : HYDRATION_SCENES;
   return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
 }
@@ -1372,10 +1569,14 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
 export function missingProofYanks(report) {
   const scene = report.find((r) => r.scene === PROOF.scene);
   const yanks = scene?.styleYanks ?? scene?.yanks ?? [];
-  const got = (mark, kind) => yanks.some((y) => y.mark.startsWith(mark) && y.kind === kind);
+  const got = (mark, kind) =>
+    yanks.some(
+      (y) => y.mark.startsWith(mark) && (y.kind === kind || (kind === 'colour' && y.kind === 'color'))
+    );
   return [
     got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
     got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
-    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`
+    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`,
+    got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`
   ].filter(Boolean);
 }
