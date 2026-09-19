@@ -374,7 +374,7 @@ if (prove) {
     );
     process.exitCode = 1;
   } else {
-    console.log('proof: all three injected yanks were reported and the camera saw them. The sweep can fail.');
+    console.log('proof: all four injected yanks were reported and the camera saw them. The sweep can fail.');
   }
 }
 if (errors.length) {
