@@ -1353,7 +1353,11 @@ export const scrapeHrefExpression = (prefix) => `(async () => {
  *  idle bar before clicking as well as after. The 50ms is the state flush
  *  after the click, not the jump: the jump is a worker round trip and
  *  cannot finish inside it. */
-const DEMO_BAR_IDLE = `for (let i = 0; i < 120 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
+/*  The 60 s this wait once capped was a desktop number. The physical device
+    sweep (ticket 139) measured a persona seed at ~266 entries in ~15 minutes
+    on the phone - roughly one insert every 3 s through the worker - so the
+    cap now clears a 40 minute jump and only bounds a genuinely wedged bar. */
+const DEMO_BAR_IDLE = `for (let i = 0; i < 4800 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
 const AWAIT_DEMO_JUMP = `
   await sleep(50);
   ${DEMO_BAR_IDLE}
