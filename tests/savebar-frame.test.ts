@@ -47,10 +47,11 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
       .map(({ path }) => path);
     expect(offenders, 'the sticky footer retired with carpet 26').toEqual([]);
 
-    /* Ten feet over eight files: the entry editor, two settings screens,
-       wrapped's share screen, the photo export, the compare tab, and two
-       each in the two voice components, whose branches are exclusive. An
-       eleventh is a screen that has to be measured, which is why the number
+    /* Twelve feet over ten files: the entry editor, two settings screens,
+       wrapped's share screen, the photo export, the compare tab, the two
+       print surfaces' scoped print actions (ticket 34), and two each in
+       the two voice components, whose branches are exclusive. A thirteenth
+       is a screen that has to be measured, which is why the number
        is written down rather than counted at read time. */
     const feet = sources().filter(({ path, text }) => path.endsWith('.svelte') && text.includes('<SaveBar'));
     const count = feet.reduce((n, { text }) => n + (text.match(/<SaveBar/g)?.length ?? 0), 0);
@@ -58,13 +59,15 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
       'src/lib/components/EntryEditor.svelte',
       'src/lib/components/VoiceBenchmarkFlow.svelte',
       'src/lib/components/VoicePractice.svelte',
+      'src/routes/health/clinician-summary/+page.svelte',
       'src/routes/media/photos/export/+page.svelte',
       'src/routes/settings/dimension/+page.svelte',
+      'src/routes/settings/journal-book/+page.svelte',
       'src/routes/settings/reminders/[id]/+page.svelte',
       'src/routes/voice/+page.svelte',
       'src/routes/wrapped/[cadence]/share/+page.svelte'
     ]);
-    expect(count).toBe(10);
+    expect(count).toBe(12);
     for (const { path, text } of feet) {
       expect(text, `${path} draws a foot without importing one`).toContain(
         "import SaveBar from '$lib/components/SaveBar.svelte';"

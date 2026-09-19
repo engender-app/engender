@@ -3052,6 +3052,22 @@
   "journal_book_range_end_label": "End date",
   "journal_book_range_required": "Pick a start and end date to see the print.",
   "journal_book_print": "Print",
+  "journal_book_scope": "{range}, {parts}",
+  "journal_book_scope_parts": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} part",
+        "nPlural=other": "{n} parts"
+      }
+    }
+  ],
   "journal_book_include_title": "What goes in",
   "journal_book_include_note": "Only what you tick here is printed.",
   "journal_book_part_entries": "Entries",
@@ -3588,8 +3604,9 @@
       }
     }
   ],
-  "clinician_summary_settings_row": "{range}, {sections}, {drugs}. Change",
-  "clinician_summary_settings_row_no_drugs": "{range}, {sections}. Change",
+  "clinician_summary_scope": "{range}, {sections}, {drugs}",
+  "clinician_summary_scope_no_drugs": "{range}, {sections}",
+  "clinician_summary_settings_row": "{scope}. Change",
   "clinician_summary_settings_title": "Settings",
   "clinician_summary_section_truncated": "and {count} more, all in the printed copy",
   "area_finish_table_area": "Tracking",

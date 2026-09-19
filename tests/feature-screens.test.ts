@@ -423,6 +423,28 @@ describe('the two print surfaces', () => {
     expect(book).toMatch(/visibleEntries/);
     expect(book).toMatch(/beforeprint/);
   });
+
+  it('keeps the journal book print action in a scoped foot, not the header (ticket 34)', () => {
+    const book = read('src/routes/settings/journal-book/+page.svelte');
+    /* The preview runs for many entries; an action only the header held is
+       off-screen for all of them. The foot the frame hosts is the one print
+       action now, and the scope it prints is stated beside it (the clinician
+       summary's own ticket 34 shape), so the header carries no second one. */
+    expect(book).not.toMatch(/aria-label=\{m\.journal_book_print\(\)\}/);
+    const footStart = book.indexOf('<SaveBar');
+    const print = book.indexOf('data-book-print');
+    const footEnd = book.indexOf('</SaveBar>');
+    expect(footStart).toBeGreaterThan(-1);
+    expect(print).toBeGreaterThan(footStart);
+    expect(print).toBeLessThan(footEnd);
+    const foot = book.slice(footStart, footEnd);
+    expect(foot).toMatch(/class="small muted book-scope no-print"/);
+    expect(foot).toMatch(/class="btn btn-primary no-print"/);
+    /* The scope names the chosen bounds and the live part count - the same
+       two inputs the book is built from, not a restatement of defaults. */
+    expect(book).toContain('m.journal_book_scope(');
+    expect(book).toContain('m.journal_book_scope_parts({ n: includedPartCount })');
+  });
 });
 
 describe('no medical framing and no interpreted values', () => {
