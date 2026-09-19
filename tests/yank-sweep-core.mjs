@@ -197,7 +197,9 @@ export const PROOF = {
   teleport: '.yank-proof-jump|',
   vanish: '.yank-proof-cut|',
   bloat: '.yank-proof-bloat|',
-  colour: '.yank-proof-colour|'
+  colour: '.yank-proof-colour|',
+  thereAndBack: '.yank-proof-there-and-back|',
+  arrival: '.yank-proof-arrival|'
 };
 
 /* Each scene is a rest, a gesture, and what the gesture is supposed to be.
@@ -310,7 +312,7 @@ const SCENES = [
  *  when the run is out to show the sweep can fail, narrowed to `only`. */
 export function scenesFor({ prove = false, only = [] } = {}) {
   const scenes = prove
-    ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'four marks built to be wrong, so the arithmetic can be seen to catch them' }, ...SCENES]
+    ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'six marks built to be wrong, so the arithmetic can be seen to catch them' }, ...SCENES]
     : SCENES;
   return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
 }
@@ -320,12 +322,14 @@ export function scenesFor({ prove = false, only = [] } = {}) {
     that it is read off the pseudos rather than off the tree. */
 export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast/;
 
-/** The four deliberately wrong marks. All sit among real neighbours: the
+/** The six deliberately wrong marks. All sit among real neighbours: the
     jump slides smoothly before it teleports, the cut fades part of the way
     before it is taken off screen, the bloat rests at its own size while
-    everything around it is still, and the colour mark sits at rest before
-    flipping sharply and staying. Driven from a rAF loop of their own,
-    started by the gesture the scene names.
+    everything around it is still, the colour mark sits at rest before
+    flipping sharply and staying, the there-and-back mark jumps and returns
+    in one frame, and the arrival mark pops into existence at full opacity
+    and stays. Driven from a rAF loop of their own, started by the gesture
+    the scene names.
 
     An expression string, not a function value, so the devtools socket on
     the device can run the same injection the desktop sweep does. */
@@ -348,6 +352,11 @@ export const INJECT_PROOF_EXPRESSION =
     bloat.style.top = '280px';
     const colour = make('yank-proof-colour');
     colour.style.top = '320px';
+    const thereAndBack = make('yank-proof-there-and-back');
+    thereAndBack.style.top = '360px';
+    const arrival = make('yank-proof-arrival');
+    arrival.style.top = '400px';
+    arrival.style.display = 'none';
     window.__yankProof = () => {
       let frame = 0;
       const tick = () => {
@@ -362,6 +371,10 @@ export const INJECT_PROOF_EXPRESSION =
         /* Eight frames at resting #888, then sudden flip to #e00 and stays -
            the redesign-07 colour defect shape. */
         colour.style.background = frame <= 8 ? '#888' : '#e00';
+        /* Eight frames at resting 0px, one frame displaced 200px, then returned. */
+        thereAndBack.style.translate = frame === 8 ? '0 200px' : '0 0px';
+        /* Absent for five frames, then appears at full opacity and holds. */
+        if (frame === 6) arrival.style.display = 'block';
         if (frame < 14) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -630,7 +643,7 @@ export function samplerExpression(act, ms, names) {
  * last frame for a DOM run, where a mark still on screen at the end is
  * exactly what should be there.
  */
-export function findYanks(frames, instrument, settles = frames.length - 1, teleportPx = TELEPORT_PX) {
+export function findYanks(frames, instrument, settles = frames.length - 1, teleportPx = TELEPORT_PX, allowArrivals = true) {
   const keys = new Set();
   for (const f of frames) for (const k of Object.keys(f[instrument])) keys.add(k);
   const yanks = [];
@@ -679,14 +692,47 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
          window while catching true teleport spikes. */
       const around = Math.max(deltas[n - 1]?.dNorm ?? 0, deltas[n + 1]?.dNorm ?? 0);
       const ratio = TELEPORT_RATIO * Math.max(1, Math.sqrt(steps));
-      if (dNorm < Math.max(around, 0.25) * ratio) continue;
-      yanks.push({
-        kind: 'teleport',
-        mark: k,
-        frames: [i - 1, i],
-        at,
-        detail: `${Math.round(d)}px in one frame, ${Math.round(around * 10) / 10}px in the frames either side`
-      });
+      if (dNorm >= Math.max(around, 0.25) * ratio) {
+        yanks.push({
+          kind: 'teleport',
+          mark: k,
+          frames: [i - 1, i],
+          at,
+          detail: `${Math.round(d)}px in one frame, ${Math.round(around * 10) / 10}px in the frames either side`
+        });
+        continue;
+      }
+
+      /* There-and-back shape (ticket 137): displaced by at least teleport floor
+         and returned within one frame to within a small fraction of where it started,
+         with the frames outside the pair at rest. Runs in both windows. */
+      if (
+        n + 1 < deltas.length &&
+        deltas[n + 1].i === i + 1 &&
+        run[i - 1]?.row &&
+        run[i + 1]?.row
+      ) {
+        const next = deltas[n + 1];
+        if (next.d >= teleportPx * next.steps) {
+          const dReturn = Math.hypot(run[i + 1].row.x - run[i - 1].row.x, run[i + 1].row.y - run[i - 1].row.y);
+          const returnFraction = Math.max(teleportPx * 0.35, d * 0.2);
+          if (dReturn <= returnFraction) {
+            const outside = Math.max(deltas[n - 1]?.dNorm ?? 0, deltas[n + 2]?.dNorm ?? 0);
+            const outsideRatio = TELEPORT_RATIO * Math.max(1, Math.sqrt(steps));
+            if (dNorm >= Math.max(outside, 0.25) * outsideRatio && outside <= teleportPx * 0.5) {
+              yanks.push({
+                kind: 'there-and-back',
+                mark: k,
+                frames: [i - 1, i],
+                at,
+                detail: `${Math.round(d)}px in one frame, returned on next frame`
+              });
+              n++;
+              continue;
+            }
+          }
+        }
+      }
     }
 
     /* Colour jumps and one-frame flips against still neighbours (ticket 136).
@@ -792,6 +838,46 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
     }
 
     yanks.push(...findBloat(run, k));
+
+    /* Arrival shape (ticket 137): painted at destination without travelling there.
+       Gated to gesture window only.
+       Two forms:
+       1. Tree form: mark absent from start of scene, then present at >= VISIBLE.
+       2. Opacity-step form: mark at <= GONE jumping to >= VISIBLE in one frame (rise >= 0.35/frame).
+       In both forms, must hold for several frames (at least 2 subsequent frames). */
+    if (allowArrivals) {
+      for (let i = 1; i < run.length; i++) {
+        const a = run[i - 1].row;
+        const b = run[i].row;
+        if (!b || b.o < VISIBLE) continue;
+
+        const wasVisibleBefore = run.slice(0, i).some((r) => r.row && r.row.o >= VISIBLE);
+        if (wasVisibleBefore) continue;
+
+        const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+        const steps = Math.max(1, dt / 16);
+        const risePerFrame = (b.o - (a ? a.o : 0)) / steps;
+
+        const treeForm = !a;
+        const opacityStepForm = a && a.o <= GONE && risePerFrame >= 0.35;
+
+        if (treeForm || opacityStepForm) {
+          const holds = run[i + 1]?.row?.o >= VISIBLE && run[i + 2]?.row?.o >= VISIBLE;
+          if (holds) {
+            yanks.push({
+              kind: 'arrival',
+              mark: k,
+              frames: [i - 1, i],
+              at: run[i].at,
+              detail: a
+                ? `opacity ${a.o} to ${b.o} in one frame`
+                : `arrived at opacity ${b.o} with no transition`
+            });
+            break;
+          }
+        }
+      }
+    }
   }
   return yanks;
 }
@@ -1232,7 +1318,7 @@ export const HYDRATION_NEEDS = {
  *  narrowed to `only`. */
 export function hydrationScreensFor({ prove = false, only = [] } = {}) {
   const scenes = prove
-    ? [{ name: PROOF.scene, at: '/', is: 'four marks built to be wrong, so the arithmetic can be seen to catch them' }, ...HYDRATION_SCENES]
+    ? [{ name: PROOF.scene, at: '/', is: 'five marks built to be wrong, so the arithmetic can be seen to catch them' }, ...HYDRATION_SCENES]
     : HYDRATION_SCENES;
   return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
 }
@@ -1439,7 +1525,7 @@ export function findHydrationYanks(frames) {
   const active = frames.map((f, i) => (f.active ? i : -1)).filter((i) => i >= 0);
   const sliced = active.length ? frames.slice(active.at(-1) + 1) : frames;
   if (sliced.length < 2) return { yanks: [], frames: sliced.length, sampled: frames.length };
-  const all = findYanks(sliced, 'rows', sliced.length - 1, HYDRATION_PX);
+  const all = findYanks(sliced, 'rows', sliced.length - 1, HYDRATION_PX, false);
   return {
     yanks: all.filter((y) => !EXEMPT.test(y.mark)),
     frames: sliced.length,
@@ -1566,7 +1652,7 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
 /** What the proof scene owes but did not deliver, read off whichever
  *  yank field the calling report shape carries (`styleYanks` for the
  *  device and hydration reports, `yanks` for the gesture desktop). */
-export function missingProofYanks(report) {
+export function missingProofYanks(report, { checkArrival = true } = {}) {
   const scene = report.find((r) => r.scene === PROOF.scene);
   const yanks = scene?.styleYanks ?? scene?.yanks ?? [];
   const got = (mark, kind) =>
@@ -1577,6 +1663,8 @@ export function missingProofYanks(report) {
     got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
     got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
     got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`,
-    got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`
+    got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`,
+    got(PROOF.thereAndBack, 'there-and-back') ? null : `a there-and-back jump on ${PROOF.thereAndBack}`,
+    checkArrival && !got(PROOF.arrival, 'arrival') ? `an unannounced arrival on ${PROOF.arrival}` : null
   ].filter(Boolean);
 }

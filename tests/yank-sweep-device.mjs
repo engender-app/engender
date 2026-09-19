@@ -942,7 +942,7 @@ if (existsSync(comparePath)) {
 
 if (prove) {
   const proofRuns = report.filter((r) => r.scene === PROOF.scene);
-  const missing = missingProofYanks(report);
+  const missing = missingProofYanks(report, { checkArrival: !args.includes('--hydration') });
   const cameraSaw = proofRuns.some((r) =>
     (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05)
   );
@@ -954,7 +954,7 @@ if (prove) {
     );
     process.exitCode = 1;
   } else {
-    console.log('proof: all four style yanks and the camera saw them. The sweep can fail.');
+    console.log('proof: all style yanks and the camera saw them. The sweep can fail.');
   }
 }
 if (errors.length) {
