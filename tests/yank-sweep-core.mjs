@@ -197,8 +197,7 @@ export const PROOF = {
   teleport: '.yank-proof-jump|',
   vanish: '.yank-proof-cut|',
   bloat: '.yank-proof-bloat|',
-  colour: '.yank-proof-colour|',
-  color: '.yank-proof-colour|'
+  colour: '.yank-proof-colour|'
 };
 
 /* Each scene is a rest, a gesture, and what the gesture is supposed to be.
@@ -713,8 +712,14 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const stepChange = dcNorm >= Math.max(around, 0.02) * ratio;
 
       let returned = false;
-      if (n + 1 < colorDeltas.length && colorDeltas[n + 1].dc >= COLOR_DELTA * steps) {
-        const returnDist = markColorDelta(run[i - 1].row, run[i + 1]?.row);
+      if (
+        n + 1 < colorDeltas.length &&
+        colorDeltas[n + 1].i === i + 1 &&
+        run[i - 1]?.row &&
+        run[i + 1]?.row &&
+        colorDeltas[n + 1].dc >= COLOR_DELTA * colorDeltas[n + 1].steps
+      ) {
+        const returnDist = markColorDelta(run[i - 1].row, run[i + 1].row);
         const outside = Math.max(colorDeltas[n - 1]?.dcNorm ?? 0, colorDeltas[n + 2]?.dcNorm ?? 0);
         if (returnDist < COLOR_DELTA * 0.5 && outside <= COLOR_DELTA * 0.25) {
           returned = true;

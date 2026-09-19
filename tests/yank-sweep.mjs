@@ -110,6 +110,7 @@ import {
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   findYanks,
+  missingProofYanks,
   scenesFor,
   samplerExpression
 } from './yank-sweep-core.mjs';
@@ -278,23 +279,10 @@ const total = report.reduce((n, r) => n + (r.yanks?.length ?? 0), 0);
 console.log(`\n${report.length} run(s), ${total} yank(s); report in ${outDir}/report.json`);
 
 if (prove) {
-  const scenes = report.filter((r) => r.scene === PROOF.scene);
-  const got = (mark, kind) =>
-    scenes.some((s) =>
-      s.yanks?.some(
-        (y) => y.mark.startsWith(mark) && (y.kind === kind || (kind === 'colour' && y.kind === 'color'))
-      )
-    );
-  const missing = [
-    got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
-    got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
-    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`,
-    got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`
-  ].filter(Boolean);
+  const missing = missingProofYanks(report);
   if (missing.length) {
     console.error(
-      `proof FAILED: the sweep did not report ${missing.join(' or ')}, ` +
-        `so a clean run above is not evidence of anything.`
+      `proof FAILED: the sweep did not report ${missing.join(' or ')}. A clean run above is not evidence of anything.`
     );
     process.exitCode = 1;
   } else {
