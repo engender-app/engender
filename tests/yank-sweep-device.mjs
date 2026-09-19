@@ -393,7 +393,7 @@ async function settle(path, theme) {
     await ev(waitForExpression('[data-home-hello]', 30000, '/'));
     await sleep(800);
   }
-  if (await ev(`location.pathname !== ${JSON.stringify(path)}`)) {
+  if (await ev(`location.pathname + location.search !== ${JSON.stringify(path)}`)) {
     await ev(`location.assign(${JSON.stringify(path)}); true;`);
     await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path));
   } else {
