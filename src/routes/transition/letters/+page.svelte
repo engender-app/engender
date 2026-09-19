@@ -172,6 +172,28 @@
   // Ticket 18: only a sealed letter's unlock day is worth a mark elsewhere -
   // once it has opened the day has already passed.
   let calendarFor = $state<Letter | null>(null);
+
+  // Ticket 41: preserve waiting list position when returning from the ready-letters jump.
+  let waitingScroll: number | null = null;
+
+  function onJump() {
+    const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
+    waitingScroll = region?.scrollTop ?? 0;
+  }
+
+  $effect(() => {
+    const handlePopstate = () => {
+      if (!location.hash && waitingScroll !== null) {
+        const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
+        if (region) {
+          region.scrollTop = waitingScroll;
+        }
+        waitingScroll = null;
+      }
+    };
+    window.addEventListener('popstate', handlePopstate);
+    return () => window.removeEventListener('popstate', handlePopstate);
+  });
 </script>
 
 <div class="screen">
@@ -186,7 +208,20 @@
   <ReadGate read={lettersQuery} variant="line" count={3}>
     {#snippet rows()}
       {#if waiting.length}
-        <SectionHeading text={m.letters_waiting_title()} />
+        <SectionHeading text={m.letters_waiting_title()}>
+          {#snippet action()}
+            {#if opened.length}
+              <a
+                class="kit-heading-action"
+                href="#opened"
+                data-letters-ready-jump
+                onclick={onJump}
+              >
+                {m.letters_ready_jump({ count: opened.length })}
+              </a>
+            {/if}
+          {/snippet}
+        </SectionHeading>
         <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
           {#each waiting as letter (letter.id)}
             <LetterCard
@@ -201,7 +236,7 @@
       {/if}
 
       {#if opened.length || starredPhotos.length}
-        <SectionHeading id="opened" text={m.letters_opened_title()} />
+        <SectionHeading id="opened" focusable text={m.letters_opened_title()} />
         {#if opened.length}
           <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
             {#each opened as letter (letter.id)}
