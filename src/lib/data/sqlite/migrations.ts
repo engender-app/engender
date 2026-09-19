@@ -167,11 +167,19 @@ JOIN (
 DROP TABLE taper_v82;
 `;
 
+/* v84 (phase 11 ticket 37): archive is a person's own organisation choice,
+   not a conclusion drawn from an old surgery date. Existing procedures stay
+   ongoing until their owner moves them. */
+const SCHEMA_V84 = `
+ALTER TABLE procedure ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA },
   { version: 79, sql: SCHEMA_V79 },
   { version: 80, sql: SCHEMA_V80 },
   { version: 81, sql: SCHEMA_V81 },
   { version: 82, sql: SCHEMA_V82 },
-  { version: 83, sql: SCHEMA_V83 }
+  { version: 83, sql: SCHEMA_V83 },
+  { version: 84, sql: SCHEMA_V84 }
 ];
