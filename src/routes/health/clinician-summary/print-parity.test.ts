@@ -73,3 +73,43 @@ describe('clinician summary print parity', () => {
     expect(classAttrFor(page, 'settings-row-wrap')).toContain('no-print');
   });
 });
+
+/* Ticket 34: print preparation stays attached to its chosen scope. The
+   action moves into the frame-hosted foot ($lib/components/SaveBar.svelte,
+   the arrangement carpet 26 built so nothing sits under a pinned bar at
+   any scroll position), with the scope it prints stated beside it, so a
+   long preview never separates the reader from either. */
+describe('the print foot (ticket 34)', () => {
+  it('the action summary and the settings row read one shared scope, not two recomputations', () => {
+    /* One derived composes the range, section and drug counts; the row
+       wraps it in its own affordance tail. Two separately written sentences
+       about the same dossier could drift after an inclusion change - one
+       cannot. */
+    expect(page).toContain('let scopeText = $derived.by(');
+    expect(page).toContain('m.clinician_summary_scope({');
+    expect(page).toContain('m.clinician_summary_scope_no_drugs(');
+    expect(page).toContain('m.clinician_summary_settings_row({ scope: scopeText })');
+  });
+
+  it('the print action lives in the foot, with its scope line beside it', () => {
+    const footStart = page.indexOf('<SaveBar');
+    const print = page.indexOf('data-summary-print');
+    const footEnd = page.indexOf('</SaveBar>');
+    expect(footStart).toBeGreaterThan(-1);
+    expect(print).toBeGreaterThan(footStart);
+    expect(print).toBeLessThan(footEnd);
+  });
+
+  it('nothing in the foot prints - the scope line and the button are both screen-only', () => {
+    const foot = page.slice(page.indexOf('<SaveBar'), page.indexOf('</SaveBar>'));
+    expect(foot).toMatch(/class="small muted summary-scope no-print"/);
+    expect(foot).toMatch(/class="btn btn-primary no-print"/);
+  });
+
+  it('the old in-flow print button under the preview is gone', () => {
+    /* The `data-summary-print` handle stays (the foot's button keeps it);
+       what went is the in-flow `summary-print` class and the block it
+       styled. */
+    expect(page).not.toMatch(/class="[^"]*\bsummary-print\b/);
+  });
+});

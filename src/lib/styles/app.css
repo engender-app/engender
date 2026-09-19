@@ -1397,6 +1397,14 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     display: none !important;
   }
 
+  /* The foot is where a screen's actions live - and an action is a screen
+     affordance by definition, so the bar never reaches paper even when its
+     controls each carry `no-print` and leave it an empty band behind
+     (ticket 34's print surfaces were the first to catch it). */
+  .app-savebar {
+    display: none !important;
+  }
+
   /* A heading a screen shows only on paper: the title and range a reader
      needs on a printed page and already has in the header on screen. */
   .print-heading {

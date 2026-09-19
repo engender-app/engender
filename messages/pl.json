@@ -3116,6 +3116,24 @@
   "journal_book_range_end_label": "Data końcowa",
   "journal_book_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć wydruk.",
   "journal_book_print": "Drukuj",
+  "journal_book_scope": "{range}, {parts}",
+  "journal_book_scope_parts": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} część",
+        "nPlural=few": "{n} części",
+        "nPlural=many": "{n} części",
+        "nPlural=other": "{n} części"
+      }
+    }
+  ],
   "journal_book_include_title": "Co wchodzi do wydruku",
   "journal_book_include_note": "Drukuje się tylko to, co tu zaznaczysz.",
   "journal_book_part_entries": "Wpisy",
@@ -3682,8 +3700,9 @@
       }
     }
   ],
-  "clinician_summary_settings_row": "{range}, {sections}, {drugs}. Zmień",
-  "clinician_summary_settings_row_no_drugs": "{range}, {sections}. Zmień",
+  "clinician_summary_scope": "{range}, {sections}, {drugs}",
+  "clinician_summary_scope_no_drugs": "{range}, {sections}",
+  "clinician_summary_settings_row": "{scope}. Zmień",
   "clinician_summary_settings_title": "Ustawienia",
   "clinician_summary_section_truncated": "i jeszcze {count}, wszystkie w wersji do druku",
   "area_finish_table_area": "Nazwa",
