@@ -156,6 +156,15 @@ async function setProcedureDate(page, name, day) {
   await page.waitForTimeout(SETTLED);
 }
 
+async function archiveProcedure(page, name) {
+  await goto(page, '/health/surgery');
+  await page.locator('[data-procedure-card]', { hasText: name }).first().locator('[data-edit-procedure]').click();
+  await page.getByRole('switch', { name: 'Keep in archive' }).click();
+  await page.locator('[data-save-procedure]').click();
+  await page.waitForSelector('[data-save-procedure]', { state: 'detached' });
+  await page.waitForTimeout(SETTLED);
+}
+
 async function shoot(page, selector, name) {
   /* Headless Chromium never grants persistent storage, so the app's own
      "export backups regularly" toast sits over the foot of every screen. It
@@ -191,6 +200,7 @@ async function seed(page) {
   await addPhoto(page, 'facial surgery', iso(-4), '#8f6f9e');
 
   await setProcedureDate(page, 'top surgery', iso(-400));
+  await archiveProcedure(page, 'top surgery');
 
   /* Back to the index with nothing open, which is the reading the ticket
      is about: what a person sees before they choose anything. */
@@ -203,7 +213,7 @@ for (const theme of ['light', 'dark']) {
   await setLook(page, 'trans', theme);
   await seed(page);
 
-  await shoot(page, '[data-list-card]', `surgery-index-trans-${theme}`);
+  await shoot(page, '.screen-part', `surgery-index-trans-${theme}`);
   await shoot(page, '[data-procedure-card]:has-text("facial surgery")', `procedure-running-trans-${theme}`);
   await shoot(page, '[data-procedure-card]:has-text("top surgery")', `procedure-archived-trans-${theme}`);
   await page.close();

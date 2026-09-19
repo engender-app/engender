@@ -1036,7 +1036,7 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
   for (const procedure of journal.procedures) {
     if (!procedures.has(procedure.id)) {
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
           procedure.id,
           procedure.name,
@@ -1046,6 +1046,7 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
           // way `upsertProcedure` defaults a write that names neither.
           procedure.kind ?? 'custom',
           procedure.dilationOptIn ? 1 : 0,
+          procedure.archived ? 1 : 0,
           ts
         ]
       );

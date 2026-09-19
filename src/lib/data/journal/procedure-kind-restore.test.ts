@@ -57,7 +57,7 @@ test('a procedure in an archive written before the kind restores as custom', asy
 
 test('a kind and a custom procedure\'s dilation opt-in travel through the archive', async () => {
   const source = await device();
-  await source.journal.procedures.upsertProcedure({ name: 'top surgery', kind: 'chest_reconstruction' });
+  await source.journal.procedures.upsertProcedure({ name: 'top surgery', kind: 'chest_reconstruction', archived: true });
   await source.journal.procedures.upsertProcedure({ name: 'my own thing', kind: 'custom', dilationOptIn: true });
 
   const snapshot = (await source.journal.archive.snapshot()).journal;
@@ -67,10 +67,10 @@ test('a kind and a custom procedure\'s dilation opt-in travel through the archiv
 
   const restored = await target.journal.procedures.getProcedures();
   assert.deepEqual(
-    restored.map((p) => [p.name, p.kind, p.dilationOptIn]).sort(),
+    restored.map((p) => [p.name, p.kind, p.dilationOptIn, p.archived]).sort(),
     [
-      ['my own thing', 'custom', true],
-      ['top surgery', 'chest_reconstruction', false]
+      ['my own thing', 'custom', true, false],
+      ['top surgery', 'chest_reconstruction', false, true]
     ]
   );
 });

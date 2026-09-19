@@ -533,8 +533,9 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     notes: string;
     kind: ProcedureKind;
     dilation_opt_in: number;
+    archived: number;
   }>(
-    'SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
+    'SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
   );
   const photosById = groupBy(
     procedurePhotos,
@@ -549,7 +550,8 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     notes: procedure.notes,
     photos: photosById.get(procedure.id) ?? [],
     kind: procedure.kind,
-    dilationOptIn: procedure.dilation_opt_in !== 0
+    dilationOptIn: procedure.dilation_opt_in !== 0,
+    archived: procedure.archived !== 0
   }));
 }
 

@@ -1699,7 +1699,8 @@
       "notes": "",
       "photos": [],
       "kind": "vaginoplasty",
-      "dilationOptIn": false
+      "dilationOptIn": false,
+      "archived": false
     },
     {
       "id": "f0612dcd-bef1-491c-b1f9-1dd550f68df8",
@@ -1714,7 +1715,8 @@
         }
       ],
       "kind": "chest_reconstruction",
-      "dilationOptIn": false
+      "dilationOptIn": false,
+      "archived": false
     }
   ],
   "appointments": [

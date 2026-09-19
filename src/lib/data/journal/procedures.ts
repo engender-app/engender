@@ -66,6 +66,7 @@ interface ProcedureInput {
   kind?: ProcedureKind;
   /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
   dilationOptIn?: boolean;
+  archived?: boolean;
 }
 
 /** One dated recovery photo. Its own shape rather than hairProgress.ts's
@@ -168,6 +169,7 @@ type ProcedureRow = {
   notes: string;
   kind: ProcedureKind;
   dilation_opt_in: number;
+  archived: number;
 };
 
 export function makeProceduresArea(
@@ -189,7 +191,7 @@ export function makeProceduresArea(
       // would sort NULL to the front in SQLite, putting a procedure with no
       // date yet ahead of one already had.
       const rows = await driver.query<ProcedureRow>(
-        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in FROM procedure
+        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
       // The appointments that name a procedure, grouped by it and read in
@@ -205,7 +207,8 @@ export function makeProceduresArea(
         notes: row.notes,
         consults: consults.get(row.uuid) ?? [],
         kind: row.kind,
-        dilationOptIn: row.dilation_opt_in !== 0
+        dilationOptIn: row.dilation_opt_in !== 0,
+        archived: row.archived !== 0
       }));
     },
 
@@ -213,11 +216,12 @@ export function makeProceduresArea(
       const surgeryEpochDay = input.surgeryEpochDay ?? null;
       const kind = input.kind ?? 'custom';
       const dilationOptIn = input.dilationOptIn ?? false;
+      const archived = input.archived;
 
       if (input.id) {
         const result = await driver.run(
-          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, updated_at = ? WHERE uuid = ?',
-          [input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, now(), input.id]
+          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, archived = COALESCE(?, archived), updated_at = ? WHERE uuid = ?',
+          [input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, archived === undefined ? null : archived ? 1 : 0, now(), input.id]
         );
         assertChanged(result, `procedure: ${input.id}`);
         return input.id;
@@ -225,8 +229,8 @@ export function makeProceduresArea(
 
       const uuid = mintUuid();
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, now()]
+        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, archived ? 1 : 0, now()]
       );
       return uuid;
     },
