@@ -18,6 +18,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
+  import { precedingWindow } from '$lib/data/compareStretch';
   import {
     customInclusiveRange,
     dateInputValueFromEpochDay,
@@ -118,6 +119,45 @@
     bEnd = bEndParam;
     void replaceRoute('/compare', { noScroll: true, keepFocus: true });
   });
+
+  /* Phase 11 ticket 32: an explicit preceding-span shortcut offered when
+     arriving with an originating span (`from` and `to`), e.g. from Look
+     back. Manual selections and era choices stay preserved; no default is
+     silently applied on direct entry. */
+  let originSpan = $derived.by(() => {
+    const fromParam = page.url.searchParams.get('from');
+    const toParam = page.url.searchParams.get('to');
+    if (!fromParam || !toParam) return null;
+    const startDay = epochDayFromDateInputValue(fromParam);
+    const endDay = epochDayFromDateInputValue(toParam);
+    if (startDay === null || endDay === null || startDay > endDay || endDay > today) return null;
+    return { start: startDay, end: endDay };
+  });
+
+  let preceding = $derived(originSpan ? precedingWindow(originSpan) : null);
+  let showShortcut = $derived(originSpan !== null && preceding !== null);
+
+  function formatSpanLabel(start: number, end: number): string {
+    return m.wrapped_week_range({
+      from: fmtDay(start, { day: 'numeric', month: 'short' }),
+      to: fmtDay(end, { day: 'numeric', month: 'short', year: 'numeric' })
+    });
+  }
+
+  function applyShortcut() {
+    if (!originSpan || !preceding) return;
+    aMode = 'range';
+    aStart = dateInputValueFromEpochDay(originSpan.start);
+    aEnd = dateInputValueFromEpochDay(originSpan.end);
+    bMode = 'range';
+    bStart = dateInputValueFromEpochDay(preceding.start);
+    bEnd = dateInputValueFromEpochDay(preceding.end);
+    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
+  }
+
+  function dismissShortcut() {
+    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
+  }
 
   function periodFromRange(start: string, end: string): Period | null {
     const range = customInclusiveRange(epochDayFromDateInputValue(start), epochDayFromDateInputValue(end));
@@ -228,6 +268,26 @@
       />
     </div>
   {/snippet}
+
+  {#if showShortcut && originSpan && preceding}
+    <Notice
+      key="compare-shortcut"
+      icon="shuffle"
+      title={m.compare_shortcut_title()}
+      text={m.compare_shortcut_body({
+        current: formatSpanLabel(originSpan.start, originSpan.end),
+        preceding: formatSpanLabel(preceding.start, preceding.end)
+      })}
+      action={{
+        label: m.compare_shortcut_action(),
+        onclick: applyShortcut
+      }}
+      dismiss={{
+        label: m.dismiss(),
+        onclick: dismissShortcut
+      }}
+    />
+  {/if}
 
   <SectionHeading text={m.compare_period_a_label()} />
   {@render modeSwitch('a', m.compare_period_a_label(), aMode, (v) => (aMode = v))}
