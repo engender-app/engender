@@ -229,7 +229,7 @@ for (const profile of profiles) {
           if (!frames.length) throw new Error('no frames to read');
           const all = findYanks(frames, instrument, frames.length - 1);
           const yanks = all.filter((y) => !EXEMPT.test(y.mark));
-          const render = await readRenderYanks(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`);
+          const render = await readRenderYanks(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`, undefined, { allowThin: true });
           if (args.includes('--dump'))
             await writeFile(
               `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,

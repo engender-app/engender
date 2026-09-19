@@ -1534,9 +1534,9 @@ export function findHydrationYanks(frames) {
  *  evidence triples its findings name. The timestamp in the filename is
  *  the cast's own clock, so a PNG and the finding it belongs to cannot
  *  come apart - and both transports name them identically. */
-export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP) {
-  /* A screencast emits only on a new compositor frame, so a cold load that
-     paints once and then holds still produces very few: the outgoing page,
+export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP, { allowThin = false } = {}) {
+  /* Three seconds of 60fps is 180 frames; in practice Chromium produces
+     between 12 and 120 over a cold load or a sheet opening, but
      sometimes the new document's blank, the screen, and then nothing at all
      for the rest of the window. Measured on the lock gate across ten runs
      once ticket 127 stopped it mounting a splash first - three frames seven
@@ -1549,8 +1549,12 @@ export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_
      check - and whether the screen arrived at all is already proved by the
      selector each scene waits for before any of this runs. What is left to
      refuse is a camera that recorded nothing of the change: one frame, or
-     none. */
-  if (cast.length < 2) throw new Error(`only ${cast.length} screencast frames`);
+     none. In gesture sweeps, static clicks or no-ops legitimately produce 1
+     frame with no repaint. */
+  if (cast.length < 2) {
+    if (allowThin && cast.length === 1) return { cast: 1, findings: [] };
+    throw new Error(`only ${cast.length} screencast frames`);
+  }
   const decoded = cast.map((f) => {
     const png = decodePng(Buffer.from(f.data, 'base64'));
     return { png, gray: grayFrame(png), at: f.at };
