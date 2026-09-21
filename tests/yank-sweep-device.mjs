@@ -434,7 +434,18 @@ async function settle(path, theme) {
   }
   if (await ev(`location.pathname + location.search !== ${JSON.stringify(path)}`)) {
     await ev(`location.assign(${JSON.stringify(path)}); true;`);
-    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path));
+    /* Navigated on the whole address, waited on its pathname - the two are
+       deliberately different. A query is something a screen is allowed to
+       consume: settings reads `?raise=` once on mount and strips it back
+       off (`replaceRoute('/settings')`), so a wait pinned on the search
+       can never come true for exactly the scenes that carry one. Passing
+       the full path here is what left `presentations-add` erroring 12/12
+       on a boot that had already happened - the other half of e5678ffd
+       (ticket 139), which taught the line above to reload on a repeated
+       pathname and left this one as it was. `hydrationCold` has always
+       pinned the pathname alone, which is why the same address measures
+       fine in the hydration half. */
+    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path.split('?')[0].split('#')[0]));
   } else {
     await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000));
   }
