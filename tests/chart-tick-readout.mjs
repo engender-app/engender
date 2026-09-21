@@ -98,6 +98,29 @@ async function scrubTo(page, grain, index) {
   await page.waitForTimeout(80);
 }
 
+/** Drags an already-held finger to another position, which is the second
+    half of the gesture: pointerdown starts the scrub and pointermove
+    carries it. */
+async function dragTo(page, grain, index) {
+  await page.evaluate(
+    ({ grain, index, PAD, POSITIONS }) => {
+      const plot = document.querySelector(`[data-chart-card="${grain}"] .kit-area`);
+      const box = plot.getBoundingClientRect();
+      const span = box.width - PAD * 2;
+      plot.dispatchEvent(
+        new PointerEvent('pointermove', {
+          pointerType: 'touch',
+          clientX: box.left + PAD + (index / (POSITIONS - 1)) * span,
+          clientY: box.top + box.height / 2,
+          bubbles: true
+        })
+      );
+    },
+    { grain, index, PAD, POSITIONS }
+  );
+  await page.waitForTimeout(80);
+}
+
 async function releaseScrub(page, grain) {
   await page.evaluate((grain) => {
     document
@@ -204,7 +227,20 @@ for (const locale of ['en', 'pl']) {
         );
         await releaseScrub(page, 'day');
 
-        /* The marks gain no tab stop, and the gesture is unchanged. */
+        /* The gesture is unchanged: a held finger dragged across the plot
+           still moves the readout from one position to the next. */
+        await scrubTo(page, 'day', AT.milestone);
+        const held = await readPlate(page);
+        await dragTo(page, 'day', AT.appointment);
+        const dragged = await readPlate(page);
+        check(
+          held?.text !== dragged?.text,
+          `${where}: the readout did not follow a held finger across the plot`
+        );
+        await releaseScrub(page, 'day');
+        check((await readPlate(page)) === null, `${where}: the readout outlived the finger`);
+
+        /* The marks gain no tab stop. */
         const stops = await page.evaluate(
           () =>
             document.querySelectorAll(

@@ -798,7 +798,6 @@
     overflow: hidden;
   }
 
-
   /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
      ring around a reading already drawn, in the chosen presentation's own
      colour rather than the chart's. Hollow, so the dot or line underneath
