@@ -779,6 +779,13 @@
      fixed 132px and the plate caps its own width at half of that plot, so
      neither of those can grow under it.
 
+     Reading order rather than the plate's own edge, even in the corners
+     the plate anchors right in: right-aligned, Blink draws no ellipsis on
+     the line a clamp cut, so the sentence stopped mid-word with nothing
+     saying it had been cut. The name line above it is left-aligned for the
+     same reason - an ellipsis at the end of a line is the whole point of
+     both.
+
      Here rather than in kit.css: one consumer, which is what
      scripts/check-screens-classes.mjs asks a class like this to be. */
   .kit-area-annotation-note {
@@ -791,15 +798,6 @@
     overflow: hidden;
   }
 
-  /* Ragged on the side the plate is not anchored to, so the sentence keeps
-     the edge its corner picked. */
-  .kit-area-readout .kit-area-annotation-note {
-    text-align: right;
-  }
-
-  .kit-area-readout.is-left .kit-area-annotation-note {
-    text-align: left;
-  }
 
   /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
      ring around a reading already drawn, in the chosen presentation's own
