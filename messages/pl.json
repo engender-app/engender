@@ -326,13 +326,8 @@
   "body_map_reading_heading": "{region}, w tym zakresie",
   "body_map_selected_reading": [
     {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "Jeden odczyt: {axis} {value} na 100.",
         "countPlural=few": "Odczyty: {count}, średnio {axis} {value} na 100.",
@@ -1182,13 +1177,8 @@
   "ms_log_heading": "Wszystkie kamienie milowe",
   "ms_log_heading_count": [
     {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "{count} kamień milowy",
         "countPlural=few": "Kamienie milowe: {count}",

@@ -78,9 +78,9 @@ describe('the days tile\'s headline is the mood most days landed on', () => {
 describe('the body map tile\'s headline is the region marked most often', () => {
   it('ranks by how many readings a region carried, not by how strongly', () => {
     const readings = [
-      { region: 'chest', side: 'dysphoria' as const, value: 90, mixed: false, count: 2 },
-      { region: 'hips', side: 'euphoria' as const, value: 40, mixed: true, count: 7 },
-      { region: 'jaw', side: null, value: null, mixed: true, count: 3 }
+      { region: 'chest', side: 'dysphoria' as const, value: 90, mixed: false, count: 2, sideCount: 2 },
+      { region: 'hips', side: 'euphoria' as const, value: 40, mixed: true, count: 7, sideCount: 5 },
+      { region: 'jaw', side: null, value: null, mixed: true, count: 3, sideCount: 0 }
     ];
     expect(mostMarkedRegion(readings)?.region).toBe('hips');
   });

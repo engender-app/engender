@@ -149,8 +149,16 @@ try {
       new RegExp(`\\b${Math.round(row.value)} out of 100\\b`),
       `${region} shows the mean of that side alone: ${text}`
     );
-    if (row.count === 1) assert.match(text, /One reading/, text);
-    else assert.match(text, new RegExp(`\\b${row.count} readings\\b`), `${region} counts them: ${text}`);
+    /* The count the sentence states is the count behind the mean it states -
+       the winning side's own, not the region's. */
+    if (row.sideCount === 1) assert.match(text, /One reading/, text);
+    else
+      assert.match(
+        text,
+        new RegExp(`\\b${row.sideCount} readings\\b`),
+        `${region} counts the readings its mean is of: ${text}`
+      );
+    if (row.mixed) assert.doesNotMatch(text, new RegExp(`\\b${row.count} readings\\b`), text);
     assert.doesNotMatch(text, /\d+\.\d/, `no fractional intensity: ${text}`);
     if (row.mixed) assert.match(text, /other way/, `${region} went both ways: ${text}`);
     else assert.doesNotMatch(text, /other way/, `${region} went one way only: ${text}`);

@@ -110,11 +110,24 @@ test('a region present with no side is the same nothing', () => {
   assert.deepEqual(regionSummary(regionReading(sides())), { kind: 'none' });
 });
 
-test('a reading carries its side, its count and whether it went both ways', () => {
-  const summary = regionSummary(
-    regionReading(sides({ dysphoriaCount: 4, dysphoriaMean: 70, euphoriaCount: 1, euphoriaMean: 90 }))
+/* The count is the count of readings the mean is of, which for a region that
+   went both ways is the winning side's alone: four dysphoria readings
+   averaging 70 and one euphoria reading averaging 90 is an average of four,
+   and a sentence pairing 70 with five readings would be an average of four
+   called an average of five. The region's whole count stays on the reading
+   for "most marked" to sort by (lookBackReadings.ts). */
+test('a reading carries the side, the count behind its mean, and both ways', () => {
+  const reading = regionReading(
+    sides({ dysphoriaCount: 4, dysphoriaMean: 70, euphoriaCount: 1, euphoriaMean: 90 })
   );
-  assert.deepEqual(summary, { kind: 'reading', axis: 'dysphoria', value: 70, mixed: true, count: 5 });
+  assert.equal(reading.count, 5);
+  assert.deepEqual(regionSummary(reading), {
+    kind: 'reading',
+    axis: 'dysphoria',
+    value: 70,
+    mixed: true,
+    count: 4
+  });
 });
 
 /* The scale is native and whole (ADR-0012, ADR-0081): a mean of four

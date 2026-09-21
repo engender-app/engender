@@ -64,6 +64,7 @@
     markFor,
     placeRegions
   } from './bodyRegionFigure';
+  import { bodyRegionAxisName } from '$lib/data/vocabulary/labels';
   import { rampStyle } from './mapChannels';
   import { roleAttrs } from './kit/role';
   import type { Role } from '$lib/theme/roles';
@@ -117,8 +118,7 @@
   function regionLabel(region: BodyRegion): string {
     const summary = regionSummary(byRegion.get(region.id));
     if (summary.kind === 'none') return m.body_region_reading_none_aria({ region: region.name });
-    const axis =
-      summary.axis === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
+    const axis = bodyRegionAxisName(summary.axis);
     const value = String(summary.value);
     return summary.mixed
       ? m.body_region_reading_mixed_aria({ region: region.name, axis, value })

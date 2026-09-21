@@ -258,9 +258,9 @@ test('a hidden or deleted built-in leaves its place empty rather than shifting t
    never-used dot makes. */
 test('a region with no readings is level 0, and the faintest reading is level 1', () => {
   assert.equal(fillLevel(null), 0);
-  assert.equal(fillLevel({ region: 'chest', side: null, value: null, mixed: false, count: 0 }), 0);
-  assert.equal(fillLevel({ region: 'chest', side: 'dysphoria', value: 1, mixed: false, count: 1 }), 1);
-  assert.equal(fillLevel({ region: 'chest', side: 'euphoria', value: 100, mixed: false, count: 1 }), 4);
+  assert.equal(fillLevel({ region: 'chest', side: null, value: null, mixed: false, count: 0, sideCount: 0 }), 0);
+  assert.equal(fillLevel({ region: 'chest', side: 'dysphoria', value: 1, mixed: false, count: 1, sideCount: 1 }), 1);
+  assert.equal(fillLevel({ region: 'chest', side: 'euphoria', value: 100, mixed: false, count: 1, sideCount: 1 }), 4);
 });
 
 /* The mark has to sit on body rather than half off it, which a centroid

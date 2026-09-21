@@ -43,6 +43,7 @@
   } from '$lib/components/kit/dayAxisLabel';
   import { crossfade, resize } from '$lib/motion/reveal';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN, regionSummary } from '$lib/data/bodyMap';
+  import { bodyRegionAxisName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -167,20 +168,19 @@
      agree. A region the range never mentions is absent from the rows
      entirely, and says so - never a zero, which on this scale is a reading. */
   let selectedSummary = $derived(regionSummary(mapQuery.rows.find((r) => r.region === region)));
-  let summaryAxis = $derived(
-    selectedSummary.kind === 'reading' && selectedSummary.axis === 'euphoria'
-      ? m.body_region_axis_euphoria()
-      : m.body_region_axis_dysphoria()
-  );
-  let summaryText = $derived(
-    selectedSummary.kind === 'none'
-      ? m.body_map_selected_none()
-      : m.body_map_selected_reading({
-          count: selectedSummary.count,
-          axis: summaryAxis,
-          value: String(selectedSummary.value)
-        }) + (selectedSummary.mixed ? ' ' + m.body_map_selected_mixed() : '')
-  );
+  let summaryText = $derived.by(() => {
+    if (selectedSummary.kind === 'none') return m.body_map_selected_none();
+    const sentence = m.body_map_selected_reading({
+      count: selectedSummary.count,
+      axis: bodyRegionAxisName(selectedSummary.axis),
+      value: String(selectedSummary.value)
+    });
+    /* The second sentence rather than six more plural variants: whether a
+       region went both ways does not inflect with how many readings it
+       has. Joined here rather than in the markup, where Svelte eats the
+       space in front of an `{#if}`. */
+    return selectedSummary.mixed ? `${sentence} ${m.body_map_selected_mixed()}` : sentence;
+  });
 
   /* The way down to the charts, and the way back up. An ordinary same-page
      link, so it is the browser's own anchor and Back is the way back - the
@@ -429,9 +429,9 @@
     gap: var(--space-2);
   }
 
-  /* The name's own box, so the crossfade on a pick has something to be
-     absolute inside, and a long one wraps rather than pushing the link off
-     the card. */
+  /* The name's own box beside the link: a long name wraps inside it rather
+     than pushing the link off the card, and the crossfade on a pick happens
+     in here rather than against the row. */
   .body-map-selected-name-slot {
     flex: 1;
     min-width: 0;
