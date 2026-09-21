@@ -228,16 +228,33 @@
   transition: none;
 }
 
-/* On a screen, the field runs from the window's top edge to both side
-   edges: back up through the inset the scroll region pads every screen by
-   (the same bleed Home's sun makes, app.css) and out through .screen's own
-   20px, then padded back in by the same amounts so the title starts where
-   the content under it does and sits as clear of the status bar as any
-   other first line. Decoration crosses the inset; nothing readable does. */
+/* On a screen, the field runs out to both side edges - through .screen's
+   own 20px and padded back in by it, so the title starts where the content
+   under it does.
+
+   It used to run up through the window inset too, to meet the window's own
+   top edge. Carpet ticket 154 took that back, for two reasons that arrived
+   in that order. The status bar is drawn by the system over whatever the
+   app painted, and on Home and setup that was the flag: the bar's right
+   end crossed two to four of the sun's rings and its icons disappeared
+   into the light band every palette puts near the corner. Retiring the
+   bleed on only those two then left the app with two different field top
+   edges, 48px apart on a Pixel - and the blind that carries the field
+   between doors is one named object across the navigation, whose bottom
+   edge is built to travel and whose top edge is not ("the field must
+   always stay a single object that transitions to other states only by
+   moving up or down", Alicja, fieldBlind.ts). Sampled through a door
+   change, ::view-transition-group(blind) held top: 0px the whole way, so
+   that 48px was a change of colour with nothing animating it.
+
+   So every field starts below the inset now, the band behind the status
+   bar is the page's own colour on every screen, and the app tells Android
+   which tint to draw there (status-bar-bridge.ts). The scroll region's
+   padding is the only thing that spends the top inset again. */
 .screen > .screen-header > .screen-field {
-  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
-  padding: calc(var(--space-8) + var(--inset-top)) var(--space-5) var(--space-4);
-  min-height: calc(var(--space-8) + var(--inset-top) + var(--touch-target) + var(--space-4));
+  margin: 0 calc(-1 * var(--space-5)) 0;
+  padding: var(--space-8) var(--space-5) var(--space-4);
+  min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
 /* The controls on the field take its ink, not the page's text colour. */
 .screen-field .icon-btn { color: inherit; }
@@ -283,9 +300,14 @@
   padding-top: var(--space-4);
   min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
 }
+/* Which leaves this override with nothing of its own to say (ticket 154):
+   the bleeding variant above it differed only by the inset terms, and
+   those are gone. Kept as a rule rather than deleted, because the
+   specificity is what beats `.screen > .screen-header > .screen-field`'s
+   own padding-top for a field-only header. */
 .screen > .screen-header.is-field-only > .screen-field {
-  padding-top: calc(var(--space-4) + var(--inset-top));
-  min-height: calc(var(--space-4) + var(--inset-top) + var(--touch-target) + var(--space-4));
+  padding-top: var(--space-4);
+  min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
 }
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
