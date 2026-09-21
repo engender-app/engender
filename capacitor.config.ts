@@ -15,7 +15,7 @@ export const JOURNAL_ORIGIN = 'app.engender.dev';
 
 const config: CapacitorConfig = {
   appId: 'dev.engender.app',
-  appName: 'enGender',
+  appName: 'engender',
   webDir: 'build',
   android: {
     /* Zoom is a web capability and only a web capability (audit U2). The

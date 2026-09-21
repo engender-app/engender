@@ -33,6 +33,7 @@
   import { clinicianDossierPartName } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import ClinicianSummaryDossier from '$lib/components/ClinicianSummaryDossier.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import PrintLetterhead from '$lib/components/PrintLetterhead.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
@@ -212,6 +213,7 @@
          twice. -->
     <div class="summary-page" data-summary-page>
       <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
+        <PrintLetterhead />
         <h1>{m.clinician_summary_title()}</h1>
         <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
@@ -389,9 +391,16 @@
       margin-top: 0;
     }
 
-    .print-heading.has-demographics {
+    /* With demographics the profile card below is the header - the name,
+       the period and the generated date are all on it, and printing them
+       twice was the defect this rule fixed. The letterhead is the one part
+       that is not repeated down there, so it stays and only the words of
+       this heading go. */
+    .print-heading.has-demographics h1,
+    .print-heading.has-demographics p {
       display: none;
     }
+
 
     /* The hairline is a screen affordance for a document not yet handed
        over; on paper it is the paper, and printing it would draw a rule

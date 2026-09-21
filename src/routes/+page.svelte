@@ -1206,7 +1206,7 @@
      height. At 48px the wordmark is 46px tall and its top is 64px from the
      bottom edge (16 of padding), which is 149px below the corner; the
      disc's chord there is sqrt(181^2 - 149^2) = 103px, so the word may run
-     to 103px short of the right edge. "enGender" at 48px is 242px wide
+     to 103px short of the right edge. "engender" at 48px is 242px wide
      (5.05px per font px), and at 390px there are 287. Carpet ticket 154
      moved the corner down by the window inset and added the 32, and both
      changes buy room here: the figure was 138px of chord against 252 of

@@ -1405,11 +1405,28 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     display: none !important;
   }
 
-  /* A heading a screen shows only on paper: the title and range a reader
-     needs on a printed page and already has in the header on screen. */
+  /* A heading a screen shows only on paper: the mark, then the title and
+     range a reader needs on a printed page and already has in the header on
+     screen. */
   .print-heading {
     display: block;
     margin-bottom: var(--space-4);
+  }
+
+  /* The letterhead (PrintLetterhead.svelte), which both printing surfaces
+     put at the top of their print-only heading. Inset from the corner of
+     the sheet rather than flush with it (Alicja, 2026-09-21): @page's own
+     15mm is the paper's margin, and this is the lockup standing off that,
+     so the mark does not read as something that fell off the edge. */
+  .print-lockup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) 0 var(--space-4) var(--space-4);
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    font-size: var(--text-lg);
+    letter-spacing: var(--display-track);
   }
 
   .screen {

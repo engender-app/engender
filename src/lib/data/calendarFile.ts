@@ -80,7 +80,7 @@ export function buildCalendarEvent(input: CalendarEventInput): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//enGender//Calendar handoff//EN',
+    'PRODID:-//engender//Calendar handoff//EN',
     'BEGIN:VEVENT',
     `UID:${uid(kind, epochDay, nowEpochMs)}`,
     `DTSTAMP:${icsUtcStamp(nowEpochMs)}`

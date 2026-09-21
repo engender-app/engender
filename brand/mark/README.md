@@ -9,7 +9,7 @@ tile, black stroke on the tile's own edge, no motion anywhere.
 
 Regenerate with:
 
-    node scripts/render-mark.mjs
+    npm run render:mark
 
 ## What is here
 
@@ -36,8 +36,13 @@ drawn by hand, and editing one of them is the wrong move. Change the numbers in
 the generator instead.
 
 They are tracked but not shipped. Everything under `static/` goes into the web
-build and into the APK's assets, so the subset the app actually serves - the
-favicon and the install icons - is generated straight into `static/icons/` and
-the Android resources by the implementation ticket
-(`.scratch/phase-11/pre-production-ui-ux/issues/50-the-app-wears-its-mark.md`),
-rather than the whole review set being deployed.
+build and into the APK's assets, so the same run writes the subset the app
+actually serves straight into its own places instead: `static/favicon-<flag>.svg`
+for the tab, `static/icons/icon.svg` and `icon-maskable.svg` for the install,
+and one adaptive icon plus its vector foreground per palette under
+`android/app/src/main/res/`. `tests/mark-assets.test.ts` fails if a palette is
+missing any of them, which is what stops a run being forgotten.
+
+The drawing itself is not in the generator either: `src/lib/components/mark.ts`
+owns it and `Mark.svelte` renders the same strings on screen, so a file here
+and the mark in the app are one drawing rather than two that agree today.
