@@ -591,7 +591,6 @@
    already carries the "hidden" meaning; --text-2 gives the same
    de-emphasised look at a contrast the token layer already guarantees. */
 .managed-tag.is-hidden .managed-label { color: var(--text-2); text-decoration: line-through; }
-.drag-dots { color: var(--text-2); opacity: 0.5; cursor: grab; }
 .managed-label { flex: 1; font-size: var(--text-sm); }
 /* SH-105: was 36px with no gap between two adjacent targets, one of them
    destructive (delete). Falls back to .icon-btn's 44px default; the gap

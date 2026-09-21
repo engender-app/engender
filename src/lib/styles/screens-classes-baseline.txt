@@ -9,7 +9,6 @@ compare-metrics-tags
 compare-period-label
 compare-picker
 day-add
-drag-dots
 entry-days
 gate
 gate-field

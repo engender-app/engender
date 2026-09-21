@@ -32,26 +32,10 @@
 <div class="screen">
   <ScreenHeader title={m.affirmations_row_title()} back="/settings" subtitle={m.affirmations_intro()} />
 
-  <SectionHeading text={m.affirmations_builtin_heading()} />
-  <div class="managed-tags">
-    {#each builtIns as a (a.id)}
-      <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
-        <span class="managed-label">{a.text}</span>
-        {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
-        <span class="managed-actions">
-          <button
-            class="icon-btn"
-            data-affirmation-hide={a.id}
-            aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
-            onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
-          >
-            <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
-          </button>
-        </span>
-      </div>
-    {/each}
-  </div>
-
+  <!-- Your own lines and the way to write one come before the built-in pool
+       (phase 11 ticket 38): fourteen built-in lines are a screenful, and the
+       add button under them was the last thing on the screen - the person's
+       own vocabulary read as an appendix to the app's. -->
   <SectionHeading text={m.affirmations_custom_heading()}>
     {#snippet action()}
       <Segmented
@@ -65,6 +49,17 @@
       />
     {/snippet}
   </SectionHeading>
+
+  <button
+    class="btn btn-soft"
+    onclick={() => {
+      addOpen = true;
+      newText = '';
+    }}
+  >
+    <Icon name="plus" size={20} /><span>{m.affirmations_add()}</span>
+  </button>
+
   {#if customs.length === 0}
     <p class="muted small">{m.affirmations_custom_empty()}</p>
   {/if}
@@ -96,15 +91,25 @@
     {/each}
   </div>
 
-  <button
-    class="btn btn-soft"
-    onclick={() => {
-      addOpen = true;
-      newText = '';
-    }}
-  >
-    <Icon name="plus" size={20} /><span>{m.affirmations_add()}</span>
-  </button>
+  <SectionHeading text={m.affirmations_builtin_heading()} />
+  <div class="managed-tags">
+    {#each builtIns as a (a.id)}
+      <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
+        <span class="managed-label">{a.text}</span>
+        {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
+        <span class="managed-actions">
+          <button
+            class="icon-btn"
+            data-affirmation-hide={a.id}
+            aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
+            onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
+          >
+            <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
+          </button>
+        </span>
+      </div>
+    {/each}
+  </div>
 
   <Sheet bind:open={addOpen} title={m.affirmations_new_sheet()}>
     <h3>{m.affirmations_new_sheet()}</h3>
