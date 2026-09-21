@@ -37,6 +37,7 @@
     "test:walkthrough": "node scripts/prepare-vendor-assets.mjs && ENGENDER_VERSION=9.9.9-walkthrough VITE_DEMO=1 npm run build && node tests/walkthrough.test.mjs",
     "verify:build": "node scripts/prepare-vendor-assets.mjs && npm run build && node tests/browser-tier/verify-build.mjs",
     "verify:hosting": "node tests/hosting/run.mjs",
+    "render:mark": "node scripts/render-mark.mjs",
     "gallery:icons": "node tests/icon-gallery.mjs",
     "gallery:mood": "node tests/mood-gallery.mjs",
     "gallery:mood-app": "VITE_DEMO=1 npm run build && node tests/mood-gallery.mjs --app",

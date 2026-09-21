@@ -600,6 +600,10 @@
     const quietHoursStart = prefs.quietHoursStart;
     const quietHoursEnd = prefs.quietHoursEnd;
     const disguise = prefs.disguise;
+    /* Read here for the same reason, and it is the one preference on this
+       list that reaches the native side purely to be looked at: the
+       launcher icon follows the flag (ticket 50). */
+    const palette = prefs.palette;
     const quickExit = prefs.quickExit;
     const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready || !isAndroid()) return;
@@ -640,6 +644,7 @@
             quietHoursStart,
             quietHoursEnd,
             disguise,
+            palette,
             quickExit,
             allowScreenCapture
           },
