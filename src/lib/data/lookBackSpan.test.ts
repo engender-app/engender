@@ -4,11 +4,13 @@ import {
   defaultSpan,
   eraBands,
   eraOfferDue,
+  factSpan,
   historyBands,
   historyKindsPresent,
   historyStart,
   moveHandle,
   nearestHandle,
+  railFacts,
   railLegendKinds,
   railPosition,
   dayAtPosition,
@@ -299,5 +301,74 @@ describe('eraOfferDue: the "name this stretch" offer raises once per span', () =
 
   it('is due again for a span that shares no day with anything handled', () => {
     expect(eraOfferDue({ start: 20700, end: 20730 }, [{ start: 20600, end: 20630 }])).toBe(true);
+  });
+});
+
+describe('railFacts: the rail as a list somebody can read down', () => {
+  const RAIL_START = 20400;
+  const era = { id: 'era-1', name: 'Before', start: 20400, end: 20500, openStart: true, openEnd: false };
+  const later = { id: 'era-2', name: 'After', start: 20501, end: TODAY, openStart: false, openEnd: true };
+  const regimen = { id: 'ep-1', kind: 'regimen' as const, name: 'Estradiol', start: 20450, end: TODAY, openStart: false, openEnd: true };
+  const tryout = { id: 'try-1', kind: 'tryout' as const, name: 'A new name', start: 20600, end: 20640, openStart: false, openEnd: false };
+  const milestone = { id: 'ms-1', name: 'First appointment', epochDay: 20550 };
+  const surgery = { id: 'proc-1', name: 'Surgery', epochDay: 20680 };
+  const facts = () =>
+    railFacts({ eras: [era, later], history: [regimen, tryout], milestones: [milestone], surgeries: [surgery] }, RAIL_START, TODAY);
+
+  it('holds every kind the rail draws, with the days the rail drew them at', () => {
+    expect(facts().map((fact) => [fact.kind, fact.name, fact.start, fact.end])).toEqual([
+      ['era', 'After', 20501, TODAY],
+      ['regimen', 'Estradiol', 20450, TODAY],
+      ['surgery', 'Surgery', 20680, 20680],
+      ['tryout', 'A new name', 20600, 20640],
+      ['milestone', 'First appointment', 20550, 20550],
+      ['era', 'Before', 20400, 20500]
+    ]);
+  });
+
+  it('drops a milestone the rail does not reach', () => {
+    const outside = railFacts(
+      { eras: [], history: [], milestones: [{ id: 'ms-2', name: 'Ahead', epochDay: TODAY + 30 }, { id: 'ms-3', name: 'Before the rail', epochDay: RAIL_START - 1 }], surgeries: [] },
+      RAIL_START,
+      TODAY
+    );
+    expect(outside).toEqual([]);
+  });
+
+  it('puts a longer stretch first where two facts end on the same day', () => {
+    const sameEnd = railFacts(
+      { eras: [], history: [tryout], milestones: [{ id: 'ms-4', name: 'On the last day', epochDay: 20640 }], surgeries: [] },
+      RAIL_START,
+      TODAY
+    );
+    expect(sameEnd.map((fact) => fact.kind)).toEqual(['milestone', 'tryout']);
+  });
+
+  it('orders two facts on the very same day by kind, not by which was read first', () => {
+    const oneDay = railFacts(
+      { eras: [], history: [], milestones: [{ id: 'ms-5', name: 'The day', epochDay: 20640 }], surgeries: [{ id: 'proc-2', name: null, epochDay: 20640 }] },
+      RAIL_START,
+      TODAY
+    );
+    expect(oneDay.map((fact) => fact.kind)).toEqual(['milestone', 'surgery']);
+  });
+});
+
+describe('factSpan: the list selects what the rail selects', () => {
+  it('gives a stretch its own two days', () => {
+    expect(factSpan({ id: 'a', kind: 'regimen', name: 'Estradiol', start: 20450, end: 20600, isDay: false }, 20400)).toEqual({
+      start: 20450,
+      end: 20600
+    });
+  });
+
+  it('gives a day the default window ending on it, the way a tapped mark does', () => {
+    expect(factSpan({ id: 'b', kind: 'milestone', name: 'A day', start: 20600, end: 20600, isDay: true }, 20400)).toEqual(
+      defaultSpan(20400, 20600)
+    );
+  });
+
+  it('never runs a day fact off the start of the rail', () => {
+    expect(factSpan({ id: 'c', kind: 'surgery', name: null, start: 20405, end: 20405, isDay: true }, 20400).start).toBe(20400);
   });
 });
