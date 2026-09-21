@@ -1147,7 +1147,7 @@
        $lib/motion/stepBlind writes the measured height over it from the
        first frame onwards. */
     --blind-edge: calc(
-      var(--inset-top) + var(--space-2) + 175px * var(--step-grow, 1) * var(--sun-mult, 1) + 78px
+      var(--space-2) + (175px + var(--space-7)) * var(--step-grow, 1) * var(--sun-mult, 1) + 78px
     );
   }
   /* ---------- the field ---------- */
@@ -1216,11 +1216,17 @@
   /* The sun's room, which is also the back control's row. Reserved as the
      sun's reach at this step rather than at full size: the reserve is what
      the field's height is made of, so reserving the finish's 175px from the
-     first step would make every step's field the tallest one's. */
+     first step would make every step's field the tallest one's.
+
+     The --space-7 beside it is carpet ticket 154's room under the disc,
+     scaled by the same two factors rather than added flat: the sun is a
+     fraction of its full size on an early step, and a fixed 32 under a
+     0.3-scale sun is most of the field. Home takes the same 32 unscaled,
+     since its sun is only ever at full size. */
   .setup-head {
     position: relative;
     z-index: 1;
-    min-height: calc(175px * var(--step-grow, 1) * var(--sun-mult, 1));
+    min-height: calc((175px + var(--space-7)) * var(--step-grow, 1) * var(--sun-mult, 1));
   }
   .setup-head .icon-btn {
     color: inherit;
@@ -1620,7 +1626,7 @@
       --sun-mult: 0.6;
     }
     .setup {
-      --blind-edge: calc(var(--inset-top) + var(--space-2) + 48px + 46px);
+      --blind-edge: calc(var(--space-2) + 48px + 46px);
     }
     .setup-head {
       min-height: 48px;
