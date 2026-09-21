@@ -283,6 +283,9 @@ interface Instance {
   key: string;
   outer: Edge;
   inner: Edge;
+  /** Whether this piece is the mirror of another, which decides only which
+      way round it is emitted. See `closed`. */
+  mirrored?: boolean;
 }
 
 /** Every closed piece of the drawing, each an outer and an inner edge over
@@ -291,14 +294,28 @@ interface Instance {
 const INSTANCES: Instance[] = [
   { key: 'body', outer: BODY_OUTER, inner: mirror(BODY_OUTER) },
   { key: 'arm-right', outer: ARM_OUTER, inner: ARM_INNER },
-  { key: 'arm-left', outer: mirror(ARM_OUTER), inner: mirror(ARM_INNER) },
+  { key: 'arm-left', outer: mirror(ARM_OUTER), inner: mirror(ARM_INNER), mirrored: true },
   { key: 'leg-right', outer: LEG_OUTER, inner: LEG_INNER },
-  { key: 'leg-left', outer: mirror(LEG_OUTER), inner: mirror(LEG_INNER) }
+  { key: 'leg-left', outer: mirror(LEG_OUTER), inner: mirror(LEG_INNER), mirrored: true }
 ];
 
-const closed = ({ outer, inner }: Instance): string => {
-  const back = reverse(inner);
-  return `M${n(outer.from.x)} ${n(outer.from.y)}${draw(outer)}L${n(back.from.x)} ${n(back.from.y)}${draw(back)}Z`;
+/** One piece as a closed subpath: down one edge, across, and back up the
+    other.
+
+    Which edge it goes down matters, and this is the one place the mirror is
+    not free. The fill rule is nonzero, so two overlapping subpaths wound
+    opposite ways cancel each other and their overlap becomes a hole rather
+    than part of the union - and mirroring a loop is what flips the way it
+    is wound. An arm overlaps the shoulder it hangs from, so the left arm
+    punched a lens-shaped hole out of the left shoulder while the right one
+    was solid (Alicja, on the second set of renders: "the right one looks
+    good, but the left one now has this very little stroke glitch"). A
+    mirrored piece is emitted down its inner edge and back up its outer one,
+    which winds it the same way as its twin. */
+const closed = ({ outer, inner, mirrored }: Instance): string => {
+  const [down, up] = mirrored ? [inner, outer] : [outer, inner];
+  const back = reverse(up);
+  return `M${n(down.from.x)} ${n(down.from.y)}${draw(down)}L${n(back.from.x)} ${n(back.from.y)}${draw(back)}Z`;
 };
 
 /** The whole body as one `d`: five closed subpaths whose union is the

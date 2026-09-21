@@ -86,6 +86,49 @@ test('the drawing is five closed pieces inside its own box', () => {
   }
 });
 
+/* The mirror test above samples the outline, which is not enough on its own:
+   the fill rule is nonzero, so two overlapping subpaths wound opposite ways
+   cancel and their overlap becomes a hole - a defect that leaves every point
+   of the outline exactly where it should be. That is what mirroring an arm
+   did to the shoulder it overlaps, and this is the test that catches it: the
+   winding number computed off the emitted path has to be non-zero wherever
+   `spansAt` says there is body, and zero where it says there is none.
+
+   Points within a third of a unit of an edge are skipped. Both sides agree
+   about where the boundary is; what neither can answer is which side of it a
+   point exactly on it falls. */
+test('the drawing fills wherever the body is, and nowhere else', () => {
+  const winding = (px: number, py: number): number => {
+    let turns = 0;
+    for (const points of DRAWN) {
+      for (let i = 1; i < points.length; i += 1) {
+        const a = points[i - 1];
+        const b = points[i];
+        if (a.y === b.y) continue;
+        if (Math.min(a.y, b.y) > py || Math.max(a.y, b.y) <= py) continue;
+        const at = a.x + ((py - a.y) / (b.y - a.y)) * (b.x - a.x);
+        if (at <= px) continue;
+        turns += b.y > a.y ? 1 : -1;
+      }
+    }
+    return turns;
+  };
+
+  let checked = 0;
+  for (let y = CANON.crown + 1; y <= CANON.sole - 1; y += 1) {
+    const runs = spansAt(y);
+    for (let x = 1; x < FIGURE_BOX.width; x += 1) {
+      const edge = runs.some(([from, to]) => Math.abs(x - from) < 0.34 || Math.abs(x - to) < 0.34);
+      if (edge) continue;
+      const body = runs.some(([from, to]) => x > from && x < to);
+      const filled = winding(x, y) !== 0;
+      assert.equal(filled, body, `(${x}, ${y}) is ${filled ? 'filled' : 'empty'} and ${body ? 'body' : 'not'}`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 10000, `only ${checked} points checked`);
+});
+
 /* Measurement one. */
 test('the path is mirror-symmetric about the midline', () => {
   assert.equal(MIDLINE, 50);
