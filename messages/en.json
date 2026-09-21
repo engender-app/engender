@@ -257,6 +257,8 @@
   "chart_annotation_tally_correctly_gendered": "correct gendering, above your own range",
   "chart_annotation_region_dysphoria": "dysphoria above your own range",
   "chart_annotation_region_euphoria": "euphoria above your own range",
+  "chart_annotation_era_started": "{name} era started",
+  "chart_annotation_readout_dated": "{day}: {text}",
   "chart_annotation_named": "{name}, {kind}",
   "chart_annotation_point": "{label}, {day}",
   "chart_annotation_span": "{label}, {from} to {to}",
