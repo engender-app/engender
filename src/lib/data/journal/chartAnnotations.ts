@@ -81,7 +81,12 @@
    how often somebody was misgendered is about them rather than about one
    drug, and belongs under every chart on the screen. */
 
-import { annotationsInRange, type ChartAnnotation, type ChartAnnotationSource } from '../../charts/annotations';
+import {
+  annotationsInRange,
+  type ChartAnnotation,
+  type ChartAnnotationDetail,
+  type ChartAnnotationSource
+} from '../../charts/annotations';
 import { finishedGroups, suspendedGroups } from '../areaGroups';
 import { epochDayFromTimestamp } from '../epochDay';
 import { doseMilligrams } from '../hormoneCurveFit';
@@ -128,6 +133,18 @@ interface Areas {
   stats: StatsArea;
 }
 
+/** A record's own words as a tick's line, or nothing where there are none
+    (phase 11 UI/UX ticket 49).
+
+    One place decides what counts as written: a description nobody filled in
+    arrives as an empty string, an appointment's note as null, and a
+    procedure's notes as whatever survived a person clearing the field. The
+    kit draws no empty line because none reaches it. */
+function writtenNote(text: string | null | undefined): ChartAnnotationDetail | undefined {
+  const written = text?.trim();
+  return written ? { type: 'note', text: written } : undefined;
+}
+
 export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
   return {
     async getAnnotations(fromEpochDay, toEpochDay, todayEpochDay) {
@@ -151,7 +168,8 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           kind: 'milestone' as const,
           name: milestone.name,
           startEpochDay: milestone.epochDay,
-          endEpochDay: null
+          endEpochDay: null,
+          detail: writtenNote(milestone.description)
         })),
         ...episodes.map((episode) => ({
           id: episode.id,
@@ -207,7 +225,8 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
             kind: 'appointment' as const,
             name: appointment.kind,
             startEpochDay: appointment.epochDay,
-            endEpochDay: null
+            endEpochDay: null,
+            detail: writtenNote(appointment.note)
           })),
         /* The day a stream ended (phase 8 features ticket 04). One mark per
            hub row rather than one per archive section, because hair progress
@@ -250,7 +269,8 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           kind: 'surgery',
           name: procedure.name,
           startEpochDay: procedure.surgeryEpochDay,
-          endEpochDay: null
+          endEpochDay: null,
+          detail: writtenNote(procedure.notes)
         });
         // From the day after: the operation is its own mark, and a window
         // that started on the same day would draw a band under it.
@@ -291,6 +311,12 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           name: effect.name,
           startEpochDay: effect.epochDay,
           endEpochDay: null,
+          /* The grade the sheet asked for and did not require, raw: its five
+             words are the catalogue's (labels.ts's severityName). */
+          detail:
+            effect.severity === null
+              ? undefined
+              : ({ type: 'severity', severity: effect.severity } satisfies ChartAnnotationDetail),
           // No screen for one side effect, so the screen that owns them
           // (searchHitRows.ts's rule, and dayRows.ts sends its row there too).
           href: '/care/changes'
@@ -353,6 +379,11 @@ function injectionSources(
       name: episode.drug,
       startEpochDay: epochDayFromTimestamp(dose.timestamp),
       endEpochDay: null,
+      /* What the dose log's own row says about this dose, minus the drug the
+         mark is already named after: the amount, and where it went. The site
+         is a key, resolved by the kit the same way every other word here
+         is. */
+      detail: { type: 'dose', amount: dose.dose, unit: dose.doseUnit, site: dose.injectionSite },
       href: '/care/doses',
       series
     });

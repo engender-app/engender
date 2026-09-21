@@ -14,7 +14,8 @@
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
 import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
-import { episodeEndReasonLabel } from '$lib/data/vocabulary/doseLabels';
+import { episodeEndReasonLabel, injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
+import { severityName } from '$lib/data/vocabulary/labels';
 import type { ChartAnnotation, ChartAnnotationKind } from '$lib/charts/annotations';
 
 /** What each kind of thing is called, for a record that carries no name of
@@ -137,14 +138,99 @@ const CAPTION_NAMES = 3;
     exactly where that happens. */
 const READOUT_LABELS = 2;
 
+/** The line a tick draws under its own name: what the record behind it
+    actually says, in the record's own words (phase 11 UI/UX ticket 49).
+
+    Undefined rather than an empty string where there is nothing to print.
+    A milestone nobody wrote a description for, an ungraded side effect and
+    every derived mark all reach here, and an added line that is present and
+    blank reads as the app having lost the text rather than as there never
+    having been any.
+
+    An era is the one kind whose line is not something written behind the
+    tick: the tick is the boundary and the boundary is the fact, so the
+    sentence is composed here and (see `readoutEntry`) stands in place of
+    the `{name}, {kind}` pair rather than under it. */
+function annotationNote(annotation: ChartAnnotation): string | undefined {
+  if (annotation.kind === 'era') {
+    const name = recordName(annotation);
+    return name ? m.chart_annotation_era_started({ name }) : undefined;
+  }
+
+  const detail = annotation.detail;
+  if (!detail) return undefined;
+  switch (detail.type) {
+    case 'note':
+      return detail.text;
+    case 'severity':
+      return severityName(detail.severity) ?? undefined;
+    case 'dose': {
+      // The amount as the dose log writes it, and where it went. Joined with
+      // a comma here rather than through the catalogue, the same as the
+      // caption's own list of names: there is no word in it to translate.
+      const amount = `${detail.amount} ${detail.unit}`;
+      return detail.site ? `${amount}, ${injectionSiteLabel(detail.site)}` : amount;
+    }
+  }
+}
+
+/** One tick as the readout writes it. */
+export interface AnnotationReadoutEntry {
+  /** The annotation's own, so a gathered mark's two ticks stay two keys. */
+  id: string;
+  /** "{name}, {kind}", and absent on an era, whose own sentence is its
+      whole line. */
+  label?: string;
+  /** What the record says behind the tick, dated where the position under
+      the finger cannot say which day is meant. Absent where the record has
+      nothing written on it. */
+  note?: string;
+}
+
+/** How the readout is asked to write one position's ticks.
+
+    `dated` is on where a position stands for more than a day - the week and
+    month grains, and a gap in the readings - because the readout names the
+    position and the position is then not a date. At the day grain it is off:
+    the readout already names that day, and repeating it on every line would
+    be the same date written three times.
+
+    `disguised` drops every line of free text (ADR-0035). The names are
+    already drawn on these charts and that does not change; a paragraph
+    about a surgery is a different exposure from the word "surgery". */
+interface ReadoutOptions {
+  dated?: boolean;
+  disguised?: boolean;
+}
+
+function readoutEntry(annotation: ChartAnnotation, options: ReadoutOptions): AnnotationReadoutEntry {
+  if (options.disguised) return { id: annotation.id, label: annotationLabel(annotation) };
+
+  const note = annotationNote(annotation);
+  const dated =
+    note && options.dated
+      ? m.chart_annotation_readout_dated({
+          day: fmtDay(annotation.fromEpochDay, { day: 'numeric', month: 'short' }),
+          text: note
+        })
+      : note;
+  // An era states its boundary instead of naming itself and its kind; every
+  // other tick keeps the pair it printed before this line existed.
+  const label = annotation.kind === 'era' && note ? undefined : annotationLabel(annotation);
+  return { id: annotation.id, label, note: dated };
+}
+
 /** What the readout writes at one position: the first couple in full, and a
     count for the rest. */
-export function annotationReadout(annotations: readonly ChartAnnotation[]): {
-  labels: string[];
+export function annotationReadout(
+  annotations: readonly ChartAnnotation[],
+  options: ReadoutOptions = {}
+): {
+  entries: AnnotationReadoutEntry[];
   rest: number;
 } {
   return {
-    labels: annotations.slice(0, READOUT_LABELS).map(annotationLabel),
+    entries: annotations.slice(0, READOUT_LABELS).map((annotation) => readoutEntry(annotation, options)),
     rest: Math.max(annotations.length - READOUT_LABELS, 0)
   };
 }
