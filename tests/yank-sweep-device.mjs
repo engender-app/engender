@@ -336,8 +336,12 @@ async function ev(expression, ms = 90000) {
  *  Playwright's CDP transport has no such cap.
  *
  *  So the table is stringified where it is made and pulled back a slice
- *  at a time. The retry in `ev()` still covers each leg, and the page-side
- *  string outlives a re-attach because the document does. */
+ *  at a time. The retry in `ev()` still covers each leg: a re-attach lands
+ *  on the same document, so the stashed string is still there. A
+ *  navigation is the other thing entirely and this does not survive one -
+ *  the global belongs to the document that made it - so the fetch has to
+ *  finish before anything moves the page. Every caller below samples and
+ *  then fetches, with the next `location.assign` a scene away. */
 async function evFrames(expression, ms = 90000) {
   const total = await ev(
     `(async () => {
@@ -350,8 +354,11 @@ async function evFrames(expression, ms = 90000) {
   for (const [from, to] of replySlices(total)) json += await ev(`window.__sweepReply.slice(${from}, ${to})`, ms);
   /* Dropped rather than left behind: the biggest of these is a 6 MB
      string, and a scene that kept its own would have the whole walk's
-     worth of them resident by the end. */
-  await ev('window.__sweepReply = null; true;');
+     worth of them resident by the end. Swallowed, though, because the
+     frames are already in hand by this point: losing a whole scene to a
+     failed nulling assignment would be this ticket's own bug one layer
+     up, and the next navigation drops the global anyway. */
+  await ev('window.__sweepReply = null; true;').catch(() => {});
   return JSON.parse(json);
 }
 
