@@ -118,7 +118,15 @@ const READ_SHAPES = `
       o: Math.round(Number(s.opacity) * 1000) / 1000,
       t: s.transform,
       clip: s.clipPath,
-      border: el.querySelector('rect') ? getComputedStyle(el.querySelector('rect')).strokeWidth : 'none',
+      border: (() => {
+        /* The picked edge is in a pass of its own over the fills now, not a
+           stroke on the panel (ticket 47): every region has a group there
+           and only the picked one has a width. */
+        const part = document.querySelector(
+          '[data-body-map-figure] [data-region-edge="' + region + '"] .region-pick-band'
+        );
+        return part ? getComputedStyle(part).strokeWidth : 'none';
+      })(),
       fill: s.getPropertyValue('--region-fill').trim() || 'none',
       picked: pickedOf(region)
     };
