@@ -223,6 +223,14 @@
        what puts that lane in view. */
   let sourceLane = $state(takeSourceLane() ?? page.url.searchParams.get('lane'));
 
+  /* The rail's own drawn width, for the caption collision rule
+     (careSpine.ts's `MIN_LABEL_PX`): the rule is a number of pixels and
+     only the screen knows how many the rail has. `.care-lanes` is the
+     coordinate space every mark is placed in, so it is the thing measured;
+     0 until the first measurement, which is the fraction the module falls
+     back to. */
+  let railWidth = $state(0);
+
   let spine = $derived(
     careSpine(
       {
@@ -237,7 +245,8 @@
           runOutEpochDay: lane.runOut?.actionableEpochDay ?? null
         }))
       },
-      today
+      today,
+      railWidth
     )
   );
 
@@ -535,7 +544,7 @@
           {/each}
         </div>
 
-        <div class="care-lanes">
+        <div class="care-lanes" bind:clientWidth={railWidth}>
           {#each spine.shared as mark (mark.kind)}
             <span
               class="care-guide"

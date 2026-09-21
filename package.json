@@ -25,6 +25,7 @@
     "gallery:photo-export": "node tests/photo-export.mjs --gallery",
     "test:source-record-links": "node tests/source-record-links.mjs",
     "test:care-spine-links": "node tests/care-spine-links.mjs",
+    "test:timeline-facts": "node tests/timeline-fact-selection.mjs",
     "test:chosen-appointment": "node tests/chosen-appointment.mjs",
     "gallery:chosen-appointment": "node tests/chosen-appointment.mjs --gallery",
     "gallery:source-record-links": "node tests/source-record-links.mjs --gallery",
