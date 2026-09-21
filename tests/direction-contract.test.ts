@@ -845,11 +845,46 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
        --field-ink on it, which is still where both come from. */
     expect(ruleFor(css, '.field-blind')?.body).toMatch(/background:\s*var\(--field\)/);
     expect(field?.body).toMatch(/color:\s*var\(--field-ink\)/);
+    /* Sideways to the screen's edges, and no further. The field used to
+       bleed up through the window inset as well, to meet the window's own
+       top edge; carpet ticket 154 took that back across every field at
+       once. Two reasons, in the order they arrived: the status bar's icons
+       are drawn by the system over whatever the app painted, and on the
+       two screens that draw a sun they crossed its rings and vanished;
+       and retiring it on only those two left two field top edges 48px
+       apart, which the blind cannot express, since it is one named object
+       across a navigation whose top edge does not move. */
     const bleed = ruleFor(css, '.screen > .screen-header > .screen-field');
-    expect(bleed?.body).toMatch(/margin:\s*calc\(-1 \* var\(--inset-top\)\) calc\(-1 \* var\(--space-5\)\) 0/);
     expect(bleed?.body).toMatch(
-      /padding:\s*calc\(var\(--space-8\) \+ var\(--inset-top\)\) var\(--space-5\) var\(--space-4\)/
+      /margin:\s*calc\(-1 \* var\(--field-bleed-top\)\) calc\(-1 \* var\(--space-5\)\) 0/
     );
+    expect(bleed?.body).toMatch(/padding:\s*var\(--space-8\) var\(--space-5\) var\(--space-4\)/);
+  });
+
+  /* The same claim as a sweep rather than as one rule, so a field added
+     later cannot quietly reintroduce the bleed: nothing whose selector
+     names a field may pull itself up by the *whole* top inset. Pulling up
+     by `--field-bleed-top` is the sanctioned part - the slack the status
+     bar leaves under its own icons, floored so a short bar keeps its
+     clearance (theme/base.css) - and reads as a different expression, so
+     this sweep passes it and still catches `var(--inset-top)`. */
+  it('lets no field cross the whole top inset', () => {
+    const offenders: string[] = [];
+    const sources: Array<[string, string]> = [
+      ['components', sheet('components')],
+      ['screens', sheet('screens')],
+      ['+page', styleBlocks('src/routes/+page.svelte')],
+      ['onboarding', styleBlocks('src/routes/onboarding/+page.svelte')]
+    ];
+    for (const [name, css] of sources) {
+      for (const rule of rules(css)) {
+        if (!/-field\b/.test(rule.prelude)) continue;
+        if (/margin[^;]*calc\(\s*-1 \* var\(--inset-top\)/.test(rule.body)) {
+          offenders.push(`${name} ${rule.prelude}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   /* Rule 7's Transition door (redesign ticket 15): "The field holds the
