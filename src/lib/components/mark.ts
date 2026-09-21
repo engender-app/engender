@@ -64,35 +64,38 @@ export const MARK_MONO_RINGS = 4;
     tile whose own corner it is anchored to, with white around it. */
 export const MARK_SAFE_TILE = 50;
 
-/** How the drawing is cropped, and therefore whether it carries a tile.
+/** What shape the mark is cropped to. Every one of them has an edge:
+    Alicja, 2026-09-21, and it is the whole rule - *"THE STROKE IS AN
+    INTEGRAL PART OF THE LOGO! THERE IS NO LOGO WITHOUT THE STROKE!"* There
+    is no variant without one, which is why there is no `bare` here: a mark
+    on a screen, a mark on paper and a mark in one ink are all the same
+    drawing, and the square around it is part of that drawing rather than a
+    frame put round it afterwards.
 
-    `tile` is the mark with its white ground and its black edge: a launcher,
-    an install, a favicon, and About, where what the app is showing is its
-    own icon beside its own name. This is Alicja's rule and it has no
-    exception - "its supposed to be black always" - so anywhere the drawing
-    has an outside, that outside is one black line.
+    `tile` is the mark: rounded square, ground, edge. A launcher, an
+    install, a favicon, About, and both printed pages.
 
-    `bare` is the drawing with no ground and no edge at all, which is what
-    the printed surfaces take: one ink on paper, where a square around it
-    would be a second thing to reproduce.
+    `round` is the same under a circle crop, with the edge following the
+    circle - a square outline under a round mask would lose its corners.
 
     `bleed` is a mask's canvas rather than a crop of its own: the ground runs
     to all four corners, because a mask cuts its shape out of whatever it is
     given, and the tile sits in the middle at `MARK_SAFE_TILE`. */
-export type MarkCrop = 'tile' | 'round' | 'bleed' | 'bare';
+export type MarkCrop = 'tile' | 'round' | 'bleed';
 
 export interface MarkOptions {
-  /** One ink and four rings, drawn as outlines: the printed surfaces, the
-      disguise fallback and any single-colour reproduction. The stripes are
-      ignored when this is set. */
+  /** One ink and four rings, drawn as outlines, the edge included: the
+      printed surfaces, the disguise fallback and any single-colour
+      reproduction. The stripes are ignored when this is set, and so is the
+      ground - paper is the ground there. */
   ink?: string;
-  /** The ground under the drawing. Defaults to the white tile for a cropped
-      mark and to nothing for `bare`. */
+  /** The ground under the drawing. Defaults to the white tile, or to
+      nothing in one ink. */
   ground?: string | null;
-  /** The clip path's id, for the two crops that need one. Defaults to the
-      crop's own name, which is unique in a file that holds one mark; a
-      screen that draws one passes an id of its own, because a document can
-      hold more than one element and two of the same id is not valid. */
+  /** The clip path's id. Defaults to the crop's own name, which is unique
+      in a file that holds one mark; a screen that draws one passes an id of
+      its own, because a document can hold more than one element and two of
+      the same id is not valid. */
   id?: string;
   /** An accessible name. Omitted, the mark is decorative and hidden, which
       is what it is everywhere it sits beside the app's own name in type. */
@@ -115,38 +118,46 @@ function ringMarkup(stripes: string[], ink: string | undefined): string {
     .join('');
 }
 
-/** The crop, and the black line that follows it. A cropped mark's own
-    outside edge is a stroke at the seam's weight, so every edge in the
-    drawing including its outside is one line (Alicja: if the tile is white,
-    it gets a stroke around the rounded square). It follows the crop shape
-    rather than always being a rounded square, or a round launcher would cut
-    the corners off a square outline.
+/** The crop, and the line that follows it. A cropped mark's own outside
+    edge is a stroke at the seam's weight, so every edge in the drawing
+    including its outside is one line. It follows the crop shape rather than
+    always being a rounded square, or a round crop would cut the corners off
+    a square outline.
+
+    **The clip stops half a seam short of the silhouette, and the edge is
+    drawn outside it.** This is the arrangement, and the obvious one is
+    wrong: clip everything to the silhouette and stroke the edge inside that
+    clip, and the mark grows a pale halo that gathers at the corners
+    (Alicja, 2026-09-21, on a 48px render: "why the fuck is there this small
+    white glitch around the corners? this is supposed to be pixel perfect").
+
+    The cause is compositing. Chromium antialiases a clip path per element
+    rather than over a flattened group, so the white ground keeps a boundary
+    of its own at the silhouette no matter what is stroked on top of it
+    inside the same clip - partial coverage of white plus partial coverage
+    of ink does not add up to ink. Measured at 512px on a dark page, the
+    pixel across the corner came out at rgb(58,87,99) against a ground of
+    rgb(34,37,44): lighter than the page, which composited ink can never be.
+
+    So: the clip is the crop path inset by half a seam, which is where the
+    edge's own centre line runs, and the edge is stroked on that same path
+    with nothing clipping it. The stroke's inner half then covers the
+    clipped content's boundary at full opacity, and its outer half is the
+    silhouette - one antialiased boundary in the whole drawing, which is
+    what "pixel perfect" means here. tests/mark-edge-fringe.mjs walks out of
+    the mark at four sizes and fails on anything brighter than the page.
 
     `bleed` is not asked here. It carries a tile, and it is the `tile` one,
     laid inside the canvas at MARK_SAFE_TILE. */
-function cropMarkup(crop: 'tile' | 'round' | 'bare'): { clip: string; edge: string } {
+function cropMarkup(crop: 'tile' | 'round', ink: string): { clip: string; edge: string } {
   const inset = MARK_SEAM / 2;
-  if (crop === 'round') {
-    return {
-      clip: `<circle cx="50" cy="50" r="50"/>`,
-      edge: `<circle cx="50" cy="50" r="${(50 - inset).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
-    };
-  }
-  if (crop === 'tile') {
-    return {
-      clip: `<rect width="100" height="100" rx="${MARK_TILE_RADIUS}"/>`,
-      edge:
-        `<rect x="${inset}" y="${inset}" width="${100 - MARK_SEAM}" height="${100 - MARK_SEAM}"`
-        + ` rx="${(MARK_TILE_RADIUS - inset).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
-    };
-  }
-  /* `bare` needs no clip path at all: it crops to the square the viewBox
-     already is, and an SVG viewport clips to itself. Saying so is worth a
-     branch rather than a `rx="0"` rect, because a clip path needs an id, an
-     id has to be unique in a document, and `bare` is the only crop the app
-     ever draws - so the app emits no id and two marks on one screen cannot
-     collide. The cropped forms are files, one mark each. */
-  return { clip: '', edge: '' };
+  const paint = `fill="none" stroke="${ink}" stroke-width="${MARK_SEAM}"`;
+  const shape =
+    crop === 'round'
+      ? `<circle cx="50" cy="50" r="${(50 - inset).toFixed(2)}"`
+      : `<rect x="${inset}" y="${inset}" width="${100 - MARK_SEAM}" height="${100 - MARK_SEAM}"`
+        + ` rx="${(MARK_TILE_RADIUS - inset).toFixed(2)}"`;
+  return { clip: `${shape}/>`, edge: `${shape} ${paint}/>` };
 }
 
 /** The whole mark as one SVG element. `size` is what the width and height
@@ -179,16 +190,18 @@ export function markSvg(
     );
   }
 
-  const { clip, edge } = cropMarkup(crop);
-  const fill = ground === undefined ? (crop === 'bare' ? null : MARK_TILE) : ground;
+  /* In one ink, the tile's edge is that ink too: the mark on paper is one
+     colour and the square around it is part of the mark, not a frame drawn
+     in a second one. */
+  const { clip, edge } = cropMarkup(crop, ink ?? '#000');
+  const fill = ground === undefined ? (ink ? null : MARK_TILE) : ground;
   const paper = fill === null ? '' : `<rect width="100" height="100" fill="${fill}"/>`;
-  const drawing = `${paper}${ringMarkup(stripes, ink)}${edge}`;
+  const drawing = `${paper}${ringMarkup(stripes, ink)}`;
   /* The crop's own name is right for a file, which holds one mark. A screen
      can hold more than one element, so Mark.svelte mints its own. */
   const clipId = id ?? `mark-${crop}`;
-  const clipped = clip
-    ? `<defs><clipPath id="${clipId}">${clip}</clipPath></defs>`
-      + `<g clip-path="url(#${clipId})">${drawing}</g>`
-    : drawing;
-  return `${open}${clipped}</svg>`;
+  return (
+    `${open}<defs><clipPath id="${clipId}">${clip}</clipPath></defs>`
+    + `<g clip-path="url(#${clipId})">${drawing}</g>${edge}</svg>`
+  );
 }

@@ -86,27 +86,63 @@ describe("the mark's signed-off numbers", () => {
       expect(circle).toContain('stroke="#000"');
       expect(circle).toContain(`stroke-width="${MARK_SEAM}"`);
     }
-    expect(svg).toMatch(/<rect x="1.5" y="1.5"[^>]*stroke="#000"/);
+    /* Inset by half a seam, which is where the clip stops too: the edge's
+       centre line and the clip are one path, and the stroke's outer half is
+       the silhouette. */
+    expect(svg).toContain(
+      `<rect x="1.5" y="1.5" width="${100 - MARK_SEAM}" height="${100 - MARK_SEAM}"`
+      + ` rx="${(MARK_TILE_RADIUS - MARK_SEAM / 2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
+    );
+  });
+
+  it('draws its edge outside the clip, so the silhouette rasterises once', () => {
+    /* Chromium antialiases a clip path per element rather than over a
+       flattened group, so a white ground clipped to the silhouette keeps a
+       boundary of its own that a stroke inside the same clip cannot cover:
+       partial white plus partial ink is lighter than ink, which is the halo
+       Alicja caught. The edge therefore sits after the clipped group and is
+       not clipped at all, and the clip stops on the edge's centre line so
+       the stroke's inner half covers what it clipped.
+
+       tests/mark-edge-fringe.mjs is what measures the result; this is only
+       the shape of the markup that produces it. */
+    for (const crop of ['tile', 'round'] as const) {
+      const svg = markSvg(flags.trans, crop, 512);
+      const closed = svg.indexOf('</g>');
+      const edge = svg.lastIndexOf('stroke-width="3"/>');
+      expect(closed, crop).toBeGreaterThan(-1);
+      expect(edge, crop).toBeGreaterThan(closed);
+    }
   });
 });
 
 describe('the monochrome mark', () => {
   it('is four rings whatever the flag, because one colour has no bands to count', () => {
     for (const [name, stripes] of Object.entries(flags)) {
-      expect(circles(markSvg(stripes, 'bare', 512, { ink: '#1E1B16' })), name).toHaveLength(
+      expect(circles(markSvg(stripes, 'tile', 512, { ink: '#1E1B16' })), name).toHaveLength(
         MARK_MONO_RINGS
       );
     }
     /* Including with no flag at all, which is what a printed page and the
        disguise fallback hand it. */
-    expect(circles(markSvg([], 'bare', 512, { ink: '#1E1B16' }))).toHaveLength(MARK_MONO_RINGS);
+    expect(circles(markSvg([], 'tile', 512, { ink: '#1E1B16' }))).toHaveLength(MARK_MONO_RINGS);
   });
 
   it('is one ink and outlines, with no band fills to reproduce', () => {
-    for (const circle of circles(markSvg(flags.trans, 'bare', 512, { ink: '#1E1B16' }))) {
+    for (const circle of circles(markSvg(flags.trans, 'tile', 512, { ink: '#1E1B16' }))) {
       expect(circle).toContain('fill="none"');
       expect(circle).toContain('stroke="#1E1B16"');
     }
+  });
+
+  it('keeps its square, in the same ink, and drops the ground', () => {
+    /* "THE STROKE IS AN INTEGRAL PART OF THE LOGO! THERE IS NO LOGO WITHOUT
+       THE STROKE!" (Alicja, 2026-09-21). One ink means the edge is that ink
+       too, not a second colour, and paper is the ground, so nothing is
+       painted under it. */
+    const svg = markSvg(flags.trans, 'tile', 512, { ink: '#1E1B16' });
+    expect(svg).toMatch(/<rect x="1\.5"[^>]*stroke="#1E1B16"/);
+    expect(svg).not.toMatch(/<rect[^>]*fill="#/);
   });
 });
 
@@ -143,8 +179,7 @@ describe('the tile belongs to the icon, not to the app', () => {
     expect(Math.SQRT2 * (a - corner) + corner).toBeLessThanOrEqual((72 / 108) * 50);
   });
 
-  it('emits a clip path only where the crop is not the viewBox itself', () => {
-    expect(markSvg(flags.trans, 'bare', 48)).not.toContain('clipPath');
+  it('names its clip path after the crop by default', () => {
     for (const crop of ['tile', 'round'] as const) {
       expect(markSvg(flags.trans, crop, 512), crop).toContain(`<clipPath id="mark-${crop}">`);
     }
@@ -161,17 +196,12 @@ describe('the tile belongs to the icon, not to the app', () => {
     expect(svg).not.toContain('mark-tile');
   });
 
-  it('leaves the printed mark bare: no tile, no ground, no edge', () => {
-    /* One ink on paper, where a square around it would be a second thing to
-       reproduce. Asserted as "no painted rectangle" rather than "no white":
-       trans's own middle stripe is #FFFFFF, and a band is not a ground. */
-    const svg = markSvg(flags.trans, 'bare', 48);
-    expect(svg).not.toMatch(/<rect[^>]*fill=/);
+  it('paints the white tile under a mark that is not in one ink', () => {
     expect(markSvg(flags.trans, 'tile', 48)).toContain(`<rect width="100" height="100" fill="${MARK_TILE}"/>`);
   });
 
   it('is decorative unless it is given a name', () => {
-    expect(markSvg(flags.trans, 'bare', 48)).toContain('aria-hidden="true"');
+    expect(markSvg(flags.trans, 'tile', 48)).toContain('aria-hidden="true"');
     const named = markSvg(flags.trans, 'tile', 512, { label: 'engender' });
     expect(named).toContain('role="img"');
     expect(named).toContain('aria-label="engender"');
