@@ -10,6 +10,7 @@
   let {
     value = $bindable(''),
     id,
+    describedBy,
     name,
     min,
     max,
@@ -20,6 +21,10 @@
   }: {
     value?: string;
     id?: string;
+    /** The id of the field's help paragraph (kit/Field hands it to its
+        children). It goes on the field a person actually reaches, which is
+        flatpickr's alternate input rather than the hidden original. */
+    describedBy?: string;
     name?: string;
     /** Inclusive bounds, `yyyy-mm-dd`. */
     min?: string;
@@ -200,6 +205,10 @@
         picker.altInput.id = id as string;
         node.removeAttribute('id');
       }
+      if (describedBy) {
+        picker.altInput.setAttribute('aria-describedby', describedBy);
+        node.removeAttribute('aria-describedby');
+      }
       const visible = picker.altInput as unknown as Record<string, unknown>;
       visible.flatpickr = picker;
       visible._flatpickr = picker;
@@ -254,6 +263,7 @@
   {name}
   use:mount
   aria-label={ariaLabel}
+  aria-describedby={describedBy}
   placeholder={ariaLabel}
   {...rest}
 />

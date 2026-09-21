@@ -704,43 +704,49 @@
 }
 .segmented::-webkit-scrollbar { display: none; }
 
-/* The chevron itself: a fixed hint rather than a fade, so it never depends
-   on how much of a neighbouring label the track happened to leave visible
-   (Segmented.svelte). Pointer-events:none - it marks the track's own edge,
-   not a control of its own, and sits on top of the fade rather than
-   instead of it because the fade still answers "which edge" from across
-   the room while the chevron confirms it up close. */
+/* The chevron and the fade under it, which are one device (phase 11
+   pre-production ticket 43). Pointer-events:none - it marks the track's
+   own edge, not a control of its own.
+
+   The chevron was meant to be "a fixed hint that never depends on how a
+   neighbouring label happens to break" and was not: it was drawn over the
+   bare track with nothing between it and whatever label the clip had left
+   underneath it, so at 390px the kind picker rendered "Garme>e" and the
+   affordance was legible only when the last visible label happened to stop
+   short of it. It paints above the track, which was never the problem -
+   what it had was no ground of its own.
+
+   So the fade moved off the track and onto this box, as its background.
+   The label runs out under the track's own colour instead of being masked
+   to transparent, and the chevron stands on that colour rather than on the
+   letters. One rule instead of two, and it is right on both edges at once:
+   the masks were written as an either/or pair (`can-scroll-end:not(
+   .can-scroll-start)`), so a track scrolled to the middle - both hints
+   showing - faded on neither.
+
+   The gradient reaches the track's colour well before the chevron's own
+   box, so what fades is the label and never the mark itself; the 4px of
+   transparent tail is what keeps the edge soft rather than a ruled line
+   (Alicja, 2026-08-28, on the severity picker: a fade that finishes before
+   the next label begins is "barely noticeable"). The corner radius is the
+   track's, so an opaque ground at the very edge does not square it off. */
 .segmented-hint {
   position: absolute;
   top: 0; bottom: 0;
   display: flex; align-items: center;
-  width: 20px;
+  width: 26px;
   color: var(--text-2);
   pointer-events: none;
 }
-.segmented-hint-start { left: 0; justify-content: flex-start; padding-left: 4px; }
-.segmented-hint-end { right: 0; justify-content: flex-end; padding-right: 4px; }
-
-/* The hint the hidden scrollbar above took away: a fade over whichever edge
-   still has segments past it, on only whichever side that is true
-   (Segmented.svelte tracks scroll position for these two classes). No fade
-   at all when the track holds everything already, which is most of them.
-
-   14px, not 28px: a wide fade starting well before the next segment often
-   finished fading before that segment's label even began, so the label
-   sitting past the edge - the whole point of the hint - rendered as a
-   sliver too faint to register as more than background (Alicja, 2026-08-28,
-   on the severity picker: "barely noticeable" cutting "mild" off with no
-   sign there was more). A narrower fade starts closer to the edge, which
-   both shows more of the next label at high opacity and still finishes
-   at fully transparent by the edge itself. */
-.segmented.can-scroll-end:not(.can-scroll-start) {
-  mask-image: linear-gradient(to right, black calc(100% - 14px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 14px), transparent 100%);
+.segmented-hint-start {
+  left: 0; justify-content: flex-start; padding-left: 4px;
+  background: linear-gradient(to right, var(--surface-2) 22px, transparent);
+  border-radius: 8px 0 0 8px;
 }
-.segmented.can-scroll-start:not(.can-scroll-end) {
-  mask-image: linear-gradient(to right, transparent, black 14px);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 14px);
+.segmented-hint-end {
+  right: 0; justify-content: flex-end; padding-right: 4px;
+  background: linear-gradient(to left, var(--surface-2) 22px, transparent);
+  border-radius: 0 8px 8px 0;
 }
 .segmented.can-scroll-start.can-scroll-end {
   mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);

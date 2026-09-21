@@ -10,12 +10,21 @@
      only visible once a tryout was opened.
 
      So a running tryout says what is true now in the two ways rule 16's
-     worked examples do. The live reading - day N of trying this - is the
-     number on the card, on a block of the area's stripe at display size,
-     which is rule 2's "a number on a block" and the shape
-     ProcedureRecoveryCard and LetterCard already use. And how it has felt
-     is the drawing under it (TryoutFeltSenseArc), with what the drawing
-     holds written out beside it in words.
+     worked examples do. The block of the area's stripe is what the card
+     reports, and the drawing under it (TryoutFeltSenseArc) is how it has
+     felt, with what the drawing holds written out beside it in words.
+
+     What is on that block changed in phase 11 pre-production ticket 43.
+     It used to be the day count, 40px on the stripe, with the name in
+     17px above it - so the loudest thing on a card about an experiment
+     was how many days it had been going, which is the shape of a streak
+     counter and reads as a target (the ticket's reference sweep rejected
+     exactly that: a 30-day challenge ring with a completion count). The
+     name is on the block now, at the size a row-weight tile with no
+     value gives its title, with the kind under it as the plate's second
+     line; the length is a secondary line below, where the date it counts
+     from already was. Nothing was removed - the same three facts are on
+     the card - and the one a person reads first is which tryout this is.
 
      An ended tryout is not this. It stays the row it was and gains its
      length, because there is no live reading left to draw: the days have
@@ -31,7 +40,7 @@
   import Icon from './Icon.svelte';
   import TryoutFeltSenseArc from './TryoutFeltSenseArc.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { tryoutKindName } from '$lib/data/vocabulary/labels';
+  import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
   import { tryoutReading } from '$lib/data/tryoutReading';
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
 
@@ -58,17 +67,19 @@
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
   let kindLabel = $derived(tryoutKindName(tryout.kind));
-  let unitLabel = $derived(m.tryout_unit_days_trying({ n: reading.dayCount }));
-  let sinceLabel = $derived(m.tryout_since({ start: dayLabel(tryout.startEpochDay) }));
+  let spanLabel = $derived(
+    m.tryout_day_since({ n: reading.dayCount, start: dayLabel(tryout.startEpochDay) })
+  );
 
-  /* What the drawing holds, in words, because the drawing is aria-hidden
-     and a fact nobody can hear is not a fact the card has stated. Two
-     readings and their last day, or the honest sentence when there are
-     none - which is the one the control below answers. */
-  let feltLabel = $derived(
-    reading.latestEpochDay === null
+  /* The last thing the person said about it, in their own word for it and
+     on the day they said it. Not a verdict and not an average (ADR-0012):
+     one reading, named, with the drawing below holding all of them. Where
+     there are none it is the honest sentence instead, which is the one the
+     control in the foot answers. */
+  let latestLabel = $derived(
+    reading.latest === null
       ? m.tryout_felt_none()
-      : `${m.tryout_felt_count({ n: reading.marks.length })} · ${m.tryout_felt_latest({ day: dayLabel(reading.latestEpochDay) })}`
+      : m.tryout_felt_last({ mood: moodName(reading.latest.mood), day: dayLabel(reading.latest.epochDay) })
   );
 </script>
 
@@ -79,23 +90,18 @@
          while the list holds still, which reads as a yank (DIRECTION.md
          tier 1). data-no-press is how that is said. -->
     <!-- No aria-label. One would replace the link's own content for a
-         screen reader, and the name, the day count and the date it counts
-         from are all inside it. -->
+         screen reader, and the name, the kind, the last reading and how
+         long it has run are all inside it. -->
     <a class="tc-face" href="/transition/tryouts/{tryout.id}" data-no-press data-open-tryout={tryout.id}>
-      <span class="tc-head">
+      <!-- The plate: what this tryout is, and what kind of thing that is.
+           The second line names the kind rather than a unit, because the
+           thing on the block is a name and a name has no unit. -->
+      <span class="tc-block" data-tryout-reading>
         <span class="tc-name">{tryout.label}</span>
-        <span class="kit-pill tc-kind-pill">{kindLabel}</span>
+        <span class="tc-kind">{kindLabel}</span>
       </span>
-      <!-- The number and the date it counts from, side by side: the block
-           is what the card reports and the date is what it is measured
-           against, which is the pairing every figure in the app keeps. -->
-      <span class="tc-reading">
-        <span class="tc-block" data-tryout-reading>
-          <span class="tc-n">{reading.dayCount}</span>
-          <span class="tc-unit">{unitLabel}</span>
-        </span>
-        <span class="tc-when">{sinceLabel}</span>
-      </span>
+      <span class="tc-latest" data-tryout-latest>{latestLabel}</span>
+      <span class="tc-when">{spanLabel}</span>
     </a>
     {#if ondelete}
       <button
@@ -112,12 +118,15 @@
 
   <TryoutFeltSenseArc {reading} />
 
-  <!-- What the drawing holds and the way to add to it, on one line: the
-       sentence is the reading written down and the control is what answers
-       it, and a full-width button under every card in a list is a second
-       primary action per row. -->
+  <!-- How many readings the drawing holds and the way to add to it, on one
+       line: the drawing is aria-hidden, so the count it holds and the day
+       of its last mark are both owed in text - the last mark is up on the
+       face and its tally is here. A full-width button under every card in a
+       list would be a second primary action per row. -->
   <div class="tc-foot">
-    <p class="tc-felt" data-tryout-felt>{feltLabel}</p>
+    {#if reading.marks.length}
+      <p class="tc-felt" data-tryout-felt>{m.tryout_felt_count({ n: reading.marks.length })}</p>
+    {/if}
     {#if onfeel}
       <button type="button" class="btn btn-ghost tc-feel" data-feel-today={tryout.id} onclick={onfeel}>
         <span>{m.tryout_feeling_today()}</span>
@@ -142,8 +151,9 @@
     gap: var(--space-3);
   }
 
-  /* The head and the block are the way in, and the drawing under them is
-     the card's own reading with nothing on it to reach. So the link's box
+  /* The plate and the two lines under it are the way in, and the drawing
+     below them is the card's own reading with nothing on it to reach. So
+     the link's box
      stays where its content is, for layout and for its accessible name,
      and its hit area is stretched over the arc and the sentence by a
      pseudo-element. The delete and the felt-sense control lift above it. */
@@ -168,54 +178,20 @@
     text-decoration: none;
   }
 
-  .tc-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    width: 100%;
-  }
+  /* The plate. The block is the flag stripe undiluted and the words on it
+     take the ink proven against that stripe rather than the role's
+     small-text ink, which is below 4.5:1 on most bands (role.ts).
 
-  .tc-name {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  /* No uppercase, no tracking. DIRECTION.md's own census names an
-     uppercase tracked label as the craft floor's tell and declines it. */
-  .tc-kind-pill {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    flex: 0 0 auto;
-  }
-
-  .tc-reading {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-width: 0;
-  }
-
-  /* The number on the card. The block is the flag stripe undiluted and the
-     words on it take the ink proven against that stripe rather than the
-     role's small-text ink, which is below 4.5:1 on most bands (role.ts). */
+     The whole width of the face rather than a fixed 92-150px, which is
+     what it took while it held a number: a name is somebody else's text
+     and any ceiling is a width some name does not fit in, so it wraps
+     inside the plate instead of being squeezed beside it. */
   .tc-block {
     display: flex;
-    flex: 0 0 auto;
     flex-direction: column;
-    align-items: center;
-    min-width: 92px;
-    /* A ceiling rather than a width: the block sizes to its own unit, which
-       keeps "days trying" on one line at 121px on a 390px screen and leaves
-       the date its own line beside it. The unit was "days of trying" and at
-       any width narrow enough to matter it broke as "days of / trying" - a
-       line ending on a preposition in forty-point type. It is the same
-       reading two words shorter. */
-    max-width: 150px;
-    text-align: center;
-    padding: var(--space-1) var(--space-3) var(--space-2);
+    align-items: flex-start;
+    width: 100%;
+    padding: var(--space-2) var(--space-3) var(--space-3);
     background: var(--role-draw, var(--accent));
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
@@ -225,23 +201,40 @@
     animation: kit-block-in var(--dur-slow) var(--ease-out) both;
   }
 
-  .tc-n {
+  /* The size a row-weight tile with no value gives its title
+     (direction-contract.test.ts holds the kit's own to the same token),
+     because that is what this plate is: a block whose whole content is
+     what the thing is called. Large text by WCAG's measure, so it answers
+     to 3:1 on the stripe, which every band clears. */
+  .tc-name {
     font-family: var(--font-display);
-    font-size: var(--text-3xl);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-display);
     letter-spacing: var(--display-track);
     line-height: 1.1;
-    font-variant-numeric: tabular-nums;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   /* 19px rather than the 15px a secondary line takes, because this one is
      written on the stripe itself. Not large text by WCAG's measure, so it
      owes 4.5:1 and gets it: --role-fill-ink is the heat ramp's deepest
-     step, held to 4.5:1 against its own fill by tests/kit-roles.test.ts. */
-  .tc-unit {
+     step, held to 4.5:1 against its own fill by tests/kit-roles.test.ts.
+     No uppercase, no tracking - DIRECTION.md's own census names an
+     uppercase tracked label as the craft floor's tell and declines it. */
+  .tc-kind {
     font-size: var(--text-block);
     font-weight: var(--weight-medium);
     line-height: 1.2;
+    margin-top: var(--space-1);
+  }
+
+  /* The last reading, in body size under the plate: the card's second
+     fact, and the one the drawing below it is a picture of. */
+  .tc-latest {
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
   }
 
   .tc-when {
