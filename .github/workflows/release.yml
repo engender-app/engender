@@ -148,6 +148,6 @@ jobs:
             printf '```\n'
           } > dist/release-body.md
           gh release create "${{ github.ref_name }}" \
-            --title "enGender ${{ steps.version.outputs.value }}" \
+            --title "engender ${{ steps.version.outputs.value }}" \
             --notes-file dist/release-body.md \
             dist/release/*

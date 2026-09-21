@@ -213,15 +213,31 @@
          twice. -->
     <div class="summary-page" data-summary-page>
       <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
-        <!-- The mark on paper: one ink and four rings, the count fixed
+        <!-- The letterhead: the mark and the name together, not the mark
+             alone (Alicja, 2026-09-21). This is the one printed surface
+             that goes to a stranger, so the sheet has to say what produced
+             it in words a reader who has never seen the app can read; the
+             journal book, which is the person's own keepsake, keeps the
+             mark alone.
+
+             The mark on paper is one ink and four rings, the count fixed
              whatever the flag is, so this header, the disguise fallback and
              a single-colour reproduction are the same shape every time
-             (ticket 38, ticket 50). It stays when the profile card takes
-             over as the header below - the letterhead is what says which
-             app printed the page, and the card says nothing about that.
-             Absent under disguise, leaving type, because this is the page
-             that most obviously leaves the device (ADR-0014). -->
-        <Mark size={36} mono />
+             (ticket 38, ticket 50). Inset from the corner rather than flush
+             with it: @page's margin is the paper's, and the letterhead sits
+             inside that again.
+
+             The whole lockup is absent under disguise, name included,
+             leaving the page its own title in type - this is the page that
+             most obviously leaves the device (ADR-0014), and a letterhead
+             reading "Notes" over a clinical summary would be a stranger
+             thing than none. -->
+        {#if !prefs.disguise}
+          <div class="print-lockup">
+            <Mark size={36} mono />
+            <span translate="no">{m.app_name()}</span>
+          </div>
+        {/if}
         <h1>{m.clinician_summary_title()}</h1>
         <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
@@ -401,11 +417,27 @@
 
     /* With demographics the profile card below is the header - the name,
        the period and the generated date are all on it, and printing them
-       twice was the defect this rule fixed. The mark is the one part that
-       is not repeated down there, so it stays and only the words go. */
+       twice was the defect this rule fixed. The letterhead is the one part
+       that is not repeated down there, so it stays and only the words of
+       this heading go. */
     .print-heading.has-demographics h1,
     .print-heading.has-demographics p {
       display: none;
+    }
+
+    /* The letterhead, inset from the corner of the sheet rather than flush
+       with it (Alicja, 2026-09-21). @page's own 15mm is the paper's margin;
+       this is the lockup standing off that, so the mark does not read as
+       something that fell off the edge. */
+    .print-lockup {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4) 0 var(--space-4) var(--space-4);
+      font-family: var(--font-display);
+      font-weight: var(--weight-display);
+      font-size: var(--text-lg);
+      letter-spacing: var(--display-track);
     }
 
     /* The hairline is a screen affordance for a document not yet handed

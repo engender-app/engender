@@ -1194,7 +1194,7 @@
      is 46px tall and its top is 64px from the bottom edge (16 of padding),
      which is 117px below the corner; the disc's chord there is
      sqrt(181^2 - 117^2) = 138px, so the word may run to 138px short of the
-     right edge. "enGender" at 48px is 242px wide (5.05px per font px), and
+     right edge. "engender" at 48px is 242px wide (5.05px per font px), and
      at 390px there are 252. Below 360px the sun draws at 0.82 (a 148px
      radius, a 92px chord at that height, 228px of room for a 210px word at
      320), and below 240px at 0.6, where the word at its 1.7rem floor sits

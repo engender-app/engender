@@ -140,12 +140,12 @@ const faviconPlate = `
 const launcherPlate = `
   <section>
     <h2>The launcher tile, under the three masks a home screen uses</h2>
-    <p>The adaptive icon is a white background and the sun as its foreground, with the 100 unit tile
-       mapped to the whole 108dp canvas. A round mask throws away exactly the corner the mark is
-       anchored to, so the innermost disc goes and the white band is clipped - accepted rather than
-       pulling the sun inward, because one geometry everywhere is worth more than a second setting
-       kept in sync. Eight of these ship, one per flag, and the home screen follows the palette from
-       the next cold start.</p>
+    <p>The launcher picks its own mask, so a file cannot know which shape will be cut out of it. The
+       black edge is not optional, so the whole stroked tile sits inside the circle every mask keeps -
+       Android guarantees the central 72dp of 108, and a 50 unit tile with its corners clears it. The
+       ground runs to all four corners behind it. What it costs is size: the sun is half what it is on
+       the install tile, with white around it. Eight of these ship, one per flag, and the home screen
+       follows the palette from the next cold start.</p>
     <div class="pair">
       ${['before', 'after']
         .map(
@@ -185,7 +185,9 @@ const html = `<!doctype html>
 <body>
   <h1>The app wears its mark</h1>
   <p class="lede">Phase 11 pre-production UI/UX ticket 50. Trans palette, light and dark, and only the
-     surfaces this ticket changed.</p>
+     surfaces this ticket changed. The name is lower case now - engender, not enGender - everywhere it
+     is written: the wordmark, the tab title, the launcher label, the install manifest, the release
+     title and both message catalogues.</p>
 
   <h2>What is not here, and why</h2>
   <ul>
@@ -207,7 +209,7 @@ const html = `<!doctype html>
   })}
   ${await pair('summary-print', {
     title: 'The clinician summary, on paper',
-    body: 'One shot rather than two: app.css\'s print block overrides the palette to black on white, so paper is paper whichever theme the app is wearing. The mono mark is four rings whatever the flag is. The words of this heading stay hidden when the profile card below repeats them - the mark is the one part the card does not repeat.'
+    body: 'The full lockup, mark and name, inset from the corner - this is the one printed surface that goes to a stranger, so it says in words what produced it. One shot rather than two: app.css\'s print block overrides the palette to black on white, so paper is paper whichever theme the app is wearing. The mono mark is four rings whatever the flag is. The words of the heading under it stay hidden when the profile card repeats them; the lockup is the part the card does not repeat.'
   })}
   ${await pair('book-print', {
     title: 'The journal book\'s cover',
