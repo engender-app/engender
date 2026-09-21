@@ -14,7 +14,14 @@
      carry three things at once and each one has its own channel: the fill
      is recency, a solid ring is the site tapped for this dose, and a
      dashed ring is where the last injection went. Nothing here says a site
-     is due. -->
+     is due.
+
+     Phase 11 ticket 48: the figure is the one body the app draws
+     (bodySilhouette.ts, ADR-0087) rather than a circle and five rounded
+     rectangles of this component's own. The dots stay dots - a rotation
+     site is a point on a body, not a region of one - but all twelve were
+     re-placed against the new contour, which is a different shape at a
+     different scale. injectionSiteMap.ts keeps everything about them. -->
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { m } from '$lib/paraglide/messages';
@@ -22,7 +29,8 @@
   import { recencyHeatLevel, recencySpan } from '$lib/data/metricRange';
   import { injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
   import { rampStyle } from './mapChannels';
-  import { sitePosition } from './injectionSiteMap';
+  import { SILHOUETTE_PATH } from './bodySilhouette';
+  import { MAP_DOT_SIZE, MAP_VIEW, MAP_WIDTH, sitePosition } from './injectionSiteMap';
 
   const listHeadId = $props.id();
 
@@ -72,25 +80,30 @@
   };
 </script>
 
-<div class="site-map" role="radiogroup" use:rovingRadio aria-label={m.dose_site_map_aria()}>
+<div
+  class="site-map"
+  role="radiogroup"
+  use:rovingRadio
+  aria-label={m.dose_site_map_aria()}
+  style="max-width:{MAP_WIDTH}px;aspect-ratio:{MAP_VIEW.width} / {MAP_VIEW.height};--map-dot:{MAP_DOT_SIZE}px"
+>
   <!-- Decorative: every site's name is on its button, so the silhouette
-       carries no information a screen reader needs. -->
-  <svg class="site-map-body" viewBox="0 0 100 150" aria-hidden="true" focusable="false">
-    <circle cx="50" cy="10" r="8.5" />
-    <!-- Torso, then the arms beside it: the deltoid dot is a shoulder, so
-         the arms start high enough to have one. -->
-    <rect x="33" y="20" width="34" height="50" rx="12" />
-    <rect x="19" y="24" width="12" height="46" rx="6" />
-    <rect x="69" y="24" width="12" height="46" rx="6" />
-    <!-- The pelvis: the hip and buttock dots need something to sit on, and
-         without it they floated beside the figure. -->
-    <rect x="32" y="66" width="36" height="22" rx="10" />
-    <!-- Thighs to the foot of the box, and no shins. Every one of the six
-         regions is above the knee, so the lower legs were 130px of picture
-         that carried no site and pushed the map past the height the sheet
-         can show at once. -->
-    <rect x="32" y="84" width="16" height="66" rx="8" />
-    <rect x="52" y="84" width="16" height="66" rx="8" />
+       carries no information a screen reader needs.
+
+       Two passes over the same path, as the body map does it: the first
+       fills and strokes it so the union of the silhouette's five pieces
+       keeps its outer contour, the second fills over the strokes so every
+       internal joint - the arm's overlap with the shoulder, the leg's with
+       the hip - goes. One 1px line, and it is the line whatever the figure
+       is scaled to. -->
+  <svg
+    class="site-map-body"
+    viewBox="0 0 {MAP_VIEW.width} {MAP_VIEW.height}"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path class="site-map-edge" d={SILHOUETTE_PATH} />
+    <path class="site-map-face" d={SILHOUETTE_PATH} />
   </svg>
 
   {#each INJECTION_SITES as site (site.key)}
@@ -172,22 +185,29 @@
 {/if}
 
 <style>
+  /* The box, the frame and the dot are all injectionSiteMap.ts's numbers,
+     set on the element rather than written here: its test spaces the dots
+     against the size the map renders at, and a second copy of that size in
+     a <style> block is a copy that can disagree with it. */
   .site-map {
     position: relative;
     width: 100%;
-    /* injectionSiteMap.ts spaces the dots against these two numbers in px,
-       and its test holds the closest pair a touch target and a gap apart.
-       The height is what the sheet can show at once; see MAP_HEIGHT. */
-    max-width: 280px;
-    aspect-ratio: 2 / 3;
     margin: 0 auto var(--space-2);
   }
   .site-map-body {
     width: 100%;
     height: 100%;
-    fill: var(--surface-2);
+  }
+  .site-map-edge {
+    fill: var(--outline);
     stroke: var(--outline);
-    stroke-width: 1;
+    stroke-width: 2px;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .site-map-face {
+    fill: var(--surface-2);
+    stroke: none;
   }
   .site-dot {
     position: absolute;
@@ -232,8 +252,8 @@
     position: absolute;
     inset: 50% auto auto 50%;
     transform: translate(-50%, -50%);
-    width: 22px;
-    height: 22px;
+    width: var(--map-dot);
+    height: var(--map-dot);
     transition:
       background var(--dur-fast) var(--ease-out),
       border-color var(--dur-fast) var(--ease-out);
