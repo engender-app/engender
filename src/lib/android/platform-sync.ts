@@ -65,6 +65,9 @@ export interface PlatformSyncDeps {
     quietHoursStart: string;
     quietHoursEnd: string;
     disguise: boolean;
+    /** The launcher icon follows the flag (ticket 50), which is why a
+        palette change reaches this module at all. */
+    palette: string;
     quickExit: boolean;
     allowScreenCapture: boolean;
   };
@@ -87,7 +90,7 @@ export interface PlatformSyncDeps {
     sync(payload: AndroidReminderSyncPayload): Promise<void>;
     consumeLaunchRoute(): Promise<{ route: string | null }>;
   };
-  androidDisguise: { setDisguised(options: { disguised: boolean }): Promise<void> };
+  androidDisguise: { setLauncherIdentity(options: { disguised: boolean; palette: string }): Promise<void> };
   androidQuickExit: { setEnabled(options: { enabled: boolean }): Promise<void> };
   androidScreenCapture: { setAllowed(options: { allowed: boolean }): Promise<void> };
   androidBackButton: {
@@ -344,7 +347,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
       console.error('Could not attach Android back-button handler', error);
     });
 
-  void deps.androidDisguise.setDisguised({ disguised: deps.prefs.disguise });
+  void deps.androidDisguise.setLauncherIdentity({ disguised: deps.prefs.disguise, palette: deps.prefs.palette });
   void deps.androidQuickExit.setEnabled({ enabled: deps.prefs.quickExit });
   void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture });
 

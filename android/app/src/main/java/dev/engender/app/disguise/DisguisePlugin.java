@@ -15,11 +15,12 @@ import dev.engender.app.widgets.QuickLogWidgetProvider;
 import dev.engender.app.widgets.TallyWidgetProvider;
 
 /**
- * Mirrors the disguise preference into the launcher alias PackageManager
- * reads. Called from a Svelte effect on every change to
- * prefs.disguise, including one that arrives through Archive restore rather
- * than the Settings toggle - restoring a disguised backup has to leave the
- * launcher disguised too, not just the in-app preference.
+ * Mirrors the two preferences that decide the app's launcher identity - the
+ * disguise and the palette - into the alias PackageManager reads. Called
+ * from a Svelte effect on every change to either, including one that
+ * arrives through Archive restore rather than the Settings toggle:
+ * restoring a disguised backup has to leave the launcher disguised too, not
+ * just the in-app preference.
  */
 @CapacitorPlugin(name = "Disguise")
 public class DisguisePlugin extends Plugin {
@@ -34,9 +35,11 @@ public class DisguisePlugin extends Plugin {
     );
 
     @PluginMethod
-    public void setDisguised(PluginCall call) {
+    public void setLauncherIdentity(PluginCall call) {
         boolean disguised = Boolean.TRUE.equals(call.getBoolean("disguised", false));
-        boolean changed = DisguiseAlias.apply(getContext(), disguised);
+        String palette = call.getString("palette", DisguiseAlias.DEFAULT_PALETTE);
+        boolean wasDisguised = DisguiseAlias.isDisguised(getContext());
+        boolean changed = DisguiseAlias.apply(getContext(), disguised, palette);
         call.resolve();
         // Killing the process is what makes the new alias the one the
         // launcher and recents show for this running app, not just for the
@@ -47,7 +50,15 @@ public class DisguisePlugin extends Plugin {
         // widgets (tickets 26, 33, 34) are the same category of exposure as
         // the launcher icon, so they get the same immediate refresh rather
         // than waiting on their own system-scheduled update.
-        if (changed) {
+        //
+        // And only for the disguise (ticket 50, ADR-0088). A flag change
+        // flips an alias too, and it must not restart the app under
+        // somebody: hiding the app has to take effect now, wearing a
+        // different flag does not. The cost is that the launcher shows the
+        // new icon from the next cold start rather than the same second,
+        // and recents can lag until then. The widgets are not branded by
+        // the flag either, so there is nothing for them to redraw.
+        if (changed && wasDisguised != disguised) {
             for (DisguisableWidgetProvider provider : WIDGET_PROVIDERS) provider.updateAll(getContext());
             Process.killProcess(Process.myPid());
         }

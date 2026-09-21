@@ -72,14 +72,27 @@
 
         </activity>
 
-        <!-- Disguise's launcher identity. The LAUNCHER category
+        <!-- The launcher identity. The LAUNCHER category
              lives on these aliases rather than on MainActivity itself, so
              which icon and label the system shows is a matter of which
              alias is enabled, not a string this app renders. Exactly one
              is enabled at a time - dev.engender.app.disguise.DisguiseAlias
-             is what flips that - and Android kills and restarts the app
-             process when it does, which is the "closes briefly to switch"
-             disguise_app_sub_android warns about. -->
+             is what flips that, and it enumerates these aliases off this
+             file rather than keeping a second list of them.
+
+             There is one per flag as well as the disguised one (ticket 50),
+             because the icon on a home screen follows the palette the
+             person picked. LauncherDefault is the default palette's, which
+             is why there is no LauncherTrans: an install that never changes
+             its flag then never flips an alias at all, and a launcher
+             shortcut pointing at a component that gets disabled is a
+             shortcut that disappears.
+
+             Android kills and restarts the app process on the disguise
+             flip, which is the "closes briefly to switch"
+             disguise_app_sub_android warns about. A flag change does not:
+             it is not urgent the way hiding the app is, so the launcher
+             picks the new icon up by the next cold start (ADR-0088). -->
         <activity-alias
             android:name=".disguise.LauncherDefault"
             android:targetActivity=".MainActivity"
@@ -102,6 +115,104 @@
             android:icon="@mipmap/ic_launcher_disguised"
             android:roundIcon="@mipmap/ic_launcher_disguised"
             android:label="@string/app_name_disguised">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherNonbinary"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_nonbinary"
+            android:roundIcon="@mipmap/ic_launcher_nonbinary"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherGenderfluid"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_genderfluid"
+            android:roundIcon="@mipmap/ic_launcher_genderfluid"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherBisexual"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_bisexual"
+            android:roundIcon="@mipmap/ic_launcher_bisexual"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherLesbian"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_lesbian"
+            android:roundIcon="@mipmap/ic_launcher_lesbian"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherPansexual"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_pansexual"
+            android:roundIcon="@mipmap/ic_launcher_pansexual"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherRainbow"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_rainbow"
+            android:roundIcon="@mipmap/ic_launcher_rainbow"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".disguise.LauncherAgender"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_agender"
+            android:roundIcon="@mipmap/ic_launcher_agender"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
