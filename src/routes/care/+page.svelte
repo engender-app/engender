@@ -1206,7 +1206,11 @@
        and captions land in two rows precisely when they are too close in x
        to share one. */
     --care-label-h: var(--touch-target);
-    --care-stem: var(--space-4);
+    /* Half what it was, because the caption row above pays the other half:
+       a caption is centred in its 48px row, so 8px of the row is air over
+       the words, and a 16px stem on top of that put the captions further
+       from their own line than they were before the row grew. */
+    --care-stem: var(--space-2);
     display: flex;
     flex-direction: column;
     /* A rail otherwise starts against the card's heading, which reads as the
@@ -1230,7 +1234,10 @@
   .care-lanes {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    /* The lane's own name is a 48px row now and carries the air between one
+       lane's captions and the next lane's heading, so the gap between lanes
+       is a separation rather than that air. */
+    gap: var(--space-2);
   }
 
   /* Today and the draw, down the whole rail: 1px in --text-2, which is what
@@ -1274,11 +1281,12 @@
   /* The drug the line belongs to, in its own stripe: the lane's colour and
      its name say the same thing, so neither is carrying it alone - two lanes
      wrap onto one stripe on a flag with fewer stripes than the person has
-     regimens (roles.ts), and the names still tell them apart. */
-  /* The name is the lane's own heading and the way down to that drug's
-     block, so it is a link the size of a control: the name, the chevron and
-     the 48px the two stand in, and no more - a link the width of the lane
-     would scale the whole rail on a press. */
+     regimens (roles.ts), and the names still tell them apart.
+
+     It is also the way down to that drug's block, so it is a link the size
+     of a control: the name, the chevron and the 48px the two stand in, and
+     no more - a link the width of the lane would scale the whole rail on a
+     press. */
   .care-lane-name {
     display: inline-flex;
     align-items: center;

@@ -113,60 +113,58 @@ for (const theme of ['light', 'dark']) {
   await shootElement('[data-care-rail]', '02-care-rail-zoomed', 195);
   await page.setViewportSize({ width: 390, height: 900 });
 
+  /* A band of the page between two elements, cropped: the same
+     tall-viewport trick, then a clip from the top of one to the bottom of
+     the other. Where the second is missing - the before build has no fold -
+     the crop ends at the first. */
+  const shootBand = async (fromSelector, toSelector, name, maxHeight = 900) => {
+    await strip();
+    const tall = await page.evaluate(() => {
+      const scroller = document.querySelector('[data-app-scroll-region]');
+      const hidden = scroller ? scroller.scrollHeight - scroller.clientHeight : 0;
+      return Math.min(window.innerHeight + hidden + 40, 12000);
+    });
+    await page.setViewportSize({ width: 390, height: tall });
+    await page.waitForTimeout(500);
+    const from = await page.locator(fromSelector).first().boundingBox();
+    const to = (await page.locator(toSelector).count()) ? await page.locator(toSelector).first().boundingBox() : null;
+    if (!from) {
+      errors.push(`${name}: nothing matched ${fromSelector}`);
+    } else {
+      const bottom = to ? to.y + to.height : from.y + from.height;
+      const file = `${outDir}/${name}-trans-${theme}.png`;
+      await page.screenshot({
+        path: file,
+        clip: { x: 0, y: from.y, width: 390, height: Math.min(bottom - from.y, maxHeight) }
+      });
+      shots.push(`${name}-trans-${theme}`);
+    }
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.waitForTimeout(300);
+  };
+
   /* --- 3. The Look back rail with the fold under it, closed: the rail is
-     unchanged and the fold is one row. */
+     unchanged and the fold is one row. Before, the crop is the rail
+     alone. */
   await settle('/stats');
   await page.waitForSelector('[data-lookback-rail]');
   await page.waitForTimeout(1500);
-  await shootElement('[data-lookback-rail] , [data-span-facts]', '03-lookback-fold-closed');
-  {
-    const rail = await page.locator('[data-lookback-rail]').boundingBox();
-    const fold = await page.locator('[data-span-facts]').boundingBox();
-    if (rail && fold) {
-      await strip();
-      const file = `${outDir}/03-lookback-rail-and-fold-trans-${theme}.png`;
-      await page.screenshot({
-        path: file,
-        clip: { x: 0, y: rail.y, width: 390, height: fold.y + fold.height - rail.y }
-      });
-      shots.push(`03-lookback-rail-and-fold-trans-${theme}`);
-    }
-  }
+  await shootBand('[data-lookback-rail]', '[data-span-facts]', '03-lookback-rail-and-fold');
 
-  /* --- 4. The fold open: the facts as rows, each with its kind and its
-     own dates, the current span's row ticked. */
+  /* --- 4. The fold open: the facts as rows, each with its kind and its own
+     dates - and --- 5. a row picked, with the span the rail now holds and
+     the tick on the row that set it. Neither exists before this ticket. */
   if (await page.locator('[data-span-facts-toggle]').count()) {
     await page.locator('[data-span-facts-toggle]').click();
     await page.waitForSelector('[data-span-fact]');
     await page.waitForTimeout(600);
-    const fold = await page.locator('[data-span-facts]').boundingBox();
-    if (fold) {
-      await strip();
-      const file = `${outDir}/04-lookback-fold-open-trans-${theme}.png`;
-      await page.screenshot({
-        path: file,
-        clip: { x: 0, y: fold.y, width: 390, height: Math.min(fold.height, 620) }
-      });
-      shots.push(`04-lookback-fold-open-trans-${theme}`);
-    }
+    await shootBand('[data-span-facts]', '[data-span-facts]', '04-lookback-fold-open', 620);
 
-    /* --- 5. A row selected: the span the rail now holds, and the tick on
-       the row that set it. */
     const row = page.locator('[data-span-fact="tryout"], [data-span-fact="regimen"]').first();
     if (await row.count()) {
       await row.click();
       await page.waitForTimeout(700);
-      const rail = await page.locator('[data-lookback-rail]').boundingBox();
-      const list = await page.locator('[data-span-facts]').boundingBox();
-      if (rail && list) {
-        await strip();
-        const file = `${outDir}/05-lookback-row-selected-trans-${theme}.png`;
-        await page.screenshot({
-          path: file,
-          clip: { x: 0, y: rail.y, width: 390, height: Math.min(list.y + 360 - rail.y, 900) }
-        });
-        shots.push(`05-lookback-row-selected-trans-${theme}`);
-      }
+      await shootBand('[data-lookback-rail]', '[data-span-facts]', '05-lookback-row-picked', 760);
     }
   }
 
@@ -187,13 +185,7 @@ for (const theme of ['light', 'dark']) {
       await page.locator('[data-span-facts-toggle]').click();
       await page.waitForSelector('[data-span-fact]');
       await page.waitForTimeout(600);
-      const fold = await page.locator('[data-span-facts]').boundingBox();
-      if (fold) {
-        await strip();
-        const file = `${outDir}/07-lookback-fold-polish-trans-${theme}.png`;
-        await page.screenshot({ path: file, clip: { x: 0, y: fold.y, width: 390, height: Math.min(fold.height, 520) } });
-        shots.push(`07-lookback-fold-polish-trans-${theme}`);
-      }
+      await shootBand('[data-span-facts]', '[data-span-facts]', '07-lookback-fold-polish', 520);
     }
   }
 
