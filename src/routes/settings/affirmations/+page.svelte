@@ -52,6 +52,7 @@
 
   <button
     class="btn btn-soft"
+    data-add-affirmation
     onclick={() => {
       addOpen = true;
       newText = '';

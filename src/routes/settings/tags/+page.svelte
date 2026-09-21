@@ -84,7 +84,7 @@
        catalogue (phase 11 ticket 38): five built-in groups carry 28 tags
        between them, and both a custom group and the button that creates one
        used to sit under all of it. -->
-  <button class="btn btn-soft" onclick={() => { groupSheet = true; newGroupName = ''; }}>
+  <button class="btn btn-soft" data-new-tag-group onclick={() => { groupSheet = true; newGroupName = ''; }}>
     <Icon name="plus" size={20} /><span>{m.tags_new_group()}</span>
   </button>
 
