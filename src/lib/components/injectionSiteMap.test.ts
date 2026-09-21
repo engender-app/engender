@@ -2,7 +2,18 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { INJECTION_SITES } from '../data/doseSchedule';
-import { MAP_HEIGHT, MAP_TOUCH_GAP, MAP_TOUCH_TARGET, MAP_WIDTH, siteCentre } from './injectionSiteMap';
+import { FIGURE_BOX, spansAt } from './bodySilhouette';
+import {
+  MAP_DOT_SIZE,
+  MAP_HEIGHT,
+  MAP_SCALE,
+  MAP_TOUCH_GAP,
+  MAP_TOUCH_TARGET,
+  MAP_VIEW,
+  MAP_WIDTH,
+  siteCentre,
+  sitePoint
+} from './injectionSiteMap';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -59,6 +70,58 @@ describe('injection site map layout', () => {
       expect(x, site.key).toBeLessThanOrEqual(MAP_WIDTH - half);
       expect(y, site.key).toBeGreaterThanOrEqual(half);
       expect(y, site.key).toBeLessThanOrEqual(MAP_HEIGHT - half);
+    }
+  });
+
+  it('keeps every dot on the body rather than over the edge of it', () => {
+    // Ticket 48: the dots are placed against the shared silhouette now, and
+    // a dot that straddles a contour reads as a mistake wherever it is. What
+    // has to be inside is the visible dot rather than the touch target,
+    // which is invisible and may hang over an arm - and the whole of it
+    // rather than its centre, because the shoulder and the flank both run
+    // away from a dot faster than its own rim. A centre comfortably inside
+    // the body can still be a dot with a bite out of it, which is what the
+    // deltoid dot had at the first placement.
+    const radius = MAP_DOT_SIZE / 2 / MAP_SCALE;
+    const spanAround = (x: number, y: number) => spansAt(y).find(([left, right]) => x >= left && x <= right);
+    for (const site of INJECTION_SITES) {
+      const { x, y } = sitePoint(site);
+      const home = spansAt(y).find(([left, right]) => x - radius >= left && x + radius <= right);
+      expect(home, `${site.key} at (${x}, ${y}) is not wholly inside one part of the body`).toBeDefined();
+      for (let i = 0; i < 24; i += 1) {
+        const angle = (i / 24) * 2 * Math.PI;
+        const rimX = x + radius * Math.cos(angle);
+        const rimY = y + radius * Math.sin(angle);
+        const on = spanAround(rimX, rimY);
+        const same = on && home && on[1] >= home[0] && on[0] <= home[1];
+        expect(same, `${site.key} has its rim off the body at (${rimX.toFixed(1)}, ${rimY.toFixed(1)})`).toBe(true);
+      }
+    }
+  });
+
+  it('draws the whole of the figure it frames', () => {
+    // The map shows the top of the silhouette rather than all of it (see
+    // MAP_VIEW), so the frame has to end below the lowest dot by enough to
+    // hold that dot's own touch target - a target clipped by the foot of
+    // the box is the same defect as one hanging off the side.
+    const lowest = Math.max(...INJECTION_SITES.map((site) => siteCentre(site).y));
+    expect(MAP_HEIGHT - lowest).toBeGreaterThanOrEqual(MAP_TOUCH_TARGET / 2);
+    // And the frame is a frame rather than a crop of one: the silhouette is
+    // taller than this, but never wider, so nothing is cut off the sides.
+    expect(MAP_VIEW.width).toBe(FIGURE_BOX.width);
+    expect(MAP_VIEW.height).toBeLessThan(FIGURE_BOX.height);
+  });
+
+  it('draws no body of its own', () => {
+    // Acceptance line one, as a claim a test can hold: the only body in the
+    // app is bodySilhouette.ts, so the map's own SVG may carry the shared
+    // path and nothing else that draws.
+    const source = readFileSync(root + '/src/lib/components/InjectionSiteMap.svelte', 'utf8');
+    const svg = /<svg[\s\S]*?<\/svg>/.exec(source)?.[0];
+    expect(svg, 'InjectionSiteMap.svelte draws no SVG at all').toBeDefined();
+    expect(svg).toContain('SILHOUETTE_PATH');
+    for (const shape of ['<circle', '<rect', '<ellipse', '<polygon', '<polyline', '<line']) {
+      expect(svg, `the map draws its own ${shape}`).not.toContain(shape);
     }
   });
 
