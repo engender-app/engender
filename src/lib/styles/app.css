@@ -1413,13 +1413,20 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     margin-bottom: var(--space-4);
   }
 
-  /* A direct child only. The journal book prints the mark on its own above
-     its title and wants a gap under it; the clinician summary prints a
-     lockup of the mark and the name side by side, which owns its own
-     spacing, and a margin under the mark there would push it off the
-     baseline of the word beside it. */
-  .print-heading > .mark {
-    margin-bottom: var(--space-2);
+  /* The letterhead (PrintLetterhead.svelte), which both printing surfaces
+     put at the top of their print-only heading. Inset from the corner of
+     the sheet rather than flush with it (Alicja, 2026-09-21): @page's own
+     15mm is the paper's margin, and this is the lockup standing off that,
+     so the mark does not read as something that fell off the edge. */
+  .print-lockup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) 0 var(--space-4) var(--space-4);
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    font-size: var(--text-lg);
+    letter-spacing: var(--display-track);
   }
 
   .screen {

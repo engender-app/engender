@@ -22,12 +22,11 @@
      Read off the preference, the same belt-and-braces check Home makes on
      the sun.
 
-     The crop. `bare` by default, which is what the printed surfaces take -
-     one ink on paper, and a square around it would be a second thing to
-     reproduce. About asks for the `tile`, because what it is showing is the
-     app's own icon beside the app's own name, and the tile's black edge is
-     not optional anywhere it has an outside (Alicja, 2026-09-21: "its
-     supposed to be black always").
+     The crop. `tile` everywhere the app draws one, because there is no
+     variant of the mark without its square - "THE STROKE IS AN INTEGRAL
+     PART OF THE LOGO! THERE IS NO LOGO WITHOUT THE STROKE!" (Alicja,
+     2026-09-21). `mono` is the same drawing in one ink and with no ground,
+     the edge included, which is what paper takes.
 
      It does not move, on any surface. There is no entrance, no hover and no
      view-transition name here, and mark.test.ts reads this file to keep it
@@ -38,7 +37,7 @@
 
   let {
     size = 48,
-    crop = 'bare' as MarkCrop,
+    crop = 'tile' as MarkCrop,
     /* One ink and four rings: what a printed page and any single-colour
        reproduction take. `currentColor` rather than a hex, so the print
        stylesheet's own black is what reaches the paper. */

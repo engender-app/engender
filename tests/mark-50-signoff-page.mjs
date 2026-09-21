@@ -199,6 +199,17 @@ const html = `<!doctype html>
     <li><strong>Under disguise all of it is absent</strong>, leaving the name in type.</li>
   </ul>
 
+  <h2>The white glitch at the corners</h2>
+  <p>Fixed, and the cause was compositing rather than geometry: Chromium antialiases a clip path per
+     element, so the white ground kept a boundary of its own at the silhouette that the edge stroked
+     inside the same clip could not cover - partial white plus partial ink is lighter than ink. The
+     clip now stops on the edge's centre line and the edge is drawn outside it, so the mark has one
+     antialiased boundary. Measured on the diagonal out of the corner at 512px on a dark page, the
+     pixel across the edge was rgb(58,87,99) against a ground of rgb(34,37,44); it is rgb(17,19,23)
+     now, which is what ink blending into a dark page is supposed to look like.
+     <code>npm run test:mark-edge</code> walks out of the mark at four sizes, four corners and four
+     edges, and fails on anything brighter than the page.</p>
+
   ${await pair('about-light', {
     title: 'About, light',
     body: 'The icon, in the flag this person picked: the white tile and its black edge, because what the row shows is the app\'s own icon beside its own name and version. The edge is not optional anywhere the drawing has an outside.'
@@ -213,7 +224,7 @@ const html = `<!doctype html>
   })}
   ${await pair('book-print', {
     title: 'The journal book\'s cover',
-    body: 'Same mark, above the book\'s own title and range.'
+    body: 'The same lockup. This one is a keepsake rather than a document, and it says the name for the same reason: a book somebody is still holding in ten years has nothing else on it to say where it came from.'
   })}
   ${faviconPlate}
   ${launcherPlate}
