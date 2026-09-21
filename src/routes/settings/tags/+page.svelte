@@ -29,6 +29,9 @@
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
     journal.tags.reorder(g.key, ids);
   }
+  let customGroups = $derived(vocabulary.tagGroups.filter((g) => !g.builtIn));
+  let builtInGroups = $derived(vocabulary.tagGroups.filter((g) => g.builtIn));
+
   let addTarget = $state<string | null>(null);
   let newLabel = $state('');
   let groupSheet = $state(false);
@@ -38,7 +41,7 @@
 <div class="screen">
   <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
-  {#each vocabulary.tagGroups as g (g.key)}
+  {#snippet groupSection(g: TagGroup)}
     <SectionHeading text={g.builtIn ? g.name : `${g.name} · ${m.custom_suffix()}`}>
       {#snippet action()}
         <button class="icon-btn" aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
@@ -49,7 +52,6 @@
     <div class="managed-tags">
       {#each g.tags as tg, i (tg.id)}
         <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
-          <span class="drag-dots" aria-hidden="true"><Icon name="dots" size={14} /></span>
           <span class="managed-label">{tg.label}</span>
           {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
           <span class="managed-actions">
@@ -76,11 +78,18 @@
         </div>
       {/each}
     </div>
-  {/each}
+  {/snippet}
 
-  <button class="btn btn-soft" onclick={() => { groupSheet = true; newGroupName = ''; }}>
+  <!-- Your own groups and the way to make one come before the built-in
+       catalogue (phase 11 ticket 38): five built-in groups carry 28 tags
+       between them, and both a custom group and the button that creates one
+       used to sit under all of it. -->
+  <button class="btn btn-soft" data-new-tag-group onclick={() => { groupSheet = true; newGroupName = ''; }}>
     <Icon name="plus" size={20} /><span>{m.tags_new_group()}</span>
   </button>
+
+  {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
+  {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
 
   <Sheet open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
