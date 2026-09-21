@@ -289,7 +289,8 @@ for (const palette of PALETTES) {
        the whole figure with its key, and the list. Asked for by Alicja on
        2026-09-02 - "no screen with a list visible" - and it is the shot
        that shows what the figure's height costs, which is why the figure is
-       420px and not the 560px it was. */
+       432px and frames the silhouette from the crown to just above the knee
+       rather than drawing all 176 units of it (ticket 48). */
     if (palette === 'trans') {
       for (const [name, handle] of [
         ['map', '.site-map'],

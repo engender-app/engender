@@ -6979,30 +6979,65 @@ try {
 } catch (e) { fail('bar clearance survives a full scroll', e); }
 });
 
-await flow('Home bleeds decoration only', async () => {
+await flow('Home keeps the flag out of the status bar', async () => {
 try {
   await fresh('/');
   await withSimulatedInsets(async () => {
     const app = await appFrame();
-    /* Home's flag sun is the one deliberate bleed, and it is worth its own
-       check: if it ever stopped crossing the inset, the sun's centre would
-       drift off the window corner and every ring would show as more than a
-       quarter. Decoration crosses the inset, the greeting under it does
-       not. */
-    const { headerTop, greetingTop } = await page.evaluate(() => ({
-      headerTop: document.querySelector('[data-home-header]').getBoundingClientRect().top,
-      greetingTop: document.querySelector('[data-home-hero]').getBoundingClientRect().top
-    }));
+    /* This used to assert the opposite. Home's field was the one deliberate
+       bleed, so the sun's centre landed on the window's own corner and the
+       rings ran up behind the status bar - and the bar's icons, which
+       Android draws in one tint over whatever the app painted, crossed two
+       to four of them and disappeared (carpet ticket 154; measured on a
+       Pixel 10a, where the window carries EDGE_TO_EDGE_ENFORCED and this
+       app's AppearanceRegion is empty, meaning white icons).
+
+       So the claim is now the plain one every other screen makes with it,
+       every field having stopped crossing the inset in the same pass:
+       nothing Home paints, decoration included, starts above the line the
+       field's own floor sets. */
+    const { headerTop, sunPaintedTop, greetingTop } = await page.evaluate(() => {
+      /* The outermost ring is a whole disc in layout terms and only its
+         bottom-left quarter is painted (clip-path on .sun i), so the box
+         reaches a full radius above the centre while nothing up there is
+         drawn. The painted edge is the centre line, which is the box's
+         own middle. */
+      const ring = document.querySelector('[data-flag-sun] i');
+      const box = ring?.getBoundingClientRect();
+      return {
+        headerTop: document.querySelector('[data-home-header]').getBoundingClientRect().top,
+        sunPaintedTop: box ? box.top + box.height / 2 : null,
+        greetingTop: document.querySelector('[data-home-hero]').getBoundingClientRect().top
+      };
+    });
+    /* Not the whole cutout: `--field-bleed-top` is the slack the status bar
+       leaves under its own icons, which every field takes back
+       (theme/base.css). At this CUTOUT that is the full 12px, so the line
+       the field and the sun have to stay below is the cutout less that. */
+    const bleed = await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--field-bleed-top'))
+    );
     const safeFrom = app.top + CUTOUT.top;
-    if (headerTop >= safeFrom) {
-      throw new Error(`the flag sun's header stops ${headerTop - safeFrom}px short of the corner`);
+    const fieldFloor = safeFrom - bleed;
+    if (headerTop < fieldFloor) {
+      throw new Error(
+        `Home's field starts ${fieldFloor - headerTop}px above its floor in a ${CUTOUT.top}px cutout (bleed ${bleed})`
+      );
+    }
+    if (sunPaintedTop === null) {
+      throw new Error('Home drew no sun to measure');
+    }
+    /* Half a pixel of slack: the ring's diameter can be fractional, so the
+       centre line lands on a half pixel while the field's top does not. */
+    if (sunPaintedTop < fieldFloor - 0.5) {
+      throw new Error(`the sun paints ${fieldFloor - sunPaintedTop}px above the field's floor`);
     }
     if (greetingTop < safeFrom) {
       throw new Error(`the greeting sits ${safeFrom - greetingTop}px inside the cutout`);
     }
-    ok('the flag sun bleeds into the inset and the greeting under it does not');
+    ok('Home starts below the inset, sun included, so the status bar sits on the page');
   });
-} catch (e) { fail('Home bleeds decoration only', e); }
+} catch (e) { fail('Home keeps the flag out of the status bar', e); }
 });
 
 /* The one screen over the unprompted registry (phase 6 ticket 04, merged

@@ -15,6 +15,7 @@ export const androidPluginOwners = {
   print: 'print/android-bridge',
   sensitiveClipboard: 'data/recovery-key-clipboard-bridge',
   permissions: 'permissions/android-bridge',
+  statusBar: 'android/status-bar-bridge',
   // Official @capacitor/app plugin, not one of ours - imported directly
   // from that package rather than through registerAndroidPlugin() below,
   // but still asserted at startup like every other required plugin
@@ -44,6 +45,7 @@ const androidPluginRegistry = [
   { name: 'Print', owner: androidPluginOwners.print },
   { name: 'SensitiveClipboard', owner: androidPluginOwners.sensitiveClipboard },
   { name: 'Permissions', owner: androidPluginOwners.permissions },
+  { name: 'StatusBarAppearance', owner: androidPluginOwners.statusBar },
   { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 

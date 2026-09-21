@@ -672,7 +672,7 @@
      frame this value is read on: the top inset, the field's own 8 above the
      title, a one-line title at 48 set solid, and the field's 16 under it.
      A two-line title measures taller and travels there from here. */
-  --blind-edge: calc(var(--inset-top) + var(--space-2) + 46px + var(--space-4));
+  --blind-edge: calc(var(--space-2) + 46px + var(--space-4));
 }
 
 /* 48 in the display face at 800, tracked one step tighter than the scale's
@@ -772,7 +772,7 @@
    addresses and its composition is the pad's rather than the screen's. */
 @media (max-height: 639px) {
   .gate {
-    --blind-edge: calc(var(--inset-top) + var(--space-2) + 22px + var(--space-3));
+    --blind-edge: calc(var(--space-2) + 22px + var(--space-3));
   }
   .gate-title {
     font-size: var(--text-xl);
