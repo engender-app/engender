@@ -41,6 +41,7 @@
   } from '$lib/data/journal/journalBook';
   import type { WrappedCardContent } from '$lib/data/wrappedCard';
   import Icon from '$lib/components/Icon.svelte';
+  import PrintLetterhead from '$lib/components/PrintLetterhead.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import JournalBookPhoto from '$lib/components/JournalBookPhoto.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -231,6 +232,7 @@
     {/if}
 
     <div class="print-heading">
+      <PrintLetterhead />
       <h1>{m.journal_book_title()}</h1>
       <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
     </div>

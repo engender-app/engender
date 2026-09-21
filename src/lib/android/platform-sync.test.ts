@@ -353,6 +353,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
       disguise: false,
+      palette: 'trans',
       quickExit: false,
       allowScreenCapture: false
     },
@@ -368,7 +369,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       sync: vi.fn().mockResolvedValue(undefined),
       consumeLaunchRoute: vi.fn().mockResolvedValue({ route: null })
     },
-    androidDisguise: { setDisguised: vi.fn().mockResolvedValue(undefined) },
+    androidDisguise: { setLauncherIdentity: vi.fn().mockResolvedValue(undefined) },
     androidQuickExit: { setEnabled: vi.fn().mockResolvedValue(undefined) },
     androidScreenCapture: { setAllowed: vi.fn().mockResolvedValue(undefined) },
     androidBackButton: {
@@ -503,9 +504,25 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
-    expect(deps.androidDisguise.setDisguised).toHaveBeenCalledWith({ disguised: false });
+    expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans' });
     expect(deps.androidQuickExit.setEnabled).toHaveBeenCalledWith({ enabled: false });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
+  });
+
+  test('hands the launcher both halves of its identity, so the icon follows the flag', async () => {
+    /* Ticket 50: the launcher alias is the palette's unless disguise is on,
+       in which case it is the disguised one whatever the flag says. Both
+       values travel on one call rather than two, because the native side
+       has to decide between them - a flag cannot quietly outrank a
+       disguise by arriving second. */
+    const deps = makeDeps({ prefs: { ...makeDeps().prefs, palette: 'nonbinary' } });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+
+    expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({
+      disguised: false,
+      palette: 'nonbinary'
+    });
   });
 
   test('re-syncs screen-capture when the preference changes', async () => {

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { SUN_OUTER, parseMotifStripes, sunRings } from './flagSun';
+import { SUN_OUTER, parseMotifStripes, ringRadii, sunRings } from './flagSun';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -20,6 +20,36 @@ function realPalettes(): Record<string, string[]> {
 }
 
 const palettes = realPalettes();
+
+describe('ringRadii', () => {
+  /* The ring rule itself, lifted out of sunRings so the mark
+     (src/lib/components/mark.ts) draws from the same function rather than
+     from a second copy of the same arithmetic. Held against the flag
+     lengths the app actually ships - 3 stripes (pansexual) up to 7
+     (rainbow, agender) - because the shortest flag is where the rule binds
+     first. */
+  it('gives one radius per ring, outermost first, down to one band', () => {
+    for (let n = 3; n <= 7; n++) {
+      const radii = ringRadii(n, 100);
+      expect(radii, `n ${n}`).toHaveLength(n);
+      expect(radii[0], `n ${n} outermost`).toBe(100);
+      expect(radii.at(-1), `n ${n} innermost`).toBeCloseTo(100 / n);
+    }
+  });
+
+  it('steps every ring down by one equal band', () => {
+    for (let n = 3; n <= 7; n++) {
+      const radii = ringRadii(n, 100);
+      for (let i = 1; i < n; i++) {
+        expect(radii[i - 1] - radii[i], `n ${n} ring ${i}`).toBeCloseTo(100 / n);
+      }
+    }
+  });
+
+  it('scales with its outer radius rather than with a fixed step', () => {
+    expect(ringRadii(5, 50)).toEqual(ringRadii(5, 100).map((r) => r / 2));
+  });
+});
 
 describe('sunRings', () => {
   it('finds all 8 palettes to test against - the parser has drifted otherwise', () => {
@@ -40,6 +70,13 @@ describe('sunRings', () => {
       const rings = sunRings(stripes, false);
       expect(rings[0].diameter, `${name} outermost`).toBe(SUN_OUTER);
       expect(rings.at(-1)!.diameter, `${name} innermost`).toBeCloseTo(SUN_OUTER / stripes.length);
+    }
+  });
+
+  it('draws the same rule ringRadii states, at the sun\'s own size', () => {
+    for (const [name, stripes] of Object.entries(palettes)) {
+      const drawn = sunRings(stripes, false).map((ring) => ring.diameter);
+      expect(drawn, name).toEqual(ringRadii(stripes.length, SUN_OUTER / 2).map((r) => r * 2));
     }
   });
 

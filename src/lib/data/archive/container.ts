@@ -211,10 +211,10 @@ export async function readArchiveHeader(
   reader: ByteReader
 ): Promise<{ header: ArchiveHeader; headerBytes: Uint8Array<ArrayBuffer> }> {
   const prefix = await reader.readExactly(PREFIX_LENGTH).catch(() => {
-    throw new UnsupportedArchiveError('not-an-archive', 'this file is not a enGender archive');
+    throw new UnsupportedArchiveError('not-an-archive', 'this file is not a engender archive');
   });
   if (!MAGIC.every((byte, i) => prefix[i] === byte)) {
-    throw new UnsupportedArchiveError('not-an-archive', 'this file is not a enGender archive');
+    throw new UnsupportedArchiveError('not-an-archive', 'this file is not a engender archive');
   }
 
   const view = new DataView(prefix.buffer, prefix.byteOffset);
@@ -225,7 +225,7 @@ export async function readArchiveHeader(
   if (formatVersion > ARCHIVE_FORMAT_VERSION) {
     throw new UnsupportedArchiveError('newer-version', 'this archive was made by a newer version of the app');
   }
-  if (formatVersion < 1) throw new UnsupportedArchiveError('not-an-archive', 'this file is not a enGender archive');
+  if (formatVersion < 1) throw new UnsupportedArchiveError('not-an-archive', 'this file is not a engender archive');
 
   const jsonLength = view.getUint32(MAGIC.length + 2);
   if (jsonLength > MAX_HEADER_JSON) throw new CorruptArchiveError('the archive header is not readable');

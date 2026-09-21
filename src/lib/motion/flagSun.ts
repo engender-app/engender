@@ -20,6 +20,16 @@ interface SunRing {
   breatheDelay: number;
 }
 
+/** The ring rule on its own: `n` radii, outermost first, each one band
+    thinner than the last, so the innermost is a disc exactly one band
+    across. Exported because the app draws this rule twice and must not
+    hold it twice - Home's sun below, and the mark
+    ($lib/components/mark.ts), which is the same drawing cropped to a tile
+    and is why opening the app completes what the launcher icon started. */
+export function ringRadii(n: number, outer: number): number[] {
+  return Array.from({ length: n }, (_, i) => (outer * (n - i)) / n);
+}
+
 /** One ring per stripe, outermost stripe outermost, all equal radial
     thickness: the innermost ring is a disc whose radius is exactly one
     band, carrying the same weight as every ring around it, the way a
@@ -28,9 +38,9 @@ interface SunRing {
     of the same colour, which reads as one thicker band - its 2:1:2
     proportion for free, no special-casing here. */
 export function sunRings(stripes: string[], dark: boolean): SunRing[] {
-  const n = stripes.length;
+  const radii = ringRadii(stripes.length, SUN_OUTER / 2);
   return stripes.map((hex, i) => ({
-    diameter: (SUN_OUTER * (n - i)) / n,
+    diameter: radii[i] * 2,
     color: hex,
     inDelay: i * 0.11,
     breatheDelay: i * 0.11 + 0.85
