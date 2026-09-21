@@ -23,7 +23,12 @@
      ends of the ramp are where a mark has least to work with.
 
    Run: node tests/body-map-gallery.mjs [--out <abs dir>] [--palette trans]
-   Default out is .claude/ticket40, which is gitignored and durable. */
+   Default out is .claude/ticket40, which is gitignored and durable.
+
+   Phase 11 ticket 47 redrew what this shoots - the figure is one silhouette
+   and a panel is a band of it, clipped - and the probes below follow the
+   elements that carries: a panel's fill and its hairline are one rect, and
+   the picked edge is a pass of its own over every fill. */
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -188,7 +193,10 @@ const MIXED = `(() => {
     const declared = s.getPropertyValue('--region-fill').trim();
     const fill = declared || card;
     const onFigure = el.hasAttribute('data-region-art');
-    const drawn = onFigure ? el.querySelector('.region-tile rect') : el.querySelector('.region-swatch');
+    /* On the figure a panel is a band of the silhouette clipped to it, and
+       its own outline is the hairline that parts it from its neighbours; in
+       the cluster it is still the swatch and its border. */
+    const drawn = onFigure ? el.querySelector('.region-tile') : el.querySelector('.region-swatch');
     const drawnStyle = getComputedStyle(drawn);
     const edge = onFigure ? drawnStyle.stroke : drawnStyle.borderTopColor;
     out.push({
@@ -234,14 +242,17 @@ for (const theme of THEMES) {
   mixed.push(...(await page.evaluate(MIXED)).map((row) => ({ theme, ...row })));
 }
 
-/* Selection, shot rather than described: the picked shape's stroke and fill
-   against a neighbour's, so the two channels can be told apart on a still. */
-await dress('light');
+/* Selection, shot rather than described: the picked panel's edge and fill
+   against a neighbour's, so the two channels can be told apart on a still.
+   In both themes, because the edge is --text and the fill is a ramp step,
+   and the pair swaps which of them is the darker of the two. */
 await page.locator('[data-scene-figure="saturated"] [data-region="hips_waist"]').click();
-await page.waitForTimeout(500);
-await page
-  .locator('[data-scene-figure="saturated"]')
-  .screenshot({ path: `${outDir}/shots/figure-selected-light.png` });
+for (const theme of THEMES) {
+  await dress(theme);
+  await page
+    .locator('[data-scene-figure="saturated"]')
+    .screenshot({ path: `${outDir}/shots/figure-selected-${theme}.png` });
+}
 
 await writeFile(`${outDir}/contrast.json`, JSON.stringify(contrast, null, 2));
 await writeFile(`${outDir}/mixed.json`, JSON.stringify(mixed, null, 2));
