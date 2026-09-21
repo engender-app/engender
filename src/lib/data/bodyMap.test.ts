@@ -4,7 +4,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { regionReading, type RegionSides } from './bodyMap.ts';
+import { regionReading, regionSummary, type RegionSides } from './bodyMap.ts';
 
 const sides = (over: Partial<RegionSides> = {}): RegionSides => ({
   region: 'chest',
@@ -94,4 +94,50 @@ test('an exact tie on both count and intensity lands on dysphoria, deterministic
   assert.equal(reading.side, 'dysphoria');
   assert.equal(reading.value, 50);
   assert.equal(reading.mixed, true);
+});
+
+/* What the words beside the figure say (phase 11 pre-production UI/UX
+   ticket 30). The figure paints a region's reading and the sentence under it
+   reads the same reading out, so both come off one answer rather than two
+   near-identical guards - and "nothing here" has to survive a region the
+   range never mentions, which is most of them on a quiet month. */
+
+test('a region the range never mentions has nothing to say', () => {
+  assert.deepEqual(regionSummary(undefined), { kind: 'none' });
+});
+
+test('a region present with no side is the same nothing', () => {
+  assert.deepEqual(regionSummary(regionReading(sides())), { kind: 'none' });
+});
+
+/* The count is the count of readings the mean is of, which for a region that
+   went both ways is the winning side's alone: four dysphoria readings
+   averaging 70 and one euphoria reading averaging 90 is an average of four,
+   and a sentence pairing 70 with five readings would be an average of four
+   called an average of five. The region's whole count stays on the reading
+   for "most marked" to sort by (lookBackReadings.ts). */
+test('a reading carries the side, the count behind its mean, and both ways', () => {
+  const reading = regionReading(
+    sides({ dysphoriaCount: 4, dysphoriaMean: 70, euphoriaCount: 1, euphoriaMean: 90 })
+  );
+  assert.equal(reading.count, 5);
+  assert.deepEqual(regionSummary(reading), {
+    kind: 'reading',
+    axis: 'dysphoria',
+    value: 70,
+    mixed: true,
+    count: 4
+  });
+});
+
+/* The scale is native and whole (ADR-0012, ADR-0081): a mean of four
+   readings is a fraction and nothing on this screen shows one. */
+test('the mean is rounded to the scale a person reads', () => {
+  const summary = regionSummary(regionReading(sides({ euphoriaCount: 3, euphoriaMean: 61.666_67 })));
+  assert.deepEqual(summary, { kind: 'reading', axis: 'euphoria', value: 62, mixed: false, count: 3 });
+});
+
+test('a single reading is a reading, not a mean of many', () => {
+  const summary = regionSummary(regionReading(sides({ dysphoriaCount: 1, dysphoriaMean: 20 })));
+  assert.deepEqual(summary, { kind: 'reading', axis: 'dysphoria', value: 20, mixed: false, count: 1 });
 });

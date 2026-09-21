@@ -12,6 +12,7 @@
    wording, and vocabulary.ts joins them for the screens. */
 
 import { m } from '$lib/paraglide/messages';
+import type { BodyRegionAxis } from '$lib/data/types';
 import type {
   BuiltInAffirmationKey,
   BuiltInBodyRegionKey,
@@ -273,6 +274,13 @@ const HAIR_SCALE_NAME: Record<HairScale, Message> = {
 /** The name of a published scale, or of the option for a pattern neither
     of them describes. */
 export const hairScaleName = (scale: string): string => lookup(HAIR_SCALE_NAME, scale);
+
+/** Which side of the midpoint a body-region reading fell on, in words
+    (ADR-0081). One place, because the figure speaks it in a panel's
+    accessible name and the map screen writes it into the sentence beside
+    the figure, and the two are the same word. */
+export const bodyRegionAxisName = (axis: BodyRegionAxis): string =>
+  axis === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
 
 /* One descriptive line per scale, so a person can tell which one describes
    what they see without leaving the screen to look either up. What each

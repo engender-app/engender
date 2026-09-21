@@ -42,7 +42,8 @@
     dayAxisScrubLabel
   } from '$lib/components/kit/dayAxisLabel';
   import { crossfade, resize } from '$lib/motion/reveal';
-  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
+  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN, regionSummary } from '$lib/data/bodyMap';
+  import { bodyRegionAxisName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -153,6 +154,61 @@
      figure and the charts can never disagree about which entries are in
      view. */
   let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, spanTo, modeFilter));
+
+  /* What the figure is saying about the region that is picked, in words
+     (phase 11 pre-production UI/UX ticket 30). Before this the screen named
+     the pick once, in the heading over the two charts - which is under the
+     mode filter and, on a 390px phone, under the fold - so a tap on a panel
+     answered with a colour and nothing else, and the name of the thing you
+     had just selected was somewhere you had to scroll to find.
+
+     The same reading the panel is painted from, off one answer rather than a
+     second pass over the same rows (bodyMap.ts's regionSummary): the fill,
+     the accessible name on the button and this sentence can then only ever
+     agree. A region the range never mentions is absent from the rows
+     entirely, and says so - never a zero, which on this scale is a reading. */
+  let selectedSummary = $derived(regionSummary(mapQuery.rows.find((r) => r.region === region)));
+  let summaryText = $derived.by(() => {
+    if (selectedSummary.kind === 'none') return m.body_map_selected_none();
+    const sentence = m.body_map_selected_reading({
+      count: selectedSummary.count,
+      axis: bodyRegionAxisName(selectedSummary.axis),
+      value: String(selectedSummary.value)
+    });
+    /* The second sentence rather than six more plural variants: whether a
+       region went both ways does not inflect with how many readings it
+       has. Joined here rather than in the markup, where Svelte eats the
+       space in front of an `{#if}`. */
+    return selectedSummary.mixed ? `${sentence} ${m.body_map_selected_mixed()}` : sentence;
+  });
+
+  /* The way down to the charts, and the way back up. An ordinary same-page
+     link, so it is the browser's own anchor and Back is the way back - the
+     shape the letters screen's jump to its open letters already uses. The
+     span rides in the query and the region is this component's own state, so
+     neither is touched by a navigation that only adds a hash; the charts it
+     lands on are the ones the sentence above describes.
+
+     The app scrolls its own region rather than the window
+     (navigation/scroll-region.ts), so the position the map was read at is
+     remembered here and put back when the hash goes. */
+  let mapScroll: number | null = null;
+  const scrollRegion = () => document.querySelector<HTMLElement>('[data-app-scroll-region]');
+
+  function rememberMapScroll() {
+    mapScroll = scrollRegion()?.scrollTop ?? 0;
+  }
+
+  $effect(() => {
+    const onPop = () => {
+      if (location.hash || mapScroll === null) return;
+      const el = scrollRegion();
+      if (el) el.scrollTop = mapScroll;
+      mapScroll = null;
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  });
 </script>
 
 <div class="screen">
@@ -167,6 +223,45 @@
         role={figureRole}
         onSelect={(picked) => (region = picked)}
       />
+
+      <!-- The pick, in words, on the figure's own card: the name, what the
+           range has to say about that region, and the way down to its two
+           charts. No hairline over it - the elsewhere cluster above ends on
+           one already, and a second line a few pixels under the first reads
+           as a mistake rather than as a boundary.
+
+           Keyed on the region, so the words ease in on a pick rather than
+           swapping in place, and the sentence's slot travels between its own
+           two heights rather than stepping (ticket 25's ease-in, rule 10). -->
+      <div class="body-map-selected" data-body-map-context>
+        <div class="body-map-selected-line">
+          <div class="body-map-selected-name-slot">
+            {#key region}
+              <h2 class="body-map-selected-name" in:crossfade data-body-map-selected>{regionName}</h2>
+            {/key}
+          </div>
+          <a
+            class="kit-heading-action"
+            href="#body-map-charts"
+            data-body-map-chart-jump
+            onclick={rememberMapScroll}
+          >
+            {m.body_map_chart_jump()}
+          </a>
+        </div>
+
+        <div class="body-map-selected-slot" use:resize>
+          {#if mapQuery.loading}
+            <Skeleton variant="line" count={1} />
+          {:else}
+            {#key region}
+              <p class="muted small body-map-selected-summary" in:crossfade data-body-map-summary>
+                {summaryText}
+              </p>
+            {/key}
+          {/if}
+        </div>
+      </div>
     </div>
 
     <!-- The axis sits above the range, because it decides whether there is
@@ -225,7 +320,13 @@
          label eases in on a change rather than swapping in place (ticket
          25's ease-in). -->
     {#key region}
-      <h2 class="body-map-reading-head" in:crossfade data-body-map-heading>
+      <h2
+        class="body-map-reading-head"
+        id="body-map-charts"
+        tabindex="-1"
+        in:crossfade
+        data-body-map-heading
+      >
         {m.body_map_reading_heading({ region: regionName })}
       </h2>
     {/key}
@@ -313,6 +414,47 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
     margin-bottom: var(--space-3);
+  }
+
+  /* The pick, in words (ticket 30). Under the drawing rather than beside it:
+     at 390px there is no beside, and the card the figure is on is where the
+     selection lives. */
+  .body-map-selected {
+    margin-top: var(--space-3);
+  }
+
+  .body-map-selected-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* The name's own box beside the link: a long name wraps inside it rather
+     than pushing the link off the card, and the crossfade on a pick happens
+     in here rather than against the row. */
+  .body-map-selected-name-slot {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Rule 2's 17px, the same size as the charts' own heading below: this is a
+     line under a figure and not a screen's title. */
+  .body-map-selected-name {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .body-map-selected-summary {
+    margin: 0;
+  }
+
+  /* Two sentences where a region went both ways and one where it did not, so
+     the box travels between its heights instead of stepping (motion/reveal's
+     `resize`, the same action the axis note above uses). */
+  .body-map-selected-slot {
+    margin-top: var(--space-1);
   }
 
   /* Which region the charts describe. Rule 2's 17px, not a display size:
