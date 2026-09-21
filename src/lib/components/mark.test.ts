@@ -23,6 +23,7 @@ import {
   MARK_R,
   MARK_SEAM,
   MARK_TILE,
+  MARK_SAFE_TILE,
   MARK_TILE_RADIUS,
   markSvg
 } from './mark.ts';
@@ -53,10 +54,10 @@ describe("the mark's signed-off numbers", () => {
 
   it('centres the sun exactly on the tile\'s top right corner', () => {
     /* Centre 0 means the sun's centre is the corner itself, which is where
-       Home's sun is centred too. A round launcher throws that corner away
-       and crops the innermost disc off; that is accepted rather than worked
-       around, because one geometry is worth more than a second setting kept
-       in sync (ticket 38, settled 2026-09-21). */
+       Home's sun is centred too (ticket 38, settled 2026-09-21). A launcher
+       mask used to cut that corner off, because the tile bled to the canvas
+       edge; it no longer reaches the mask at all, since the tile sits inside
+       the circle every mask keeps (MARK_SAFE_TILE). */
     for (const circle of circles(markSvg(flags.trans, 'tile', 512))) {
       expect(circle).toContain('cx="100"');
       expect(circle).toContain('cy="0"');
@@ -118,19 +119,36 @@ describe('the tile belongs to the icon, not to the app', () => {
     }
   });
 
-  it('bleeds to its corners with no edge, because an adaptive mask crops one off', () => {
+  it('keeps the black edge whatever mask a launcher cuts, by drawing small', () => {
+    /* Alicja, 2026-09-21: "no stroke around the square, or its white - its
+       supposed to be black always". A launcher picks its own mask, so the
+       only arrangement where that is true is the whole stroked tile inside
+       the circle every mask keeps - ground to the corners, tile in the
+       middle at MARK_SAFE_TILE. */
     const svg = markSvg(flags.trans, 'bleed', 512);
-    expect(svg).toContain('<rect width="100" height="100" fill="#FFFFFF"/>');
-    expect(svg).not.toMatch(/<rect[^>]*fill="none"/);
+    const offset = (100 - MARK_SAFE_TILE) / 2;
+    expect(svg).toContain(`<rect width="100" height="100" fill="${MARK_TILE}"/>`);
+    expect(svg).toContain(`<g transform="translate(${offset},${offset}) scale(${MARK_SAFE_TILE / 100})">`);
+    expect(svg).toContain(markSvg(flags.trans, 'tile', 100).replace(/^<svg[^>]*>|<\/svg>$/g, ''));
+  });
+
+  it('draws its tile inside the circle every launcher mask keeps', () => {
+    /* Android guarantees the central 72dp of 108, radius 33.33 in these
+       units. A rounded square of half-side a with corner radius 0.3a reaches
+       1.29a from the middle, so the whole outline is inside the guarantee
+       only while that is under 33.33. This is the arithmetic, not a
+       restatement of the constant. */
+    const a = MARK_SAFE_TILE / 2;
+    const corner = (MARK_TILE_RADIUS / 100) * MARK_SAFE_TILE;
+    expect(Math.SQRT2 * (a - corner) + corner).toBeLessThanOrEqual((72 / 108) * 50);
   });
 
   it('emits a clip path only where the crop is not the viewBox itself', () => {
-    /* A clip path needs an id, and an id has to be unique in a document. The
-       two crops the app draws carry none, so two marks on one screen cannot
-       collide; the two that do are only ever written to a file of their own. */
-    for (const crop of ['bare', 'bleed'] as const) {
-      expect(markSvg(flags.trans, crop, 48), crop).not.toContain('clipPath');
-    }
+    /* A clip path needs an id, and an id has to be unique in a document.
+       `bare` is the only crop the app draws and it carries none, so two
+       marks on one screen cannot collide; the crops that do carry one are
+       only ever written to a file of their own. */
+    expect(markSvg(flags.trans, 'bare', 48)).not.toContain('clipPath');
     for (const crop of ['tile', 'round'] as const) {
       expect(markSvg(flags.trans, crop, 512), crop).toContain(`<clipPath id="mark-${crop}">`);
     }
@@ -148,9 +166,9 @@ describe('the tile belongs to the icon, not to the app', () => {
 
   it('is decorative unless it is given a name', () => {
     expect(markSvg(flags.trans, 'bare', 48)).toContain('aria-hidden="true"');
-    const named = markSvg(flags.trans, 'tile', 512, { label: 'enGender' });
+    const named = markSvg(flags.trans, 'tile', 512, { label: 'engender' });
     expect(named).toContain('role="img"');
-    expect(named).toContain('aria-label="enGender"');
+    expect(named).toContain('aria-label="engender"');
   });
 });
 
@@ -165,18 +183,27 @@ describe('the mark never moves', () => {
     'Mark.svelte': read('src/lib/components/Mark.svelte')
   };
 
+  /* What is banned is anything that changes over time, which is not the same
+     as the word "transform": `bleed` lays its tile in the middle of the
+     canvas with a static SVG transform attribute, and a drawing that is in
+     one place and stays there is not motion. So `transform:` - the CSS
+     property, the one a transition or an animation drives - is what fails
+     here, along with SVG's own SMIL elements. */
+  const BANNED = [
+    'animation',
+    'transition',
+    'view-transition-name',
+    'transform:',
+    '@keyframes',
+    '<animate',
+    'in:',
+    'out:'
+  ];
+
   for (const [name, source] of Object.entries(sources)) {
-    it(`${name} emits no animation, transition or view-transition name`, () => {
+    it(`${name} emits nothing that changes over time`, () => {
       const body = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
-      for (const word of [
-        'animation',
-        'transition',
-        'view-transition-name',
-        'transform',
-        '@keyframes',
-        'in:',
-        'out:'
-      ]) {
+      for (const word of BANNED) {
         expect(body, `${name} mentions ${word}`).not.toContain(word);
       }
     });

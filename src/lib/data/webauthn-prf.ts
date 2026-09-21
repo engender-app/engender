@@ -54,11 +54,11 @@ export interface PrfAuthenticator {
   evaluate(credentialId: Uint8Array<ArrayBuffer>, salt: Uint8Array<ArrayBuffer>): Promise<string>;
 }
 
-const RP_NAME = 'enGender';
+const RP_NAME = 'engender';
 /** Not an identity. The credential is non-discoverable and never appears in
     a chooser, so this is only what the platform files it under; the journal
     holds the person's name and this module cannot read it anyway. */
-const USER_NAME = 'enGender journal';
+const USER_NAME = 'engender journal';
 
 const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
 

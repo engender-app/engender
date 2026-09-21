@@ -19,14 +19,14 @@ import { DECOY_NAME, appWordmark, hubTabLabel, tabIdentity } from './identity.ts
 
 describe('the wordmark a surface prints', () => {
   it('is the decoy name under disguise, whatever the app is called', () => {
-    expect(appWordmark(true, 'enGender')).toBe('Notes');
-    expect(appWordmark(true, 'enGender')).toBe(DECOY_NAME);
+    expect(appWordmark(true, 'engender')).toBe('Notes');
+    expect(appWordmark(true, 'engender')).toBe(DECOY_NAME);
   });
 
   it('is the app name the caller was given otherwise', () => {
     /* The name is a parameter because it is a catalogue lookup and this
        tier may not import paraglide (ADR-0016). */
-    expect(appWordmark(false, 'enGender')).toBe('enGender');
+    expect(appWordmark(false, 'engender')).toBe('engender');
   });
 });
 
@@ -44,15 +44,15 @@ describe('what the tab says', () => {
   const chromeIcon = 'favicon-trans.svg';
 
   it('says the app name over the running app', () => {
-    expect(tabIdentity({ disguised: false, blanked: false, appName: 'enGender', icon: chromeIcon })).toEqual({
-      title: 'enGender',
+    expect(tabIdentity({ disguised: false, blanked: false, appName: 'engender', icon: chromeIcon })).toEqual({
+      title: 'engender',
       icon: 'favicon-trans.svg'
     });
   });
 
   it('says the decoy name over the running app when disguised', () => {
     expect(
-      tabIdentity({ disguised: true, blanked: false, appName: 'enGender', icon: 'favicon-notes.svg' })
+      tabIdentity({ disguised: true, blanked: false, appName: 'engender', icon: 'favicon-notes.svg' })
     ).toEqual({
       title: 'Notes',
       icon: 'favicon-notes.svg'
@@ -63,7 +63,7 @@ describe('what the tab says', () => {
     /* Undisguised, the quick-exit face is a blank page, so the tab says
        what a blank page says - and takes the neutral icon with it, since
        an empty tab wearing the app's flag is not empty. */
-    expect(tabIdentity({ disguised: false, blanked: true, appName: 'enGender', icon: chromeIcon })).toEqual({
+    expect(tabIdentity({ disguised: false, blanked: true, appName: 'engender', icon: chromeIcon })).toEqual({
       title: 'New tab',
       icon: 'favicon-notes.svg'
     });
@@ -74,7 +74,7 @@ describe('what the tab says', () => {
        what the page shows rather than dropping to "New tab" and telling
        anyone watching that something was closed. */
     expect(
-      tabIdentity({ disguised: true, blanked: true, appName: 'enGender', icon: 'favicon-notes.svg' })
+      tabIdentity({ disguised: true, blanked: true, appName: 'engender', icon: 'favicon-notes.svg' })
     ).toEqual({
       title: 'Notes',
       icon: 'favicon-notes.svg'

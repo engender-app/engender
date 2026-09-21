@@ -46,13 +46,35 @@ export const MARK_TILE = '#FFFFFF';
     shape every time (ticket 38, round one's sub-decision, kept). */
 export const MARK_MONO_RINGS = 4;
 
+/** How big the tile is inside a full-bleed canvas a launcher will mask.
+
+    The black edge is not optional (Alicja, 2026-09-21: "no stroke around the
+    square, or its white - its supposed to be black always"), and a launcher
+    picks its own mask, so the only way the edge always survives is to put the
+    whole stroked tile inside the region every mask keeps.
+
+    Android guarantees the central 72dp circle of the 108dp canvas, which is
+    radius 33.33 in these 100 units. A rounded square of half-side `a` with
+    corner radius `0.3a` reaches `sqrt(2)(a - 0.3a) + 0.3a`, or `1.29a`, from
+    the middle, so `a` has to be at most 25.8. 25 clears it, and a 50 unit
+    tile is a round number to hold. The web's maskable safe zone is the
+    central 80%, which this is well inside, so one drawing serves both.
+
+    What it costs, and it is the trade: the sun is half the size it is on the
+    tile whose own corner it is anchored to, with white around it. */
+export const MARK_SAFE_TILE = 50;
+
 /** How the drawing is cropped, and therefore whether it carries a tile.
 
     The tile belongs to the icon, not to the app: `tile`, `round` and `bleed`
     are what a launcher, an install and a favicon show, because a home
     screen's ground is not ours. `bare` is what the app itself draws - no
     tile and no edge, so the mark sits on the screen's own surface rather
-    than putting a white chip on every dark screen (DIRECTION rule 4). */
+    than putting a white chip on every dark screen (DIRECTION rule 4).
+
+    `bleed` is a mask's canvas rather than a crop of its own: the ground runs
+    to all four corners, because a mask cuts its shape out of whatever it is
+    given, and the tile sits in the middle at `MARK_SAFE_TILE`. */
 export type MarkCrop = 'tile' | 'round' | 'bleed' | 'bare';
 
 export interface MarkOptions {
@@ -91,9 +113,9 @@ function ringMarkup(stripes: string[], ink: string | undefined): string {
     rather than always being a rounded square, or a round launcher would cut
     the corners off a square outline.
 
-    `bleed` has no edge at all: an adaptive icon's mask crops it off, so
-    drawing one would only put a line inside the shape the mask makes. */
-function cropMarkup(crop: MarkCrop): { clip: string; edge: string } {
+    `bleed` is not asked here. It carries a tile, and it is the `tile` one,
+    laid inside the canvas at MARK_SAFE_TILE. */
+function cropMarkup(crop: 'tile' | 'round' | 'bare'): { clip: string; edge: string } {
   const inset = MARK_SEAM / 2;
   if (crop === 'round') {
     return {
@@ -109,12 +131,12 @@ function cropMarkup(crop: MarkCrop): { clip: string; edge: string } {
         + ` rx="${(MARK_TILE_RADIUS - inset).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
     };
   }
-  /* `bare` and `bleed` need no clip path at all: both crop to the square the
-     viewBox already is, and an SVG viewport clips to itself. Saying so is
-     worth a branch rather than a `rx="0"` rect, because a clip path needs an
-     id, an id has to be unique in a document, and these two are the only
-     crops the app ever draws - so the app emits no id and two marks on one
-     screen cannot collide. The cropped forms are files, one mark each. */
+  /* `bare` needs no clip path at all: it crops to the square the viewBox
+     already is, and an SVG viewport clips to itself. Saying so is worth a
+     branch rather than a `rx="0"` rect, because a clip path needs an id, an
+     id has to be unique in a document, and `bare` is the only crop the app
+     ever draws - so the app emits no id and two marks on one screen cannot
+     collide. The cropped forms are files, one mark each. */
   return { clip: '', edge: '' };
 }
 
@@ -126,6 +148,28 @@ export function markSvg(
   size: number | string,
   { ink, ground, label }: MarkOptions = {}
 ): string {
+  const named = label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${label}"`;
+  const open =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
+    + ` focusable="false" ${named}>`;
+
+  if (crop === 'bleed') {
+    /* A mask's canvas: ground to all four corners, the stroked tile in the
+       middle of it. Composed from the tile rather than drawn again, so the
+       thing a launcher shows is the same drawing an install shows, only
+       smaller. */
+    const offset = (100 - MARK_SAFE_TILE) / 2;
+    const scale = MARK_SAFE_TILE / 100;
+    const tile = markSvg(stripes, 'tile', 100, { ink, ground, label })
+      .replace(/^<svg[^>]*>/, '')
+      .replace(/<\/svg>$/, '');
+    return (
+      open
+      + `<rect width="100" height="100" fill="${ground ?? MARK_TILE}"/>`
+      + `<g transform="translate(${offset},${offset}) scale(${scale})">${tile}</g></svg>`
+    );
+  }
+
   const { clip, edge } = cropMarkup(crop);
   const fill = ground === undefined ? (crop === 'bare' ? null : MARK_TILE) : ground;
   const paper = fill === null ? '' : `<rect width="100" height="100" fill="${fill}"/>`;
@@ -137,9 +181,5 @@ export function markSvg(
     ? `<defs><clipPath id="${clipId}">${clip}</clipPath></defs>`
       + `<g clip-path="url(#${clipId})">${drawing}</g>`
     : drawing;
-  const named = label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${label}"`;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
-    + ` focusable="false" ${named}>${clipped}</svg>`
-  );
+  return `${open}${clipped}</svg>`;
 }

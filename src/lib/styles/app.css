@@ -1407,14 +1407,18 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 
   /* A heading a screen shows only on paper: the mark, then the title and
      range a reader needs on a printed page and already has in the header on
-     screen. Both printing screens draw the same three, so the letterhead's
-     one piece of spacing lives here beside them rather than twice. */
+     screen. */
   .print-heading {
     display: block;
     margin-bottom: var(--space-4);
   }
 
-  .print-heading .mark {
+  /* A direct child only. The journal book prints the mark on its own above
+     its title and wants a gap under it; the clinician summary prints a
+     lockup of the mark and the name side by side, which owns its own
+     spacing, and a margin under the mark there would push it off the
+     baseline of the word beside it. */
+  .print-heading > .mark {
     margin-bottom: var(--space-2);
   }
 

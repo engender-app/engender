@@ -722,7 +722,7 @@ try {
   await booted();
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
-  await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.title === 'engender', null, { timeout: 8000 });
   await page.keyboard.press('Escape');
 
   /* The appointment this flow wrote goes with it. */
@@ -3220,7 +3220,7 @@ try {
   await booted();
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
-  await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.title === 'engender', null, { timeout: 8000 });
   // Per-palette since ticket 50, and this walk never leaves the default flag.
   if (!/\/favicon-trans\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
   if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
