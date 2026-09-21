@@ -24,18 +24,20 @@ page.on('pageerror', (error) => {
   process.exitCode = 1;
 });
 
-await page.goto(`http://localhost:${server.config.server.port}/blind-edge.html`);
-await page.waitForSelector(`body[${readyAttr('blind-edge-probe')}]`);
-const result = await page.evaluate((key) => window[key], resultGlobal('blind-edge-probe'));
+try {
+  await page.goto(`http://localhost:${server.config.server.port}/blind-edge.html`);
+  await page.waitForSelector(`body[${readyAttr('blind-edge-probe')}]`);
+  const result = await page.evaluate((key) => window[key], resultGlobal('blind-edge-probe'));
 
-const { before, afterPaddingChange } = result;
-assert.equal(before.edge, `${Math.round(before.height)}px`, 'first measurement sets --blind-edge to the field\'s starting border-box height');
-assert.equal(
-  afterPaddingChange.edge,
-  `${Math.round(afterPaddingChange.height)}px`,
-  `a padding-only resize (border-box height ${afterPaddingChange.height}px) must move --blind-edge off its stale value (${before.edge}); it read ${afterPaddingChange.edge}`
-);
-console.log('PASS a padding-only resize moves --blind-edge to the new border-box height');
-
-await browser.close();
-await server.close();
+  const { before, afterPaddingChange } = result;
+  assert.equal(before.edge, `${Math.round(before.height)}px`, 'first measurement sets --blind-edge to the field\'s starting border-box height');
+  assert.equal(
+    afterPaddingChange.edge,
+    `${Math.round(afterPaddingChange.height)}px`,
+    `a padding-only resize (border-box height ${afterPaddingChange.height}px) must move --blind-edge off its stale value (${before.edge}); it read ${afterPaddingChange.edge}`
+  );
+  console.log('PASS a padding-only resize moves --blind-edge to the new border-box height');
+} finally {
+  await browser.close();
+  await server.close();
+}

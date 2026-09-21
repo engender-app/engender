@@ -19,14 +19,19 @@ class FakeResizeObserver {
   disconnect() {}
 }
 
+const g = globalThis as Record<string, unknown>;
+const hadResizeObserver = 'ResizeObserver' in g;
+const priorResizeObserver = g.ResizeObserver;
+
 afterEach(() => {
   FakeResizeObserver.instances = [];
-  delete (globalThis as Record<string, unknown>).ResizeObserver;
+  if (hadResizeObserver) g.ResizeObserver = priorResizeObserver;
+  else delete g.ResizeObserver;
 });
 
 describe('blindEdge, which box it watches', () => {
   it('subscribes to the border box, the one its callback reads', () => {
-    (globalThis as Record<string, unknown>).ResizeObserver = FakeResizeObserver;
+    g.ResizeObserver = FakeResizeObserver;
     const node = {} as HTMLElement;
 
     blindEdge(node);
