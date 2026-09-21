@@ -139,8 +139,16 @@
 .step-field {
   position: relative;
   flex: 0 0 auto;
-  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
-  padding: calc(var(--inset-top) + var(--space-2)) var(--space-5) var(--space-4);
+  /* Sideways only. Carpet ticket 154 stopped this field crossing the top
+     inset: setup draws the sun in its corner, and the status bar's own
+     icons were landing on the flag's bands. The band above the field is
+     the page's colour now - white in light, near black in dark - which is
+     a ground the bar's icons can be read against whichever tint Android
+     picks. The gate wears this same class and follows it; it has no sun,
+     but a step machine and a gate arriving one after the other with
+     different top edges would be a jump between them. */
+  margin: 0 calc(-1 * var(--space-5)) 0;
+  padding: var(--space-2) var(--space-5) var(--space-4);
   color: var(--field-ink);
   /* The paint below is a window tall and absolutely positioned in this box,
      and an absolutely positioned child contributes its overflow to its
@@ -2435,6 +2443,22 @@ html[data-a11y-motion='reduce'] .bloom-core {
    pinned to the screen's top right corner; each ring centres on that same
    point via translate(-50%, -50%) and is sized/coloured per-instance
    through --d/--c, set inline by FlagSun.svelte from --motif-stripes.
+
+   The corner is the field's own, and on the two screens that draw a sun
+   the field no longer bleeds past the window inset (carpet ticket 154), so
+   that corner is clear of the status bar. It was not before: Android draws
+   the bar's icons in one tint over whatever the app painted, and at the
+   bar's right end they crossed two to four rings. Every palette puts a
+   light band within the first 130px of the corner, so on trans the signal
+   bars and the battery sat on the white stripe and were gone (Alicja,
+   2026-09-21: "when there are icons in top right corner, it blend with
+   them and makes them unreadable").
+
+   The mark is the corner sun at centre 0 (pre-production ticket 38, round
+   three), so the centre may not move off a corner to solve that. Moving
+   the corner is what this rule's `top: 0` now means: the field starts
+   below the inset on those screens, and the band above it is the page's
+   own colour rather than the flag's.
 
    Confined to Home's field on purpose: that block is already the app's
    one deliberately-stacked surface (position: relative; z-index: 1), so
