@@ -18,6 +18,58 @@ import { tinyPhoto } from './photo-fixture.mjs';
 
 const { ok, fail, finish } = createReporter();
 
+/* Which flows this run walks.
+
+   The suite is one build and one browser over about 136 checks, roughly
+   fifteen minutes, and a change that moves one screen's markup usually
+   breaks four of them. `--only <substring>` runs the flows whose name holds
+   that substring, matched case-insensitively. A flow's name is the label its
+   `catch` reports on failure, and `--only` with no match prints the whole
+   list rather than guessing.
+
+   Read the banner before believing a filtered run. These flows share one
+   journal: several import an archive, discard it, or reseed the fixture
+   through the demo bar, so a flow that reads what an earlier one wrote fails
+   for the want of it rather than for anything the diff did. A filtered run
+   is a loop for finding a break and proving a fix. The whole run is what a
+   merge rests on.
+
+   The names are read out of this file rather than counted as the flows go
+   past, so the banner can say how many of how many before the first one
+   runs, and cannot drift from the flows themselves.
+
+   Filtering skips the build the npm script does, which is the point of it:
+     node tests/walkthrough.test.mjs --only "recovery key"
+   against whatever `npm run test:walkthrough` last built. */
+const ONLY = (() => {
+  const at = process.argv.indexOf('--only');
+  if (at === -1) return null;
+  const term = process.argv[at + 1];
+  if (!term) throw new Error('--only wants a substring of a flow name');
+  return term.toLowerCase();
+})();
+
+const FLOW_NAMES = [
+  ...(await readFile(new URL(import.meta.url), 'utf8')).matchAll(/^await flow\((['"])(.*?)\1/gm)
+].map((match) => match[2]);
+const PICKED = ONLY ? FLOW_NAMES.filter((name) => name.toLowerCase().includes(ONLY)) : FLOW_NAMES;
+
+if (ONLY && !PICKED.length) {
+  console.log(`No flow name holds "${ONLY}". The flows are:\n  ${FLOW_NAMES.join('\n  ')}`);
+  process.exit(1);
+}
+if (ONLY) {
+  console.log(`!! PARTIAL RUN: ${PICKED.length} of ${FLOW_NAMES.length} flows. Flows share one`);
+  console.log('!! journal, so a failure here may be an artefact of');
+  console.log('!! the flows that did not run. Not merge proof.\n');
+}
+
+/** One flow, skipped whole where `--only` did not name it. */
+async function flow(name, body) {
+  if (ONLY && !name.toLowerCase().includes(ONLY)) return;
+  await body();
+}
+
 const server = await preview({ preview: { port: 0 } });
 const address = server.httpServer.address();
 
@@ -156,6 +208,7 @@ function parseCsv(text) {
 }
 
 /* 1. quick log */
+await flow('quick log', async () => {
 try {
   /* The entries are counted on the Journal door, which is where they draw
      since redesign tickets 10 and 13; Home's mood pick is one shape of its
@@ -176,8 +229,10 @@ try {
   if (afterCards !== beforeCards) throw new Error(`entry count changed: ${beforeCards} -> ${afterCards}`);
   ok('home quick mood opens an unsaved seeded editor');
 } catch (e) { fail('quick log', e); }
+});
 
 /* 2. full entry flow via FAB */
+await flow('entry flow', async () => {
 try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
@@ -203,6 +258,7 @@ try {
   if (!notes.some((note) => note.includes('Playwright'))) throw new Error('new entry not on today');
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
+});
 
 /* 2a2. a new entry can be starred before its first save (ticket 18). The
    star used to live in the header, drawn only `{#if existing}` - a brand
@@ -211,6 +267,7 @@ try {
    an id; `saveEntry` applies it once `upsertEntry` hands one back. This
    proves the whole round trip: pressed before save, still pressed on the
    saved entry reopened. */
+await flow('star before save', async () => {
 try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
@@ -231,12 +288,14 @@ try {
 
   ok('a new entry can be starred before its first save, and the star lands once it has an id');
 } catch (e) { fail('star before save', e); }
+});
 
 /* 2b. mood-only save nudges, via the full editor. Ticket 13 gives the
    quick-log entry point its own unconditional scale prompt instead (see
    flow 24), so this preference's remaining domain is a mood-only save
    started from the full editor - the entry point ticket 13 explicitly
    leaves alone. */
+await flow('nudge flow', async () => {
 try {
   await fresh('/');
   /* The switch is on /settings/notifications since phase 11 ticket 04, with
@@ -324,8 +383,10 @@ try {
   );
   ok('mood-only save nudges when enabled and stays quiet when disabled');
 } catch (e) { fail('nudge flow', e); }
+});
 
 /* 3. slider keyboard interaction */
+await flow('slider', async () => {
 try {
   await fresh('/entry/new/today');
   const thumb = page.locator('[data-slider]').first();
@@ -352,6 +413,7 @@ try {
   if (first % step !== 0) throw new Error(`value ${first} is not on a stop of ${step}`);
   ok(`slider steps by ${step} on the keyboard and lands on a stop`);
 } catch (e) { fail('slider', e); }
+});
 
 /* 3b. a slider you have let go of stays where you left it.
 
@@ -368,6 +430,7 @@ try {
    Driven with the mouse rather than the keyboard on purpose - the flow above
    already covers the keyboard, and this defect only exists on the pointer
    path. */
+await flow('sliders do not lock together', async () => {
 try {
   await fresh('/entry/new/today');
   await page.waitForSelector('[data-slider]');
@@ -418,6 +481,7 @@ try {
   }
   ok('a released slider stays put, and two sliders keep their own values');
 } catch (e) { fail('sliders do not lock together', e); }
+});
 
 /* 3c. one entry straight to another, on the same route.
 
@@ -432,6 +496,7 @@ try {
    for the click. That is not a shortcut past the check: the bug lives in
    SvelteKit's interception of an <a> to the same route, which is exactly what
    this makes it do. A page.goto would be a reload and would prove nothing. */
+await flow('entry to entry', async () => {
 try {
   await fresh('/search');
   await page.locator('[data-filter-toggle]').click();
@@ -467,11 +532,13 @@ try {
   }
   ok('entry to entry remounts the editor rather than reusing stale params');
 } catch (e) { fail('entry to entry', e); }
+});
 
 /* 4. calendar → open the month → day → add another. The Journal door opens
       on the month folded to a strip (redesign ticket 10), whose cells are
       not links: 7px is not a tap target. So the flow starts by opening it,
       which is also the check that the control does. */
+await flow('calendar flow', async () => {
 try {
   await fresh('/calendar');
   await page.locator('[data-cal-open]').click();
@@ -482,12 +549,14 @@ try {
   await page.waitForSelector('#ed-note');
   ok('calendar → open the month → day detail → add another');
 } catch (e) { fail('calendar flow', e); }
+});
 
 /* 4a. And the month closes again, with the metric picker working in both
        states. The strip and the grid are one set of cells in two layouts, so
        what says which state the screen is in is the grid's own class and the
        control's aria-expanded - and what says the picker still works is the
        month recolouring under a different metric while folded. */
+await flow('the month expansion', async () => {
 try {
   await fresh('/calendar');
   const compact = () => page.evaluate(() => !!document.querySelector('[data-cal-month-state="strip"]'));
@@ -515,10 +584,12 @@ try {
   await page.waitForSelector('[data-cal-month-state="strip"]');
   ok('the month opens and closes, and the metric picker works in both states');
 } catch (e) { fail('the month expansion', e); }
+});
 
 /* 4b. What the Journal door leads with: the entries, uncapped, and a control
        that grows them (redesign ticket 10; the week strip that used to sit
        under them was ticket 18's own duplicate and left with it). */
+await flow('the Journal door blocks', async () => {
 try {
   await fresh('/calendar');
   await page.waitForSelector('[data-day-card]');
@@ -528,6 +599,7 @@ try {
   await page.waitForSelector('[data-recent-days-more]');
   ok('the Journal door leads with the entries and grows them on a tap');
 } catch (e) { fail('the Journal door blocks', e); }
+});
 
 /* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
    ADR-0074). The dated things lead, the mood pick is one write shape of
@@ -537,6 +609,7 @@ try {
    own dated things all fall past the agenda's week. Early in the walk, while
    the journal is still the persona's: later flows finish areas and change
    modes, and this one is about the screen, not about their leftovers. */
+await flow('today faces forward', async () => {
 try {
   const AGENDA_KIND = 'agenda-13';
   await fresh('/health/appointments');
@@ -661,6 +734,7 @@ try {
   await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { state: 'detached', timeout: 8000 }); // text-under-test
   ok('today faces forward: the agenda leads with the notices below it, a row opens its screen, the strip logs a mood and the fan a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
 } catch (e) { fail('today faces forward', e); }
+});
 
 /* Editing Today (phase 10 redesign ticket 14; ADR-0073, ADR-0067,
    ADR-0043). The last row of the pinned block opens the edit mode, a row
@@ -669,6 +743,7 @@ try {
    Right after the flow that reads the pinned rows, and for the same
    reason: this is about the screen while the journal is still the
    persona's. */
+await flow('editing Today', async () => {
 try {
   await fresh('/');
   await page.waitForSelector('[data-edit-today]');
@@ -778,8 +853,10 @@ try {
   }
   ok('editing Today: the last row opens the edit mode, a row is added, moved with the keyboard and kept across a reload, a tile is switched off and leaves the page in place, and the reset restores the default set and every switch');
 } catch (e) { fail('editing Today', e); }
+});
 
 /* 4c. day detail keeps entries separate and shows no day average */
+await flow('day detail truthfulness', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="2"]').click();
@@ -806,11 +883,13 @@ try {
      fail either way it went (ticket 01). Deleted rather than repointed. */
   ok('day detail keeps separate entries');
 } catch (e) { fail('day detail truthfulness', e); }
+});
 
 /* 4c. a margin note: added, rendered as a layer, edited, deleted - and the
    entry's own note untouched by any of it (phase 8 features ticket 07).
    Grip handles only, per ADR-0029: data-margin-note-* rather than anything
    read off the rendered date or text. */
+await flow('margin note', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="3"]').click();
@@ -863,8 +942,10 @@ try {
 
   ok('a margin note is added, rendered as a layer, edited and deleted, and the entry stays byte-identical throughout');
 } catch (e) { fail('margin note', e); }
+});
 
 /* 5. search */
+await flow('search', async () => {
 try {
   await fresh('/search');
   await page.locator('#q').fill('coffee');
@@ -876,8 +957,10 @@ try {
   await page.waitForSelector('[data-entry-card]');
   ok('search matches note text and built-in tag labels');
 } catch (e) { fail('search', e); }
+});
 
 /* 5b. structured search filters */
+await flow('structured search filters', async () => {
 try {
   const NOTE_HIGH = 'ticket06-high-marker';
 
@@ -927,6 +1010,7 @@ try {
 
   ok('structured search filters combine with text, show chips and clear-all');
 } catch (e) { fail('structured search filters', e); }
+});
 
 /* 5c. search reaches past entries (phase 5 deepening ticket 24).
 
@@ -938,6 +1022,7 @@ try {
 
    Both queries are the demo persona's own text and neither is entry text: a
    milestone's name, and the provider on a lab result. */
+await flow('search reaches past entries', async () => {
 try {
   await fresh('/search');
 
@@ -966,6 +1051,7 @@ try {
 
   ok('search reaches records outside entries, and every hit says its kind and where it goes');
 } catch (e) { fail('search reaches past entries', e); }
+});
 
 /* 5d. search waits for the typist (phase 8 audit ticket 15).
 
@@ -976,6 +1062,7 @@ try {
    lands once typing stops, `pressSequentially` rather than `fill` because
    `fill` sets the whole value in one event and would exercise no wait at
    all. */
+await flow('search waits for the typist', async () => {
 try {
   await fresh('/search');
 
@@ -984,8 +1071,10 @@ try {
 
   ok('a query typed key by key still lands once the typing stops');
 } catch (e) { fail('search waits for the typist', e); }
+});
 
 /* 5e. clearing search does not wait out the debounce (phase 8 audit ticket 15). */
+await flow('clearing search does not wait out the debounce', async () => {
 try {
   await fresh('/search');
 
@@ -1004,6 +1093,7 @@ try {
 
   ok('clearing the query clears the results well inside the debounce interval, not after it');
 } catch (e) { fail('clearing search does not wait out the debounce', e); }
+});
 
 /* 5f. a saved question runs (phase 8 audit ticket 15's "same shape" screen).
 
@@ -1017,6 +1107,7 @@ try {
    through (`/search/questions`, now a redirect stub): the same question is
    a chip on search's own opening state instead, so this clears the query
    back to idle and taps the chip rather than following a link to a list. */
+await flow('saved question runs', async () => {
 try {
   await fresh('/search');
   await page.locator('#q').fill('hopeful');
@@ -1038,6 +1129,7 @@ try {
 
   ok('a saved question runs and shows entries, the same read /search itself made');
 } catch (e) { fail('saved question runs', e); }
+});
 
 /* 5g. search opens with something: the opening state's tag chips and this
    device's own recent searches both run a search on a tap (ticket 18).
@@ -1045,6 +1137,7 @@ try {
    session memory now (pre-production audit S1), not the journal's - so
    this flow makes its own recent search rather than assuming an earlier
    flow's survived the reset. */
+await flow('search opening state', async () => {
 try {
   await fresh('/search');
   await page.waitForSelector('[data-search-idle]');
@@ -1069,6 +1162,7 @@ try {
 
   ok('search opens with tag chips and recent searches, and tapping either runs the search');
 } catch (e) { fail('search opening state', e); }
+});
 
 /* 6. stats range + value list.
 
@@ -1080,6 +1174,7 @@ try {
    the segmented range with the span on the rail: the range is whatever the
    two handles bound, so the flow widens the span from the keyboard - ten
    steps back on the start handle - and reads the subtitle change with it. */
+await flow('stats', async () => {
 try {
   await fresh('/stats');
   await page.waitForSelector('[data-span-handle="start"]');
@@ -1137,12 +1232,14 @@ try {
   }
   ok('stats: the span drives every tile, day by day and the days open at the span');
 } catch (e) { fail('stats', e); }
+});
 
 /* 6a. a tag insight's sheet holds the same set the row's own count named
    (carpet ticket 19). An unranged read used to open the tag's twenty most
    recent carriers across the whole journal; this asserts the row's count
    against the number of entry cards the sheet actually opened, so the two
    cannot drift apart again without failing here. */
+await flow('tag insight sheet range', async () => {
 try {
   /* The merged tag card is a reading of its own since phase 11 ticket 07,
      and draws as paired dots (redesign ticket 05): the row's note names
@@ -1170,6 +1267,7 @@ try {
   }
   ok('tag insight sheet holds the row\'s own count, or says it is capped');
 } catch (e) { fail('tag insight sheet range', e); }
+});
 
 /* 6b. a second scale on the day-by-day chart (phase 6 ticket 12).
 
@@ -1178,6 +1276,7 @@ try {
    because two metrics placed against their own ranges have no shared scale
    for it to be the ends of. Both are asserted on the resting state after the
    pick rather than on anything mid-tween. */
+await flow('a second scale on the day-by-day chart', async () => {
 try {
   await fresh('/stats/day-by-day');
   const card = page.locator('[data-chart-card="day-by-day"]');
@@ -1209,6 +1308,7 @@ try {
   await card.locator('[data-chart-scale]').waitFor();
   ok('a second scale joins the day-by-day chart and can be put down again');
 } catch (e) { fail('a second scale on the day-by-day chart', e); }
+});
 
 /* 6b2. a tag insight opens the entries carrying that tag, and one of them
    opens (carpet ticket 10).
@@ -1223,6 +1323,7 @@ try {
    pattern itself is pinned in screen-transition.test.ts, where it is a
    pure function; what this proves is that the tap still arrives, which is
    the half a table cannot answer. */
+await flow('tag insight entries', async () => {
 try {
   await fresh('/stats/tags');
   await page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first().click();
@@ -1242,6 +1343,7 @@ try {
   await page.waitForSelector('#ed-note');
   ok('a tag insight opens its entries, and one of them opens the editor');
 } catch (e) { fail('tag insight entries', e); }
+});
 
 /* 6c. the custom-interval card's length field waits for the typist (phase 8
    audit ticket 16, the same debounce ticket 15 gave /search's query).
@@ -1257,6 +1359,7 @@ try {
    own history draws a pattern for - chosen by checking the rendered card
    rather than assumed, since a length past the persona's span draws nothing
    to wait for. */
+await flow('custom interval length waits for the typist', async () => {
 try {
   /* On Care since redesign ticket 05, as the merged interval card's own
      control. */
@@ -1270,6 +1373,7 @@ try {
 
   ok('the custom interval length typed digit by digit still lands once typing stops');
 } catch (e) { fail('custom interval length waits for the typist', e); }
+});
 
 /* 6b. ticket 18's three view-only screens: chronological milestones with
    a compressed gap, thumbnail-backed photo comparison with both sides
@@ -1279,6 +1383,7 @@ try {
    rail into /transition/milestones and left /timeline as a 307. Loading
    the old address is how the redirect is proved end to end - the rail's
    own handles have to answer on the screen it lands on. */
+await flow('ticket 18 view-only screens', async () => {
 try {
   await fresh('/timeline');
   await page.waitForURL('**/transition/milestones');
@@ -1372,8 +1477,10 @@ try {
   if (fromRail !== fromPicker) throw new Error('the rail and the picker read two different wrappeds for one span');
   ok('timeline, progress-photo compare, the wrapped range that replaced recap, and the span read from the rail');
 } catch (e) { fail('ticket 18 view-only screens', e); }
+});
 
 /* 6c. lab result CRUD and per-analyte chart */
+await flow('lab results', async () => {
 try {
   await fresh('/care/labs');
   /* The kit's area chart, not LineChart: phase 5 UX ticket 25 moved the four
@@ -1404,6 +1511,7 @@ try {
   await page.waitForSelector('[data-segment="SHBG"]', { state: 'detached' });
   ok('lab result custom create, edit, delete and per-analyte chart');
 } catch (e) { fail('lab results', e); }
+});
 
 /* 6d. a second unit for an analyte is a second trend, not a cliff in the
    first one (ticket 02). The persona's estradiol history is five results in
@@ -1412,6 +1520,7 @@ try {
    than assumed as the screen's default (ticket 37 removed that default) -
    this step is about the pg/mL/pmol/L merge, not about which analyte opens
    the screen. */
+await flow('lab unit series', async () => {
 try {
   await fresh('/care/labs');
   await page.locator('[data-segment="estradiol"]').click();
@@ -1450,6 +1559,7 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[data-lab-series]').length === 1);
   ok('a second unit gets its own trend and a neutral notice');
 } catch (e) { fail('lab unit series', e); }
+});
 
 /* 6e. the lab scanner, unreachable in a shipped build until ticket 44: the
    screen wrapped a factory-built OCR machine in $state(...), but the
@@ -1461,6 +1571,7 @@ try {
    runs it through the app's own Tesseract engine - no mocks - because a
    mocked recognizer would prove the wiring works without proving the sheet
    that wiring lives in ever opens. */
+await flow('lab scanner import (ticket 44)', async () => {
 try {
   await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
@@ -1516,10 +1627,12 @@ try {
     ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
   }
 } catch (e) { fail('lab scanner import (ticket 44)', e); }
+});
 
 /* 6f. no-rows, driven deterministically: a blank slip has nothing for the
    engine to read, so unlike 6e this does not depend on what Tesseract makes
    of rendered text. */
+await flow('lab scanner no-rows path', async () => {
 try {
   await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
@@ -1535,8 +1648,10 @@ try {
   await page.waitForSelector('#lab-analyte');
   ok('a blank slip lands in no-rows, and its manual-entry escape opens the regular editor');
 } catch (e) { fail('lab scanner no-rows path', e); }
+});
 
 /* 7. palette switch */
+await flow('palette', async () => {
 try {
   await fresh('/settings');
   await page.locator('[data-palette-pick="pansexual"]').click();
@@ -1553,10 +1668,12 @@ try {
   }
   ok('palette switch recolours app');
 } catch (e) { fail('palette', e); }
+});
 
 /* 7b. mood preset switch (COL-001/ADR-0025): mood's own scale is picked
    independently of the palette above, and persists across a reload the
    same way the palette does. */
+await flow('mood preset', async () => {
 try {
   await fresh('/settings');
   const before = await page.evaluate(() => document.documentElement.dataset.moodPreset);
@@ -1574,16 +1691,20 @@ try {
   }
   ok('mood preset switch persists independently of the palette');
 } catch (e) { fail('mood preset', e); }
+});
 
 /* 8. language swap EN→PL (paraglide reload) */
+await flow('language', async () => {
 try {
   await fresh('/settings');
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
+});
 
 /* 8b. accessibility tuning persists and affects rendering on core screens */
+await flow('accessibility tuning', async () => {
 try {
   await fresh('/settings');
   await page.getByRole('switch', { name: 'Text size boost' }).click();
@@ -1600,8 +1721,10 @@ try {
   if (!stillBoosted) throw new Error('text-size boost did not persist after reload');
   ok('accessibility text-size boost persists and affects search rendering');
 } catch (e) { fail('accessibility tuning', e); }
+});
 
 /* 9. milestone shuffle */
+await flow('shuffle', async () => {
 try {
   await fresh('/transition/milestones');
   /* The templates are a sheet off the header now (phase 5 UX ticket 25):
@@ -1618,9 +1741,11 @@ try {
   if (!changed) throw new Error('shuffle never changed');
   ok('milestone template shuffle');
 } catch (e) { fail('shuffle', e); }
+});
 
 /* 10. custom scale: the live preview, then saving it, then finding it in the
    checklist looking like any built-in (phase 5 ticket 35) */
+await flow('custom dimension', async () => {
 try {
   await fresh('/settings/dimension');
   await page.locator('#cd-name').fill('Voice comfort');
@@ -1651,6 +1776,7 @@ try {
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
   ok('a custom scale previews, saves ticked, and appears like a built-in');
 } catch (e) { fail('custom dimension', e); }
+});
 
 /* 10b. Back returns to the screen you were actually on (CARPET-05).
 
@@ -1665,6 +1791,7 @@ try {
    walk to and the header's href is what is left to offer. Asserting only
    the first would pass just as well on a back control that had stopped
    being a link at all. */
+await flow('back to where you came from', async () => {
 try {
   await fresh('/');
   await page.locator('[data-backup-notice] [data-notice-action]').click();
@@ -1674,19 +1801,23 @@ try {
   await page.waitForURL(BASE + '/');
   ok('back from a screen a notice linked into returns to the notice, not to the menu above it');
 } catch (e) { fail('back to where you came from', e); }
+});
 
+await flow('back with nothing behind it', async () => {
 try {
   await fresh('/settings/export');
   await page.locator('[data-screen-back]').click();
   await page.waitForURL(BASE + '/settings');
   ok('back on the screen the app booted onto takes the parent the header names');
 } catch (e) { fail('back with nothing behind it', e); }
+});
 
 /* 10c. Home's stale-backup notice (ticket 15, F21). Before the export
    flows below, because they are what stops the journal being stale: the
    demo persona's last backup is 34 days old, and the number in the notice
    is what proves the age was read as epoch millis rather than as an epoch
    day - the mix the demo store shipped, which would have read as decades. */
+await flow('backup notice', async () => {
 try {
   await fresh('/');
   const notice = page.locator('[data-backup-notice]');
@@ -1715,8 +1846,10 @@ try {
   }
   ok('the stale-backup notice reads 34 days, dismisses, and stays dismissed across a navigation');
 } catch (e) { fail('backup notice', e); }
+});
 
 /* 11. import: a file that is not an archive */
+await flow('export/import', async () => {
 try {
   await fresh('/settings/export');
   /* A real file through a real dialog. It is not an archive, so the
@@ -1739,11 +1872,13 @@ try {
   await page.waitForSelector('[data-import-error="not-an-archive"]');
   ok('a file that is not a backup is refused, in the words the catalogue gives');
 } catch (e) { fail('export/import', e); }
+});
 
 /* 11b. the whole of F14 through the screen: export the demo journal, then
    import the file that came out of it. Merging your own backup is the one
    import whose outcome is knowable in advance - every row matches by
    identity, so a second copy of anything would be a bug (ticket 14). */
+await flow('archive round trip', async () => {
 try {
   /* Home's own list of the last few days, counted off the DOM: if a merge
      inserted a second copy of anything, every one of those days would show
@@ -1807,12 +1942,14 @@ try {
   }
   ok(`export → import round trip through the screen, ${before} recent entries and ${beforeToday} for today unchanged`);
 } catch (e) { fail('archive round trip', e); }
+});
 
 /* 11c. the plain CSV export (ticket 15, F22): the warning it has to go
    through, and whether the file that comes out survives a note with a
    comma, a quote and a newline in it. Written through the editor rather
    than assumed of the demo persona, so the nastiest field in the file is
    one this test knows the exact text of. */
+await flow('plain export', async () => {
 try {
   const NOTE = 'Told them my name, out loud.\nShe said "finally".';
 
@@ -1893,11 +2030,13 @@ try {
 
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
 } catch (e) { fail('plain export', e); }
+});
 
 
 /* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
    redesign tickets 22, 31 and 32: nine steps - welcome, name, flag, scales,
    areas, lock, permissions, disguise, finish) */
+await flow('onboarding', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2105,6 +2244,7 @@ try {
   await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
+});
 
 /* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
    (phase 10 redesign ticket 33, DIRECTION.md rule 14).
@@ -2124,6 +2264,7 @@ try {
    fitting would clip its own foot in silence rather than scroll. The answers'
    own region is deliberately not asserted: it is the one thing on a step that
    may scroll, and on the long steps it does. */
+await flow('setup no-scroll', async () => {
 try {
   /* The demo bar is 239px of review chrome at 390 wide and is not in the
      build anybody installs, so it is hidden for this flow: measuring the
@@ -2238,9 +2379,11 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   ok('no step of setup scrolls and no control is under the touch floor, at 320/360/390/430 wide and with the window at 360');
 } catch (e) { fail('setup no-scroll', e); }
+});
 
 /* 13a. every step can be left, and leaving keeps what was chosen so far
    (phase 5 ticket 26) */
+await flow('onboarding leave', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2266,9 +2409,11 @@ try {
   if (await page.locator('[data-next]').count()) throw new Error('onboarding came back after leaving it');
   ok('onboarding can be left from any step');
 } catch (e) { fail('onboarding leave', e); }
+});
 
 /* 13b0. skipping the flag step puts back the flag that was showing when it
    was reached, rather than keeping whatever was tapped on the way through */
+await flow('onboarding flag skip', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2291,6 +2436,7 @@ try {
   await page.waitForSelector('[data-home-hello]');
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
+});
 
 /* 13c. a first run that restores (phase 10 redesign ticket 36).
 
@@ -2307,6 +2453,7 @@ try {
    entry and one flag, so what has to come back is nameable - the note, and
    the palette, which is a portable preference (ADR-0003) and therefore also
    the proof that the flag step was rightly not asked. */
+await flow('onboarding restore', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2499,10 +2646,12 @@ try {
 
   ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
 } catch (e) { fail('onboarding restore', e); }
+});
 
 /* 13d. and the way back out of it: a restore that is given up on leaves the
    person on the welcome as somebody new, with the whole flow ahead of them
    and nothing written. */
+await flow('onboarding restore abandoned', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2523,6 +2672,7 @@ try {
   await page.waitForSelector('[data-home-hello]');
   ok('giving up on a restore leaves setup running as a new person');
 } catch (e) { fail('onboarding restore abandoned', e); }
+});
 
 /* 13b1. turning the disguise on during setup leaves a finished install
    rather than a setup that died halfway (redesign ticket 32, ADR-0079).
@@ -2533,6 +2683,7 @@ try {
    claim - the disguise is in force, every answer was written, and the first
    run is over rather than waiting at step one. complete()'s ordering is
    held to in the Node tier (onboarding/complete.test.ts) and on a device. */
+await flow('onboarding disguise', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2595,10 +2746,12 @@ try {
   await page.keyboard.press('Escape');
   ok('turning the disguise on during setup finishes the first run under it');
 } catch (e) { fail('onboarding disguise', e); }
+});
 
 /* 13b. the settings scales sheet is the same list onboarding drew, and a
    tick is the change - there is no confirm on the sheet and never was
    (phase 5 ticket 35) */
+await flow('settings scales sheet', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/settings');
@@ -2711,9 +2864,11 @@ try {
   if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
   ok('settings scales sheet ticks through to the editor, empty included');
 } catch (e) { fail('settings scales sheet', e); }
+});
 
 /* 13c. the first run arrives with the default set ticked, and Skip leaves
    it exactly as it was (tickets 28, 35) */
+await flow('onboarding scales skip', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2756,8 +2911,10 @@ try {
   }
   ok('skipping the scales step keeps the default set');
 } catch (e) { fail('onboarding scales skip', e); }
+});
 
 /* 14. desktop: rail via container query at wide viewport */
+await flow('desktop', async () => {
 try {
   await page.setViewportSize({ width: 1400, height: 980 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -2766,10 +2923,12 @@ try {
   if (!railVisible || navVisible) throw new Error(`rail:${railVisible} nav:${navVisible}`);
   ok('desktop rail via container query');
 } catch (e) { fail('desktop', e); }
+});
 
 /* 14a. Today's gear reaches Settings, and no other screen's header carries
    one (ticket 09). Mobile width, then back to desktop for 14b and for step
    15, which follows expecting the wide viewport. */
+await flow('home gear settings', async () => {
 try {
   await page.setViewportSize({ width: 440, height: 940 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -2806,10 +2965,12 @@ try {
   }
   ok('no other screen header links to Settings');
 } catch (e) { fail('home gear settings', e); }
+});
 
 /* 14a-zoom. The gear is reachable, not just visible, at 200% zoom on a
    320px-class phone - the pre-existing 195px check (ticket 23) only holds
    the hello line and the sun's layout, never clicks the gear itself. */
+await flow('home gear settings at 200% zoom', async () => {
 try {
   await page.setViewportSize({ width: 195, height: 700 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -2819,9 +2980,11 @@ try {
   await page.waitForSelector('[data-settings-list]');
   ok('the gear opens Settings at 195px (200% zoom on a 390px phone)');
 } catch (e) { fail('home gear settings at 200% zoom', e); }
+});
 
 /* 14b. the rail's fifth row reaches Settings too, set apart from the four
    doors (ticket 09). */
+await flow('rail settings row', async () => {
 try {
   await page.setViewportSize({ width: 1400, height: 980 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -2847,19 +3010,23 @@ try {
   if (backOnDesktop) throw new Error('/settings draws a back control in the 1024px shell');
   ok('/settings in the 1024px shell: the field, and no back control');
 } catch (e) { fail('rail settings row', e); }
+});
 
 /* 15. reminders web note at desktop */
+await flow('reminders web', async () => {
 try {
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
   const text = await page.textContent('[data-screen]');
   if (!text.includes('Android app')) throw new Error('web note missing');
   ok('web reminders note');
 } catch (e) { fail('reminders web', e); }
+});
 
 /* 15b. the web editor names its preview as saved schedule and promises no
    ring, and the list's Export/import handoff comes back (ticket 13). The
    handoff lives on the list's notice; the editor is reached by direct
    visit, which is exactly the path the audit took. */
+await flow('web reminder editor', async () => {
 try {
   await page.goto(BASE + '/settings/reminders/new', { waitUntil: 'networkidle' });
   await booted();
@@ -2873,8 +3040,10 @@ try {
   await page.waitForFunction(() => location.pathname === '/settings/reminders');
   ok('web reminders: saved-schedule editor, no reboot promise, export handoff returns');
 } catch (e) { fail('web reminder editor', e); }
+});
 
 /* 16. preferences survive a reload and land before first paint (ticket 06) */
+await flow('boot preferences', async () => {
 try {
   await page.setViewportSize({ width: 440, height: 940 });
   await fresh('/settings');
@@ -2955,8 +3124,10 @@ try {
   if (backToTheApp.includes('-notes')) throw new Error('manifest after undisguising: ' + backToTheApp);
   ok('theme, palette, the disguised tab icon and the install identity land before first paint');
 } catch (e) { fail('boot preferences', e); }
+});
 
 /* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
+await flow('vocabulary localization', async () => {
 try {
   await fresh('/entry/new/today');
   await openSection('tags');
@@ -2977,10 +3148,12 @@ try {
   }
   ok('built-in tags follow the language, so they were seeded as keys');
 } catch (e) { fail('vocabulary localization', e); }
+});
 
 /* 18. lock on leave, quick exit blank and disguised decoy (tickets 17, 30),
    then the forgotten-PIN reset.
    Last, because the reset is the one flow that destroys the journal. */
+await flow('lock on leave, quick exit and reset', async () => {
 try {
   /* No PIN to set up first any more (ticket 53): mid-session locking now
      re-asks whatever opens the journal, and in the demo build that is the
@@ -3221,6 +3394,7 @@ try {
   await page.waitForSelector('[data-home-hello]');
   ok('lock on leave, quick exit blanks and locks the fan away with it, disguised quick exit shows the decoy, the reset clears the gate');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
+});
 
 /* 19. the About screen shows the version the build was given (ticket 01).
 
@@ -3232,6 +3406,7 @@ try {
    is the whole point, which is also why it is an obvious fake: this is the
    demo build, and it never ships. verify:build covers the other direction,
    where the version is the real one resolved from the checkout. */
+await flow('the version the build was given', async () => {
 try {
   await fresh('/settings');
   /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
@@ -3241,6 +3416,7 @@ try {
   if (shown !== '9.9.9-walkthrough') throw new Error(`About shows "${shown}"`);
   ok('About shows the exact version the build was given');
 } catch (e) { fail('the version the build was given', e); }
+});
 
 /* 20. wrapped (phase 4 features ticket 01): the Home card, both
    presentations, the entry floor and the Settings toggle.
@@ -3258,6 +3434,7 @@ try {
    so it addresses one nobody could have logged in: the floor applying to
    those on the same terms as a completed cadence is one of spec 07's own
    acceptance boxes. */
+await flow('wrapped', async () => {
 try {
   const emptyWindow = await page.evaluate(() => {
     const day = (d) => new Date(d * 86400000).toISOString().slice(0, 10);
@@ -3417,6 +3594,7 @@ try {
   if (!(await page.locator('[data-wrapped-card]').count())) throw new Error('the card did not come back');
   ok('wrapped: the Look back card, both presentations, the entry floor and the toggle');
 } catch (e) { fail('wrapped', e); }
+});
 
 /* 21. typed dysphoria and euphoria logging (phase 4 features ticket 02): all
    seven confirmed categories render as bare names under their own heading,
@@ -3430,6 +3608,7 @@ try {
    which must stay last on its own branch), and run `npx svelte-kit sync`
    first or the build this file drives dies on ENOENT for
    .svelte-kit/output/client/service-worker.js. */
+await flow('typed dysphoria and euphoria logging', async () => {
 try {
   await fresh('/entry/new/today');
   await openSection('tags');
@@ -3491,6 +3670,7 @@ try {
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
 } catch (e) { fail('typed dysphoria and euphoria logging', e); }
+});
 
 /* 22. on-this-day (phase 4 features ticket 03): the absolute good-day rule,
    the Home card, and the Settings toggle - independent of wrapped's own.
@@ -3502,6 +3682,7 @@ try {
    persona and flow 20's manual June entries happen to do at the month and
    year marks. Never run as part of the implementation loop, per ticket
    02's flow above: append here, run `npx svelte-kit sync` first. */
+await flow('on-this-day', async () => {
 try {
   await fresh('/on-this-day');
   if (!(await page.locator('[data-screen-title="on-this-day"]').count())) {
@@ -3597,6 +3778,7 @@ try {
 
   ok('on-this-day: the good-day rule, the Home card, and its own Settings toggle');
 } catch (e) { fail('on-this-day', e); }
+});
 
 /* 23. an unsaved entry survives Android killing the backgrounded process,
    not only a same-process app-switcher round trip (ticket 14). A full page
@@ -3604,6 +3786,7 @@ try {
    localStorage - the mirror EntryEditor.svelte writes to on every change -
    survives on disk either way, so this is the closest a desktop browser
    gets to proving it. */
+await flow('background/process-death draft restore', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="4"]').click();
@@ -3644,6 +3827,7 @@ try {
   if (leftover) throw new Error(`a saved draft leaked into a fresh editor: "${leftover}"`);
   ok('an unsaved entry survives a killed process and does not leak into the next one');
 } catch (e) { fail('background/process-death draft restore', e); }
+});
 
 /* 23b. the other half of ticket 14: backgrounding and returning without the
    process ever dying (home button, app switcher) must not touch an
@@ -3652,6 +3836,7 @@ try {
    same visibility events Android does is only worth asserting because it
    proves nothing here mistakes "hidden" for "gone" and clears the draft
    early. */
+await flow('same-process background/resume', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="3"]').click();
@@ -3673,6 +3858,7 @@ try {
   await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
   ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
 } catch (e) { fail('same-process background/resume', e); }
+});
 
 /* 24. quick log offers to fill in the active preset's scales too (phase 4
    features ticket 13, beta B2), unconditionally - unlike the "Add details"
@@ -3680,6 +3866,7 @@ try {
    preference. The prompt's inputs carry only placeholder text, never a
    real prefilled value, so there is nothing to delete before typing - and
    filling them in writes onto the entry the quick log already saved. */
+await flow('quick log dims prompt (save)', async () => {
 try {
   await fresh('/');
   await page.locator('[data-mood="4"]').click();
@@ -3707,10 +3894,12 @@ try {
   }
   ok('quick log dims prompt saves typed scale values onto the just-saved entry');
 } catch (e) { fail('quick log dims prompt (save)', e); }
+});
 
 /* 24b. declining the prompt must never block or delay the quick log itself
    - the entry is already saved by the time the prompt appears, so skipping
    it leaves that entry exactly as it was. */
+await flow('quick log dims prompt (decline)', async () => {
 try {
   await fresh('/');
   await page.locator('[data-mood="3"]').click();
@@ -3728,10 +3917,12 @@ try {
   }
   ok('declining the quick log dims prompt leaves the saved entry untouched');
 } catch (e) { fail('quick log dims prompt (decline)', e); }
+});
 
 /* 25. ticket 18's compare-two-periods stats screen (phase 4 features): two
    independently picked ranges show their own core figures side by side,
    with no computed delta rendered between them. */
+await flow('compare two periods', async () => {
 try {
   await fresh('/compare');
   const { aStart, aEnd, bStart, bEnd } = await page.evaluate(() => {
@@ -3764,6 +3955,7 @@ try {
   if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('compare is not view-only');
   ok('two independently picked periods compare side by side with no computed delta');
 } catch (e) { fail('compare two periods', e); }
+});
 
 /* Flow: the transition roadmap (phase 4 ticket 23, widened phase 5 ticket
    20 for the "not my path" tri-state and custom goals). Acceptance boxes
@@ -3775,6 +3967,7 @@ try {
    is exact - zero requests of any origin, not just none off-origin.
    Boot's own document, modules and SQLite wasm are all behind it by
    then. */
+await flow('transition roadmap tri-state', async () => {
 try {
   await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
@@ -3868,6 +4061,7 @@ try {
   if (requested.length) throw new Error('the roadmap made requests: ' + JSON.stringify(requested.slice(0, 4)));
   ok('the roadmap cycles a goal through checked, not-my-path and unchecked, offline, and remembers it across a reload');
 } catch (e) { fail('transition roadmap tri-state', e); }
+});
 
 /* Custom goals (phase 5 ticket 20): a person can add their own goal to a
    track, it appends after the bundled ones, and it ticks through the same
@@ -3875,6 +4069,7 @@ try {
    global checked count: the tri-state flow above already leaves one
    bundled goal checked in this same browser session, since fresh() only
    clears localStorage and never the journal itself. */
+await flow('transition roadmap custom goal', async () => {
 try {
   await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
@@ -3915,6 +4110,7 @@ try {
 
   ok('a custom goal appends to its track and ticks through the same tri-state a bundled goal does');
 } catch (e) { fail('transition roadmap custom goal', e); }
+});
 
 /* 26. the journaling pause (phase 5 ticket 21): declaring one puts its tile
    on Home while it covers today, and resuming takes it off straight away
@@ -3923,6 +4119,7 @@ try {
 
    It was Home's streak line that went quiet here until phase 8 UX ticket 01
    deleted the streak. The tile says the same thing and is what is left. */
+await flow('journaling pause', async () => {
 try {
   await fresh('/');
   if (await page.locator('[data-pause-active-tile]').count())
@@ -3945,6 +4142,7 @@ try {
     throw new Error('the pause tile still shows the day the pause was resumed');
   ok('a journaling pause puts its tile on Home while it covers today, and resuming takes it off the same day');
 } catch (e) { fail('journaling pause', e); }
+});
 
 /* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
    is what the pages hold, and the print layout is many sheets rather than
@@ -3952,6 +4150,7 @@ try {
    is a fixed-height frame with one scrolling region, so before the print
    rules in app.css the document laid out to exactly one viewport and every
    page after the first was silently dropped. */
+await flow('journal book', async () => {
 try {
   await fresh('/settings/journal-book');
   await page.waitForSelector('[data-book-entry]');
@@ -3982,6 +4181,7 @@ try {
 
   ok('a journal book carries what the picker was told to carry, and prints as more than one page');
 } catch (e) { await page.emulateMedia({ media: 'screen' }); fail('journal book', e); }
+});
 
 /* Concurrent regimen episodes and dose-drug attribution (phase 5 ticket
    38): two episodes for different drugs can both be active without one
@@ -3989,6 +4189,7 @@ try {
    which drug it was, and ending one drops it out of the active set again
    - the disambiguation this ticket exists to force before a dose can be
    drawn into the wrong drug's curve. */
+await flow('concurrent regimen episodes and dose attribution', async () => {
 try {
   await fresh('/care/regimen');
 
@@ -4105,11 +4306,13 @@ try {
 } catch (e) {
   fail('concurrent regimen episodes and dose attribution', e);
 }
+});
 
 /* Characterization pass for the More hub (phase 5 ticket 03): every route
    Settings used to link, directly or by way of the new /more hub, still
    answers at its own address - ADR-0036 moves who links to a route, never
    the route itself, and this is the thing that would catch a slip. */
+await flow('More hub route characterization', async () => {
 try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
@@ -4135,6 +4338,7 @@ try {
 } catch (e) {
   fail('More hub route characterization', e);
 }
+});
 
 /* The permissions list has a permanent home (phase 10 redesign ticket 31).
    Setup's step says every one of these can be granted later, and the only
@@ -4142,6 +4346,7 @@ try {
    same list from the same component - so what this checks is that the row
    is there, that it leads somewhere, and that what it leads to is the same
    rows under the same reasons, not a second list saying something close. */
+await flow('permissions in Settings', async () => {
 try {
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('a[href="/settings/permissions"]').click();
@@ -4179,12 +4384,14 @@ try {
 } catch (e) {
   fail('permissions in Settings', e);
 }
+});
 
 /* Carpet ticket 14: the measurements screen's capture-protocol notice is one
    instance whose text follows the segmented type picker, not one notice per
    type - so dismissing it on whichever type is showing has to dismiss it for
    every other type of the same switcher too, not just the one on screen when
    it was closed. */
+await flow('measurements protocol notice dedup and dismiss persistence', async () => {
 try {
   await fresh('/body/measurements');
 
@@ -4214,6 +4421,7 @@ try {
 } catch (e) {
   fail('measurements protocol notice dedup and dismiss persistence', e);
 }
+});
 
 /* Ticket 135: a demo-bar state jump is a journal clear and a reseed through
    the worker, and the persona's seed writes presentations before the
@@ -4226,6 +4434,7 @@ try {
 
    Dispatched rather than clicked, so what refuses the second jump is the
    bar's own guard and not Playwright waiting for the button to come back. */
+await flow('demo bar state jump overlap', async () => {
 try {
   await fresh('/');
   const before = errors.length;
@@ -4258,6 +4467,7 @@ try {
 } catch (e) {
   fail('demo bar state jump overlap', e);
 }
+});
 
 /* Phase 5 ticket 36: the persona alone leaves most of the More hub in its
    empty state, which is why this ticket exists - a review pass through
@@ -4267,6 +4477,7 @@ try {
    empty"` marker is gone rather than by counting rows, since an empty-state
    Notice existing at all is a screen's own claim that it has nothing to
    show. */
+await flow('fill every feature', async () => {
 try {
   await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-fill-every-feature]');
@@ -4495,6 +4706,7 @@ try {
 } catch (e) {
   fail('fill every feature', e);
 }
+});
 
 /* Phase 10 redesign ticket 44: the wear log is a week at a time, drawn as
    a strip with the running session under it, so it can never be long
@@ -4507,6 +4719,7 @@ try {
    over a page of them: that the strip is there, that it holds one week,
    and that no row on the screen falls outside the week the strip is
    drawing. */
+await flow('wear log is a week at a time', async () => {
 try {
   await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
@@ -4533,6 +4746,7 @@ try {
 } catch (e) {
   fail('wear log is a week at a time', e);
 }
+});
 
 /* Ticket 67 acceptance: the dose log and the regimen screen each arrive
    with one batch rendered, not the whole log. This was the wear log's own
@@ -4543,6 +4757,7 @@ try {
    batched" apart - `[data-batched-list]` is BatchedList's own wrapper, so
    its presence is what actually proves the adoption on a screen a count
    can't. */
+await flow('dose log arrives batched', async () => {
 try {
   await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
@@ -4555,7 +4770,9 @@ try {
 } catch (e) {
   fail('dose log arrives batched', e);
 }
+});
 
+await flow('regimen screen arrives batched', async () => {
 try {
   await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
@@ -4566,6 +4783,7 @@ try {
 } catch (e) {
   fail('regimen screen arrives batched', e);
 }
+});
 
 /* Ticket 67: a deep link into a batched log expands to the row before
    scrolling to it, rather than landing short of a row the first batch
@@ -4574,6 +4792,7 @@ try {
    phase 5 ticket 09 rewrite dropped it - and its dosage-log table reads
    oldest first, so the first row's link is the one link on demo data that
    is guaranteed to sit past the dose log's own newest-first first batch. */
+await flow('deep-linked row expands the batched dose log', async () => {
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
   await page.waitForSelector('a[href^="/care/doses#"]', { timeout: 8000 });
@@ -4600,6 +4819,7 @@ try {
 } catch (e) {
   fail('deep-linked row expands the batched dose log', e);
 }
+});
 
 /* Ticket 67 acceptance: "the same link to a record inside the first batch
    behaves as it does today". The dossier's dosage log reads oldest first,
@@ -4616,6 +4836,7 @@ try {
    every link stays visible, and the last one is still today's or
    yesterday's, nowhere near needing a batch past /care/doses' first
    thirty. */
+await flow('deep-linked row inside the first batch is unchanged', async () => {
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
   const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
@@ -4648,6 +4869,7 @@ try {
 } catch (e) {
   fail('deep-linked row inside the first batch is unchanged', e);
 }
+});
 
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
@@ -4661,6 +4883,7 @@ try {
    to send null on every web save regardless of whether a reminder already
    existed. If that regressed, the row the next block looks for would
    already be gone. */
+await flow('wear editor reminder field on web', async () => {
 try {
   await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-wear-running]', { timeout: 8000 });
@@ -4706,12 +4929,14 @@ try {
 
   ok('web wear editor hides the elapsed reminder, and saving does not drop one already set');
 } catch (e) { fail('wear editor reminder field on web', e); }
+});
 
 /* Ticket 31: the web reminders list, once "Fill every feature" guarantees
    it is not empty - rows with no navigation and a delete control, and a
    wear-session's own elapsed reminder (`wear:` autoSource, fullFixture.ts's
    "Binder check-in") that appears and can be cancelled from it, which is
    ADR-0063's reasoning for why the web list carries a delete at all. */
+await flow('reminders list on web', async () => {
 try {
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-list-row]').count()) === 0) throw new Error('no reminder rows shown on web');
@@ -4728,6 +4953,7 @@ try {
 
   ok('web reminders list shows rows with no navigation, and a wear-session reminder can be deleted from it');
 } catch (e) { fail('reminders list on web', e); }
+});
 
 /* The hub reading its own data (phase 8 UX ticket 02).
 
@@ -4756,6 +4982,7 @@ try {
    `data-hub-line` naming which kind it drew, so they are told apart by that
    rather than by the copy, which a rewording would let pass for free, or by
    the kit's `.kit-row-sub` class, which is structure. */
+await flow('the hub reads its own data', async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   /* The Body row states the value it holds rather than the age of it, which
@@ -4852,6 +5079,7 @@ try {
 } catch (e) {
   fail('the hub reads its own data', e);
 }
+});
 
 /* The reorganised tree, tapped rather than asserted (phase 9 carpet ticket
    16). Seven rows left the hub for the screen that owns them, and the whole
@@ -4862,6 +5090,7 @@ try {
 
    Handles, not headings: every step is a `data-list-row` click and a URL
    wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
+await flow('the reorganised hub tree', async () => {
 try {
   // Health > Care > Changes you've noticed, which carries side effects on
   // the same axis and the same list now (ticket 13) - there is no row left
@@ -4929,6 +5158,7 @@ try {
 } catch (e) {
   fail('the reorganised hub tree', e);
 }
+});
 
 /* Cutting through the door with the search box in its field (phase 10
    redesign ticket 15). Twenty-seven rows is only a list somebody can get
@@ -4939,6 +5169,7 @@ try {
    than for what reads well - "wear" names an area, "endo" is inside a
    consult and a reminder - and both halves are asserted by their handles,
    never by the copy (ADR-0029). */
+await flow("the Transition door's search", async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-hub-index] [data-list-row="measurements"]', { timeout: 8000 });
@@ -5014,6 +5245,7 @@ try {
 } catch (e) {
   fail("the Transition door's search", e);
 }
+});
 
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
 
@@ -5034,6 +5266,7 @@ try {
    itself when somebody lands on Home after a gap, and that having met it
    once is what stops it opening again - which is the whole of "a moment, not a place" and is a
    preference, a redirect and a screen agreeing across a reload. */
+await flow('coming back', async () => {
 try {
   await fresh('/');
   /* The jump reboots onto Home and the shell's gate is what takes it from
@@ -5111,6 +5344,7 @@ try {
 } catch (e) {
   fail('coming back', e);
 }
+});
 
 /* Phase 8 features ticket 21, rewalked for phase 11 ticket 15: Safe Space's
    way down to what a person put aside for themselves lands on the letters
@@ -5123,6 +5357,7 @@ try {
    After "fill every feature", which is what puts unlocked letters and
    starred photos in the journal at all - the persona alone writes no
    letters, and the section is absent then on purpose. */
+await flow('safe space letters', async () => {
 try {
   /* Through the row rather than straight to the route (redesign ticket 47,
      repointed by ticket 15): the tap is the half of this that could break
@@ -5167,6 +5402,7 @@ try {
 } catch (e) {
   fail('safe space letters', e);
 }
+});
 
 /* Ticket 18: "compare this stretch" on a tryout and on a procedure, over
    the journal "fill every feature" just layered onto whatever ~50 earlier
@@ -5194,6 +5430,7 @@ try {
    check than "the diff to sideStats/periodFromRange is empty", since it
    exercises the real computation rather than trusting the diff not to
    have touched it. */
+await flow('compare this stretch', async () => {
 try {
   // epochDay.ts and recoveryDay.ts both import nothing of their own (each
   // file's own header comment says so, for exactly this reason), so they
@@ -5297,6 +5534,7 @@ try {
 } catch (e) {
   fail('compare this stretch', e);
 }
+});
 
 /* Importing a Daylio backup (phase 7 ticket 09). The one flow in this
    suite that hands the app a file: `chooseFiles` creates an input and
@@ -5314,6 +5552,7 @@ try {
    that a preview resolved, that the sheet closed on commit, that the
    import wrote a history row, and that picking the same file again offers
    no confirm button, which is the whole of "re-importing adds nothing". */
+await flow('daylio backup import', async () => {
 try {
   const { makeDaylioBackup } = await import('../src/lib/data/archive/test-support/daylio-backup.ts');
   const { writeFile, mkdtemp } = await import('node:fs/promises');
@@ -5361,6 +5600,7 @@ try {
 
   ok('a Daylio backup previews, imports, writes a history row, and adds nothing the second time');
 } catch (e) { fail('daylio backup import', e); }
+});
 
 
 /* The rotation map's dots at the narrowest phone the app supports (phase 6
@@ -5378,6 +5618,7 @@ try {
 
    The viewport is narrowed for this flow alone and put back afterwards:
    every other flow in this file reads a 440px screen. */
+await flow('injection map recency', async () => {
 try {
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
@@ -5494,6 +5735,7 @@ try {
 } finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }
+});
 
 /* Today's header at what 200% zoom leaves of a 390px phone (redesign
    ticket 23, DIRECTION.md rule 7). The old header reserved the sun's full
@@ -5501,6 +5743,7 @@ try {
    Playwright read the line as hidden: zero width. The foot under the field
    has no sun beside it, so the line has its width back, and the sun draws
    at 0.6 so the wordmark in the field's corner is clear of it. */
+await flow('the field at 200% zoom', async () => {
 try {
   await page.setViewportSize({ width: 195, height: 844 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -5539,6 +5782,7 @@ try {
 } finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }
+});
 
 /* Eras (phase 6 ticket 01, ADR-0049). Two things worth walking that no unit
    test reaches: leaving a bound open is a choice on screen rather than an
@@ -5558,6 +5802,7 @@ try {
    collide with *any* other era on the overlap check (`eras.ts`'s
    `spansOverlap` returns true whenever neither side can prove non-overlap,
    and an era with both bounds null can never prove either side). */
+await flow('eras', async () => {
 try {
   await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
   await booted();
@@ -5640,6 +5885,7 @@ try {
 } catch (e) {
   fail('eras', e);
 }
+});
 
 /* The span offer (redesign ticket 48): dragging or tapping a span on Look
    back's rail offers to name it, once, on the rail itself - never a Today
@@ -5650,6 +5896,7 @@ try {
    default. `eraOfferDue`'s own overlap arithmetic (lookBackSpan.test.ts) is
    what decides *whether* a span counts as handled; this only proves the
    screen wires that decision to the DOM. */
+await flow('span offer', async () => {
 try {
   const { dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
 
@@ -5703,6 +5950,7 @@ try {
 } catch (e) {
   fail('span offer', e);
 }
+});
 
 /* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
 
@@ -5745,6 +5993,7 @@ async function slideToTarget(selector) {
   await page.mouse.up();
 }
 
+await flow('quick add mood', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-4"]').click();
@@ -5752,7 +6001,9 @@ try {
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
   ok('quick add: a mood opens the editor seeded with it');
 } catch (e) { fail('quick add mood', e); }
+});
 
+await flow('quick add today', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-3"]').click();
@@ -5760,7 +6011,9 @@ try {
   await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
   ok("quick add: a mood is how today's entry starts, seeded with it");
 } catch (e) { fail('quick add today', e); }
+});
 
+await flow('quick add backdate', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-choose="another-day"]').click();
@@ -5776,6 +6029,7 @@ try {
   if (!page.url().includes('/entry/new/')) throw new Error(`backdate went to ${page.url()}`);
   ok('quick add: a backdated entry still opens the editor on that day');
 } catch (e) { fail('quick add backdate', e); }
+});
 
 for (const kind of ['misgendered', 'correctly_gendered']) {
   try {
@@ -5804,6 +6058,7 @@ for (const kind of ['misgendered', 'correctly_gendered']) {
   } catch (e) { fail(`quick add tally ${kind}`, e); }
 }
 
+await flow('quick add failed write', async () => {
 try {
   /* A write that did not land must not borrow the animation of one that
      did. Forced through the demo build's own switch rather than by breaking
@@ -5841,13 +6096,16 @@ try {
   await page.evaluate(() => delete document.documentElement.dataset.demoFail);
   ok('quick add: a write that fails says so, and borrows none of the landed animation');
 } catch (e) { fail('quick add failed write', e); }
+});
 
+await flow('quick add dose', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-choose="dose"]').click();
   await page.waitForSelector('[data-save-dose]');
   ok('quick add: a dose reaches the dose log with its editor already open');
 } catch (e) { fail('quick add dose', e); }
+});
 
 /* In-context tally actions on /tally (phase 11 ticket 40). The two counters'
    own log and undo sit under their own charts, so the screen that reads a
@@ -5872,6 +6130,7 @@ try {
    non-empty: the region holds the previous announcement between steps, and
    "non-empty" would race the clear-then-set that makes a repeated identical
    value speak twice. */
+await flow('tally in-context actions', async () => {
 try {
   await fresh('/tally');
   await page.click('[data-fill-every-feature]');
@@ -5966,7 +6225,9 @@ try {
      actions moved, and nothing moved on its own. */
   ok('tally: each counter logs and undos beside its own chart, announces the changed value, and reaches zero honestly');
 } catch (e) { fail('tally in-context actions', e); }
+});
 
+await flow('the appointment record', async () => {
 try {
   /* The appointment record (phase 8 features ticket 57, ADR-0066): write a
      visit down, edit it, and throw it away.
@@ -6059,7 +6320,9 @@ try {
   );
   ok('appointments: written, suggested from your own previous kinds, edited and deleted');
 } catch (e) { fail('the appointment record', e); }
+});
 
+await flow('the calendar handoff', async () => {
 try {
   /* The calendar handoff (phase 10 redesign ticket 18, ADR-0067): the
      sheet's default title stays neutral until the person changes it, and
@@ -6108,7 +6371,9 @@ try {
   await page.click('[data-confirm-delete-appointment]');
   ok('calendar handoff: the default title stays neutral, an edited title and time reach the shared file');
 } catch (e) { fail('the calendar handoff', e); }
+});
 
+await flow('in the room', async () => {
 try {
   /* In the room (phase 8 features ticket 60): the standing prep list read
      one question per screen, and what gets jotted arriving in the debrief
@@ -6287,7 +6552,9 @@ try {
   if (!(await page.locator('[data-room-done]').count())) throw new Error('the room lost its way out');
   ok('in the room: the prep list one question per screen, chromeless, and a jotted answer reaching the debrief under its own question');
 } catch (e) { fail('in the room', e); }
+});
 
+await flow('cycle tracking opt-in', async () => {
 try {
   /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
@@ -6346,7 +6613,9 @@ try {
   );
   ok('cycle tracking: hidden by default, surfaced by the opt-in, records and direct URL untouched');
 } catch (e) { fail('cycle tracking opt-in', e); }
+});
 
+await flow('cycle tracking testosterone', async () => {
 try {
   /* Way in two: an active testosterone episode, which is the body the log
      is for, asking nothing of preferences. The regimen screen links the
@@ -6385,8 +6654,10 @@ try {
   await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
   ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
 } catch (e) { fail('cycle tracking testosterone', e); }
+});
 
 
+await flow('quick add effects nudge', async () => {
 try {
   /* The personal effects onset nudge (phase 5 ticket 49).
      Absent on a fresh journal with no regimen. Once an active regimen
@@ -6518,9 +6789,11 @@ try {
 
   ok('personal effects: a change marked from the list lands on the axis, and its mark opens the editor again');
 } catch (e) { fail('quick add effects nudge', e); }
+});
 
 
 
+await flow('quick add wear session', async () => {
 try {
   /* The wear session is the one target that reads the journal before it
      draws itself, because it is two things: nothing running, so this
@@ -6556,14 +6829,18 @@ try {
   if (!(await page.getByRole('heading', { level: 1 }).count())) throw new Error('the wear log did not render');
   ok('quick add: a wear session starts and stops in place, and the row says which');
 } catch (e) { fail('quick add wear session', e); }
+});
 
+await flow('quick add slide to a row', async () => {
 try {
   await fresh('/');
   await slideToTarget('[data-choose="another-day"]');
   await page.waitForSelector('#backdate');
   ok('quick add: pressing and sliding onto a row runs it, with no second tap');
 } catch (e) { fail('quick add slide to a row', e); }
+});
 
+await flow('quick add slide to a mood', async () => {
 try {
   await fresh('/');
   await slideToTarget('[data-fan-target="mood-2"]');
@@ -6571,7 +6848,9 @@ try {
   await page.waitForSelector('[data-mood="2"][aria-checked="true"]');
   ok('quick add: the slide crosses the mood row too, and picks off it');
 } catch (e) { fail('quick add slide to a mood', e); }
+});
 
+await flow('quick add press without a slide', async () => {
 try {
   /* Letting go over the button itself chooses nothing, which is what makes
      one rule serve both gestures: the fan stays up to be tapped. */
@@ -6587,6 +6866,7 @@ try {
   }
   ok('quick add: releasing without going anywhere leaves the fan up to tap');
 } catch (e) { fail('quick add press without a slide', e); }
+});
 
 /* The shell's window insets (phase 5 ticket 18).
 
@@ -6634,6 +6914,7 @@ async function appFrame() {
   });
 }
 
+await flow('top inset clears content', async () => {
 try {
   await fresh('/more');
   await withSimulatedInsets(async () => {
@@ -6651,7 +6932,9 @@ try {
     ok('a screen renders clear of the top inset');
   });
 } catch (e) { fail('top inset clears content', e); }
+});
 
+await flow('bottom inset clears the bar', async () => {
 try {
   await fresh('/more');
   await withSimulatedInsets(async () => {
@@ -6666,7 +6949,9 @@ try {
     ok('the bar floats clear of the bottom inset');
   });
 } catch (e) { fail('bottom inset clears the bar', e); }
+});
 
+await flow('bar clearance survives a full scroll', async () => {
 try {
   await fresh('/more');
   await withSimulatedInsets(async () => {
@@ -6692,7 +6977,9 @@ try {
     ok('scrolled to the end, the last row still clears the bar');
   });
 } catch (e) { fail('bar clearance survives a full scroll', e); }
+});
 
+await flow('Home bleeds decoration only', async () => {
 try {
   await fresh('/');
   await withSimulatedInsets(async () => {
@@ -6716,6 +7003,7 @@ try {
     ok('the flag sun bleeds into the inset and the greeting under it does not');
   });
 } catch (e) { fail('Home bleeds decoration only', e); }
+});
 
 /* The one screen over the unprompted registry (phase 6 ticket 04, merged
    from two screens onto one by deepening ticket 09). This is a browser, so
@@ -6726,6 +7014,7 @@ try {
    not Android-only and keeps working, the same as when it was its own
    screen; its switches themselves are Android-and-web and are held by
    registry.test.ts and each producer's own test. */
+await flow('the unprompted registry view', async () => {
 try {
   await fresh('/settings');
   await page.locator('[data-list-row="notifications"]').click();
@@ -6772,6 +7061,7 @@ try {
 
   ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the four prompts are under their heading');
 } catch (e) { fail('the unprompted registry view', e); }
+});
 
 /* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
    opened and thrown away.
@@ -6788,6 +7078,7 @@ try {
    mechanism. Fixed by joining the seeded row rather than unseeding it
    (ticket 64 put it there on purpose), so this flow ends back at its
    starting row count instead of an empty notice. */
+await flow('a place for paper', async () => {
 try {
   await fresh('/media/documents');
   await page.locator('[data-add]').waitFor();
@@ -6843,6 +7134,7 @@ try {
 
   ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it takes it off the list');
 } catch (e) { fail('a place for paper', e); }
+});
 
 /* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, one the
    renderer cannot read (ticket 55) - the paper icon, the line that says
@@ -6860,6 +7152,7 @@ try {
    rather than a Playwright text locator - `walkthrough-locators.test.ts`
    reserves those for a deliberate exception, and there is nothing
    deliberate about a title used only to tell two rows apart. */
+await flow('a document can be a PDF', async () => {
 try {
   await fresh('/media/documents');
   await page.locator('[data-add]').waitFor();
@@ -6909,6 +7202,7 @@ try {
 
   ok('a PDF, named .png by the picker, is filed by its real bytes, says it cannot be drawn, and exports unchanged');
 } catch (e) { fail('a document can be a PDF', e); }
+});
 
 /* Phase 8 features ticket 55, ADR-0065: a PDF this renderer can read.
    Its first page is drawn at import and stored, so the screen has
@@ -6920,6 +7214,7 @@ try {
    canvas: a viewer that ignored the button would keep the same picture,
    and both pages here are the same layout with different words on
    them. */
+await flow('looking at a PDF', async () => {
 try {
   await fresh('/media/documents');
   await page.locator('[data-add]').waitFor();
@@ -7005,6 +7300,7 @@ try {
 
   ok('a PDF draws its first page at import, turns to page 2 and back, and has no text layer on any of them');
 } catch (e) { fail('looking at a PDF', e); }
+});
 /* Phase 8 features ticket 69, ADR-0068: a custom goal is the person's own
    words, so it can be reworded and it can be removed - and removing it
    unfiles the paper filed against it without destroying the paper.
@@ -7014,6 +7310,7 @@ try {
    then draws the "file this somewhere" row rather than the "what this was
    filed under is gone" one, which is the same nulled column read through
    two screens and a picker. */
+await flow('a roadmap goal reworded and removed', async () => {
 try {
   await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
@@ -7119,6 +7416,7 @@ try {
 
   ok('a custom goal is reworded from its sheet, deleting it unfiles the paper filed against it without destroying it, and a built-in goal has neither control');
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
+});
 
 /* redesign ticket 17: a photo's day, asked for on import and editable
    afterwards (ADR-0015 - the file's own capture date is never read). Backend
@@ -7134,6 +7432,7 @@ try {
    Chromium page never resolves - a fresh() after it hangs boot rather than
    reaching Home, which showed up here first only because this ticket's
    tests were the first ever appended after it. */
+await flow("a photo's day, on screen", async () => {
 try {
   const skipPhoto = await tinyPhoto(page, '#c94f7c');
   const datedPhoto = await tinyPhoto(page, '#2b6cb0');
@@ -7197,7 +7496,9 @@ try {
 
   ok("import asks for a photo's day, a skip leaves the entry's own, and the day is editable afterwards from the gallery");
 } catch (e) { fail("a photo's day, on screen", e); }
+});
 
+await flow("the photo-day sheets at 200% zoom", async () => {
 try {
   await page.setViewportSize({ width: 195, height: 844 });
   await fresh('/');
@@ -7234,6 +7535,7 @@ try {
 finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }
+});
 
 /* The photo library (phase 11 ticket 14): one grid over all six tables that
    hold a photograph, and the wipe over any two of them.
@@ -7246,6 +7548,7 @@ finally {
    (ADR-0029). One assertion does read a label, because the label carrying
    the source is the thing the ticket asks for and a handle cannot say
    whether it says anything. */
+await flow('the photo library', async () => {
 try {
   /* Seeded here rather than relying on the "Fill every feature" run near the
      top of this file: everything between the two - an archive round trip, a
@@ -7325,10 +7628,12 @@ try {
 
   ok('the photo library holds all six sources, says where each came from, narrows by chip and wipes across tables');
 } catch (e) { fail('the photo library', e); }
+});
 
 /* The same chips over the export grid, so "Hair" alone can be made into a
    collage. Video notes are never in it: a collage decodes every frame as a
    photograph (journey-render.ts). */
+await flow('the export grid narrowed by source', async () => {
 try {
   await page.goto(BASE + '/media/photos/export', { waitUntil: 'networkidle' });
   await booted();
@@ -7348,6 +7653,7 @@ try {
 
   ok('the journey export reads the library, narrows by the same chips and leaves video notes out');
 } catch (e) { fail('the export grid narrowed by source', e); }
+});
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
@@ -7361,6 +7667,7 @@ try {
    journalDataKey() rather than finding nothing on a screen that was reached
    by a goto, and that the characters are on screen exactly once - leaving
    the shown state has to lose them, because nothing stores them. */
+await flow('the recovery key', async () => {
 try {
   await fresh('/settings');
   await page.locator('a[href="/settings/security"]').click();
@@ -7417,6 +7724,7 @@ try {
 
   ok('a recovery key is made once, shown once, and removed from Settings');
 } catch (e) { fail('the recovery key', e); }
+});
 
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
@@ -7437,6 +7745,7 @@ try {
    from a single Security row rather than being set up straight off /settings -
    so this flow goes through that row rather than assuming the switch is on
    the page it lands on. */
+await flow('access mode', async () => {
 try {
   await fresh('/settings');
   await page.locator('a[href="/settings/security"]').click();
@@ -7601,6 +7910,7 @@ try {
 
   ok('the access mode changes, PIN gates a cold start, throttles wrong PINs and opens on the right one');
 } catch (e) { fail('access mode', e); }
+});
 
 /* AFTER LAST. A recovery key used for what it is for (ADR-0054, ticket
    sec-02), which can only be checked here and in this order.
@@ -7618,6 +7928,7 @@ try {
    screen with the same key. That last state is the one the ticket exists
    for - a browser that threw away its key - and it is the only screen in
    the app that used to have nothing on it but a reset. */
+await flow('the recovery key at the gate', async () => {
 try {
   /* No fresh() here, and that is the first thing this flow taught: fresh()
      ends in booted(), and the journal this one inherits is in PIN mode, so a
@@ -7739,6 +8050,7 @@ try {
 
   ok('a written key opens a journal whose PIN is gone, is refused when mistyped, and owes a new access mode before the app comes back');
 } catch (e) { fail('the recovery key at the gate', e); }
+});
 
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));

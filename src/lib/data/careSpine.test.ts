@@ -4,6 +4,7 @@ import {
   careSpine,
   lastLoggedDoseDay,
   MIN_LABEL_GAP,
+  MIN_LABEL_PX,
   nextExpectedSlot,
   railEpisodes,
   scheduleDoseFacts,
@@ -305,6 +306,41 @@ test('a dose today, one tomorrow and a run-out weeks out all stay readable', () 
       }
     }
   }
+});
+
+/* The same rule at a width nobody measured it at (phase 11 UI/UX ticket
+   25): 200% zoom on a 390px phone leaves the rail about 97px, where the
+   fraction sized for 292px is 33px and two captions at 34px apart print
+   over each other. */
+test('a rail narrow enough to be measured in is the rule the captions follow', () => {
+  const facts = { labDrawEpochDay: null, lanes: [lane({ lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 3, runOutEpochDay: TODAY + 25 })] };
+  const wide = careSpine(facts, TODAY, 292);
+  const narrow = careSpine(facts, TODAY, 97);
+  assert.ok(wide);
+  assert.ok(narrow);
+  for (const [name, spine, width] of [
+    ['292px', wide, 292],
+    ['97px', narrow, 97]
+  ] as const) {
+    const byRow = new Map<number, number[]>();
+    for (const mark of spine.lanes[0].marks) byRow.set(mark.labelRow, [...(byRow.get(mark.labelRow) ?? []), mark.position]);
+    for (const positions of byRow.values()) {
+      for (let i = 1; i < positions.length; i++) {
+        assert.ok(
+          (positions[i] - positions[i - 1]) * width >= MIN_LABEL_PX,
+          `${name}: two captions ${((positions[i] - positions[i - 1]) * width).toFixed(1)}px apart share a row`
+        );
+      }
+    }
+  }
+  const rows = (spine: CareSpine) => new Set(spine.lanes[0].marks.map((mark) => mark.labelRow)).size;
+  assert.ok(rows(narrow) > rows(wide), 'the narrow rail spends rows where the wide one does not');
+});
+
+test('an unmeasured rail falls back to the fraction the 390px phone gives', () => {
+  const facts = { labDrawEpochDay: null, lanes: [lane({ lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 3, runOutEpochDay: TODAY + 25 })] };
+  assert.deepEqual(careSpine(facts, TODAY, 0), careSpine(facts, TODAY, MIN_LABEL_PX / MIN_LABEL_GAP));
+  assert.deepEqual(careSpine(facts, TODAY), careSpine(facts, TODAY, null));
 });
 
 test('every row from 0 up is used, so a lane is never taller than it needs', () => {
