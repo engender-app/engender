@@ -154,8 +154,47 @@ export function homeTiles(
     return { enabled, snoozed };
   });
 
-  const tiles = $derived(
-    composeHomeTiles({
+  /* Every read behind the grid, named once so the composition below can wait
+     for all of them. */
+  const initialQueries = [
+    runningWear,
+    episodes,
+    procedures,
+    letters,
+    dueRevisits,
+    latestBadEntryId,
+    tryouts,
+    tryoutFeltSense,
+    schedules,
+    dosePauses,
+    todayDoses,
+    yesterdayDoses,
+    latestBenchmarkDay,
+    journalingPauses,
+    areaStates,
+    latestHairRemoval,
+    measurementCount,
+    latestMeasurementDay,
+    todayAppointments
+  ];
+  /* Whether the grid may be composed yet (phase 11 ticket 146). Composed
+     while the reads are still landing, it states an arrangement it does not
+     mean: on a cold boot letters and tryouts answer before procedures, so the
+     ready letter and the safe-space nudge take the top slots and the fold's
+     label for a frame before the surgery countdown displaces them. Measured
+     on the Home cold scene, that was the fold painting 243px wide against its
+     resting 162px and then dropping its mark when the real label arrived, and
+     the nudge painting 322x44 before snapping to 132x88 on the phone.
+
+     A `$derived` rather than a latch. `loading` is one-way (readState.ts: a
+     re-run after a write keeps the previous result rather than going pending
+     again), so once the reads have answered this cannot fall back to false
+     and take the whole grid off the screen again. */
+  const composable = $derived(initialQueries.every((query) => !query.loading));
+
+  const tiles = $derived.by(() => {
+    if (!composable) return [];
+    return composeHomeTiles({
       todayEpochDay,
       nowMs: nowTick,
       enabled: gates.enabled,
@@ -210,8 +249,8 @@ export function homeTiles(
         time: (timestamp) => fmtTime(timestamp),
         hairRemovalArea: hairRemovalAreaName
       }
-    })
-  );
+    });
+  });
 
   return {
     get tiles() {
