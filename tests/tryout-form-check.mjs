@@ -21,8 +21,10 @@
       happens to break").
 
    3. That all six kinds are reachable at 320px by keyboard and by touch,
-      and that creating, saving and reopening a tryout still keeps what was
-      typed.
+      that creating, saving and reopening a tryout still keeps what was
+      typed, and that the cards tell each other apart: a name far longer
+      than the plate is wide stays inside the card, and a tryout nobody has
+      recorded a feeling against says so rather than going blank.
 
    Run: VITE_DEMO=1 npm run build && node tests/tryout-form-check.mjs
         (npm run test:tryout-form does both) */
@@ -41,6 +43,19 @@ const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const errors = [];
+
+/** Longer than the plate is wide at either width, so the name has to wrap
+    inside it. */
+const LONG_NAME = 'A name I have been turning over for a very long while now';
+
+/** `tryout_felt_none`, which the card writes where the last reading would
+    go when there is none. Read from the catalogues rather than hardcoded
+    would mean importing the compiled runtime into a script that drives a
+    built app; these two are the sentence the check is about. */
+const NO_FEELING_YET = {
+  en: 'No felt sense recorded yet',
+  pl: 'Nie ma jeszcze zapisu odczuć'
+};
 
 /** The six kinds, in the order the form lists them. */
 const KINDS = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
@@ -175,7 +190,7 @@ try {
 
       // 4. Creating, saving and reopening keeps the record.
       await page.locator(`[data-segment="style"]`).click();
-      await page.fill('#tr-label', 'Shorter hair');
+      await page.fill('#tr-label', LONG_NAME);
       await fillDate(page, '#tr-start', '2026-03-03');
       await page.locator('[data-save-tryout]').click();
       await page.waitForFunction(() => !location.pathname.endsWith('/new'));
@@ -187,20 +202,41 @@ try {
       await settlePage(page, base, '/transition/tryouts', 'light');
       await settlePage(page, base, new URL(saved).pathname, 'light');
       await page.waitForSelector('#tr-label');
-      assert.equal(await page.inputValue('#tr-label'), 'Shorter hair', 'reopening keeps the name');
+      assert.equal(await page.inputValue('#tr-label'), LONG_NAME, 'reopening keeps the name');
       assert.equal(await page.inputValue('#tr-start'), '2026-03-03', 'reopening keeps the start date');
       assert.equal(
         await page.locator('[data-segment="style"]').getAttribute('aria-checked'),
         'true',
         'reopening keeps the kind'
       );
+      /* The card for it: nothing has been recorded against this tryout yet,
+         so the line that names the last reading says that in words rather
+         than leaving the card with a gap where a fact goes - and the name,
+         which is longer than the plate is wide, wraps inside the card
+         rather than running out of it. */
+      await settlePage(page, base, '/transition/tryouts', 'light');
+      const card = page.locator(`[data-tryout-card]:has-text("${LONG_NAME}")`);
+      await card.waitFor();
+      assert.equal(
+        (await card.locator('[data-tryout-latest]').textContent()).trim(),
+        NO_FEELING_YET[language],
+        'a tryout with no readings says so where the last one would go'
+      );
+      assert.equal(await card.locator('[data-tryout-felt]').count(), 0, 'and tallies no readings');
+      const fits = await card.evaluate((el) => {
+        const plate = el.querySelector('[data-tryout-reading]').getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        return plate.right <= box.right + 1 && plate.left >= box.left - 1;
+      });
+      assert.ok(fits, 'a long name wraps inside its plate rather than past the card');
+
       /* Cancelling: the form's own way out is the header's back control,
          and leaving without saving must not write a second record. */
       await settlePage(page, base, '/transition/tryouts/new', 'light');
       await page.fill('#tr-label', 'Never saved');
       await page.locator('[data-screen-back]').click();
       await page.waitForSelector('[data-tryout]');
-      const names = await page.locator('[data-tryout] .tc-name, [data-tryout] .list-row-title').allTextContents();
+      const names = await page.locator('[data-tryout]').allTextContents();
       assert.ok(!names.some((n) => n.includes('Never saved')), 'leaving the form without saving writes nothing');
 
       await page.close();
