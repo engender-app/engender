@@ -41,12 +41,12 @@ describe('what the fourth tab says (ticket 08)', () => {
 });
 
 describe('what the tab says', () => {
-  const chromeIcon = 'favicon.svg';
+  const chromeIcon = 'favicon-trans.svg';
 
   it('says the app name over the running app', () => {
     expect(tabIdentity({ disguised: false, blanked: false, appName: 'enGender', icon: chromeIcon })).toEqual({
       title: 'enGender',
-      icon: 'favicon.svg'
+      icon: 'favicon-trans.svg'
     });
   });
 

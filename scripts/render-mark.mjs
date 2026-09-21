@@ -1,23 +1,46 @@
-/* Renders every enGender mark as a file, from the geometry Alicja signed off
-   in ticket 38 round three: corner sun, R 100, centre on the corner, seam 3,
-   tile radius 15, white tile, all bands at every size, no motion.
+/* Renders every enGender mark as a file: the full review set into
+   brand/mark/, and the subset the app actually serves into static/ and the
+   Android resources.
 
-   Run from anywhere: node scripts/render-mark.mjs
-   Stripes are read out of src/lib/theme/palettes.css rather than copied, so a
-   ninth palette needs nothing taught here. */
+   The drawing is not here. src/lib/components/mark.ts owns it and
+   Mark.svelte renders the same strings, so an icon file and the mark on a
+   screen cannot disagree - which is the whole reason this is a generator
+   and not a folder of hand-drawn SVGs. What is here is which files exist
+   and where they go.
+
+   brand/mark/ stays the full review set and stays out of static/, because
+   everything under static/ ships in the web build and in the APK's assets:
+   the app serves a handful of these, not two megabytes of them.
+
+   Run from anywhere: npm run render:mark
+   By hand rather than in CI: it needs a Chromium to rasterise through, its
+   output is tracked, and the only two things that change it are a palette
+   being added and the geometry being edited on purpose - both moments
+   somebody is already at a keyboard. tests/mark-assets.test.ts is what
+   fails if the run was forgotten, so a ninth palette cannot ship
+   half-iconned.
+
+   Stripes are read out of src/lib/theme/palettes.css rather than copied, so
+   a ninth palette needs nothing taught here. */
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MARK_R, MARK_SEAM, markSvg } from '../src/lib/components/mark.ts';
+import { ringRadii } from '../src/lib/motion/flagSun.ts';
 
 /* Resolved off this file rather than the working directory, so the script
    writes into its own checkout when it is run from a worktree. */
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(REPO, 'brand/mark');
+const STATIC = join(REPO, 'static');
+const RES = join(REPO, 'android/app/src/main/res');
 
-/* ---- the picked numbers, in a 100 unit tile ---- */
-const R = 100, OUT_CENTRE = 0, SEAM = 3, RX = 15, TILE = '#FFFFFF';
-const MONO_RINGS = 4;
+/** The palette the app ships installed with, and therefore the one the
+    install icon and the pre-paint favicon are. A manifest icon is fixed at
+    install time and cannot follow the flag; a favicon in a running tab is a
+    link element and does. */
+const DEFAULT_FLAG = 'trans';
 
 /* ---- stripes, straight out of the app's own token ---- */
 function palettes() {
@@ -29,76 +52,141 @@ function palettes() {
   return out;
 }
 
-/* ---- geometry: one ring per stripe, outermost outermost, equal radial
-   thickness (flagSun.ts's rule), each with a black edge on its outer side,
-   which is what a border-box border draws in the app. ---- */
-function rings(stripes, { mono = false, ink = '#000' } = {}) {
-  const n = mono ? MONO_RINGS : stripes.length;
-  const cx = 100 + OUT_CENTRE * Math.SQRT1_2;
-  const cy = 0 - OUT_CENTRE * Math.SQRT1_2;
-  let s = '';
-  for (let i = 0; i < n; i++) {
-    const r = ((R * (n - i)) / n - SEAM / 2).toFixed(2);
-    s += mono
-      ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${ink}" stroke-width="${SEAM}"/>`
-      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${stripes[i]}" stroke="#000" stroke-width="${SEAM}"/>`;
-  }
-  return s;
+const write = (path, text) => writeFileSync(path, text.endsWith('\n') ? text : text + '\n');
+
+/* ---- Android ----
+
+   An adaptive icon is a background and a foreground, and the launcher's own
+   mask is what cuts the shape. So the foreground is the sun alone: no tile
+   rectangle and no tile stroke, because the mask draws the edge, and
+   @color/ic_launcher_background is already the white the tile is.
+
+   The 100 unit tile maps to the whole 108dp canvas rather than being pulled
+   inside the mask's safe zone. Alicja accepted the crop rather than pulling
+   the sun inward: a round mask throws away exactly the corner the mark is
+   anchored to, and one geometry everywhere is worth more than a second
+   setting kept in sync.
+
+   A vector drawable rather than a PNG per density: the drawing is five to
+   seven circles, and eight palettes times five densities is forty files to
+   keep in step for nothing. */
+function adaptiveForeground(stripes) {
+  const rings = ringRadii(stripes.length, MARK_R)
+    .map((radius, i) => {
+      /* A circle as two half-turn arcs from its top point: a vector
+         drawable has no <circle>, only path data. Same centre and same
+         half-seam inset as the SVG, so the two drawings are the same
+         numbers. */
+      const r = radius - MARK_SEAM / 2;
+      const n = (value) => value.toFixed(2);
+      return (
+        `    <path\n`
+        + `        android:pathData="M${MARK_R},${n(-r)} a${n(r)},${n(r)} 0 1,0 0,${n(r * 2)}`
+        + ` a${n(r)},${n(r)} 0 1,0 0,${n(-r * 2)} Z"\n`
+        + `        android:fillColor="${stripes[i]}"\n`
+        + `        android:strokeColor="#000000"\n`
+        + `        android:strokeWidth="${MARK_SEAM}" />`
+      );
+    })
+    .join('\n');
+  return (
+    `<?xml version="1.0" encoding="utf-8"?>\n`
+    + `<!-- Generated by scripts/render-mark.mjs. The sun alone: the adaptive\n`
+    + `     background is the white tile and the launcher's mask draws the edge. -->\n`
+    + `<vector xmlns:android="http://schemas.android.com/apk/res/android"\n`
+    + `    android:width="108dp"\n`
+    + `    android:height="108dp"\n`
+    + `    android:viewportWidth="${MARK_R}"\n`
+    + `    android:viewportHeight="${MARK_R}">\n`
+    + `${rings}\n`
+    + `</vector>\n`
+  );
 }
 
-/* shape: 'tile' (rounded square, stroked), 'round' (circle, stroked),
-   'maskable' (full bleed square, no stroke, because a launcher mask crops
-   the edge off anyway). */
-function mark(stripes, shape, size, opts = {}) {
-  const clipId = 'c';
-  const clip = shape === 'round'
-    ? `<circle cx="50" cy="50" r="50"/>`
-    : `<rect width="100" height="100" rx="${shape === 'maskable' ? 0 : RX}"/>`;
-  const edge = shape === 'round'
-    ? `<circle cx="50" cy="50" r="${(50 - SEAM / 2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${SEAM}"/>`
-    : shape === 'maskable'
-      ? ''
-      : `<rect x="${SEAM / 2}" y="${SEAM / 2}" width="${100 - SEAM}" height="${100 - SEAM}"`
-        + ` rx="${(RX - SEAM / 2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${SEAM}"/>`;
-  const ground = opts.ground === null ? '' : `<rect width="100" height="100" fill="${opts.ground || TILE}"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
-    + ` role="img" aria-label="enGender">`
-    + `<defs><clipPath id="${clipId}"><rect width="100" height="100"/></clipPath>`
-    + `<clipPath id="${clipId}s">${clip}</clipPath></defs>`
-    + `<g clip-path="url(#${clipId}s)">${ground}${rings(stripes, opts)}${edge}</g></svg>`;
-}
-
-/* The mark on paper: one ink, four rings, no tile and no ground. */
-function monoMark(size, ink) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
-    + ` role="img" aria-label="enGender">`
-    + `<defs><clipPath id="m"><rect width="100" height="100"/></clipPath></defs>`
-    + `<g clip-path="url(#m)">${rings([], { mono: true, ink })}</g></svg>`;
+function adaptiveIcon(flag) {
+  return (
+    `<?xml version="1.0" encoding="utf-8"?>\n`
+    + `<!-- Generated by scripts/render-mark.mjs. -->\n`
+    + `<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n`
+    + `    <background android:drawable="@color/ic_launcher_background"/>\n`
+    + `    <foreground android:drawable="@drawable/ic_launcher_${flag}_foreground"/>\n`
+    + `</adaptive-icon>\n`
+  );
 }
 
 const PNG_SIZES = [512, 192, 96, 48, 32, 16];
+const MONO_INKS = [
+  ['mono', '#1E1B16'],
+  ['mono-reversed', '#FFFFFF']
+];
+
+/** The review set's shapes, and what markSvg calls each of them. */
+const SHAPES = { tile: 'tile', round: 'round', maskable: 'bleed' };
 
 async function main() {
   for (const d of ['svg', 'png', 'jpg']) mkdirSync(join(OUT, d), { recursive: true });
+  mkdirSync(join(STATIC, 'icons'), { recursive: true });
   const PAL = palettes();
   const jobs = [];
+  const named = { label: 'enGender' };
 
   for (const [flag, stripes] of Object.entries(PAL)) {
-    for (const shape of ['tile', 'round', 'maskable']) {
-      const svg = mark(stripes, shape, 512);
-      writeFileSync(join(OUT, 'svg', `${flag}-${shape}.svg`), svg + '\n');
+    /* The review set: every shape, every size, tracked but not shipped. */
+    for (const [shape, crop] of Object.entries(SHAPES)) {
+      write(join(OUT, 'svg', `${flag}-${shape}.svg`), markSvg(stripes, crop, 512, named));
       const sizes = shape === 'tile' ? PNG_SIZES : [512];
-      for (const size of sizes) jobs.push({ svg: mark(stripes, shape, size), size, file: join(OUT, 'png', `${flag}-${shape}-${size}.png`), type: 'png' });
+      for (const size of sizes) {
+        jobs.push({
+          svg: markSvg(stripes, crop, size, named),
+          size,
+          file: join(OUT, 'png', `${flag}-${shape}-${size}.png`),
+          type: 'png'
+        });
+      }
     }
     /* A jpeg cannot hold transparency and does not need to here: the tile is
        white and opaque. Supplied for the surfaces that will only take one. */
-    jobs.push({ svg: mark(stripes, 'tile', 512), size: 512, file: join(OUT, 'jpg', `${flag}-tile-512.jpg`), type: 'jpeg' });
+    jobs.push({
+      svg: markSvg(stripes, 'tile', 512, named),
+      size: 512,
+      file: join(OUT, 'jpg', `${flag}-tile-512.jpg`),
+      type: 'jpeg'
+    });
+
+    /* Shipped: the tab icon, which follows the flag, and the launcher icon
+       for this palette's activity-alias. */
+    write(join(STATIC, `favicon-${flag}.svg`), markSvg(stripes, 'tile', 512, named));
+    write(join(RES, 'drawable', `ic_launcher_${flag}_foreground.xml`), adaptiveForeground(stripes));
+    if (flag !== DEFAULT_FLAG) {
+      write(join(RES, 'mipmap-anydpi-v26', `ic_launcher_${flag}.xml`), adaptiveIcon(flag));
+    }
   }
 
-  for (const [name, ink] of [['mono', '#1E1B16'], ['mono-reversed', '#FFFFFF']]) {
-    writeFileSync(join(OUT, 'svg', `mark-${name}.svg`), monoMark(512, ink) + '\n');
-    jobs.push({ svg: monoMark(512, ink), size: 512, file: join(OUT, 'png', `mark-${name}-512.png`), type: 'png',
-      ground: name === 'mono-reversed' ? '#000000' : null });
+  /* The default palette's adaptive icon is the application's own
+     @mipmap/ic_launcher, which LauncherDefault (AndroidManifest.xml) is the
+     alias for - so the default palette needs no alias and no second icon
+     resource, and an install that never changes its flag never flips an
+     alias at all. Both names, because android:roundIcon is a separate
+     attribute even when the drawing behind it is the same adaptive icon. */
+  for (const name of ['ic_launcher', 'ic_launcher_round']) {
+    write(join(RES, 'mipmap-anydpi-v26', `${name}.xml`), adaptiveIcon(DEFAULT_FLAG));
+  }
+
+  /* The install icons. Fixed at the default rather than following the flag,
+     because a web manifest's icon is read once at install time. */
+  write(join(STATIC, 'icons', 'icon.svg'), markSvg(PAL[DEFAULT_FLAG], 'tile', 512, named));
+  write(join(STATIC, 'icons', 'icon-maskable.svg'), markSvg(PAL[DEFAULT_FLAG], 'bleed', 512, named));
+
+  for (const [name, ink] of MONO_INKS) {
+    const svg = markSvg([], 'bare', 512, { ink, ...named });
+    write(join(OUT, 'svg', `mark-${name}.svg`), svg);
+    jobs.push({
+      svg,
+      size: 512,
+      file: join(OUT, 'png', `mark-${name}-512.png`),
+      type: 'png',
+      ground: name === 'mono-reversed' ? '#000000' : null
+    });
   }
 
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium-browser', headless: true });
@@ -121,7 +209,12 @@ async function main() {
     writeFileSync(job.file, Buffer.from(dataUrl.split(',')[1], 'base64'));
   }
   await browser.close();
-  console.log(`wrote ${Object.keys(PAL).length * 3 + 2} svg and ${jobs.length} raster files into ${OUT}`);
+  const flags = Object.keys(PAL).length;
+  console.log(
+    `wrote ${flags * 3 + MONO_INKS.length} svg and ${jobs.length} raster files into ${OUT}, `
+    + `${flags} favicons and 2 install icons into ${STATIC}, `
+    + `and ${flags} foregrounds plus ${flags + 1} adaptive icons into ${RES}`
+  );
 }
 
 await main();
