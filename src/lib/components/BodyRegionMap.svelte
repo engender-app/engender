@@ -1,33 +1,32 @@
-<!-- The body map's figure (phase 10 redesign ticket 40).
+<!-- The body map's figure (phase 10 redesign ticket 40, redrawn for phase 11
+     ticket 47).
 
      **The regions are the drawing, and the drawing is a body.** One
-     silhouette tiled into panels, a panel per region, each parted from its
-     neighbours by a seam of the card's own colour. A region is a piece of
-     the body rather than a mark placed on one, which is what the four
-     arrangements before this could not be at once: eight rounded rectangles
-     in a column were regions and no body, a mannequin and a capsule
-     silhouette were bodies the regions sat on top of, and dots on that
-     silhouette carried the data without the figure being made of it
-     (Alicja, 2026-09-14: "wrong proportions, looks janky and bad").
+     silhouette (bodySilhouette.ts, ADR-0087), and a region is a band of it,
+     clipped, so every panel edge follows the body's own contour. A region is
+     a piece of the body rather than a mark placed on one, which is what the
+     four arrangements before ticket 40 could not be at once: eight rounded
+     rectangles in a column were regions and no body, a mannequin and a
+     capsule silhouette were bodies the regions sat on top of, and dots on
+     that silhouette carried the data without the figure being made of it.
 
-     What that buys, beyond looking like a body: the proportions are
-     canonical rather than whatever the touch floor left over. Seven heads
-     tall, crotch at half the height, fingertips at mid-thigh. A trunk band
-     is a touch target because the figure is 528px tall at its smallest, not
-     because the head was stretched until two dots fitted inside it.
+     What ticket 47 changed, and why. Ticket 40's figure was the right idea
+     assembled out of nine rounded rectangles, each panel inset by a seam of
+     card colour and an unread panel painted white - which is four bare
+     boxes stacked on a grey body (Alicja, 2026-09-21: "it looks really bad,
+     blocky, amateurish"). So:
 
-     What changed from the old figure, besides the drawing:
-
-     - The old `HOTSPOTS` table put `shoulders` on the left arm and
-       `hands_feet` between the ankles, so the figure pointed at one thing
-       and answered with another. Every panel is checked against the piece of
-       the silhouette it belongs to now (bodyRegionFigure.ts).
-     - Two of the ten regions had no place at all, and a region somebody
-       added themselves could never have one. `whole_body` is the silhouette
-       under the panels - literally what it means - and `body_facial_hair`
-       and every custom region sit in the elsewhere cluster.
-     - The figure carried no data whatsoever; every intensity on the screen
-       was in the two charts below.
+     - the geometry is a drawn contour rather than a stack of blocks, with
+       a shoulder slope, a neck that meets it, limbs that are not bars and
+       feet that are not tabs. Neutrality is three measurements on the path
+       rather than a ban on shape;
+     - a panel is a band of that path, clipped to it, and neighbours are
+       parted by a 1px hairline in the region's own ink (rule 9, 1 for a
+       guide) rather than by a gap of card colour. The body stays one
+       unbroken object;
+     - a region with no readings takes the silhouette's own neutral fill and
+       its hairline, so the part is still named but plainly unpainted. Never
+       a faint tint: a little colour reads as a little data.
 
      Real buttons over the drawing, never tappable SVG paths - the rule
      InjectionSiteMap.svelte already follows, for the same three reasons: a
@@ -38,9 +37,11 @@
      Three channels, one each, the way the injection map's dots carry three:
 
      - The **fill** is the region's dominant-side mean on the role's own heat
-       ramp. A region with no readings in the range is an unfilled panel,
-       because neither a large number nor zero reads as "never".
+       ramp. A region with no readings in the range is unpainted, because
+       neither a large number nor zero reads as "never".
      - The **edge** is selection: which region the charts below describe.
+       Never a dimming of the others - the fill means intensity and nothing
+       else.
      - The **mark** is mixed: a region whose readings in this range fell on
        both sides of the midpoint carries two short bars on its panel, in the
        ink the role's ramp computes for that step, which roles.ts holds to
@@ -52,18 +53,15 @@
   import { m } from '$lib/paraglide/messages';
   import type { RegionSideReading } from '$lib/data/bodyMap';
   import type { BodyRegion } from '$lib/data/types';
+  import { FIGURE_BOX, SILHOUETTE_PATH } from './bodySilhouette';
   import {
-    FIGURE_BOX,
-    GROUND_SHAPES,
     GROUND_ZONE,
     MARK,
     MIN_STAGE_HEIGHT,
     MIN_STAGE_WIDTH,
     boxStyle,
     fillLevel,
-    markAt,
-    markShape,
-    matShape,
+    markFor,
     placeRegions
   } from './bodyRegionFigure';
   import { rampStyle } from './mapChannels';
@@ -87,17 +85,22 @@
     onSelect: (region: string) => void;
   } = $props();
 
+  /* Two clip paths per figure, and a page can hold more than one of these
+     (the gallery holds four), so the ids are minted rather than written. */
+  const uid = $props.id();
+  const bodyClip = `${uid}-body`;
+  const bandClip = (region: string) => `${uid}-band-${region}`;
+
   let placement = $derived(placeRegions(regions));
   let byRegion = $derived(new Map(readings.map((reading) => [reading.region, reading])));
 
   /** The step's own fill and ink from the role's ramp, or nothing at level
-      0 - an empty shape is drawn by the absence of a fill rather than by a
-      colour standing for absence, which is the rule `rampStyle` carries for
-      both of the app's body maps (mapChannels.ts). The ink comes with the
-      fill because the mixed mark sits on it and has to be read off it;
-      roles.ts computes one per step and kit-roles.test.ts holds every one to
-      4.5:1 against that step's own fill, so the mark is legible by
-      construction rather than by a colour somebody eyeballed. */
+      0 - an unpainted panel is drawn by the absence of a fill rather than by
+      a colour standing for absence, which is the rule `rampStyle` carries
+      for both of the app's body maps (mapChannels.ts). The ink comes with
+      the fill because the panel's hairline and the mixed mark are both read
+      off it; roles.ts computes one per step and kit-roles.test.ts holds
+      every one to 4.5:1 against that step's own fill. */
   const paint = (level: number) =>
     role
       ? rampStyle(level, (step) => ({
@@ -154,78 +157,126 @@
       aria-hidden="true"
       focusable="false"
     >
-      <!-- The body, which is whole_body. Two passes over the same pieces:
-           the first strokes them, the second fills over the strokes, so the
-           union keeps its outer contour and loses every internal joint. Its
-           fill is its own reading, and with none it is the card's second
-           surface - which is what "nothing logged for the whole body" should
-           look like. -->
+      <defs>
+        <clipPath id={bodyClip}>
+          <path d={SILHOUETTE_PATH} />
+        </clipPath>
+        <!-- A region's own bands, which do three jobs at once: they clip its
+             fill to the body, they clip the body's contour to the piece of
+             it the region owns, and their width is the arrival. Putting the
+             arrival here rather than on each group is what keeps the fill
+             pass and the edge pass in step - a clip-path percentage on a
+             <g> resolves against that group's own bounding box, and the two
+             groups do not have the same one. -->
+        {#each placement.drawn as { panel, region }, i (region.id)}
+          <clipPath id={bandClip(region.id)}>
+            {#each panel.bands as band, n (n)}
+              <rect
+                class="region-wipe"
+                x={band.left}
+                y={band.top}
+                width={band.width}
+                height={band.height}
+                style="--band-w:{band.width};--region-i:{i + 1}"
+              />
+            {/each}
+          </clipPath>
+        {/each}
+      </defs>
+
+      <!-- The body, which is whole_body. Two passes over the same path: the
+           first strokes it, the second fills over the strokes, so the union
+           of its five pieces keeps its outer contour and loses every
+           internal joint. Its fill is its own reading, and with none it is
+           the card's second surface - which is what "nothing logged for the
+           whole body" should look like. -->
       <g
         class="region-body"
         class:is-picked={selected === placement.ground?.id}
         style={paint(levelOf(placement.ground?.id ?? ''))}
       >
-        <g class="region-body-edge">
-          {#each GROUND_SHAPES as shape, i (i)}
-            <rect x={shape.left} y={shape.top} width={shape.width} height={shape.height} rx={shape.r} />
-          {/each}
-        </g>
-        <g class="region-body-face">
-          {#each GROUND_SHAPES as shape, i (i)}
-            <rect x={shape.left} y={shape.top} width={shape.width} height={shape.height} rx={shape.r} />
-          {/each}
-        </g>
+        <path class="region-body-edge" d={SILHOUETTE_PATH} />
+        <path class="region-body-face" d={SILHOUETTE_PATH} />
       </g>
 
-      {#each placement.drawn as { panel, region }, i (region.id)}
-        <!-- Arriving top to bottom, one --stagger-step apart, which is the
-             order the body reads in (rule 10, ticket 19's staggered blocks).
-
-             The seam is painted under the panel rather than left as a gap,
-             so a panel is held apart from the ground and from its neighbours
-             whatever the two are filled with - two readings a step apart on
-             the ramp are close enough to merge across a shared edge. -->
-        <g
-          class="region-panel region-arrive"
-          style="{paint(levelOf(region.id))};--region-i:{i + 1}"
-          data-region-art={region.id}
-          data-region-level={levelOf(region.id)}
-        >
-          <g class="region-seam">
-            {#each panel.shapes as shape, n (n)}
-              {@const mat = matShape(shape)}
-              <rect x={mat.left} y={mat.top} width={mat.width} height={mat.height} rx={mat.r} />
-            {/each}
-          </g>
+      <!-- The fills and the hairlines that part them, each clipped to the
+           body and then to its own bands. One element carries both: a rect's
+           stroke paints over its own fill, and at a boundary the lower
+           band's fill covers the upper one's hairline and its own hairline
+           redraws the line, so what is left is one 1px line in the lower
+           region's ink. -->
+      <g clip-path="url(#{bodyClip})">
+        {#each placement.drawn as { panel, region } (region.id)}
           <g
-            class="region-tile"
-            class:is-picked={selected === region.id}
+            class="region-panel"
             class:is-empty={levelOf(region.id) === 0}
+            clip-path="url(#{bandClip(region.id)})"
+            style={paint(levelOf(region.id))}
+            data-region-art={region.id}
+            data-region-level={levelOf(region.id)}
           >
-            {#each panel.shapes as shape, n (n)}
-              <rect x={shape.left} y={shape.top} width={shape.width} height={shape.height} rx={shape.r} />
+            {#each panel.bands as band, n (n)}
+              <rect
+                class="region-tile"
+                x={band.left}
+                y={band.top}
+                width={band.width}
+                height={band.height}
+              />
             {/each}
             {#if isMixed(region.id)}
-              {@const at = markAt(markShape(panel.shapes))}
-              <g class="region-mark" data-region-mixed={region.id}>
-                <rect x={at.x} y={at.y} width={MARK.width} height={MARK.height} rx="0.6" />
-                <rect
-                  x={at.x}
-                  y={at.y + MARK.height + MARK.gap}
-                  width={MARK.width}
-                  height={MARK.height}
-                  rx="0.6"
-                />
-              </g>
+              {@const mark = markFor(region.id)}
+              {#if mark}
+                <g class="region-mark" data-region-mixed={region.id}>
+                  <rect x={mark.at.x} y={mark.at.y} width={MARK.width} height={MARK.height} rx="0.4" />
+                  <rect
+                    x={mark.at.x}
+                    y={mark.at.y + MARK.height + MARK.gap}
+                    width={MARK.width}
+                    height={MARK.height}
+                    rx="0.4"
+                  />
+                </g>
+              {/if}
             {/if}
           </g>
-        </g>
-      {/each}
+        {/each}
+      </g>
+
+      <!-- Selection, in a pass over every fill: the body's contour clipped
+           to the picked region's own bands, and that region's band outlines
+           on top of the hairlines rather than under the next region's fill.
+           Every region has its group here and only the picked one has a
+           width, which is what lets the edge grow from nothing on the panel
+           that was tapped instead of appearing at it. The contour's stroke
+           is twice the line that lands on the page: the clip keeps its
+           inner half, the way the figure's own contour is drawn. -->
+      <g clip-path="url(#{bodyClip})">
+        {#each placement.drawn as { panel, region } (region.id)}
+          <g
+            class="region-edge"
+            class:is-picked={selected === region.id}
+            clip-path="url(#{bandClip(region.id)})"
+            data-region-edge={region.id}
+          >
+            <path class="region-pick" d={SILHOUETTE_PATH} />
+            {#each panel.bands as band, n (n)}
+              <rect
+                class="region-pick-band"
+                x={band.left}
+                y={band.top}
+                width={band.width}
+                height={band.height}
+              />
+            {/each}
+          </g>
+        {/each}
+      </g>
     </svg>
 
     <!-- The body's own button, under the panels: whole_body is reached
-         wherever none of them is - the limbs, the seams, and the space
-         beside the drawing. -->
+         wherever none of them is - the limbs between a shoulder and a hand,
+         the legs, and the space beside the drawing. -->
     {#if placement.ground}
       <button
         type="button"
@@ -320,94 +371,91 @@
     inset: 0;
   }
 
-  /* The body. Pass one is the contour, pass two covers every joint inside
-     it, so fifteen overlapping blocks read as one silhouette.
+  /* The body. Pass one is the contour, pass two covers every internal joint
+     inside it, so five overlapping pieces read as one silhouette.
+
+     Every line in this figure is a px width with a non-scaling stroke
+     rather than a width in the drawing's own units. The figure is scaled to
+     whatever the stage turned out to be, so a width in units is a different
+     line on a phone and on a desktop, and rule 9's weights are px: 1 for a
+     guide, 2 for a series. The contour is stroked at twice its width and
+     then filled over, so the line that lands on the page is its outer half.
 
      --region-fill replaces the fill when the whole body has a reading of its
      own, and is absent when it does not, which is what an unlogged body
      should be. */
-  /* The contour is the one main has always drawn: --outline at 1.5 of a
-     100-unit box (Alicja, 2026-09-14: "give it the same stroke that the old
-     version had"). The edge layer shows only the outer half of its stroke,
-     the face layer covering the rest, so the width here is twice the line
-     that ends up on the page. */
-  .region-body-edge > rect {
+  .region-body-edge {
     fill: var(--outline);
     stroke: var(--outline);
-    stroke-width: 3;
+    stroke-width: 3px;
     stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
     transition: stroke-width var(--dur-med) var(--ease-out);
   }
 
-  .region-body-face > rect {
+  .region-body-face {
     fill: var(--region-fill, var(--surface-2));
     stroke: none;
     transition: fill var(--dur-med) var(--ease-out);
   }
 
-  .region-body.is-picked .region-body-edge > rect {
+  .region-body.is-picked .region-body-edge {
     fill: var(--role-mark, var(--accent));
     stroke: var(--role-mark, var(--accent));
-    stroke-width: 5;
+    stroke-width: 5px;
   }
 
-  /* The seam: the panel grown back out to its band, in the card's own
-     colour, under the panel. */
-  .region-seam > rect {
-    fill: var(--surface);
-  }
-
-  /* A panel. The fill is the region's reading; with none, the card's colour
-     and a firmer edge, so undrawn never reads as the palest step of the
-     ramp. */
-  /* A panel at rest carries its stroke at zero width rather than not at
-     all, which is what lets the selection grow one from nothing. An
-     unfilled panel's own outline stays lighter than the contour around the
-     body: the contour is the figure's edge and this is a boundary inside
-     it. */
-  .region-tile > rect {
-    fill: var(--region-fill, var(--surface));
-    stroke: var(--outline);
-    stroke-width: 0;
+  /* A panel's fill: the region's reading, or the silhouette's own neutral
+     surface with no reading at all. Never a tint of the ramp at level 0 -
+     a little colour reads as a little data - and never the card's own
+     colour either, which is what made an unread region look like a hole cut
+     out of the body. */
+  /* The fill, and the hairline that parts this panel from its neighbours,
+     in the region's own ink at rule 9's 1px for a guide. The stroke is the
+     band's whole outline: the two edges that cross the body are the
+     partings, and the two down the sides of the band are outside the body
+     and draw nothing - except at the shoulder, where the arm and the torso
+     divide one piece of body between them and that edge is the seam. */
+  .region-tile {
+    fill: var(--region-fill, var(--surface-2));
+    stroke: var(--region-ink, var(--text-2));
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
     transition:
       fill var(--dur-med) var(--ease-out),
-      stroke var(--dur-med) var(--ease-out),
-      stroke-width var(--dur-med) var(--ease-out);
+      stroke var(--dur-med) var(--ease-out);
   }
 
-  .region-tile.is-empty > rect {
-    fill: var(--surface);
-    stroke-width: 0.9;
-  }
+  /* Selection: an ink edge around the picked panel, and nothing else. The
+     panel's own band is stroked at a series' 2px in --text, and the body's
+     contour along that panel in the same ink, so the edge runs round the
+     panel on the two sides that are the body's own contour as well as
+     across the two that are its neighbours'.
 
-  /* Selection grows the panel in place and draws its edge. In place, and
-     from the panel's own centre: nothing about a region's state is painted
-     before it arrives there, so there is no frame where a shape is in
-     neither state and none where one has teleported between them. Never a
-     travelling indicator between regions - two regions are not adjacent the
-     way tabs are, and a pill flying across a torso is motion for its own
-     sake. */
-  .region-tile {
-    transform-box: fill-box;
-    transform-origin: center;
-    transition: transform var(--dur-med) var(--ease-out);
-  }
-
-  .region-tile.is-picked {
-    transform: scale(1.04);
-  }
-
-  /* The picked edge grows from nothing to its full width on the shape that
-     was tapped, rather than appearing at it (Alicja, 2026-09-14). A panel
-     with a reading starts at 0 and an empty one at the contour's own 1.5, so
-     the edge always travels to where it ends up. */
-  .region-tile.is-picked > rect {
+     It grows from nothing on the panel that was tapped rather than
+     appearing at it: nothing is painted at its destination before it
+     travelled there, and there is no frame in which the edge is in neither
+     place. Never a travelling indicator between regions - two regions are
+     not adjacent the way tabs are, and a pill flying across a torso is
+     motion for its own sake. */
+  .region-pick,
+  .region-pick-band {
+    fill: none;
     stroke: var(--text);
-    stroke-width: 1.8;
+    stroke-width: 0;
+    vector-effect: non-scaling-stroke;
+    transition: stroke-width var(--dur-med) var(--ease-out);
   }
 
-  /* The mark's own bars. Held out of the panel's rules by class rather than
-     by position, since both live in the region's group. */
+  .region-edge.is-picked .region-pick {
+    stroke-width: 4px;
+  }
+
+  .region-edge.is-picked .region-pick-band {
+    stroke-width: 2px;
+  }
+
+  /* The mark's own bars, read off the fill they sit on. */
   .region-mark > rect {
     fill: var(--region-ink, var(--text));
     stroke: none;
@@ -415,35 +463,31 @@
 
   /* The arrival, top to bottom, one --stagger-step apart.
 
-     A region clips open from its own left edge rather than fading up, which
-     is rule 10's whole point - "blocks are solid objects on a flat page, so
-     they move like objects: they slide in from their own edge and clip,
-     never fade from nothing" - and it is the same movement `kit-block-in`
-     gives a tile. An SVG group has no CSS layout box, so a percentage in
-     `clip-path` resolves against its fill box, which is the group's own
-     bounding box: 100% is exactly the shape's own width whatever part of the
-     body it is. Nothing moves and nothing is painted at a destination it did
-     not travel to; only how much of it is drawn changes.
+     A region opens from its own edge rather than fading up, which is rule
+     10's whole point - "blocks are solid objects on a flat page, so they
+     move like objects: they slide in from their own edge and clip, never
+     fade from nothing" - and it is the same movement `kit-block-in` gives a
+     tile. It is the clip's own band that widens, so the fill, the hairline
+     and the picked edge all arrive on the one movement; with the width
+     animated to the band's own, a browser that will not animate an SVG
+     geometry property simply draws the panel.
 
      base.css flattens this under reduced motion. */
-  .region-arrive {
+  .region-wipe {
     animation: region-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--region-i, 0) * var(--stagger-step));
   }
 
-  /* The resting clip is slack rather than flush with the bounding box: a
-     picked panel scales up inside this group, and a clip-path of inset(0)
-     resolves against the group's own fill box, so it would shave the growth
-     off. */
   @keyframes region-in {
-    from { clip-path: inset(-8% 100% -8% -8%); }
-    to { clip-path: inset(-8%); }
+    from { width: 0; }
+    to { width: calc(var(--band-w) * 1px); }
   }
 
   /* The cluster's pills are ordinary boxes, so they take the kit's own block
-     arrival rather than the group's. */
+     arrival rather than the figure's. */
   .region-pill.region-arrive {
-    animation-name: region-pill-in;
+    animation: region-pill-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--region-i, 0) * var(--stagger-step));
   }
 
   @keyframes region-pill-in {

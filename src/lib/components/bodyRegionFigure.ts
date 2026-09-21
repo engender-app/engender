@@ -1,57 +1,60 @@
-/* The body map's drawing and its hit zones (phase 10 redesign ticket 40).
+/* The body map's panels and its hit zones (phase 10 redesign ticket 40,
+   redrawn for phase 11 ticket 47).
 
    Beside BodyRegionMap.svelte for the same reason injectionSiteMap.ts sits
    beside the injection map: the arrangement makes claims a component's
    <style> block is not somewhere a test can ask about. No two zones may
    overlap, or a tap lands on two regions at once; no zone may be under the
    touch floor at the smallest stage the app can give it; and every shape a
-   person can see has to sit inside a zone that selects the region it belongs
-   to, or the figure shows one thing and answers with another.
+   person can see has to sit inside a zone that selects the region it
+   belongs to, or the figure shows one thing and answers with another.
 
-   **The regions are the drawing, and the drawing is a body.** Four earlier
-   arrangements failed on that sentence's two halves: eight rounded
-   rectangles in a column were regions and no body ("why is there no body?"),
-   a wooden mannequin and a capsule silhouette were bodies the regions only
-   sat on top of, and dots on that silhouette carried the data without the
-   figure ever being made of it (Alicja, 2026-09-14, on the last of them:
-   "wrong proportions, looks janky and bad"). So the figure is one silhouette
-   tiled into panels, a panel per region, each panel separated from its
-   neighbours by a seam of the card's own colour. A region is a piece of the
-   body rather than a mark placed on one.
+   **The regions are the drawing, and the drawing is a body.** That sentence
+   survives four failed arrangements and one that was right about the
+   sentence and wrong about the drawing. Eight rounded rectangles in a
+   column were regions and no body ("why is there no body?"); a wooden
+   mannequin and a capsule silhouette were bodies the regions only sat on
+   top of; dots on that silhouette carried the data without the figure being
+   made of it. What replaced them was one silhouette tiled into panels - the
+   right idea - assembled out of nine rounded rectangles parted by seams of
+   card colour, which is the drawing this file no longer holds (Alicja,
+   2026-09-21: "it looks really bad, blocky, amateurish").
 
-   **Neutral means the outline is neutral, not that there is no outline.**
-   Two things carry it here, and both are tests. The trunk is a single
-   constant-width block from the collar to the crotch, so there is no waist
-   to pull in, no bust to push out and no hips to flare; and every panel
-   across it is that same width, so nothing the data draws can put a shape
-   back that the silhouette left out. The head, arms and legs are plain
-   blocks mirrored about the midline.
+   **A panel is now a band of the shared silhouette, clipped.** The body
+   itself lives in `bodySilhouette.ts` (ADR-0087) as one path; a region owns
+   a rectangular band of it, and what gets drawn is the band intersected
+   with the body, so every panel edge follows the body's own contour and
+   neighbours are parted by a hairline in the region's own ink rather than
+   by a gap. `GROUND_SHAPES`, `SEAM` and `matShape` retired with the
+   rectangles: there is no seam to cut and no shape of a region's own to
+   grow it out of.
 
-   **The proportions are the canon**, which is what the previous drawing got
-   wrong: seven heads tall, head 25 units, crown at y=8 and the crotch at
-   y=96, exactly half the figure's height. Fingertips reach mid-thigh, the
-   knee sits at 5.2 heads and the shoulders are 2.2 heads across. The box is
-   sized so that the smallest stage the component allows - 300 x 528 - puts
-   16 units on 48px, which is what lets a band of the trunk be a touch
-   target without the figure being stretched to reach one.
+   **A band is a window, not the panel.** It is deliberately a little wider
+   than the body it selects - the trunk's bands run to x=32 and x=68 where
+   the torso reaches 32.2 and 67.8 - so that the clip, rather than the
+   number written here, decides where a panel ends. Where two regions divide
+   one piece of the body across its width (the shoulder, where the arm meets
+   the torso), the window edge is the seam, and the hairline drawn on it is
+   the only straight edge left in the figure.
+
+   **Neutrality is not enforced here any more.** It was, when the panels
+   were rectangles and one of them drawn wider than another would have put
+   a bust back on a flat silhouette. A clipped band is as wide as the body
+   is at that height and cannot disagree with it, so the three measurements
+   live on the path in `bodySilhouette.test.ts`.
 
    `whole_body` is the silhouette under the panels: it carries its own
-   reading as the fill of the limbs and the seams between the panels, and
-   takes a tap wherever no panel is. That is what "the ground the other eight
-   sit on" means, and it is why this replaces HOTSPOTS rather than moving its
-   numbers. A hotspot was a dot over a drawing with no matching part; these
-   are the parts. */
+   reading as the fill of the limbs and takes a tap wherever no panel is.
+   That is what "the ground the other eight sit on" means. */
 
 import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '../data/bodyMap';
 import type { RegionSideReading } from '../data/bodyMap';
 import { heatLevel } from '../data/metricRange';
 import type { BodyRegion } from '../data/types';
+import { CANON, FIGURE_BOX, MIDLINE, spansAt } from './bodySilhouette';
+import type { Pt } from './bodySilhouette';
 
-/** The drawing's own coordinate space, which is also the SVG's viewBox.
-    100 x 176 is seven heads of 25 units with the crown 8 units down, and it
-    is also 300 x 528 at the smallest stage - the ratio that puts a 16-unit
-    band on exactly 48px. */
-export const FIGURE_BOX = { width: 100, height: 176 } as const;
+export { FIGURE_BOX };
 
 export interface Box {
   left: number;
@@ -60,153 +63,124 @@ export interface Box {
   height: number;
 }
 
-/** A rounded rectangle. Everything here is one of these, the silhouette
-    included, so the geometry stays checkable with one set of helpers. */
-export interface Shape extends Box {
-  r: number;
-}
-
 export const GROUND_REGION = 'whole_body';
 
-/* The silhouette. Its pieces overlap deliberately - the neck runs into the
-   head and the torso, the thighs into the pelvis - so the union has no
-   internal joint; the component paints it in two passes, an outline layer
-   and then a fill layer, so only the outer contour keeps a line.
+/** The figure's three columns. The middle one is the head, the neck and the
+    torso; the outer two are the arms, and the space beside the drawing that
+    nothing else uses. A band and the button over it are cut from the same
+    column, so what a panel paints and what a tap answers cannot drift
+    apart.
 
-   The arms hang clear of the trunk below a short joint at the shoulder,
-   which is the one thing the old drawing had no room for: without that
-   notch the shoulders, the upper arms and the chest are a single slab
-   fifty-five units wide and the figure stops reading as a body.
+    Where the edge sits is a drawing decision rather than a round number. A
+    band is a window on the body and its hairline is that band's own
+    outline, so a side edge that grazes the body draws a straight line down
+    the side of it - which is how the picked panel first came out as a
+    rectangle over a torso. 69.2 clears the torso, which reaches 67.8, by
+    four pixels at every stage the component allows, and stays inside the
+    nearest arm, which comes no closer in than 70.6. The one height where
+    body does cross it is the shoulder, y 42 to 47, where the arm and the
+    torso divide one mass between them and the line is the seam. */
+const COLUMN = { left: 30.8, right: 69.2 } as const;
+const SIDE = FIGURE_BOX.width - COLUMN.right;
 
-   A limb is one width the whole way down - no elbow, no knee, no ankle
-   (Alicja, 2026-09-14: "make the hands and legs the same width throughout
-   the whole limb"). The taper this replaces was doing the opposite of what
-   the drawing is for: an arm that narrows at the forearm and swells again
-   at the hand is anatomy, and anatomy is what the neutrality rule spends
-   its budget avoiding. So an arm is one block from the shoulder to the
-   fingertips and a leg is one block from the hip to the sole; the hand and
-   the foot are panels drawn on them rather than shapes of their own. */
-export const GROUND_SHAPES: Shape[] = [
-  { left: 40, top: 8, width: 20, height: 25, r: 5 }, // head
-  { left: 44, top: 29, width: 12, height: 13, r: 2 }, // neck
-  { left: 28, top: 40, width: 44, height: 56, r: 3 }, // trunk, collar to crotch
-  { left: 25.5, top: 40, width: 6, height: 9, r: 2 }, // shoulder joints
-  { left: 68.5, top: 40, width: 6, height: 9, r: 2 },
-  { left: 14.5, top: 40, width: 12, height: 66, r: 3 }, // arms, shoulder to fingertip
-  { left: 73.5, top: 40, width: 12, height: 66, r: 3 },
-  { left: 30, top: 92, width: 17, height: 82, r: 3 }, // legs, hip to sole
-  { left: 53, top: 92, width: 17, height: 82, r: 3 }
-];
+/** A region's own band of the body, and the buttons over it.
 
-/** The trunk: the one piece the neutrality rule is actually about, named
-    rather than indexed so the test says what it is checking. One width from
-    the collar to the crotch, centred on the midline. */
-export const TRUNK = GROUND_SHAPES[2];
-
-/** How far a panel is inset from the band it fills, so two neighbours are
-    parted by twice this much. 0.75 of 176 units is 4.5px at the minimum
-    stage - the app's 3px seam, give or take the half-pixel a scaled
-    viewBox costs. */
-export const SEAM = 0.75;
-
-/** A region's own piece of the body, and the button over it.
-
-    `shapes` is what is drawn: more than one where the region is in more than
-    one place on a body - `shoulders` gets an arm each, `hands_feet` gets two
-    hands and two feet - and `boxes` holds one button per shape. A region in
-    several places is still one region with one accessible name, so only the
-    first button is a real control; the rest are aria-hidden and out of the
-    tab order, so a screen reader hears one control while a finger can reach
-    any of them. */
+    `bands` is what is drawn: more than one where the region is in more than
+    one place on a body - `shoulders` gets an arm each, `hands_feet` gets
+    two hands and two feet - and `boxes` holds one button per band. A region
+    in several places is still one region with one accessible name, so only
+    the first button is a real control; the rest are aria-hidden and out of
+    the tab order, so a screen reader hears one control while a finger can
+    reach any of them. */
 export interface RegionPanel {
   region: string;
-  shapes: Shape[];
+  bands: Box[];
   boxes: Box[];
 }
 
-/* Down the body, which is the reading order and the order the panels arrive
-   in. The six boxes down the middle tile the column from the crown to the
-   crotch at 16 units each, so a tap between two of them is impossible; the
-   four at the sides and the two at the feet take the space beside the
-   figure, which nothing else uses.
+const band = (left: number, top: number, width: number, height: number): Box => ({
+  left,
+  top,
+  width,
+  height
+});
 
-   A box is bigger than the shape it selects wherever the body part is
-   smaller than a finger - the head is 20 units across and a hand is 12 - and
-   `bodyRegionFigure.test.ts` holds the two rules that keeps honest: every
-   shape lies wholly inside its own box, and no two boxes overlap. */
+const middle = (top: number, height: number): Box =>
+  band(COLUMN.left, top, COLUMN.right - COLUMN.left, height);
+
+/* Down the body, which is the reading order and the order the panels arrive
+   in. The six bands down the middle column tile it from the crown to the
+   crotch, flush, so there is no height at which a tap between two of them
+   is possible and no gap of card colour inside the body. The arms take the
+   side columns, and the feet the bottom of the middle one.
+
+   A box is bigger than the band it selects wherever the body part is
+   smaller than a finger - a hand is 5 units across and its button is 32 -
+   and `bodyRegionFigure.test.ts` holds the two rules that keeps honest:
+   every band's drawn shape lies inside its own box, and no two boxes
+   overlap. */
 export const REGION_PANELS: RegionPanel[] = [
   {
     region: 'hairline',
-    shapes: [{ left: 40.75, top: 9, width: 18.5, height: 6, r: 3 }],
-    boxes: [{ left: 28, top: 0, width: 44, height: 16 }]
+    bands: [middle(CANON.crown, 8)],
+    boxes: [middle(0, 16)]
   },
   {
     region: 'face_jaw',
-    shapes: [{ left: 40.75, top: 16.5, width: 18.5, height: 15, r: 2 }],
-    boxes: [{ left: 28, top: 16, width: 44, height: 16 }]
+    bands: [middle(16, 16)],
+    boxes: [middle(16, 16)]
   },
   {
-    /* The throat and the collar it runs into: the neck alone is 12 units
-       across and would be a shape nothing could point at. */
+    /* The throat and the collar it runs into, which on a drawn body is the
+       neck and the yoke of both trapezius slopes: the neck alone is 10
+       units across and would be a shape nothing could point at. */
     region: 'voice_throat',
-    shapes: [
-      { left: 44.75, top: 33, width: 10.5, height: 9, r: 2 },
-      { left: 28.75, top: 41, width: 42.5, height: 6.25, r: 2 }
-    ],
-    boxes: [{ left: 28, top: 32, width: 44, height: 16 }]
+    bands: [middle(CANON.chin, 16)],
+    boxes: [middle(CANON.chin, 16)]
   },
   {
-    /* The tops of both arms, which is where a shoulder is. Off the trunk's
-       column on purpose: six bands of 48px between the crown and the crotch
-       is already the whole half of a 528px figure, and a seventh would make
-       the trunk longer than the legs. */
+    /* The tops of both arms, which is where a shoulder is. In the side
+       columns rather than the middle one: the arm is what a shoulder is
+       made of here, and the seam between it and the torso is the column
+       edge. */
     region: 'shoulders',
-    shapes: [
-      { left: 15.25, top: 40.75, width: 10.5, height: 15, r: 2 },
-      { left: 74.25, top: 40.75, width: 10.5, height: 15, r: 2 }
-    ],
-    boxes: [
-      { left: 0, top: 38, width: 28, height: 22 },
-      { left: 72, top: 38, width: 28, height: 22 }
-    ]
+    bands: [band(0, CANON.collar, SIDE, 24), band(COLUMN.right, CANON.collar, SIDE, 24)],
+    boxes: [band(0, CANON.collar, SIDE, 24), band(COLUMN.right, CANON.collar, SIDE, 24)]
   },
   {
     region: 'chest',
-    shapes: [{ left: 28.75, top: 48.75, width: 42.5, height: 14.5, r: 2 }],
-    boxes: [{ left: 28, top: 48, width: 44, height: 16 }]
+    bands: [middle(48, 16)],
+    boxes: [middle(48, 16)]
   },
   {
     region: 'hips_waist',
-    shapes: [{ left: 28.75, top: 64.75, width: 42.5, height: 14.5, r: 2 }],
-    boxes: [{ left: 28, top: 64, width: 44, height: 16 }]
+    bands: [middle(64, 16)],
+    boxes: [middle(64, 16)]
   },
   {
     region: 'genitals',
-    shapes: [{ left: 28.75, top: 80.75, width: 42.5, height: 14.5, r: 2 }],
-    boxes: [{ left: 28, top: 80, width: 44, height: 16 }]
+    bands: [middle(80, 16)],
+    boxes: [middle(80, 16)]
   },
   {
+    /* Two hands and two feet. The hands' bands start at the wrist, so the
+       band is a hand rather than a dot on the end of an arm; the feet's
+       start above the ankle for the same reason. */
     region: 'hands_feet',
-    shapes: [
-      { left: 14.75, top: 94.75, width: 10.5, height: 10.5, r: 2 },
-      { left: 74.75, top: 94.75, width: 10.5, height: 10.5, r: 2 },
-      { left: 30.75, top: 164.75, width: 15.5, height: 8.5, r: 2 },
-      { left: 53.75, top: 164.75, width: 15.5, height: 8.5, r: 2 }
+    bands: [
+      band(0, 100, SIDE, 16),
+      band(COLUMN.right, 100, SIDE, 16),
+      band(COLUMN.left, 158, MIDLINE - COLUMN.left, 18),
+      band(MIDLINE, 158, MIDLINE - COLUMN.left, 18)
     ],
     boxes: [
-      { left: 0, top: 88, width: 28, height: 22 },
-      { left: 72, top: 88, width: 28, height: 22 },
-      { left: 28, top: 158, width: 22, height: 18 },
-      { left: 50, top: 158, width: 22, height: 18 }
+      band(0, 96, SIDE, 22),
+      band(COLUMN.right, 96, SIDE, 22),
+      band(COLUMN.left, 156, MIDLINE - COLUMN.left, 20),
+      band(MIDLINE, 156, MIDLINE - COLUMN.left, 20)
     ]
   }
 ];
-
-/** The panels that tile the trunk's column, by region. All one width, which
-    is the trunk's own: the neutrality rule holds for what the data draws as
-    well as for the silhouette, since a chest panel drawn wider than a waist
-    panel would put a shape back that the outline left out. */
-export const TRUNK_PANELS = ['voice_throat', 'chest', 'hips_waist', 'genitals'];
 
 /** Every button on the figure, in body order, with the region each belongs
     to and whether it is that region's real control. */
@@ -217,8 +191,8 @@ export function hitBoxes(): { region: string; box: Box; primary: boolean }[] {
 }
 
 /** Where a tap means the whole body: the whole figure, underneath the
-    panels, so it is reached wherever none of them is - the limbs, the seams
-    and the space around the drawing. */
+    panels, so it is reached wherever none of them is - the limbs between
+    the shoulder and the hand, the legs, and the space around the drawing. */
 export const GROUND_ZONE: Box = {
   left: 0,
   top: 0,
@@ -263,6 +237,187 @@ export function zonePx(zone: Box, stageWidth: number, stageHeight: number): { w:
   };
 }
 
+/* ---- what a band actually draws -------------------------------------- */
+
+/** How finely a band is sampled when its drawn shape is measured. A
+    quarter of a unit is under a pixel at every stage the component allows,
+    so a bounding box or a centroid read off it is the one a browser
+    paints. */
+const STEP = 0.25;
+
+/** The widest run of body inside a band at one height, or nothing where the
+    band is off the body. A run rather than a bounding interval: at the
+    height of the chest, three pieces of body cross the figure and only one
+    of them is the chest. */
+function runAt(area: Box, y: number): [number, number] | null {
+  const from = area.left;
+  const to = area.left + area.width;
+  let widest: [number, number] | null = null;
+  for (const [a, b] of spansAt(y)) {
+    const run: [number, number] = [Math.max(a, from), Math.min(b, to)];
+    if (run[1] - run[0] <= 0) continue;
+    if (!widest || run[1] - run[0] > widest[1] - widest[0]) widest = run;
+  }
+  return widest;
+}
+
+/** Every row of a band that has body in it, down the band a `STEP` at a
+    time. Three things are measured off a band and each of them is this walk
+    with a different accumulator. */
+function eachRow(area: Box, visit: (y: number, run: [number, number]) => void): void {
+  for (let y = area.top; y <= area.top + area.height + 1e-9; y += STEP) {
+    const run = runAt(area, y);
+    if (run) visit(y, run);
+  }
+}
+
+/** The box a band's drawn shape actually occupies: the band intersected
+    with the body. This is the containment rule's left-hand side - "every
+    drawn shape lies inside its own box" became "every clipped band's
+    bounding box lies inside its own box" when the panels stopped being
+    shapes of their own (ADR-0087). */
+export function bandBox(area: Box): Box {
+  let left = Infinity;
+  let right = -Infinity;
+  let top = Infinity;
+  let bottom = -Infinity;
+  eachRow(area, (y, run) => {
+    left = Math.min(left, run[0]);
+    right = Math.max(right, run[1]);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+  });
+  if (left === Infinity) return { left: area.left, top: area.top, width: 0, height: 0 };
+  return { left, top, width: right - left, height: bottom - top };
+}
+
+/** How much body a band covers, in square units. Only ever compared with
+    another band's, to decide which of a region's places carries its mark. */
+function bandArea(area: Box): number {
+  let total = 0;
+  eachRow(area, (_, run) => {
+    total += (run[1] - run[0]) * STEP;
+  });
+  return total;
+}
+
+/** Where a panel's mixed mark goes: two short bars in the ink the ramp
+    computes for that step, on the band rather than beside it, so the bars
+    are read off the fill they sit on (roles.ts holds every step's ink to
+    4.5:1 against its own fill).
+
+    The old mark sat at the trailing edge of a rounded rectangle. A clipped
+    band has no straight trailing edge, so the mark moved to the middle of
+    the band instead. */
+export const MARK = { width: 3.8, height: 1.4, gap: 1.5 } as const;
+
+const MARK_SPAN = MARK.height * 2 + MARK.gap;
+
+/** The band a region's mark goes on: of a region's several places, the one
+    with the most room for a mark, and the larger of two with equal room.
+    `hands_feet` is the whole reason this is a choice - a foot is wider than
+    a hand and its widest rows are its last ones, so the hand is the place
+    with room even though the foot is the larger band. */
+export function markBand(bands: Box[]): Box {
+  return bands.reduce((best, area) => {
+    const gap = markFit(area) - markFit(best);
+    if (gap > 0.01) return area;
+    if (gap < -0.01) return best;
+    return bandArea(area) > bandArea(best) ? area : best;
+  }, bands[0]);
+}
+
+/** The centre of the body a band covers, weighted by how much of it there
+    is at each height. */
+export function bandCentroid(area: Box): Pt {
+  let x = 0;
+  let y = 0;
+  let total = 0;
+  eachRow(area, (at, run) => {
+    const width = run[1] - run[0];
+    x += ((run[0] + run[1]) / 2) * width;
+    y += at * width;
+    total += width;
+  });
+  return total > 0 ? { x: x / total, y: y / total } : { x: MIDLINE, y: area.top };
+}
+
+/** How much clearance a mark keeps above and below itself, so a bar never
+    lands flush against the contour - the sole and the fingertips are both
+    places the widest rows of a band are also its last ones. */
+const MARK_CLEAR = 0.5;
+
+/** The rows a mark would occupy if it hung from `y`, plus its clearance,
+    and the narrowest the body is across them. Its own walk rather than
+    `eachRow`: a row with no body under it is the answer here - the mark
+    would hang off the end of a foot - rather than a row to skip. */
+function fitAt(area: Box, y: number): { fit: number; x: number } {
+  let fit = Infinity;
+  let sum = 0;
+  let rows = 0;
+  for (let at = y - MARK_CLEAR; at <= y + MARK_SPAN + MARK_CLEAR + 1e-9; at += STEP) {
+    const run = runAt(area, at);
+    if (!run) return { fit: 0, x: MIDLINE };
+    fit = Math.min(fit, run[1] - run[0]);
+    sum += (run[0] + run[1]) / 2;
+    rows += 1;
+  }
+  return { fit, x: sum / rows };
+}
+
+/** The top left of the first bar: the band's own centroid, which on every
+    band across the torso is the middle of it.
+
+    Two of `hands_feet`'s four bands are the exception the search exists
+    for. One runs from above the ankle to the sole and the other from the
+    wrist to the fingertips, so the centroid of either lands on the
+    narrowest part of it and a mark hung there would run off the body. Where
+    the centroid cannot hold a mark, the mark moves to the nearest rows that
+    can. */
+export function markAt(area: Box): Pt {
+  const floor = MARK.width + 0.5;
+  const centroid = bandCentroid(area);
+  const wanted = Math.min(
+    Math.max(centroid.y - MARK_SPAN / 2, area.top + MARK_CLEAR),
+    area.top + area.height - MARK_SPAN - MARK_CLEAR
+  );
+  const at = fitAt(area, wanted);
+  if (at.fit >= floor) return { x: at.x - MARK.width / 2, y: wanted };
+
+  let best: { fit: number; x: number; y: number } | null = null;
+  for (let y = area.top + MARK_CLEAR; y <= area.top + area.height - MARK_SPAN - MARK_CLEAR + 1e-9; y += STEP) {
+    const here = fitAt(area, y);
+    const better =
+      !best ||
+      here.fit > best.fit + 1e-9 ||
+      (here.fit > best.fit - 1e-9 && Math.abs(y - wanted) < Math.abs(best.y - wanted));
+    if (here.fit > 0 && better) best = { ...here, y };
+  }
+  const pick = best ?? { ...at, y: wanted };
+  return { x: pick.x - MARK.width / 2, y: pick.y };
+}
+
+/** The narrowest the body gets over the rows a mark occupies, which is what
+    the mark has to fit inside. Read by the test rather than by the drawing. */
+export function markFit(area: Box): number {
+  return fitAt(area, markAt(area).y).fit;
+}
+
+/** Every region's mark, worked out once: the scans behind it are the same
+    every time, and a selection change must not pay for them again. */
+const MARK_ANCHOR = new Map(
+  REGION_PANELS.map((panel) => {
+    const area = markBand(panel.bands);
+    return [panel.region, { band: area, at: markAt(area) }];
+  })
+);
+
+export function markFor(region: string): { band: Box; at: Pt } | undefined {
+  return MARK_ANCHOR.get(region);
+}
+
+/* ---- placement and paint --------------------------------------------- */
+
 export interface FigurePlacement {
   /** The regions with a panel on the figure, in body order. A built-in
       somebody hid or deleted is simply absent; the rest keep their places,
@@ -295,8 +450,9 @@ export function placeRegions(regions: BodyRegion[]): FigurePlacement {
     The app's own intensity ramp, reused rather than invented: a calendar
     cell, a week cell, an injection dot and a body region now shade one
     reading the same way and only the hue differs. Level 0 is a region with
-    no readings in the range, drawn as an outline and no fill - neither a
-    large number nor zero reads as "never". */
+    no readings in the range, drawn in the silhouette's own neutral fill and
+    no tint at all - neither a large number nor zero reads as "never", and a
+    little colour would read as a little data. */
 export function fillLevel(reading: RegionSideReading | null | undefined): number {
   if (!reading || reading.value === null) return 0;
   return heatLevel(reading.value, { min: BODY_REGION_INTENSITY_MIN, max: BODY_REGION_INTENSITY_MAX });
@@ -331,39 +487,4 @@ export function contains(outer: Box, inner: Box): boolean {
     inner.left + inner.width <= outer.left + outer.width &&
     inner.top + inner.height <= outer.top + outer.height
   );
-}
-
-/** The shape a panel's seam is cut from: the panel grown back out to its
-    band, painted in the card's own colour under the panel. It is what keeps
-    a panel apart from the ground and from its neighbours whatever the two
-    are filled with - two readings a step apart on the ramp are close enough
-    to merge across a shared edge. */
-export function matShape(shape: Shape): Shape {
-  return {
-    left: shape.left - SEAM,
-    top: shape.top - SEAM,
-    width: shape.width + SEAM * 2,
-    height: shape.height + SEAM * 2,
-    r: shape.r + SEAM
-  };
-}
-
-/** Where a panel's mixed mark goes: inside the shape, at its trailing edge,
-    in the ink the ramp computes for that step. On the panel rather than
-    beside it, which a dot had no room for - the bars are read off the fill
-    they sit on, and roles.ts holds every step's ink to 4.5:1 against it. */
-export const MARK = { width: 4.6, height: 1.6, gap: 1.8 } as const;
-
-/** The shape a region's mark goes on: the widest it draws, since a region
-    in several places has to mark one of them and the widest is the one with
-    room. */
-export function markShape(shapes: Shape[]): Shape {
-  return shapes.reduce((widest, shape) => (shape.width > widest.width ? shape : widest), shapes[0]);
-}
-
-export function markAt(shape: Shape): { x: number; y: number } {
-  return {
-    x: shape.left + shape.width - MARK.width - 1.8,
-    y: shape.top + shape.height / 2 - MARK.height - MARK.gap / 2
-  };
 }
