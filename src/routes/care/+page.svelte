@@ -322,6 +322,11 @@
     return { ...role, style: `${role.style ?? ''}; --care-rows: ${rows}` };
   };
 
+  /** A medication block's own address on this screen, for the jump its
+      lane's name carries. The episode's id rather than its drug: a drug
+      name is free text and a fragment is not. */
+  const blockAnchor = (episodeId: string) => `care-med-${episodeId}`;
+
   /** Where to log this lane's next dose: the same sheet the dose panel on
       Today opens (`/care/doses?add=1`), seeded with the drug whose block the
       button sits in, so a person on three regimens does not land in a picker
@@ -561,8 +566,19 @@
                    rather than beside it: a name column would take around a
                    hundred of the three hundred and thirty pixels a 390px
                    screen leaves for the rail, and careSpine's collision rule
-                   is sized against the full width (careSpine.ts:62-86). -->
-              <span class="care-lane-name">{lane.drug}</span>
+                   is sized against the full width (careSpine.ts:62-86).
+
+                   And it is the way down to that medication's own rows
+                   (phase 11 UI/UX ticket 25, screen 7's "link lane labels
+                   directly to their corresponding row"): a lane says which
+                   drug it draws and the block below says what that drug is
+                   and offers Log a dose, with the whole rail in between.
+                   Sized to the name rather than to the lane, so the press
+                   is a control's press and not a full-width row's. -->
+              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug}>
+                <span class="care-lane-drug">{lane.drug}</span>
+                <Icon name="chevronDown" size={18} cls="care-lane-go" />
+              </a>
               <div class="care-lane-track">
                 <span class="care-line care-line-back" aria-hidden="true"></span>
                 <span class="care-line care-line-on" aria-hidden="true"></span>
@@ -643,7 +659,15 @@
        fade. -->
     {#each lanes as lane (lane.episode.id)}
       {@const route = blockRoute(lane.episode)}
-      <div class="care-regimen-block" data-care-regimen-block={lane.episode.drug}>
+      <!-- `tabindex="-1"` so the jump from the lane's own name moves the
+           focus here and not only the scroll: a fragment lands on a
+           focusable target or on nothing at all. -->
+      <div
+        class="care-regimen-block"
+        id={blockAnchor(lane.episode.id)}
+        tabindex="-1"
+        data-care-regimen-block={lane.episode.drug}
+      >
         <a class="care-regimen" href="/care/regimen" data-care-regimen>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>
@@ -1056,8 +1080,15 @@
     text-decoration: none;
     color: inherit;
   }
+  /* Also the block a lane's name jumps to: enough room over it that the
+     drug's name is not against the top of the scroll region, and no focus
+     ring around a whole block that only took focus to be read out. */
   .care-regimen-block {
     margin-bottom: var(--space-3);
+    scroll-margin-top: var(--space-5);
+  }
+  .care-regimen-block:focus {
+    outline: none;
   }
   .care-regimen-lines {
     display: flex;
@@ -1156,8 +1187,16 @@
     /* One caption is a label over a date; one lane is its name, its line and
        however many caption rows its own marks need. --care-stem is how far
        the first caption row hangs below its line, which is also how long the
-       stem from the line down to it is. */
-    --care-label-h: 34px;
+       stem from the line down to it is.
+
+       A caption row is the product's touch target, not the height of the two
+       lines of type in it (phase 11 UI/UX ticket 25, first audit U4: the
+       captions measured 32px). The row's height and the caption's target are
+       one number on purpose - a taller target inside a shorter row is a
+       caption whose invisible half lies over the caption in the row below,
+       and captions land in two rows precisely when they are too close in x
+       to share one. */
+    --care-label-h: var(--touch-target);
     --care-stem: var(--space-4);
     display: flex;
     flex-direction: column;
@@ -1227,16 +1266,36 @@
      its name say the same thing, so neither is carrying it alone - two lanes
      wrap onto one stripe on a flag with fewer stripes than the person has
      regimens (roles.ts), and the names still tell them apart. */
+  /* The name is the lane's own heading and the way down to that drug's
+     block, so it is a link the size of a control: the name, the chevron and
+     the 48px the two stand in, and no more - a link the width of the lane
+     would scale the whole rail on a press. */
   .care-lane-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    align-self: flex-start;
+    max-width: 100%;
+    min-height: var(--touch-target);
+    color: var(--role-ink);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
-    color: var(--role-ink);
-    /* The name is the lane's own heading and sits left; a long drug name
-       truncates rather than pushing the rail's own width around. */
+    text-decoration: none;
+  }
+  .care-lane-drug {
+    /* A long drug name truncates rather than pushing the rail's own width
+       around. */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* The chevron points down because the block it opens is further down this
+     same screen, not another one (the More hub's rows point right). */
+  .care-lane-name :global(.care-lane-go) {
+    flex: 0 0 auto;
+    color: var(--text-2);
+  }
+
   .care-lane-track {
     position: relative;
     height: calc(var(--care-stem) + var(--care-rows) * var(--care-label-h));
@@ -1353,8 +1412,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
     line-height: 1.2;
+    /* The whole row, so the target is the 48px the row already spends and
+       the two lines of type sit in the middle of it. */
+    min-height: var(--touch-target);
     min-width: 100%;
     text-decoration: none;
     color: inherit;
