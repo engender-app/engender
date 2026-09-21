@@ -153,14 +153,22 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
     expect(rule![1]).toMatch(/top:\s*0/);
   });
 
-  it('gives neither sun-bearing field a negative top margin', () => {
+  it('lets neither sun-bearing field pull up by the whole inset', () => {
     for (const [name, css] of [
       ['.home-field', /\.home-field\s*\{([\s\S]*?)\}/.exec(home)?.[1]],
       ['.step-field', /\n\.step-field\s*\{([\s\S]*?)\}/.exec(components)?.[1]]
     ] as const) {
       expect(css, `${name} should be declared`).toBeTruthy();
-      expect(css, `${name} should not pull itself up through the inset`).not.toMatch(
+      expect(css, `${name} should not pull itself up through the whole inset`).not.toMatch(
         /margin:\s*calc\(-1 \* var\(--inset-top\)\)/
+      );
+      /* It may take `--field-bleed-top`, which is the slack the bar leaves
+         under its own icons and is floored so a short bar keeps its
+         clearance. The sun's corner rides up with the field, which is the
+         point: the gap Alicja measured on the device was between the icons
+         and the field, not inside the field. */
+      expect(css, `${name} should take the sanctioned bleed`).toMatch(
+        /margin:\s*calc\(-1 \* var\(--field-bleed-top\)\)/
       );
       expect(css, `${name} should not pad the inset back in`).not.toMatch(
         /padding:[^;]*var\(--inset-top\)/

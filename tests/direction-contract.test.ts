@@ -855,15 +855,20 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
        apart, which the blind cannot express, since it is one named object
        across a navigation whose top edge does not move. */
     const bleed = ruleFor(css, '.screen > .screen-header > .screen-field');
-    expect(bleed?.body).toMatch(/margin:\s*0 calc\(-1 \* var\(--space-5\)\) 0/);
+    expect(bleed?.body).toMatch(
+      /margin:\s*calc\(-1 \* var\(--field-bleed-top\)\) calc\(-1 \* var\(--space-5\)\) 0/
+    );
     expect(bleed?.body).toMatch(/padding:\s*var\(--space-8\) var\(--space-5\) var\(--space-4\)/);
   });
 
   /* The same claim as a sweep rather than as one rule, so a field added
      later cannot quietly reintroduce the bleed: nothing whose selector
-     names a field may pull itself up by the top inset. The scroll region
-     in app.css is the one place that spends it. */
-  it('lets no field cross the top inset', () => {
+     names a field may pull itself up by the *whole* top inset. Pulling up
+     by `--field-bleed-top` is the sanctioned part - the slack the status
+     bar leaves under its own icons, floored so a short bar keeps its
+     clearance (theme/base.css) - and reads as a different expression, so
+     this sweep passes it and still catches `var(--inset-top)`. */
+  it('lets no field cross the whole top inset', () => {
     const offenders: string[] = [];
     const sources: Array<[string, string]> = [
       ['components', sheet('components')],

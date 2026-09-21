@@ -147,7 +147,7 @@
      picks. The gate wears this same class and follows it; it has no sun,
      but a step machine and a gate arriving one after the other with
      different top edges would be a jump between them. */
-  margin: 0 calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
   padding: var(--space-2) var(--space-5) var(--space-4);
   color: var(--field-ink);
   /* The paint below is a window tall and absolutely positioned in this box,
@@ -249,10 +249,14 @@
 
    So every field starts below the inset now, the band behind the status
    bar is the page's own colour on every screen, and the app tells Android
-   which tint to draw there (status-bar-bridge.ts). The scroll region's
-   padding is the only thing that spends the top inset again. */
+   which tint to draw there (status-bar-bridge.ts).
+
+   Not quite all of the inset, though: `--field-bleed-top` (theme/base.css)
+   is the part the bar does not use, 9px on a Pixel and nothing at all in
+   a browser, and every field takes it back. The reasoning and the floor
+   that keeps it safe on a short bar are written at the token. */
 .screen > .screen-header > .screen-field {
-  margin: 0 calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
   padding: var(--space-8) var(--space-5) var(--space-4);
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }

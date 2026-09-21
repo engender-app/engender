@@ -6992,10 +6992,10 @@ try {
        Pixel 10a, where the window carries EDGE_TO_EDGE_ENFORCED and this
        app's AppearanceRegion is empty, meaning white icons).
 
-       So the claim is now the plain one every other screen already makes:
-       nothing Home paints, decoration included, starts above the inset.
-       The other 62 fields still bleed - a flat block of one colour behind
-       the bar reads - and components.css holds that rule. */
+       So the claim is now the plain one every other screen makes with it,
+       every field having stopped crossing the inset in the same pass:
+       nothing Home paints, decoration included, starts above the line the
+       field's own floor sets. */
     const { headerTop, sunPaintedTop, greetingTop } = await page.evaluate(() => {
       /* The outermost ring is a whole disc in layout terms and only its
          bottom-left quarter is painted (clip-path on .sun i), so the box
@@ -7010,17 +7010,27 @@ try {
         greetingTop: document.querySelector('[data-home-hero]').getBoundingClientRect().top
       };
     });
+    /* Not the whole cutout: `--field-bleed-top` is the slack the status bar
+       leaves under its own icons, which every field takes back
+       (theme/base.css). At this CUTOUT that is the full 12px, so the line
+       the field and the sun have to stay below is the cutout less that. */
+    const bleed = await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--field-bleed-top'))
+    );
     const safeFrom = app.top + CUTOUT.top;
-    if (headerTop < safeFrom) {
-      throw new Error(`Home's field starts ${safeFrom - headerTop}px inside a ${CUTOUT.top}px cutout`);
+    const fieldFloor = safeFrom - bleed;
+    if (headerTop < fieldFloor) {
+      throw new Error(
+        `Home's field starts ${fieldFloor - headerTop}px above its floor in a ${CUTOUT.top}px cutout (bleed ${bleed})`
+      );
     }
     if (sunPaintedTop === null) {
       throw new Error('Home drew no sun to measure');
     }
     /* Half a pixel of slack: the ring's diameter can be fractional, so the
        centre line lands on a half pixel while the field's top does not. */
-    if (sunPaintedTop < safeFrom - 0.5) {
-      throw new Error(`the sun paints ${safeFrom - sunPaintedTop}px inside the cutout`);
+    if (sunPaintedTop < fieldFloor - 0.5) {
+      throw new Error(`the sun paints ${fieldFloor - sunPaintedTop}px above the field's floor`);
     }
     if (greetingTop < safeFrom) {
       throw new Error(`the greeting sits ${safeFrom - greetingTop}px inside the cutout`);
