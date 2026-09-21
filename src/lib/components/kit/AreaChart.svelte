@@ -624,7 +624,7 @@
         >
           {#each hoveredLabels.entries as entry (entry.id)}
             {#if entry.label}<span>{entry.label}</span>{/if}
-            {#if entry.note}<span class="kit-area-tick-note">{entry.note}</span>{/if}
+            {#if entry.note}<span class="kit-area-annotation-note">{entry.note}</span>{/if}
           {/each}
           {#if hoveredLabels.rest}<span>{hoveredRest}</span>{/if}
         </div>
@@ -671,7 +671,7 @@
               <span class="kit-area-readout-annotation">{entry.label}</span>
             {/if}
             {#if entry.note}
-              <span class="kit-area-tick-note">{entry.note}</span>
+              <span class="kit-area-annotation-note">{entry.note}</span>
             {/if}
           {/each}
           {#if atAnnotations.rest}
@@ -781,7 +781,7 @@
 
      Here rather than in kit.css: one consumer, which is what
      scripts/check-screens-classes.mjs asks a class like this to be. */
-  .kit-area-tick-note {
+  .kit-area-annotation-note {
     max-width: 100%;
     white-space: normal;
     display: -webkit-box;
@@ -793,11 +793,11 @@
 
   /* Ragged on the side the plate is not anchored to, so the sentence keeps
      the edge its corner picked. */
-  .kit-area-readout .kit-area-tick-note {
+  .kit-area-readout .kit-area-annotation-note {
     text-align: right;
   }
 
-  .kit-area-readout.is-left .kit-area-tick-note {
+  .kit-area-readout.is-left .kit-area-annotation-note {
     text-align: left;
   }
 

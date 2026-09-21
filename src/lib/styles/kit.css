@@ -2362,7 +2362,7 @@ button.kit-strip-day .kit-strip-cell {
   text-overflow: ellipsis;
   /* The same reason .kit-area-readout-text keeps one line: this is the
      "{name}, {kind}" pair, and what the record says behind it is the line
-     under it (AreaChart.svelte's .kit-area-tick-note) rather than more of
+     under it (AreaChart.svelte's .kit-area-annotation-note) rather than more of
      this one. */
   white-space: nowrap;
 }
