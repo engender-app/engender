@@ -21,14 +21,12 @@
      grows as it is read rather than laying two hundred rows under the
      door. */
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay } from '$lib/data/dates';
   import { factSpan, type RailFact, type RailFactKind, type Span } from '$lib/data/lookBackSpan';
-  import { spanLabel } from '$lib/data/spanLabel';
+  import { dayLabel, spanLabel } from '$lib/data/spanLabel';
   import { disclose } from '$lib/motion/reveal';
   import type { Role } from '$lib/theme/roles';
   import Icon from './Icon.svelte';
   import BatchedList from './kit/BatchedList.svelte';
-  import Check from './kit/Check.svelte';
   import ListRow from './kit/ListRow.svelte';
 
   let {
@@ -63,15 +61,11 @@
   };
 
   const factName = (fact: RailFact) => fact.name ?? KIND_WORD[fact.kind]();
-  const dayText = (day: number) => fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
   /* What the row says about time: a stretch's two days and its length, the
-     same line the rail writes under itself, or a day's own date. */
+     same line the rail writes under itself, or a day's own date - in the
+     same words, so a list holding both does not read in two registers. */
   const factWhen = (fact: RailFact) =>
-    fact.isDay ? dayText(fact.end) : spanLabel({ start: fact.start, end: fact.end }, today);
-  /* No `aria-label` on a row: the label would replace what the row says,
-     and what the row says - its name, its kind and its exact dates - is
-     more than the rail's own one-line announcement carries. The rail keeps
-     that announcement; this list reads itself out. */
+    fact.isDay ? dayLabel(fact.end, today) : spanLabel({ start: fact.start, end: fact.end }, today);
 </script>
 
 <div class="span-facts" data-span-facts>
@@ -93,6 +87,12 @@
           {#each shown as fact (fact.id)}
             {@const next = factSpan(fact, railStart)}
             {@const selected = span.start === next.start && span.end === next.end}
+            <!-- No aria-label: a label would replace what the row says, and
+                 what the row says - the fact's name, its kind and its exact
+                 dates - is more than the rail's own one-line announcement
+                 carries. The rail keeps that announcement; this list reads
+                 itself out. `aria-current` is what says which fact the span
+                 on the rail came from. -->
             <ListRow
               key={fact.id}
               data-span-fact={fact.kind}
@@ -103,7 +103,11 @@
               onclick={() => onPick(next)}
             >
               {#snippet trailing()}
-                {#if selected}<Check checked />{/if}
+                <!-- The plain mark rather than kit/Check, which draws the
+                     box a tickable row wears: this row is not a checkbox
+                     and ticking a box would say a person may select as many
+                     facts as they like. One span, one row, one mark. -->
+                {#if selected}<Icon name="check" size={22} cls="span-fact-mark" />{/if}
               {/snippet}
             </ListRow>
           {/each}
@@ -141,5 +145,9 @@
   }
   .span-facts-toggle[aria-expanded='true'] .span-facts-chev {
     transform: rotate(180deg);
+  }
+  /* The mark on the row the span came from, in the area's own ink. */
+  .span-facts :global(.span-fact-mark) {
+    color: var(--role-ink);
   }
 </style>
