@@ -1405,11 +1405,17 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     display: none !important;
   }
 
-  /* A heading a screen shows only on paper: the title and range a reader
-     needs on a printed page and already has in the header on screen. */
+  /* A heading a screen shows only on paper: the mark, then the title and
+     range a reader needs on a printed page and already has in the header on
+     screen. Both printing screens draw the same three, so the letterhead's
+     one piece of spacing lives here beside them rather than twice. */
   .print-heading {
     display: block;
     margin-bottom: var(--space-4);
+  }
+
+  .print-heading .mark {
+    margin-bottom: var(--space-2);
   }
 
   .screen {
