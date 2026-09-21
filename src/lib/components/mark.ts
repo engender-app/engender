@@ -11,7 +11,7 @@
      corner sun: R 100, centre 0, seam 3, tile radius 15, small all-seam
 
    in a 100 unit tile. Alicja moved the sliders to these numbers on
-   2026-09-21 and said keep this one; markNumbers.test.ts pins them so a
+   2026-09-21 and said keep this one; mark.test.ts pins them so a
    later edit has to mean it.
 
    The seam is the app's own, not a new one: black, on the outer side of
@@ -24,7 +24,7 @@
    Nothing here imports $lib/motion, and nothing here emits an animation, a
    transition or a view-transition name. Alicja, 2026-09-21: "the logos ARE
    NOT SUPPOSED TO MOVE AT ALL". DIRECTION.md rule 8 carries it and
-   markNumbers.test.ts asserts it against this file and Mark.svelte.
+   mark.test.ts asserts it against this file and Mark.svelte.
 
    An SVG string rather than markup, for the same reason icons.ts is one:
    two callers draw from it - Mark.svelte with `{@html}`, and
@@ -101,15 +101,21 @@ function cropMarkup(crop: MarkCrop): { clip: string; edge: string } {
       edge: `<circle cx="50" cy="50" r="${(50 - inset).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
     };
   }
-  const rx = crop === 'tile' ? MARK_TILE_RADIUS : 0;
-  return {
-    clip: `<rect width="100" height="100" rx="${rx}"/>`,
-    edge:
-      crop === 'tile'
-        ? `<rect x="${inset}" y="${inset}" width="${100 - MARK_SEAM}" height="${100 - MARK_SEAM}"`
-          + ` rx="${(MARK_TILE_RADIUS - inset).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
-        : ''
-  };
+  if (crop === 'tile') {
+    return {
+      clip: `<rect width="100" height="100" rx="${MARK_TILE_RADIUS}"/>`,
+      edge:
+        `<rect x="${inset}" y="${inset}" width="${100 - MARK_SEAM}" height="${100 - MARK_SEAM}"`
+        + ` rx="${(MARK_TILE_RADIUS - inset).toFixed(2)}" fill="none" stroke="#000" stroke-width="${MARK_SEAM}"/>`
+    };
+  }
+  /* `bare` and `bleed` need no clip path at all: both crop to the square the
+     viewBox already is, and an SVG viewport clips to itself. Saying so is
+     worth a branch rather than a `rx="0"` rect, because a clip path needs an
+     id, an id has to be unique in a document, and these two are the only
+     crops the app ever draws - so the app emits no id and two marks on one
+     screen cannot collide. The cropped forms are files, one mark each. */
+  return { clip: '', edge: '' };
 }
 
 /** The whole mark as one SVG element. `size` is what the width and height
@@ -123,16 +129,17 @@ export function markSvg(
   const { clip, edge } = cropMarkup(crop);
   const fill = ground === undefined ? (crop === 'bare' ? null : MARK_TILE) : ground;
   const paper = fill === null ? '' : `<rect width="100" height="100" fill="${fill}"/>`;
-  /* A clip id has to be unique in the document, and the app can show more
-     than one mark at a time. Deriving it from the crop is enough: two marks
-     of the same crop resolve to the same clip path, which is the same
-     shape. */
+  const drawing = `${paper}${ringMarkup(stripes, ink)}${edge}`;
+  /* One id per document, which holds because the two crops that carry a clip
+     path are only ever written to a file of their own. */
   const clipId = `mark-${crop}`;
+  const clipped = clip
+    ? `<defs><clipPath id="${clipId}">${clip}</clipPath></defs>`
+      + `<g clip-path="url(#${clipId})">${drawing}</g>`
+    : drawing;
   const named = label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${label}"`;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
-    + ` focusable="false" ${named}>`
-    + `<defs><clipPath id="${clipId}">${clip}</clipPath></defs>`
-    + `<g clip-path="url(#${clipId})">${paper}${ringMarkup(stripes, ink)}${edge}</g></svg>`
+    + ` focusable="false" ${named}>${clipped}</svg>`
   );
 }
