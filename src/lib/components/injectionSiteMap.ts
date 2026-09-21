@@ -35,6 +35,9 @@ export const MAP_VIEW = { width: FIGURE_BOX.width, height: 135 } as const;
     app is built for - gives exactly 320, so the spacing the test holds is
     the spacing that phone draws rather than one only a large phone gets. */
 export const MAP_WIDTH = 320;
+/* MAP_SCALE and MAP_HEIGHT stay exported only for their own test (AU-09
+   test-only review); the component takes the box from MAP_WIDTH and
+   MAP_VIEW's ratio, so neither is a second copy of a size. */
 export const MAP_SCALE = MAP_WIDTH / MAP_VIEW.width;
 export const MAP_HEIGHT = MAP_VIEW.height * MAP_SCALE;
 
