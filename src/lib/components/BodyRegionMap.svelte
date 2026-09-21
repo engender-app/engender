@@ -51,7 +51,7 @@
      elsewhere cluster's pills, and in the heading under the figure. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import type { RegionSideReading } from '$lib/data/bodyMap';
+  import { regionSummary, type RegionSideReading } from '$lib/data/bodyMap';
   import type { BodyRegion } from '$lib/data/types';
   import { FIGURE_BOX, SILHOUETTE_PATH } from './bodySilhouette';
   import {
@@ -115,14 +115,12 @@
       native (ADR-0012) - the normalised number exists for colour and is
       never spoken either. */
   function regionLabel(region: BodyRegion): string {
-    const reading = byRegion.get(region.id);
-    if (!reading || reading.side === null || reading.value === null) {
-      return m.body_region_reading_none_aria({ region: region.name });
-    }
+    const summary = regionSummary(byRegion.get(region.id));
+    if (summary.kind === 'none') return m.body_region_reading_none_aria({ region: region.name });
     const axis =
-      reading.side === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
-    const value = String(Math.round(reading.value));
-    return reading.mixed
+      summary.axis === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
+    const value = String(summary.value);
+    return summary.mixed
       ? m.body_region_reading_mixed_aria({ region: region.name, axis, value })
       : m.body_region_reading_aria({ region: region.name, axis, value });
   }

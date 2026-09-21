@@ -4,7 +4,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { regionReading, type RegionSides } from './bodyMap.ts';
+import { regionReading, regionSummary, type RegionSides } from './bodyMap.ts';
 
 const sides = (over: Partial<RegionSides> = {}): RegionSides => ({
   region: 'chest',
@@ -94,4 +94,37 @@ test('an exact tie on both count and intensity lands on dysphoria, deterministic
   assert.equal(reading.side, 'dysphoria');
   assert.equal(reading.value, 50);
   assert.equal(reading.mixed, true);
+});
+
+/* What the words beside the figure say (phase 11 pre-production UI/UX
+   ticket 30). The figure paints a region's reading and the sentence under it
+   reads the same reading out, so both come off one answer rather than two
+   near-identical guards - and "nothing here" has to survive a region the
+   range never mentions, which is most of them on a quiet month. */
+
+test('a region the range never mentions has nothing to say', () => {
+  assert.deepEqual(regionSummary(undefined), { kind: 'none' });
+});
+
+test('a region present with no side is the same nothing', () => {
+  assert.deepEqual(regionSummary(regionReading(sides())), { kind: 'none' });
+});
+
+test('a reading carries its side, its count and whether it went both ways', () => {
+  const summary = regionSummary(
+    regionReading(sides({ dysphoriaCount: 4, dysphoriaMean: 70, euphoriaCount: 1, euphoriaMean: 90 }))
+  );
+  assert.deepEqual(summary, { kind: 'reading', axis: 'dysphoria', value: 70, mixed: true, count: 5 });
+});
+
+/* The scale is native and whole (ADR-0012, ADR-0081): a mean of four
+   readings is a fraction and nothing on this screen shows one. */
+test('the mean is rounded to the scale a person reads', () => {
+  const summary = regionSummary(regionReading(sides({ euphoriaCount: 3, euphoriaMean: 61.666_67 })));
+  assert.deepEqual(summary, { kind: 'reading', axis: 'euphoria', value: 62, mixed: false, count: 3 });
+});
+
+test('a single reading is a reading, not a mean of many', () => {
+  const summary = regionSummary(regionReading(sides({ dysphoriaCount: 1, dysphoriaMean: 20 })));
+  assert.deepEqual(summary, { kind: 'reading', axis: 'dysphoria', value: 20, mixed: false, count: 1 });
 });
