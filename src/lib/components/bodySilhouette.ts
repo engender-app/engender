@@ -199,8 +199,19 @@ const TRUNK_SIDE: Edge = edge(p(67.8, CANON.collar), [
 const SHOULDER_POINT = p(74.6, 44.4);
 
 /** Where the torso's own shoulder line lands back on the trunk's side,
-    under the arm. Below it the armpit is open. */
-const ARMPIT = 47.6;
+    under the arm. Below it the armpit is open.
+
+    It is as low as the drawing can put it, and the arm's inner edge hugs
+    the shoulder line down to nearly the same height, because the notch
+    between the two is the armpit and a long one reads as a cut into the
+    body (Alicja, on the first renders: "please make those armpit cuts a
+    little smaller"). What bounds it from below is the chest's own band at
+    y=48: the arm has to hang clear of the torso by then, or a band of the
+    torso would pick up a piece of an arm, and the contour below that height
+    has to be the trunk's own side for the neutrality measurements to be
+    measuring the drawing. So the shoulder line lands on the trunk's side at
+    exactly 48 and the notch above it is about a unit long. */
+const ARMPIT = 48;
 const armpitJoin = p(xAtY(TRUNK_SIDE, ARMPIT), ARMPIT);
 
 /* The head, the neck, the shoulders and the torso, as one edge from the
@@ -214,7 +225,7 @@ const BODY_OUTER: Edge = edge(p(MIDLINE, CANON.crown), [
   seg(p(55, 31.6), p(54.8, 32.2), p(54.8, 34)), // the jawline into the neck
   seg(p(54.8, 35.6), p(55, 37.2), p(55.2, 39)), // the neck
   seg(p(61.8, 40.2), p(68.8, 41.4), SHOULDER_POINT), // the trapezius
-  seg(p(72.4, 45.4), p(69.4, 46.8), armpitJoin), // down under the arm
+  seg(p(72.6, 45.6), p(70.2, 47.4), armpitJoin), // down under the arm
   ...splitFrom(TRUNK_SIDE, ARMPIT).segs // the torso's side to the hip
 ]);
 
@@ -240,8 +251,8 @@ const ARM_OUTER: Edge = edge(SHOULDER_POINT, [
 ]);
 
 const ARM_INNER: Edge = edge(SHOULDER_POINT, [
-  seg(p(71.6, 45.2), p(71.3, 47), p(71.3, 48)), // in under the shoulder, then the armpit
-  seg(p(71.7, 54), p(72.1, 60), p(72.3, 66)),
+  seg(p(70.6, 45.2), p(69.7, 47.2), p(70.2, 48)), // in under the shoulder, then the armpit
+  seg(p(70.6, 54), p(72, 60), p(72.3, 66)),
   seg(p(72.6, 74), p(72.9, 84), p(73.1, 92)),
   seg(p(73.3, 96), p(73.5, 99), p(73.5, 101)), // the wrist
   seg(p(71.9, 104.5), p(72.7, 111.5), p(74.1, CANON.fingertip)) // the hand
