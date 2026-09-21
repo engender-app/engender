@@ -261,6 +261,16 @@ function runAt(area: Box, y: number): [number, number] | null {
   return widest;
 }
 
+/** Every row of a band that has body in it, down the band a `STEP` at a
+    time. Three things are measured off a band and each of them is this walk
+    with a different accumulator. */
+function eachRow(area: Box, visit: (y: number, run: [number, number]) => void): void {
+  for (let y = area.top; y <= area.top + area.height + 1e-9; y += STEP) {
+    const run = runAt(area, y);
+    if (run) visit(y, run);
+  }
+}
+
 /** The box a band's drawn shape actually occupies: the band intersected
     with the body. This is the containment rule's left-hand side - "every
     drawn shape lies inside its own box" became "every clipped band's
@@ -271,14 +281,12 @@ export function bandBox(area: Box): Box {
   let right = -Infinity;
   let top = Infinity;
   let bottom = -Infinity;
-  for (let y = area.top; y <= area.top + area.height + 1e-9; y += STEP) {
-    const run = runAt(area, y);
-    if (!run) continue;
+  eachRow(area, (y, run) => {
     left = Math.min(left, run[0]);
     right = Math.max(right, run[1]);
     top = Math.min(top, y);
     bottom = Math.max(bottom, y);
-  }
+  });
   if (left === Infinity) return { left: area.left, top: area.top, width: 0, height: 0 };
   return { left, top, width: right - left, height: bottom - top };
 }
@@ -287,10 +295,9 @@ export function bandBox(area: Box): Box {
     another band's, to decide which of a region's places carries its mark. */
 function bandArea(area: Box): number {
   let total = 0;
-  for (let y = area.top; y <= area.top + area.height + 1e-9; y += STEP) {
-    const run = runAt(area, y);
-    if (run) total += (run[1] - run[0]) * STEP;
-  }
+  eachRow(area, (_, run) => {
+    total += (run[1] - run[0]) * STEP;
+  });
   return total;
 }
 
@@ -326,14 +333,12 @@ export function bandCentroid(area: Box): Pt {
   let x = 0;
   let y = 0;
   let total = 0;
-  for (let at = area.top; at <= area.top + area.height + 1e-9; at += STEP) {
-    const run = runAt(area, at);
-    if (!run) continue;
+  eachRow(area, (at, run) => {
     const width = run[1] - run[0];
     x += ((run[0] + run[1]) / 2) * width;
     y += at * width;
     total += width;
-  }
+  });
   return total > 0 ? { x: x / total, y: y / total } : { x: MIDLINE, y: area.top };
 }
 
@@ -343,7 +348,9 @@ export function bandCentroid(area: Box): Pt {
 const MARK_CLEAR = 0.5;
 
 /** The rows a mark would occupy if it hung from `y`, plus its clearance,
-    and the narrowest the body is across them. */
+    and the narrowest the body is across them. Its own walk rather than
+    `eachRow`: a row with no body under it is the answer here - the mark
+    would hang off the end of a foot - rather than a row to skip. */
 function fitAt(area: Box, y: number): { fit: number; x: number } {
   let fit = Infinity;
   let sum = 0;

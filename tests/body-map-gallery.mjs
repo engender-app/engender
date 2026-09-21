@@ -10,7 +10,8 @@
    Three things come out of one run:
 
    - **shots/**: each scene cropped to its figure, per theme, plus the
-     control-area crop off the real route.
+     control-area crop off the real route, and **sheet.html**, which is the
+     two themes of each scene beside each other for sign-off.
    - **contrast.json**: rule 11 measured rather than asserted. Every piece of
      type the figure draws, walked against its own resolved ground. A body
      region's fill is a `color-mix` that `getComputedStyle` hands back
@@ -256,6 +257,41 @@ for (const theme of THEMES) {
 
 await writeFile(`${outDir}/contrast.json`, JSON.stringify(contrast, null, 2));
 await writeFile(`${outDir}/mixed.json`, JSON.stringify(mixed, null, 2));
+
+/* One page to look through rather than a list of file names: each scene's
+   two themes beside each other, in the order the states have to be told
+   apart in. */
+const SHEET = [
+  ['empty', 'Nothing logged in this range. One body, its parts named by hairlines, nothing painted.'],
+  ['single', 'One region, one faint reading. The pale end of the ramp against the scene above it.'],
+  ['mixed', 'Both ways in the range, at both ends of the ramp. Two bars on a panel say mixed.'],
+  ['saturated', 'Every region deep on the ramp, where a mark and an edge have least to work with.'],
+  ['selected', 'A region picked: an ink edge round its own band, and no dimming of the others.']
+];
+await writeFile(
+  `${outDir}/sheet.html`,
+  `<!doctype html><meta charset="utf-8"><title>the body map's figure</title>
+<style>
+  body { margin: 0; padding: 32px; background: #14181c; color: #e8f1f7;
+         font: 15px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { margin: 0 0 32px; color: #9db4c3; max-width: 60ch; }
+  section { margin-bottom: 40px; }
+  h2 { font-size: 17px; margin: 0 0 2px; }
+  p { margin: 0 0 12px; color: #9db4c3; max-width: 70ch; }
+  .pair { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  img { width: 360px; border-radius: 6px; }
+</style>
+<h1>The body map's figure, redrawn</h1>
+<p class="lead">Palette ${palette}, light and dark, cropped to the figure and its card.
+Nothing else on the route changed.</p>
+${SHEET.map(
+  ([key, said]) => `<section><h2>${key}</h2><p>${said}</p><div class="pair">${THEMES.map(
+    (theme) => `<img src="shots/figure-${key}-${theme}.png" alt="${key}, ${theme}">`
+  ).join('')}</div></section>`
+).join('\n')}
+`
+);
 
 const failures = contrast.filter((row) => row.ratio < row.floor);
 console.log(`type walked: ${contrast.length} pieces, ${failures.length} under rule 11's floor`);
