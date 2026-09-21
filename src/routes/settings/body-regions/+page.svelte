@@ -18,6 +18,34 @@
 <div class="screen">
   <ScreenHeader title={m.body_regions_row_title()} back="/settings" subtitle={m.body_regions_intro()} />
 
+  <!-- Custom before built-in, and the add button with it (phase 11 ticket
+       38): the same order the affirmations screen takes, for the same
+       reason - ten built-in regions stood between arriving here and adding
+       the one region a person came to name. -->
+  <SectionHeading text={m.body_regions_custom_heading()} />
+
+  <button
+    class="btn btn-soft"
+    data-add-region
+    onclick={() => {
+      addOpen = true;
+      newName = '';
+    }}
+  >
+    <Icon name="plus" size={20} /><span>{m.body_regions_add()}</span>
+  </button>
+
+  {#if customs.length === 0}
+    <p class="muted small">{m.body_regions_custom_empty()}</p>
+  {/if}
+  <div class="managed-tags">
+    {#each customs as r (r.id)}
+      <div class="rows-divide managed-tag">
+        <span class="managed-label">{r.name}</span>
+      </div>
+    {/each}
+  </div>
+
   <SectionHeading text={m.body_regions_builtin_heading()} />
   <div class="managed-tags">
     {#each builtIns as r (r.id)}
@@ -37,28 +65,6 @@
       </div>
     {/each}
   </div>
-
-  <SectionHeading text={m.body_regions_custom_heading()} />
-  {#if customs.length === 0}
-    <p class="muted small">{m.body_regions_custom_empty()}</p>
-  {/if}
-  <div class="managed-tags">
-    {#each customs as r (r.id)}
-      <div class="rows-divide managed-tag">
-        <span class="managed-label">{r.name}</span>
-      </div>
-    {/each}
-  </div>
-
-  <button
-    class="btn btn-soft"
-    onclick={() => {
-      addOpen = true;
-      newName = '';
-    }}
-  >
-    <Icon name="plus" size={20} /><span>{m.body_regions_add()}</span>
-  </button>
 
   <Sheet bind:open={addOpen} title={m.body_regions_new_sheet()}>
     <h3>{m.body_regions_new_sheet()}</h3>
