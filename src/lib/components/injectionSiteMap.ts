@@ -8,7 +8,7 @@
    and a component's <style> block is not somewhere a test can ask. */
 
 import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
-import { FIGURE_BOX } from './bodySilhouette';
+import { FIGURE_BOX, type Pt } from './bodySilhouette';
 
 /** The part of the silhouette the map frames, in the figure's own units.
 
@@ -74,7 +74,7 @@ export const MAP_DOT_SIZE = 22;
     same constraint sideways - 9 units either side of the midline is the
     narrowest a pair may be, which is why the abdomen's dots sit well in from
     the flank while the love handles sit on it. */
-const PLACEMENT: Record<InjectionSiteRegion, { x: number; y: number }> = {
+const PLACEMENT: Record<InjectionSiteRegion, Pt> = {
   deltoid: { x: 74, y: 49 },
   abdomen: { x: 59, y: 58.5 },
   loveHandle: { x: 63.5, y: 75.5 },
@@ -85,7 +85,7 @@ const PLACEMENT: Record<InjectionSiteRegion, { x: number; y: number }> = {
 
 /** A site's dot in the figure's own units, which is where it can be asked
     whether it is on the body. */
-export function sitePoint(site: InjectionSite): { x: number; y: number } {
+export function sitePoint(site: InjectionSite): Pt {
   const place = PLACEMENT[site.region];
   return { x: site.side === 'left' ? FIGURE_BOX.width - place.x : place.x, y: place.y };
 }
@@ -101,7 +101,7 @@ export function sitePosition(site: InjectionSite): { top: number; left: number }
 /** The same point in CSS px at the size the map actually renders at, which
     is the only unit a touch target can be compared against. */
 /* siteCentre stays exported only for its own test (AU-09 test-only review). */
-export function siteCentre(site: InjectionSite): { x: number; y: number } {
+export function siteCentre(site: InjectionSite): Pt {
   const { x, y } = sitePoint(site);
   return { x: x * MAP_SCALE, y: y * MAP_SCALE };
 }
