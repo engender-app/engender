@@ -320,8 +320,8 @@
       {/snippet}
     </Field>
     <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
-      {#snippet children(id)}
-        <DatePicker name="tr-end" bind:value={draft.end} {id} />
+      {#snippet children(id, describedBy)}
+        <DatePicker name="tr-end" bind:value={draft.end} {id} {describedBy} />
       {/snippet}
     </Field>
     {#if canAdopt}
@@ -350,13 +350,21 @@
   {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
     <MoodPicker value={feelingMood} onPick={(v) => (feelingMood = v)} compact />
-    <textarea
-      class="input"
-      rows="2"
-     
-      placeholder={m.tryout_feeling_note_placeholder()}
-      bind:value={feelingNote}
-    ></textarea>
+    <!-- Named rather than left to its placeholder, which is an example
+         that disappears the moment somebody types into it: every other
+         note in the app (labs, dilation, a visit) carries a label, and
+         this was the one field on the screen with none. -->
+    <Field label={m.note_label()} id="tr-feeling-note">
+      {#snippet children(id)}
+        <textarea
+          class="input"
+          {id}
+          rows="2"
+          placeholder={m.tryout_feeling_note_placeholder()}
+          bind:value={feelingNote}
+        ></textarea>
+      {/snippet}
+    </Field>
     <button
       class="btn btn-soft btn-block press"
       style="margin:var(--space-3) 0"
