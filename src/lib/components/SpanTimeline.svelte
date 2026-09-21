@@ -312,6 +312,44 @@
   }
 
   const x = (day: number) => railPosition(day, railStart, today) * railWidth;
+
+  /* How far a mark's target reaches either side of its own block (phase 11
+     UI/UX ticket 25, first audit U4).
+
+     The marks used to carry a fixed 36x48px hit box, which is a generous
+     target and was taking two things that were not its own: the history
+     lanes underneath it, whose bands are 8px and 6px and sat entirely
+     inside it, and the next mark along, since a rail of years puts two
+     milestones a few pixels apart as readily as a few centimetres. So the
+     reach is asked per mark instead - half the room to its nearest
+     neighbour, capped at the 12px it used to take - and the box no longer
+     reaches up over the lanes or down over the line under the rail.
+
+     Marks drawn closer together than their own 12px blocks cannot be
+     pulled apart by a hit box at all, and neither can two regimen episodes
+     running at once. That is what the list under the rail is for: it holds
+     every one of these facts as a row, with its dates, at the product's
+     own target floor. */
+  const MARK_WIDTH = 12;
+  const MARK_REACH_MAX = 12;
+  let markReach = $derived.by(() => {
+    const placed = [
+      ...marks.map((mark) => ({ key: `milestone:${mark.id}`, at: x(mark.epochDay) })),
+      ...surgeries.map((mark) => ({ key: `surgery:${mark.id}`, at: x(mark.epochDay) }))
+    ];
+    const reach = new Map<string, number>();
+    for (const [index, mark] of placed.entries()) {
+      let nearest = Infinity;
+      for (const [other, peer] of placed.entries()) {
+        if (other === index) continue;
+        nearest = Math.min(nearest, Math.abs(peer.at - mark.at));
+      }
+      reach.set(mark.key, Math.max(0, Math.min(MARK_REACH_MAX, (nearest - MARK_WIDTH) / 2)));
+    }
+    return reach;
+  });
+  const reachOf = (key: string) => `${markReach.get(key) ?? 0}px`;
+
   let startX = $derived(x(live.start));
   let endX = $derived(x(live.end));
   /* Between the two handles, and held inside the rail by its own half-width
@@ -589,6 +627,7 @@
         type="button"
         class="span-tl-mark"
         style:left="{railPosition(mark.epochDay, railStart, today) * 100}%"
+        style:--mark-reach={reachOf(`milestone:${mark.id}`)}
         data-span-milestone={mark.id}
         data-no-press
         aria-label={m.lookback_mark_aria({ name: mark.name })}
@@ -604,6 +643,7 @@
         type="button"
         class="span-tl-mark"
         style:left="{railPosition(mark.epochDay, railStart, today) * 100}%"
+        style:--mark-reach={reachOf(`surgery:${mark.id}`)}
         data-span-surgery={mark.id}
         data-no-press
         aria-label={m.lookback_mark_aria({ name: mark.name ?? m.lookback_legend_surgery() })}
@@ -884,10 +924,14 @@
      page rather than `--outline` here, because the band is ink: an outline
      on ink is a darker line on a dark bar, and a gap of page is a gap.
 
-     The target grows 3px every way, the way a milestone's grows around its
-     mark: the rail's height is fixed, so the hit box is what gives rather
-     than the drawing. A band still carries a name and a tab stop, which is
-     the path that does not depend on aim. */
+     The target is the band and nothing more (phase 11 UI/UX ticket 25). It
+     used to grow 3px every way, and there is nowhere on this rail for
+     those 3px to come from: the regimen row and the tryout row meet, so
+     the two extensions overlapped by 6px wherever a tryout ran during an
+     episode, and two episodes that meet on consecutive days overlapped
+     along their shared edge. A band still carries a name and a tab stop,
+     which is the path that does not depend on aim, and the list under the
+     rail carries the same fact as a row at the target floor. */
   .span-tl-hband {
     position: absolute;
     box-sizing: border-box;
@@ -926,11 +970,6 @@
   }
   .span-tl-hband.is-open-start { border-left: 0; }
   .span-tl-hband.is-open-end { border-right: 0; }
-  .span-tl-hband::before {
-    content: '';
-    position: absolute;
-    inset: -3px;
-  }
   .span-tl-hband:focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 1px;
@@ -962,10 +1001,15 @@
   }
 
   /* The target is wider than the mark. */
+  /* The target: the block, the 2px of gutter above it before the history
+     lanes begin, and however much room it has sideways before the next
+     mark (`markReach` above). Nothing below, because the line that says
+     which span the rail is holding is 8px under the rail and a tap on it
+     may not move the span. */
   .span-tl-mark::before {
     content: '';
     position: absolute;
-    inset: -18px -12px;
+    inset: -2px calc(-1 * var(--mark-reach, 0px)) 0;
   }
 
   /* Short, standing on the axis: a line the rail's whole height read as a

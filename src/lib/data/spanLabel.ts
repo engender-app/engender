@@ -17,6 +17,13 @@ const dayWithYear = (day: number, year: number) =>
       : { day: 'numeric', month: 'short', year: 'numeric' }
   );
 
+/** One day in the same words the span line writes its two ends in: the
+    year only where it is not this one. A list that holds both stretches
+    and days (SpanFacts.svelte) says them one way rather than two. */
+export function dayLabel(day: number, todayEpochDay: number): string {
+  return dayWithYear(day, localDateFromEpochDay(todayEpochDay).getFullYear());
+}
+
 export function spanLabel(span: Span, todayEpochDay: number): string {
   const year = localDateFromEpochDay(todayEpochDay).getFullYear();
   const days = span.end - span.start + 1;

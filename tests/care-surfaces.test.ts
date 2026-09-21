@@ -95,10 +95,15 @@ describe('the spine draws one lane per running regimen', () => {
     expect(care).toContain('class="care-guide"');
   });
 
-  it('gives each lane its own stripe and its own name', () => {
+  it('gives each lane its own stripe, and a name that opens that drug\'s own block', () => {
     expect(care).toContain('{...laneAttrs(index, labelRows(lane.marks))}');
     expect(care).toContain('roleAttrs(roleAt(activeFlag.roles, index))');
-    expect(care).toContain('<span class="care-lane-name">{lane.drug}</span>');
+    /* Phase 11 UI/UX ticket 25: the name is the lane's heading and the jump
+       to the medication rows below, addressed by the episode's own id so a
+       free-text drug name never becomes a fragment. */
+    expect(care).toContain('<span class="care-lane-drug">{lane.drug}</span>');
+    expect(care).toContain('href={`#${blockAnchor(lane.episodeId)}`}');
+    expect(care).toContain('id={blockAnchor(lane.episode.id)}');
   });
 
   it('reads one lane once, so a lane and its block cannot state two different days', () => {
