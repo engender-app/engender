@@ -39,7 +39,7 @@ import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './read
 import type { Journal } from '../journal/journal';
 import { bump, versionOf } from './tableVersions.svelte';
 
-export { onTablesWritten } from './tableVersions.svelte';
+export { onTablesWritten, batchWrites } from './tableVersions.svelte';
 
 /* Held in an object rather than as a bare `let`: a module-level `$state`
    reassignment does not reach readers in other modules, and every reader of
