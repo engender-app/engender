@@ -477,7 +477,13 @@ describe('transient frame render flashes and bloat prevention (ticket 114)', () 
   it('guarantees intrinsic minimum geometry on screen headers', () => {
     const componentsCss = read('src/lib/styles/components.css');
     expect(componentsCss).toMatch(/\.screen-header\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
-    expect(componentsCss).toMatch(/\.screen > \.screen-header > \.screen-field\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--inset-top\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    /* The inset used to be a term here, because the field bled up through
+       it and its intrinsic height had to cover the part above the window's
+       safe area too. Carpet ticket 154 retired that bleed on every field,
+       so the reserve is the same one the header above it keeps. What this
+       test is about is unchanged: a field with an intrinsic minimum cannot
+       render at no height for a frame while its contents resolve. */
+    expect(componentsCss).toMatch(/\.screen > \.screen-header > \.screen-field\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
     expect(componentsCss).toMatch(/\.screen-header\.is-collapsed,\s*\.screen > \.screen-header\.is-collapsed\s*\{[^}]*min-height:\s*0/);
   });
 

@@ -2238,7 +2238,10 @@ button.kit-strip-day .kit-strip-cell {
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
-  white-space: nowrap;
+  /* Wrapping, since phase 11 UI/UX ticket 49: a tick's own line is a
+     sentence the person wrote, and a sentence held to one line is a
+     sentence nobody can read. What still may not wrap - a number, a name,
+     a position - says so for itself below. */
 }
 
 /* The other three corners readoutCorner can choose. Each is one axis
@@ -2248,6 +2251,7 @@ button.kit-strip-day .kit-strip-cell {
 .kit-area-readout b {
   font-size: var(--text-sm);
   color: var(--text);
+  white-space: nowrap;
 }
 
 .kit-area-readout-value {
@@ -2356,6 +2360,11 @@ button.kit-strip-day .kit-strip-cell {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* The same reason .kit-area-readout-text keeps one line: this is the
+     "{name}, {kind}" pair, and what the record says behind it is the line
+     under it (AreaChart.svelte's .kit-area-annotation-note) rather than more of
+     this one. */
+  white-space: nowrap;
 }
 
 /* --- annotations (phase 5 deepening ticket 23) ---

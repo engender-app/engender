@@ -1136,15 +1136,15 @@
      activeFlag as --field with its ink beside it (--surface-2 and --text
      under disguise). Widened past .screen's own horizontal padding
      (negative margin) and padded back out to the same inset, so the flag
-     sun's corner point lands exactly on the screen's true top right corner
-     rather than the padded content edge - "centred exactly on the screen's
-     top right corner" (DIRECTION.md) - while the wordmark keeps its usual
-     alignment with everything below it. overflow: hidden clips the sun's
-     bleed to a clean quarter instead of a scrollable overhang; min-height
-     keeps that quarter from clipping again against the field's own bottom
-     edge before the innermost ring finishes drawing (SUN_OUTER/2 in
+     sun's corner point lands on the screen's own right edge rather than on
+     the padded content edge - "centred exactly on the screen's top right
+     corner" (DIRECTION.md) - while the wordmark keeps its usual alignment
+     with everything below it. overflow: hidden clips the sun's bleed to a
+     clean quarter instead of a scrollable overhang; min-height keeps that
+     quarter from clipping again against the field's own bottom edge before
+     the innermost ring finishes drawing (SUN_OUTER/2 in
      $lib/motion/flagSun.ts), and is the field's height: the sun's quarter
-     plus the window inset, with the wordmark sitting at its foot.
+     plus --space-7 of room under it, with the wordmark at its foot.
 
      175px rather than a var(), because CSS has no way to read a TS export -
      flagSun.test.ts holds this number to SUN_OUTER/2 so the two cannot drift
@@ -1156,20 +1156,32 @@
      bottom edge. Multiplying by the same token the breathing keyframe reads
      means the two can only ever agree.
 
-     The one deliberate bleed past the safe area (phase 5 ticket 18). The
-     scroll region pads every screen clear of the display cutout; the field
-     pulls itself back up by exactly that inset, so the sun's centre lands
-     on the window's true top right corner, and pads its own content back
-     down by the same amount. Decoration crosses the inset; nothing readable
-     does. */
+     Sideways only. This field used to bleed upwards too - phase 5 ticket
+     18's one deliberate exception, so the sun's centre landed on the
+     window's own corner - and carpet ticket 154 took that half back. The
+     bleed is still right for the 62 fields that are a flat block of one
+     colour: a status bar over a solid field reads. It was wrong here,
+     where the block is the flag, because Android draws the bar's icons in
+     one tint over whatever the app painted and the bar's right end crossed
+     two to four of the sun's rings (Alicja, 2026-09-21: "when there are
+     icons in top right corner, it blend with them and makes them
+     unreadable"). The band above the field is the page's own colour now,
+     white in light and near black in dark, which is what she asked the bar
+     to sit on.
+
+     The mark may not move off a corner (pre-production ticket 38's centre
+     0), so the corner moved instead: `.sun` still pins to this box's top
+     right, and the box now starts below the inset. The reserve gained
+     --space-7 in the same pass, room under the disc rather than the 6px
+     the resting radius left. */
   .home-field {
     position: relative; z-index: 1;
     display: flex; align-items: flex-end;
     /* The colour is the blind's, not this element's (redesign ticket 28,
        components.css); what stays here is the box that measures it. */
     color: var(--field-ink);
-    padding: calc(var(--space-4) + var(--inset-top)) var(--space-5) var(--space-4);
-    margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
+    padding: var(--space-4) var(--space-5) var(--space-4);
+    margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
     overflow: hidden;
     /* The same bottom corners every other field has (rule 7: "the bottom
        corners are the one radius; the top corners meet the window's edge
@@ -1178,7 +1190,7 @@
        whole app, so a square corner here would round for the length of a
        navigation and snap back at the end of it. */
     border-radius: 0 0 var(--r-block) var(--r-block);
-    min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top));
+    min-height: calc(175px * var(--sun-breathe-scale) + var(--space-7));
   }
   /* The wordmark, in the field's bottom left corner and in the field's ink,
      at the door-title voice (rule 2): Outfit 800, set solid, fluid between
@@ -1187,18 +1199,21 @@
      gradient this once was ran "Diary" through olive on nonbinary.
 
      Under the sun's reach, by arithmetic rather than a width cap. The sun is
-     a 350px disc centred on the field's top right corner, breathing to 1.035,
-     and the field is exactly its radius tall - so at the field's bottom edge
-     the disc has no width at all, and a line of type sitting on that edge
-     meets the disc only as high as its own cap height. At 48px the wordmark
-     is 46px tall and its top is 64px from the bottom edge (16 of padding),
-     which is 117px below the corner; the disc's chord there is
-     sqrt(181^2 - 117^2) = 138px, so the word may run to 138px short of the
-     right edge. "engender" at 48px is 242px wide (5.05px per font px), and
-     at 390px there are 252. Below 360px the sun draws at 0.82 (a 148px
-     radius, a 92px chord at that height, 228px of room for a 210px word at
-     320), and below 240px at 0.6, where the word at its 1.7rem floor sits
-     wholly under the disc. Polish takes the same word. */
+     a 350px disc centred on the safe area's top right corner, breathing to
+     1.035, and the field is its radius plus --space-7 tall below that
+     corner - so near the field's bottom edge the disc has little width, and
+     a line of type sitting there meets it only as high as its own cap
+     height. At 48px the wordmark is 46px tall and its top is 64px from the
+     bottom edge (16 of padding), which is 149px below the corner; the
+     disc's chord there is sqrt(181^2 - 149^2) = 103px, so the word may run
+     to 103px short of the right edge. "engender" at 48px is 242px wide
+     (5.05px per font px), and at 390px there are 287. Carpet ticket 154
+     moved the corner down by the window inset and added the 32, and both
+     changes buy room here: the figure was 138px of chord against 252 of
+     space before it. Below 360px the sun draws at 0.82, a 148px radius
+     against the wordmark's 149px, so the word sits wholly under the disc
+     rather than beside it; below 240px it draws at 0.6. Polish takes the
+     same word. */
   .home-hero {
     font-family: var(--font-display);
     font-size: clamp(1.7rem, 13cqw, 3rem);

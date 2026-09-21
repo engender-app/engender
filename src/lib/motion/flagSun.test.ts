@@ -151,7 +151,9 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
   const components = readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8');
 
   it("home-field's resting radius is SUN_OUTER/2, not a second number", () => {
-    const raw = /\.home-field\s*\{[\s\S]*?min-height:\s*calc\((\d+)px/.exec(home);
+    const raw = /\.home-field\s*\{[\s\S]*?min-height:\s*calc\([^;]*?(\d+)px \* var\(--sun-breathe-scale\)/.exec(
+      home
+    );
     expect(raw, '.home-field should set min-height from a literal px radius').not.toBeNull();
     expect(Number(raw![1])).toBe(SUN_OUTER / 2);
   });
@@ -165,8 +167,50 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
     const raw = /\.home-field\s*\{[\s\S]*?min-height:\s*calc\(([^;]+)\);/.exec(home);
     expect(raw, '.home-field should set min-height').not.toBeNull();
     expect(raw![1].replace(/\s+/g, ' ').trim()).toBe(
-      `${SUN_OUTER / 2}px * var(--sun-breathe-scale) + var(--inset-top)`
+      `${SUN_OUTER / 2}px * var(--sun-breathe-scale) + var(--space-7)`
     );
+  });
+
+  /* Carpet ticket 154, both halves. The --space-7 in the reserve above is
+     the room under the disc Alicja picked off the bench's five-value row:
+     38px of gap at rest, 32px at the breathing loop's midpoint.
+
+     And the field the sun sits in stops at the window inset rather than
+     crossing it. Every other field in the app still bleeds up through the
+     inset - that is rule 7, and a flat block of one colour behind the
+     status bar is fine. A flag is not: Android draws the bar's icons in
+     one tint over whatever the app painted, and the bar's right end
+     crossed two to four of the sun's rings, so on trans the signal bars
+     and the battery were gone against the white stripe. The two screens
+     that draw a sun are the two that stop bleeding, and the mark keeps
+     centre 0 by the corner moving rather than the disc. */
+  it('keeps the sun on its field\'s own corner', () => {
+    const rule = /\.sun\s*\{([^}]*)\}/.exec(components);
+    expect(rule, 'components.css should declare .sun').not.toBeNull();
+    expect(rule![1]).toMatch(/top:\s*0/);
+  });
+
+  it('lets neither sun-bearing field pull up by the whole inset', () => {
+    for (const [name, css] of [
+      ['.home-field', /\.home-field\s*\{([\s\S]*?)\}/.exec(home)?.[1]],
+      ['.step-field', /\n\.step-field\s*\{([\s\S]*?)\}/.exec(components)?.[1]]
+    ] as const) {
+      expect(css, `${name} should be declared`).toBeTruthy();
+      expect(css, `${name} should not pull itself up through the whole inset`).not.toMatch(
+        /margin:\s*calc\(-1 \* var\(--inset-top\)\)/
+      );
+      /* It may take `--field-bleed-top`, which is the slack the bar leaves
+         under its own icons and is floored so a short bar keeps its
+         clearance. The sun's corner rides up with the field, which is the
+         point: the gap Alicja measured on the device was between the icons
+         and the field, not inside the field. */
+      expect(css, `${name} should take the sanctioned bleed`).toMatch(
+        /margin:\s*calc\(-1 \* var\(--field-bleed-top\)\)/
+      );
+      expect(css, `${name} should not pad the inset back in`).not.toMatch(
+        /padding:[^;]*var\(--inset-top\)/
+      );
+    }
   });
 
   it('is the same --sun-breathe-scale the breathing keyframe itself grows to', () => {

@@ -162,6 +162,29 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   suspendedArea: 'point'
 };
 
+/** What one tick says beyond its own name, carried from the record behind
+    it (phase 11 UI/UX ticket 49).
+
+    Raw rather than written out, for the reason `finishedArea`'s `name` is a
+    key: this tier imports no paraglide (ADR-0016), and a severity and a site
+    are both words the catalogue owns. kit/chartAnnotation.ts turns each of
+    these into the line a reader sees.
+
+    A union rather than three optional fields, because exactly one of them
+    applies to any tick and a `severity` sitting beside a `text` would be a
+    shape no record can produce. The kinds that carry none are the ones with
+    nothing written behind them - a tally that stood out is a day, not a
+    record somebody typed into. */
+export type ChartAnnotationDetail =
+  /** A milestone's description, a procedure's notes, an appointment's note:
+      the person's own words, already known to be non-empty. */
+  | { type: 'note'; text: string }
+  /** A side effect's 1-5 grade, where it was given one. */
+  | { type: 'severity'; severity: number }
+  /** An injection's amount and where it went. `site` is null on a dose
+      imported without one, and is an INJECTION_SITES key otherwise. */
+  | { type: 'dose'; amount: number; unit: string; site: string | null };
+
 /** One dated thing, as the query hands it over: stored days, untouched.
 
     `endEpochDay` is null on every point event, and on a stretch that has not
@@ -196,6 +219,10 @@ export interface ChartAnnotationSource {
       on a `regimen` source that is still open or that ended before this
       field existed. */
   endReason?: EpisodeEndReason | null;
+  /** What this tick says beyond its name. Absent where the record behind it
+      has nothing written on it, which is what an empty description, an
+      ungraded side effect and every derived mark all are. */
+  detail?: ChartAnnotationDetail;
 }
 
 /** One annotation that falls inside the range asked for, clipped to it. */
@@ -220,6 +247,8 @@ export interface ChartAnnotation {
   series?: string;
   /** The source's, carried through unchanged. */
   endReason?: EpisodeEndReason | null;
+  /** The source's, carried through unchanged. */
+  detail?: ChartAnnotationDetail;
 }
 
 interface AnnotationRange {
@@ -281,7 +310,8 @@ export function annotationsInRange(
       // never got this far. A stretch that has not ended has no day to draw
       // an edge at.
       endsInRange: shape === 'point' || (source.endEpochDay !== null && end <= range.to),
-      endReason: source.endReason
+      endReason: source.endReason,
+      detail: source.detail
     });
   }
 
@@ -437,6 +467,25 @@ export function placeAnnotations(
   return { bands, marks };
 }
 
+/** How many days the position at `index` stands for.
+
+    A chart's positions are its buckets (grain.ts), so the day a position is
+    named after is only the first of however many it covers - a week at the
+    week grain, a month at the month grain, and however far it is to the
+    next reading where a gap dropped the buckets in between.
+
+    Two readers, which is why it is a function rather than four lines
+    written twice: the readout under a finger collects everything inside the
+    bucket, and it dates each tick's own line exactly when the position it
+    sits at cannot say which day was meant. */
+export function positionDays(points: readonly { x: number }[], index: number): number {
+  const point = points[index];
+  if (!point) return 1;
+  const next = points[index + 1];
+  const previous = points[index - 1];
+  return Math.max(next ? next.x - point.x : previous ? point.x - previous.x : 1, 1);
+}
+
 /** What was happening at one of the chart's positions, for the readout under
     a finger.
 
@@ -452,10 +501,7 @@ export function annotationsAtPoint(
   const point = points[index];
   if (!point) return [];
 
-  const next = points[index + 1];
-  const previous = points[index - 1];
-  const width = next ? next.x - point.x : previous ? point.x - previous.x : 1;
-  const to = point.x + Math.max(width, 1) - 1;
+  const to = point.x + positionDays(points, index) - 1;
 
   const here = annotations.filter((a) => a.fromEpochDay <= to && a.toEpochDay >= point.x);
   return [...here.filter((a) => a.shape === 'point'), ...here.filter((a) => a.shape === 'span')];

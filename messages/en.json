@@ -257,6 +257,8 @@
   "chart_annotation_tally_correctly_gendered": "correct gendering, above your own range",
   "chart_annotation_region_dysphoria": "dysphoria above your own range",
   "chart_annotation_region_euphoria": "euphoria above your own range",
+  "chart_annotation_era_started": "{name} era started",
+  "chart_annotation_readout_dated": "{day}: {text}",
   "chart_annotation_named": "{name}, {kind}",
   "chart_annotation_point": "{label}, {day}",
   "chart_annotation_span": "{label}, {from} to {to}",
@@ -300,6 +302,19 @@
   "body_region_reading_none_aria": "{region}: nothing logged in this range",
   "body_map_elsewhere": "Elsewhere",
   "body_map_reading_heading": "{region}, over this range",
+  "body_map_selected_reading": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "One reading: {axis} {value} out of 100.",
+        "countPlural=other": "{count} readings, averaging {axis} {value} out of 100."
+      }
+    }
+  ],
+  "body_map_selected_mixed": "Some went the other way.",
+  "body_map_selected_none": "Nothing logged here in this range.",
+  "body_map_chart_jump": "See the charts",
   "body_map_inspect_row": "Everything logged for this region",
   "back": "Back",
   "done": "Done",

@@ -281,6 +281,8 @@
   "chart_annotation_tally_correctly_gendered": "poprawne zwracanie się, powyżej twojego zakresu",
   "chart_annotation_region_dysphoria": "dysforia powyżej twojego zakresu",
   "chart_annotation_region_euphoria": "euforia powyżej twojego zakresu",
+  "chart_annotation_era_started": "{name}: początek ery",
+  "chart_annotation_readout_dated": "{day}: {text}",
   "chart_annotation_named": "{name}, {kind}",
   "chart_annotation_point": "{label}, {day}",
   "chart_annotation_span": "{label}, {from} do {to}",
@@ -324,6 +326,21 @@
   "body_region_reading_none_aria": "{region}: nic w tym zakresie",
   "body_map_elsewhere": "Gdzie indziej",
   "body_map_reading_heading": "{region}, w tym zakresie",
+  "body_map_selected_reading": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Jeden odczyt: {axis} {value} na 100.",
+        "countPlural=few": "Odczyty: {count}, średnio {axis} {value} na 100.",
+        "countPlural=many": "Odczyty: {count}, średnio {axis} {value} na 100.",
+        "countPlural=other": "Odczyty: {count}, średnio {axis} {value} na 100."
+      }
+    }
+  ],
+  "body_map_selected_mixed": "Część odczytów szła w drugą stronę.",
+  "body_map_selected_none": "Nic tu nie zapisano w tym zakresie.",
+  "body_map_chart_jump": "Zobacz wykresy",
   "body_map_inspect_row": "Wszystko zapisane dla tego obszaru",
   "back": "Wstecz",
   "done": "Gotowe",

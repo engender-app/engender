@@ -968,21 +968,24 @@ test('the body map reads every region at once, each on the side it mostly sat on
     side: 'dysphoria',
     value: 40,
     mixed: false,
-    count: 2
+    count: 2,
+    sideCount: 2
   });
   assert.deepEqual(byRegion.get('hairline'), {
     region: 'hairline',
     side: 'euphoria',
     value: 60,
     mixed: false,
-    count: 1
+    count: 1,
+    sideCount: 1
   });
   assert.deepEqual(byRegion.get('voice_throat'), {
     region: 'voice_throat',
     side: 'dysphoria',
     value: 90,
     mixed: true,
-    count: 2
+    count: 2,
+    sideCount: 1
   });
   // A region nothing was logged against in the range is simply absent; the
   // figure draws every region it has and reads an absence as undrawn.
@@ -1000,7 +1003,8 @@ test('the body map reaches a region somebody added themselves', async () => {
     side: 'dysphoria',
     value: 70,
     mixed: false,
-    count: 1
+    count: 1,
+    sideCount: 1
   });
 });
 
@@ -1020,12 +1024,12 @@ test('the body map excludes trashed entries, honours the range, and filters by p
   await journal.entries.deleteEntry(trashed);
 
   assert.deepEqual(await journal.stats.bodyRegionMap(100, 102), [
-    { region: 'chest', side: 'dysphoria', value: 60, mixed: false, count: 2 }
+    { region: 'chest', side: 'dysphoria', value: 60, mixed: false, count: 2, sideCount: 2 }
   ]);
   assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, girl.id), [
-    { region: 'chest', side: 'dysphoria', value: 40, mixed: false, count: 1 }
+    { region: 'chest', side: 'dysphoria', value: 40, mixed: false, count: 1, sideCount: 1 }
   ]);
   assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, null), [
-    { region: 'chest', side: 'dysphoria', value: 80, mixed: false, count: 1 }
+    { region: 'chest', side: 'dysphoria', value: 80, mixed: false, count: 1, sideCount: 1 }
   ]);
 });

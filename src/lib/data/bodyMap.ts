@@ -72,6 +72,14 @@ export interface RegionSideReading {
       both ways has to stay visible as such whichever side won. */
   mixed: boolean;
   count: number;
+  /** How many of those readings the painted `value` is the mean of - the
+      dominant side's own count, which is `count` unless the region went both
+      ways (phase 11 pre-production UI/UX ticket 30). Both are needed and
+      they answer different questions: "most marked" is about how often a
+      person reached for a region at all (lookBackReadings.ts), and a mean
+      stated beside a number of readings has to be the mean of exactly those
+      readings. */
+  sideCount: number;
 }
 
 /** Which side a region mostly sat on, and how strongly it sat there.
@@ -86,7 +94,8 @@ export interface RegionSideReading {
 export function regionReading(sides: RegionSides): RegionSideReading {
   const { region, dysphoriaCount: dys, euphoriaCount: euph } = sides;
   const count = dys + euph;
-  if (count === 0) return { region, side: null, value: null, mixed: false, count: 0 };
+  if (count === 0)
+    return { region, side: null, value: null, mixed: false, count: 0, sideCount: 0 };
 
   const dysMean = sides.dysphoriaMean ?? 0;
   const euphMean = sides.euphoriaMean ?? 0;
@@ -98,6 +107,39 @@ export function regionReading(sides: RegionSides): RegionSideReading {
     side: dominant,
     value: dominant === 'dysphoria' ? dysMean : euphMean,
     mixed: dys > 0 && euph > 0,
-    count
+    count,
+    sideCount: dominant === 'dysphoria' ? dys : euph
+  };
+}
+
+/** What one region's range reading says, as the words beside the figure need
+    it (phase 11 pre-production UI/UX ticket 30).
+
+    `count` is the dominant side's own, not the region's: the sentence pairs
+    a number of readings with their mean, and a region that went both ways
+    has a mean of the side that won and a count of everything. Saying "5
+    readings, averaging dysphoria 70" of four dysphoria readings and one
+    euphoria one is an average of four called an average of five.
+
+    Three states rather than a nullable reading, because the sentence has to
+    be honest about the difference and a caller branching on three nulls will
+    eventually get one of them wrong: a region the range never mentions is
+    absent from `bodyRegionMap`'s rows entirely, one that is present with no
+    side says the same nothing, and neither may be shown as a value. Rounded
+    here, so the scale a person reads is settled in one place - the intensity
+    is native and whole (ADR-0012, ADR-0081) and a mean of four readings is
+    not. */
+export type RegionSummary =
+  | { kind: 'none' }
+  | { kind: 'reading'; axis: BodyRegionAxis; value: number; mixed: boolean; count: number };
+
+export function regionSummary(reading: RegionSideReading | undefined): RegionSummary {
+  if (!reading || reading.side === null || reading.value === null) return { kind: 'none' };
+  return {
+    kind: 'reading',
+    axis: reading.side,
+    value: Math.round(reading.value),
+    mixed: reading.mixed,
+    count: reading.sideCount
   };
 }

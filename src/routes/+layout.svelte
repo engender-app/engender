@@ -26,6 +26,7 @@
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
+  import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
@@ -433,6 +434,14 @@
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
+    /* The same answer for the native bar, which the meta above cannot reach
+       (carpet ticket 154): theme-color is the installed PWA's, and the
+       Capacitor shell draws an edge-to-edge window whose status bar icons
+       Android tints from its own DayNight resolution unless the app says
+       otherwise. Here rather than beside this effect, because the value is
+       `chrome.theme` - the resolution this block just made - and a second
+       reader would be racing the same stamp activeFlag does below. */
+    applyStatusBarAppearance(chrome.theme);
     /* Last, and inside this effect rather than beside it: the flag's stripes
        and the section colours derived from them are read off the palette and
        the theme this block has just stamped, and anything that read them for
