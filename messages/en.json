@@ -1138,7 +1138,7 @@
   "ms_name_label": "Name",
   "ms_name_placeholder": "e.g. First laser session",
   "ms_date_label": "Date",
-  "ms_date_hint": "(past or future)",
+  "ms_date_hint": "Past or future.",
   "ms_description_label": "What happened (optional)",
   "ms_description_placeholder": "How it felt",
   "ms_photo_label": "Photo (optional)",
@@ -2421,8 +2421,9 @@
   "tryout_edit_title": "Edit tryout",
   "tryout_save": "Save",
   "tryout_save_changes": "Save changes",
-  "tryout_since": "Since {start}",
   "tryout_range": "{start} to {end}",
+  "tryout_day_since": "Day {n}, since {start}",
+  "tryout_felt_last": "Last felt {mood} on {day}",
   "tryout_delete_sheet": "Delete tryout",
   "tryout_delete_q": "Delete this tryout?",
   "tryout_delete_hint": "Its felt-sense history goes with it. This cannot be undone.",
@@ -2460,21 +2461,6 @@
   "tryout_adopt_without_milestone": "Adopt without milestone",
   "tryout_running_heading": "Running now",
   "tryout_ended_heading": "Ended",
-  "tryout_unit_days_trying": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "day trying",
-        "nPlural=other": "days trying"
-      }
-    }
-  ],
   "tryout_ran_days": [
     {
       "declarations": [
@@ -2505,7 +2491,6 @@
       }
     }
   ],
-  "tryout_felt_latest": "last on {day}",
   "tryout_felt_none": "No felt sense recorded yet",
   "tryout_feeling_today": "How it felt today",
   "tryout_feeling_today_title": "How has it felt today?",

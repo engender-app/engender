@@ -416,8 +416,8 @@
         {/snippet}
       </Field>
       <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
-        {#snippet children(id)}
-          <DatePicker name="ms-date" bind:value={editor.date} {id} />
+        {#snippet children(id, describedBy)}
+          <DatePicker name="ms-date" bind:value={editor.date} {id} {describedBy} />
         {/snippet}
       </Field>
       <Field label={m.ms_description_label()} id="ms-description">
