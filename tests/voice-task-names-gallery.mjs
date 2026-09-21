@@ -129,6 +129,29 @@ for (const width of [320, 390]) {
   await page.close();
 }
 
+/* The one other surface the compact rule change reaches: the roadmap's four
+   tracks, whose last label was being clipped at 320px before it and which
+   scrolls now. Not part of the voice screen, and here because a shared
+   control changed underneath it. */
+{
+  const page = await openPage(320);
+  await dress(page, 'light', 'en');
+  await settle(page, '/transition/roadmap');
+  await page.waitForSelector('[data-segmented="roadmap-track"]');
+  await page.evaluate(() => {
+    for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
+    document.querySelector('.demo-bar')?.remove();
+  });
+  await page.waitForTimeout(400);
+  const strip = await page.locator('[data-segmented="roadmap-track"]').boundingBox();
+  await page.screenshot({
+    path: `${outDir}/${tag}-roadmap-tracks-320-en-light.png`,
+    clip: { x: 0, y: Math.max(0, strip.y - 16), width: 320, height: strip.height + 32 }
+  });
+  shots.push('roadmap');
+  await page.close();
+}
+
 await app.httpServer.close();
 await browser.close();
 

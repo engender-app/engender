@@ -36,7 +36,7 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
@@ -107,6 +107,11 @@
      the list's - two lines on one plot have to be told apart, and the flag
      has no spare band on trans, which yields three. */
   const SECTION_ROLE = { trend: 0, own: 0, ownPaired: 1, list: 1 };
+
+  /* A Svelte out-transition also runs when the page unmounts the block during
+     navigation, and reveal.ts cannot see a SvelteKit navigation, so the screen
+     says so - the same reading the More hub's own lists take. */
+  let leaving = $derived(navigating.to !== null);
 
   let requested = page.url.searchParams.get('tab');
   let tab = $state<Tab>(TABS.includes(requested as Tab) ? (requested as Tab) : 'record');
@@ -444,9 +449,12 @@
            own empty notice. `disclose` because the read answers after the
            tab strip is drawn, and a paragraph arriving at full height would
            shove the tab under it down a line (hair-progress's wipe pair is
-           the same case). -->
+           the same case). `skip` while the app is navigating away, because
+           Svelte runs an out-transition for a block the *page* unmounts too,
+           and a line collapsing its own height on the way off the screen is
+           the More hub's own note here. -->
       {#if benchmarksQuery.empty}
-        <p class="muted small voice-tasks-lead" data-voice-tasks-lead transition:disclose>
+        <p class="muted small voice-tasks-lead" data-voice-tasks-lead transition:disclose={{ skip: leaving }}>
           {m.vb_tasks_lead()}
         </p>
       {/if}
