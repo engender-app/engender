@@ -1147,7 +1147,7 @@
        $lib/motion/stepBlind writes the measured height over it from the
        first frame onwards. */
     --blind-edge: calc(
-      var(--space-2) + (175px + var(--space-7)) * var(--step-grow, 1) * var(--sun-mult, 1) + 78px
+      var(--space-2) + 175px * var(--step-grow, 1) * var(--sun-mult, 1) + 78px
     );
   }
   /* ---------- the field ---------- */
@@ -1218,15 +1218,21 @@
      the field's height is made of, so reserving the finish's 175px from the
      first step would make every step's field the tallest one's.
 
-     The --space-7 beside it is carpet ticket 154's room under the disc,
-     scaled by the same two factors rather than added flat: the sun is a
-     fraction of its full size on an early step, and a fixed 32 under a
-     0.3-scale sun is most of the field. Home takes the same 32 unscaled,
-     since its sun is only ever at full size. */
+     Home gained --space-7 of room under its disc in carpet ticket 154 and
+     this did not, though the ticket first added it here too. The two are
+     not the same shape: Home's field bottom edge *is* this reserve, with
+     the wordmark sitting on it, so without the room the innermost ring
+     lands 6px off that edge and touches it at the breathing loop's
+     midpoint. Here the question sits below the reserve, so the disc never
+     reaches the field's own bottom edge and there is nothing to hold it
+     off. Adding it anyway cost a step 32px of a budget rule 14 measures:
+     the walkthrough caught the disguise step's foot intercepting clicks
+     on the switch above it, because a step may not scroll and the
+     answers had nowhere left to go. */
   .setup-head {
     position: relative;
     z-index: 1;
-    min-height: calc((175px + var(--space-7)) * var(--step-grow, 1) * var(--sun-mult, 1));
+    min-height: calc(175px * var(--step-grow, 1) * var(--sun-mult, 1));
   }
   .setup-head .icon-btn {
     color: inherit;
