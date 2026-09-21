@@ -78,11 +78,24 @@ describe('injection site map layout', () => {
     // a dot that straddles a contour reads as a mistake wherever it is. The
     // visible dot, not the touch target, is what has to be inside - the
     // target is invisible and is allowed to hang over an arm.
+    // The whole disc, not its centre: the shoulder and the flank both run
+    // away from a dot faster than its own rim, so a centre comfortably
+    // inside the body can still be a dot with a bite out of it - which is
+    // what the deltoid dot had at the first placement.
     const radius = MAP_DOT_SIZE / 2 / MAP_SCALE;
+    const spanAround = (x: number, y: number) => spansAt(y).find(([left, right]) => x >= left && x <= right);
     for (const site of INJECTION_SITES) {
       const { x, y } = sitePoint(site);
-      const on = spansAt(y).find(([left, right]) => x - radius >= left && x + radius <= right);
-      expect(on, `${site.key} at (${x}, ${y}) is not wholly inside one part of the body`).toBeDefined();
+      const home = spansAt(y).find(([left, right]) => x - radius >= left && x + radius <= right);
+      expect(home, `${site.key} at (${x}, ${y}) is not wholly inside one part of the body`).toBeDefined();
+      for (let i = 0; i < 24; i += 1) {
+        const angle = (i / 24) * 2 * Math.PI;
+        const rimX = x + radius * Math.cos(angle);
+        const rimY = y + radius * Math.sin(angle);
+        const on = spanAround(rimX, rimY);
+        const same = on && home && on[1] >= home[0] && on[0] <= home[1];
+        expect(same, `${site.key} has its rim off the body at (${rimX.toFixed(1)}, ${rimY.toFixed(1)})`).toBe(true);
+      }
     }
   });
 

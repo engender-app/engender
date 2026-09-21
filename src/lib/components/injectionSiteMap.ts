@@ -72,12 +72,12 @@ export const MAP_DOT_SIZE = 22;
     narrowest a pair may be, which is why the abdomen's dots sit well in from
     the flank while the love handles sit on it. */
 const PLACEMENT: Record<InjectionSiteRegion, { x: number; y: number }> = {
-  deltoid: { x: 73, y: 46.5 },
-  abdomen: { x: 59, y: 57 },
-  loveHandle: { x: 63.5, y: 74 },
-  ventrogluteal: { x: 59, y: 91 },
-  dorsogluteal: { x: 59, y: 108.5 },
-  thigh: { x: 59, y: 126 }
+  deltoid: { x: 74, y: 49 },
+  abdomen: { x: 59, y: 58.5 },
+  loveHandle: { x: 63.5, y: 75.5 },
+  ventrogluteal: { x: 59, y: 92.5 },
+  dorsogluteal: { x: 59, y: 110 },
+  thigh: { x: 59, y: 127.5 }
 };
 
 /** A site's dot in the figure's own units, which is where it can be asked
