@@ -139,8 +139,16 @@
 .step-field {
   position: relative;
   flex: 0 0 auto;
-  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
-  padding: calc(var(--inset-top) + var(--space-2)) var(--space-5) var(--space-4);
+  /* Sideways only. Carpet ticket 154 stopped this field crossing the top
+     inset: setup draws the sun in its corner, and the status bar's own
+     icons were landing on the flag's bands. The band above the field is
+     the page's colour now - white in light, near black in dark - which is
+     a ground the bar's icons can be read against whichever tint Android
+     picks. The gate wears this same class and follows it; it has no sun,
+     but a step machine and a gate arriving one after the other with
+     different top edges would be a jump between them. */
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  padding: var(--space-2) var(--space-5) var(--space-4);
   color: var(--field-ink);
   /* The paint below is a window tall and absolutely positioned in this box,
      and an absolutely positioned child contributes its overflow to its
@@ -220,16 +228,37 @@
   transition: none;
 }
 
-/* On a screen, the field runs from the window's top edge to both side
-   edges: back up through the inset the scroll region pads every screen by
-   (the same bleed Home's sun makes, app.css) and out through .screen's own
-   20px, then padded back in by the same amounts so the title starts where
-   the content under it does and sits as clear of the status bar as any
-   other first line. Decoration crosses the inset; nothing readable does. */
+/* On a screen, the field runs out to both side edges - through .screen's
+   own 20px and padded back in by it, so the title starts where the content
+   under it does.
+
+   It used to run up through the window inset too, to meet the window's own
+   top edge. Carpet ticket 154 took that back, for two reasons that arrived
+   in that order. The status bar is drawn by the system over whatever the
+   app painted, and on Home and setup that was the flag: the bar's right
+   end crossed two to four of the sun's rings and its icons disappeared
+   into the light band every palette puts near the corner. Retiring the
+   bleed on only those two then left the app with two different field top
+   edges, 48px apart on a Pixel - and the blind that carries the field
+   between doors is one named object across the navigation, whose bottom
+   edge is built to travel and whose top edge is not ("the field must
+   always stay a single object that transitions to other states only by
+   moving up or down", Alicja, fieldBlind.ts). Sampled through a door
+   change, ::view-transition-group(blind) held top: 0px the whole way, so
+   that 48px was a change of colour with nothing animating it.
+
+   So every field starts below the inset now, the band behind the status
+   bar is the page's own colour on every screen, and the app tells Android
+   which tint to draw there (status-bar-bridge.ts).
+
+   Not quite all of the inset, though: `--field-bleed-top` (theme/base.css)
+   is the part the bar does not use, 9px on a Pixel and nothing at all in
+   a browser, and every field takes it back. The reasoning and the floor
+   that keeps it safe on a short bar are written at the token. */
 .screen > .screen-header > .screen-field {
-  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
-  padding: calc(var(--space-8) + var(--inset-top)) var(--space-5) var(--space-4);
-  min-height: calc(var(--space-8) + var(--inset-top) + var(--touch-target) + var(--space-4));
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  padding: var(--space-8) var(--space-5) var(--space-4);
+  min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
 /* The controls on the field take its ink, not the page's text colour. */
 .screen-field .icon-btn { color: inherit; }
@@ -275,9 +304,14 @@
   padding-top: var(--space-4);
   min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
 }
+/* Which leaves this override with nothing of its own to say (ticket 154):
+   the bleeding variant above it differed only by the inset terms, and
+   those are gone. Kept as a rule rather than deleted, because the
+   specificity is what beats `.screen > .screen-header > .screen-field`'s
+   own padding-top for a field-only header. */
 .screen > .screen-header.is-field-only > .screen-field {
-  padding-top: calc(var(--space-4) + var(--inset-top));
-  min-height: calc(var(--space-4) + var(--inset-top) + var(--touch-target) + var(--space-4));
+  padding-top: var(--space-4);
+  min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
 }
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
@@ -2435,6 +2469,22 @@ html[data-a11y-motion='reduce'] .bloom-core {
    pinned to the screen's top right corner; each ring centres on that same
    point via translate(-50%, -50%) and is sized/coloured per-instance
    through --d/--c, set inline by FlagSun.svelte from --motif-stripes.
+
+   The corner is the field's own, and on the two screens that draw a sun
+   the field no longer bleeds past the window inset (carpet ticket 154), so
+   that corner is clear of the status bar. It was not before: Android draws
+   the bar's icons in one tint over whatever the app painted, and at the
+   bar's right end they crossed two to four rings. Every palette puts a
+   light band within the first 130px of the corner, so on trans the signal
+   bars and the battery sat on the white stripe and were gone (Alicja,
+   2026-09-21: "when there are icons in top right corner, it blend with
+   them and makes them unreadable").
+
+   The mark is the corner sun at centre 0 (pre-production ticket 38, round
+   three), so the centre may not move off a corner to solve that. Moving
+   the corner is what this rule's `top: 0` now means: the field starts
+   below the inset on those screens, and the band above it is the page's
+   own colour rather than the flag's.
 
    Confined to Home's field on purpose: that block is already the app's
    one deliberately-stacked surface (position: relative; z-index: 1), so

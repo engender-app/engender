@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import dev.engender.app.backup.AutoExportPlugin;
+import dev.engender.app.chrome.StatusBarAppearancePlugin;
 import dev.engender.app.clipboard.SensitiveClipboardPlugin;
 import dev.engender.app.disguise.DisguisePlugin;
 import dev.engender.app.keystore.KeystorePlugin;
@@ -47,6 +48,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Print", PrintPlugin.class),
         new PluginEntry("Permissions", PermissionsPlugin.class),
         new PluginEntry("SensitiveClipboard", SensitiveClipboardPlugin.class),
+        new PluginEntry("StatusBarAppearance", StatusBarAppearancePlugin.class),
         // NAV-001/NAV-002: the official @capacitor/app plugin, registered
         // the same way as our own plugins so the Android back gesture
         // (src/lib/android/back-navigation.ts) has something real to call.
