@@ -666,3 +666,94 @@ test('a row fronting two areas marks suspended once, and not at all until both a
   assert.equal(suspended.length, 1, 'one gesture, one mark');
   assert.equal(suspended[0].name, 'voice');
 });
+
+/* Phase 11 UI/UX ticket 49: a tick carries what the record behind it says,
+   raw. The words are kit/chartAnnotation.ts's - this tier imports no
+   paraglide (ADR-0016) - so what is asserted here is which field reached the
+   annotation, and that a record with nothing written on it carries nothing. */
+
+test('a milestone, a procedure and an appointment carry their own text', async () => {
+  const journal = await journalWith();
+
+  await journal.milestones.upsertMilestone({
+    name: 'first shot',
+    epochDay: 20100,
+    description: 'hands shook the whole time'
+  });
+  await journal.procedures.upsertProcedure({
+    name: 'top surgery',
+    surgeryEpochDay: 20105,
+    notes: 'two nights in'
+  });
+  await journal.appointments.upsertAppointment({
+    epochDay: 20110,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: null,
+    note: 'bring the labs'
+  });
+
+  const found = await journal.chartAnnotations.getAnnotations(20080, 20120, TODAY);
+  const detailOf = (kind: string) => found.find((a) => a.kind === kind)?.detail;
+
+  assert.deepEqual(detailOf('milestone'), { type: 'note', text: 'hands shook the whole time' });
+  assert.deepEqual(detailOf('surgery'), { type: 'note', text: 'two nights in' });
+  assert.deepEqual(detailOf('appointment'), { type: 'note', text: 'bring the labs' });
+  // The stretch after the operation is a band, and a band says no more than
+  // it did before this existed.
+  assert.equal(detailOf('recovery'), undefined);
+});
+
+test('a record with nothing written on it carries nothing to print', async () => {
+  const journal = await journalWith();
+
+  await journal.milestones.upsertMilestone({ name: 'first shot', epochDay: 20100 });
+  await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20105, notes: '   ' });
+  await journal.appointments.upsertAppointment({
+    epochDay: 20110,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: null,
+    note: null
+  });
+
+  const found = await journal.chartAnnotations.getAnnotations(20080, 20120, TODAY);
+  for (const annotation of found) {
+    assert.equal(annotation.detail, undefined, `${annotation.kind} invented text nobody wrote`);
+  }
+});
+
+test('a side effect carries its grade, and an ungraded one carries none', async () => {
+  const journal = await journalWith();
+
+  await journal.sideEffects.upsertSideEffect({ name: 'headaches', severity: 3, epochDay: daysAgo(10) });
+  await journal.sideEffects.upsertSideEffect({ name: 'itching', severity: null, epochDay: daysAgo(9) });
+
+  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
+
+  assert.deepEqual(
+    markers.map((a) => a.detail),
+    [{ type: 'severity', severity: 3 }, undefined]
+  );
+});
+
+test('an injection carries the dose and the site it went into', async () => {
+  const journal = await journalWith();
+
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 7 days',
+    startEpochDay: daysAgo(60),
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.doses.upsertDose(injection(daysAgo(20)));
+
+  const [marker] = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
+
+  assert.deepEqual(marker.detail, { type: 'dose', amount: 4, unit: 'mg', site: 'thigh-left' });
+});

@@ -57,8 +57,15 @@
     MIN_PLOT_POSITIONS,
     annotationsAtPoint,
     placeAnnotations,
+    positionDays,
     type ChartAnnotation
   } from '$lib/charts/annotations';
+  /* The one app-level read this component makes, and it is about what may
+     be drawn rather than about how (phase 11 UI/UX ticket 49): a tick's
+     free text is the person's own paragraph, and a disguised app draws
+     none of it. `lockState` reaches ReadGate in this same directory for
+     the same sort of reason. */
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
   import ChartEmpty from './ChartEmpty.svelte';
   import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
@@ -368,11 +375,17 @@
      number per line then, and the pill would be six rows laid over a 132px
      plot - covering the marks it is answering about. What was happening is
      still named under the plot, where it was already named. */
+  /* Whether a tick's own line has to carry its date. The readout names the
+     position it is at, which at the day grain is the day - and at the week
+     and month grains, or across a gap in the readings, is a bucket that
+     several days fall into. */
+  let scrubSpansDays = $derived(scrub !== null && positionDays(points, scrub) > 1);
   let atAnnotations = $derived(
     annotationReadout(
       scrub === null || hovered || overlaid
         ? []
-        : annotationsAtPoint(shownAnnotations, points, scrub)
+        : annotationsAtPoint(shownAnnotations, points, scrub),
+      { dated: scrubSpansDays, disguised: prefs.disguise }
     )
   );
   let caption = $derived(annotationCaption(shownAnnotations));
@@ -382,7 +395,12 @@
      it cannot see past - so the key itself reads as inline copy. */
   let restLabel = $derived(m.chart_annotations_and_more({ count: String(atAnnotations.rest) }));
 
-  let hoveredLabels = $derived(annotationReadout(hovered?.annotations ?? []));
+  /* Always dated, whatever the grain: this label stands at the mark and
+     names no position at all, and the pill that does is quiet while a mark
+     is hovered. */
+  let hoveredLabels = $derived(
+    annotationReadout(hovered?.annotations ?? [], { dated: true, disguised: prefs.disguise })
+  );
   let hoveredRest = $derived(m.chart_annotations_and_more({ count: String(hoveredLabels.rest) }));
   /* Centred on the mark, then held inside the plot: a mark near either end
      would otherwise carry its label off the card. Half the label's own
@@ -604,7 +622,10 @@
           style:bottom={hovered.above ? `${HEIGHT - PAD - hovered.y + LABEL_GAP}px` : 'auto'}
           in:fly={{ y: hovered.above ? 4 : -4, duration: motionDuration('--dur-fast'), easing: EASE_OUT }}
         >
-          {#each hoveredLabels.labels as label (label)}<span>{label}</span>{/each}
+          {#each hoveredLabels.entries as entry (entry.id)}
+            {#if entry.label}<span>{entry.label}</span>{/if}
+            {#if entry.note}<span class="kit-area-tick-note">{entry.note}</span>{/if}
+          {/each}
           {#if hoveredLabels.rest}<span>{hoveredRest}</span>{/if}
         </div>
       {/if}
@@ -645,8 +666,13 @@
           <!-- What was going on at the position under the finger, stated
                beside the reading and never joined to it: the readout says
                both, and says nothing about the two being related. -->
-          {#each atAnnotations.labels as label (label)}
-            <span class="kit-area-readout-annotation">{label}</span>
+          {#each atAnnotations.entries as entry (entry.id)}
+            {#if entry.label}
+              <span class="kit-area-readout-annotation">{entry.label}</span>
+            {/if}
+            {#if entry.note}
+              <span class="kit-area-tick-note">{entry.note}</span>
+            {/if}
           {/each}
           {#if atAnnotations.rest}
             <span class="kit-area-readout-annotation">{restLabel}</span>
@@ -744,6 +770,35 @@
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* What one tick stands for, under its own name (phase 11 UI/UX ticket
+     49). The person's own sentence, so it wraps where the name above it
+     does not - and stops at two lines, because a plate the height of a
+     paragraph would cover the plot it is answering about. The plot is a
+     fixed 132px and the plate caps its own width at half of that plot, so
+     neither of those can grow under it.
+
+     Here rather than in kit.css: one consumer, which is what
+     scripts/check-screens-classes.mjs asks a class like this to be. */
+  .kit-area-tick-note {
+    max-width: 100%;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* Ragged on the side the plate is not anchored to, so the sentence keeps
+     the edge its corner picked. */
+  .kit-area-readout .kit-area-tick-note {
+    text-align: right;
+  }
+
+  .kit-area-readout.is-left .kit-area-tick-note {
+    text-align: left;
   }
 
   /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
