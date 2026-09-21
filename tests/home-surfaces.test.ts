@@ -378,6 +378,31 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toContain('class="rows-divide" transition:disclose={panel}');
   });
 
+  it('ticket 146: composes the tile grid off every read behind it, not the ones that answered first', () => {
+    /* The grid may not be composed while any of its reads is still landing:
+       letters and tryouts answer before procedures on a cold boot, and the
+       ready letter took the fold's label - 243px against a resting 162px -
+       until the surgery countdown displaced it and the mark vanished.
+
+       The list of reads to wait for is the part that rots: a read added to
+       the grid and left out of it puts the defect back with nothing failing.
+       So this checks the two against each other rather than checking that
+       the gate is written at all. */
+    const grid = read('src/lib/data/liveTiles.svelte.ts');
+    const declared = [...grid.matchAll(/const (\w+) = live(?:Query|List)\(/g)].map((m) => m[1]);
+    const waited = (/const initialQueries = \[([^\]]+)\]/.exec(grid)?.[1] ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
+    expect(declared.length).toBeGreaterThan(0);
+    expect([...waited].sort()).toEqual([...declared].sort());
+    expect(grid).toContain('if (!composable) return [];');
+    /* And the fold's label does not cross while the screen is still arriving:
+       the arrival is the motion, and a crossfade inside it reads as the label
+       changing its mind. */
+    expect(home).toContain('stillArriving() ? { duration: 0 } : fadeOnly(');
+  });
+
   it('leaves every write shape to the centre fan, and touches the fan itself not at all', () => {
     /* Phase 11 ticket 03. The strip drew a dose, both tallies and a wear
        session as icon squares, and every one of them was a row of the fan
