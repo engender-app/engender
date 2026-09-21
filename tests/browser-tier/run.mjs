@@ -2534,5 +2534,10 @@ await block('Care spine links keep drug and date context', 1, async () => {
   ok('concurrent drugs, recorded and scheduled dose facts, labs, unavailable states and lane return');
 });
 
+await block('Timeline facts are selectable without precision tapping', 1, async () => {
+  await import('../timeline-fact-selection.mjs');
+  ok('care captions at the 48px floor, lane jumps, rail targets that own only what they draw, and the fact list');
+});
+
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);
