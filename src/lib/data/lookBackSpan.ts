@@ -346,6 +346,88 @@ export function eraOfferDue(span: Span, handled: readonly Span[]): boolean {
   return !handled.some((h) => spanOverlapsRange({ startEpochDay: h.start, endEpochDay: h.end }, span.start, span.end));
 }
 
+/* ## The same facts as a list (phase 11 UI/UX ticket 25)
+
+   The rail's own bands are 8px and 6px high and its marks are 12px blocks,
+   which is a picture of a history rather than a set of targets: the first
+   audit's U4 measured them and asked for an accessible way to the same
+   facts that does not depend on aim. The list the door draws under the rail
+   reads from here, so the two never disagree about what the rail holds -
+   the same clamped days, the same identities, and the same span each fact
+   selects.
+
+   Nothing new is read for it. The eras arrive as `eraBands` already
+   clamped them, the stretches as `historyBands` did, and the marks as the
+   rail draws them; this orders them and says what each one selects. */
+
+/** What the rail draws that somebody can point at. `era` and `surgery` are
+    not history kinds - an era is the rail's own top layer and a surgery day
+    is a mark - so this names what a person sees rather than how it is
+    drawn, the same way `RailLegendKind` does. */
+export type RailFactKind = 'era' | RailHistoryKind | 'milestone' | 'surgery';
+
+/** One selectable fact, with the days it covers on the rail. */
+export interface RailFact {
+  id: string;
+  kind: RailFactKind;
+  /** The person's own name for it, or null where the record has none and
+      the kind's own word stands in. */
+  name: string | null;
+  /** The fact's own days, clamped to the rail exactly as the band is drawn.
+      A day-shaped fact carries its one day at both ends. */
+  start: number;
+  end: number;
+  /** A day rather than a stretch. What it selects is the door's default
+      window ending on it, which is what tapping its mark on the rail
+      already does - a day is not a stretch to read over. */
+  isDay: boolean;
+}
+
+/** Newest first, which is the order a person reads their own history in
+    when they are looking for something recent. Ties break by kind and then
+    by id so the list never reorders itself between renders. */
+const FACT_ORDER: readonly RailFactKind[] = ['era', 'regimen', 'tryout', 'milestone', 'surgery'];
+
+/** Every fact on the rail as one list. The bands arrive already clamped
+    (`eraBands`, `historyBands`); the milestones are filtered to the rail
+    here, the same test the rail's own marks make. */
+export function railFacts(
+  input: {
+    eras: readonly EraBand[];
+    history: readonly RailBand[];
+    milestones: readonly { id: string; name: string; epochDay: number }[];
+    surgeries: readonly RailMark[];
+  },
+  railStart: number,
+  todayEpochDay: number
+): RailFact[] {
+  const facts: RailFact[] = [
+    ...input.eras.map((era) => ({ id: era.id, kind: 'era' as const, name: era.name, start: era.start, end: era.end, isDay: false })),
+    ...input.history.map((band) => ({ id: band.id, kind: band.kind, name: band.name, start: band.start, end: band.end, isDay: false })),
+    ...input.milestones
+      .filter((ms) => ms.epochDay >= railStart && ms.epochDay <= todayEpochDay)
+      .map((ms) => ({ id: ms.id, kind: 'milestone' as const, name: ms.name, start: ms.epochDay, end: ms.epochDay, isDay: true })),
+    ...input.surgeries
+      .filter((mark) => mark.epochDay >= railStart && mark.epochDay <= todayEpochDay)
+      .map((mark) => ({ id: mark.id, kind: 'surgery' as const, name: mark.name, start: mark.epochDay, end: mark.epochDay, isDay: true }))
+  ];
+  return facts.sort(
+    (a, b) =>
+      b.end - a.end ||
+      b.start - a.start ||
+      FACT_ORDER.indexOf(a.kind) - FACT_ORDER.indexOf(b.kind) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  );
+}
+
+/** The span a fact selects: its own two days, or the default window ending
+    on it where the fact is a day. The rail's own taps do exactly this -
+    `pickStretch` and `pickMark` in SpanTimeline - so the list and the rail
+    land on the same span for the same fact. */
+export function factSpan(fact: RailFact, railStart: number): Span {
+  return fact.isDay ? defaultSpan(railStart, fact.end) : { start: fact.start, end: fact.end };
+}
+
 /** Each 1 January strictly after the rail's start and no later than today:
     the marks a rail of years is read by. */
 export function yearTicks(railStart: number, todayEpochDay: number): { epochDay: number; year: number }[] {
