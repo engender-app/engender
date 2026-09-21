@@ -2525,7 +2525,10 @@ await block('ticket 141 demo seed write batching', 3, async () => {
 
   // The defect: an entry-count liveQuery re-ran once per entry write when the
   // seed's writes landed unbatched, and `batchWrites` defers every one of
-  // them to a single flush after the seed settles.
+  // them to a single flush after the seed settles. Batched must land at
+  // exactly one run; unbatched only has to clear an order-of-magnitude bar
+  // (10x) rather than the exact write count, so this stays robust to the
+  // persona fixture's own entry count changing later.
   if (r.batchedRuns === 1 && r.unbatchedRuns > r.batchedRuns * 10)
     ok(`batching collapses ${r.unbatchedRuns} live-query re-runs into ${r.batchedRuns}`);
   else

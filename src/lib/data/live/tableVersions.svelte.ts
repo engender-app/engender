@@ -30,12 +30,15 @@ const versions = $state<Record<TableName, number>>(
     and the query cost grows with the journal, which is what made the seed
     quadratic-ish on device). `null` when no batch is open. */
 let batched: Set<TableName> | null = null;
-let batchDepth = 0;
 
 /** Called after every announced write, with the tables it wrote: bumps each
     named table's version so a `liveQuery` that depends on it re-runs, then
     announces the write so the mirror re-reads what it holds. Deferred to the
-    end of the run while a `batchWrites` call is open. */
+    end of the run while a `batchWrites` call is open - which widens the
+    mirror's own staleness window the same way, from "one round trip behind"
+    (ADR-0004) to "behind until the batch settles". Nothing reads the mirror
+    synchronously mid-seed today, so this is unobserved in practice, but a
+    caller that did would see it. */
 export function bump(tables: TableName[]): void {
   if (batched) {
     for (const table of tables) batched.add(table);
@@ -48,27 +51,30 @@ export function bump(tables: TableName[]): void {
 /** Runs `writes`, deferring every table version bump and mirror announcement
     it makes until it settles, then fires them once for the union of tables
     touched - so a screen reading any of them re-runs once instead of once per
-    write inside. Nests: an inner call joins the outer batch rather than
-    flushing early, so `resetDemoFull` can wrap a seed that itself wraps a
-    clear without either flushing mid-run.
+    write inside.
+
+    Does not nest: `reseed()` is the one caller, and it wraps a whole
+    clear-then-seed jump in a single call rather than one per operation
+    inside it, which is all this needs today. A `batchWrites` call started
+    while another is already open would either flush early and leave the
+    outer batch announcing nothing, or extend the wrong batch - both wrong
+    silently - so this throws instead, the same reason `transactor.ts`'s
+    queue asks its own callers not to nest a transaction rather than trying
+    to make nesting work.
 
     The writes themselves still land one at a time and in order - this defers
     only the reactive announcement, never the data - so a read made through
     the raw (non-live) driver during the batch still sees each row as it is
     written. */
 export async function batchWrites<T>(writes: () => Promise<T>): Promise<T> {
-  const isOutermost = batchDepth === 0;
-  if (isOutermost) batched = new Set();
-  batchDepth++;
+  if (batched) throw new Error('batchWrites does not nest - a batch is already open');
+  batched = new Set();
   try {
     return await writes();
   } finally {
-    batchDepth--;
-    if (isOutermost) {
-      const tables = Array.from(batched!);
-      batched = null;
-      if (tables.length > 0) bump(tables);
-    }
+    const tables = Array.from(batched);
+    batched = null;
+    if (tables.length > 0) bump(tables);
   }
 }
 
