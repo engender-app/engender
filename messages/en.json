@@ -302,13 +302,8 @@
   "body_map_reading_heading": "{region}, over this range",
   "body_map_selected_reading": [
     {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "One reading: {axis} {value} out of 100.",
         "countPlural=other": "{count} readings, averaging {axis} {value} out of 100."
@@ -1138,13 +1133,8 @@
   "ms_log_heading": "Every milestone",
   "ms_log_heading_count": [
     {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "{count} milestone",
         "countPlural=other": "{count} milestones"

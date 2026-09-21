@@ -56,7 +56,14 @@
     value: number,
     mixed = false,
     count = mixed ? 4 : 2
-  ): RegionSideReading => ({ region, side, value, mixed, count });
+  ): RegionSideReading => ({
+    region,
+    side,
+    value,
+    mixed,
+    count,
+    sideCount: mixed ? count - 1 : count
+  });
 
   /* Level 1 is 1 to 25, level 4 is 76 to 100 (metricRange's heatLevel over
      the 0-100 scale), so these values pin the ends of the ramp rather than
