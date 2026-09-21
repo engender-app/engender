@@ -13,6 +13,8 @@
     "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
     "test:dilation-schedule-action": "node tests/dilation-schedule-action.mjs",
     "test:letters-ready-jump": "node tests/letters-ready-jump.mjs",
+    "test:body-map-selected-context": "node tests/body-map-selected-context.mjs",
+    "gallery:body-map-selected-context": "node tests/body-map-selected-context.mjs --gallery",
     "test:date-picker": "VITE_DEMO=1 npm run build && node tests/date-picker-check.mjs",
     "gallery:date-picker": "VITE_DEMO=1 npm run build && node tests/date-picker-check.mjs --gallery",
     "test:sheet-focus": "VITE_DEMO=1 npm run build && node tests/sheet-focus-check.mjs",

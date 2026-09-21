@@ -300,6 +300,24 @@
   "body_region_reading_none_aria": "{region}: nothing logged in this range",
   "body_map_elsewhere": "Elsewhere",
   "body_map_reading_heading": "{region}, over this range",
+  "body_map_selected_reading": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "One reading: {axis} {value} out of 100.",
+        "countPlural=other": "{count} readings, averaging {axis} {value} out of 100."
+      }
+    }
+  ],
+  "body_map_selected_mixed": "Some went the other way.",
+  "body_map_selected_none": "Nothing logged here in this range.",
+  "body_map_chart_jump": "See the charts",
   "body_map_inspect_row": "Everything logged for this region",
   "back": "Back",
   "done": "Done",
@@ -1120,8 +1138,13 @@
   "ms_log_heading": "Every milestone",
   "ms_log_heading_count": [
     {
-      "declarations": ["input count", "local countPlural = count: plural"],
-      "selectors": ["countPlural"],
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "{count} milestone",
         "countPlural=other": "{count} milestones"
