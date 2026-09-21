@@ -52,6 +52,7 @@
     getLastLookBackSpan,
     historyBands,
     historyStart,
+    railFacts,
     setLastLookBackSpan,
     spanRangeQuery,
     surgeryMarks,
@@ -67,6 +68,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import SpanFacts from '$lib/components/SpanFacts.svelte';
   import SpanTimeline from '$lib/components/SpanTimeline.svelte';
   import WordsReading from '$lib/components/WordsReading.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
@@ -131,6 +133,24 @@
   });
   let railHistory = $derived(historyBands(railAnnotationsQuery.rows));
   let railSurgeries = $derived(surgeryMarks(railAnnotationsQuery.rows));
+  /* The same facts as a list, for the finger the 8px bands are not for
+     (phase 11 UI/UX ticket 25). One read behind both: the list is built
+     from what the rail is already drawing, so a fact cannot be on one and
+     missing from the other. */
+  let facts = $derived(
+    railStart === null
+      ? []
+      : railFacts(
+          {
+            eras: eraBands(erasQuery.rows, railStart, today),
+            history: railHistory,
+            milestones: vocabulary.milestones,
+            surgeries: railSurgeries
+          },
+          railStart,
+          today
+        )
+  );
 
   /* The span, settled. Null until the rail is known, then wrapped's own
      default window; from there it is the person's. `live` is the same span
@@ -263,6 +283,22 @@
         onHintSeen={() => (prefs.spanRailHintDismissed = true)}
       />
     </div>
+
+    <!-- The rail's own facts as a list, folded, directly under the rail
+         (phase 11 UI/UX ticket 25): the way to an era, an episode, a
+         tryout or a milestone that does not depend on hitting an 8px band,
+         with every fact's exact dates written out. It sets the same span
+         the band on the rail sets, so the two never disagree. -->
+    {#if facts.length}
+      <SpanFacts
+        {facts}
+        {railStart}
+        {today}
+        {span}
+        role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}
+        onPick={pickSpan}
+      />
+    {/if}
 
     <!-- The span's facts, directly under the rail and before anything
          else: entries, the active scale's average, the scale that moved
