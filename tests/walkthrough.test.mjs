@@ -3221,7 +3221,8 @@ try {
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
-  if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
+  // Per-palette since ticket 50, and this walk never leaves the default flag.
+  if (!/\/favicon-trans\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
   if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
   await page.getByRole('switch', { name: 'Lock on leave' }).click();

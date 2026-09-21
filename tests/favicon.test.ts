@@ -33,8 +33,10 @@ describe('the tab icon', () => {
     const names = new Set(
       (fixture as ChromeCase[]).flatMap((testCase) => [testCase.expected.icon, testCase.expected.manifest])
     );
-    /* Both faces, or the fixture has stopped covering the disguise. */
-    expect(names).toContain('favicon.svg');
+    /* Both faces, or the fixture has stopped covering the disguise. The
+       undisguised one is per-palette since ticket 50, so the fixture has to
+       carry at least one flag as well as the neutral face. */
+    expect([...names].some((name) => /^favicon-(?!notes)\w+\.svg$/.test(name))).toBe(true);
     expect(names).toContain('favicon-notes.svg');
     for (const name of names) expect(exists(`static/${name}`), name).toBe(true);
   });
