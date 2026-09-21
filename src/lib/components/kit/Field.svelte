@@ -37,13 +37,14 @@
     children
   }: {
     label: string;
-    /** Folded into the label's own text, `{label} {hint}`, muted - the
-        inline form ticket 10 kept (milestones' and tryouts' date fields).
-        A hint that is its own paragraph stays hand-written inside
-        `children`; Field only owns the label line. Rendered only with a
-        `for` label, not a `legend` - no call site has needed a hint next
-        to a self-labelling control's name yet, so `legend` + `hint`
-        together is undefined rather than silently dropping one. */
+    /** Help for the control, its own paragraph under the label and pointed
+        at by the control's `aria-describedby` - the second argument
+        `children` is handed. It used to be folded into the label's own
+        text, `{label} {hint}`, which made the sentence part of the field's
+        accessible name: "Ended" and "Leave blank if there is no end date."
+        were read as one name and ran together on screen at 200% text
+        (phase 11 pre-production ticket 43). A label names, help explains,
+        and a screen reader owes them separately. */
     hint?: string;
     /** A screen names its own id only when something else has to agree
         with it (a walkthrough handle, a fixture). Everything else is
@@ -63,19 +64,37 @@
     /** The `.field.spread` row layout - a label to the left, a
         self-labelling control to the right (Switch). */
     spread?: boolean;
-    /** The control, handed the one id it should carry. */
-    children: Snippet<[string]>;
+    /** The control, handed the one id it should carry and - where there is
+        a hint - the id of the paragraph it should point `aria-describedby`
+        at. */
+    children: Snippet<[string, string | undefined]>;
   } = $props();
 
   const mintedId = $props.id();
   const fieldId = $derived(id ?? mintedId);
+  const hintId = $derived(`${fieldId}-hint`);
 </script>
 
 <div class="field" class:spread>
   {#if legend}
     <span class="field-label" id={fieldId}>{label}</span>
   {:else}
-    <label class="field-label" class:visually-hidden={hidden} for={fieldId}>{label}{#if hint} <span class="muted">{hint}</span>{/if}</label>
+    <label class="field-label" class:visually-hidden={hidden} for={fieldId}>{label}</label>
   {/if}
-  {@render children(fieldId)}
+  {#if hint}
+    <p class="field-hint" class:visually-hidden={hidden} id={hintId}>{hint}</p>
+  {/if}
+  {@render children(fieldId, hint ? hintId : undefined)}
 </div>
+
+<style>
+  /* Closer to the name it explains than to the box it explains it for:
+     `.field` is a flex column with one gap, which would space label, help
+     and control evenly and leave the sentence floating between the two
+     things it could belong to. */
+  .field-hint {
+    margin-top: calc(-1 * var(--space-1));
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+</style>

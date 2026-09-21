@@ -73,8 +73,11 @@ export interface TryoutReading {
   dayCount: number;
   /** Oldest first. */
   marks: TryoutFeltMark[];
-  /** The most recent reading's day, or null where there are none. */
-  latestEpochDay: number | null;
+  /** The most recent reading, or null where there are none. Its own mark
+      rather than only its day: the card beside it names the step that was
+      chosen as well as when it was chosen, and two fields for one reading
+      let them disagree. */
+  latest: TryoutFeltMark | null;
   /** Where the middle step of the scale sits, which is where the drawing's
       own guide goes. A constant, exported through the reading so a screen
       draws the guide from the same source the marks are placed against. */
@@ -124,7 +127,7 @@ export function tryoutReading(
     toEpochDay,
     dayCount: span + 1,
     marks,
-    latestEpochDay: marks.length ? marks[marks.length - 1].epochDay : null,
+    latest: marks.length ? marks[marks.length - 1] : null,
     neutralLevel: 0.5
   };
 }

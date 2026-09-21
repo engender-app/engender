@@ -107,8 +107,12 @@
      nothing there to fade at all - "barely noticeable" cutting "mild" off
      with no sign there was more (Alicja, 2026-08-28). A chevron is a fixed
      hint that never depends on how a neighbouring label happens to break,
-     so it carries the affordance the fade alone could not promise; the fade
-     stays as the softer cue for the cases it does catch. */
+     so it carries the affordance the fade alone could not promise.
+
+     The two are one box now (ticket 43): the fade is the chevron's own
+     background rather than a mask over the track, because a chevron drawn
+     straight onto a clipped label is not legible either - "Garme>e" on this
+     control's own kind picker at 390px. components.css says the rest. */
   let track = $state<HTMLElement | undefined>();
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
