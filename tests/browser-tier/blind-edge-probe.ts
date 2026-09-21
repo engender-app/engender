@@ -9,12 +9,15 @@ import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'blind-edge-probe';
 
-function edgeVar(host: HTMLElement) {
-  return getComputedStyle(host).getPropertyValue('--blind-edge').trim();
-}
-
 function nextObserverTick() {
   return new Promise((resolve) => setTimeout(resolve, 150));
+}
+
+function snapshot(host: HTMLElement, field: HTMLElement) {
+  return {
+    edge: getComputedStyle(host).getPropertyValue('--blind-edge').trim(),
+    height: field.getBoundingClientRect().height
+  };
 }
 
 async function run() {
@@ -31,7 +34,7 @@ async function run() {
 
   const action = blindEdge(field);
   await nextObserverTick();
-  const before = { edge: edgeVar(host), height: field.getBoundingClientRect().height };
+  const before = snapshot(host, field);
 
   /* Vertical padding only: it cannot re-wrap the text (nowrap, and only
      top/bottom change), so the content box's height is untouched while
@@ -42,7 +45,7 @@ async function run() {
   field.style.paddingTop = '40px';
   field.style.paddingBottom = '40px';
   await nextObserverTick();
-  const afterPaddingChange = { edge: edgeVar(host), height: field.getBoundingClientRect().height };
+  const afterPaddingChange = snapshot(host, field);
 
   (action as { destroy?: () => void } | undefined)?.destroy?.();
   publish(NAME, { before, afterPaddingChange });
