@@ -26,6 +26,7 @@
 
   <button
     class="btn btn-soft"
+    data-add-region
     onclick={() => {
       addOpen = true;
       newName = '';
