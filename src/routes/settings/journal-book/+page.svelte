@@ -41,6 +41,7 @@
   } from '$lib/data/journal/journalBook';
   import type { WrappedCardContent } from '$lib/data/wrappedCard';
   import Icon from '$lib/components/Icon.svelte';
+  import Mark from '$lib/components/Mark.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import JournalBookPhoto from '$lib/components/JournalBookPhoto.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -231,6 +232,12 @@
     {/if}
 
     <div class="print-heading">
+      <!-- The mark on paper: one ink and four rings, the count fixed
+           whatever the flag is, so this header, the disguise fallback and a
+           single-colour reproduction are the same shape every time (ticket
+           38, ticket 50). Absent under disguise, leaving the title in type,
+           because a printed page leaves the device (ADR-0014). -->
+      <Mark size={36} mono />
       <h1>{m.journal_book_title()}</h1>
       <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
     </div>

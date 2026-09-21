@@ -33,6 +33,7 @@
   import { clinicianDossierPartName } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import ClinicianSummaryDossier from '$lib/components/ClinicianSummaryDossier.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import Mark from '$lib/components/Mark.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
@@ -212,6 +213,15 @@
          twice. -->
     <div class="summary-page" data-summary-page>
       <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
+        <!-- The mark on paper: one ink and four rings, the count fixed
+             whatever the flag is, so this header, the disguise fallback and
+             a single-colour reproduction are the same shape every time
+             (ticket 38, ticket 50). It stays when the profile card takes
+             over as the header below - the letterhead is what says which
+             app printed the page, and the card says nothing about that.
+             Absent under disguise, leaving type, because this is the page
+             that most obviously leaves the device (ADR-0014). -->
+        <Mark size={36} mono />
         <h1>{m.clinician_summary_title()}</h1>
         <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
@@ -389,7 +399,12 @@
       margin-top: 0;
     }
 
-    .print-heading.has-demographics {
+    /* With demographics the profile card below is the header - the name,
+       the period and the generated date are all on it, and printing them
+       twice was the defect this rule fixed. The mark is the one part that
+       is not repeated down there, so it stays and only the words go. */
+    .print-heading.has-demographics h1,
+    .print-heading.has-demographics p {
       display: none;
     }
 
