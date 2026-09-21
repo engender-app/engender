@@ -2507,6 +2507,37 @@ await block('ticket U08 browser tier', 16, async () => {
     fail('an accepted choice is honored after repair', JSON.stringify({ asked: a.askedBeforeRepair, fired: a.autoBeforeRepair, preserved: a.choicePreserved, unlocks: a.unlockCalls }));
 });
 
+// --- Ticket 141: batching the demo seed's writes -----------------------
+await block('ticket 141 demo seed write batching', 3, async () => {
+  const r = await load('/demo-seed-batching.html', 'demo-seed-batching-probe');
+  if (r.error) throw new Error(r.error);
+
+  if (r.seededCount > 0) ok(`the persona seed writes entries (${r.seededCount})`);
+  else fail('the persona seed writes entries', `got ${r.seededCount}`);
+
+  if (r.reseededCount === r.seededCount)
+    ok('batching the seed writes the same number of entries as running it unbatched');
+  else
+    fail(
+      'batching the seed writes the same number of entries as running it unbatched',
+      `unbatched wrote ${r.seededCount}, batched wrote ${r.reseededCount}`
+    );
+
+  // The defect: an entry-count liveQuery re-ran once per entry write when the
+  // seed's writes landed unbatched, and `batchWrites` defers every one of
+  // them to a single flush after the seed settles. Batched must land at
+  // exactly one run; unbatched only has to clear an order-of-magnitude bar
+  // (10x) rather than the exact write count, so this stays robust to the
+  // persona fixture's own entry count changing later.
+  if (r.batchedRuns === 1 && r.unbatchedRuns > r.batchedRuns * 10)
+    ok(`batching collapses ${r.unbatchedRuns} live-query re-runs into ${r.batchedRuns}`);
+  else
+    fail(
+      'batching collapses one re-run per write into one re-run for the whole seed',
+      `unbatched: ${r.unbatchedRuns} run(s), batched: ${r.batchedRuns} run(s)`
+    );
+});
+
 await browser.close();
 await server.close();
 

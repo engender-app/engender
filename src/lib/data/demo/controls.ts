@@ -10,7 +10,7 @@
    are invalidated by the writes themselves - a jump does not need to tell the
    UI it happened. */
 
-import { journal } from '../live/journal.svelte';
+import { batchWrites, journal } from '../live/journal.svelte';
 import { prefs } from '../prefs/store.svelte';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
@@ -28,17 +28,28 @@ import { seedReturnGap } from './returnGap';
    days the seed got through looks exactly like a journal with the persona
    in it, so a sweep photographs it and says nothing; an empty one is
    visibly wrong on the first screen. Clearing is the honest half-state,
-   and the error still reaches the page so nobody has to infer it. */
+   and the error still reaches the page so nobody has to infer it.
+
+   Wrapped in `batchWrites` (ticket 141): the seed is a few thousand awaited
+   journal calls, and each one used to bump table versions and re-run every
+   open liveQuery immediately - Home's own reads among them, sitting behind
+   the demo bar the whole time. That re-run cost grows with the journal, so
+   the seed got slower call by call instead of taking a fixed time. Batching
+   defers every version bump to one flush after the whole jump lands, so
+   Home and everything else re-reads once, with the finished journal,
+   rather than once per write against a growing one. */
 async function reseed(seed: () => Promise<void>): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
   try { localStorage.setItem('engender-has-entries', '1'); } catch {}
-  await clearJournal(journal);
-  try {
-    await seed();
-  } catch (err) {
+  await batchWrites(async () => {
     await clearJournal(journal);
-    throw err;
-  }
+    try {
+      await seed();
+    } catch (err) {
+      await clearJournal(journal);
+      throw err;
+    }
+  });
 }
 
 export async function resetDemo(): Promise<void> {
