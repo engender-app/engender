@@ -54,6 +54,36 @@ export const HYDRATION_MS = 3000;
  *  allowed to finish first - the same settle the gesture sweep uses, and
  *  for the same reason. */
 export const HYDRATION_SETTLE_MS = 1600;
+
+/** How much of a reply the phone's devtools socket will carry, and how
+ *  much of it one slice may hold.
+ *
+ *  Ticket 140: the WebView closes the connection outright for any
+ *  `Runtime.evaluate` reply of 4 MiB or more. Measured on the Pixel 10a
+ *  against Vanadium 153 by returning a string of a known length - 3.9 MB
+ *  comes back, 4.0 MB drops the socket, and every size above it does the
+ *  same. The sampler's frame table passes that on the app's densest
+ *  screens (`/settings` samples 178 marks over 211 frames, 5.76 MB of
+ *  JSON; `/voice?metric=pitch` 4.78 MB), which is the whole of what the
+ *  reports had been recording as a renderer crash: nothing on the phone
+ *  ever died, the reply was simply too big to carry.
+ *
+ *  The slice cap is a quarter of the socket's, not a half: a slice of the
+ *  frame table is itself JSON, so every quote in it is escaped again on
+ *  the way back and a slice can arrive up to twice the size it was cut.
+ *  1 MiB leaves that doubling well clear of 4. */
+export const DEVTOOLS_REPLY_CAP = 4 * 1024 * 1024;
+export const REPLY_SLICE = DEVTOOLS_REPLY_CAP / 4;
+
+/** Where to cut a reply of `total` characters so no slice exceeds `cap`.
+ *  Returns `[from, to]` pairs covering the whole string in order, with no
+ *  gap and no overlap; an empty reply has nothing to cut. */
+export function replySlices(total, cap = REPLY_SLICE) {
+  const slices = [];
+  for (let from = 0; from < total; from += cap) slices.push([from, Math.min(from + cap, total)]);
+  return slices;
+}
+
 /** The ticket's own floor: a bounding box moving under this in one frame
  *  is layout breathing, not a yank. The gesture sweep's 14px floor stays
  *  what it is; this is a wider net over a calmer window, where the

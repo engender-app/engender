@@ -97,6 +97,7 @@ import {
   hydrationScreensFor,
   missingProofYanks,
   pushHydrationRun,
+  replySlices,
   scenesFor,
   samplerExpression,
   scrapeHrefExpression,
@@ -321,6 +322,44 @@ async function ev(expression, ms = 90000) {
       says nothing about whether the socket closed, the WebView never
       answered, or the forward went stale - three different next steps. */
   throw new Error('the WebView kept dropping the devtools socket: ' + (lastError?.message ?? 'unknown'));
+}
+
+/** The sampler's answer, fetched in slices the socket will carry.
+ *
+ *  Ticket 140: the WebView drops the whole devtools connection for any
+ *  reply of 4 MiB or more, and the frame table passes that on the app's
+ *  densest screens - `/settings` samples 178 marks over 211 frames, which
+ *  is 5.76 MB of JSON, and `/voice?metric=pitch` 4.78 MB. Those were the
+ *  scenes the device reports had been recording as `SOCKET_GONE` and
+ *  reading as a renderer crash; nothing on the phone was dying, the reply
+ *  was simply bigger than the transport. Desktop never saw it because
+ *  Playwright's CDP transport has no such cap.
+ *
+ *  So the table is stringified where it is made and pulled back a slice
+ *  at a time. The retry in `ev()` still covers each leg: a re-attach lands
+ *  on the same document, so the stashed string is still there. A
+ *  navigation is the other thing entirely and this does not survive one -
+ *  the global belongs to the document that made it - so the fetch has to
+ *  finish before anything moves the page. Every caller below samples and
+ *  then fetches, with the next `location.assign` a scene away. */
+async function evFrames(expression, ms = 90000) {
+  const total = await ev(
+    `(async () => {
+       window.__sweepReply = JSON.stringify(await (${expression}));
+       return window.__sweepReply.length;
+     })()`,
+    ms
+  );
+  let json = '';
+  for (const [from, to] of replySlices(total)) json += await ev(`window.__sweepReply.slice(${from}, ${to})`, ms);
+  /* Dropped rather than left behind: the biggest of these is a 6 MB
+     string, and a scene that kept its own would have the whole walk's
+     worth of them resident by the end. Swallowed, though, because the
+     frames are already in hand by this point: losing a whole scene to a
+     failed nulling assignment would be this ticket's own bug one layer
+     up, and the next navigation drops the global anyway. */
+  await ev('window.__sweepReply = null; true;').catch(() => {});
+  return JSON.parse(json);
 }
 
 const onEvent = (msg) => {
@@ -576,7 +615,7 @@ async function hydrationCold(href) {
   return screencast(async (cast) => {
     await ev(`location.assign(${JSON.stringify(href)}); true;`);
     await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
-    const frames = await ev(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+    const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
     return { cast: [...cast], frames };
   });
 }
@@ -587,7 +626,7 @@ async function hydrationSheet(scene, theme) {
   await settle(scene.at, theme);
   await sleep(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
-    const frames = await ev(samplerExpression(scene.act, HYDRATION_MS, VT_NAMES));
+    const frames = await evFrames(samplerExpression(scene.act, HYDRATION_MS, VT_NAMES));
     return { cast: [...cast], frames };
   });
 }
@@ -662,7 +701,7 @@ async function hydrationScenes() {
           const mounted = await screencast(async (cast) => {
             await ev(JUMP_FIRST_RUN_EXPRESSION);
             await ev(waitForExpression('[data-next]', 30000, '/onboarding'));
-            const frames = await ev(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+            const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
             return { cast: [...cast], frames };
           });
           await pushHydrationRun(report, outDir, {
@@ -702,7 +741,7 @@ async function hydrationScenes() {
           await sleep(HYDRATION_SETTLE_MS);
           const result = await screencast(async (cast) => {
             await ev(`(${INJECT_PROOF_EXPRESSION})()`);
-            const frames = await ev(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
+            const frames = await evFrames(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
             return { cast: [...cast], frames };
           });
           await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result });
@@ -726,7 +765,7 @@ async function hydrationScenes() {
       const result = await screencast(async (cast) => {
         await ev(`location.assign('/'); true;`);
         await ev(waitForExpression('[data-pin-pad]', 40000, '/'));
-        const frames = await ev(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+        const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
         return { cast: [...cast], frames };
       });
       await pushHydrationRun(report, outDir, {
@@ -786,7 +825,7 @@ if (hydration) {
             await sleep(1400);
             if (scene.act === 'inject') await ev(`(${INJECT_PROOF_EXPRESSION})()`);
             const result = await screencast(async (cast) => {
-              const frames = await ev(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+              const frames = await evFrames(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
               return { cast: [...cast], frames };
             });
             await sleep(600);
