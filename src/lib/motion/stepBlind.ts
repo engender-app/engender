@@ -118,7 +118,7 @@ export const blindEdge: Action<HTMLElement> = (node) => {
     });
   });
 
-  observer.observe(node);
+  observer.observe(node, { box: 'border-box' });
 
   return {
     destroy() {

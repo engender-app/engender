@@ -11,6 +11,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
+    "test:blind-edge-padding": "node tests/blind-edge-padding-check.mjs",
     "test:dilation-schedule-action": "node tests/dilation-schedule-action.mjs",
     "test:letters-ready-jump": "node tests/letters-ready-jump.mjs",
     "test:body-map-selected-context": "node tests/body-map-selected-context.mjs",
