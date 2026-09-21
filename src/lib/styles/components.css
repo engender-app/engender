@@ -934,7 +934,9 @@ a.segment {
    laid out exactly as it was. Across the app that is all of them but two:
    at 390px nothing overflows any more, and at 320px only this voice strip
    and the roadmap's four tracks scroll - both of which were clipping their
-   last label at that width already. */
+   last label at that width already. tests/voice-task-names.mjs sweeps every
+   compact control the app renders at both widths and holds that claim,
+   rather than leaving it as a sentence somebody measured once. */
 .segmented.is-compact .segment { flex: 1 1 auto; min-width: max-content; padding-inline: var(--space-1); }
 /* 5px, not 9px. The inset was tuned when the compact form carried six
    segments across the full width, where the pill is wider than it is tall

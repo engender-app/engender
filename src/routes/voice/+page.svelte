@@ -432,16 +432,20 @@
 
            Only the record tab was renamed, and the ticket's own suggestion
            of "My recordings" for the other one is not what shipped. The
-           four labels now size to their own words (components.css's compact
-           rule, changed by this ticket), and at 390px they come to exactly
-           the track's 340px with "Recordings" on the end. "My recordings"
-           is 96.4px against that label's 76.2px, and "Moje nagrania" 96.6px
-           against "Nagrania"'s 62px, so either would push the strip 20px
-           past its own track on the reference phone and put part of the
-           last tab behind the scroll fade - on the one control whose whole
-           job this ticket is to make choosable at a glance. "Record" beside
-           "Recordings" was the collision; "Benchmark" beside it is not one,
-           and the line below carries what the qualifier would have added.
+           qualifier would fit - the compact rule this ticket changed in
+           components.css lets any label keep its own width, and the track
+           scrolls for whatever is left over - so this is a choice about
+           scrolling rather than about fitting, and it is worth saying which.
+           The four labels now come to exactly the track's 340px at 390px
+           with "Recordings" on the end; "My recordings" is 96.4px against
+           that label's 76.2px, and "Moje nagrania" 96.6px against
+           "Nagrania"'s 62px, so either puts the strip 20px past its track on
+           the reference phone and the fourth task behind the scroll fade.
+           All four visible at once is the thing this screen is being asked
+           for, so the shorter label wins over the more explicit one.
+           "Record" beside "Recordings" was the collision anyway;
+           "Benchmark" beside it is not one, and the line below carries what
+           the qualifier would have added.
 
            No benchmarks rather than no benchmarks and no memos: a person
            with memos and no benchmark has still never used the task this

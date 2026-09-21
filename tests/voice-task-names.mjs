@@ -14,6 +14,12 @@
    of that are checked against a real journal rather than against the markup
    that renders them.
 
+   Three: every other compact control in the app. The rule that fixed the
+   voice strip lives in components.css and all of them read it, so the claim
+   written there - that a control whose labels already fitted is laid out
+   exactly as it was, and that the two which did not now scroll instead of
+   painting over themselves - is swept rather than asserted.
+
    Run: node tests/voice-task-names.mjs   (dev server, no build needed) */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
@@ -102,6 +108,45 @@ try {
 
   console.log('PASS: four task labels fit their own segments at 320/390/430 in both languages');
   console.log('PASS: the task distinction is there with no benchmark and gone with one');
+
+  /* The same rule over every compact control the app renders on the demo
+     persona. Routes rather than a registry, because a compact control is a
+     choice a screen makes and nothing collects them. */
+  const COMPACT_ROUTES = [
+    '/stats', '/tally', '/voice', '/body/hair-progress', '/body/measurements', '/body/wear',
+    '/care/curve', '/media/photos', '/settings', '/transition/roadmap', '/compare'
+  ];
+  let swept = 0;
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of COMPACT_ROUTES) {
+      await settlePage(page, base, route, 'light');
+      await page.waitForTimeout(400);
+      const controls = await page.evaluate(() =>
+        [...document.querySelectorAll('.segmented.is-compact')].map((track) => ({
+          key: track.dataset.segmented ?? '(unkeyed)',
+          segments: [...track.querySelectorAll('[data-segment]')].map((b) => ({
+            label: b.textContent.trim(),
+            box: Math.round(b.clientWidth),
+            words: Math.round(b.scrollWidth)
+          }))
+        }))
+      );
+      for (const control of controls) {
+        swept += 1;
+        for (const segment of control.segments) {
+          assert.ok(
+            segment.words <= segment.box + 1,
+            `${route} at ${width}px, ${control.key}: "${segment.label}" needs ${segment.words}px of a ${segment.box}px segment`
+          );
+        }
+      }
+    }
+  }
+  /* Found at all, so a route that stops rendering its control cannot make
+     the sweep pass by having nothing to look at. */
+  assert.ok(swept >= 20, `the sweep found only ${swept} compact controls across ${COMPACT_ROUTES.length} routes at two widths`);
+  console.log(`PASS: ${swept} compact controls across the app keep every label inside its own segment at 320 and 390`);
 } finally {
   await browser.close();
   await server.close();
