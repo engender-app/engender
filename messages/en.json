@@ -3092,6 +3092,7 @@
   "lookback_band_aria": "Select the stretch {name}, {from} to {to}",
   "lookback_mark_aria": "Select the stretch ending on {name}",
   "lookback_drag_hint": "Drag the ends to choose a stretch",
+  "lookback_pick_disclosure": "Pick a stretch from a list",
   "stats_tag_share": "What you write about",
   "stats_tag_share_rest": "Everything else",
   "stats_tag_share_note": "tag uses in range",

@@ -91,6 +91,34 @@ export const SPINE_MIN_FORWARD_DAYS = 14;
 /* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
 export const MIN_LABEL_GAP = 0.34;
 
+/** The same rule in the unit it was measured in.
+
+    A fraction of the rail is the right rule only at the width it was
+    measured at. At 200% zoom a 390px phone leaves 195 CSS px, the rail is
+    about 97 of them, and 0.34 of 97 is 33px - a third of what the widest
+    Polish caption needs and less than the 48px target the caption carries
+    at any width, so every caption printed over its neighbour and the taps
+    landed on whichever was drawn last (phase 11 UI/UX ticket 25, checked
+    at both widths in tests/timeline-fact-selection.mjs).
+
+    So the screen measures its own rail and hands the width in, and this
+    is what the fraction is computed from: 90.8px for "Następna dawka"
+    plus 8px of air, the same arithmetic the number above came from. Where
+    nothing has measured yet - the first frame, before the observer has
+    answered - the fraction above stands in, which is this number over the
+    292px rail a 390px phone gives.
+
+    A rail too narrow for two captions makes the fraction larger than the
+    rail, and then every caption takes its own row. That is the honest
+    answer at 200% zoom rather than a failure: the lane grows taller, which
+    is what a magnified screen is for. */
+export const MIN_LABEL_PX = 99;
+
+/** The collision rule for a rail of a known width. */
+function labelGapFor(railWidthPx: number | null | undefined): number {
+  return railWidthPx && railWidthPx > 0 ? MIN_LABEL_PX / railWidthPx : MIN_LABEL_GAP;
+}
+
 export type SpineMarkKind = 'labDraw' | 'lastDose' | 'today' | 'nextDose' | 'runOut';
 
 /** Ties on the same day resolve in reading order rather than by whichever
@@ -269,12 +297,13 @@ function placeMarks(
   days: readonly MarkEntry[],
   todayEpochDay: number,
   fromEpochDay: number,
-  toEpochDay: number
+  toEpochDay: number,
+  minLabelGap: number
 ): SpineMark[] {
   const lastInRow: number[] = [];
   return orderedDays(days).map(({ kind, epochDay, recordId }) => {
     const position = positionOf(epochDay, todayEpochDay, fromEpochDay, toEpochDay);
-    let labelRow = lastInRow.findIndex((last) => position - last >= MIN_LABEL_GAP);
+    let labelRow = lastInRow.findIndex((last) => position - last >= minLabelGap);
     if (labelRow === -1) labelRow = lastInRow.length;
     lastInRow[labelRow] = position;
     return {
@@ -312,7 +341,13 @@ function laneDays(lane: LaneFacts): MarkEntry[] {
     every lane's marks at once, and a lane whose own days are all near today
     still gets drawn against the reach a far-off run-out on another lane
     opened up. */
-export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine | null {
+export function careSpine(
+  facts: SpineFacts,
+  todayEpochDay: number,
+  /** The rail's own drawn width in CSS pixels, where the screen has
+      measured it: what the collision rule is computed from. */
+  railWidthPx?: number | null
+): CareSpine | null {
   const sharedDays: MarkEntry[] = [{ kind: 'today', epochDay: todayEpochDay }];
   if (facts.labDrawEpochDay !== null) sharedDays.push({ kind: 'labDraw', epochDay: facts.labDrawEpochDay, recordId: facts.labDrawId ?? null });
 
@@ -325,14 +360,15 @@ export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine |
   const fromEpochDay = Math.max(todayEpochDay - SPINE_BACK_DAYS, Math.min(todayEpochDay - SPINE_MIN_BACK_DAYS, earliest));
   const toEpochDay = Math.min(todayEpochDay + SPINE_FORWARD_DAYS, Math.max(todayEpochDay + SPINE_MIN_FORWARD_DAYS, latest));
 
+  const minLabelGap = labelGapFor(railWidthPx);
   return {
     fromEpochDay,
     toEpochDay,
-    shared: placeMarks(sharedDays, todayEpochDay, fromEpochDay, toEpochDay),
+    shared: placeMarks(sharedDays, todayEpochDay, fromEpochDay, toEpochDay, minLabelGap),
     lanes: laneEntries.map(({ lane, days }) => ({
       episodeId: lane.episodeId,
       drug: lane.drug,
-      marks: placeMarks(days, todayEpochDay, fromEpochDay, toEpochDay)
+      marks: placeMarks(days, todayEpochDay, fromEpochDay, toEpochDay, minLabelGap)
     }))
   };
 }

@@ -3156,6 +3156,7 @@
   "lookback_band_aria": "Wybierz okres {name}, od {from} do {to}",
   "lookback_mark_aria": "Wybierz okres kończący się na: {name}",
   "lookback_drag_hint": "Przeciągnij końce, żeby wybrać okres",
+  "lookback_pick_disclosure": "Wybierz okres z listy",
   "stats_tag_share": "O czym piszesz",
   "stats_tag_share_rest": "Cała reszta",
   "stats_tag_share_note": "użyć tagów w zakresie",
