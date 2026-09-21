@@ -89,6 +89,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -412,6 +413,43 @@
         compact
         key="voice-tab"
       />
+
+      <!-- Which of the two audio tasks is which (phase 11 pre-production
+           ticket 44). The names collided before it: "Record" made a
+           benchmark and "Recordings" held the memos an entry owns, one word
+           apart with nothing on the chooser saying that one of them produces
+           figures to set beside each other and the other keeps audio. The
+           names carry most of that now, and this line says the rest of it
+           until the first benchmark exists - at which point the screen has
+           the answer on it, and a sentence explaining what a benchmark is to
+           somebody who has made six is the kind of standing lecture the copy
+           rules keep off an everyday surface.
+
+           Only the record tab was renamed, and the ticket's own suggestion
+           of "My recordings" for the other one is not what shipped. The
+           four labels now size to their own words (components.css's compact
+           rule, changed by this ticket), and at 390px they come to exactly
+           the track's 340px with "Recordings" on the end. "My recordings"
+           is 96.4px against that label's 76.2px, and "Moje nagrania" 96.6px
+           against "Nagrania"'s 62px, so either would push the strip 20px
+           past its own track on the reference phone and put part of the
+           last tab behind the scroll fade - on the one control whose whole
+           job this ticket is to make choosable at a glance. "Record" beside
+           "Recordings" was the collision; "Benchmark" beside it is not one,
+           and the line below carries what the qualifier would have added.
+
+           No benchmarks rather than no benchmarks and no memos: a person
+           with memos and no benchmark has still never used the task this
+           distinguishes, and the memo half already says what it holds in its
+           own empty notice. `disclose` because the read answers after the
+           tab strip is drawn, and a paragraph arriving at full height would
+           shove the tab under it down a line (hair-progress's wipe pair is
+           the same case). -->
+      {#if benchmarksQuery.empty}
+        <p class="muted small voice-tasks-lead" data-voice-tasks-lead transition:disclose>
+          {m.vb_tasks_lead()}
+        </p>
+      {/if}
     </div>
 
     {#if tab === 'record'}
@@ -596,6 +634,12 @@
 </div>
 
 <style>
+  /* Under the control it is answering, at the gap a screen part's own rows
+     take from each other rather than a paragraph's default block margin. */
+  .voice-tasks-lead {
+    margin: var(--space-3) 0 0;
+  }
+
   /* The section owns the gap between its heading and its panel; the sheet
      owns the gap between sections (`.sheet`'s own, kit.css). */
   .vm-metric {
