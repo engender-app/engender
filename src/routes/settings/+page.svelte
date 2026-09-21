@@ -571,12 +571,15 @@
     <h3>{m.about()}</h3>
     <div class="stack-3">
       <div style="display:flex;align-items:center;gap:var(--space-3)">
-        <!-- The mark in the flag this person picked, bare rather than on
-             its white tile: the tile belongs to the icon, not to the app
-             (DIRECTION rule 4, ticket 50). Absent under disguise, which is
-             Mark's own answer - what is left is the name in type, which is
-             what every surface carrying the mark falls back to (ADR-0014). -->
-        <Mark size={48} />
+        <!-- The icon, in the flag this person picked: the white tile and
+             its black edge, because what this row is showing is the app's
+             own icon beside its own name and version, and the tile's edge is
+             not optional anywhere the drawing has an outside (Alicja,
+             2026-09-21: "its supposed to be black always"). Absent under
+             disguise, which is Mark's own answer - what is left is the name
+             in type, which is what every surface carrying the mark falls
+             back to (ADR-0014). -->
+        <Mark size={48} crop="tile" />
         <p class="small" style="margin:0">
           <span translate="no">{m.app_name()}</span>
           <span class="muted">· {m.version()} <span translate="no" data-app-version>{__APP_VERSION__}</span></span>

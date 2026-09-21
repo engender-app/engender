@@ -144,21 +144,27 @@ describe('the tile belongs to the icon, not to the app', () => {
   });
 
   it('emits a clip path only where the crop is not the viewBox itself', () => {
-    /* A clip path needs an id, and an id has to be unique in a document.
-       `bare` is the only crop the app draws and it carries none, so two
-       marks on one screen cannot collide; the crops that do carry one are
-       only ever written to a file of their own. */
     expect(markSvg(flags.trans, 'bare', 48)).not.toContain('clipPath');
     for (const crop of ['tile', 'round'] as const) {
       expect(markSvg(flags.trans, crop, 512), crop).toContain(`<clipPath id="mark-${crop}">`);
     }
   });
 
-  it('leaves the app\'s own mark bare: no tile, no ground, no edge', () => {
-    /* A white chip on every dark screen is not the app's surface language
-       (DIRECTION rule 4). */
-    /* Asserted as "no painted rectangle" rather than "no white": trans's
-       own middle stripe is #FFFFFF, and a band is not a ground. */
+  it('takes an id for that clip path, because a document can hold two marks', () => {
+    /* A file holds one mark and the crop's own name is unique in it. A
+       screen can hold more than one element, so Mark.svelte mints its own
+       with $props.id() - two of the same id would not be valid, even where
+       both resolve to the same shape. */
+    const svg = markSvg(flags.trans, 'tile', 48, { id: 's7' });
+    expect(svg).toContain('<clipPath id="s7">');
+    expect(svg).toContain('clip-path="url(#s7)"');
+    expect(svg).not.toContain('mark-tile');
+  });
+
+  it('leaves the printed mark bare: no tile, no ground, no edge', () => {
+    /* One ink on paper, where a square around it would be a second thing to
+       reproduce. Asserted as "no painted rectangle" rather than "no white":
+       trans's own middle stripe is #FFFFFF, and a band is not a ground. */
     const svg = markSvg(flags.trans, 'bare', 48);
     expect(svg).not.toMatch(/<rect[^>]*fill=/);
     expect(markSvg(flags.trans, 'tile', 48)).toContain(`<rect width="100" height="100" fill="${MARK_TILE}"/>`);
