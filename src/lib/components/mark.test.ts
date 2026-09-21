@@ -118,10 +118,22 @@ describe('the tile belongs to the icon, not to the app', () => {
     }
   });
 
-  it('bleeds with no edge, because an adaptive mask crops one off anyway', () => {
+  it('bleeds to its corners with no edge, because an adaptive mask crops one off', () => {
     const svg = markSvg(flags.trans, 'bleed', 512);
-    expect(svg).toContain('rx="0"');
+    expect(svg).toContain('<rect width="100" height="100" fill="#FFFFFF"/>');
     expect(svg).not.toMatch(/<rect[^>]*fill="none"/);
+  });
+
+  it('emits a clip path only where the crop is not the viewBox itself', () => {
+    /* A clip path needs an id, and an id has to be unique in a document. The
+       two crops the app draws carry none, so two marks on one screen cannot
+       collide; the two that do are only ever written to a file of their own. */
+    for (const crop of ['bare', 'bleed'] as const) {
+      expect(markSvg(flags.trans, crop, 48), crop).not.toContain('clipPath');
+    }
+    for (const crop of ['tile', 'round'] as const) {
+      expect(markSvg(flags.trans, crop, 512), crop).toContain(`<clipPath id="mark-${crop}">`);
+    }
   });
 
   it('leaves the app\'s own mark bare: no tile, no ground, no edge', () => {
