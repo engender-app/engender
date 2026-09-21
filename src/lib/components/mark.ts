@@ -66,11 +66,15 @@ export const MARK_SAFE_TILE = 50;
 
 /** How the drawing is cropped, and therefore whether it carries a tile.
 
-    The tile belongs to the icon, not to the app: `tile`, `round` and `bleed`
-    are what a launcher, an install and a favicon show, because a home
-    screen's ground is not ours. `bare` is what the app itself draws - no
-    tile and no edge, so the mark sits on the screen's own surface rather
-    than putting a white chip on every dark screen (DIRECTION rule 4).
+    `tile` is the mark with its white ground and its black edge: a launcher,
+    an install, a favicon, and About, where what the app is showing is its
+    own icon beside its own name. This is Alicja's rule and it has no
+    exception - "its supposed to be black always" - so anywhere the drawing
+    has an outside, that outside is one black line.
+
+    `bare` is the drawing with no ground and no edge at all, which is what
+    the printed surfaces take: one ink on paper, where a square around it
+    would be a second thing to reproduce.
 
     `bleed` is a mask's canvas rather than a crop of its own: the ground runs
     to all four corners, because a mask cuts its shape out of whatever it is
@@ -85,6 +89,11 @@ export interface MarkOptions {
   /** The ground under the drawing. Defaults to the white tile for a cropped
       mark and to nothing for `bare`. */
   ground?: string | null;
+  /** The clip path's id, for the two crops that need one. Defaults to the
+      crop's own name, which is unique in a file that holds one mark; a
+      screen that draws one passes an id of its own, because a document can
+      hold more than one element and two of the same id is not valid. */
+  id?: string;
   /** An accessible name. Omitted, the mark is decorative and hidden, which
       is what it is everywhere it sits beside the app's own name in type. */
   label?: string;
@@ -146,7 +155,7 @@ export function markSvg(
   stripes: string[],
   crop: MarkCrop,
   size: number | string,
-  { ink, ground, label }: MarkOptions = {}
+  { ink, ground, id, label }: MarkOptions = {}
 ): string {
   const named = label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${label}"`;
   const open =
@@ -160,7 +169,7 @@ export function markSvg(
        smaller. */
     const offset = (100 - MARK_SAFE_TILE) / 2;
     const scale = MARK_SAFE_TILE / 100;
-    const tile = markSvg(stripes, 'tile', 100, { ink, ground, label })
+    const tile = markSvg(stripes, 'tile', 100, { ink, ground, id, label })
       .replace(/^<svg[^>]*>/, '')
       .replace(/<\/svg>$/, '');
     return (
@@ -174,9 +183,9 @@ export function markSvg(
   const fill = ground === undefined ? (crop === 'bare' ? null : MARK_TILE) : ground;
   const paper = fill === null ? '' : `<rect width="100" height="100" fill="${fill}"/>`;
   const drawing = `${paper}${ringMarkup(stripes, ink)}${edge}`;
-  /* One id per document, which holds because the two crops that carry a clip
-     path are only ever written to a file of their own. */
-  const clipId = `mark-${crop}`;
+  /* The crop's own name is right for a file, which holds one mark. A screen
+     can hold more than one element, so Mark.svelte mints its own. */
+  const clipId = id ?? `mark-${crop}`;
   const clipped = clip
     ? `<defs><clipPath id="${clipId}">${clip}</clipPath></defs>`
       + `<g clip-path="url(#${clipId})">${drawing}</g>`

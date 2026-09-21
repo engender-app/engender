@@ -201,11 +201,11 @@ const html = `<!doctype html>
 
   ${await pair('about-light', {
     title: 'About, light',
-    body: 'The mark takes the active flag, bare on the sheet\'s own surface. The tile belongs to the icon, not to the app: a white chip on every dark screen is not this app\'s surface language.'
+    body: 'The icon, in the flag this person picked: the white tile and its black edge, because what the row shows is the app\'s own icon beside its own name and version. The edge is not optional anywhere the drawing has an outside.'
   })}
   ${await pair('about-dark', {
     title: 'About, dark',
-    body: 'The same drawing on the dark ground. Every band keeps the flag\'s own hex and the black seam is what separates them, including the white one.'
+    body: 'The same tile on the dark ground. Every band keeps the flag\'s own hex and the black seam is what separates them, including the white one - and the tile\'s own edge is the same line, so nothing in the drawing meets the page without one.'
   })}
   ${await pair('summary-print', {
     title: 'The clinician summary, on paper',

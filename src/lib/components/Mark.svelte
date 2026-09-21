@@ -22,9 +22,12 @@
      Read off the preference, the same belt-and-braces check Home makes on
      the sun.
 
-     No tile. `bare` by default, because the tile belongs to the icon and
-     not to the app: a white chip on every dark screen is not the app's
-     surface language (DIRECTION rule 4).
+     The crop. `bare` by default, which is what the printed surfaces take -
+     one ink on paper, and a square around it would be a second thing to
+     reproduce. About asks for the `tile`, because what it is showing is the
+     app's own icon beside the app's own name, and the tile's black edge is
+     not optional anywhere it has an outside (Alicja, 2026-09-21: "its
+     supposed to be black always").
 
      It does not move, on any surface. There is no entrance, no hover and no
      view-transition name here, and mark.test.ts reads this file to keep it
@@ -43,8 +46,17 @@
     label
   }: { size?: number; crop?: MarkCrop; mono?: boolean; label?: string } = $props();
 
+  /* A clip path needs an id and a document can hold two marks, so this is
+     minted per instance rather than derived from the crop the way a
+     generated file's is. */
+  const clipId = $props.id();
+
   let svg = $derived(
-    markSvg(activeFlag.stripes, crop, size, { ink: mono ? 'currentColor' : undefined, label })
+    markSvg(activeFlag.stripes, crop, size, {
+      ink: mono ? 'currentColor' : undefined,
+      id: clipId,
+      label
+    })
   );
 </script>
 
