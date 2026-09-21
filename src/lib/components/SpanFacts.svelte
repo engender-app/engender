@@ -81,7 +81,7 @@
   </button>
 
   {#if open}
-    <div class="disclosed" transition:disclose|local>
+    <div class="disclosed" transition:disclose>
       <BatchedList items={facts} key="lookback-facts" {role}>
         {#snippet rows(shown)}
           {#each shown as fact (fact.id)}
@@ -91,8 +91,16 @@
                  what the row says - the fact's name, its kind and its exact
                  dates - is more than the rail's own one-line announcement
                  carries. The rail keeps that announcement; this list reads
-                 itself out. `aria-current` is what says which fact the span
-                 on the rail came from. -->
+                 itself out.
+
+                 `aria-current` is what says which fact the span on the rail
+                 came from. Not `aria-selected`, which is a listbox's word
+                 and would mean giving these rows `role="option"` inside a
+                 `role="listbox"` - a different keyboard contract (one tab
+                 stop, arrows between options) from the one the kit's rows
+                 have everywhere else in the app. Not `aria-pressed`, which
+                 would make each row a toggle and promise it can be
+                 unpressed; a span always comes from somewhere. -->
             <ListRow
               key={fact.id}
               data-span-fact={fact.kind}
