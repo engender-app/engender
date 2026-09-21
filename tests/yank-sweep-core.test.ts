@@ -25,6 +25,7 @@ import {
   hydrationScreensFor,
   missingProofYanks,
   parseCssColor,
+  replySlices,
   scenesFor
 } from './yank-sweep-core.mjs';
 
@@ -676,4 +677,38 @@ describe('colour distance arithmetic (ticket 136)', () => {
   });
 });
 
+/* Ticket 140. The WebView's devtools socket closes the connection for any
+   reply of 4 MiB or more - measured on the Pixel 10a (Vanadium 153): a
+   3.9 MB string comes back, 4.0 MB drops the socket, every time. The
+   sampler's frame table passes that on the app's densest screens, so the
+   device harness stringifies it page-side and pulls it back in slices.
+   What can be tested away from a phone is the arithmetic that cuts them. */
+describe('replySlices', () => {
+  it('returns one slice when the reply is already under the cap', () => {
+    expect(replySlices(500, 1000)).toEqual([[0, 500]]);
+  });
 
+  it('covers the whole string with no gap and no overlap', () => {
+    const slices = replySlices(2500, 1000);
+    expect(slices[0][0]).toBe(0);
+    expect(slices.at(-1)[1]).toBe(2500);
+    for (let i = 1; i < slices.length; i++) expect(slices[i][0]).toBe(slices[i - 1][1]);
+  });
+
+  it('never cuts a slice longer than the cap', () => {
+    for (const [from, to] of replySlices(5_764_000, 1_048_576)) expect(to - from).toBeLessThanOrEqual(1_048_576);
+  });
+
+  it('cuts /settings 5.76 MB reply into slices the socket carries', () => {
+    /* The measured payload: 178 marks over 211 frames. Every slice has to
+       leave room for the JSON the reply wraps it in, so the cap is a
+       quarter of the socket's own 4 MiB. */
+    const slices = replySlices(5_764_022, 1_048_576);
+    expect(slices).toHaveLength(6);
+    expect(slices.at(-1)[1]).toBe(5_764_022);
+  });
+
+  it('has nothing to cut for an empty reply', () => {
+    expect(replySlices(0, 1000)).toEqual([]);
+  });
+});
