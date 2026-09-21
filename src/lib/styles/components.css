@@ -920,7 +920,30 @@ a.segment {
    circle. Phase 5 UX ticket 23. */
 .segmented-wrap.is-compact { width: 100%; align-self: stretch; }
 .segmented.is-compact { display: flex; width: 100%; }
-.segmented.is-compact .segment { flex: 1; min-width: 0; padding-inline: var(--space-1); }
+/* An equal share of the width, but never less than the label needs
+   (phase 11 pre-production ticket 44). The compact form divides its track
+   between its segments, which is right while the labels fit and silently
+   wrong once one of them does not: a segment is `overflow: visible`, so a
+   label wider than its share paints outside its own pill, and the active
+   one paints in `var(--bg)` - page-coloured text on the page-coloured
+   track, which is a label with its last letters simply gone. Measured on
+   the voice screen, which four prose labels made the first control to
+   exceed the share at the reference width: "Recordings" is 76.2px against
+   69.5px of content box at 390px and 52px at 320px, so it was already
+   losing its last three letters before this ticket renamed anything.
+
+   `min-width: max-content` hands the overflow back to the track, which has
+   owned it all along - the non-compact form's own note above says the same
+   thing ("segments that keep their size so there is something to scroll"),
+   and the fade and the chevron that go with it are already built. `flex: 1`
+   still shares out whatever is left over, so a control whose labels fit is
+   laid out exactly as it was. Across the app that is all of them but two:
+   at 390px nothing overflows any more, and at 320px only this voice strip
+   and the roadmap's four tracks scroll - both of which were clipping their
+   last label at that width already. tests/voice-task-names.mjs sweeps every
+   compact control the app renders at both widths and holds that claim,
+   rather than leaving it as a sentence somebody measured once. */
+.segmented.is-compact .segment { flex: 1 1 auto; min-width: max-content; padding-inline: var(--space-1); }
 /* 5px, not 9px. The inset was tuned when the compact form carried six
    segments across the full width, where the pill is wider than it is tall
    whatever the inset. With three or six *short* labels the segments are wide

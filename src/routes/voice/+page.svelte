@@ -36,7 +36,7 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
@@ -89,6 +89,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -106,6 +107,11 @@
      the list's - two lines on one plot have to be told apart, and the flag
      has no spare band on trans, which yields three. */
   const SECTION_ROLE = { trend: 0, own: 0, ownPaired: 1, list: 1 };
+
+  /* A Svelte out-transition also runs when the page unmounts the block during
+     navigation, and reveal.ts cannot see a SvelteKit navigation, so the screen
+     says so - the same reading the More hub's own lists take. */
+  let leaving = $derived(navigating.to !== null);
 
   let requested = page.url.searchParams.get('tab');
   let tab = $state<Tab>(TABS.includes(requested as Tab) ? (requested as Tab) : 'record');
@@ -412,6 +418,50 @@
         compact
         key="voice-tab"
       />
+
+      <!-- Which of the two audio tasks is which (phase 11 pre-production
+           ticket 44). The names collided before it: "Record" made a
+           benchmark and "Recordings" held the memos an entry owns, one word
+           apart with nothing on the chooser saying that one of them produces
+           figures to set beside each other and the other keeps audio. The
+           names carry most of that now, and this line says the rest of it
+           until the first benchmark exists - at which point the screen has
+           the answer on it, and a sentence explaining what a benchmark is to
+           somebody who has made six is the kind of standing lecture the copy
+           rules keep off an everyday surface.
+
+           Only the record tab was renamed, and the ticket's own suggestion
+           of "My recordings" for the other one is not what shipped. The
+           qualifier would fit - the compact rule this ticket changed in
+           components.css lets any label keep its own width, and the track
+           scrolls for whatever is left over - so this is a choice about
+           scrolling rather than about fitting, and it is worth saying which.
+           The four labels now come to exactly the track's 340px at 390px
+           with "Recordings" on the end; "My recordings" is 96.4px against
+           that label's 76.2px, and "Moje nagrania" 96.6px against
+           "Nagrania"'s 62px, so either puts the strip 20px past its track on
+           the reference phone and the fourth task behind the scroll fade.
+           All four visible at once is the thing this screen is being asked
+           for, so the shorter label wins over the more explicit one.
+           "Record" beside "Recordings" was the collision anyway;
+           "Benchmark" beside it is not one, and the line below carries what
+           the qualifier would have added.
+
+           No benchmarks rather than no benchmarks and no memos: a person
+           with memos and no benchmark has still never used the task this
+           distinguishes, and the memo half already says what it holds in its
+           own empty notice. `disclose` because the read answers after the
+           tab strip is drawn, and a paragraph arriving at full height would
+           shove the tab under it down a line (hair-progress's wipe pair is
+           the same case). `skip` while the app is navigating away, because
+           Svelte runs an out-transition for a block the *page* unmounts too,
+           and a line collapsing its own height on the way off the screen is
+           the More hub's own note here. -->
+      {#if benchmarksQuery.empty}
+        <p class="muted small voice-tasks-lead" data-voice-tasks-lead transition:disclose={{ skip: leaving }}>
+          {m.vb_tasks_lead()}
+        </p>
+      {/if}
     </div>
 
     {#if tab === 'record'}
@@ -596,6 +646,12 @@
 </div>
 
 <style>
+  /* Under the control it is answering, at the gap a screen part's own rows
+     take from each other rather than a paragraph's default block margin. */
+  .voice-tasks-lead {
+    margin: var(--space-3) 0 0;
+  }
+
   /* The section owns the gap between its heading and its panel; the sheet
      owns the gap between sections (`.sheet`'s own, kit.css). */
   .vm-metric {
