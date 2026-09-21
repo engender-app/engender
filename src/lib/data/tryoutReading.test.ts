@@ -127,7 +127,7 @@ test('nothing is averaged, scored or concluded', () => {
   assert.deepEqual(keys, [
     'dayCount',
     'fromEpochDay',
-    'latestEpochDay',
+    'latest',
     'marks',
     'neutralLevel',
     'running',
@@ -137,8 +137,11 @@ test('nothing is averaged, scored or concluded', () => {
 
 test('the latest reading is named so the card can write it down beside the drawing', () => {
   const some = tryoutReading(tryout(), [felt(TODAY - 8, 1), felt(TODAY - 3, 5)], TODAY);
-  assert.equal(some.latestEpochDay, TODAY - 3);
-  assert.equal(tryoutReading(tryout(), [], TODAY).latestEpochDay, null);
+  assert.equal(some.latest?.epochDay, TODAY - 3);
+  /* The step as well as the day: the card says which one was chosen, and
+     reading it off a second field would let the two drift apart. */
+  assert.equal(some.latest?.mood, 5);
+  assert.equal(tryoutReading(tryout(), [], TODAY).latest, null);
 });
 
 test('one reading draws one mark, and none draws none', () => {
