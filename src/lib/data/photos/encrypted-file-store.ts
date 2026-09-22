@@ -17,10 +17,7 @@
    delete working with no idea encryption exists. */
 
 import type { PhotoFileStore } from '../journal/journal';
-import { encrypt, decrypt } from '../../crypto/aesGcm';
-
-const NONCE_LENGTH = 12;
-const GCM_TAG_LENGTH = 16;
+import { seal, open, SEAL_OVERHEAD } from '../../crypto/aesGcm';
 
 export function encryptedFileStore(inner: PhotoFileStore, dataKey: Uint8Array<ArrayBuffer>): PhotoFileStore {
   const nameBytes = (name: string) => new TextEncoder().encode(name) as Uint8Array<ArrayBuffer>;
@@ -31,24 +28,17 @@ export function encryptedFileStore(inner: PhotoFileStore, dataKey: Uint8Array<Ar
   };
   const sizeOne = async (name: string): Promise<number | null> => {
     const stored = await inner.size(name);
-    return stored === null ? null : stored - NONCE_LENGTH - GCM_TAG_LENGTH;
+    return stored === null ? null : stored - SEAL_OVERHEAD;
   };
-  const decryptOne = async (name: string, stored: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> => {
-    // subarray keeps views over the same buffer, avoiding per-file copies.
-    const nonce = stored.subarray(0, NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
-    const ciphertext = stored.subarray(NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
+  const decryptOne = (name: string, stored: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> =>
     // A tampered or foreign file throws DecryptionFailedError rather than
     // returning bytes that aren't a photo - loud, like the journal's own
     // failures (ADR-0017).
-    return decrypt(dataKey, nonce, ciphertext, nameBytes(name));
-  };
+    open(dataKey, stored, nameBytes(name));
 
   return {
     async write(name, bytes) {
-      const { nonce, ciphertext } = await encrypt(dataKey, bytes as Uint8Array<ArrayBuffer>, nameBytes(name));
-      const stored = new Uint8Array(nonce.length + ciphertext.length);
-      stored.set(nonce);
-      stored.set(ciphertext, nonce.length);
+      const stored = await seal(dataKey, bytes as Uint8Array<ArrayBuffer>, nameBytes(name));
       await inner.write(name, stored);
     },
 
@@ -76,7 +66,7 @@ export function encryptedFileStore(inner: PhotoFileStore, dataKey: Uint8Array<Ar
       if (names.length === 0) return [];
       if (!inner.sizeMany) return Promise.all(names.map(sizeOne));
       const stored = await inner.sizeMany(names);
-      return stored.map((size) => (size === null ? null : size - NONCE_LENGTH - GCM_TAG_LENGTH));
+      return stored.map((size) => (size === null ? null : size - SEAL_OVERHEAD));
     },
 
     remove: (name) => inner.remove(name),

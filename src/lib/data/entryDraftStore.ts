@@ -23,7 +23,7 @@
    reads as no draft at all, the same discard the shape check has always
    done. */
 
-import { decrypt, encrypt } from '../crypto/aesGcm';
+import { open, seal } from '../crypto/aesGcm';
 import type { PersistedEntryDraft } from './entryDraftPersistence';
 
 /* EntryDraftStore stays exported only for draft-mirror-probe.ts, which
@@ -37,8 +37,6 @@ export interface EntryDraftStore {
 /* ENTRY_DRAFT_STORE_KEY stays exported for its own test, and cross-checked in
    encryption-probe.ts (AU-09 test-only review). */
 export const ENTRY_DRAFT_STORE_KEY = 'engender-entry-draft';
-
-const NONCE_LENGTH = 12;
 
 // Hand-editable storage: anything that is not this shape is no draft at
 // all, the same rule attempt-store.ts applies to its own mirror.
@@ -109,12 +107,7 @@ export function localStorageEntryDraft(
         const raw = localStorage.getItem(ENTRY_DRAFT_STORE_KEY);
         if (!raw) return null;
         const stored = fromBase64(raw);
-        const plaintext = await decrypt(
-          key,
-          stored.subarray(0, NONCE_LENGTH) as Uint8Array<ArrayBuffer>,
-          stored.subarray(NONCE_LENGTH) as Uint8Array<ArrayBuffer>,
-          boundTo
-        );
+        const plaintext = await open(key, stored, boundTo);
         const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
         return isPersistedEntryDraft(parsed) ? parsed : null;
       } catch {
@@ -133,11 +126,8 @@ export function localStorageEntryDraft(
       if (mine !== latest) return; // a later edit, or an unmount, got here first
       try {
         const plaintext = new TextEncoder().encode(JSON.stringify(draft)) as Uint8Array<ArrayBuffer>;
-        const { nonce, ciphertext } = await encrypt(key, plaintext, boundTo);
+        const stored = await seal(key, plaintext, boundTo);
         if (mine !== latest) return; // a later edit already wrote itself
-        const stored = new Uint8Array(nonce.length + ciphertext.length);
-        stored.set(nonce);
-        stored.set(ciphertext, nonce.length);
         localStorage.setItem(ENTRY_DRAFT_STORE_KEY, toBase64(stored));
       } catch {
         /* storage full / private mode - a killed process just loses the draft */
