@@ -88,6 +88,8 @@ const CHARTED_METRICS = [
 
 /** What the search screen asks for one page of hits. */
 const SEARCH_PAGE = 30;
+/** What the tryout detail asks for one page of its entries. */
+const TRYOUT_ENTRIES_PAGE = 5;
 
 /** A word the fixture writes outside the entry note - its letters are
     addressed to a future self (generate.ts) - so the registry search is
@@ -687,11 +689,12 @@ export async function measureLongJournal(
   // `PAGE * pages` and a "load more" control, the same shape the three
   // search-* measurements above already use; this measurement now mirrors
   // that bounded call rather than the unbounded one it used to guard, since
-  // the unbounded shape is exactly what's gone from the app.
+  // the unbounded shape is exactly what's gone from the app. The page is
+  // five since phase 12 ticket 23, not search's thirty.
   await measure('tryout-detail-entries', 'tryout detail, one page and the total across its open-ended span', async () => {
     const range = { startEpochDay: summary.tryoutWideOpenStartEpochDay, endEpochDay: null };
     const [entries, total] = await Promise.all([
-      journal.entries.searchEntries('', [], range, SEARCH_PAGE),
+      journal.entries.searchEntries('', [], range, TRYOUT_ENTRIES_PAGE),
       journal.entries.countSearchMatches('', [], range)
     ]);
     return {
