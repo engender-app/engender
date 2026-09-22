@@ -181,7 +181,7 @@
   "day_recovery_photos": "Recovery photos",
   "day_tryout_photos": "Photos",
   "search": "Search",
-  "search_placeholder": "Search the whole journal…",
+  "search_placeholder": "Search",
   "search_hint": "Notes, tags, letters, questions, anything with words in it. With or without diacritics: “lozko” finds “łóżko”.",
   "list_more": "Show {count} more",
   "list_more_days": [
