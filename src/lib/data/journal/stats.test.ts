@@ -8,7 +8,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
-import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats.ts';
+import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from '../safeSpaceNudge.ts';
 
 /** The slider position a euphoria intensity of `intensity` maps to
     (bodyMap.ts's now-deleted `sliderToFeeling`, run by hand): tests below
