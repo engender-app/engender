@@ -737,7 +737,9 @@
         })}
       href="/care/labs"
     />
-    <ListRow key="hormone-curve" icon="curve" title={m.curve_title()} subtitle={curveReading} href="/care/curve" />
+    <!-- The reading lands once from curveDirectionQuery, replacing the row's
+         own silence with the curve's direction: faded, not cut. -->
+    <ListRow key="hormone-curve" icon="curve" title={m.curve_title()} subtitle={curveReading} href="/care/curve" fadeSwap />
     {#if unlanedStock.length > 0}
       <!-- Only what no lane above already states (ADR-0084 kept this row for
            the entry point that asks for no regimen to be running first: a

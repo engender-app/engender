@@ -60,6 +60,7 @@
   } from '$lib/data/wrapped';
   import type { DayAverage } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -433,7 +434,7 @@
            below is a number, and a 0 that becomes 31 a moment later reads as
            a wrong answer rather than a pending one. -->
     {:else if loading}
-      <Skeleton variant="block" count={1} />
+      <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if muted}
       <!-- Phase 6 ticket 05: an era somewhere in this period is muted, so
          nothing is read for it at all - not a thin recap, no recap.

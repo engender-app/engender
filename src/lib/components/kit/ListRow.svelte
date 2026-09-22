@@ -14,6 +14,7 @@
      a destination is a destination to the keyboard and to the screen reader
      as well as to the eye. */
   import type { Snippet } from 'svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import Icon from '../Icon.svelte';
   import Check from './Check.svelte';
 
@@ -42,6 +43,7 @@
   let {
     title,
     subtitle,
+    fadeSwap = false,
     icon,
     href,
     onclick,
@@ -60,6 +62,13 @@
     /** An array where the row states several things under its title - a
         procedure's date, its consults, its checklist. */
     subtitle?: RowLine | RowLine[];
+    /** Set where the row's words come from a read that lands once while the
+        row is on screen - the hub's lines, the curve row's reading, a day's
+        drug names - so the swap fades the previous words off instead of
+        cutting (the same asymmetry the skeleton's crossfade keeps: what
+        replaces them is simply there). Off by default, and a row whose
+        words tick must never set it: a fading swap on a clock is a pulse. */
+    fadeSwap?: boolean;
     /** A name from $lib/components/icons.ts. */
     icon?: string;
     href?: string;
@@ -117,6 +126,10 @@
   let subtitles = $derived(
     (Array.isArray(subtitle) ? subtitle : [subtitle]).filter(Boolean) as string[]
   );
+
+  /* Read at the moment a line leaves, so a row that never opts in (or one
+     whose words tick) pays nothing but the function call. */
+  const lineOut = (node: Element) => (fadeSwap ? crossfade(node) : { duration: 0 });
 </script>
 
 {#snippet body()}
@@ -126,8 +139,12 @@
     <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
   {/if}
   <span class="kit-row-text">
-    {#if title}<span class="kit-row-title" data-row-title>{title}</span>{/if}
-    {#each subtitles as line}<span class="kit-row-sub">{line}</span>{/each}
+    {#if title}
+      <span class="kit-row-title" data-row-title>
+        {#key title}<span out:lineOut>{title}</span>{/key}
+      </span>
+    {/if}
+    {#each subtitles as line, i (i + ':' + line)}<span class="kit-row-sub" out:lineOut>{line}</span>{/each}
   </span>
   <!-- A static row with nothing at its trailing edge gets no trailing edge:
        an empty flex item would still spend the row's gap and take that width

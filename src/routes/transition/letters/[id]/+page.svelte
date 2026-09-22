@@ -39,6 +39,7 @@
   import LetterCard from '$lib/components/LetterCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -59,7 +60,7 @@
   <ScreenHeader title={m.letters_title()} screen="letters" back="/transition/letters" />
 
   {#if letterQuery.loading}
-    <Skeleton variant="card" count={1} />
+    <div out:crossfade><Skeleton variant="card" count={1} /></div>
   {:else if !letter}
     <!-- A resurfaced letter can outlive its row: the card that linked here
          does not re-check, and the letter may have been deleted from the

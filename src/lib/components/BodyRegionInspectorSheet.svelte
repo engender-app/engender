@@ -11,6 +11,7 @@
   import { fmtDay } from '$lib/data/dates';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -73,7 +74,7 @@
   </div>
 
   {#if breakdownQuery.loading}
-    <div class="inspector-loading">
+    <div class="inspector-loading" out:crossfade>
       <Skeleton variant="block" count={3} />
     </div>
   {:else if !breakdown || breakdown.isEmpty}

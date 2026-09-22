@@ -22,6 +22,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
@@ -170,7 +171,7 @@
   <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
 
   {#if misgenderedQuery.loading || correctlyGenderedQuery.loading}
-    <Skeleton variant="block" count={2} />
+    <div out:crossfade><Skeleton variant="block" count={2} /></div>
   {:else}
     <ChartCard heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
       <AreaChart
