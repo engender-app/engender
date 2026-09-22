@@ -223,6 +223,12 @@ describe('markSvg cannot emit markup from its arguments', () => {
     expect([...svg.matchAll(/<svg/g)]).toHaveLength(1);
     expect(svg).toContain('aria-label="&quot;&gt;&lt;img&gt;"');
   });
+
+  it('a stripe that is merely not hex, not an attack, still falls back to black', () => {
+    for (const bad of ['red', '#fff', '#GGGGGG']) {
+      expect(circles(markSvg([bad], 'tile', 48))[0]).toContain('fill="#000000"');
+    }
+  });
 });
 
 describe('the mark never moves', () => {
