@@ -136,6 +136,26 @@ test('+, - and @ are guarded the same way, and a later one in the field is not',
   ]);
 });
 
+test('a custom dimension name and a custom tag label get the same guard, header included', () => {
+  // csvField backs every column, not just the note - a custom dimension
+  // name and a custom tag label are the person's own free text too, so a
+  // leading guard character is neutralised in the header and the tags
+  // column exactly as it is in the note.
+  const journal = journalOf([entry({ dims: { rent: 5 }, tags: ['expenses'] })]);
+  journal.dimensions.push({ key: 'rent', name: '=Rent', low: '', high: '', min: 0, max: 100, builtIn: false, hidden: false });
+  journal.tagGroups.push({
+    key: 'money',
+    name: '',
+    enabled: true,
+    builtIn: false,
+    tags: [{ id: 'expenses', label: '@work', builtIn: false, hidden: false }]
+  });
+
+  const csv = journalCsv(journal, naming);
+  assert.equal(rows(csv)[0], "date,time,mood,'=Rent,tags,note");
+  assert.equal(rows(csv)[1], "2026-01-15,07:15,,5,'@work,");
+});
+
 test('a journal with no entries is still a readable file', () => {
   assert.equal(journalCsv(journalOf([]), naming), 'date,time,mood,tags,note\n');
 });
