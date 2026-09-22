@@ -26,6 +26,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const manifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');
+const privacyPolicyEn = readFileSync(new URL('../docs/privacy-policy.en.md', import.meta.url), 'utf8');
+const privacyPolicyPl = readFileSync(new URL('../docs/privacy-policy.pl.md', import.meta.url), 'utf8');
 
 const declared = (): string[] =>
   [...manifest.matchAll(/<uses-permission\s+android:name="android\.permission\.([A-Z_]+)"/g)].map(
@@ -49,5 +51,20 @@ describe('android permissions', () => {
 
   it('declares exactly these six, so a seventh has to be argued for', () => {
     expect(declared().sort()).toEqual([...EXPECTED].sort());
+  });
+});
+
+describe('privacy policy names every permission the manifest declares (phase 12 ticket 12, audit finding S7)', () => {
+  it.each(EXPECTED)('%s appears in the English policy', (permission) => {
+    expect(privacyPolicyEn).toContain(permission);
+  });
+
+  it.each(EXPECTED)('%s appears in the Polish policy', (permission) => {
+    expect(privacyPolicyPl).toContain(permission);
+  });
+
+  it('both policies still say the app requests no INTERNET permission', () => {
+    expect(privacyPolicyEn).toContain('does not request the `INTERNET` permission');
+    expect(privacyPolicyPl).toContain('nie prosi o uprawnienie `INTERNET`');
   });
 });
