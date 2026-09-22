@@ -203,7 +203,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('draws no facts under the floor, where the thin-body line already says why', () => {
-    expect(stats).toMatch(/\{#if recapQuery\.loading \|\| activeSeriesQuery\.loading\}\s*<Skeleton variant="line" count=\{3\} \/>\s*\{:else if enoughEntries\}\s*<ListCard/);
+    expect(stats).toMatch(/\{#if recapQuery\.loading \|\| activeSeriesQuery\.loading\}\s*<Skeleton variant="line" count=\{3\} \/>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
   });
 
   it('gates the two look-back teasers separately, the way Home did', () => {
