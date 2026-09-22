@@ -865,14 +865,59 @@ export function collapse(
  * Reduced motion takes the duration to zero through `motionDuration`: the
  * skeleton is removed on the spot, which is tier 3's substitute. There is no
  * resting rule for the `to` state to match, because the node is gone by then.
- */
-export function crossfade(node: Element): TransitionConfig {
+ *
+ * The positioning is written to the node directly, once, rather than through
+ * `css()`'s own per-frame string. `css()` is sampled into a native CSS
+ * animation, and a freshly assigned `animation` only starts painting on the
+ * frame *after* the one that assigns it - so a value that only exists inside
+ * `css()` is still absent on the first frame the transition and the arriving
+ * content share. For an opacity fade a frame's delay is invisible; for
+ * `position: absolute` it is not, because until it lands the skeleton is
+ * still in flow at full height next to content already in its own final
+ * place, and everything below both is pushed down by the skeleton's height
+ * for that one frame before springing back (ticket 153, caught on a cold
+ * mount's `care` screen: `.kit-chart-empty` and its siblings dropped exactly
+ * one `Skeleton variant="block"` height, then returned). A direct style
+ * write takes effect in the same synchronous update that inserts the
+ * arriving content, so there is no frame where the skeleton was in flow.
+ *
+ * Out only, or that write never comes off. `css()`'s properties lived
+ * inside Svelte's own generated animation, which Svelte tears down when
+ * the transition ends whichever way it ran; a direct write to `node.style`
+ * is not part of that lifecycle; and `NoticedAxis.svelte` uses this on
+ * `transition:crossfade|global`, both ways, on a clickable mark. Svelte
+ * answers a bidirectional directive by calling this once with direction
+ * `'both'` - the same shape `collapse`, above, already handles - so a
+ * mark that had only ever *left* through this correctly went absolute and
+ * invisible, and one that *arrived* through it would otherwise be left
+ * permanently `position: absolute; z-index: -1; pointer-events: none`,
+ * painted behind its siblings with a dead `onclick`, forever. Told the
+ * direction, this only ever writes the positioning on the way out. */
+export function crossfade(
+  node: Element,
+  params?: unknown,
+  options?: { direction?: 'in' | 'out' | 'both' }
+): TransitionConfig {
+  if (options?.direction === 'both') {
+    return ((each?: { direction: 'in' | 'out' }) =>
+      crossfade(node, params, each)) as unknown as TransitionConfig;
+  }
+
   const width = node.getBoundingClientRect().width;
+  if (options?.direction !== 'in') {
+    const style = (node as HTMLElement).style;
+    if (style) {
+      style.position = 'absolute';
+      style.width = `${width}px`;
+      style.zIndex = '-1';
+      style.pointerEvents = 'none';
+    }
+  }
 
   return {
     duration: motionDuration('--dur-fast'),
     easing: EASE_OUT,
-    css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; z-index: -1; pointer-events: none`
+    css: (t) => `opacity: ${t}`
   };
 }
 

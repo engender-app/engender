@@ -48,8 +48,10 @@ afterEach(() => {
 const node = {} as Element;
 const frame = (css: (t: number, u: number) => string, t: number) => css(t, 1 - t);
 
-/** A node that knows how wide it is, which is all the crossfade asks of one. */
-const measured = (width: number) => ({ getBoundingClientRect: () => ({ width }) }) as unknown as Element;
+/** A node that knows how wide it is and can take a direct style write, which
+    is all the crossfade asks of one. */
+const measured = (width: number) =>
+  ({ getBoundingClientRect: () => ({ width }), style: {} }) as unknown as Element;
 
 describe('tier 3, the wipe', () => {
   it('uncovers from the left, so content arrives the way it is read', () => {
@@ -668,11 +670,21 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
   /* And it leaves the flow while it runs. Both blocks of an {#if}/{:else}
      are alive during a transition, so a skeleton fading out in normal flow
      holds its height and everything under it drops when it finally goes.
-     `.screen` is position:relative, which is what this resolves against. */
+     `.screen` is position:relative, which is what this resolves against.
+
+     Written to the node directly rather than through `css()` (ticket 153):
+     `css()` becomes a native CSS animation that only starts painting a
+     frame after it is assigned, so a skeleton whose `position: absolute`
+     lived there was still in flow - at full height, next to content already
+     in its final place - for the one frame between the DOM swap and the
+     animation's first paint, and everything under both was pushed down by
+     the skeleton's height until it sprang back. A direct write lands in the
+     same synchronous update that inserts the arriving content. */
   it('takes the placeholder out of the flow so nothing under it jumps', () => {
     stubDocument(false, true, {});
-    const { css } = crossfade(measured(240));
-    expect(frame(css!, 0.5)).toContain('position: absolute');
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.position).toBe('absolute');
   });
 
   /* Pinned to the node's own width: an absolutely positioned box with no
@@ -681,8 +693,9 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
      static position, which is where it already was. */
   it('keeps the width it had, so it does not narrow as it goes', () => {
     stubDocument(false, true, {});
-    const { css } = crossfade(measured(240));
-    expect(frame(css!, 0.5)).toContain('width: 240px');
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.width).toBe('240px');
   });
 
   /* Phase 5 ticket 32.16: a positioned element with no z-index still paints
@@ -693,13 +706,61 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
      the skeleton out of flow without also taking it out of the paint order. */
   it('paints behind the content it is fading off of', () => {
     stubDocument(false, true, {});
-    const { css } = crossfade(measured(240));
-    expect(frame(css!, 0.5)).toContain('z-index: -1');
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.zIndex).toBe('-1');
+  });
+
+  /* Out of flow and out from under the pointer both: a placeholder that
+     still intercepted taps would sit invisible over the content it used to
+     stand in for. */
+  it('stops taking taps once it is fading off', () => {
+    stubDocument(false, true, {});
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.pointerEvents).toBe('none');
   });
 
   it('removes the placeholder on the spot under reduced motion', () => {
     stubDocument(true, true, {});
     expect(crossfade(measured(240)).duration).toBe(0);
+  });
+
+  /* `NoticedAxis.svelte` uses this on `transition:crossfade|global`, both
+     ways, on a clickable mark - so an intro through this primitive must
+     never take the positioning `out:crossfade`'s callers rely on, or a
+     mark that arrived through it would be left permanently
+     `position: absolute; z-index: -1; pointer-events: none` and unclickable
+     (ticket 153's own fix would otherwise have introduced this: writing the
+     positioning to `node.style` directly, rather than through `css()`,
+     took it out of the styles Svelte reverts when a transition ends). */
+  it('never positions the node on the way in', () => {
+    stubDocument(false, true, {});
+    const node = measured(240);
+    crossfade(node, undefined, { direction: 'in' });
+    const style = (node as unknown as { style: CSSStyleDeclaration }).style;
+    expect(style.position).toBeUndefined();
+    expect(style.zIndex).toBeUndefined();
+    expect(style.pointerEvents).toBeUndefined();
+  });
+
+  /* Same shape `collapse` already handles: `transition:` is bidirectional,
+     and Svelte answers one by calling the primitive once with direction
+     'both', which only works if that call hands back a function for
+     Svelte to ask again once it knows which way this run actually is. */
+  it('defers to Svelte when a bidirectional directive asks', () => {
+    stubDocument(false, true, {});
+    const node = measured(240);
+    const both = crossfade(node, undefined, { direction: 'both' }) as unknown;
+    expect(typeof both).toBe('function');
+
+    const asked = both as (o: { direction: 'in' | 'out' }) => TransitionConfig;
+    asked({ direction: 'in' });
+    const style = (node as unknown as { style: CSSStyleDeclaration }).style;
+    expect(style.position).toBeUndefined();
+
+    asked({ direction: 'out' });
+    expect(style.position).toBe('absolute');
   });
 });
 
