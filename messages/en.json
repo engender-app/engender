@@ -2860,6 +2860,7 @@
   "wear_session_trend_region_group": "Compare against",
   "wear_session_trend_wear_legend": "Wear time (hours)",
   "wear_session_trend_region_legend": "{region} intensity",
+  "wear_session_trend_series_empty": "{series}: nothing logged in this range.",
   "wear_kind_group": "What are you logging?",
   "wear_kind_binder": "Binder",
   "wear_kind_tucking": "Tucking",

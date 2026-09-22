@@ -60,6 +60,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
+  import { wearTrendLegend } from '$lib/charts/wearLegend';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
   import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
@@ -445,6 +446,11 @@
   let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));
   let trendRegionLabel = $derived(trendRegionOptions.find((r) => r.value === trendRegion)?.label ?? '');
   let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
+  /* Per series rather than the chart's own both-empty guard (ticket 16,
+     audit U7): a series with no points in the range gets a note instead of
+     a promise it draws nothing on. wearLegend.ts is the pure, node-tested
+     half; this just supplies the two booleans. */
+  let legendEntries = $derived(wearTrendLegend(wearTrend.length > 0, regionTrend.length > 0));
 
   /* The presentation chip (ticket 17, ADR-0048): highlights, never
      filters, so both lines above keep drawing exactly what they draw
@@ -652,9 +658,18 @@
               ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
               : m.wear_session_trend_title()}
           />
-          <p class="muted small wear-trend-legend">
-            <span class="legend-dot legend-wear"></span>{m.wear_session_trend_wear_legend()}
-            <span class="legend-dot legend-region"></span>{m.wear_session_trend_region_legend({ region: trendRegionLabel })}
+          <p class="muted small wear-trend-legend" use:resize>
+            {#each legendEntries as entry (entry.series)}
+              {@const label =
+                entry.series === 'wear'
+                  ? m.wear_session_trend_wear_legend()
+                  : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
+              {#if entry.empty}
+                <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
+              {:else}
+                <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
+              {/if}
+            {/each}
           </p>
         {:else}
           <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
