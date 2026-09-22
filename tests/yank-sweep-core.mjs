@@ -349,8 +349,15 @@ export function scenesFor({ prove = false, only = [] } = {}) {
 
 /** Furniture rather than the app: the demo bar and a toast are injected over
     whatever is being looked at. A navigation needs no exemption at all now
-    that it is read off the pseudos rather than off the tree. */
-export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast/;
+    that it is read off the pseudos rather than off the tree.
+
+    `.sun-ring` (ticket 150) is FlagSun's per-stripe ring, redrawn rather
+    than recoloured when a flag is picked - the flipbook that shape replaced
+    already showed two flag colours mixed in sRGB spending 200ms as a muddy
+    tan, on the one step whose whole subject is colour (FlagSun.svelte,
+    onboarding's setup-paint comment), so a colour transition here is the
+    wrong fix, not a missing one. */
+export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\|/;
 
 /** The six deliberately wrong marks. All sit among real neighbours: the
     jump slides smoothly before it teleports, the cut fades part of the way
