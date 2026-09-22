@@ -31,9 +31,16 @@ export interface PlainNaming {
     hand-rolled CSV always gets wrong. Rows are separated by a bare LF
     rather than the RFC's CRLF - every spreadsheet reads both, and a note's
     own newlines are LF, so one file with two conventions in it would be
-    stranger than one that consistently uses the shorter. */
+    stranger than one that consistently uses the shorter.
+
+    A field starting with `=`, `+`, `-` or `@` is a formula to Excel and
+    LibreOffice, not text - and a note is a person's own words, sometimes
+    handed to a clinician, so a leading one gets a `'` in front of it. That
+    guard is a spreadsheet convention, not an RFC 4180 quote, so it runs
+    before the quoting check above and does not exempt the field from it. */
 function csvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const guarded = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
 }
 
 const csvRow = (fields: string[]) => fields.map(csvField).join(',');
