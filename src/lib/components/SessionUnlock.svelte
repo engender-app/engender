@@ -19,12 +19,12 @@
      device-bound mode has none, so it never reaches here - isLocked() is
      false for it, and quick exit's neutral page is the whole of what that
      combination can do. The settings copy says so rather than letting a
-     switch imply otherwise. So the device-bound branch below renders on
-     `mode === 'device-bound'` alone, with no separate `isAndroid()` guard:
-     isLocked() has already made Android the only platform that can hand
-     this screen that mode (final audit U2 - the guard used to leave the
-     web's impossible case with a button-less screen instead of not
-     existing at all). */
+     switch imply otherwise. The device-bound branch below still checks
+     isAndroid() itself even though isLocked() already guarantees it: a
+     button that calls Android's Keystore bridge is the wrong failure mode
+     for that guarantee ever breaking (final audit U2 - the gallery's own
+     `session-device` scene, retired, is what used to force the
+     combination on purpose). */
 
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -229,7 +229,7 @@
         <span>{busy ? m.pp_decrypting() : m.bm_unlock_action()}</span>
       </button>
     </div>
-  {:else if mode === 'device-bound'}
+  {:else if mode === 'device-bound' && isAndroid()}
     <div class="gate-actions">
       <button class="btn btn-primary" data-session-device-lock disabled={busy} onclick={useDeviceLock}>
         <span>{busy ? m.ak_unlocking() : m.ak_unlock_action()}</span>
