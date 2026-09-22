@@ -86,7 +86,7 @@ test("archive-restore's phases account for the whole of it", async () => {
    than on time. What this tier can check is that the counts arrive, that
    they are counts of something, and that the gate reads them; the numbers
    themselves are the browser tier's, on the decade fixture. */
-const MOUNTS = ['mount-home', 'mount-stats', 'mount-more-hub', 'mount-coming-back', 'mount-care'];
+const MOUNTS = ['mount-home', 'mount-stats', 'mount-more-hub', 'mount-coming-back', 'mount-care', 'mount-photos'];
 
 test('every screen mount is counted in statements and bytes, and nothing else is', async () => {
   const measurements = await measureSmallJournal();
