@@ -24,6 +24,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import { resize } from '$lib/motion/reveal';
   import { accessModeTitle } from '$lib/components/AccessModeSetup.svelte';
 
   let android = $derived(isAndroid());
@@ -52,7 +53,7 @@
 <div class="screen">
   <ScreenHeader title={m.settings_security_row()} back="/settings" subtitle={m.security_intro()} />
 
-  <div data-security-list>
+  <div data-security-list use:resize>
     <ListCard>
       <ListRow
         key="access-mode"
