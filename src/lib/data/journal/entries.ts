@@ -19,11 +19,11 @@
 
 import { BODY_REGION_MIDPOINT } from '../bodyMap';
 import type { WordFrequencySource } from '../wordFrequency';
-const GOOD_DAY_REGION_EUPHORIA_FLOOR = 50;
 import {
   BAD_MOMENT_MOOD_CEILING,
   BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
-  DYSPHORIA_TAG_KEYS
+  DYSPHORIA_TAG_KEYS,
+  GOOD_DAY_REGION_EUPHORIA_FLOOR
 } from '../safeSpaceNudge';
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
