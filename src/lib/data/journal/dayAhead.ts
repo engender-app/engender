@@ -183,7 +183,7 @@ const SECTIONS = [
   section({
     key: 'milestone',
     covers: ['milestones'],
-    tables: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
+    tables: ['milestone'],
     read: async (reading) => {
       const range = stillAhead(reading);
       if (!range) return [];
