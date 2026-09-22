@@ -736,7 +736,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
-      getMilestone: ['milestone'],
+      getMilestone: ['milestone', 'photo'],
       lastWriteEpochDay: ['procedure', 'appointment']
     }
   }),
