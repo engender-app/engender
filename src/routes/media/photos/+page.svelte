@@ -73,6 +73,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import { batchesFor, nextCount, remainingCount, shownCount } from '$lib/components/kit/batchedList';
+  import { rememberBatches, restoredBatches } from '$lib/navigation/scroll-region';
 
   /* One query over six tables, already dated and ordered by the journal
      (photoLibrary.ts). Thumbnails only - PhotoThumb never decodes a full
@@ -177,6 +179,43 @@
 
   let gridEl = $state<HTMLElement>();
 
+  /* Batches of the grid rendered into the DOM, so a journal with thousands
+     of photos paints as fast as one with a few hundred (this ticket, audit
+     finding P3). The same arithmetic and remembered-count store the dose
+     log's BatchedList uses (batchedList.ts, scroll-region.ts) - inlined
+     here rather than wrapped in that component, because BatchedList wraps
+     its rows in ListCard, a bordered list surface with a row hairline, and
+     this screen is a CSS grid of square tiles. What is bounded is the DOM
+     alone: `library` and `shown` stay full reads, so the source chips
+     (chipsFor, over `library`) and compare (`comparable`, over `library`)
+     both keep seeing every photo regardless of what the grid has painted. */
+  const photosPath = page.url.pathname;
+  let batches = $state(restoredBatches(photosPath, 'photos'));
+  let rendered = $derived(shown.slice(0, shownCount(batches, shown.length)));
+  let remaining = $derived(remainingCount(batches, shown.length));
+  let moreLabel = $derived(m.list_more({ count: nextCount(batches, shown.length) }));
+
+  function growGrid() {
+    if (remaining === 0) return;
+    batches += 1;
+    rememberBatches(photosPath, 'photos', batches);
+  }
+
+  let gridSentinel = $state<HTMLElement>();
+  $effect(() => {
+    if (!gridSentinel || remaining === 0) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    const root = gridSentinel.closest<HTMLElement>('[data-app-scroll-region]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) growGrid();
+      },
+      { root, rootMargin: '50%' }
+    );
+    observer.observe(gridSentinel);
+    return () => observer.disconnect();
+  });
+
   /* Whether the grid has been painted once. A tile that comes with the grid
      gets no entrance of its own, because the skeleton is already fading out
      over it (ReadGate, tests/feature-screens.test.ts); a tile that arrives
@@ -233,7 +272,16 @@
     };
   });
 
-  function jumpToYear(id: string) {
+  /* A year the scrubber names can sit past what the grid has painted, so
+     the jump grows the batch that holds it before scrolling - the same
+     expansion BatchedList gives a deep link (batchedList.ts, batchesFor). */
+  async function jumpToYear(id: string) {
+    const index = shown.findIndex((photo) => photo.id === id);
+    if (index >= 0) {
+      const needed = batchesFor(index);
+      if (needed > batches) batches = needed;
+    }
+    await tick();
     gridEl?.querySelector(`[data-photo-key="${id}"]`)?.scrollIntoView({
       behavior: isReducedMotion() ? 'auto' : 'smooth',
       block: 'start'
@@ -314,7 +362,7 @@
         <p class="photo-count" data-photo-count>{m.ph_count({ count: shown.length })}</p>
         <div class="photo-library">
           <div class="photo-grid" bind:this={gridEl}>
-            {#each shown as p (p.id)}
+            {#each rendered as p (p.id)}
               <div class="photo-cell-wrap" data-photo-key={p.id} data-photo-source={p.source} in:tileIn={{ when: painted }} out:pinnedOut>
                 {#if p.source === 'video'}
                   <!-- A note plays rather than being picked, and its tile
@@ -363,6 +411,17 @@
               </div>
             {/each}
           </div>
+
+          <!-- What the scroll is watched for, growing the grid a batch at a
+               time (BatchedList's own sentinel, batchedList.ts). Empty and
+               hidden: it is a position in the layout, not content. -->
+          <div class="photo-grid-edge" bind:this={gridSentinel} aria-hidden="true"></div>
+          {#if remaining > 0}
+            <button class="btn btn-soft press" data-photo-grid-more onclick={growGrid}>
+              <span>{moreLabel}</span>
+            </button>
+          {/if}
+
           {#if gridTall && marks.length}
             <div class="photo-years" data-photo-years>
               <div class="photo-years-inner" role="group" aria-label={m.ph_years_label()}>

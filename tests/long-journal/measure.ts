@@ -36,6 +36,7 @@ import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { analyseNotes, countWords } from '../../src/lib/data/wordFrequency.ts';
 import { readCare } from '../../src/lib/data/careReads.ts';
+import { BATCH } from '../../src/lib/components/kit/batchedList.ts';
 import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import type { LongJournalSummary } from './generate.ts';
 
@@ -978,6 +979,26 @@ export async function measureLongJournal(
       detail:
         `${care.lanes.length} lanes, ${care.stock.length} stock projections, ` +
         `${care.stockExcludedDoses} excluded doses, lab ${care.latestLab ? 'present' : 'none'}`
+    };
+  });
+
+  await mount('mount-photos', 'the photo grid, one query for the library plus thumbnails for its first batch', async () => {
+    /* The photo library screen (src/routes/media/photos/+page.svelte) reads
+       the whole library in one query - chips and compare both need every
+       photo, not the narrowed grid - and then paints one batch of tiles
+       (BatchedList's own BATCH, shared with the dose log), so this is the
+       screen's real first-paint cost rather than `photo-grid-thumbs`'s
+       upper bound over every photo (this ticket). */
+    const mountPhotos = await journal.photoLibrary.inJournal();
+    const firstBatch = mountPhotos.filter((photo) => photo.source !== 'video').slice(0, BATCH);
+    const loaded = await Promise.all(
+      firstBatch.flatMap((photo) => (photo.fileName ? [readThumbnail(photo.fileName)] : []))
+    );
+    const thumbs = loaded.filter((thumb) => thumb !== null);
+    const bytes = thumbs.reduce((total, thumb) => total + thumb.length, 0);
+    return {
+      result: [mountPhotos, thumbs],
+      detail: `${mountPhotos.length} photos in the library, ${firstBatch.length} thumbnails read for the first batch, ${bytes} thumbnail bytes`
     };
   });
 
