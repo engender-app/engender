@@ -212,7 +212,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('waits for the rail and has a day-one shape', () => {
-    expect(stats).toMatch(/\{#if railLoading\}\s*<Skeleton/);
+    expect(stats).toMatch(/\{#if railLoading\}\s*<div out:crossfade><Skeleton/);
     expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
   });
 });
