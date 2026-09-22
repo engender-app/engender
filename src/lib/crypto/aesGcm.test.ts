@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest';
 import { encrypt, decrypt, seal, open, SEAL_OVERHEAD, DecryptionFailedError } from './aesGcm.ts';
 import { capturedConsoleOutput } from './test-support/capture-console.ts';
+import { handConcat } from './test-support/hand-concat.ts';
 
 function makeKey() {
   return crypto.getRandomValues(new Uint8Array(32));
@@ -64,23 +65,23 @@ test('round-trips plaintext through seal then open', async () => {
   expect(new TextDecoder().decode(await open(key, sealed))).toBe('a sealed byte string');
 });
 
-test('seal lays out nonce then ciphertext, the same framing every store used to hand-build', async () => {
+test('seal lays out nonce first, then ciphertext, with no extra bytes', async () => {
   const key = makeKey();
   const plaintext = new TextEncoder().encode('framing stays put');
   const sealed = await seal(key, plaintext);
-  // What every store used to assemble itself: encrypt(), then nonce||ciphertext.
-  const { nonce, ciphertext } = await encrypt(key, plaintext);
-  expect(sealed.length).toBe(nonce.length + ciphertext.length);
   expect(sealed.length - plaintext.length).toBe(SEAL_OVERHEAD);
+
+  // The first 12 bytes decrypt as the nonce and the rest as the ciphertext -
+  // the order every store used to hand-assemble - not the other way round.
+  const plainBack = await decrypt(key, sealed.subarray(0, 12), sealed.subarray(12));
+  expect(new TextDecoder().decode(plainBack)).toBe('framing stays put');
 });
 
 test('open reads a byte string built the old way: encrypt(), then nonce concatenated with ciphertext by hand', async () => {
   const key = makeKey();
   const plaintext = new TextEncoder().encode('written before seal/open existed');
   const { nonce, ciphertext } = await encrypt(key, plaintext);
-  const handBuilt = new Uint8Array(nonce.length + ciphertext.length);
-  handBuilt.set(nonce);
-  handBuilt.set(ciphertext, nonce.length);
+  const handBuilt = handConcat(nonce, ciphertext);
 
   expect(new TextDecoder().decode(await open(key, handBuilt))).toBe('written before seal/open existed');
 });
