@@ -417,7 +417,7 @@
                hidden: it is a position in the layout, not content. -->
           <div class="photo-grid-edge" bind:this={gridSentinel} aria-hidden="true"></div>
           {#if remaining > 0}
-            <button class="btn btn-soft press" data-photo-grid-more onclick={growGrid}>
+            <button class="btn btn-soft press photo-grid-more" data-photo-grid-more onclick={growGrid}>
               <span>{moreLabel}</span>
             </button>
           {/if}
@@ -572,6 +572,13 @@
      the rail the grid's own top and bottom to stick between, so it arrives
      with the grid and leaves with it rather than riding the whole screen. */
   .photo-library { position: relative; }
+
+  /* The gap the grid and the card below it would have had as siblings of
+     the screen (screens.css's own .screen-part rhythm), now that this
+     control sits between them instead (Alicja, sign-off on this ticket:
+     wanted more room off the tiles' own date row above it). */
+  .photo-grid-more { margin-top: var(--space-3); }
+
   .photo-years {
     position: absolute;
     top: 0; bottom: 0; right: 0;
