@@ -394,7 +394,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       updateEntryTemplate: ['entryTemplate'],
       setEntryTemplateHidden: ['entryTemplate']
     },
-    reads: { getEntryTemplates: ['entryTemplate'] }
+    // A template names its tags and scales by key, joined through tag and
+    // gender_dimension, and a template's tag link goes by cascade when the
+    // tag is deleted.
+    reads: { getEntryTemplates: ['entryTemplate', 'tag', 'dimension'] }
   }),
   affirmations: classify<Journal['affirmations']>()({
     writes: {
@@ -429,10 +432,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteMilestone: ['milestone', 'photo', 'feltSense', 'document']
     },
     // A milestone is read back with its photos on it, the same way an entry
-    // is.
+    // is, and with the name of the procedure, tryout or custom goal it links
+    // to, so renaming one of those changes what the milestone reads as.
     reads: {
-      getMilestones: ['milestone', 'photo'],
-      getMilestonesOnDay: ['milestone', 'photo'],
+      getMilestones: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
+      getMilestonesOnDay: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
       // No photo join: the registry wants the date, not the photo indicator.
       lastWriteEpochDay: ['milestone']
     }
@@ -585,7 +589,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteSession: ['taper']
     },
     reads: {
-      getTaper: ['taper'],
+      // Joins the procedure for its uuid, and deleting the procedure takes
+      // the taper with it by cascade.
+      getTaper: ['taper', 'procedure'],
       getSessions: ['taper'],
       getSessionsOnDay: ['taper'],
       lastWriteEpochDay: ['taper']
@@ -631,7 +637,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   revisits: classify<Journal['revisits']>()({
     writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },
-    reads: { getRevisitForEntry: ['revisit'], getDueRevisits: ['revisit'] }
+    // Both join the entry, for the rowid a revisit hands back.
+    reads: { getRevisitForEntry: ['revisit', 'entry'], getDueRevisits: ['revisit', 'entry'] }
   }),
   marginNotes: classify<Journal['marginNotes']>()({
     writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },
@@ -729,7 +736,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
-      getMilestone: ['milestone'],
+      // The surgery milestone with its photo on it, as getMilestones reads it.
+      getMilestone: ['milestone', 'photo'],
       lastWriteEpochDay: ['procedure', 'appointment']
     }
   }),
@@ -1011,8 +1019,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   journalBook: classify<Journal['journalBook']>()({
     writes: {},
     // The entry half is a hydrated read, so it carries everything an entry
-    // is read back with; the opening page adds the recap's milestones.
-    reads: { getBook: [...HYDRATED_ENTRY, 'milestone', 'sideEffect'] }
+    // is read back with; the opening page adds the recap's milestones, with
+    // what getMilestones joins onto them.
+    reads: { getBook: [...HYDRATED_ENTRY, 'milestone', 'procedure', 'tryout', 'roadmapGoal', 'sideEffect'] }
   }),
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: classify<Journal['stats']>()({

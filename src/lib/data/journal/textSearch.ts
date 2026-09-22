@@ -467,7 +467,7 @@ const AREAS = [
   area({
     key: 'marginNotes',
     covers: ['marginNotes'],
-    tables: ['marginNote'],
+    tables: ['marginNote', 'entry'],
     from: 'margin_note mn JOIN entry e ON e.id = mn.entry_id',
     uuid: 'mn.uuid',
     date: { kind: 'epochDay', column: 'e.epoch_day' },
