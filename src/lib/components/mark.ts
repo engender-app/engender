@@ -102,6 +102,15 @@ export interface MarkOptions {
   label?: string;
 }
 
+/** Constrained rather than escaped, the way icons.ts holds its own
+    parameters to one shape (phase 12 audit finding S4): a stripe is a
+    6-digit hex colour or it is not painted at all, so nothing it carries
+    can close the attribute it sits in. Every stripe comes from
+    palettes.css today, which is why none of this was reachable. */
+function hexColor(value: string): string {
+  return /^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#000000';
+}
+
 /** The rings, outermost first. Each radius is pulled in by half a seam
     because the stroke straddles the boundary, so the outermost ring's black
     edge lands exactly on the sun's outside rather than half outside it. */
@@ -112,10 +121,18 @@ function ringMarkup(stripes: string[], ink: string | undefined): string {
       const r = (radius - MARK_SEAM / 2).toFixed(2);
       const paint = ink
         ? `fill="none" stroke="${ink}"`
-        : `fill="${stripes[i]}" stroke="#000"`;
+        : `fill="${hexColor(stripes[i])}" stroke="#000"`;
       return `<circle cx="${MARK_R}" cy="0" r="${r}" ${paint} stroke-width="${MARK_SEAM}"/>`;
     })
     .join('');
+}
+
+/** Escaped rather than rejected, because a label is free text and not one
+    fixed shape: the label sits only in the `aria-label` attribute below, so
+    escaping the characters that could close it or open an element is
+    enough to keep it plain text. */
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** The crop, and the line that follows it. A cropped mark's own outside
@@ -168,7 +185,8 @@ export function markSvg(
   size: number | string,
   { ink, ground, id, label }: MarkOptions = {}
 ): string {
-  const named = label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${label}"`;
+  const named =
+    label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${escapeAttr(label)}"`;
   const open =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
     + ` focusable="false" ${named}>`;

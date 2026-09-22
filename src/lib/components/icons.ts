@@ -166,8 +166,9 @@ export const PATHS: Record<string, string> = {
 
 /* The two parameters are constrained rather than escaped, because both have
    one shape and neither wants a wider one (phase 5 security ticket 03). This
-   string is rendered through {@html} in Icon.svelte - the only {@html} in the
-   app - so an argument that could carry a quote could carry an attribute, and
+   string is rendered through {@html} in Icon.svelte - one of two {@html}
+   sinks in the app, the other being Mark.svelte's - so an argument that
+   could carry a quote could carry an attribute, and
    an argument that could carry `<` could carry an element. `name` needs
    nothing: it is a key into the fixed map above and an unknown one falls back
    to `info`.
