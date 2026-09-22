@@ -88,7 +88,7 @@
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { collapse, crossfade, disclose } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -306,6 +306,7 @@
          here shares; under it the thin-body line below says why there is
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
+    <div class="screen-part" use:resize>
     {#if recapQuery.loading || activeSeriesQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
@@ -342,6 +343,7 @@
         </ListCard>
       </div>
     {/if}
+    </div>
 
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, here and

@@ -324,40 +324,36 @@
 
     <ReadGate read={stagesQuery} variant="line" count={2}>
       {#snippet rows()}
-        <div class="screen-part">
-          {#each stageGroups as group (group.scale)}
-            <!-- Each scale keeps its own card and its own name above it. A run
-                 of subtitles across two scales reads as one series, which is
-                 the thing ticket 33 split these groups apart to stop. -->
-            <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
-              {#each group.stages as s (s.id)}
-                {@const graded = isGradedScale(s.scale)}
-                <ListRow
-                  key={s.id}
-                  data-hair-stage={s.id}
-                  icon="comb"
-                  title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
-                  subtitle={stageSubtitle(s.epochDay)}
-                  chevron={false}
-                  onclick={() => stageRecord.openEditor(s)}
-                />
-              {/each}
-            </ListCard>
-          {/each}
-        </div>
+        {#each stageGroups as group (group.scale)}
+          <!-- Each scale keeps its own card and its own name above it. A run
+               of subtitles across two scales reads as one series, which is
+               the thing ticket 33 split these groups apart to stop. -->
+          <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
+            {#each group.stages as s (s.id)}
+              {@const graded = isGradedScale(s.scale)}
+              <ListRow
+                key={s.id}
+                data-hair-stage={s.id}
+                icon="comb"
+                title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
+                subtitle={stageSubtitle(s.epochDay)}
+                chevron={false}
+                onclick={() => stageRecord.openEditor(s)}
+              />
+            {/each}
+          </ListCard>
+        {/each}
       {/snippet}
       {#snippet empty()}
-        <div class="screen-part">
-          <Notice
-            icon="comb"
-            key="hair-stages-empty"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
-            title={m.hair_stage_empty_title()}
-            text={m.hair_stage_empty_body()}
-            action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
-          />
-        </div>
+        <Notice
+          icon="comb"
+          key="hair-stages-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
+          title={m.hair_stage_empty_title()}
+          text={m.hair_stage_empty_body()}
+          action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
+        />
       {/snippet}
     </ReadGate>
 

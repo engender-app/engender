@@ -52,7 +52,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, resize } from '$lib/motion/reveal';
 
   const today = todayEpochDay();
   const todayInput = dateInputValueFromEpochDay(today);
@@ -220,6 +220,7 @@
     </div>
   </div>
 
+  <div class="screen-part" use:resize>
   {#if range === null}
     <!-- Nothing to assemble until both boundaries are picked; the hint above already says so. -->
   {:else if bookQuery.loading || !book}
@@ -295,6 +296,7 @@
       </button>
     </SaveBar>
   {/if}
+  </div>
 </div>
 
 <style>

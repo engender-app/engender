@@ -208,83 +208,79 @@
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
     {#snippet rows()}
-      <div class="screen-part">
-        <!-- What is true now, before what was true before (rule 16). Two
-           readings, freshest first: the recovery notice while a session is
-           still close enough to say something about, then the per-area
-           recency that is true on every other visit - sessions land 7 to
-           300+ days apart per area (hairRemovalSchedule.ts), so unlike
-           dilation and wear's daily cadence, the week the strip draws is
-           usually empty and cannot carry the opening reading on its own.
-           The strip stays as the log's own shape, under both. -->
-        {#if recovery}
-          <Notice
-            icon="shuffle"
-            key="hair-removal-recovery"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-            title={hairRemovalAreaName(recovery.session.area)}
-            text={m.tile_hair_removal_guidance()}
+      <!-- What is true now, before what was true before (rule 16). Two
+         readings, freshest first: the recovery notice while a session is
+         still close enough to say something about, then the per-area
+         recency that is true on every other visit - sessions land 7 to
+         300+ days apart per area (hairRemovalSchedule.ts), so unlike
+         dilation and wear's daily cadence, the week the strip draws is
+         usually empty and cannot carry the opening reading on its own.
+         The strip stays as the log's own shape, under both. -->
+      {#if recovery}
+        <Notice
+          icon="shuffle"
+          key="hair-removal-recovery"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          title={hairRemovalAreaName(recovery.session.area)}
+          text={m.tile_hair_removal_guidance()}
+        />
+      {/if}
+      <SectionHeading text={m.hair_removal_recency_title()} />
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
+        {#each HAIR_REMOVAL_AREAS as area (area)}
+          {@const days = recency[area]}
+          <ListRow
+            data-recency={area}
+            title={hairRemovalAreaName(area)}
+            subtitle={days === null
+              ? m.hair_removal_area_never_used()
+              : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+            onclick={() => openSessionForArea(area)}
           />
-        {/if}
-        <SectionHeading text={m.hair_removal_recency_title()} />
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
-          {#each HAIR_REMOVAL_AREAS as area (area)}
-            {@const days = recency[area]}
+        {/each}
+      </ListCard>
+
+      <SectionHeading text={m.hair_removal()} />
+      {#if earliest !== null}
+        <DayStrip
+          {today}
+          markOf={(day) => markOf(day)}
+          labelOf={(day, mark) =>
+            m.strip_day_state({ day: dayLabel(day), state: dayAreasLabel(day) ?? m.adherence_nothing_logged() })}
+          {earliest}
+          onPick={openSessionFor}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+          bind:weeksBack
+        />
+      {/if}
+      {#if weekSessions.length === 0}
+        <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+      {:else}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+          {#each weekSessions as session (session.id)}
             <ListRow
-              data-recency={area}
-              title={hairRemovalAreaName(area)}
-              subtitle={days === null
-                ? m.hair_removal_area_never_used()
-                : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
-              onclick={() => openSessionForArea(area)}
+              key={session.id}
+              data-hair-removal-session={session.id}
+              icon="shuffle"
+              title={hairRemovalAreaName(session.area)}
+              subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+              chevron={false}
+              onclick={() => record.openEditor(session)}
             />
           {/each}
         </ListCard>
-
-        <SectionHeading text={m.hair_removal()} />
-        {#if earliest !== null}
-          <DayStrip
-            {today}
-            markOf={(day) => markOf(day)}
-            labelOf={(day, mark) =>
-              m.strip_day_state({ day: dayLabel(day), state: dayAreasLabel(day) ?? m.adherence_nothing_logged() })}
-            {earliest}
-            onPick={openSessionFor}
-            role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
-            bind:weeksBack
-          />
-        {/if}
-        {#if weekSessions.length === 0}
-          <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-        {:else}
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-            {#each weekSessions as session (session.id)}
-              <ListRow
-                key={session.id}
-                data-hair-removal-session={session.id}
-                icon="shuffle"
-                title={hairRemovalAreaName(session.area)}
-                subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
-                chevron={false}
-                onclick={() => record.openEditor(session)}
-              />
-            {/each}
-          </ListCard>
-        {/if}
-      </div>
+      {/if}
       <AreaFinish group="hair-removal" />
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="shuffle"
-          key="hair-removal-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={m.hair_removal_empty_title()}
-          text={m.hair_removal_empty_body()}
-          action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-        />
-      </div>
+      <Notice
+        icon="shuffle"
+        key="hair-removal-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+        title={m.hair_removal_empty_title()}
+        text={m.hair_removal_empty_body()}
+        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+      />
       <AreaFinish group="hair-removal" />
     {/snippet}
   </ReadGate>

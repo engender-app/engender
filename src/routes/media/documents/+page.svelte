@@ -224,16 +224,14 @@
       {/each}
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="documents"
-          key="documents-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.documents_empty_title()}
-          text={m.documents_empty_body()}
-          action={{ label: m.documents_empty_action(), primary: true, onclick: startImport }}
-        />
-      </div>
+      <Notice
+        icon="documents"
+        key="documents-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.documents_empty_title()}
+        text={m.documents_empty_body()}
+        action={{ label: m.documents_empty_action(), primary: true, onclick: startImport }}
+      />
     {/snippet}
   </ReadGate>
 

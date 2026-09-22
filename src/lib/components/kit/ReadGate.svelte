@@ -5,7 +5,7 @@
   import Skeleton from '../Skeleton.svelte';
   import { gateBranch } from './readGate';
   import type { LiveList } from '$lib/data/live/journal.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, resize } from '$lib/motion/reveal';
 
   let {
     read,
@@ -37,24 +37,37 @@
   let branch = $derived(gateBranch(read));
 </script>
 
-{#if branch === 'loading'}
-  <div out:crossfade><Skeleton {variant} {count} /></div>
-{:else}
-  {#if branch === 'failed' || branch === 'stale'}
-    <div role="status">
-      {#if branch === 'failed' && failed}
-        {@render failed()}
-      {/if}
-      <Notice
-        title={branch === 'stale' ? m.read_refresh_failed() : failed ? undefined : m.read_failed()}
-        text={branch === 'stale' ? m.read_stale_body() : undefined}
-        action={{ label: m.read_retry(), onclick: () => read.retry() }}
-      />
-    </div>
+<!-- The skeleton and whatever replaces it share one wrapper (ticket 144),
+     so the swap between them is a resize this persistent node can watch
+     rather than a mount/unmount neither `resize` nor a transition can
+     see: `out:crossfade` already takes the skeleton out of flow the
+     instant content lands, and until now nothing animated the height
+     that left behind, so the block's real size arrived in the same
+     frame and shoved every settled sibling under it. `screen-part`
+     rather than a bare div because this wrapper now sits where a
+     caller's own one used to (see each `rows`/`empty` snippet below) -
+     `.screen > .screen-part > *` (app.css) is what gives their content
+     its floor. -->
+<div class="screen-part" use:resize>
+  {#if branch === 'loading'}
+    <div out:crossfade><Skeleton {variant} {count} /></div>
+  {:else}
+    {#if branch === 'failed' || branch === 'stale'}
+      <div role="status">
+        {#if branch === 'failed' && failed}
+          {@render failed()}
+        {/if}
+        <Notice
+          title={branch === 'stale' ? m.read_refresh_failed() : failed ? undefined : m.read_failed()}
+          text={branch === 'stale' ? m.read_stale_body() : undefined}
+          action={{ label: m.read_retry(), onclick: () => read.retry() }}
+        />
+      </div>
+    {/if}
+    {#if branch === 'rows' || (branch === 'stale' && read.rows.length > 0)}
+      {@render rows(read.rows)}
+    {:else if branch === 'empty'}
+      {@render empty()}
+    {/if}
   {/if}
-  {#if branch === 'rows' || (branch === 'stale' && read.rows.length > 0)}
-    {@render rows(read.rows)}
-  {:else if branch === 'empty'}
-    {@render empty()}
-  {/if}
-{/if}
+</div>
