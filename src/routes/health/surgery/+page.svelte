@@ -292,39 +292,35 @@
 
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
-      <div class="screen-part">
-        {#each procedureGroups as group (group.key)}
-          <SectionHeading text={group.title} />
-          <div data-procedure-group={group.key}>
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
-              {#each group.procedures as procedure (procedure.id)}
-                <ProcedureRecoveryCard
-                  {procedure}
-                  selected={selectedId === procedure.id}
-                  {today}
-                  linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
-                  photos={photosByProcedure.get(procedure.id) ?? []}
-                  checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
-                  onclick={() => select(procedure)}
-                  onedit={() => record.openEditor(procedure)}
-                />
-              {/each}
-            </ListCard>
-          </div>
-        {/each}
-      </div>
+      {#each procedureGroups as group (group.key)}
+        <SectionHeading text={group.title} />
+        <div data-procedure-group={group.key}>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
+            {#each group.procedures as procedure (procedure.id)}
+              <ProcedureRecoveryCard
+                {procedure}
+                selected={selectedId === procedure.id}
+                {today}
+                linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
+                photos={photosByProcedure.get(procedure.id) ?? []}
+                checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
+                onclick={() => select(procedure)}
+                onedit={() => record.openEditor(procedure)}
+              />
+            {/each}
+          </ListCard>
+        </div>
+      {/each}
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="flag"
-          key="surgery-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
-          title={m.surgery_empty_title()}
-          text={m.surgery_empty_body()}
-          action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
-        />
-      </div>
+      <Notice
+        icon="flag"
+        key="surgery-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
+        title={m.surgery_empty_title()}
+        text={m.surgery_empty_body()}
+        action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
+      />
     {/snippet}
   </ReadGate>
 

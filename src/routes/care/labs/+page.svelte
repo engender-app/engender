@@ -433,112 +433,108 @@
 
   <ReadGate read={usedQuery} variant="block" count={1}>
     {#snippet rows()}
-      <div class="screen-part">
-        <Segmented
-          name={m.labs_analyte_group()}
-          options={analytes.map((a) => ({ value: a, label: a }))}
-          value={analyte}
-          onChange={(v) => (analyte = v)}
-          key="labs-analyte"
-        />
+    <Segmented
+      name={m.labs_analyte_group()}
+      options={analytes.map((a) => ({ value: a, label: a }))}
+      value={analyte}
+      onChange={(v) => (analyte = v)}
+      key="labs-analyte"
+    />
 
-        {#each series as s (s.unit)}
-          {@const chart = chartFor(s)}
-          {@const mixed = comparabilityLabels(seriesComparability(s.results))}
-          <div data-lab-series={s.unit}>
-            <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
-              {#snippet control()}
-                <!-- The unit on the heading's line, which is the one thing
-                     about this chart that is not the analyte above it. A
-                     series exists per unit precisely because a value in
-                     ng/dL and one in nmol/L differ by a factor of about 29. -->
-                <span class="muted small" data-series-unit>{s.unit || m.labs_no_unit()}</span>
-              {/snippet}
-              {#if chart}
-                {@const ends = fmtRangeEnds(chart.from, chart.to)}
-                <AreaChart
-                  points={chart.points}
-                  min={chart.min}
-                  max={chart.max}
-                  from={ends.from}
-                  to={ends.to}
-                  formatValue={(v) => `${Math.round(v * 100) / 100} ${s.unit || m.labs_no_unit()}`}
-                  scrubLabel={(_point, index) => scrubLine(s.results[index])}
-                  annotations={narrowAnnotations(annotationsQuery.rows, chart.from, chart.to)}
-                  ariaLabel={m.values_title({ name: analyte })}
-                />
-              {:else}
-                <ChartEmpty>{m.labs_too_little()}</ChartEmpty>
-              {/if}
-            </ChartCard>
-            <!-- Stated, not warned about: the series is drawn whole, and this
-                 says what it is made of (ticket 03). -->
-            {#if mixed.length}
-              <Notice
-                icon="info"
-                key="lab-mixed"
-                data-lab-mixed={s.unit}
-                title={m.labs_mixed_title()}
-                text={m.labs_mixed_body()}
+    {#each series as s (s.unit)}
+        {@const chart = chartFor(s)}
+        {@const mixed = comparabilityLabels(seriesComparability(s.results))}
+        <div data-lab-series={s.unit}>
+          <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
+            {#snippet control()}
+              <!-- The unit on the heading's line, which is the one thing
+                   about this chart that is not the analyte above it. A
+                   series exists per unit precisely because a value in
+                   ng/dL and one in nmol/L differ by a factor of about 29. -->
+              <span class="muted small" data-series-unit>{s.unit || m.labs_no_unit()}</span>
+            {/snippet}
+            {#if chart}
+              {@const ends = fmtRangeEnds(chart.from, chart.to)}
+              <AreaChart
+                points={chart.points}
+                min={chart.min}
+                max={chart.max}
+                from={ends.from}
+                to={ends.to}
+                formatValue={(v) => `${Math.round(v * 100) / 100} ${s.unit || m.labs_no_unit()}`}
+                scrubLabel={(_point, index) => scrubLine(s.results[index])}
+                annotations={narrowAnnotations(annotationsQuery.rows, chart.from, chart.to)}
+                ariaLabel={m.values_title({ name: analyte })}
               />
-              <ul class="lab-mixed-list">
-                {#each mixed as reason (reason)}<li>{reason}</li>{/each}
-              </ul>
+            {:else}
+              <ChartEmpty>{m.labs_too_little()}</ChartEmpty>
             {/if}
-          </div>
-        {/each}
+          </ChartCard>
+          <!-- Stated, not warned about: the series is drawn whole, and this
+               says what it is made of (ticket 03). -->
+          {#if mixed.length}
+            <Notice
+              icon="info"
+              key="lab-mixed"
+              data-lab-mixed={s.unit}
+              title={m.labs_mixed_title()}
+              text={m.labs_mixed_body()}
+            />
+            <ul class="lab-mixed-list">
+              {#each mixed as reason (reason)}<li>{reason}</li>{/each}
+            </ul>
+          {/if}
+        </div>
+      {/each}
 
-        <!-- Held until the results read answers: `results` is `[]` while it
-             runs, and an empty list card here is two hairlines around
-             nothing for the length of the round trip. Off `loading` rather
-             than off `length`, so an analyte with nothing to list still
-             draws its card once the read has answered. -->
-        {#if !resultsQuery.loading}
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
-            <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
-                 .lab-value (app.css) to opt back into text selection, and the
-                 context line carries .lab-context's own size and colour -
-                 both classes ListRow's plain title/subtitle strings have no
-                 room for. -->
-            {#each [...results].reverse() as r (r.id)}
-              <button
-                class="kit-row"
-                class:is-target-lab={r.id === deepLinkedLabId}
-                id={r.id}
-                data-lab-result={r.id}
-                aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                onclick={() => record.openEditor(r)}
-              >
-                <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
-                <span class="kit-row-text">
-                  <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
-                  <span class="kit-row-sub">
-                    {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
-                  </span>
-                  <!-- The context on its own line, not appended to the date: it is
-                       two more facts about the draw, and three of them run together
-                       stop being readable at 390px. -->
-                  {#if contextLine(r)}
-                    <span class="kit-row-sub lab-context">{contextLine(r)}</span>
-                  {/if}
+      <!-- Held until the results read answers: `results` is `[]` while it
+           runs, and an empty list card here is two hairlines around
+           nothing for the length of the round trip. Off `loading` rather
+           than off `length`, so an analyte with nothing to list still
+           draws its card once the read has answered. -->
+      {#if !resultsQuery.loading}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
+          <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
+               .lab-value (app.css) to opt back into text selection, and the
+               context line carries .lab-context's own size and colour -
+               both classes ListRow's plain title/subtitle strings have no
+               room for. -->
+          {#each [...results].reverse() as r (r.id)}
+            <button
+              class="kit-row"
+              class:is-target-lab={r.id === deepLinkedLabId}
+              id={r.id}
+              data-lab-result={r.id}
+              aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              onclick={() => record.openEditor(r)}
+            >
+              <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
+              <span class="kit-row-text">
+                <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
+                <span class="kit-row-sub">
+                  {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
                 </span>
-              </button>
-            {/each}
-          </ListCard>
-        {/if}
-      </div>
+                <!-- The context on its own line, not appended to the date: it is
+                     two more facts about the draw, and three of them run together
+                     stop being readable at 390px. -->
+                {#if contextLine(r)}
+                  <span class="kit-row-sub lab-context">{contextLine(r)}</span>
+                {/if}
+              </span>
+            </button>
+          {/each}
+        </ListCard>
+      {/if}
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="flask"
-          key="labs-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
-          title={m.labs_empty_title()}
-          text={m.labs_empty_body()}
-          action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-        />
-      </div>
+      <Notice
+        icon="flask"
+        key="labs-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
+        title={m.labs_empty_title()}
+        text={m.labs_empty_body()}
+        action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+      />
     {/snippet}
   </ReadGate>
 

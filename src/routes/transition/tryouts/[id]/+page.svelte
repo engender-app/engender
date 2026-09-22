@@ -376,34 +376,30 @@
     </button>
     <ReadGate read={feelingQuery} variant="line" count={2}>
       {#snippet rows()}
-        <div class="screen-part">
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
-            {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-              <ListRow
-                static
-                data-feeling={f.id}
-                title={dayLabel(f.epochDay)}
-                subtitle={f.note}
-                action={{
-                  icon: 'trash',
-                  label: m.tryout_feeling_delete_sheet(),
-                  onclick: () => feelingRecord.askToDelete(f),
-                  attrs: { 'data-delete-feeling': f.id }
-                }}
-              />
-            {/each}
-          </ListCard>
-        </div>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
+          {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
+            <ListRow
+              static
+              data-feeling={f.id}
+              title={dayLabel(f.epochDay)}
+              subtitle={f.note}
+              action={{
+                icon: 'trash',
+                label: m.tryout_feeling_delete_sheet(),
+                onclick: () => feelingRecord.askToDelete(f),
+                attrs: { 'data-delete-feeling': f.id }
+              }}
+            />
+          {/each}
+        </ListCard>
       {/snippet}
       {#snippet empty()}
-        <div class="screen-part">
-          <Notice
-            icon="heart"
-            key="tryout-feeling-empty"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
-            text={m.tryout_feeling_none()}
-          />
-        </div>
+        <Notice
+          icon="heart"
+          key="tryout-feeling-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
+          text={m.tryout_feeling_none()}
+        />
       {/snippet}
     </ReadGate>
 
@@ -438,27 +434,23 @@
     <SectionHeading text={m.tryout_entries_title()} />
     <ReadGate read={entriesInRangeRead} variant="card" count={2}>
       {#snippet rows()}
-        <div class="screen-part">
-          {#each entriesInRange as e (e.id)}
-            <EntryCard entry={e} />
-          {/each}
-          {#if entriesRemaining > 0}
-            <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
-              <span>{m.list_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
-            </button>
-          {/if}
-        </div>
+        {#each entriesInRange as e (e.id)}
+          <EntryCard entry={e} />
+        {/each}
+        {#if entriesRemaining > 0}
+          <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
+            <span>{m.list_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
+          </button>
+        {/if}
       {/snippet}
       {#snippet empty()}
-        <div class="screen-part">
-          <Notice
-            icon="book"
-            key="tryout-entries-empty"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
-            title={m.tryout_entries_none()}
-            text={m.tryout_entries_none_body()}
-          />
-        </div>
+        <Notice
+          icon="book"
+          key="tryout-entries-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
+          title={m.tryout_entries_none()}
+          text={m.tryout_entries_none_body()}
+        />
       {/snippet}
     </ReadGate>
 

@@ -332,51 +332,47 @@
 
   <ReadGate read={episodesQuery} variant="line" count={3}>
     {#snippet rows()}
-      <div class="screen-part">
-        <BatchedList
-          items={orderedEpisodes}
-          key="episodes"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
-          focusIndex={deepLinkedEpisodeIndex >= 0 ? deepLinkedEpisodeIndex : null}
-        >
-          {#snippet rows(shownEpisodes)}
-            {#each shownEpisodes as episode (episode.id)}
-              <ListRow
-                key={episode.id}
-                data-episode={episode.id}
-                id={episode.id}
-                icon="flask"
-                title={episode.drug}
-                subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
-                chevron={false}
-                onclick={() => openEditor(episode)}
-              >
-                {#snippet trailing()}
-                  <!-- Which episodes are running, at the end of the row rather
-                       than wedged into the drug's own name. A badge inside a
-                       title pushes the name it belongs to onto a second line as
-                       soon as the name is long, which every ester is. -->
-                  {#if activeIds.has(episode.id)}
-                    <span class="regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
-                  {/if}
-                {/snippet}
-              </ListRow>
-            {/each}
-          {/snippet}
-        </BatchedList>
-      </div>
+      <BatchedList
+        items={orderedEpisodes}
+        key="episodes"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
+        focusIndex={deepLinkedEpisodeIndex >= 0 ? deepLinkedEpisodeIndex : null}
+      >
+        {#snippet rows(shownEpisodes)}
+          {#each shownEpisodes as episode (episode.id)}
+            <ListRow
+              key={episode.id}
+              data-episode={episode.id}
+              id={episode.id}
+              icon="flask"
+              title={episode.drug}
+              subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
+              chevron={false}
+              onclick={() => openEditor(episode)}
+            >
+              {#snippet trailing()}
+                <!-- Which episodes are running, at the end of the row rather
+                     than wedged into the drug's own name. A badge inside a
+                     title pushes the name it belongs to onto a second line as
+                     soon as the name is long, which every ester is. -->
+                {#if activeIds.has(episode.id)}
+                  <span class="regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
+                {/if}
+              {/snippet}
+            </ListRow>
+          {/each}
+        {/snippet}
+      </BatchedList>
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="flask"
-          key="regimen-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
-          title={m.regimen_empty_title()}
-          text={m.regimen_empty_body()}
-          action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
-        />
-      </div>
+      <Notice
+        icon="flask"
+        key="regimen-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
+        title={m.regimen_empty_title()}
+        text={m.regimen_empty_body()}
+        action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
+      />
     {/snippet}
   </ReadGate>
 
