@@ -277,16 +277,14 @@
       {/if}
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="book"
-          key="letters-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.letters_empty_title()}
-          text={m.letters_empty_body()}
-          action={{ label: m.letters_compose_title(), primary: true, onclick: () => (composing = true) }}
-        />
-      </div>
+      <Notice
+        icon="book"
+        key="letters-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.letters_empty_title()}
+        text={m.letters_empty_body()}
+        action={{ label: m.letters_compose_title(), primary: true, onclick: () => (composing = true) }}
+      />
     {/snippet}
   </ReadGate>
 

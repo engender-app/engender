@@ -208,33 +208,29 @@
 
   <ReadGate read={erasQuery} count={3}>
     {#snippet rows(list)}
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each list as era (era.id)}
-            <ListRow
-              key={era.id}
-              data-era={era.id}
-              icon="columns"
-              title={era.name}
-              subtitle={spanText(era)}
-              chevron={false}
-              onclick={() => record.openEditor(era)}
-            />
-          {/each}
-        </ListCard>
-      </div>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each list as era (era.id)}
+          <ListRow
+            key={era.id}
+            data-era={era.id}
+            icon="columns"
+            title={era.name}
+            subtitle={spanText(era)}
+            chevron={false}
+            onclick={() => record.openEditor(era)}
+          />
+        {/each}
+      </ListCard>
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="columns"
-          key="eras-empty"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.eras_empty_title()}
-          text={m.eras_empty_body()}
-          action={{ label: m.eras_add(), primary: true, onclick: () => record.openEditor(null) }}
-        />
-      </div>
+      <Notice
+        icon="columns"
+        key="eras-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.eras_empty_title()}
+        text={m.eras_empty_body()}
+        action={{ label: m.eras_add(), primary: true, onclick: () => record.openEditor(null) }}
+      />
     {/snippet}
   </ReadGate>
 

@@ -446,15 +446,13 @@
         </div>
       {/snippet}
       {#snippet empty()}
-        <div class="screen-part">
-          <Notice
-            icon="image"
-            key="photos-empty"
-            role={roleAt(activeFlag.roles, 0)}
-            title={m.ph_empty_title()}
-            text={m.ph_empty_body()}
-          />
-        </div>
+        <Notice
+          icon="image"
+          key="photos-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.ph_empty_title()}
+          text={m.ph_empty_body()}
+        />
       {/snippet}
     </ReadGate>
 

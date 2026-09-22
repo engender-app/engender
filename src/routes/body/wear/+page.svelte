@@ -482,10 +482,10 @@
     {/snippet}
   </ScreenHeader>
 
+  <div class="screen-part" use:resize>
   {#if loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else}
-    <div class="screen-part">
       <!-- What is true now, before what was true before (rule 16): the week
            as a strip, and the session that is actually running under it. -->
       {#if earliest !== null}
@@ -557,30 +557,28 @@
           action={{ label: m.wear_session_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       {:else}
-        <div class="screen-part">
-          {#if weekSessions.length === 0}
-            <!-- Its own words rather than a day's answer stretched over
-                 seven, the same line dilation's empty week carries. -->
-            <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-          {:else}
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-              {#each weekSessions as session (session.id)}
-                {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
-                <ListRow
-                  key={session.id}
-                  data-wear-session={session.id}
-                  icon="clock"
-                  title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
-                  subtitle={session.note
-                    ? `${fmtDayLong(dayOf(session))} · ${session.note}`
-                    : fmtDayLong(dayOf(session))}
-                  chevron={false}
-                  onclick={() => record.openEditor(session)}
-                />
-              {/each}
-            </ListCard>
-          {/if}
-        </div>
+        {#if weekSessions.length === 0}
+          <!-- Its own words rather than a day's answer stretched over
+               seven, the same line dilation's empty week carries. -->
+          <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+        {:else}
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            {#each weekSessions as session (session.id)}
+              {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
+              <ListRow
+                key={session.id}
+                data-wear-session={session.id}
+                icon="clock"
+                title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
+                subtitle={session.note
+                  ? `${fmtDayLong(dayOf(session))} · ${session.note}`
+                  : fmtDayLong(dayOf(session))}
+                chevron={false}
+                onclick={() => record.openEditor(session)}
+              />
+            {/each}
+          </ListCard>
+        {/if}
       {/if}
 
       <!-- No heading over the range. The chart card under it is called
@@ -624,9 +622,7 @@
           {/if}
         </div>
       </div>
-      <div class="screen-part">
-        <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-      </div>
+      <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
       <ChartCard
         heading={m.wear_session_trend_title()}
         kind="wear-trend"
@@ -675,11 +671,11 @@
           <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
         {/if}
       </ChartCard>
-    </div>
 
     <!-- Saying you are done with this area (phase 8 features ticket 04). -->
     <AreaFinish group="wear" />
   {/if}
+  </div>
 
   <RecordSheet
     {record}

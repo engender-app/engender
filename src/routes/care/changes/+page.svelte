@@ -64,7 +64,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -347,20 +347,19 @@
     {/snippet}
   </ScreenHeader>
 
+  <div class="screen-part" use:resize>
   {#if episodesQuery.loading || markersQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else}
     <!-- What is true now, before the records (DIRECTION.md rule 16): every
          change already marked, at the month it was noticed, on one line. -->
-    <div class="screen-part">
-      <NoticedAxis
-        changes={noticedChanges}
-        {anchorEpochDay}
-        todayEpochDay={today}
-        onOpen={openMark}
-        onRecord={() => record.openEditor(null)}
-      />
-    </div>
+    <NoticedAxis
+      changes={noticedChanges}
+      {anchorEpochDay}
+      todayEpochDay={today}
+      onOpen={openMark}
+      onRecord={() => record.openEditor(null)}
+    />
 
     <!-- Under the axis rather than over it, and no longer instead of it.
          This notice used to replace the whole screen, so a journal with no
@@ -370,16 +369,14 @@
          a regimen would buy the line above it: months counted from a start
          day instead of calendar months. -->
     {#if anchorEpochDay == null}
-      <div class="screen-part">
-        <Notice
-          icon="sparkle"
-          key="effects-no-regimen"
-          role={roleAt(activeFlag.roles, 0)}
-          title={m.effects_no_regimen_title()}
-          text={m.effects_no_regimen_body()}
-          action={{ label: m.effects_no_regimen_action(), primary: true, href: '/care/regimen' }}
-        />
-      </div>
+      <Notice
+        icon="sparkle"
+        key="effects-no-regimen"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.effects_no_regimen_title()}
+        text={m.effects_no_regimen_body()}
+        action={{ label: m.effects_no_regimen_action(), primary: true, href: '/care/regimen' }}
+      />
     {/if}
 
     <!-- All three of these are about the literature's bands, so they keep
@@ -511,35 +508,31 @@
       <SectionHeading text={m.side_effects()} />
       <ReadGate read={effectsQuery} variant="line" count={3}>
         {#snippet rows()}
-          <div class="screen-part">
-            <ListCard role={roleAt(activeFlag.roles, 1)}>
-              {#each [...effects].reverse() as effect (effect.id)}
-                {@const severity = severityName(effect.severity)}
-                {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-                <ListRow
-                  key={effect.id}
-                  data-side-effect={effect.id}
-                  icon="zap"
-                  title={effect.name}
-                  subtitle={severity ? `${day} · ${severity}` : day}
-                  chevron={false}
-                  onclick={() => record.openEditor(effect)}
-                />
-              {/each}
-            </ListCard>
-          </div>
+          <ListCard role={roleAt(activeFlag.roles, 1)}>
+            {#each [...effects].reverse() as effect (effect.id)}
+              {@const severity = severityName(effect.severity)}
+              {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+              <ListRow
+                key={effect.id}
+                data-side-effect={effect.id}
+                icon="zap"
+                title={effect.name}
+                subtitle={severity ? `${day} · ${severity}` : day}
+                chevron={false}
+                onclick={() => record.openEditor(effect)}
+              />
+            {/each}
+          </ListCard>
         {/snippet}
         {#snippet empty()}
-          <div class="screen-part">
-            <Notice
-              icon="zap"
-              key="side-effects-empty"
-              role={roleAt(activeFlag.roles, 1)}
-              title={m.side_effect_empty_title()}
-              text={m.side_effect_empty_body()}
-              action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-            />
-          </div>
+          <Notice
+            icon="zap"
+            key="side-effects-empty"
+            role={roleAt(activeFlag.roles, 1)}
+            title={m.side_effect_empty_title()}
+            text={m.side_effect_empty_body()}
+            action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+          />
         {/snippet}
       </ReadGate>
     </div>
@@ -549,32 +542,31 @@
          gate): a second area, so a heading. -->
     {#if cycleShown && !cycleEventsQuery.loading}
       <SectionHeading text={m.cycle_events()} />
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, 2)}>
-          {#each recentCycleEvents as event (event.id)}
-            <!-- Static rows (the shape regimen's pause rows use, ticket 16):
-                 they name nothing to press, and routing them through ListRow
-                 would add a tab stop and a wash to text that does nothing.
-                 The trailing row below is the way in. -->
-            <div class="kit-row is-static" data-cycle-event={event.id}>
-              <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
-              <span class="kit-row-text">
-                <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
-                <span class="kit-row-sub">{fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-              </span>
-            </div>
-          {/each}
-          <ListRow
-            key="all-cycle-events"
-            icon="calendar"
-            title={m.cycle_events_open_row_title()}
-            subtitle={m.cycle_events_open_row_sub()}
-            href="/health/cycle-events"
-          />
-        </ListCard>
-      </div>
+      <ListCard role={roleAt(activeFlag.roles, 2)}>
+        {#each recentCycleEvents as event (event.id)}
+          <!-- Static rows (the shape regimen's pause rows use, ticket 16):
+               they name nothing to press, and routing them through ListRow
+               would add a tab stop and a wash to text that does nothing.
+               The trailing row below is the way in. -->
+          <div class="kit-row is-static" data-cycle-event={event.id}>
+            <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
+              <span class="kit-row-sub">{fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </span>
+          </div>
+        {/each}
+        <ListRow
+          key="all-cycle-events"
+          icon="calendar"
+          title={m.cycle_events_open_row_title()}
+          subtitle={m.cycle_events_open_row_sub()}
+          href="/health/cycle-events"
+        />
+      </ListCard>
     {/if}
   {/if}
+  </div>
 
   <!-- Hair progress, the one change that keeps its own screen (phase 9
        carpet ticket 16): a published scale and a camera behind it, so it
