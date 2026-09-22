@@ -102,13 +102,24 @@ export interface MarkOptions {
   label?: string;
 }
 
-/** Constrained rather than escaped, the way icons.ts holds its own
-    parameters to one shape (phase 12 audit finding S4): a stripe is a
-    6-digit hex colour or it is not painted at all, so nothing it carries
-    can close the attribute it sits in. Every stripe comes from
-    palettes.css today, which is why none of this was reachable. */
+/* markSvg's two inputs are constrained rather than trusted, the way
+   icons.ts holds `size` and `cls` to one shape each (phase 12 audit finding
+   S4): the string comes back out through {@html}, so an argument that could
+   carry a quote could carry an attribute. A stripe has one fixed shape and
+   is rejected to black when it doesn't match; a label is free text with no
+   such shape, so it's escaped instead. Neither is reachable today - stripes
+   come from palettes.css, no call site passes a label - which is why
+   nothing here was exploitable before this. */
+
+/** A hex colour, or black if the string carries anything else. */
 function hexColor(value: string): string {
   return /^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#000000';
+}
+
+/** Escaped for the `aria-label` attribute below, the only place a label is
+    written. */
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** The rings, outermost first. Each radius is pulled in by half a seam
@@ -125,14 +136,6 @@ function ringMarkup(stripes: string[], ink: string | undefined): string {
       return `<circle cx="${MARK_R}" cy="0" r="${r}" ${paint} stroke-width="${MARK_SEAM}"/>`;
     })
     .join('');
-}
-
-/** Escaped rather than rejected, because a label is free text and not one
-    fixed shape: the label sits only in the `aria-label` attribute below, so
-    escaping the characters that could close it or open an element is
-    enough to keep it plain text. */
-function escapeAttr(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** The crop, and the line that follows it. A cropped mark's own outside
