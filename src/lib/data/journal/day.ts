@@ -199,7 +199,7 @@ const SECTIONS = [
   section({
     key: 'milestones',
     covers: ['milestones'],
-    tables: ['milestone', 'photo'],
+    tables: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
     read: ({ milestones, epochDay }) => milestones.getMilestonesOnDay(epochDay)
   }),
   section({
