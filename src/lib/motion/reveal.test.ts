@@ -48,8 +48,10 @@ afterEach(() => {
 const node = {} as Element;
 const frame = (css: (t: number, u: number) => string, t: number) => css(t, 1 - t);
 
-/** A node that knows how wide it is, which is all the crossfade asks of one. */
-const measured = (width: number) => ({ getBoundingClientRect: () => ({ width }) }) as unknown as Element;
+/** A node that knows how wide it is and can take a direct style write, which
+    is all the crossfade asks of one. */
+const measured = (width: number) =>
+  ({ getBoundingClientRect: () => ({ width }), style: {} }) as unknown as Element;
 
 describe('tier 3, the wipe', () => {
   it('uncovers from the left, so content arrives the way it is read', () => {
@@ -668,11 +670,21 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
   /* And it leaves the flow while it runs. Both blocks of an {#if}/{:else}
      are alive during a transition, so a skeleton fading out in normal flow
      holds its height and everything under it drops when it finally goes.
-     `.screen` is position:relative, which is what this resolves against. */
+     `.screen` is position:relative, which is what this resolves against.
+
+     Written to the node directly rather than through `css()` (ticket 153):
+     `css()` becomes a native CSS animation that only starts painting a
+     frame after it is assigned, so a skeleton whose `position: absolute`
+     lived there was still in flow - at full height, next to content already
+     in its final place - for the one frame between the DOM swap and the
+     animation's first paint, and everything under both was pushed down by
+     the skeleton's height until it sprang back. A direct write lands in the
+     same synchronous update that inserts the arriving content. */
   it('takes the placeholder out of the flow so nothing under it jumps', () => {
     stubDocument(false, true, {});
-    const { css } = crossfade(measured(240));
-    expect(frame(css!, 0.5)).toContain('position: absolute');
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.position).toBe('absolute');
   });
 
   /* Pinned to the node's own width: an absolutely positioned box with no
@@ -681,8 +693,9 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
      static position, which is where it already was. */
   it('keeps the width it had, so it does not narrow as it goes', () => {
     stubDocument(false, true, {});
-    const { css } = crossfade(measured(240));
-    expect(frame(css!, 0.5)).toContain('width: 240px');
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.width).toBe('240px');
   });
 
   /* Phase 5 ticket 32.16: a positioned element with no z-index still paints
@@ -693,8 +706,9 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
      the skeleton out of flow without also taking it out of the paint order. */
   it('paints behind the content it is fading off of', () => {
     stubDocument(false, true, {});
-    const { css } = crossfade(measured(240));
-    expect(frame(css!, 0.5)).toContain('z-index: -1');
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.zIndex).toBe('-1');
   });
 
   it('removes the placeholder on the spot under reduced motion', () => {

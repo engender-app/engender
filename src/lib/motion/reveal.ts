@@ -865,14 +865,35 @@ export function collapse(
  * Reduced motion takes the duration to zero through `motionDuration`: the
  * skeleton is removed on the spot, which is tier 3's substitute. There is no
  * resting rule for the `to` state to match, because the node is gone by then.
- */
+ *
+ * The positioning is written to the node directly, once, rather than through
+ * `css()`'s own per-frame string. `css()` is sampled into a native CSS
+ * animation, and a freshly assigned `animation` only starts painting on the
+ * frame *after* the one that assigns it - so a value that only exists inside
+ * `css()` is still absent on the first frame the transition and the arriving
+ * content share. For an opacity fade a frame's delay is invisible; for
+ * `position: absolute` it is not, because until it lands the skeleton is
+ * still in flow at full height next to content already in its own final
+ * place, and everything below both is pushed down by the skeleton's height
+ * for that one frame before springing back (ticket 153, caught on a cold
+ * mount's `care` screen: `.kit-chart-empty` and its siblings dropped exactly
+ * one `Skeleton variant="block"` height, then returned). A direct style
+ * write takes effect in the same synchronous update that inserts the
+ * arriving content, so there is no frame where the skeleton was in flow. */
 export function crossfade(node: Element): TransitionConfig {
   const width = node.getBoundingClientRect().width;
+  const style = (node as HTMLElement).style;
+  if (style) {
+    style.position = 'absolute';
+    style.width = `${width}px`;
+    style.zIndex = '-1';
+    style.pointerEvents = 'none';
+  }
 
   return {
     duration: motionDuration('--dur-fast'),
     easing: EASE_OUT,
-    css: (t) => `opacity: ${t}; position: absolute; width: ${width}px; z-index: -1; pointer-events: none`
+    css: (t) => `opacity: ${t}`
   };
 }
 
