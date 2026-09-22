@@ -302,7 +302,16 @@ export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: n
 /* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
    (AU-09 test-only review). */
 export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
-const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
+const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'engender-stock-notice-snooze-until';
+/* Pre-rename name (audit finding S3): unprefixed, so the reset's
+   engender- prefix sweep left it behind. Migrated on first read rather
+   than dropped, so a snooze already in effect survives the rename.
+   Lazily on read rather than once at module load like
+   recentSearches.ts's purgeLegacyRecentSearches: the storage here is
+   whatever a caller passes in (a fake in tests), which a load-time call
+   has no access to, and there is a value worth carrying over rather than
+   just dropping. */
+const LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
 const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
@@ -311,10 +320,19 @@ function resolveStorage(storage?: Storage): Storage | null {
   return null;
 }
 
+function migrateLegacyStockNoticeSnooze(s: Storage): void {
+  if (s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY) !== null) return;
+  const legacy = s.getItem(LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY);
+  if (legacy === null) return;
+  s.setItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY, legacy);
+  s.removeItem(LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY);
+}
+
 export function isStockNoticeSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {
   const s = resolveStorage(storage);
   if (!s) return false;
   try {
+    migrateLegacyStockNoticeSnooze(s);
     const raw = s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
     if (!raw) return false;
     const until = Number(raw);
