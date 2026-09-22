@@ -656,6 +656,7 @@
   .cal-half {
     transition:
       background-color var(--dur-med) var(--ease-out),
+      border-color var(--dur-med) var(--ease-out),
       outline-color var(--dur-med) var(--ease-out),
       opacity var(--dur-med) var(--ease-out);
   }
