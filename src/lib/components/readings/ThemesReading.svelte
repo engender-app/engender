@@ -29,8 +29,7 @@
 
   let from = $derived(span.start);
   let to = $derived(span.end);
-  /* The Safe space readings screen's own stripe index, kept. */
-  const THEMES_ROLE = 2;
+  const CHART_ROLE = 0;
 
   let poolQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT, { from, to }));
   let themes = $derived(affirmingThemeCounts(poolQuery.rows));
@@ -65,7 +64,7 @@
     </ReadingTile>
   {/if}
 {:else}
-  <ChartCard heading={m.safe_space_chart_themes_title()} kind="affirming-themes" role={roleAt(activeFlag.roles, THEMES_ROLE)}>
+  <ChartCard heading={m.safe_space_chart_themes_title()} kind="affirming-themes" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     <ReadGate read={poolQuery} variant="line" count={3}>
       {#snippet rows()}
         {#if themes.length}
