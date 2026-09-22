@@ -19,7 +19,12 @@
      device-bound mode has none, so it never reaches here - isLocked() is
      false for it, and quick exit's neutral page is the whole of what that
      combination can do. The settings copy says so rather than letting a
-     switch imply otherwise. */
+     switch imply otherwise. So the device-bound branch below renders on
+     `mode === 'device-bound'` alone, with no separate `isAndroid()` guard:
+     isLocked() has already made Android the only platform that can hand
+     this screen that mode (final audit U2 - the guard used to leave the
+     web's impossible case with a button-less screen instead of not
+     existing at all). */
 
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -171,8 +176,15 @@
 
   /** Which sentence the way out gets. Only passphrase and PIN can be
       forgotten; the two prompt-driven modes have a device that will not
-      answer instead. */
-  let wayOut = $derived(mode === 'pin' ? m.pin_forgot() : mode === 'biometric' ? m.bm_no_way_in() : m.pp_forgot());
+      answer instead. Device-bound reuses the Keystore gate's own wording
+      (AndroidKeyGate.svelte) rather than a fresh pair of keys - same
+      device, same secret, same question. */
+  let wayOut = $derived(
+    mode === 'pin' ? m.pin_forgot()
+    : mode === 'biometric' ? m.bm_no_way_in()
+    : mode === 'device-bound' ? m.ak_forgot()
+    : m.pp_forgot()
+  );
 
   /* The one gate that can greet by name, and the whole of why: the journal is
      open behind this screen, so `prefs.name` has been read. Everything else
@@ -217,7 +229,7 @@
         <span>{busy ? m.pp_decrypting() : m.bm_unlock_action()}</span>
       </button>
     </div>
-  {:else if mode === 'device-bound' && isAndroid()}
+  {:else if mode === 'device-bound'}
     <div class="gate-actions">
       <button class="btn btn-primary" data-session-device-lock disabled={busy} onclick={useDeviceLock}>
         <span>{busy ? m.ak_unlocking() : m.ak_unlock_action()}</span>
@@ -246,13 +258,16 @@
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
       <!-- The note follows the title's noun: a sheet headed "Forgotten your
            PIN?" cannot open with a sentence about a passphrase (UI/UX
-           ticket 09). Biometric keeps its own note because its secret is a
-           device that will not answer, not something forgotten. -->
+           ticket 09). Biometric and device-bound keep their own notes
+           because their secret is a device that will not answer, not
+           something forgotten. -->
       {mode === 'pin'
         ? m.pin_forgot_key_note()
         : mode === 'biometric'
           ? m.bm_forgot_key_note()
-          : m.pp_forgot_key_note()}
+          : mode === 'device-bound'
+            ? m.ak_forgot_key_note()
+            : m.pp_forgot_key_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
