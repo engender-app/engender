@@ -129,6 +129,11 @@ const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
 const regimenTemplates: RegimenTemplate[] = regimenTemplateRows();
 
 export const vocabulary = {
+  /** Whether the mirror behind this module has been filled at least once
+      (ticket 152/162) - see `reference.ready`. */
+  get ready(): boolean {
+    return reference.ready;
+  },
   get dimensions(): GenderDimension[] {
     return reference.dimensions.map(localizeDimension);
   },

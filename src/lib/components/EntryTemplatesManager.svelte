@@ -14,8 +14,12 @@
      for where this mounts and why.
 
      No empty state: reconcile seeds every `ENTRY_TEMPLATES` built-in on
-     every boot, so the list is never empty the way a fresh presentations
-     list can be. */
+     every boot, so the list is never legitimately empty the way a fresh
+     presentations list can be - but on a cold navigation straight to this
+     sheet, `vocabulary.entryTemplates` reads empty for a few frames before
+     the mirror behind it hydrates (ticket 152/162), which looked exactly
+     like the never-happens empty state without `vocabulary.ready` below
+     telling the two apart. */
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -27,10 +31,12 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { crossfade, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -104,25 +110,31 @@
 </div>
 <p class="ob-text">{m.entry_templates_intro()}</p>
 
-<ListCard role={roleAt(activeFlag.roles, 0)}>
-  {#each templates as t (t.id)}
-    <ListRow
-      key={t.id}
-      data-entry-template={t.id}
-      title={t.name}
-      subtitle={[templateSummary(t), t.hidden ? m.tags_hidden() : undefined]}
-      chevron={false}
-      onclick={() => record.openEditor(t)}
-      action={{
-        icon: t.hidden ? 'eye' : 'eyeOff',
-        label: t.hidden
-          ? m.entry_template_show_aria({ name: t.name })
-          : m.entry_template_hide_aria({ name: t.name }),
-        onclick: () => toggleHidden(t)
-      }}
-    />
-  {/each}
-</ListCard>
+<div use:resize>
+  {#if !vocabulary.ready}
+    <div out:crossfade><Skeleton variant="line" count={3} /></div>
+  {:else}
+    <ListCard role={roleAt(activeFlag.roles, 0)}>
+      {#each templates as t (t.id)}
+        <ListRow
+          key={t.id}
+          data-entry-template={t.id}
+          title={t.name}
+          subtitle={[templateSummary(t), t.hidden ? m.tags_hidden() : undefined]}
+          chevron={false}
+          onclick={() => record.openEditor(t)}
+          action={{
+            icon: t.hidden ? 'eye' : 'eyeOff',
+            label: t.hidden
+              ? m.entry_template_show_aria({ name: t.name })
+              : m.entry_template_hide_aria({ name: t.name }),
+            onclick: () => toggleHidden(t)
+          }}
+        />
+      {/each}
+    </ListCard>
+  {/if}
+</div>
 
 <RecordSheet
   {record}

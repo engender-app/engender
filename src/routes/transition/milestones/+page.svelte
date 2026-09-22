@@ -61,8 +61,9 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -287,79 +288,87 @@
   <SourceRecordHandoff id={sourceId} ready={bootState.status === 'ready'} found={!!sourceMilestone} onOpen={() => openEditor(sourceMilestone!, null)} />
 
 
-  {#if sorted.length}
-    <!-- What is true now, before what was true before (DIRECTION.md rule
-         16). The rail carries today's place among the milestones and the
-         hollow marks ahead of it; the list under it is the same set as
-         rows, which is where a milestone is opened, edited or deleted. -->
-    <MilestoneRail
-      milestones={sorted}
-      eras={erasQuery.rows}
-      onOpen={(mi) => openEditor(mi, null)}
-      onOpenEra={(id) => goto(`/settings/eras?edit=${id}`)}
-    />
-    <ListCard role={roleAt(activeFlag.roles, 0)}>
-      <ListRow
-        data-ms-log-toggle
-        onclick={() => (milestoneListOpen = !milestoneListOpen)}
-        aria-expanded={milestoneListOpen}
-        chevron={false}
-        title={m.ms_log_heading()}
-      >
-        {#snippet trailing()}
-          {m.ms_log_heading_count({ count: sorted.length })}
-          <Icon name={milestoneListOpen ? 'chevronDown' : 'chevronRight'} size={20} />
-        {/snippet}
-      </ListRow>
-      {#if milestoneListOpen}
-        <div data-ms-log transition:disclose>
-          {#each sorted as mi (mi.id)}
-            {@const origin = resolveMilestoneOrigin(mi)}
-            <ListRow
-              key={mi.id}
-              data-milestone={mi.id}
-              icon="flag"
-              title={mi.name}
-              subtitle={[
-                `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
-                origin?.text,
-                mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
-              ]}
-              chevron={false}
-              onclick={() => openEditor(mi, null)}
-              action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
-            >
-              {#snippet leading()}
-                <!-- A milestone that has a photograph of itself shows it. The
-                     disc with a flag in it is what a milestone without one
-                     gets, rather than the picture being a fourth thing on the
-                     row beside the glyph standing in for it.
+  <div use:resize>
+    {#if !vocabulary.ready}
+      <!-- `sorted` reads `[]` on a cold navigation straight to this screen
+           for a few frames before the mirror behind it hydrates, which
+           otherwise looked exactly like the true "no milestones yet"
+           empty state below (ticket 152/162). -->
+      <div out:crossfade><Skeleton variant="block" count={1} /></div>
+    {:else if sorted.length}
+      <!-- What is true now, before what was true before (DIRECTION.md rule
+           16). The rail carries today's place among the milestones and the
+           hollow marks ahead of it; the list under it is the same set as
+           rows, which is where a milestone is opened, edited or deleted. -->
+      <MilestoneRail
+        milestones={sorted}
+        eras={erasQuery.rows}
+        onOpen={(mi) => openEditor(mi, null)}
+        onOpenEra={(id) => goto(`/settings/eras?edit=${id}`)}
+      />
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        <ListRow
+          data-ms-log-toggle
+          onclick={() => (milestoneListOpen = !milestoneListOpen)}
+          aria-expanded={milestoneListOpen}
+          chevron={false}
+          title={m.ms_log_heading()}
+        >
+          {#snippet trailing()}
+            {m.ms_log_heading_count({ count: sorted.length })}
+            <Icon name={milestoneListOpen ? 'chevronDown' : 'chevronRight'} size={20} />
+          {/snippet}
+        </ListRow>
+        {#if milestoneListOpen}
+          <div data-ms-log transition:disclose>
+            {#each sorted as mi (mi.id)}
+              {@const origin = resolveMilestoneOrigin(mi)}
+              <ListRow
+                key={mi.id}
+                data-milestone={mi.id}
+                icon="flag"
+                title={mi.name}
+                subtitle={[
+                  `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
+                  origin?.text,
+                  mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
+                ]}
+                chevron={false}
+                onclick={() => openEditor(mi, null)}
+                action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
+              >
+                {#snippet leading()}
+                  <!-- A milestone that has a photograph of itself shows it. The
+                       disc with a flag in it is what a milestone without one
+                       gets, rather than the picture being a fourth thing on the
+                       row beside the glyph standing in for it.
 
-                     Round, and at the disc's own size: a list where some rows
-                     lead with a circle and others with a rounded square reads
-                     as two lists interleaved, which is what the rendered screen
-                     showed (2026-08-26). -->
-                {#if mi.photo}
-                  <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
-                {:else}
-                  <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
-                {/if}
-              {/snippet}
-            </ListRow>
-          {/each}
-        </div>
-      {/if}
-    </ListCard>
-  {:else}
-    <Notice
-      icon="flag"
-      key="milestones-empty"
-      role={roleAt(activeFlag.roles, 0)}
-      title={m.ms_none()}
-      text={m.ms_intro()}
-      action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
-    />
-  {/if}
+                       Round, and at the disc's own size: a list where some rows
+                       lead with a circle and others with a rounded square reads
+                       as two lists interleaved, which is what the rendered screen
+                       showed (2026-08-26). -->
+                  {#if mi.photo}
+                    <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
+                  {:else}
+                    <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+                  {/if}
+                {/snippet}
+              </ListRow>
+            {/each}
+          </div>
+        {/if}
+      </ListCard>
+    {:else}
+      <Notice
+        icon="flag"
+        key="milestones-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.ms_none()}
+        text={m.ms_intro()}
+        action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
+      />
+    {/if}
+  </div>
 
   <Sheet open={picking} title={m.ms_add_heading()} onClose={() => (picking = false)}>
     <div class="spread" style="margin-bottom:var(--space-3)">
