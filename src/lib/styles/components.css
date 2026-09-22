@@ -621,40 +621,6 @@
   outline-offset: 2px;
 }
 
-/* ---------- cards & rows ---------- */
-/* The old world's generic surface, and the one rule 4 reaches furthest
-   through: 13 routes draw a `.card` and none of them is a list, a chart or
-   a tile, so ticket 07 could not re-token it and handed it here.
-
-   What changed is the elevation, not the box. Rule 4 gives the app one
-   shadow and it belongs to the floating bar; a card that floats is a third
-   voice saying "this is a thing" beside the colour that is content and the
-   lines that are structure. The edge the shadow was standing in for is
-   drawn instead - the same trade the sheet made when it gave up --shadow-3
-   for a line (see .sheet below).
-
-   At --outline rather than --hairline, which rule 4 assigns to "the edge
-   inside a block": this is a block's own edge, and the rows inside a card
-   are already separated at --hairline. Drawn at the same weight, the
-   boundary of the group and the separators within it say the same thing,
-   and the card reads as four stacked bands rather than as one object -
-   which is the hierarchy the shadow used to carry. Measured, on the light
-   theme: --outline is 1.56:1 against both the card and the page where
-   --hairline is 1.39:1, and the card's own ground is only 1.07:1 from the
-   page, so the edge is doing nearly all of the work.
-
-   What did not change is that this is still a box. Laying each of those 13
-   screens' content flush on the page is an arrangement change per screen,
-   which is the carpet's (ticket 20 files them); one shared line can retire
-   the elevation without touching a single screen's structure, and that is
-   what this is. */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-block);
-  padding: var(--space-4);
-}
-
 /* ---------- switch ---------- */
 /* One switch, and one accessibility contract for it. This was styled twice:
    once for a hidden checkbox with `:checked` selectors, and once further down
@@ -2965,8 +2931,8 @@ html[data-a11y-motion='reduce'] .skeleton::after {
   .skeleton::after { display: none; }
 }
 
-/* A placeholder wears what it is standing in for, so both of these follow
-   .card above: its edge, and no elevation. */
+/* A placeholder wears what it is standing in for: an outline edge, and no
+   elevation. */
 .skeleton-card {
   background: var(--surface);
   border: 1px solid var(--outline);
