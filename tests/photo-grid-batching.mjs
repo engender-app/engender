@@ -64,27 +64,38 @@ try {
   console.log(`first grid paint: ${paintMs}ms (dev server, unencrypted - not the recorded budget; see mount-photos)`);
 
   const renderedAtRest = await page.locator('[data-photo-key]').count();
-  assert.ok(
-    renderedAtRest <= BATCH * 2,
-    `grid painted ${renderedAtRest} tiles for a ${PHOTOS}-photo library; expected at most ${BATCH * 2} (one batch beyond the viewport)`
+  assert.equal(
+    renderedAtRest,
+    BATCH,
+    `grid painted ${renderedAtRest} tiles for a ${PHOTOS}-photo library; expected exactly one batch (${BATCH}) at rest`
   );
-  assert.ok(renderedAtRest > 0, 'grid painted nothing');
 
   // The "more" control only shows while a batch remains unrendered - its
-  // presence is itself proof the grid did not render all 3000 at once.
-  await page.locator('[data-photo-grid-more]').waitFor();
-
-  await page.locator('[data-photo-grid-more]').click();
-  await page.waitForFunction(
-    (before) => document.querySelectorAll('[data-photo-key]').length > before,
-    renderedAtRest
-  );
-  const renderedAfterGrow = await page.locator('[data-photo-key]').count();
+  // presence is itself proof the grid did not render all 3000 at once. Grown
+  // five times over, so the bound holds across continued scrolling rather
+  // than at one point: each press adds exactly one batch, never the rest of
+  // the library, all the way up to a DOM six batches deep.
+  const GROWTHS = 5;
+  let lastCount = renderedAtRest;
+  for (let i = 1; i <= GROWTHS; i++) {
+    await page.locator('[data-photo-grid-more]').click();
+    await page.waitForFunction(
+      (before) => document.querySelectorAll('[data-photo-key]').length > before,
+      lastCount
+    );
+    const grown = await page.locator('[data-photo-key]').count();
+    assert.equal(
+      grown,
+      lastCount + BATCH,
+      `press ${i} of "more" grew the grid to ${grown} tiles; expected exactly ${lastCount + BATCH} (one more batch)`
+    );
+    lastCount = grown;
+  }
+  const renderedAfterGrow = lastCount;
   assert.ok(
-    renderedAfterGrow <= BATCH * 3,
-    `grid grew past ${BATCH * 3} tiles after one "more" press: ${renderedAfterGrow}`
+    renderedAfterGrow < PHOTOS,
+    `grid grew to ${renderedAfterGrow} tiles after ${GROWTHS} "more" presses - still nowhere near the ${PHOTOS}-photo library, which is the point`
   );
-  assert.ok(renderedAfterGrow > renderedAtRest, 'the "more" control did not grow the grid');
 
   const countLabel = await page.locator('[data-photo-count]').innerText();
   const countDigits = Number((countLabel.match(/[\d,. ]+/) ?? [''])[0].replace(/[^\d]/g, ''));
