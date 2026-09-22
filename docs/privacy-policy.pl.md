@@ -62,6 +62,24 @@ Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. W samej aplikacji
 dane zostają na urządzeniu. Przy zwykłym używaniu aplikacja nie otwiera połączeń
 sieciowych i nie wysyła wpisów na żaden serwer.
 
+Uprawnienia, o które prosi, pokrywają trzy cele:
+
+- `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` i `RECEIVE_BOOT_COMPLETED` –
+  dzięki nim przypomnienie albo codzienne pytanie może się pokazać, odezwać
+  się o wybranej przez ciebie porze zamiast w zbiorczym oknie systemu
+  i zadziałać także po restarcie urządzenia.
+- `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS` – do notatek głosowych.
+- `CAMERA` – do notatek wideo. Samo zdjęcie robi za to systemowa aplikacja
+  aparatu, bez żadnego uprawnienia po stronie tej aplikacji.
+
+Przypomnienia i codzienne pytanie domyślnie pokazują tylko ogólny tytuł,
+nawet na zablokowanym ekranie; ustawienie w sekcji Powiadomienia wyłącza to
+i pokazuje prawdziwy tytuł.
+
+Kopiowanie klucza odzyskiwania na Androidzie trafia na wpis schowka oznaczony
+jako wrażliwy, pominięty w historii schowka klawiatury; aplikacja usuwa go po
+minucie.
+
 Lokalny dziennik na Androidzie otwiera się w jednym z czterech trybów:
 
 - kluczem chronionym przez Android Keystore i blokadę ekranu lub biometrię

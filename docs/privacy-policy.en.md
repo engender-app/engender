@@ -60,6 +60,24 @@ The Android app does not request the `INTERNET` permission. Inside the app,
 journal content stays on the device. It opens no network sockets and sends no
 journal data to any server during normal use.
 
+The permissions it does request cover three purposes:
+
+- `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED`,
+  so a reminder or the daily check-in can notify you, fire at the time you
+  chose instead of a batched system window, and still fire after the device
+  restarts.
+- `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes.
+- `CAMERA`, for video notes. A still photo instead opens the system camera
+  app, which needs no permission from this app.
+
+Reminder and check-in notifications show only a generic label by default,
+even on a locked screen; a setting under Notifications turns that off and
+shows the real title instead.
+
+Copying the recovery key on Android puts it on a clipboard entry marked
+sensitive and kept out of the keyboard's own clipboard history; the app
+removes it again after one minute.
+
 The local Android journal opens through one of four access modes:
 
 - Device-bound access protected by Android Keystore, gated by the device
