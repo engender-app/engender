@@ -208,6 +208,29 @@ describe('the tile belongs to the icon, not to the app', () => {
   });
 });
 
+describe('markSvg cannot emit markup from its arguments', () => {
+  it('a stripe and a label carrying a breakout emit no new element or attribute', () => {
+    /* No call site passes either from outside the app today (stripes come
+       from palettes.css), the way icons.ts's parameters were never called
+       with anything but literals - constrained here anyway, on the same
+       reasoning (phase 12 audit finding S4). */
+    const svg = markSvg(['#fff"/><script>x</script><circle fill="#000'], 'tile', 48, {
+      label: '"><img>'
+    });
+    expect(svg).not.toContain('<script');
+    expect(svg).not.toContain('<img');
+    expect([...svg.matchAll(/<circle/g)]).toHaveLength(1);
+    expect([...svg.matchAll(/<svg/g)]).toHaveLength(1);
+    expect(svg).toContain('aria-label="&quot;&gt;&lt;img&gt;"');
+  });
+
+  it('a stripe that is merely not hex, not an attack, still falls back to black', () => {
+    for (const bad of ['red', '#fff', '#GGGGGG']) {
+      expect(circles(markSvg([bad], 'tile', 48))[0]).toContain('fill="#000000"');
+    }
+  });
+});
+
 describe('the mark never moves', () => {
   /* Alicja, 2026-09-21, unprompted mid-round: "the logos ARE NOT SUPPOSED
      TO MOVE AT ALL". No entrance, no breathing, no hover, no
