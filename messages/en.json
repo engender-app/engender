@@ -3457,6 +3457,7 @@
   "words_reading_needs_stretch": "Name an era, or add a mode, and the words you use there show up here.",
   "words_ignore_action": "Stop counting this word",
   "words_ignored_sub": "Words that stand out skips these words. They remain in your journal notes.",
+  "words_ignored_screen_sub": "Words that stand out skips these words, which stay in your journal notes. Add one there by picking it and choosing Stop counting this word.",
   "words_return_to_reading": "Return to Words that stand out",
   "words_scope_era": "Era: {name} · Whole journal baseline",
   "words_scope_mode": "Mode: {name} · Whole journal baseline",

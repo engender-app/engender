@@ -3537,6 +3537,7 @@
   "words_reading_needs_stretch": "Nazwij erę albo dodaj tryb, a słowa z tego okresu pojawią się tutaj.",
   "words_ignore_action": "Przestań liczyć to słowo",
   "words_ignored_sub": "Odczyt Słowa, które się wyróżniają pomija te słowa. Pozostają one w notatkach dziennika.",
+  "words_ignored_screen_sub": "Odczyt Słowa, które się wyróżniają pomija te słowa, które pozostają w notatkach dziennika. Dodaj słowo tam: wybierz je, a potem wybierz Przestań liczyć to słowo.",
   "words_return_to_reading": "Wróć do: Słowa, które się wyróżniają",
   "words_scope_era": "Era: {name} · Tło: cały dziennik",
   "words_scope_mode": "Tryb: {name} · Tło: cały dziennik",
