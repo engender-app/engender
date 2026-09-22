@@ -111,6 +111,31 @@ test('a note with commas, quotes and newlines survives as one field', () => {
   );
 });
 
+test('a note opening with a formula character exports as text, not a formula', () => {
+  // Manually confirmed: `'=1+1` opens in LibreOffice Calc and Excel showing
+  // the literal text =1+1, not the number 2.
+  const csv = journalCsv(journalOf([entry({ note: '=1+1' })]), naming);
+  assert.equal(rows(csv)[1], "2026-01-15,07:15,,,'=1+1");
+});
+
+test('+, - and @ are guarded the same way, and a later one in the field is not', () => {
+  const csv = journalCsv(
+    journalOf([
+      entry({ note: '+going up' }),
+      entry({ uuid: 'e2', note: '-2 today' }),
+      entry({ uuid: 'e3', note: '@mentioned this' }),
+      entry({ uuid: 'e4', note: 'up 2-3 points' })
+    ]),
+    naming
+  );
+  assert.deepEqual(rows(csv).slice(1, 5), [
+    "2026-01-15,07:15,,,'+going up",
+    "2026-01-15,07:15,,,'-2 today",
+    "2026-01-15,07:15,,,'@mentioned this",
+    '2026-01-15,07:15,,,up 2-3 points'
+  ]);
+});
+
 test('a journal with no entries is still a readable file', () => {
   assert.equal(journalCsv(journalOf([]), naming), 'date,time,mood,tags,note\n');
 });
