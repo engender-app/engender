@@ -21,13 +21,8 @@
      3. Writes go straight through. */
 
 import type { PortablePreferences } from '../archive/payload';
-import {
-  PORTABLE_KEYS,
-  PREFERENCE_DEFAULTS,
-  isPreferenceKey,
-  type PreferenceKey,
-  type PreferenceValues
-} from './catalogue';
+import { PREFERENCE_DEFAULTS, isPreferenceKey, type PreferenceKey, type PreferenceValues } from './catalogue';
+import { portablePreferencePatch } from './portableShape';
 import type { BootPreferences, Preferences } from './preferences';
 
 const values = $state<PreferenceValues>({ ...PREFERENCE_DEFAULTS });
@@ -150,13 +145,18 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
     which is the same allowlist that decided what could travel in the first
     place - and a key the archive is missing keeps this device's value rather
     than becoming undefined. A Merge calls none of this: what is already here
-    wins, for its rows and for its settings alike. */
+    wins, for its rows and for its settings alike.
+
+    Each value is checked against the key's shape (portableShape.ts) before
+    it lands - a value outside what the key can hold is left out of the
+    patch, so this device's own value stays rather than adopting a string
+    that was never a valid theme, palette or check-in time. */
 export function applyPortablePreferences(portable: Partial<PortablePreferences>) {
-  for (const key of PORTABLE_KEYS) {
-    const value = portable?.[key];
+  const patch = portablePreferencePatch(portable);
+  for (const key of Object.keys(patch) as (keyof PortablePreferences)[]) {
     // Both sides index at the same key, which the compiler can't follow
     // across a loop over a union of key types.
-    if (value !== undefined) prefs[key] = value as never;
+    prefs[key] = patch[key] as never;
   }
 }
 
