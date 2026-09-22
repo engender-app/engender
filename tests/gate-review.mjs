@@ -65,7 +65,6 @@ const GATES = [
   ['android-key', 'Cold start, Android Keystore'],
   ['session-pin', 'Mid-session lock, PIN'],
   ['session-passphrase', 'Mid-session lock, passphrase'],
-  ['session-device', 'Mid-session lock, the screen lock'],
   ['access-choice', 'Choosing how it opens'],
   ['recovery-entry', 'The recovery key'],
   ['post-recovery', 'After a recovery unlock'],
