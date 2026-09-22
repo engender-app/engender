@@ -48,7 +48,6 @@ const SCENES = flag(
     'session-pin',
     'session-passphrase',
     'session-biometric',
-    'session-device',
     'converting',
     'conversion-refused',
     'android-key',
