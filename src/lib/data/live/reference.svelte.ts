@@ -42,7 +42,7 @@ import type {
 } from '../types';
 import type { Journal } from '../journal/journal';
 import { onTablesWritten } from './journal.svelte';
-import type { TableName } from './writes';
+import { tablesReadBy } from './writes';
 
 const mirror = $state<{
   dimensions: GenderDimension[];
@@ -80,25 +80,25 @@ type MirrorSlice =
   | 'presentations'
   | 'entryTemplates';
 
-/** Which slices a written table invalidates. Photos are in here because a
-    milestone carries its photo on the mirrored row, so attaching one changes
-    what the timeline should draw. `entry` is here for one slice only:
-    `presentations` reads most-recently-used first by joining the entry
-    table's own timestamps (presentations.ts), so a save has to refresh it
-    too, not only a rename or a recolour. */
-const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
-  dimension: ['dimensions'],
-  tag: ['tagGroups'],
-  milestone: ['milestones'],
-  photo: ['milestones'],
-  affirmation: ['affirmations'],
-  bodyRegion: ['bodyRegions'],
-  measurementType: ['measurementTypes'],
-  effectCategory: ['effectCategories'],
-  personalEffectType: ['personalEffectTypes'],
-  presentation: ['presentations'],
-  entry: ['presentations'],
-  entryTemplate: ['entryTemplates']
+/** The read that fills each slice. A slice refreshes on exactly the tables
+    that read declares in writes.ts - the declaration writes.sql.test.ts
+    checks against the read's own SQL - rather than on a second hand-kept
+    list here that nothing checks. So a milestone's photo refreshes the
+    timeline because `getMilestones` joins it, and `presentations` refreshes
+    on an entry save because it orders most-recently-used first by the entry
+    table's own timestamps (presentations.ts). Each entry has to name the
+    same read `refresh` below calls for that slice. */
+const SLICE_READS: Record<MirrorSlice, [area: string, operation: string]> = {
+  dimensions: ['dimensions', 'getDimensions'],
+  tagGroups: ['tags', 'getTagGroups'],
+  milestones: ['milestones', 'getMilestones'],
+  affirmations: ['affirmations', 'getAffirmations'],
+  bodyRegions: ['bodyRegions', 'getBodyRegions'],
+  measurementTypes: ['measurements', 'getMeasurementTypes'],
+  effectCategories: ['effectCategories', 'getEffectCategories'],
+  personalEffectTypes: ['personalEffects', 'getEffectTypes'],
+  presentations: ['presentations', 'getPresentations'],
+  entryTemplates: ['entryTemplates', 'getEntryTemplates']
 };
 
 let registered = false;
@@ -158,7 +158,11 @@ export async function hydrateReference(journal: Journal): Promise<void> {
   if (registered) return;
   registered = true;
   onTablesWritten((tables) => {
-    const slices = new Set(tables.flatMap((table) => AFFECTED[table] ?? []));
+    const slices = new Set(
+      (Object.keys(SLICE_READS) as MirrorSlice[]).filter((slice) =>
+        tablesReadBy(...SLICE_READS[slice]).some((table) => tables.includes(table))
+      )
+    );
     if (slices.size === 0) return;
     void refresh(journal, slices);
   });
