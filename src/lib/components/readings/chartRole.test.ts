@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
 
-/* PlaneReading colours each presentation by its own roleIndex rather than a
-   single reading-wide role, so it declares no *_ROLE constant and is not
-   walked here. */
+/* BodyMapTile and CompareTile draw no chart and never call roleAt.
+   PlaneReading colours each presentation by its own roleIndex rather than a
+   single reading-wide role. None of the three declares a *_ROLE constant. */
 const EXEMPT = new Set(['BodyMapTile.svelte', 'CompareTile.svelte', 'PlaneReading.svelte']);
 
 const readingFiles = readdirSync(dir)
