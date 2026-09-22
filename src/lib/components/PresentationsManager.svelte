@@ -29,8 +29,10 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { crossfade, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -86,41 +88,49 @@
 </div>
 <p class="ob-text">{m.presentations_intro()}</p>
 
-{#if presentations.length > 0}
-  <ListCard role={roleAt(activeFlag.roles, 0)}>
-    {#each presentations as p (p.id)}
-      {@const role = roleAt(activeFlag.roles, p.roleIndex)}
-      <ListRow
-        key={p.id}
-        data-presentation={p.id}
-        title={p.name}
-        subtitle={p.hidden ? m.tags_hidden() : undefined}
-        chevron={false}
-        onclick={() => record.openEditor(p)}
-        action={{
-          icon: p.hidden ? 'eye' : 'eyeOff',
-          label: p.hidden
-            ? m.presentation_show_aria({ name: p.name })
-            : m.presentation_hide_aria({ name: p.name }),
-          onclick: () => toggleHidden(p)
-        }}
-      >
-        {#snippet leading()}
-          <span class="presentation-dot" {...roleAttrs(role)}></span>
-        {/snippet}
-      </ListRow>
-    {/each}
-  </ListCard>
-{:else}
-  <Notice
-    icon="palette"
-    key="presentations-empty"
-    role={roleAt(activeFlag.roles, 0)}
-    title={m.presentations_empty_title()}
-    text={m.presentations_empty_body()}
-    action={{ label: m.presentations_add(), primary: true, onclick: () => record.openEditor(null) }}
-  />
-{/if}
+<div use:resize>
+  {#if !vocabulary.ready}
+    <!-- Not the same state as the true empty list below: on a cold
+         navigation straight to this sheet, `presentations` reads empty for
+         a few frames before the mirror behind it hydrates, which otherwise
+         showed "No modes yet" for a person who has modes (ticket 152/162). -->
+    <div out:crossfade><Skeleton variant="line" count={2} /></div>
+  {:else if presentations.length > 0}
+    <ListCard role={roleAt(activeFlag.roles, 0)}>
+      {#each presentations as p (p.id)}
+        {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+        <ListRow
+          key={p.id}
+          data-presentation={p.id}
+          title={p.name}
+          subtitle={p.hidden ? m.tags_hidden() : undefined}
+          chevron={false}
+          onclick={() => record.openEditor(p)}
+          action={{
+            icon: p.hidden ? 'eye' : 'eyeOff',
+            label: p.hidden
+              ? m.presentation_show_aria({ name: p.name })
+              : m.presentation_hide_aria({ name: p.name }),
+            onclick: () => toggleHidden(p)
+          }}
+        >
+          {#snippet leading()}
+            <span class="presentation-dot" {...roleAttrs(role)}></span>
+          {/snippet}
+        </ListRow>
+      {/each}
+    </ListCard>
+  {:else}
+    <Notice
+      icon="palette"
+      key="presentations-empty"
+      role={roleAt(activeFlag.roles, 0)}
+      title={m.presentations_empty_title()}
+      text={m.presentations_empty_body()}
+      action={{ label: m.presentations_add(), primary: true, onclick: () => record.openEditor(null) }}
+    />
+  {/if}
+</div>
 
 <RecordSheet
   {record}
