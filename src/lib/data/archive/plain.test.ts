@@ -111,6 +111,51 @@ test('a note with commas, quotes and newlines survives as one field', () => {
   );
 });
 
+test('a note opening with a formula character exports as text, not a formula', () => {
+  // Manually confirmed: `'=1+1` opens in LibreOffice Calc and Excel showing
+  // the literal text =1+1, not the number 2.
+  const csv = journalCsv(journalOf([entry({ note: '=1+1' })]), naming);
+  assert.equal(rows(csv)[1], "2026-01-15,07:15,,,'=1+1");
+});
+
+test('+, - and @ are guarded the same way, and a later one in the field is not', () => {
+  const csv = journalCsv(
+    journalOf([
+      entry({ note: '+going up' }),
+      entry({ uuid: 'e2', note: '-2 today' }),
+      entry({ uuid: 'e3', note: '@mentioned this' }),
+      entry({ uuid: 'e4', note: 'up 2-3 points' })
+    ]),
+    naming
+  );
+  assert.deepEqual(rows(csv).slice(1, 5), [
+    "2026-01-15,07:15,,,'+going up",
+    "2026-01-15,07:15,,,'-2 today",
+    "2026-01-15,07:15,,,'@mentioned this",
+    '2026-01-15,07:15,,,up 2-3 points'
+  ]);
+});
+
+test('a custom dimension name and a custom tag label get the same guard, header included', () => {
+  // csvField backs every column, not just the note - a custom dimension
+  // name and a custom tag label are the person's own free text too, so a
+  // leading guard character is neutralised in the header and the tags
+  // column exactly as it is in the note.
+  const journal = journalOf([entry({ dims: { rent: 5 }, tags: ['expenses'] })]);
+  journal.dimensions.push({ key: 'rent', name: '=Rent', low: '', high: '', min: 0, max: 100, builtIn: false, hidden: false });
+  journal.tagGroups.push({
+    key: 'money',
+    name: '',
+    enabled: true,
+    builtIn: false,
+    tags: [{ id: 'expenses', label: '@work', builtIn: false, hidden: false }]
+  });
+
+  const csv = journalCsv(journal, naming);
+  assert.equal(rows(csv)[0], "date,time,mood,'=Rent,tags,note");
+  assert.equal(rows(csv)[1], "2026-01-15,07:15,,5,'@work,");
+});
+
 test('a journal with no entries is still a readable file', () => {
   assert.equal(journalCsv(journalOf([]), naming), 'date,time,mood,tags,note\n');
 });
