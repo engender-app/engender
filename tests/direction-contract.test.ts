@@ -330,7 +330,6 @@ describe('rule 4: two line strengths', () => {
      rationale in a comment is not a contract. */
   it('draws every unelevated surface edge at --outline', () => {
     const surfaces = [
-      ['components', '.card'],
       ['components', '.entry-card'],
       ['components', '.skeleton-card'],
       ['components', '.skeleton-block'],
@@ -1025,14 +1024,15 @@ describe('rule 4: what carpet 30 decided', () => {
      `.card.no-print` turns out not to be a variant at all - `no-print` is
      app.css's print utility (`display: none !important` inside @media
      print), so that one is a plain `.card` wearing a utility and belongs
-     to carpet 21 with the other eighteen. Which leaves the allowlist at
-     exactly that one name, and it is here so the next variant somebody
+     to carpet 21 with the other eighteen. `.card` itself went with ticket
+     19, the journal book's date range being the last consumer, so the
+     allowlist is empty and it is here so the next variant somebody
      invents has to argue with a failing test rather than with a sweep
      nobody has re-run. */
   it('leaves no bespoke .card variant in the source', () => {
     const found = new Set<string>();
     for (const file of svelteFiles()) for (const name of cardVariants(file)) found.add(name);
-    expect([...found].sort()).toEqual(['no-print']);
+    expect([...found].sort()).toEqual([]);
   });
 
   /* The 1.5px `--accent-border` edge was the group saying "this is the

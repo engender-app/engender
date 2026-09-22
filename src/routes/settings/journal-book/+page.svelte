@@ -181,7 +181,7 @@
 <div class="screen">
   <ScreenHeader title={m.journal_book_title()} back="/settings" class="no-print" subtitle={m.journal_book_intro()} />
 
-  <div class="card no-print" style="margin-bottom:var(--space-4)">
+  <div class="kit-panel no-print" data-kit-surface style="margin-bottom:var(--space-4)">
     <div class="book-endpoints">
       <Field label={m.journal_book_range_start_label()} id="journal-book-start">
         {#snippet children(id)}
