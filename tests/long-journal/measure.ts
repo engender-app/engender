@@ -981,6 +981,24 @@ export async function measureLongJournal(
     };
   });
 
+  await mount('mount-photos', 'the photo grid, the one query the screen fires unconditionally on arrival', async () => {
+    /* The photo library screen (src/routes/media/photos/+page.svelte) fires
+       exactly one read on mount - the whole library, since chips and
+       compare both need every photo, not the narrowed grid. Thumbnails are
+       not part of that: PhotoThumb reads its own lazily, gated on its own
+       IntersectionObserver (`near`, PhotoThumb.svelte) the same way every
+       other mount here counts only what a screen's live queries fire, not
+       what a lazy child component might read once painted. `photo-grid-
+       list`/`photo-grid-thumbs` above stay the deliberate upper bound over
+       every photo in the library; this is the number the screen actually
+       pays to arrive (this ticket, batching the grid's DOM). */
+    const mountPhotos = await journal.photoLibrary.inJournal();
+    return {
+      result: mountPhotos,
+      detail: `${mountPhotos.length} photos in the library`
+    };
+  });
+
   // --- write paths -------------------------------------------------------
   // Ordered after the read measurements so they cannot move read baselines.
   const saveDims: Record<string, number> = {};
