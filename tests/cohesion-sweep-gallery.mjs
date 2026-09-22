@@ -530,12 +530,12 @@ const read = () =>
            A zero-size box is the honest test for "on screen at all". */
         const box = el.getBoundingClientRect();
         if (!box.width || !box.height) continue;
-        /* And nothing parked off the frame. `.skip-link` sits at
-           `top: -48px` until a keyboard focuses it, so it has a real 146x40
-           box that is not on screen and is not a touch target; the same
-           argument as the zero-size box above, one axis out. Below the
-           frame is left alone, because that is unscrolled content rather
-           than somewhere off screen. */
+        /* And nothing parked off the frame. An element hidden by a negative
+           offset until some later state still has a real box that is not on
+           screen and is not a touch target; the same argument as the
+           zero-size box above, one axis out. Below the frame is left alone,
+           because that is unscrolled content rather than somewhere off
+           screen. */
         if (box.bottom <= frame.top || box.right <= frame.left || box.left >= frame.right) continue;
 
         if (cs.boxShadow && cs.boxShadow !== 'none' && !shadowAllowed(el, cs.boxShadow))
