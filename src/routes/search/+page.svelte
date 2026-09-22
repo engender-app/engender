@@ -129,7 +129,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
 
   /** One page of hits, and what the "show more" control asks for again. */
   const PAGE = 30;
@@ -557,7 +557,7 @@
         {/if}
       </div>
     {:else if loading}
-      <Skeleton variant="card" count={3} />
+      <div out:crossfade><Skeleton variant="card" count={3} /></div>
     {:else if !foundNothing}
       <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 

@@ -516,7 +516,7 @@ describe('loading states, since all six read entry data', () => {
   });
 
   it('the editor waits rather than filling a form under the reader', () => {
-    expect(markupOf(editor)).toMatch(/\{#if loaded\.loading\}\s*<Skeleton/);
+    expect(markupOf(editor)).toMatch(/\{#if loaded\.loading\}\s*<div out:crossfade><Skeleton/);
   });
 
   it('the calendar draws at full size and holds back only its claims', () => {

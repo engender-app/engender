@@ -38,7 +38,7 @@
      to stand in for. */
   import { untrack } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { areaPath } from '$lib/charts/areaPath';
   import {
@@ -735,7 +735,10 @@
     </ul>
   {/if}
 {:else}
-  <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+  <!-- Out only, and the same asymmetry the skeleton's crossfade keeps:
+       a chart that gains its data while mounted takes the empty words off
+       with a fade rather than a cut, and the plot itself is simply there. -->
+  <div out:crossfade><ChartEmpty>{m.not_enough_data()}</ChartEmpty></div>
 {/if}
 
 <style>

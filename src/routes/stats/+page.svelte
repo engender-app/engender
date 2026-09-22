@@ -307,7 +307,7 @@
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
     {#if recapQuery.loading || activeSeriesQuery.loading}
-      <Skeleton variant="line" count={3} />
+      <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
       <div data-lookback-facts transition:collapse>
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>

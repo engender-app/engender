@@ -362,7 +362,7 @@
          chart at its fixed height plus its own heading and padding. -->
     <div class="body-map-charts" style="--plot-h:{PLOT_HEIGHT}px">
     {#if dysphoriaQuery.loading || euphoriaQuery.loading}
-      <Skeleton variant="block" count={2} />
+      <div out:crossfade><Skeleton variant="block" count={2} /></div>
     {:else}
       <ChartCard heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
         {@render series(
