@@ -492,99 +492,91 @@
     {:else}
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
         {#snippet rows()}
-          <div class="screen-part">
-            <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-          </div>
-          <div class="screen-part">
-            <ChartCard heading={m.vc_trend_heading()} kind="voice-benchmark-trend" role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}>
-              {#if trend}
-                {@const ends = fmtRangeEnds(trend.from, trend.to)}
-                <AreaChart
-                  points={trend.points}
-                  min={trend.min}
-                  max={trend.max}
-                  from={ends.from}
-                  to={ends.to}
-                  formatValue={(v) => m.vb_hz({ value: String(Math.round(v)) })}
-                  scrubLabel={(_point, index) => fmtDay(anchors[index].epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-                  annotations={narrowAnnotations(annotationsQuery.rows, trend.from, trend.to)}
-                  highlight={trendHighlight}
-                  ariaLabel={m.vc_trend_heading()}
-                />
-              {:else}
-                <ChartEmpty>{m.vc_trend_too_little()}</ChartEmpty>
-              {/if}
-            </ChartCard>
-          </div>
-          <div class="screen-part">
-            <!-- The five figures that carry no band, each against the
-                 person's own earlier takes (ticket 29, ADR-0060). Under
-                 the pitch trend, which is the one figure with a published
-                 range to read against, and above the picking list, because
-                 both cards answer "what has my own history been" while the
-                 list is where a pair gets chosen. -->
-            <VoiceOwnSeries
-              benchmarks={anchors}
-              marked={pair ? [pair.left, pair.right] : []}
-              role={roleAt(activeFlag.roles, SECTION_ROLE.own)}
-              pairedRole={roleAt(activeFlag.roles, SECTION_ROLE.ownPaired)}
-            />
-          </div>
-          <div class="screen-part">
-            {#if comparing && !pair}
-              <p class="muted small" style="margin-bottom:var(--space-2)">{m.vc_compare_reset()}</p>
+          <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+          <ChartCard heading={m.vc_trend_heading()} kind="voice-benchmark-trend" role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}>
+            {#if trend}
+              {@const ends = fmtRangeEnds(trend.from, trend.to)}
+              <AreaChart
+                points={trend.points}
+                min={trend.min}
+                max={trend.max}
+                from={ends.from}
+                to={ends.to}
+                formatValue={(v) => m.vb_hz({ value: String(Math.round(v)) })}
+                scrubLabel={(_point, index) => fmtDay(anchors[index].epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                annotations={narrowAnnotations(annotationsQuery.rows, trend.from, trend.to)}
+                highlight={trendHighlight}
+                ariaLabel={m.vc_trend_heading()}
+              />
+            {:else}
+              <ChartEmpty>{m.vc_trend_too_little()}</ChartEmpty>
             {/if}
-            <p class="muted small" style="margin-bottom:var(--space-4)">
-              {orderedSelected.length === 0
-                ? m.vc_benchmarks_pick_two()
-                : orderedSelected.length === 1
-                  ? m.vc_one_selected()
-                  : m.vc_two_selected()}
-            </p>
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
-              {#each anchors as b (b.id)}
-                <div class="kit-row is-split" data-voice-cell={b.id}>
-                  <button
-                    type="button"
-                    class="kit-row-main"
-                    aria-pressed={orderedSelected.includes(b.id)}
-                    aria-label={m.vc_benchmark_cell_aria({
-                      date: fmtDay(b.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                    })}
-                    onclick={() => toggle(b.id)}
-                  >
-                    <!-- The take's own pitch, as the block rule 3 allows
-                         behind a value: choosing two benchmarks was a date,
-                         a mic glyph and a tick, which is blind. With the
-                         figure on every row the list is itself a coarse
-                         reading of the series, and the glyph - the same one
-                         on every row of a list of benchmarks - was saying
-                         nothing the screen had not already said.
+          </ChartCard>
+          <!-- The five figures that carry no band, each against the
+               person's own earlier takes (ticket 29, ADR-0060). Under
+               the pitch trend, which is the one figure with a published
+               range to read against, and above the picking list, because
+               both cards answer "what has my own history been" while the
+               list is where a pair gets chosen. -->
+          <VoiceOwnSeries
+            benchmarks={anchors}
+            marked={pair ? [pair.left, pair.right] : []}
+            role={roleAt(activeFlag.roles, SECTION_ROLE.own)}
+            pairedRole={roleAt(activeFlag.roles, SECTION_ROLE.ownPaired)}
+          />
+          {#if comparing && !pair}
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.vc_compare_reset()}</p>
+          {/if}
+          <p class="muted small" style="margin-bottom:var(--space-4)">
+            {orderedSelected.length === 0
+              ? m.vc_benchmarks_pick_two()
+              : orderedSelected.length === 1
+                ? m.vc_one_selected()
+                : m.vc_two_selected()}
+          </p>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+            {#each anchors as b (b.id)}
+              <div class="kit-row is-split" data-voice-cell={b.id}>
+                <button
+                  type="button"
+                  class="kit-row-main"
+                  aria-pressed={orderedSelected.includes(b.id)}
+                  aria-label={m.vc_benchmark_cell_aria({
+                    date: fmtDay(b.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                  })}
+                  onclick={() => toggle(b.id)}
+                >
+                  <!-- The take's own pitch, as the block rule 3 allows
+                       behind a value: choosing two benchmarks was a date,
+                       a mic glyph and a tick, which is blind. With the
+                       figure on every row the list is itself a coarse
+                       reading of the series, and the glyph - the same one
+                       on every row of a list of benchmarks - was saying
+                       nothing the screen had not already said.
 
-                         19px bold, which is large text, because rule 11
-                         holds small text on a stripe to 4.5:1 and this list
-                         takes whichever role the areas hand it. -->
-                    <span class="vc-row-pitch" data-voice-row-pitch>{m.vb_hz({ value: String(Math.round(b.f0MedianHz)) })}</span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title">{fmtDay(b.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    </span>
-                    <span class="kit-row-trail">
-                      {#if orderedSelected.includes(b.id)}<Icon name="check" size={20} />{/if}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    class="kit-row-act press"
-                    data-delete-benchmark={b.id}
-                    aria-label={m.vc_benchmark_delete_aria({ date: fmtDay(b.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                    onclick={() => (deleteTarget = b.id)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
-                </div>
-              {/each}
-            </ListCard>
-          </div>
+                       19px bold, which is large text, because rule 11
+                       holds small text on a stripe to 4.5:1 and this list
+                       takes whichever role the areas hand it. -->
+                  <span class="vc-row-pitch" data-voice-row-pitch>{m.vb_hz({ value: String(Math.round(b.f0MedianHz)) })}</span>
+                  <span class="kit-row-text">
+                    <span class="kit-row-title">{fmtDay(b.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </span>
+                  <span class="kit-row-trail">
+                    {#if orderedSelected.includes(b.id)}<Icon name="check" size={20} />{/if}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="kit-row-act press"
+                  data-delete-benchmark={b.id}
+                  aria-label={m.vc_benchmark_delete_aria({ date: fmtDay(b.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                  onclick={() => (deleteTarget = b.id)}
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+            {/each}
+          </ListCard>
           {#if pair}
             <SaveBar>
               <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
@@ -594,16 +586,14 @@
           {/if}
         {/snippet}
         {#snippet empty()}
-          <div class="screen-part">
-            <Notice
-              icon="mic"
-              key="voice-benchmark-empty"
-              role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
-              title={m.vc_benchmarks_empty_title()}
-              text={m.vc_benchmarks_empty_body()}
-              action={{ label: m.vb_record(), onclick: () => (tab = 'record') }}
-            />
-          </div>
+          <Notice
+            icon="mic"
+            key="voice-benchmark-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+            title={m.vc_benchmarks_empty_title()}
+            text={m.vc_benchmarks_empty_body()}
+            action={{ label: m.vb_record(), onclick: () => (tab = 'record') }}
+          />
         {/snippet}
       </ReadGate>
     {/if}

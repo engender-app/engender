@@ -461,58 +461,54 @@
 
   <ReadGate read={measurementsQuery} variant="block" count={1}>
     {#snippet rows()}
-      <div class="screen-part">
-        <ChartCard
-          heading={vocabulary.measurementTypeName(type)}
-          kind="measurements-{type}"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
-        >
-          {#if chart}
-            {@const ends = fmtRangeEnds(chart.from, chart.to)}
-            <AreaChart
-              points={chart.points}
-              min={chart.min}
-              max={chart.max}
-              from={ends.from}
-              to={ends.to}
-              formatValue={fmtValue}
-              scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
-              ariaLabel={m.measurement_row_aria({
-                type: vocabulary.measurementTypeName(type),
-                date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
-              })}
-            />
-          {:else}
-            <ChartEmpty>{m.measurement_too_little()}</ChartEmpty>
-          {/if}
-        </ChartCard>
+      <ChartCard
+        heading={vocabulary.measurementTypeName(type)}
+        kind="measurements-{type}"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
+      >
+        {#if chart}
+          {@const ends = fmtRangeEnds(chart.from, chart.to)}
+          <AreaChart
+            points={chart.points}
+            min={chart.min}
+            max={chart.max}
+            from={ends.from}
+            to={ends.to}
+            formatValue={fmtValue}
+            scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
+            ariaLabel={m.measurement_row_aria({
+              type: vocabulary.measurementTypeName(type),
+              date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.measurement_too_little()}</ChartEmpty>
+        {/if}
+      </ChartCard>
 
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
-          {#each [...measurements].reverse() as r (r.id)}
-            <ListRow
-              key={r.id}
-              data-measurement={r.id}
-              icon="ruler"
-              title={`${r.value} ${r.unit}`}
-              subtitle={dayLabel(r.epochDay)}
-              chevron={false}
-              onclick={() => record.openEditor(r)}
-            />
-          {/each}
-        </ListCard>
-      </div>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+        {#each [...measurements].reverse() as r (r.id)}
+          <ListRow
+            key={r.id}
+            data-measurement={r.id}
+            icon="ruler"
+            title={`${r.value} ${r.unit}`}
+            subtitle={dayLabel(r.epochDay)}
+            chevron={false}
+            onclick={() => record.openEditor(r)}
+          />
+        {/each}
+      </ListCard>
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="ruler"
-          key="measurements-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
-          title={m.measurement_empty_title()}
-          text={m.measurement_empty_body()}
-          action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-        />
-      </div>
+      <Notice
+        icon="ruler"
+        key="measurements-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+        title={m.measurement_empty_title()}
+        text={m.measurement_empty_body()}
+        action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+      />
     {/snippet}
   </ReadGate>
 
@@ -563,36 +559,32 @@
 
   <ReadGate read={sizesQuery} variant="line" count={3}>
     {#snippet rows()}
-      <div class="screen-part">
-        {#if category === 'all'}
-          {#each sizeGroups as g (g.category)}
-            <SectionHeading text={garmentCategoryName(g.category)} />
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
-              {#each [...g.records].reverse() as r (r.id)}
-                {@render sizeRow(r)}
-              {/each}
-            </ListCard>
-          {/each}
-        {:else}
+      {#if category === 'all'}
+        {#each sizeGroups as g (g.category)}
+          <SectionHeading text={garmentCategoryName(g.category)} />
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
-            {#each [...sizeRecords].reverse() as r (r.id)}
+            {#each [...g.records].reverse() as r (r.id)}
               {@render sizeRow(r)}
             {/each}
           </ListCard>
-        {/if}
-      </div>
+        {/each}
+      {:else}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
+          {#each [...sizeRecords].reverse() as r (r.id)}
+            {@render sizeRow(r)}
+          {/each}
+        </ListCard>
+      {/if}
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="package"
-          key="sizes-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
-          title={m.size_log_empty_title()}
-          text={m.size_log_empty_body()}
-          action={{ label: m.size_log_empty_action(), primary: true, onclick: () => size.openEditor(null) }}
-        />
-      </div>
+      <Notice
+        icon="package"
+        key="sizes-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
+        title={m.size_log_empty_title()}
+        text={m.size_log_empty_body()}
+        action={{ label: m.size_log_empty_action(), primary: true, onclick: () => size.openEditor(null) }}
+      />
     {/snippet}
   </ReadGate>
 

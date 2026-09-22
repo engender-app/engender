@@ -268,51 +268,47 @@
        the one record on the screen is still the one you change. -->
   <ReadGate read={appointmentsQuery} variant="block" count={1}>
     {#snippet rows()}
-      <div class="screen-part">
-        {#if nextVisit}
-          <!-- `collapse` as well as the clip in the stylesheet, which is
-               the pair `Tile` already runs: the clip is the block arriving
-               as an object, and the height is what stops the sections under
-               it being teleported down the screen when the block replaces
-               the "Nothing booked" line (which collapses on its own, inside
-               `Notice`). -->
-          <button
-            class="visit-lead"
-            data-visit-lead
-            data-appointment={nextVisit.id}
-            onclick={() => record.openEditor(nextVisit!)}
-            transition:collapse
-            {...roleAttrs(roleAt(activeFlag.roles, 0))}
-          >
-            <span class="visit-lead-kind">{titleOf(nextVisit)}</span>
-            <span class="visit-lead-gap" data-visit-gap>{gapLabel(nextVisit.epochDay)}</span>
-            <span class="visit-lead-when">{leadDay(nextVisit.epochDay)}</span>
-            {#if leadWhere(nextVisit)}<span class="visit-lead-where">{leadWhere(nextVisit)}</span>{/if}
-          </button>
-        {:else}
-          <!-- Nothing booked is an ordinary state, not an empty journal: the
-               prep list under this is standing and is still worth reading,
-               and the add control is in the header where it always is. -->
-          <Notice
-            icon="calendar"
-            key="appointments-nothing-booked"
-            role={roleAt(activeFlag.roles, 0)}
-            title={m.appointments_nothing_booked()}
-          />
-        {/if}
-      </div>
-    {/snippet}
-    {#snippet empty()}
-      <div class="screen-part">
+      {#if nextVisit}
+        <!-- `collapse` as well as the clip in the stylesheet, which is
+             the pair `Tile` already runs: the clip is the block arriving
+             as an object, and the height is what stops the sections under
+             it being teleported down the screen when the block replaces
+             the "Nothing booked" line (which collapses on its own, inside
+             `Notice`). -->
+        <button
+          class="visit-lead"
+          data-visit-lead
+          data-appointment={nextVisit.id}
+          onclick={() => record.openEditor(nextVisit!)}
+          transition:collapse
+          {...roleAttrs(roleAt(activeFlag.roles, 0))}
+        >
+          <span class="visit-lead-kind">{titleOf(nextVisit)}</span>
+          <span class="visit-lead-gap" data-visit-gap>{gapLabel(nextVisit.epochDay)}</span>
+          <span class="visit-lead-when">{leadDay(nextVisit.epochDay)}</span>
+          {#if leadWhere(nextVisit)}<span class="visit-lead-where">{leadWhere(nextVisit)}</span>{/if}
+        </button>
+      {:else}
+        <!-- Nothing booked is an ordinary state, not an empty journal: the
+             prep list under this is standing and is still worth reading,
+             and the add control is in the header where it always is. -->
         <Notice
           icon="calendar"
-          key="appointments-empty"
+          key="appointments-nothing-booked"
           role={roleAt(activeFlag.roles, 0)}
-          title={m.appointments_empty_title()}
-          text={m.appointments_empty_body()}
-          action={{ label: m.appointments_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+          title={m.appointments_nothing_booked()}
         />
-      </div>
+      {/if}
+    {/snippet}
+    {#snippet empty()}
+      <Notice
+        icon="calendar"
+        key="appointments-empty"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.appointments_empty_title()}
+        text={m.appointments_empty_body()}
+        action={{ label: m.appointments_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+      />
     {/snippet}
   </ReadGate>
 
@@ -327,80 +323,76 @@
 
   <ReadGate read={checklistQuery} variant="line" count={3}>
     {#snippet rows()}
-      <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, 1)}>
-          <!-- Hand-rolled rather than ListRow (ticket 16): two trailing
-               actions (carry-forward flag, delete) where `action` takes
-               one, and a checkbox main that's role="checkbox" with its own
-               .ap-box rather than ListRow's checked semantics.
+      <ListCard role={roleAt(activeFlag.roles, 1)}>
+        <!-- Hand-rolled rather than ListRow (ticket 16): two trailing
+             actions (carry-forward flag, delete) where `action` takes
+             one, and a checkbox main that's role="checkbox" with its own
+             .ap-box rather than ListRow's checked semantics.
 
-               Each row opens and closes its own height (ADR-0078), so an
-               item added from the sheet arrives by moving rather than
-               appearing where it lands. -->
-          {#each items as item (item.id)}
-            <div class="kit-row is-split" data-appointment-item={item.id} transition:collapse>
-              <button
-                class="kit-row-main"
-                role="checkbox"
-                aria-checked={item.checked}
-                aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
-                onclick={() => toggleChecked(item)}
-              >
-                <!-- The tick is always in the markup and crosses in and out
-                     on opacity and a scale rather than being added and
-                     removed: a glyph that appears in one frame is a yank in
-                     both directions, and the row's state is on the row's own
-                     `aria-checked` rather than on whether this element
-                     exists. Under reduced motion `--dur-fast` clamps to 1ms
-                     and the tick simply cuts, which keeps the feedback. -->
-                <span class="ap-box" class:ap-ticked={item.checked}>
-                  <span class="ap-tick" aria-hidden="true"><Icon name="check" size={20} /></span>
-                </span>
-                <span class="kit-row-text">
-                  <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
-                </span>
-              </button>
-              <button
-                class="kit-row-act"
-                class:ap-flagged={item.carriedForward}
-                data-carry-forward={item.id}
-                aria-pressed={item.carriedForward}
-                aria-label={item.carriedForward ? m.appointment_prep_uncarry_aria({ content: item.content }) : m.appointment_prep_carry_aria({ content: item.content })}
-                onclick={() => toggleCarriedForward(item)}
-              >
-                <Icon name="flag" size={18} />
-              </button>
-              <button
-                class="kit-row-act"
-                data-delete-appointment-item={item.id}
-                aria-label={m.appointment_prep_delete_aria({ content: item.content })}
-                onclick={() => prepRecord.askToDelete(item)}
-              >
-                <Icon name="trash" size={18} />
-              </button>
-            </div>
-          {/each}
-        </ListCard>
-        <!-- What the flag beside each row does. It was a bare icon with an
-             aria-label, so the only people the app told were the ones using a
-             screen reader (Alicja, 2026-08-26: "what does the flag do in
-             appointment check list?"). Under the list rather than in the
-             screen's own intro, because it is about a control that is only on
-             screen once there is something to flag. -->
-        <p class="muted small">{m.appointment_prep_flag_hint()}</p>
-      </div>
+             Each row opens and closes its own height (ADR-0078), so an
+             item added from the sheet arrives by moving rather than
+             appearing where it lands. -->
+        {#each items as item (item.id)}
+          <div class="kit-row is-split" data-appointment-item={item.id} transition:collapse>
+            <button
+              class="kit-row-main"
+              role="checkbox"
+              aria-checked={item.checked}
+              aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
+              onclick={() => toggleChecked(item)}
+            >
+              <!-- The tick is always in the markup and crosses in and out
+                   on opacity and a scale rather than being added and
+                   removed: a glyph that appears in one frame is a yank in
+                   both directions, and the row's state is on the row's own
+                   `aria-checked` rather than on whether this element
+                   exists. Under reduced motion `--dur-fast` clamps to 1ms
+                   and the tick simply cuts, which keeps the feedback. -->
+              <span class="ap-box" class:ap-ticked={item.checked}>
+                <span class="ap-tick" aria-hidden="true"><Icon name="check" size={20} /></span>
+              </span>
+              <span class="kit-row-text">
+                <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
+              </span>
+            </button>
+            <button
+              class="kit-row-act"
+              class:ap-flagged={item.carriedForward}
+              data-carry-forward={item.id}
+              aria-pressed={item.carriedForward}
+              aria-label={item.carriedForward ? m.appointment_prep_uncarry_aria({ content: item.content }) : m.appointment_prep_carry_aria({ content: item.content })}
+              onclick={() => toggleCarriedForward(item)}
+            >
+              <Icon name="flag" size={18} />
+            </button>
+            <button
+              class="kit-row-act"
+              data-delete-appointment-item={item.id}
+              aria-label={m.appointment_prep_delete_aria({ content: item.content })}
+              onclick={() => prepRecord.askToDelete(item)}
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          </div>
+        {/each}
+      </ListCard>
+      <!-- What the flag beside each row does. It was a bare icon with an
+           aria-label, so the only people the app told were the ones using a
+           screen reader (Alicja, 2026-08-26: "what does the flag do in
+           appointment check list?"). Under the list rather than in the
+           screen's own intro, because it is about a control that is only on
+           screen once there is something to flag. -->
+      <p class="muted small">{m.appointment_prep_flag_hint()}</p>
     {/snippet}
     {#snippet empty()}
-      <div class="screen-part">
-        <Notice
-          icon="check"
-          key="appointment-prep-empty"
-          role={roleAt(activeFlag.roles, 1)}
-          title={m.appointment_prep_empty_title()}
-          text={m.appointment_prep_empty_body()}
-          action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
-        />
-      </div>
+      <Notice
+        icon="check"
+        key="appointment-prep-empty"
+        role={roleAt(activeFlag.roles, 1)}
+        title={m.appointment_prep_empty_title()}
+        text={m.appointment_prep_empty_body()}
+        action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
+      />
     {/snippet}
   </ReadGate>
 

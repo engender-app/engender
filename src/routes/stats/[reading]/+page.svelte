@@ -23,7 +23,7 @@
   import { isReading, spanFromSearch, type Reading } from '$lib/data/lookBackReadings';
   import { spanLabel } from '$lib/data/spanLabel';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, resize } from '$lib/motion/reveal';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -66,6 +66,7 @@
     back="/stats"
   />
 
+  <div class="screen-part" use:resize>
   {#if !reading}
     <Notice
       icon="info"
@@ -91,4 +92,5 @@
   {:else}
     <ThemesReading {span} />
   {/if}
+  </div>
 </div>

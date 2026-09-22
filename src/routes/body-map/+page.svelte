@@ -360,7 +360,7 @@
          cannot shorten the page under the figure and pull the shapes up
          from under the finger that just tapped one. Two cards, each a
          chart at its fixed height plus its own heading and padding. -->
-    <div class="body-map-charts" style="--plot-h:{PLOT_HEIGHT}px">
+    <div class="body-map-charts" style="--plot-h:{PLOT_HEIGHT}px" use:resize>
     {#if dysphoriaQuery.loading || euphoriaQuery.loading}
       <div out:crossfade><Skeleton variant="block" count={2} /></div>
     {:else}
