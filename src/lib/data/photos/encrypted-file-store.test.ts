@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { encryptedFileStore } from './encrypted-file-store.ts';
 import { fakeFileStore } from './test-support/fake-file-store.ts';
-import { DecryptionFailedError } from '../../crypto/aesGcm.ts';
+import { DecryptionFailedError, encrypt } from '../../crypto/aesGcm.ts';
 
 const makeKey = () => crypto.getRandomValues(new Uint8Array(32));
 
@@ -51,6 +51,21 @@ test('remove and list pass through, so the orphan sweep sees the same names', as
   await store.remove('a.jpg');
   expect(await store.list()).toEqual(['b.jpg']);
   expect(inner.names()).toEqual(['b.jpg']);
+});
+
+test('a file written before seal/open existed - nonce and ciphertext hand-concatenated - still opens', async () => {
+  const inner = fakeFileStore();
+  const key = makeKey();
+  const nameBytes = new TextEncoder().encode('a.jpg') as Uint8Array<ArrayBuffer>;
+  const { nonce, ciphertext } = await encrypt(key, photoBytes() as Uint8Array<ArrayBuffer>, nameBytes);
+  const handBuilt = new Uint8Array(nonce.length + ciphertext.length);
+  handBuilt.set(nonce);
+  handBuilt.set(ciphertext, nonce.length);
+  await inner.write('a.jpg', handBuilt);
+
+  const store = encryptedFileStore(inner, key);
+  expect(await store.read('a.jpg')).toEqual(photoBytes());
+  expect(await store.size('a.jpg')).toBe(photoBytes().length);
 });
 
 test('a tampered file fails as DecryptionFailedError rather than decoding garbage', async () => {

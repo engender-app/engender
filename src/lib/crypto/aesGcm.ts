@@ -8,6 +8,15 @@
    and the file's header that way (ADR-0007, ticket 13). */
 
 const NONCE_LENGTH = 12;
+/* WebCrypto's default AES-GCM tag length is 128 bits; aesGcm() never
+   overrides it, so this is fixed rather than read back from anywhere. */
+const TAG_LENGTH = 16;
+
+/** Bytes `seal` adds on top of the plaintext: nonce then GCM's tag, in that
+    order, which is also the layout `seal`'s output and `open`'s input share.
+    For a caller that has to size a buffer before sealing, or recover a
+    plaintext length from a stored size, without holding the bytes yet. */
+export const SEAL_OVERHEAD = NONCE_LENGTH + TAG_LENGTH;
 
 interface Encrypted {
   nonce: Uint8Array<ArrayBuffer>;
@@ -67,4 +76,30 @@ export async function decrypt(
     // indistinguishable from a wrong password as the decrypt step itself.
     throw new DecryptionFailedError(err);
   }
+}
+
+/** `encrypt`/`decrypt` for a caller that stores the nonce and the ciphertext
+    as one byte string rather than two fields - a file, a localStorage
+    value, an archive chunk. Owns the framing (nonce first, then ciphertext)
+    so no caller redeclares `NONCE_LENGTH` to slice one back apart. */
+export async function seal(
+  key: Uint8Array<ArrayBuffer>,
+  plaintext: Uint8Array<ArrayBuffer>,
+  additionalData?: Uint8Array<ArrayBuffer>
+): Promise<Uint8Array<ArrayBuffer>> {
+  const { nonce, ciphertext } = await encrypt(key, plaintext, additionalData);
+  const sealed = new Uint8Array(nonce.length + ciphertext.length);
+  sealed.set(nonce);
+  sealed.set(ciphertext, nonce.length);
+  return sealed;
+}
+
+export async function open(
+  key: Uint8Array<ArrayBuffer>,
+  sealed: Uint8Array<ArrayBuffer>,
+  additionalData?: Uint8Array<ArrayBuffer>
+): Promise<Uint8Array<ArrayBuffer>> {
+  const nonce = sealed.subarray(0, NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
+  const ciphertext = sealed.subarray(NONCE_LENGTH) as Uint8Array<ArrayBuffer>;
+  return decrypt(key, nonce, ciphertext, additionalData);
 }

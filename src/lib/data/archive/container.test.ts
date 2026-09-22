@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { DecryptionFailedError } from '../../crypto/aesGcm.ts';
+import { DecryptionFailedError, encrypt } from '../../crypto/aesGcm.ts';
 import { ARCHIVE_ARGON2_PARAMS } from '../../crypto/params.ts';
 import {
   ARCHIVE_FORMAT_VERSION,
@@ -11,6 +11,7 @@ import {
   collect,
   frameArchive,
   readArchiveHeader,
+  u32,
   unframeArchive,
   type ArchiveHeader
 } from './container.ts';
@@ -84,6 +85,66 @@ function validHeaderJson(overrides: Record<string, unknown> = {}): Record<string
     totalChunks: 1,
     ...overrides
   };
+}
+
+test('an archive framed before seal/open existed - each chunk hand-concatenated from encrypt() - still unframes', async () => {
+  const k = key();
+  const length = 3000;
+  const chunkSize = 1024;
+  const header = headerFor(length, chunkSize);
+
+  // headerBytes is otherwise private to encodeHeader(); recovered off a real
+  // frame rather than reimplemented, since only the chunk framing below is
+  // what this test means to build the old way.
+  const real = await collect(frameArchive(k, header, body(length)));
+  const { headerBytes } = await readArchiveHeader(byteReader(oneShot(real)));
+
+  const pieces: Uint8Array[] = [headerBytes];
+  let index = 0;
+  for await (const chunk of rechunked(body(length), chunkSize)) {
+    const aad = concatBytes(headerBytes, u32(index));
+    const { nonce, ciphertext } = await encrypt(k, chunk as Uint8Array<ArrayBuffer>, aad as Uint8Array<ArrayBuffer>);
+    const framedChunk = new Uint8Array(nonce.length + ciphertext.length);
+    framedChunk.set(nonce);
+    framedChunk.set(ciphertext, nonce.length);
+    pieces.push(framedChunk);
+    index += 1;
+  }
+  const handBuilt = concatAll(pieces);
+
+  assert.deepEqual(await unframe(k, handBuilt), await expected(length));
+});
+
+async function* rechunked(source: AsyncIterable<Uint8Array>, size: number): AsyncGenerator<Uint8Array> {
+  let held = new Uint8Array(0);
+  for await (const piece of source) {
+    const combined = concatBytes(held, piece);
+    let at = 0;
+    while (combined.length - at >= size) {
+      yield combined.subarray(at, at + size);
+      at += size;
+    }
+    held = combined.subarray(at);
+  }
+  if (held.length > 0) yield held;
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array<ArrayBuffer> {
+  const both = new Uint8Array(a.length + b.length);
+  both.set(a);
+  both.set(b, a.length);
+  return both;
+}
+
+function concatAll(pieces: Uint8Array[]): Uint8Array<ArrayBuffer> {
+  const total = pieces.reduce((sum, p) => sum + p.length, 0);
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const piece of pieces) {
+    out.set(piece, at);
+    at += piece.length;
+  }
+  return out;
 }
 
 test('round-trips a body that spans several chunks', async () => {
