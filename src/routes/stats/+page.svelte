@@ -86,7 +86,7 @@
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -240,7 +240,7 @@
        nothing dated yet says so instead of drawing a rail from today to
        today. -->
   {#if railLoading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if railStart === null}
     <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()}
       action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }} />
@@ -271,7 +271,7 @@
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
     {#if recapQuery.loading || activeSeriesQuery.loading}
-      <Skeleton variant="line" count={3} />
+      <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
       <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
         <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>

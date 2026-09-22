@@ -26,7 +26,7 @@
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -229,7 +229,7 @@
 
     <div aria-live="polite">
       {#if loading}
-        <Skeleton variant="card" count={3} />
+        <div out:crossfade><Skeleton variant="card" count={3} /></div>
       {:else if !foundNothing}
         <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 

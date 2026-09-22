@@ -64,7 +64,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { collapse, disclose } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { effectCategoryName } from '$lib/data/vocabulary/labels';
 
@@ -884,7 +884,7 @@
     <Notice key="entry-read" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
   {/if}
   {#if loaded.loading}
-    <Skeleton variant="block" count={3} />
+    <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if entryId == null || existing}
   <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
        mode, two sliders and thirty tag chips - about 1900px down on the
@@ -1213,7 +1213,12 @@
     </div>
   {/if}
 
-  {#if prefs.entryDoseQuickLogEnabled && scheduleDose}
+  {#if prefs.entryDoseQuickLogEnabled && scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
+    <!-- Off the two reads as well as off the schedule: `loggedDoseDrugs` is
+         `[]` until today's doses answer, so a chip for a dose already logged
+         once stood on screen for the length of the round trip and then had
+         to withdraw - the row offering a double log and vanishing
+         (yank-sweep, entry-new). -->
     <div class="contextual-row" data-contextual="dose-quick-log">
       {#each dueScheduledDoses as doseItem (doseItem.episodeId)}
         {@const stockRow = stockFor(doseItem.drug)}

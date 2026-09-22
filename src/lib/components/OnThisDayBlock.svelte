@@ -32,6 +32,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { Entry } from '$lib/data/types';
+  import { crossfade } from '$lib/motion/reveal';
   import Skeleton from './Skeleton.svelte';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import LookBackLetterCard from './LookBackLetterCard.svelte';
@@ -110,7 +111,7 @@
 </script>
 
 {#if daysQuery.loading}
-  <Skeleton variant="card" count={2} />
+  <div out:crossfade><Skeleton variant="card" count={2} /></div>
 {:else if !days.length}
   <Notice icon="info" key="on-this-day-none" title={m.on_this_day_none_title()} text={m.on_this_day_none_body()} />
 {:else}

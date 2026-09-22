@@ -37,6 +37,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -356,7 +357,7 @@
   {#if !periodA || !periodB}
     <Notice icon="info" key="compare-empty" title={m.compare_empty()} />
   {:else if queryA.loading || queryB.loading || !queryA.value || !queryB.value}
-    <Skeleton variant="line" count={5} />
+    <div out:crossfade><Skeleton variant="line" count={5} /></div>
   {:else}
     {@const a = queryA.value}
     {@const b = queryB.value}
