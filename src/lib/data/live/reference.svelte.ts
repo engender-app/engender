@@ -102,11 +102,24 @@ const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
 };
 
 let registered = false;
+let hydrated = $state(false);
 
 /** Boot step 3, through the `loadReferenceData` hook `boot.ts` reserves for
-    it: fills the mirror before the first screen renders, so nothing has to
-    cope with an app whose vocabulary is briefly empty. */
+    it. The intent was always to fill the mirror before the first screen
+    renders, so nothing has to cope with an app whose vocabulary is briefly
+    empty - but on a cold navigation straight to a route that reads the
+    mirror (rather than one reached by tapping through an already-booted
+    app), the route's own component tree mounts and paints before this
+    promise settles regardless: SvelteKit hydrates the shell on its own
+    schedule, not gated on `boot()`. `ready` (ticket 152/162) is the signal
+    a screen needs to tell "genuinely nothing here yet" apart from "still
+    loading" during that window, the same distinction a `liveList` gets for
+    free from its own query and this mirror does not. */
 export async function hydrateReference(journal: Journal): Promise<void> {
+  // Re-armed on every call, not just the first: a journal re-open (access
+  // mode switch) runs this again, and `ready` should describe *this* fill
+  // rather than staying stuck true from a previous journal's.
+  hydrated = false;
   const [
     dimensions,
     tagGroups,
@@ -140,6 +153,7 @@ export async function hydrateReference(journal: Journal): Promise<void> {
   mirror.personalEffectTypes = personalEffectTypes;
   mirror.presentations = presentations;
   mirror.entryTemplates = entryTemplates;
+  hydrated = true;
 
   if (registered) return;
   registered = true;
@@ -173,6 +187,15 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     object itself, so nothing outside this module can assign to the mirror and
     make it disagree with the table it mirrors. */
 export const reference = {
+  /** Whether `hydrateReference` has filled the mirror at least once. A
+      screen that reads an empty slice as "genuinely nothing here" (rather
+      than putting it behind its own `liveList`) needs this to tell that
+      state apart from "not hydrated yet" on a cold navigation straight to
+      it (ticket 152/162). */
+  get ready(): boolean {
+    return hydrated;
+  },
+
   get dimensions(): GenderDimension[] {
     return mirror.dimensions;
   },

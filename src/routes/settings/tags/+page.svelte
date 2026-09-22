@@ -8,7 +8,8 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { discloseWidth } from '$lib/motion/reveal';
+  import { crossfade, discloseWidth, resize } from '$lib/motion/reveal';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
 
@@ -88,8 +89,20 @@
     <Icon name="plus" size={20} /><span>{m.tags_new_group()}</span>
   </button>
 
-  {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
-  {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
+  <div use:resize>
+    {#if !vocabulary.ready}
+      <!-- Every built-in tag group is reconciled on every boot (ADR-0004),
+           so this is never legitimately empty - but on a cold navigation
+           straight here, `vocabulary.tagGroups` reads empty for a few
+           frames before the mirror behind it hydrates, and with no gate
+           that painted nothing at all where five groups of tags belong
+           (ticket 152). -->
+      <div out:crossfade><Skeleton variant="line" count={4} /></div>
+    {:else}
+      {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
+      {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
+    {/if}
+  </div>
 
   <Sheet open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
