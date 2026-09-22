@@ -102,6 +102,26 @@ export interface MarkOptions {
   label?: string;
 }
 
+/* markSvg's two inputs are constrained rather than trusted, the way
+   icons.ts holds `size` and `cls` to one shape each (phase 12 audit finding
+   S4): the string comes back out through {@html}, so an argument that could
+   carry a quote could carry an attribute. A stripe has one fixed shape and
+   is rejected to black when it doesn't match; a label is free text with no
+   such shape, so it's escaped instead. Neither is reachable today - stripes
+   come from palettes.css, no call site passes a label - which is why
+   nothing here was exploitable before this. */
+
+/** A hex colour, or black if the string carries anything else. */
+function hexColor(value: string): string {
+  return /^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#000000';
+}
+
+/** Escaped for the `aria-label` attribute below, the only place a label is
+    written. */
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** The rings, outermost first. Each radius is pulled in by half a seam
     because the stroke straddles the boundary, so the outermost ring's black
     edge lands exactly on the sun's outside rather than half outside it. */
@@ -112,7 +132,7 @@ function ringMarkup(stripes: string[], ink: string | undefined): string {
       const r = (radius - MARK_SEAM / 2).toFixed(2);
       const paint = ink
         ? `fill="none" stroke="${ink}"`
-        : `fill="${stripes[i]}" stroke="#000"`;
+        : `fill="${hexColor(stripes[i])}" stroke="#000"`;
       return `<circle cx="${MARK_R}" cy="0" r="${r}" ${paint} stroke-width="${MARK_SEAM}"/>`;
     })
     .join('');
@@ -168,7 +188,8 @@ export function markSvg(
   size: number | string,
   { ink, ground, id, label }: MarkOptions = {}
 ): string {
-  const named = label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${label}"`;
+  const named =
+    label === undefined ? `aria-hidden="true"` : `role="img" aria-label="${escapeAttr(label)}"`;
   const open =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"`
     + ` focusable="false" ${named}>`;
