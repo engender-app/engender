@@ -21,7 +21,7 @@
   is an async iterable of byte pieces, so neither side ever holds more than
   a chunk plus whatever the caller is holding. */
 
-import { decrypt, encrypt } from '../../crypto/aesGcm';
+import { open, seal, SEAL_OVERHEAD } from '../../crypto/aesGcm';
 import { ARCHIVE_ARGON2_PARAMS, type Argon2Params } from '../../crypto/params';
 import { currentArchiveFormatVersion } from './codec';
 import { CorruptArchiveError, u32 } from './wire';
@@ -42,9 +42,6 @@ const MAX_HEADER_JSON = 64 * 1024;
     to guard against - F-07, these numbers come off a file from anywhere. */
 const MAX_KDF_MEMORY_SIZE = ARCHIVE_ARGON2_PARAMS.memorySize * 8;
 const MAX_KDF_ITERATIONS = ARCHIVE_ARGON2_PARAMS.iterations * 8;
-
-const NONCE_LENGTH = 12;
-const TAG_LENGTH = 16;
 
 export const ARCHIVE_FORMAT_VERSION = currentArchiveFormatVersion();
 
@@ -305,8 +302,7 @@ export async function* frameArchive(
   let index = 0;
   for await (const chunk of rechunk(body, header.chunkSize)) {
     if (index >= header.totalChunks) throw new Error('the archive body is longer than its header declares');
-    const { nonce, ciphertext } = await encrypt(key, chunk, aadFor(headerBytes, index));
-    yield concat(nonce, ciphertext);
+    yield await seal(key, chunk, aadFor(headerBytes, index));
     index += 1;
   }
   if (index !== header.totalChunks) throw new Error('the archive body is shorter than its header declares');
@@ -325,14 +321,14 @@ export async function* unframeArchive(
   for (let index = 0; index < header.totalChunks; index++) {
     const last = index === header.totalChunks - 1;
     const framed = last
-      ? await reader.readAtMost(NONCE_LENGTH + header.chunkSize + TAG_LENGTH)
-      : await reader.readExactly(NONCE_LENGTH + header.chunkSize + TAG_LENGTH);
+      ? await reader.readAtMost(SEAL_OVERHEAD + header.chunkSize)
+      : await reader.readExactly(SEAL_OVERHEAD + header.chunkSize);
     if (last && !(await reader.atEnd())) {
       throw new CorruptArchiveError('the final archive chunk exceeds its declared size');
     }
-    if (framed.length <= NONCE_LENGTH + TAG_LENGTH) {
+    if (framed.length <= SEAL_OVERHEAD) {
       throw new CorruptArchiveError(`the archive ends before chunk ${index + 1} of ${header.totalChunks}`);
     }
-    yield decrypt(key, framed.subarray(0, NONCE_LENGTH), framed.subarray(NONCE_LENGTH), aadFor(headerBytes, index));
+    yield open(key, framed, aadFor(headerBytes, index));
   }
 }

@@ -15,6 +15,8 @@ import {
   isPersistedEntryDraft,
   localStorageEntryDraft
 } from './entryDraftStore.ts';
+import { encrypt } from '../crypto/aesGcm.ts';
+import { handConcat } from '../crypto/test-support/hand-concat.ts';
 import type { PersistedEntryDraft } from './entryDraftPersistence.ts';
 
 const draft = (bodyRegions: unknown) => ({
@@ -118,6 +120,19 @@ test('a mirror written by an older build reads as no draft rather than as plaint
   values.set(ENTRY_DRAFT_STORE_KEY, JSON.stringify(persisted(NOTE)));
 
   assert.equal(await localStorageEntryDraft(async () => KEY).read(), null);
+  vi.unstubAllGlobals();
+});
+
+test('a mirror written before seal/open existed - nonce and ciphertext hand-concatenated - still opens', async () => {
+  const values = fakeLocalStorage();
+  const boundTo = new TextEncoder().encode(ENTRY_DRAFT_STORE_KEY);
+  const plaintext = new TextEncoder().encode(JSON.stringify(persisted(NOTE)));
+  const { nonce, ciphertext } = await encrypt(KEY, plaintext as Uint8Array<ArrayBuffer>, boundTo as Uint8Array<ArrayBuffer>);
+  const handBuilt = handConcat(nonce, ciphertext);
+  values.set(ENTRY_DRAFT_STORE_KEY, btoa(String.fromCharCode(...handBuilt)));
+
+  const { id: _id, ...withoutId } = persisted(NOTE);
+  assert.deepEqual(await localStorageEntryDraft(async () => KEY).read(), withoutId);
   vi.unstubAllGlobals();
 });
 

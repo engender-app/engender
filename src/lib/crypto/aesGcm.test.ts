@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest';
-import { encrypt, decrypt, DecryptionFailedError } from './aesGcm.ts';
+import { encrypt, decrypt, seal, open, SEAL_OVERHEAD, DecryptionFailedError } from './aesGcm.ts';
 import { capturedConsoleOutput } from './test-support/capture-console.ts';
+import { handConcat } from './test-support/hand-concat.ts';
 
 function makeKey() {
   return crypto.getRandomValues(new Uint8Array(32));
@@ -55,6 +56,42 @@ test('the wrong-key and corrupted-file failures are the same error, not distingu
   expect(wrongKeyError).toBeInstanceOf(DecryptionFailedError);
   expect(corruptedError).toBeInstanceOf(DecryptionFailedError);
   expect(wrongKeyError.message).toBe(corruptedError.message);
+});
+
+test('round-trips plaintext through seal then open', async () => {
+  const key = makeKey();
+  const plaintext = new TextEncoder().encode('a sealed byte string');
+  const sealed = await seal(key, plaintext);
+  expect(new TextDecoder().decode(await open(key, sealed))).toBe('a sealed byte string');
+});
+
+test('seal lays out nonce first, then ciphertext, with no extra bytes', async () => {
+  const key = makeKey();
+  const plaintext = new TextEncoder().encode('framing stays put');
+  const sealed = await seal(key, plaintext);
+  expect(sealed.length - plaintext.length).toBe(SEAL_OVERHEAD);
+
+  // The first 12 bytes decrypt as the nonce and the rest as the ciphertext -
+  // the order every store used to hand-assemble - not the other way round.
+  const plainBack = await decrypt(key, sealed.subarray(0, 12), sealed.subarray(12));
+  expect(new TextDecoder().decode(plainBack)).toBe('framing stays put');
+});
+
+test('open reads a byte string built the old way: encrypt(), then nonce concatenated with ciphertext by hand', async () => {
+  const key = makeKey();
+  const plaintext = new TextEncoder().encode('written before seal/open existed');
+  const { nonce, ciphertext } = await encrypt(key, plaintext);
+  const handBuilt = handConcat(nonce, ciphertext);
+
+  expect(new TextDecoder().decode(await open(key, handBuilt))).toBe('written before seal/open existed');
+});
+
+test('seal/open carry additional data the same as encrypt/decrypt', async () => {
+  const key = makeKey();
+  const aad = new TextEncoder().encode('bound-to');
+  const sealed = await seal(key, new TextEncoder().encode('payload'), aad);
+  await expect(open(key, sealed)).rejects.toThrow(DecryptionFailedError);
+  expect(new TextDecoder().decode(await open(key, sealed, aad))).toBe('payload');
 });
 
 test('never logs key material', async () => {
