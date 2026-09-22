@@ -110,12 +110,21 @@ export function parseRecoveryWrap(serialized: string): RecoveryWrap {
     throw new RecoveryWrapUnreadableError('the recovery file has no usable KDF parameters');
   }
 
+  let salt: Uint8Array<ArrayBuffer>, nonce: Uint8Array<ArrayBuffer>, wrappedKey: Uint8Array<ArrayBuffer>;
+  try {
+    salt = fromBase64(raw.salt);
+    nonce = fromBase64(raw.nonce);
+    wrappedKey = fromBase64(raw.wrappedKey);
+  } catch {
+    throw new RecoveryWrapUnreadableError('the recovery file has unreadable base64');
+  }
+
   return {
     version: RECOVERY_WRAP_VERSION,
     kdf: 'argon2id',
     params: params as DataKeyWrap['params'],
-    salt: fromBase64(raw.salt),
-    nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey)
+    salt,
+    nonce,
+    wrappedKey
   };
 }

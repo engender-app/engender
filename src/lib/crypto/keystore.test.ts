@@ -148,6 +148,14 @@ test('an unrecognised secret source fails by name rather than unlocking under th
   expect(() => parseKeystore(JSON.stringify(odd))).toThrow(KeystoreUnreadableError);
 });
 
+test('a damaged salt fails by name rather than as a platform base64 error', async () => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const damaged = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  damaged.salt = 'not base64 !!!';
+
+  expect(() => parseKeystore(JSON.stringify(damaged))).toThrow(KeystoreUnreadableError);
+});
+
 test('changing access mode rewraps the same data key under a different kind of secret', async () => {
   const { metadata, dataKey } = await createKeystore('a typed passphrase', CHEAP);
   const toPin = await rewrapKeystore(metadata, 'a typed passphrase', '1234', CHEAP, 'pin');
