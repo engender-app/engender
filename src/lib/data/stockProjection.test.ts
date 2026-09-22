@@ -398,6 +398,19 @@ test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', 
   assert.equal(isStockNoticeSnoozed(now, storage), false);
 });
 
+test('a snooze written under the pre-rename key still reads as snoozed, migrated onto the engender- key', () => {
+  /* Audit finding S3: the key used to be stock_notice_snooze_until,
+     unprefixed, so a reset's engender- sweep left it behind. Renaming it
+     must not also throw away a snooze someone already set. */
+  const storage = new MockStorage();
+  const now = 1700000000000;
+  storage.setItem('stock_notice_snooze_until', String(now + 3600_000));
+
+  assert.equal(isStockNoticeSnoozed(now, storage), true);
+  assert.equal(storage.getItem('stock_notice_snooze_until'), null);
+  assert.equal(storage.getItem('engender-stock-notice-snooze-until'), String(now + 3600_000));
+});
+
 
 /* projectEveryStock, the path the stock area takes (phase 8 audit ticket
    26). Driven with a counter that answers from an in-memory dose list, so
