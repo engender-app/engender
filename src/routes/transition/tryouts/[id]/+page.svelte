@@ -123,8 +123,13 @@
   /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
      upper bound, so a page limit is the only thing that keeps this bounded.
      Newest first, same as the query's own ORDER BY - "load more" reaches
-     further back, the same shape search/+page.svelte already uses. */
-  const PAGE = 30;
+     further back, the same shape search/+page.svelte already uses.
+
+     Five rather than search's thirty (final audit U14): a months-long
+     tryout put forty entries between the felt-sense log and the end of the
+     screen, and this list is a glance at what was written while it ran, not
+     the place to read it all. */
+  const PAGE = 5;
   let pages = $state(1);
 
   /* Reset by anything that changes what range is being read, the same
@@ -349,6 +354,23 @@
 
   {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
+    <!-- First in how it has felt rather than after the entries (final
+         audit U14, Alicja 2026-09-22): the one control that acts on the
+         whole stretch, so it opens the section instead of sitting behind
+         forty rows of what was written during it. -->
+    {#if compareLink.state.status !== 'hidden'}
+      {@const compareNotice = compareStretchNoticeProps(compareLink.state, openEnded, TRYOUT_COMPARE_COPY)}
+      <div class="screen-part">
+        <Notice
+          icon="shuffle"
+          key="tryout-compare"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
+          title={compareNotice.title}
+          text={compareNotice.text}
+          action={compareNotice.action}
+        />
+      </div>
+    {/if}
     <MoodPicker value={feelingMood} onPick={(v) => (feelingMood = v)} compact />
     <!-- Named rather than left to its placeholder, which is an example
          that disappears the moment somebody types into it: every other
@@ -437,11 +459,6 @@
         {#each entriesInRange as e (e.id)}
           <EntryCard entry={e} />
         {/each}
-        {#if entriesRemaining > 0}
-          <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
-            <span>{m.list_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
-          </button>
-        {/if}
       {/snippet}
       {#snippet empty()}
         <Notice
@@ -453,18 +470,16 @@
         />
       {/snippet}
     </ReadGate>
-
-    {#if compareLink.state.status !== 'hidden'}
-      {@const compareNotice = compareStretchNoticeProps(compareLink.state, openEnded, TRYOUT_COMPARE_COPY)}
-      <div class="screen-part">
-        <Notice
-          icon="shuffle"
-          key="tryout-compare"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
-          title={compareNotice.title}
-          text={compareNotice.text}
-          action={compareNotice.action}
-        />
+    <!-- Below the gate rather than inside it: the gate's box clips while it
+         grows (motion/reveal.ts `resize`), so a button inside it vanished
+         for the length of every "more" and reappeared at the bottom. Out
+         here it rides the growing edge down, and opens and closes its own
+         height when it arrives with the first page or goes with the last. -->
+    {#if entriesRemaining > 0}
+      <div class="screen-part" transition:disclose>
+        <button class="btn btn-soft btn-block" data-tryout-entries-more onclick={() => (pages += 1)}>
+          <span>{m.list_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
+        </button>
       </div>
     {/if}
   {/if}
