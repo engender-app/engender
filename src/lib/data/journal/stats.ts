@@ -21,6 +21,7 @@ import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { ConstellationReading } from '../constellationData';
 import { regionReading, type RegionSideReading, type RegionSides } from '../bodyMap';
 import { normalize } from '../metricRange';
+import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from '../safeSpaceNudge';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
@@ -307,17 +308,6 @@ export interface RegionReading {
 /** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
     a day's average mood has to clear for on-this-day (CONTEXT: Good day). */
 const GOOD_DAY_MOOD_FLOOR = 3;
-
-/** The body-region intensity scale is 0 to 100 (bodyMap.ts); 50 is its
-    midpoint and the bar a single region's euphoria has to clear, on any one
-    entry, for both the good-day rule below and entries.counterevidencePool
-    (phase 5 ticket 44, CONTEXT: "Good day", "Euphoria capture" - amended).
-    Named apart from the euphoria tags' own good-day clause: a region is a
-    magnitude a person can log without a euphoria tag at all, so it needs its
-    own floor rather than reusing GOOD_DAY_MOOD_FLOOR's shape or piggybacking
-    on EUPHORIA_TAG_KEYS. Compared inclusively (`>=`), the same convention
-    GOOD_DAY_MOOD_FLOOR itself uses. */
-export const GOOD_DAY_REGION_EUPHORIA_FLOOR = 50;
 
 /* Which rows carry "the metric", as a subquery plus its parameters. Mood
    is a column on the entry and a dimension value is a row in a join table,
