@@ -2924,6 +2924,7 @@
   "wear_session_trend_region_group": "Porównaj z",
   "wear_session_trend_wear_legend": "Czas noszenia (godziny)",
   "wear_session_trend_region_legend": "intensywność: {region}",
+  "wear_session_trend_series_empty": "{series}: nic w tym zakresie.",
   "wear_kind_group": "Co zapisujesz?",
   "wear_kind_binder": "Binder",
   "wear_kind_tucking": "Tucking",
