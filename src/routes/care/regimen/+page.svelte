@@ -357,7 +357,7 @@
                        title pushes the name it belongs to onto a second line as
                        soon as the name is long, which every ester is. -->
                   {#if activeIds.has(episode.id)}
-                    <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
+                    <span class="regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
                   {/if}
                 {/snippet}
               </ListRow>
@@ -799,11 +799,15 @@
   }
 
   /* Small enough to sit at the end of a row without pushing the reading
-     beside it around. */
+     beside it around. Ink, not the warning treatment (audit U6, rule 4):
+     being on a regimen is a status, not a caution, and amber is reserved
+     for genuine warnings elsewhere (labs, eras, export). */
   .regimen-badge {
     padding: 2px var(--space-2);
     border-radius: var(--r-block);
     font-size: var(--text-xs);
     white-space: nowrap;
+    background: var(--text);
+    color: var(--bg);
   }
 </style>
