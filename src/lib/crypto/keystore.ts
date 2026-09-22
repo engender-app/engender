@@ -323,14 +323,23 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     pinBinding = named as PinBinding;
   }
 
+  let salt: Uint8Array<ArrayBuffer>, nonce: Uint8Array<ArrayBuffer>, wrappedKey: Uint8Array<ArrayBuffer>;
+  try {
+    salt = fromBase64(raw.salt);
+    nonce = fromBase64(raw.nonce);
+    wrappedKey = fromBase64(raw.wrappedKey);
+  } catch {
+    throw new KeystoreUnreadableError('keystore file has unreadable base64');
+  }
+
   return {
     version: KEYSTORE_VERSION,
     kdf: 'argon2id',
     secretSource: secretSource as JournalSecretSource,
     params: params as Argon2Params,
-    salt: fromBase64(raw.salt),
-    nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey),
+    salt,
+    nonce,
+    wrappedKey,
     ...(biometric ? { biometric } : {}),
     ...(pinBinding ? { pinBinding } : {})
   };
