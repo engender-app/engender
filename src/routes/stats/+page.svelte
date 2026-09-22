@@ -405,7 +405,7 @@
     </div>
 
     {#if !recapQuery.loading && !recapQuery.failed && !enoughEntries}
-      <div data-lookback-new-entry transition:disclose>
+      <div transition:disclose>
         <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
       </div>
     {/if}
