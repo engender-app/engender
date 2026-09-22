@@ -12,8 +12,11 @@ import { markJournalBusy } from '../journal-busy.ts';
 import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from './entries.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins.ts';
-import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats.ts';
-import { BAD_MOMENT_REGION_DYSPHORIA_FLOOR, DYSPHORIA_TAG_KEYS } from '../safeSpaceNudge.ts';
+import {
+  BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
+  DYSPHORIA_TAG_KEYS,
+  GOOD_DAY_REGION_EUPHORIA_FLOOR
+} from '../safeSpaceNudge.ts';
 import { BODY_REGION_MIDPOINT } from '../bodyMap.ts';
 import { COUNTEREVIDENCE_LIMIT } from '../counterevidence.ts';
 import { persona } from '../demo/persona.ts';
