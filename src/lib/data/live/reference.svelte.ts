@@ -86,7 +86,8 @@ type MirrorSlice =
     list here that nothing checks. So a milestone's photo refreshes the
     timeline because `getMilestones` joins it, and `presentations` refreshes
     on an entry save because it orders most-recently-used first by the entry
-    table's own timestamps (presentations.ts). */
+    table's own timestamps (presentations.ts). Each entry has to name the
+    same read `refresh` below calls for that slice. */
 const SLICE_READS: Record<MirrorSlice, [area: string, operation: string]> = {
   dimensions: ['dimensions', 'getDimensions'],
   tagGroups: ['tags', 'getTagGroups'],

@@ -736,6 +736,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
+      // The surgery milestone with its photo on it, as getMilestones reads it.
       getMilestone: ['milestone', 'photo'],
       lastWriteEpochDay: ['procedure', 'appointment']
     }
