@@ -45,6 +45,7 @@
 <div class="sun" class:is-carried={carried} aria-hidden="true" data-flag-sun>
   {#each rings as ring, i (i)}
     <i
+      class="sun-ring"
       style={`--d: ${ring.diameter}px; --c: ${ring.color}; --in-delay: ${ring.inDelay}s; --breathe-delay: ${ring.breatheDelay}s`}
     ></i>
   {/each}

@@ -388,6 +388,13 @@
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   line-height: 1.25;
+  /* On the base rule rather than on a state class alone (ticket 150):
+     the roadmap title's done/skip colouring toggles by adding or removing
+     a class (`.roadmap-done`, `.roadmap-skip-text`), and a transition
+     declared only inside that class does not run for the direction that
+     removes it - the row snapped back to ink with no fade leaving
+     not-my-path. */
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
 /* 15 at weight 600, not 14 at 450 (phase 10, rule 2). */
