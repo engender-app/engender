@@ -542,15 +542,29 @@
       <!-- The blind (redesign ticket 28), first so it paints under both the
            sun and the wordmark: the field's colour, split off from the box
            that measures it so the edge can be pulled to the next screen's
-           height while what is drawn on it leaves under its own animation. -->
-      <div class="field-blind" data-field-blind aria-hidden="true"></div>
-      <!-- Home-only, and never under disguise (ADR-0035) - checked on
-           prefs.disguise here rather than inside FlagSun, so the one place
-           that decides whether the sun renders at all matches every other
-           disguise gate in the app. Under disguise the field itself falls to
-           --surface-2 (activeFlag), so this block is a grey header with the
-           app's assumed name in it and nothing else. -->
-      {#if !prefs.disguise}<FlagSun />{/if}
+           height while what is drawn on it leaves under its own animation.
+
+           The sun is inside it, not beside it (ticket 148): setup's own
+           field nests its sun inside its blind (onboarding/+page.svelte),
+           and $lib/motion/fieldBlind's `holdSun` leaves the sun unnamed on
+           purpose so it stays part of whichever capture is its nearest
+           named ancestor, riding that capture rather than crossfading
+           against its own twin. A sibling sun has the field itself for
+           that ancestor, and the field's own capture is hidden outright
+           (opacity: 0, fieldBlind.ts's own comment) - so Home's held sun
+           was vanishing for the length of setup's handover, the field it
+           rode being invisible by design. Nested here, it rides the
+           blind's own capture instead, which is never hidden. -->
+      <div class="field-blind" data-field-blind aria-hidden="true">
+        <!-- Home-only, and never under disguise (ADR-0035) - checked on
+             prefs.disguise here rather than inside FlagSun, so the one
+             place that decides whether the sun renders at all matches
+             every other disguise gate in the app. Under disguise the field
+             itself falls to --surface-2 (activeFlag), so this block is a
+             grey header with the app's assumed name in it and nothing
+             else. -->
+        {#if !prefs.disguise}<FlagSun />{/if}
+      </div>
       <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
            the same module, and for the reason SCREENS.md gives: disguise
            changes the app's name and icon app-wide, not per screen. The hero
