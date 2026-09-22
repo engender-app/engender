@@ -613,6 +613,23 @@
       }
     }
   ],
+  "n_photos": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} zdjęcie",
+        "nPlural=few": "{n} zdjęcia",
+        "nPlural=many": "{n} zdjęć",
+        "nPlural=other": "{n} zdjęć"
+      }
+    }
+  ],
   "n_weeks": [
     {
       "declarations": [
@@ -3124,6 +3141,7 @@
   "journal_book_part_entries": "Wpisy",
   "journal_book_part_opening_page": "Bilans na otwarcie",
   "journal_book_part_dysphoria_euphoria_tags": "Tagi dysforii i eufori",
+  "journal_book_preview_disclosure": "Przejrzyj strony",
   "journal_book_empty": "W tym zakresie nie ma nic do wydruku.",
   "journal_book_range": "od {from} do {to}",
   "journal_book_scope": "{range}. {parts}",

@@ -108,7 +108,7 @@ interface JournalBookOpening {
   milestoneCount: number;
 }
 
-interface JournalBook {
+export interface JournalBook {
   fromEpochDay: number;
   toEpochDay: number;
   /** Oldest first, all of them: a book is bound in the order it was lived,
@@ -118,6 +118,26 @@ interface JournalBook {
   sideEffects: SideEffect[];
   /** Null unless the opening page was asked for. */
   opening: JournalBookOpening | null;
+}
+
+/** How much a book holds, in the three things that decide its length: the
+    days it prints, the pictures on them and the milestones between them
+    (phase 12 final-audit ticket 20).
+
+    Counted off the assembled book rather than asked of the tables again, so
+    the line the screen shows and the pages it stands for can never disagree.
+    An unticked part needs no special case here - the assembly never read it,
+    so it counts nothing. */
+export function journalBookCounts(book: JournalBook): {
+  entries: number;
+  photos: number;
+  milestones: number;
+} {
+  return {
+    entries: book.entries.length,
+    photos: book.entries.reduce((n, entry) => n + entry.photos.length, 0),
+    milestones: book.milestones.length
+  };
 }
 
 interface JournalBookAreas {
