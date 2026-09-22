@@ -429,10 +429,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteMilestone: ['milestone', 'photo', 'feltSense', 'document']
     },
     // A milestone is read back with its photos on it, the same way an entry
-    // is.
+    // is, and with the name of the procedure, tryout or custom goal it links
+    // to, so renaming one of those changes what the milestone reads as.
     reads: {
-      getMilestones: ['milestone', 'photo'],
-      getMilestonesOnDay: ['milestone', 'photo'],
+      getMilestones: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
+      getMilestonesOnDay: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
       // No photo join: the registry wants the date, not the photo indicator.
       lastWriteEpochDay: ['milestone']
     }
@@ -930,8 +931,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // 'appointment' because getProcedures reads it for a journey's
       // consults (ticket 57), not because an appointment draws a mark of
       // its own - that is ticket 59's.
+      // 'photo' and 'roadmapGoal' through getMilestones' own joins.
       getAnnotations: [
         'milestone',
+        'photo',
+        'roadmapGoal',
         'regimen',
         'dose',
         'journalingPause',
@@ -1011,8 +1015,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   journalBook: classify<Journal['journalBook']>()({
     writes: {},
     // The entry half is a hydrated read, so it carries everything an entry
-    // is read back with; the opening page adds the recap's milestones.
-    reads: { getBook: [...HYDRATED_ENTRY, 'milestone', 'sideEffect'] }
+    // is read back with; the opening page adds the recap's milestones, with
+    // what getMilestones joins onto them.
+    reads: { getBook: [...HYDRATED_ENTRY, 'milestone', 'procedure', 'tryout', 'roadmapGoal', 'sideEffect'] }
   }),
   // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
   stats: classify<Journal['stats']>()({
