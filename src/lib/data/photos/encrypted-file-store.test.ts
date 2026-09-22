@@ -2,6 +2,7 @@ import { test, expect } from 'vitest';
 import { encryptedFileStore } from './encrypted-file-store.ts';
 import { fakeFileStore } from './test-support/fake-file-store.ts';
 import { DecryptionFailedError, encrypt } from '../../crypto/aesGcm.ts';
+import { handConcat } from '../../crypto/test-support/hand-concat.ts';
 
 const makeKey = () => crypto.getRandomValues(new Uint8Array(32));
 
@@ -58,9 +59,7 @@ test('a file written before seal/open existed - nonce and ciphertext hand-concat
   const key = makeKey();
   const nameBytes = new TextEncoder().encode('a.jpg') as Uint8Array<ArrayBuffer>;
   const { nonce, ciphertext } = await encrypt(key, photoBytes() as Uint8Array<ArrayBuffer>, nameBytes);
-  const handBuilt = new Uint8Array(nonce.length + ciphertext.length);
-  handBuilt.set(nonce);
-  handBuilt.set(ciphertext, nonce.length);
+  const handBuilt = handConcat(nonce, ciphertext);
   await inner.write('a.jpg', handBuilt);
 
   const store = encryptedFileStore(inner, key);
