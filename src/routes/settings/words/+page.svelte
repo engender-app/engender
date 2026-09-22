@@ -41,7 +41,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} back={returnParam || '/settings'} screen="words" />
+  <ScreenHeader title={m.words_ignored_title()} subtitle={m.words_ignored_screen_sub()} back={returnParam || '/settings'} screen="words" />
 
   {#if returnParam}
     <div class="words-return-row">
