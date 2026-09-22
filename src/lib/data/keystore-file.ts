@@ -50,8 +50,10 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<voi
      ordering. */
   try {
     await writable.write(serialized);
-  } finally {
     await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
   }
 }
 
