@@ -176,6 +176,15 @@ test('a recovery file this build cannot read fails by name, never as a wrong key
   ).toThrow(/no usable KDF parameters/);
 });
 
+test('a damaged salt fails by name rather than as a platform base64 error', async () => {
+  const dataKey = aDataKey();
+  const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(generateRecoveryKey()));
+  const damaged = JSON.parse(serializeRecoveryWrap(wrap)) as Record<string, unknown>;
+  damaged.salt = 'not base64 !!!';
+
+  expect(() => parseRecoveryWrap(JSON.stringify(damaged))).toThrow(RecoveryWrapUnreadableError);
+});
+
 /* Nothing a person can do about an unreadable file, and the one useful
    thing the screen can offer is a fresh key - which overwrites it. So the
    read that decides whether to offer that treats it as no key rather than
@@ -185,4 +194,14 @@ test('an unreadable recovery file reads as no recovery key', async () => {
   const broken = { ...ports, read: async () => { throw new RecoveryWrapUnreadableError('mangled'); } };
 
   expect(await recoveryKeyExists(broken)).toBe(false);
+});
+
+test('a recovery file damaged on disk, not just mocked, reads as no recovery key', async () => {
+  const dataKey = aDataKey();
+  const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(generateRecoveryKey()));
+  const damaged = JSON.parse(serializeRecoveryWrap(wrap)) as Record<string, unknown>;
+  damaged.salt = 'not base64 !!!';
+  const ports = { ...inMemoryRecoveryKeyPorts(), read: async () => parseRecoveryWrap(JSON.stringify(damaged)) };
+
+  expect(await recoveryKeyExists(ports)).toBe(false);
 });
