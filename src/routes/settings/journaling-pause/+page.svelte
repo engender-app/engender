@@ -17,6 +17,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import { resize } from '$lib/motion/reveal';
 
   const today = todayEpochDay();
 
@@ -66,7 +67,7 @@
 <div class="screen">
   <ScreenHeader title={m.journaling_pause_title()} back="/settings" subtitle={m.journaling_pause_intro()} />
 
-  <div class="kit-panel" data-kit-surface>
+  <div class="kit-panel" data-kit-surface use:resize>
     {#if current}
       <p class="kit-row-title">
         {m.journaling_pause_running_since({
