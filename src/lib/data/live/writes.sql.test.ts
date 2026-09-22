@@ -46,10 +46,30 @@
    real, narrower blind spot than "exactly", left open on purpose rather
    than left unmentioned.
 
-   Reads get the read half's own rule: every classified read this sweep can
-   invoke is driven the same way and must touch nothing. Reads sit under
+   Reads are driven the same way and must write nothing, and then get the
+   same two checks in the read direction (final audit ticket 26). Per read,
+   the tables its SQL read must be a subset of its declared tables mapped
+   through SQL_TABLES - the direction writes.ts's header calls the worst
+   one, since a read missing a table it joins never re-runs when that table
+   is written and shows stale data that looks like a Svelte bug. Per coarse
+   name, the union of what every read declaring it actually read must cover
+   that name's tables. READS_THE_JOURNAL is WIPES_THE_JOURNAL's twin: the
+   archive snapshot and the three import previews that start from one read
+   every table there is, so they stay out of the union. Reads sit under
    READ_OPT_OUTS the same way writes do, and a coverage check below holds
    the read half to the same standard the write half's coverage check does.
+
+   The read half's own blind spots, named rather than closed. First, the
+   same one check 2 has: a read declaring a coarse name its SQL never
+   touches passes as long as some other read declaring that name does touch
+   it. For a read that over-declaration costs a needless re-query, not stale
+   data, which is why it is the half left open. Second, a read only proves
+   what this fixture makes it run: getSchedules reads dose_schedule_weekday
+   only for a weekday schedule and getSnapshots reads doubt_snapshot_entry
+   only when a snapshot exists, so the scenario above leaves one of each
+   standing, and a branch no fixture row reaches is not checked. Third, the
+   recording driver's own: triggers and a view's underlying tables are
+   invisible to it.
 
    Not every classified write is driven. `reconcile.ts`'s own comment says
    reconciling "usually finds nothing to do, and announcing these tables for
@@ -114,6 +134,39 @@ const READ_OPT_OUTS: Record<string, string> = {
     the per-coarse-name union check below for why they're excluded there. */
 const WIPES_THE_JOURNAL = new Set(['archive.replace', 'discardEverything']);
 
+/** The read half's WIPES_THE_JOURNAL: the snapshot reads every table there
+    is, and each import preview takes one to match against, so any of the
+    four would satisfy the per-coarse-name read union on its own. */
+const READS_THE_JOURNAL = new Set([
+  'archive.snapshot',
+  'archive.previewDaylioImport',
+  'archive.previewTrackAndGraphImport',
+  'archive.previewPixelsImport'
+]);
+
+const declaredRead = (key: string): readonly TableName[] => {
+  const [area, operation] = key.split('.', 2);
+  return tablesReadBy(area, operation);
+};
+
+/** The tables a read's SQL read that its declaration, mapped through
+    `tables`, does not cover. */
+const readOutside = (
+  read: readonly string[],
+  coarse: readonly TableName[],
+  tables: Record<TableName, readonly string[]>
+): string[] => {
+  const expected = new Set(coarse.flatMap((name) => tables[name]));
+  return read.filter((table) => !expected.has(table));
+};
+
+/** Which of `name`'s tables, mapped through `tables`, some owner's SQL read. */
+const readHit = (
+  name: TableName,
+  owners: readonly { read: readonly string[] }[],
+  tables: Record<TableName, readonly string[]>
+): string[] => [...new Set(owners.flatMap((d) => d.read).filter((table) => tables[name].includes(table)))].sort();
+
 interface Driven {
   key: string;
   coarse: readonly TableName[];
@@ -124,7 +177,11 @@ interface Driven {
     WRITE_OPT_OUTS is - built once in `beforeAll` and read by every check
     below, so the expensive scenario runs only once. */
 let driven: Driven[];
-let readWrote: { key: string; wrote: readonly string[] }[];
+/** Every read this file actually calls, with what its SQL read and wrote.
+    The declaration is looked up by the checks rather than here, so an
+    unclassified read fails its own test below instead of the whole
+    `beforeAll`. */
+let drivenReads: { key: string; read: readonly string[]; wrote: readonly string[] }[];
 let journal: Journal;
 let recording: RecordingDriver;
 /** Every classified write's key, mapped to the coarse names it declares -
@@ -156,13 +213,13 @@ async function driveWide<T>(
 
 async function driveRead<T>(area: string, operation: string, run: () => Promise<T>): Promise<T> {
   const { result, recording: rec } = await recording.record(run);
-  readWrote.push({ key: `${area}.${operation}`, wrote: rec.wrote });
+  drivenReads.push({ key: `${area}.${operation}`, read: rec.read, wrote: rec.wrote });
   return result;
 }
 
 beforeAll(async () => {
   driven = [];
-  readWrote = [];
+  drivenReads = [];
   declaredBy = new Map();
   declaredReadsBy = new Set();
   const { journal: throwaway } = await (await import('../journal/test-support.ts')).journalWithBuiltIns();
@@ -522,6 +579,17 @@ beforeAll(async () => {
     journal.doses.upsertDose({ timestamp: 1_700_100_000_000, route: 'oral', dose: 100, doseUnit: 'mg' })
   )) as string;
   await drive('doses', 'deleteDose', () => journal.doses.deleteDose(secondDoseId));
+  // Left on a weekday recurrence, because getSchedules only reads
+  // dose_schedule_weekday for a schedule that has one.
+  await drive('doses', 'upsertSchedule', () =>
+    journal.doses.upsertSchedule({
+      episodeId,
+      recurrence: { kind: 'weekdays', weekdays: [1, 4] },
+      dosesPerDay: 1,
+      doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
+      autoLogFromEpochDay: null
+    })
+  );
 
   // --- stock --------------------------------------------------------------
   const stockId = (await drive('stock', 'upsertEntry', () =>
@@ -834,6 +902,11 @@ beforeAll(async () => {
     journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }])
   )) as string;
   await drive('doubtJournal', 'deleteSnapshot', () => journal.doubtJournal.deleteSnapshot(snapshotId));
+  // One left standing, because getSnapshots only reads its entries when
+  // there is a snapshot to read them for.
+  await drive('doubtJournal', 'saveSnapshot', () =>
+    journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19600, mood: 4, note: 'a good week' }])
+  );
 
   // --- areaStates ---------------------------------------------------------
   await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['sizeRecords'], true));
@@ -1226,22 +1299,46 @@ describe('every classified write announces exactly the tables its SQL touched', 
 });
 
 test('no operation classified as a read writes anything', () => {
-  for (const { key, wrote } of readWrote) {
+  for (const { key, wrote } of drivenReads) {
     assert.deepEqual(wrote, [], `journal.${key} is a read but its SQL wrote to ${JSON.stringify(wrote)}`);
   }
 });
 
 test('every read this sweep drove is one writes.ts actually classifies as a read', () => {
-  for (const { key } of readWrote) {
+  for (const { key } of drivenReads) {
     const [area, operation] = key.split('.', 2);
     assert.doesNotThrow(() => tablesReadBy(area, operation), `journal.${key} is not a classified read`);
   }
 });
 
 test('every classified read is either driven here or opted out with a reason', () => {
-  const drivenKeys = new Set(readWrote.map((d) => d.key));
+  const drivenKeys = new Set(drivenReads.map((d) => d.key));
   const missing = [...declaredReadsBy].filter((key) => !drivenKeys.has(key) && !(key in READ_OPT_OUTS));
   assert.deepEqual(missing, [], `driven nor opted out: ${missing.join(', ')}`);
+});
+
+describe('every classified read declares the tables its SQL read', () => {
+  test("each driven read's SQL read no table outside its declaration", () => {
+    const stale = drivenReads
+      .map(({ key, read }) => ({ key, extra: readOutside(read, declaredRead(key), SQL_TABLES) }))
+      .filter(({ extra }) => extra.length > 0)
+      .map(({ key, extra }) => `journal.${key} read ${JSON.stringify(extra)} outside its declared ${JSON.stringify(declaredRead(key))}`);
+    assert.deepEqual(stale, []);
+  });
+
+  test('every table a coarse name declares is actually read by some read that declares it', () => {
+    const unread = TABLE_NAMES.flatMap((name) => {
+      const declaringKeys = [...declaredReadsBy].filter((key) => declaredRead(key).includes(name));
+      if (declaringKeys.every((key) => key in READ_OPT_OUTS)) return [];
+      const owners = drivenReads.filter((d) => declaredRead(d.key).includes(name) && !READS_THE_JOURNAL.has(d.key));
+      const missed = SQL_TABLES[name].filter((table) => !readHit(name, owners, SQL_TABLES).includes(table));
+      return missed.length === 0
+        ? []
+        : [`'${name}': ${JSON.stringify(missed)} is never read (outside a whole-journal read) by a read that declares it` +
+            (owners.length === 0 ? ' (no driven, narrower read declares it at all)' : '')];
+    });
+    assert.deepEqual(unread, []);
+  });
 });
 
 describe('the two checks above can actually fail', () => {
@@ -1261,5 +1358,18 @@ describe('the two checks above can actually fail', () => {
     const owners = driven.filter((d) => d.coarse.includes('tally') && !WIPES_THE_JOURNAL.has(d.key));
     const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.tally.includes(table)));
     assert.notDeepEqual([...hit].sort(), [...padded.tally].sort());
+  });
+
+  /* getTaper's own declaration before this check existed: it joins
+     procedure, and said only taper. */
+  test('a read declaring less than its SQL reads fails the per-operation read check', () => {
+    const taper = drivenReads.find((d) => d.key === 'taper.getTaper')!;
+    assert.deepEqual(readOutside(taper.read, ['taper'], SQL_TABLES), ['procedure']);
+  });
+
+  test('a table no read touches, added to a declaration, fails the per-coarse-name read union', () => {
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'era_mute'] };
+    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('tally') && !READS_THE_JOURNAL.has(d.key));
+    assert.deepEqual(readHit('tally', owners, padded), ['tally_event']);
   });
 });
