@@ -394,7 +394,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       updateEntryTemplate: ['entryTemplate'],
       setEntryTemplateHidden: ['entryTemplate']
     },
-    reads: { getEntryTemplates: ['entryTemplate'] }
+    // A template names its tags and scales by key, joined through tag and
+    // gender_dimension, and a template's tag link goes by cascade when the
+    // tag is deleted.
+    reads: { getEntryTemplates: ['entryTemplate', 'tag', 'dimension'] }
   }),
   affirmations: classify<Journal['affirmations']>()({
     writes: {
