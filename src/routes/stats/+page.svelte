@@ -88,7 +88,7 @@
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose } from '$lib/motion/reveal';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -309,32 +309,38 @@
     {#if recapQuery.loading || activeSeriesQuery.loading}
       <Skeleton variant="line" count={3} />
     {:else if enoughEntries}
-      <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
-        <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
-          {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
-        </ListRow>
-        {#if activeAverage}
-          <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
-            {#snippet trailing()}<b class="wrapped-figure-value">{activeAverage}</b>{/snippet}
+      <div data-lookback-facts transition:collapse>
+        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
+          <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
+            {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
           </ListRow>
-        {/if}
-        {#if dimChange}
-          <ListRow
-            static
-            data-lookback-fact
-            title={m.wrapped_scale_arc()}
-            subtitle={m.wrapped_scale_arc_body({
-              name: dimChange.name,
-              from: String(Math.round(dimChange.from)),
-              to: String(Math.round(dimChange.to))
-            })}
-          >
-            {#snippet trailing()}
-              <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
-            {/snippet}
-          </ListRow>
-        {/if}
-      </ListCard>
+          {#if activeAverage}
+            <div class="rows-divide" transition:collapse>
+              <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
+                {#snippet trailing()}<b class="wrapped-figure-value">{activeAverage}</b>{/snippet}
+              </ListRow>
+            </div>
+          {/if}
+          {#if dimChange}
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                static
+                data-lookback-fact
+                title={m.wrapped_scale_arc()}
+                subtitle={m.wrapped_scale_arc_body({
+                  name: dimChange.name,
+                  from: String(Math.round(dimChange.from)),
+                  to: String(Math.round(dimChange.to))
+                })}
+              >
+                {#snippet trailing()}
+                  <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
+                {/snippet}
+              </ListRow>
+            </div>
+          {/if}
+        </ListCard>
+      </div>
     {/if}
 
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
@@ -399,7 +405,7 @@
     </div>
 
     {#if !recapQuery.loading && !recapQuery.failed && !enoughEntries}
-      <div transition:disclose>
+      <div data-lookback-new-entry transition:disclose>
         <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
       </div>
     {/if}
