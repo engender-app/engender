@@ -879,15 +879,39 @@ export function collapse(
  * mount's `care` screen: `.kit-chart-empty` and its siblings dropped exactly
  * one `Skeleton variant="block"` height, then returned). A direct style
  * write takes effect in the same synchronous update that inserts the
- * arriving content, so there is no frame where the skeleton was in flow. */
-export function crossfade(node: Element): TransitionConfig {
+ * arriving content, so there is no frame where the skeleton was in flow.
+ *
+ * Out only, or that write never comes off. `css()`'s properties lived
+ * inside Svelte's own generated animation, which Svelte tears down when
+ * the transition ends whichever way it ran; a direct write to `node.style`
+ * is not part of that lifecycle; and `NoticedAxis.svelte` uses this on
+ * `transition:crossfade|global`, both ways, on a clickable mark. Svelte
+ * answers a bidirectional directive by calling this once with direction
+ * `'both'` - the same shape `collapse`, above, already handles - so a
+ * mark that had only ever *left* through this correctly went absolute and
+ * invisible, and one that *arrived* through it would otherwise be left
+ * permanently `position: absolute; z-index: -1; pointer-events: none`,
+ * painted behind its siblings with a dead `onclick`, forever. Told the
+ * direction, this only ever writes the positioning on the way out. */
+export function crossfade(
+  node: Element,
+  params?: unknown,
+  options?: { direction?: 'in' | 'out' | 'both' }
+): TransitionConfig {
+  if (options?.direction === 'both') {
+    return ((each?: { direction: 'in' | 'out' }) =>
+      crossfade(node, params, each)) as unknown as TransitionConfig;
+  }
+
   const width = node.getBoundingClientRect().width;
-  const style = (node as HTMLElement).style;
-  if (style) {
-    style.position = 'absolute';
-    style.width = `${width}px`;
-    style.zIndex = '-1';
-    style.pointerEvents = 'none';
+  if (options?.direction !== 'in') {
+    const style = (node as HTMLElement).style;
+    if (style) {
+      style.position = 'absolute';
+      style.width = `${width}px`;
+      style.zIndex = '-1';
+      style.pointerEvents = 'none';
+    }
   }
 
   return {

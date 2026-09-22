@@ -711,9 +711,56 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
     expect((node as unknown as { style: CSSStyleDeclaration }).style.zIndex).toBe('-1');
   });
 
+  /* Out of flow and out from under the pointer both: a placeholder that
+     still intercepted taps would sit invisible over the content it used to
+     stand in for. */
+  it('stops taking taps once it is fading off', () => {
+    stubDocument(false, true, {});
+    const node = measured(240);
+    crossfade(node);
+    expect((node as unknown as { style: CSSStyleDeclaration }).style.pointerEvents).toBe('none');
+  });
+
   it('removes the placeholder on the spot under reduced motion', () => {
     stubDocument(true, true, {});
     expect(crossfade(measured(240)).duration).toBe(0);
+  });
+
+  /* `NoticedAxis.svelte` uses this on `transition:crossfade|global`, both
+     ways, on a clickable mark - so an intro through this primitive must
+     never take the positioning `out:crossfade`'s callers rely on, or a
+     mark that arrived through it would be left permanently
+     `position: absolute; z-index: -1; pointer-events: none` and unclickable
+     (ticket 153's own fix would otherwise have introduced this: writing the
+     positioning to `node.style` directly, rather than through `css()`,
+     took it out of the styles Svelte reverts when a transition ends). */
+  it('never positions the node on the way in', () => {
+    stubDocument(false, true, {});
+    const node = measured(240);
+    crossfade(node, undefined, { direction: 'in' });
+    const style = (node as unknown as { style: CSSStyleDeclaration }).style;
+    expect(style.position).toBeUndefined();
+    expect(style.zIndex).toBeUndefined();
+    expect(style.pointerEvents).toBeUndefined();
+  });
+
+  /* Same shape `collapse` already handles: `transition:` is bidirectional,
+     and Svelte answers one by calling the primitive once with direction
+     'both', which only works if that call hands back a function for
+     Svelte to ask again once it knows which way this run actually is. */
+  it('defers to Svelte when a bidirectional directive asks', () => {
+    stubDocument(false, true, {});
+    const node = measured(240);
+    const both = crossfade(node, undefined, { direction: 'both' }) as unknown;
+    expect(typeof both).toBe('function');
+
+    const asked = both as (o: { direction: 'in' | 'out' }) => TransitionConfig;
+    asked({ direction: 'in' });
+    const style = (node as unknown as { style: CSSStyleDeclaration }).style;
+    expect(style.position).toBeUndefined();
+
+    asked({ direction: 'out' });
+    expect(style.position).toBe('absolute');
   });
 });
 
