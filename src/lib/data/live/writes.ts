@@ -637,7 +637,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   revisits: classify<Journal['revisits']>()({
     writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },
-    reads: { getRevisitForEntry: ['revisit'], getDueRevisits: ['revisit'] }
+    // Both join the entry, for the rowid a revisit hands back.
+    reads: { getRevisitForEntry: ['revisit', 'entry'], getDueRevisits: ['revisit', 'entry'] }
   }),
   marginNotes: classify<Journal['marginNotes']>()({
     writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },
