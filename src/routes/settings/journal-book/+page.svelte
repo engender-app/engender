@@ -16,6 +16,7 @@
      Nothing is generated anywhere but here. The bytes of a photo come off
      the local file store, the print dialog is the browser's own, and
      nothing on this screen writes to the journal. */
+  import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -36,6 +37,7 @@
   import {
     JOURNAL_BOOK_DEFAULT_INCLUSION,
     JOURNAL_BOOK_INCLUSION_KEYS,
+    journalBookCounts,
     type JournalBookInclusion,
     type JournalBookInclusionKey
   } from '$lib/data/journal/journalBook';
@@ -52,7 +54,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
-  import { crossfade, resize } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
 
   const today = todayEpochDay();
   const todayInput = dateInputValueFromEpochDay(today);
@@ -93,11 +95,43 @@
     book?.entries ? book.entries.slice(0, renderedCount) : []
   );
 
+  /* The pages themselves, folded away until somebody asks for them (phase 12
+     final-audit ticket 20, audit finding U11). The screen used to lay the
+     whole chosen range out inline - every entry's date, mood and words, and
+     a full-bleed picture per photo - which came to 26,931px on the default
+     one year, the tallest screen in the app by a factor of four, with the
+     seven switches and Print past all of it. What goes in is now three
+     numbers; the document is behind this.
+
+     Print is not: `openForPrint` below is what every print path goes
+     through, and it opens this first. */
+  let previewOpen = $state(false);
+  /* True only for the instant `openForPrint` spends inside `flushSync`, so
+     the pages mounted for a print land at once rather than animating open
+     under a dialog that is already being drawn. */
+  let printing = $state(false);
+
+  let counts = $derived(book ? journalBookCounts(book) : null);
+  /* Zeros are left out rather than listed, the same call the import log's
+     own counts line makes: "187 entries, 34 photos, 12 milestones" says
+     what a book holds, and "187 entries, 0 photos, 0 milestones" spends two
+     phrases saying nothing is there. A range holding none of the three says
+     so in the empty line under it instead. */
+  let summaryText = $derived(
+    counts
+      ? [
+          counts.entries > 0 ? m.n_entries({ n: counts.entries }) : null,
+          counts.photos > 0 ? m.n_photos({ n: counts.photos }) : null,
+          counts.milestones > 0 ? m.imp_log_n_milestones({ n: counts.milestones }) : null
+        ]
+          .filter((part) => part !== null)
+          .join(', ')
+      : ''
+  );
+
   $effect(() => {
     function onBeforePrint() {
-      if (book?.entries) {
-        renderedCount = book.entries.length;
-      }
+      openForPrint();
     }
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeprint', onBeforePrint);
@@ -157,6 +191,14 @@
       book.sideEffects.length === 0
   );
 
+  /* An empty range needs no fold: three lines saying there is nothing to
+     print are not what the audit measured, and a disclosure over them would
+     hide the one sentence that explains the blank. So the pages are shown
+     outright there, exactly as they were before this ticket. */
+  let previewShown = $derived(
+    range !== null && !bookQuery.loading && !!book && (previewOpen || empty)
+  );
+
   const tagName = (id: string) => vocabulary.tag(id)?.label ?? id;
 
   /* Photos and tags qualify an entry rather than standing alone - both are
@@ -170,10 +212,51 @@
         : { ...inclusion, [key]: value };
   }
 
-  function printBook() {
+  /* Everything a print needs on the page, in the DOM, before the dialog
+     opens: the whole chunked list rather than however much has scrolled in,
+     and the pages themselves whether or not the disclosure is open. The
+     document that prints is therefore the same one it always was - the fold
+     is a thing on the screen, not a thing on paper.
+
+     `flushSync` rather than a plain assignment, because both callers hand
+     control straight to the browser afterwards - `window.print()` returns
+     nothing to await, and `beforeprint` is the last moment before the page
+     is laid out for paper - and Svelte would otherwise apply the change a
+     microtask later, after the dialog had already taken its picture. */
+  function openForPrint() {
     if (book?.entries) {
       renderedCount = book.entries.length;
     }
+    printing = true;
+    previewOpen = true;
+    flushSync();
+    printing = false;
+  }
+
+  /** Waits for every photo the book carries to be read off the file store
+      and drawn, or for `limitMs` to run out.
+
+      Opening the pages at the moment of a print mounts each photo for the
+      first time, and a photo answers its own read a frame or more later
+      (JournalBookPhoto). Without this the dialog can open over a book whose
+      pictures are still arriving, and the pictures are most of why anybody
+      prints one. The cap is what a photo whose file is gone costs: it draws
+      nothing and would otherwise never be waited out. */
+  async function photosDrawn(limitMs = 2000): Promise<void> {
+    const wanted = counts?.photos ?? 0;
+    const deadline = performance.now() + limitMs;
+    while (
+      wanted > 0 &&
+      document.querySelectorAll('[data-book-photo]').length < wanted &&
+      performance.now() < deadline
+    ) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  }
+
+  async function printBook() {
+    openForPrint();
+    await photosDrawn();
     void printCurrentPage(m.journal_book_title());
   }
 </script>
@@ -217,77 +300,41 @@
           </ListRow>
         {/each}
       </ListCard>
+      <!-- What the ticks come to, in the three numbers that decide how long
+           the book is. Its own height is what animates, both on the first
+           arrival and when a switch changes the figures: the wrapper carries
+           `resize`, and the words inside it cut, which is what ADR-0078 asks
+           of a label changing under a standing element. -->
+      <div use:resize>
+        {#if summaryText}
+          <p class="small book-summary" data-book-summary>{summaryText}</p>
+        {/if}
+      </div>
     </div>
   </div>
 
-  <div class="screen-part" use:resize>
+  <div class="screen-part no-print" use:resize>
   {#if range === null}
     <!-- Nothing to assemble until both boundaries are picked; the hint above already says so. -->
   {:else if bookQuery.loading || !book}
     <div out:crossfade><Skeleton variant="block" count={4} /></div>
   {:else}
-    {#if opening}
-      <div class="opening-page" data-book-opening>
-        <WrappedCard content={opening} />
-      </div>
+    {#if !empty}
+      <button
+        type="button"
+        class="book-preview-toggle"
+        aria-expanded={previewOpen}
+        data-book-preview-toggle
+        onclick={() => (previewOpen = !previewOpen)}
+      >
+        <span>{m.journal_book_preview_disclosure()}</span>
+        <span class="book-preview-chev"><Icon name="chevronDown" size={18} /></span>
+      </button>
     {/if}
 
-    <div class="print-heading">
-      <PrintLetterhead />
-      <h1>{m.journal_book_title()}</h1>
-      <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
-    </div>
-
-    {#if empty}
-      <p class="muted small">{m.journal_book_empty()}</p>
-    {/if}
-
-    {#if book.entries.length}
-      <SectionTitle text={journalBookPartName('entries')} />
-      <div class="section-block">
-        {#each visibleEntries as entry (entry.id)}
-          <article class="book-entry" data-book-entry>
-            <h3 class="book-day">{dayLong(entry.epochDay)}, {fmtTime(entry.timestamp)}</h3>
-            {#if entry.mood !== null}<p class="muted small">{moodName(entry.mood)}</p>{/if}
-            {#if entry.note.trim()}<p class="book-note">{entry.note}</p>{/if}
-            {#each entry.photos as photo (photo.id)}
-              <JournalBookPhoto {photo} />
-            {/each}
-            {#if entry.tags.length}
-              <p class="muted small">{entry.tags.map(tagName).join(' · ')}</p>
-            {/if}
-          </article>
-        {/each}
-      </div>
-    {/if}
-
-    {#if book.milestones.length}
-      <SectionTitle text={journalBookPartName('milestones')} />
-      <div class="section-block">
-        <ListCard>
-          {#each book.milestones as milestone (milestone.id)}
-            <ListRow static title={milestone.name} subtitle={dayLong(milestone.epochDay)} />
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
-
-    {#if book.sideEffects.length}
-      <SectionTitle text={journalBookPartName('sideEffects')} />
-      <div class="section-block">
-        <ListCard>
-          {#each book.sideEffects as effect (effect.id)}
-            {@const severity = severityName(effect.severity)}
-            <ListRow
-              static
-              title={effect.name}
-              subtitle={severity ? `${dayLong(effect.epochDay)} · ${severity}` : dayLong(effect.epochDay)}
-            />
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
-
+    <!-- `no-print` on each control rather than inherited from the wrapper:
+         `hostSaveBar` moves this node out of the screen into the app column,
+         so the wrapper's own class never reaches it. -->
     <SaveBar arrange="stack">
       <p class="small muted book-scope no-print" role="status">{scopeText}</p>
       <button class="btn btn-primary no-print" data-book-print onclick={printBook}>
@@ -297,6 +344,104 @@
     </SaveBar>
   {/if}
   </div>
+
+  <!-- The pages, and the only part of this screen that prints. Its own
+       `.screen-part` beside the controls rather than inside them, for two
+       reasons: the wrapper above carries `resize`, which would animate the
+       screen's whole height against this fold's own travel, and
+       `.screen > .screen-part > *` (app.css) is what spaces the blocks
+       below, so they keep the spacing they had when they were that
+       wrapper's children.
+
+       No `use:resize` on it, which is the one stillness this ticket asks
+       ADR-0078 for. The box changes size when the range does, and `resize`
+       cannot share a node with `disclose` - the two fight over height and
+       it oscillates (kit/Notice.svelte's own finding). The pages are still
+       through a range change, and what moves then is the summary line
+       above.
+
+       `disclose` on a box this size is past the cap its own docstring sets
+       - "a group rather than a screen... a disclosure that opens half the
+       document is a screen, and belongs to tier 2 as a navigation
+       instead" - and that is a deviation rather than an oversight. The cap
+       is written against cost, and the cost was measured here: the box's
+       height travels 0 to 19,205px over 16 frames at a steady 17ms, no
+       frame dropped, because what is animated is one scalar and the pages
+       below the window are never painted. Making the fold a navigation is
+       the other reading of the same cap and is a bigger decision than this
+       ticket - the ticket asked for a disclosure - so it is named here for
+       whoever takes it.
+
+       What the travel does leave is a settle: `disclose` measures the box
+       at the frame it is created, the photos inside it are still being
+       read off the file store then, and the last 6,613px arrive in the one
+       frame the animation ends. All of it below the window, and the same
+       growth `main` shows while the same photos decode. -->
+  {#if previewShown && book}
+    <div class="screen-part disclosed" data-book-preview transition:disclose={{ skip: printing }}>
+      {#if opening}
+        <div class="opening-page" data-book-opening>
+          <WrappedCard content={opening} />
+        </div>
+      {/if}
+
+      <div class="print-heading">
+        <PrintLetterhead />
+        <h1>{m.journal_book_title()}</h1>
+        <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
+      </div>
+
+      {#if empty}
+        <p class="muted small">{m.journal_book_empty()}</p>
+      {/if}
+
+      {#if book.entries.length}
+        <SectionTitle text={journalBookPartName('entries')} />
+        <div class="section-block">
+          {#each visibleEntries as entry (entry.id)}
+            <article class="book-entry" data-book-entry>
+              <h3 class="book-day">{dayLong(entry.epochDay)}, {fmtTime(entry.timestamp)}</h3>
+              {#if entry.mood !== null}<p class="muted small">{moodName(entry.mood)}</p>{/if}
+              {#if entry.note.trim()}<p class="book-note">{entry.note}</p>{/if}
+              {#each entry.photos as photo (photo.id)}
+                <JournalBookPhoto {photo} />
+              {/each}
+              {#if entry.tags.length}
+                <p class="muted small">{entry.tags.map(tagName).join(' · ')}</p>
+              {/if}
+            </article>
+          {/each}
+        </div>
+      {/if}
+
+      {#if book.milestones.length}
+        <SectionTitle text={journalBookPartName('milestones')} />
+        <div class="section-block">
+          <ListCard>
+            {#each book.milestones as milestone (milestone.id)}
+              <ListRow static title={milestone.name} subtitle={dayLong(milestone.epochDay)} />
+            {/each}
+          </ListCard>
+        </div>
+      {/if}
+
+      {#if book.sideEffects.length}
+        <SectionTitle text={journalBookPartName('sideEffects')} />
+        <div class="section-block">
+          <ListCard>
+            {#each book.sideEffects as effect (effect.id)}
+              {@const severity = severityName(effect.severity)}
+              <ListRow
+                static
+                title={effect.name}
+                subtitle={severity ? `${dayLong(effect.epochDay)} · ${severity}` : dayLong(effect.epochDay)}
+              />
+            {/each}
+          </ListCard>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -304,6 +449,42 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
     gap: var(--space-3);
+  }
+
+  /* The three numbers under the switches: a plain line of the page's own
+     ink rather than a quiet aside, since it is the answer to what the
+     switches above it do. */
+  .book-summary {
+    margin-top: var(--space-3);
+  }
+
+  /* The same fold the dose log's attribution note and the look-back's fact
+     list wear - a full-width row of the secondary ink with its chevron at
+     the far edge - so every disclosure in the app reads as one control. */
+  .book-preview-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: var(--touch-target);
+    padding: var(--space-2) 0;
+    border: 0;
+    background: none;
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+  .book-preview-chev {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+  .book-preview-toggle[aria-expanded='true'] .book-preview-chev {
+    transform: rotate(180deg);
   }
 
   .section-block {
