@@ -57,7 +57,6 @@
     'session-pin',
     'session-passphrase',
     'session-biometric',
-    'session-device',
     /* Unchanged by this ticket, kept so a regression in the shared shell
        shows up here rather than in the app. */
     'converting',
@@ -292,8 +291,6 @@
           <SessionUnlock mode="passphrase" />
         {:else if scene === 'session-biometric'}
           <SessionUnlock mode="biometric" />
-        {:else if scene === 'session-device'}
-          <SessionUnlock mode="device-bound" />
         {:else if scene.startsWith('unlock-') || scene === 'converting' || scene === 'conversion-refused'}
           <JournalGate />
         {:else if scene.startsWith('android-key')}
