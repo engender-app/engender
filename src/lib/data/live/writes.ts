@@ -937,11 +937,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // 'appointment' because getProcedures reads it for a journey's
       // consults (ticket 57), not because an appointment draws a mark of
       // its own - that is ticket 59's.
-      // 'photo' and 'roadmapGoal' through getMilestones' own joins.
       getAnnotations: [
         'milestone',
-        'photo',
-        'roadmapGoal',
         'regimen',
         'dose',
         'journalingPause',

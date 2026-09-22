@@ -67,9 +67,13 @@
    what this fixture makes it run: getSchedules reads dose_schedule_weekday
    only for a weekday schedule and getSnapshots reads doubt_snapshot_entry
    only when a snapshot exists, so the scenario above leaves one of each
-   standing, and a branch no fixture row reaches is not checked. Third, the
-   recording driver's own: triggers and a view's underlying tables are
-   invisible to it.
+   standing, and a branch no fixture row reaches is not checked. Third, a
+   composing read's narrowing (test-support/composing-reads.ts) is let
+   through: chartAnnotations and dayAhead read photos and linked names
+   through getMilestones and never hand them on, so a photo write has no
+   reason to re-run them, and writes.test.ts holds each narrowing to being
+   true. Fourth, the recording driver's own: triggers and a view's
+   underlying tables are invisible to it.
 
    Not every classified write is driven. `reconcile.ts`'s own comment says
    reconciling "usually finds nothing to do, and announcing these tables for
@@ -102,6 +106,7 @@ import { openJournal, type Journal } from '../journal/journal.ts';
 import { JOURNAL_WIDE, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 import { RECONCILE_TABLES } from '../journal/reconcile.ts';
 import { SQL_TABLES } from './sqlTables.ts';
+import { COMPOSING_READS } from './test-support/composing-reads.ts';
 
 const bytes = (text: string): Uint8Array => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 const photo = (seed: string) => ({ full: bytes(`full ${seed}`), thumb: bytes(`thumb ${seed}`) });
@@ -148,6 +153,13 @@ const declaredRead = (key: string): readonly TableName[] => {
   const [area, operation] = key.split('.', 2);
   return tablesReadBy(area, operation);
 };
+
+/** What each composing read deliberately leaves undeclared, with its
+    reason in composing-reads.ts: a table one of its composed reads joins
+    for a field this read never hands on. */
+const NARROWED = new Map(
+  COMPOSING_READS.map(({ read, narrows }) => [read.join('.'), Object.keys(narrows ?? {}) as TableName[]])
+);
 
 /** The tables a read's SQL read that its declaration, mapped through
     `tables`, does not cover. */
@@ -1320,7 +1332,10 @@ test('every classified read is either driven here or opted out with a reason', (
 describe('every classified read declares the tables its SQL read', () => {
   test("each driven read's SQL read no table outside its declaration", () => {
     const stale = drivenReads
-      .map(({ key, read }) => ({ key, extra: readOutside(read, declaredRead(key), SQL_TABLES) }))
+      .map(({ key, read }) => ({
+        key,
+        extra: readOutside(read, [...declaredRead(key), ...(NARROWED.get(key) ?? [])], SQL_TABLES)
+      }))
       .filter(({ extra }) => extra.length > 0)
       .map(({ key, extra }) => `journal.${key} read ${JSON.stringify(extra)} outside its declared ${JSON.stringify(declaredRead(key))}`);
     assert.deepEqual(stale, []);
