@@ -772,16 +772,12 @@
     {#if isReadyState(bootState) && !locked}
       <UpdateNotice />
     {/if}
-    <!-- SH-004: without this, a keyboard user tabbed through the whole rail
-         before reaching content on desktop. -->
-    <a href="#app-main" class="skip-link" data-skip-link>{m.skip_to_content()}</a>
     <!-- Before <main>, which is what puts the rail to the left of the
          content at desktop width without an `order` (order moves boxes and
          leaves tab order where it was, so the two would disagree). On a
          phone the same markup is the floating bar, absolutely positioned,
          so its place in the document does not decide where it sits - only
-         that a keyboard reaches the tabs before the screen, which is what
-         the skip link above exists to answer. -->
+         that a keyboard reaches the tabs before the screen. -->
     {#if !chromeless}
       <AppNav />
     {/if}
@@ -798,9 +794,7 @@
          The landmark is on this box rather than on the scroll region
          inside it, because the foot moved: a screen's one commitment is
          part of the screen, and left outside <main> it would be a group of
-         controls belonging to no landmark at all. The skip link still
-         lands on the region, which is what a person wants to be put at the
-         top of. -->
+         controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
         {#if schemaTooNew}

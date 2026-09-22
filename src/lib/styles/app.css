@@ -1302,19 +1302,6 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
-/* SH-004: a desktop keyboard user had to tab through the whole rail before
-   reaching content. Hidden the same way a native skip link is, off-screen
-   until it is the focused element. */
-.skip-link {
-  position: absolute; top: -48px; left: var(--space-3); z-index: 100;
-  background: var(--accent); color: var(--on-accent);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--r-block);
-  text-decoration: none; font-weight: var(--weight-bold);
-  transition: top var(--dur-fast) var(--ease-out);
-}
-.skip-link:focus { top: calc(var(--space-3) + var(--inset-top)); }
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 1ms !important;
@@ -1338,8 +1325,8 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
    page as pale grey text on white paper. Paper is white and ink is dark,
    whatever the app is wearing on screen.
 
-   Navigation is not part of a document, so the rail, the bottom bar and the
-   skip link do not print. `.no-print` and `.print-heading` live here beside
+   Navigation is not part of a document, so the rail and the bottom bar do
+   not print. `.no-print` and `.print-heading` live here beside
    them rather than in each printing screen's own scoped block: both screens
    had written the same two rules, and a third would have written them again.
    What each screen still decides for itself is which of its elements carry
@@ -1392,7 +1379,6 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 
   .app-rail,
   .app-nav,
-  .skip-link,
   .no-print {
     display: none !important;
   }
