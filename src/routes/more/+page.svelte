@@ -333,12 +333,16 @@
                  the hairline `.kit-row` draws for itself, so the line between
                  rows still comes from one place. -->
             <div class="rows-divide" transition:disclose={{ skip: leaving }}>
+              <!-- fadeSwap off the wear row: while a session runs its line
+                   reads a clock, and a fading swap on a clock is a pulse.
+                   Every other row's line lands once with the four reads. -->
               <ListRow
                 key={row.spec.key}
                 icon={row.spec.icon}
                 title={hubRowTitle(row.spec.key)}
                 subtitle={hubRowLine(row.spec.key, row.line, today, nowMs)}
                 href={row.spec.href}
+                fadeSwap={row.spec.key !== 'wear'}
                 data-hub-section={row.where}
                 data-hub-line={row.line.kind}
               />
@@ -418,6 +422,7 @@
               title={hubRowTitle(row.spec.key)}
               subtitle={hubRowLine(row.spec.key, row.line, today, nowMs)}
               href={row.spec.href}
+              fadeSwap={row.spec.key !== 'wear'}
               data-hub-section={section.key}
               data-hub-line={row.line.kind}
             />

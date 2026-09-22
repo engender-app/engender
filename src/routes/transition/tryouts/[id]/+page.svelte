@@ -274,7 +274,7 @@
       action={{ label: m.read_retry(), onclick: () => detail.retry() }} />
   {/if}
   {#if detail.loading && !detail.failed}
-    <Skeleton variant="block" count={3} />
+    <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if detail.isNew || detail.record}
 
   <div>

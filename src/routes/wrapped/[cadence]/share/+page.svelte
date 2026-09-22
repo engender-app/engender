@@ -33,6 +33,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -122,7 +123,7 @@
   <ScreenHeader title={m.wrapped_share_title()} back="/wrapped/{page.params.cadence}" />
 
   {#if recapQuery.loading}
-    <Skeleton variant="block" count={1} />
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if !ready}
     <Notice
       icon="info"

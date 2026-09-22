@@ -69,6 +69,7 @@
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
+  import { crossfade } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
 
   let {
@@ -196,6 +197,13 @@
   </div>
 
   {#if subtitle}
-    <p class="screen-subtitle" data-screen-subtitle>{subtitle}</p>
+    <!-- A line that lands from a read (the return surface's, most visibly)
+         swaps its words once while the screen is up. Keyed, so the previous
+         line fades off the one replacing it - DayStrip's own treatment of a
+         label that swaps - instead of cutting. Local by default: a screen
+         arriving or leaving never plays it. -->
+    <p class="screen-subtitle" data-screen-subtitle>
+      {#key subtitle}<span out:crossfade>{subtitle}</span>{/key}
+    </p>
   {/if}
 </header>

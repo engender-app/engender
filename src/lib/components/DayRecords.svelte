@@ -25,9 +25,13 @@
      the only index guaranteed to be a colour on all 8 palettes - and the list
      around it takes role 1.
 
-     *No motion.* Arriving here is the shared axis (screen-transition.ts) and
-     a row answers a press the way every row does. Nothing on this screen
-     changes state, so tier 4 covers the rest of it (DIRECTION, "Tier 4,
+     *No motion, but one earned exception.* Arriving here is the shared axis
+     (screen-transition.ts) and a row answers a press the way every row does.
+     Nothing on this screen changes state under a person's eyes - except a
+     dose row's title, which `dayRows.ts` builds from `doseDrugs`, a
+     route-batched read that lands after mount. `fadeSwap` on the two
+     `ListRow` calls below covers exactly that one case (ticket 145): the
+     rest of tier 4 still covers everything else (DIRECTION, "Tier 4,
      still").
 
      It writes nothing: every row is a link into the screen that owns the
@@ -148,6 +152,7 @@
       title={row.title}
       subtitle={row.subtitle}
       href={row.href}
+      fadeSwap
       data-day-row={row.key}
     >
       {#snippet leading()}
@@ -165,6 +170,7 @@
       title={row.title}
       subtitle={row.subtitle}
       href={row.href}
+      fadeSwap
       data-day-row={row.key}
     >
       {#snippet trailing()}{@render count(row.count)}{/snippet}

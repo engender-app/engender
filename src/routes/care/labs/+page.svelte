@@ -488,37 +488,44 @@
           </div>
         {/each}
 
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
-          <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
-               .lab-value (app.css) to opt back into text selection, and the
-               context line carries .lab-context's own size and colour -
-               both classes ListRow's plain title/subtitle strings have no
-               room for. -->
-          {#each [...results].reverse() as r (r.id)}
-            <button
-              class="kit-row"
-              class:is-target-lab={r.id === deepLinkedLabId}
-              id={r.id}
-              data-lab-result={r.id}
-              aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-              onclick={() => record.openEditor(r)}
-            >
-              <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
-              <span class="kit-row-text">
-                <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
-                <span class="kit-row-sub">
-                  {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+        <!-- Held until the results read answers: `results` is `[]` while it
+             runs, and an empty list card here is two hairlines around
+             nothing for the length of the round trip. Off `loading` rather
+             than off `length`, so an analyte with nothing to list still
+             draws its card once the read has answered. -->
+        {#if !resultsQuery.loading}
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
+            <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
+                 .lab-value (app.css) to opt back into text selection, and the
+                 context line carries .lab-context's own size and colour -
+                 both classes ListRow's plain title/subtitle strings have no
+                 room for. -->
+            {#each [...results].reverse() as r (r.id)}
+              <button
+                class="kit-row"
+                class:is-target-lab={r.id === deepLinkedLabId}
+                id={r.id}
+                data-lab-result={r.id}
+                aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                onclick={() => record.openEditor(r)}
+              >
+                <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
+                <span class="kit-row-text">
+                  <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
+                  <span class="kit-row-sub">
+                    {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+                  </span>
+                  <!-- The context on its own line, not appended to the date: it is
+                       two more facts about the draw, and three of them run together
+                       stop being readable at 390px. -->
+                  {#if contextLine(r)}
+                    <span class="kit-row-sub lab-context">{contextLine(r)}</span>
+                  {/if}
                 </span>
-                <!-- The context on its own line, not appended to the date: it is
-                     two more facts about the draw, and three of them run together
-                     stop being readable at 390px. -->
-                {#if contextLine(r)}
-                  <span class="kit-row-sub lab-context">{contextLine(r)}</span>
-                {/if}
-              </span>
-            </button>
-          {/each}
-        </ListCard>
+              </button>
+            {/each}
+          </ListCard>
+        {/if}
       </div>
     {/snippet}
     {#snippet empty()}
