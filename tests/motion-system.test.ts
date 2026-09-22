@@ -1225,12 +1225,6 @@ describe('the cap on animating layout', () => {
       props: ['left', 'right'],
       reason:
         "the switcher's pill on the navigation's own mechanic (2026-09-08), one absolutely positioned empty box out of the track's flow, so its insets cannot move a segment; it animated `width` before, which was the same class of expense with none of the argument"
-    },
-    {
-      selector: '.skip-link',
-      props: ['top'],
-      reason:
-        'the skip link is off-screen until focused and is the only thing in its own stacking context; it predates the contract and moves once per keyboard session'
     }
   ];
 
