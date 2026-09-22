@@ -586,7 +586,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteSession: ['taper']
     },
     reads: {
-      getTaper: ['taper'],
+      // Joins the procedure for its uuid, and deleting the procedure takes
+      // the taper with it by cascade.
+      getTaper: ['taper', 'procedure'],
       getSessions: ['taper'],
       getSessionsOnDay: ['taper'],
       lastWriteEpochDay: ['taper']
