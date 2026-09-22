@@ -382,7 +382,7 @@
           icon="camera"
           key="hair-photo-due"
           role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-          title={m.hair_photo_due_title()}
+          title={m.hair_photo_time_title()}
           text={m.hair_photo_due_body()}
         />
       </div>
