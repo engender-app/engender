@@ -58,6 +58,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `tryout-form-check` | what a screen reader is handed for the tryout form's fields |
 | `media-transport-check` | both players' transports work by keyboard, speak their position, go full screen and run offline |
 | `care-lane-labels` | three Care lanes' captions do not collide at 390px in Polish |
+| `care-cold-load-yank` | Care's cold load at 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |
