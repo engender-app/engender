@@ -190,8 +190,12 @@
 }
 
 /* The first heading on a screen sits under the header rather than under a
-   block, so the 40 it would otherwise ask for collapses to a breath. */
+   block, so the 40 it would otherwise ask for collapses to a breath. A node
+   on its way out (`crossfade` marks it) is out of flow and does not count:
+   a ReadGate's skeleton stays a sibling for its fade, and the heading
+   dropping 24px when it finally left was ticket 191's first step. */
 .kit-heading:first-child,
+[data-leaving]:first-child + .kit-heading,
 .screen-header + .kit-heading {
   margin-top: var(--space-4);
 }

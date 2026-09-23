@@ -51,7 +51,7 @@ const frame = (css: (t: number, u: number) => string, t: number) => css(t, 1 - t
 /** A node that knows how wide it is and can take a direct style write, which
     is all the crossfade asks of one. */
 const measured = (width: number) =>
-  ({ getBoundingClientRect: () => ({ width }), style: {} }) as unknown as Element;
+  ({ getBoundingClientRect: () => ({ width }), style: {}, dataset: {} }) as unknown as Element;
 
 describe('tier 3, the wipe', () => {
   it('uncovers from the left, so content arrives the way it is read', () => {
@@ -747,6 +747,24 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
     expect((node as unknown as { style: CSSStyleDeclaration }).style.pointerEvents).toBe('none');
   });
 
+  /* Out of flow, but still a DOM sibling for the length of its fade, so it
+     still counts for `:first-child`: a heading after it lost 24px of top
+     margin in one frame when it was finally removed (ux-carpet ticket 191).
+     The mark is what kit.css reads through. */
+  it('marks the placeholder as leaving, for the stylesheet', () => {
+    stubDocument(false, true, {});
+    const node = measured(240) as HTMLElement;
+    crossfade(node);
+    expect(node.dataset.leaving).toBe('');
+  });
+
+  it('never marks a node arriving through it', () => {
+    stubDocument(false, true, {});
+    const node = measured(240) as HTMLElement;
+    crossfade(node, undefined, { direction: 'in' });
+    expect(node.dataset.leaving).toBeUndefined();
+  });
+
   it('removes the placeholder on the spot under reduced motion', () => {
     stubDocument(true, true, {});
     expect(crossfade(measured(240)).duration).toBe(0);
@@ -917,6 +935,23 @@ describe('tier 3, a box resizing under its own content', () => {
         [100, 240],
         [240, 390]
       ]);
+    } finally {
+      restore();
+    }
+  });
+
+  /* `clip`, not `hidden`: `hidden` makes the box a formatting context, so a
+     first child's top margin that collapses through it at rest landed
+     inside it for the travel, and the content stepped by that margin in the
+     frame the overflow came off (ux-carpet ticket 191). */
+  it('clips its content for the travel without becoming a formatting context', () => {
+    stubDocument(false);
+    const { node, setHeight, trigger, restore } = resizingNode(100);
+    try {
+      resize(node);
+      setHeight(240);
+      trigger();
+      expect(node.style.overflow).toBe('clip');
     } finally {
       restore();
     }
