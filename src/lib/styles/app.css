@@ -373,6 +373,15 @@ body {
    `maskHeight` clip with `overflow: clip`, which is not a formatting
    context (ticket 191). */
 
+/* Except an inline-level row, whose margins never collapse: last in the
+   wrapper, its 20 would sit inside the wrapper on top of the wrapper's own
+   (the photo library's tab control, 20px low). The segmented control's wrap
+   and a button are the inline-level rows a screen part holds; neither
+   arrives or leaves under a transition. */
+.screen > .screen-part > :is(.segmented-wrap, .btn):last-child {
+  margin-bottom: 0;
+}
+
 /* ---------- phone: the floating bar ----------
 
    DIRECTION.md's decision 2 gives the whole app one shadow, and this is

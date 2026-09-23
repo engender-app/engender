@@ -203,6 +203,23 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(disclose(first).css!, 0)).toContain('margin-bottom: -20px');
   });
 
+  /* Ticket 195: a screen part's last row keeps its 20 now, collapsing with
+     the wrapper's own 20 below it. What the row's bottom margin meets on the
+     way out is that whole collapsed set - the wrapper's margin as well as
+     the block after the wrapper - so a last row leaving (or arriving, which
+     runs the same numbers forwards) ends at minus the 20 it shares, and the
+     row before it never takes a step. */
+  it('counts a wrapper\'s own margin among the ones a last row\'s margin meets', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', borderBottomWidth: '0px', overflow: 'visible', display: 'block' });
+    const after = {};
+    const wrapper = { nextElementSibling: after, parentElement: {} };
+    const last = { parentElement: wrapper, previousElementSibling: {}, nextElementSibling: null } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === after ? { ...shared(), marginTop: '0px' } : shared());
+    expect(frame(disclose(last).css!, 0)).toContain('margin-bottom: -20px');
+  });
+
   it('stops at a wrapper whose edge holds the margin in (padding, a border, a formatting context)', () => {
     stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
     const wrapper = { previousElementSibling: {}, parentElement: {} };
