@@ -217,13 +217,15 @@
        not slide the pill into the tab you opened it on - it starts there. And
        a re-measure after a nav changed size, because a rotation is not a
        navigation: the tab under the pill never changed, so replaying the
-       travel would be the app claiming something happened. That second case
-       is also how a nav that was display: none arrives at a real position.
+       travel would be the app claiming something happened.
        The first moves neither edge (PLACE): the unplaced pill is pinned at
        the whole bar, so edges on a clock there faded it in across every tab
-       before it shrank onto one (ticket 166). The re-measure keeps both
-       edges on the leading schedule, so the shape moves as one piece and
-       never opens. */
+       before it shrank onto one (ticket 166). A nav coming back from
+       display: none is this case too, since the early return above hid its
+       pill, so it lands where it belongs and fades in rather than sliding
+       from wherever it was last drawn. The re-measure keeps both edges on
+       the leading schedule, so the shape moves as one piece and never
+       opens. */
     if (!prev.shown) {
       return { next: { box, host, at, shown: true, near: PLACE, far: PLACE }, dir: 0 };
     }
