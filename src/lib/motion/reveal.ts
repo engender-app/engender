@@ -1001,18 +1001,7 @@ export const resize: Action<HTMLElement> = (node) => {
   let animating = false;
   let current: Animation | undefined;
 
-  const observer = new ResizeObserver(() => {
-    // The animation's own frames are themselves resizes; ignored rather than
-    // measured, or the box would chase its own tail mid-travel.
-    if (animating) return;
-
-    const newHeight = node.getBoundingClientRect().height;
-    const oldHeight = lastHeight;
-    lastHeight = newHeight;
-    // Under a pixel is a rounding wobble, not a resize - animating one would
-    // run a 240ms transition over nothing to look at.
-    if (Math.abs(newHeight - oldHeight) < 1) return;
-
+  const animateTo = (oldHeight: number, newHeight: number) => {
     animating = true;
     const restoreOverflow = node.style.overflow;
     node.style.overflow = 'hidden';
@@ -1030,16 +1019,41 @@ export const resize: Action<HTMLElement> = (node) => {
         node.style.overflow = restoreOverflow;
         animating = false;
         current = undefined;
-        // Re-synced here rather than left at newHeight above: a resize
+        // Read here rather than trusted to still be `newHeight`: a resize
         // arriving mid-travel was ignored, not measured, and the node's own
         // fill: none reverts to whatever the content is by now - which is
         // that ignored resize's real height, not this animation's own
-        // target, whenever the two differ. Reading it now, the one moment
-        // nothing is overriding height, is what stops that reveal being
-        // read as a fresh resize against a stale number and re-animated
-        // backwards to a target already behind it.
-        lastHeight = node.getBoundingClientRect().height;
+        // target, whenever the two differ. A second block settling inside
+        // the first one's 240ms used to land here as a silent snap - one
+        // sibling-displacing frame with nothing chasing it; a caller with
+        // several independently-settling children (a tile grid, a reading
+        // grid) hits that far more than the single skeleton-to-content swap
+        // this was written for, so the snap is chased as its own animation
+        // instead of accepted.
+        const settled = node.getBoundingClientRect().height;
+        if (Math.abs(settled - newHeight) >= 1) {
+          animateTo(newHeight, settled);
+        } else {
+          lastHeight = settled;
+        }
       });
+  };
+
+  const observer = new ResizeObserver(() => {
+    // The animation's own frames are themselves resizes; ignored rather than
+    // measured, or the box would chase its own tail mid-travel. One that
+    // lands while an animation is already running is picked up once that
+    // animation's `finally` reads the node's real height, above.
+    if (animating) return;
+
+    const newHeight = node.getBoundingClientRect().height;
+    const oldHeight = lastHeight;
+    lastHeight = newHeight;
+    // Under a pixel is a rounding wobble, not a resize - animating one would
+    // run a 240ms transition over nothing to look at.
+    if (Math.abs(newHeight - oldHeight) < 1) return;
+
+    animateTo(oldHeight, newHeight);
   });
   observer.observe(node);
 
