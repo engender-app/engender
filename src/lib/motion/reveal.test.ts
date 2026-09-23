@@ -187,6 +187,32 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(css!, 0)).toContain('margin-bottom: -20px');
   });
 
+  /* Ticket 183: Home's reserves put the notices one plain wrapper down from
+     the blocks they close between, and a first child has no sibling above
+     it. Its top margin still collapses through the wrapper's bare top edge
+     into the block above the wrapper, so that block is the neighbour. */
+  it('finds the neighbour above through a wrapper whose top edge margins pass through', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', borderBottomWidth: '0px', overflow: 'visible', display: 'block' });
+    const above = {};
+    const next = {};
+    const wrapper = { previousElementSibling: above, parentElement: {} };
+    const first = { parentElement: wrapper, previousElementSibling: null, nextElementSibling: next } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === next ? { ...shared(), marginTop: '20px' } : shared());
+    expect(frame(disclose(first).css!, 0)).toContain('margin-bottom: -20px');
+  });
+
+  it('stops at a wrapper whose edge holds the margin in (padding, a border, a formatting context)', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
+    const wrapper = { previousElementSibling: {}, parentElement: {} };
+    const first = { parentElement: wrapper, previousElementSibling: null, nextElementSibling: {} } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === wrapper ? { ...shared(), paddingTop: '8px' } : shared());
+    expect(frame(disclose(first).css!, 0)).toContain('margin-bottom: 0px');
+  });
+
   it('leaves the bottom margin at zero inside a flex or grid parent, where margins never collapse', () => {
     stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '20px', display: 'flex' });
     const inRow = { parentElement: {}, previousElementSibling: {}, nextElementSibling: {} } as unknown as Element;
