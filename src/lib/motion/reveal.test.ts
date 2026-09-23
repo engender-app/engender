@@ -51,7 +51,7 @@ const frame = (css: (t: number, u: number) => string, t: number) => css(t, 1 - t
 /** A node that knows how wide it is and can take a direct style write, which
     is all the crossfade asks of one. */
 const measured = (width: number) =>
-  ({ getBoundingClientRect: () => ({ width }), style: {} }) as unknown as Element;
+  ({ getBoundingClientRect: () => ({ width }), style: {}, dataset: {} }) as unknown as Element;
 
 describe('tier 3, the wipe', () => {
   it('uncovers from the left, so content arrives the way it is read', () => {
@@ -201,6 +201,23 @@ describe('tier 3, a group opening its own height', () => {
     const shared = g.getComputedStyle as () => Record<string, string>;
     g.getComputedStyle = (el: unknown) => (el === next ? { ...shared(), marginTop: '20px' } : shared());
     expect(frame(disclose(first).css!, 0)).toContain('margin-bottom: -20px');
+  });
+
+  /* Ticket 195: a screen part's last row keeps its 20 now, collapsing with
+     the wrapper's own 20 below it. What the row's bottom margin meets on the
+     way out is that whole collapsed set - the wrapper's margin as well as
+     the block after the wrapper - so a last row leaving (or arriving, which
+     runs the same numbers forwards) ends at minus the 20 it shares, and the
+     row before it never takes a step. */
+  it('counts a wrapper\'s own margin among the ones a last row\'s margin meets', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', borderBottomWidth: '0px', overflow: 'visible', display: 'block' });
+    const after = {};
+    const wrapper = { nextElementSibling: after, parentElement: {} };
+    const last = { parentElement: wrapper, previousElementSibling: {}, nextElementSibling: null } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === after ? { ...shared(), marginTop: '0px' } : shared());
+    expect(frame(disclose(last).css!, 0)).toContain('margin-bottom: -20px');
   });
 
   it('stops at a wrapper whose edge holds the margin in (padding, a border, a formatting context)', () => {
@@ -747,6 +764,24 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
     expect((node as unknown as { style: CSSStyleDeclaration }).style.pointerEvents).toBe('none');
   });
 
+  /* Out of flow, but still a DOM sibling for the length of its fade, so it
+     still counts for `:first-child`: a heading after it lost 24px of top
+     margin in one frame when it was finally removed (ux-carpet ticket 191).
+     The mark is what kit.css reads through. */
+  it('marks the placeholder as leaving, for the stylesheet', () => {
+    stubDocument(false, true, {});
+    const node = measured(240) as HTMLElement;
+    crossfade(node);
+    expect(node.dataset.leaving).toBe('');
+  });
+
+  it('never marks a node arriving through it', () => {
+    stubDocument(false, true, {});
+    const node = measured(240) as HTMLElement;
+    crossfade(node, undefined, { direction: 'in' });
+    expect(node.dataset.leaving).toBeUndefined();
+  });
+
   it('removes the placeholder on the spot under reduced motion', () => {
     stubDocument(true, true, {});
     expect(crossfade(measured(240)).duration).toBe(0);
@@ -923,6 +958,23 @@ describe('tier 3, a box resizing under its own content', () => {
         [100, 240],
         [240, 390]
       ]);
+    } finally {
+      restore();
+    }
+  });
+
+  /* `clip`, not `hidden`: `hidden` makes the box a formatting context, so a
+     first child's top margin that collapses through it at rest landed
+     inside it for the travel, and the content stepped by that margin in the
+     frame the overflow came off (ux-carpet ticket 191). */
+  it('clips its content for the travel without becoming a formatting context', () => {
+    stubDocument(false);
+    const { node, setHeight, trigger, restore } = resizingNode(100);
+    try {
+      resize(node);
+      setHeight(240);
+      trigger();
+      expect(node.style.overflow).toBe('clip');
     } finally {
       restore();
     }
