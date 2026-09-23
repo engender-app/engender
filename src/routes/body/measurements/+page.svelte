@@ -93,6 +93,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): roles run a
@@ -274,6 +276,23 @@
   );
   let changes = $derived(sizeChanges(sizeRecords));
 
+  /* The span and the size changes answer out of both reads and the type
+     picker, and on a cold open they landed ~200ms after the screen painted
+     without them: inside the 240ms arrival window, where `disclose` stands
+     down on purpose, so the block arrived at full height in one frame and
+     pushed the protocol notice and the chart 89px (ux-carpet ticket 193).
+     They hold their room instead, at the height they rested at last time,
+     and fade in once all three have answered - Home's reserve (ticket 183).
+     Latched: a type switch re-asks the measurements read, and that change
+     is `disclose`'s, not a second arrival. */
+  let nowRevealed = $state(false);
+  $effect.pre(() => {
+    if (nowRevealed || !vocabulary.ready || measurementsQuery.loading || sizesQuery.loading) return;
+    nowRevealed = true;
+  });
+  const reserveNow = readReserve('measurements-now');
+  const rememberNow = (px: number) => rememberReserve('measurements-now', px);
+
   const size = recordEditor<SizeRecord, { id?: string; date: string; category: string; size: string; brand: string; fitNote: string }>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
@@ -429,35 +448,33 @@
        under it, every size that changed. Both readings sit here rather than
        each above its own list - the size lines used to sit on top of the
        log that repeats the same two records as rows. -->
-  {#if span || changes.length}
-    <div class="screen-part">
-      {#if span}
-        <dl class="span" data-measurement-span transition:disclose>
-          <div><dt>{m.measurement_span_start()}</dt><dd>{fmtValue(span.start)}</dd></div>
-          <div><dt>{m.measurement_span_current()}</dt><dd>{fmtValue(span.current)}</dd></div>
-          <div><dt>{m.measurement_span_change()}</dt><dd>{fmtChange(span.change)}</dd></div>
-        </dl>
-      {/if}
+  <ReadReserve ready={nowRevealed} estimate={reserveNow} onrest={rememberNow} data-measurements-now>
+    {#if span}
+      <dl class="span" data-measurement-span transition:disclose>
+        <div><dt>{m.measurement_span_start()}</dt><dd>{fmtValue(span.start)}</dd></div>
+        <div><dt>{m.measurement_span_current()}</dt><dd>{fmtValue(span.current)}</dd></div>
+        <div><dt>{m.measurement_span_change()}</dt><dd>{fmtChange(span.change)}</dd></div>
+      </dl>
+    {/if}
 
-      {#if changes.length}
-        <div class="changes" data-size-changes transition:disclose>
-          {#each changes as change (sizeLabelKey(change.category, change.brand))}
-            <p class="change">
-              <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
-              <span class="change-says">
-                {m.size_change_line({
-                  from: change.from.size,
-                  fromDate: monthLabel(change.from.epochDay),
-                  to: change.to.size,
-                  toDate: monthLabel(change.to.epochDay)
-                })}
-              </span>
-            </p>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  {/if}
+    {#if changes.length}
+      <div class="changes" data-size-changes transition:disclose>
+        {#each changes as change (sizeLabelKey(change.category, change.brand))}
+          <p class="change">
+            <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
+            <span class="change-says">
+              {m.size_change_line({
+                from: change.from.size,
+                fromDate: monthLabel(change.from.epochDay),
+                to: change.to.size,
+                toDate: monthLabel(change.to.epochDay)
+              })}
+            </span>
+          </p>
+        {/each}
+      </div>
+    {/if}
+  </ReadReserve>
 
   {#if !prefs.measurementProtocolDismissed && PROTOCOL[type]}
     <div class="screen-part">

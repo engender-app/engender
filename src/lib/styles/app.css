@@ -359,9 +359,26 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* The wrapper's own last child would otherwise add its margin to the
-   wrapper's, so a branch wrapper is spaced by the block inside it. */
-.screen > .screen-part > :last-child {
+/* The last row keeps its 20 too. It does not add to the wrapper's: the
+   wrapper is a plain block with nothing on its bottom edge, so the two
+   margins collapse into one 20 - the same gap a `:last-child { 0 }` rule
+   used to give by taking the row's away. That rule made a row's margin
+   depend on whether anything came after it, the neighbour dependence the
+   `.screen > *` comment above rules out: a row inserted as the new last
+   child handed its predecessor 20px in the frame it was inserted, and a
+   last row leaving took 20px from the one before it in the frame it was
+   removed, a step no transition on either row can animate (ux-carpet
+   ticket 195; ticket 166's voice task line, 248 -> 268px). The collapse
+   holds while a wrapper animates its height as well: `resize` and
+   `maskHeight` clip with `overflow: clip`, which is not a formatting
+   context (ticket 191). */
+
+/* Except an inline-level row, whose margins never collapse: last in the
+   wrapper, its 20 would sit inside the wrapper on top of the wrapper's own
+   (the photo library's tab control, 20px low). The segmented control's wrap
+   and a button are the inline-level rows a screen part holds; neither
+   arrives or leaves under a transition. */
+.screen > .screen-part > :is(.segmented-wrap, .btn):last-child {
   margin-bottom: 0;
 }
 

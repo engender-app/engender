@@ -68,6 +68,8 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `prep-context-check` | an empty prep list still shows the next visit and keeps every section |
 | `debrief-offer-check` | the appointment debrief loop, end to end |
 | `home-fold-reserve` | nothing under Home's reserves moves in one frame on a cold open, with a right, wrong or missing guess, or when a notice inside one is dismissed |
+| `cold-screen-moves` | no top-level block steps in one frame after a cold open's first paint, on the sixteen screens where one did (a heading-led ReadGate's margin, a late block cut in); `--routes` sweeps any others |
+| `screen-part-last-row` | a row arriving or leaving last in a screen part, on `disclose`'s first frame, moves nothing and leaves the row before it its own margin |
 | `tile-arrival-timing` | Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, on the web tier (the Android bridge is ADR-0089's device record, not this) |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
 

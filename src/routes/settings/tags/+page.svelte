@@ -89,7 +89,12 @@
     <Icon name="plus" size={20} /><span>{m.tags_new_group()}</span>
   </button>
 
-  <div use:resize>
+  <!-- The skeleton stands where the first group's heading will: the button
+       above is inline-level, so the heading's 16px top margin does not
+       collapse into the button's 20 but adds to it, and a skeleton without
+       it put the whole list 16px high until the mirror answered (ux-carpet
+       ticket 193). While it waits, the wrapper carries that margin. -->
+  <div use:resize style:margin-top={vocabulary.ready ? null : 'var(--space-4)'}>
     {#if !vocabulary.ready}
       <!-- Every built-in tag group is reconciled on every boot (ADR-0004),
            so this is never legitimately empty - but on a cold navigation
