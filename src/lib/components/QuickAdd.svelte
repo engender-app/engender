@@ -304,6 +304,16 @@
      /care/changes. */
   let showEffects = $state(false);
 
+  /* One place both reads below land, so the ok/error handling is written
+     once. `stale` is only ever set by the per-open effect's own cleanup
+     (the mount-time call below has nothing to go stale against - the
+     component it belongs to is never torn down). */
+  function landRunningSession(session: WearSession | null, stale: () => boolean) {
+    if (stale()) return;
+    running = session;
+    runningKnown = true;
+  }
+
   /* Fired once at creation, not gated on the fan opening (ticket 189):
      this component mounts once for the app's whole life, so a read kicked
      off here has the entire time before the first press to land, rather
@@ -313,10 +323,7 @@
      ruled out. */
   void journal.wearSessions
     .getRunningSession()
-    .then((session) => {
-      running = session;
-      runningKnown = true;
-    })
+    .then((session) => landRunningSession(session, () => false))
     .catch((error) => {
       console.error('quick add: could not read the running wear session', error);
     });
@@ -326,11 +333,7 @@
     let stale = false;
     void journal.wearSessions
       .getRunningSession()
-      .then((session) => {
-        if (stale) return;
-        running = session;
-        runningKnown = true;
-      })
+      .then((session) => landRunningSession(session, () => stale))
       /* A journal that cannot be read is a journal that cannot be written
          either, so the write behind this row will fail and say so. What
          this catch is for is the rejection itself: unhandled, it reaches
@@ -473,9 +476,17 @@
      element. Hit testing is the browser's own rather than a table of
      rectangles this would have to keep in step with the layout. */
   function targetAt(e: PointerEvent): string | undefined {
-    return document
+    const key = document
       .elementFromPoint(e.clientX, e.clientY)
       ?.closest<HTMLElement>('[data-fan-target]')?.dataset.fanTarget;
+    /* Not yet a real target while its own answer isn't known (ticket 189):
+       arming it would light up the row and answer "this is where letting
+       go does something" for a press that is about to do nothing, the same
+       wrong-content shape the label fix above exists to rule out. Reads as
+       the gap between cards until `runningKnown` catches up, which
+       `toggleWear()` already guards for the tap flow this slide flow
+       shares a release path with. */
+    return key === 'wear' && !runningKnown ? undefined : key;
   }
 
   /* The mood row's magnifier (phase 5 ticket 31). The falloff is in
@@ -694,32 +705,49 @@
         data-wear-running={running ? '' : undefined}
         onclick={ACTIONS.wear}
       >
+        <!-- One `{#key}` spanning the pending state too, not a separate
+             `{#if}/{:else}` with the crossfade only inside the known
+             branch: two sibling blocks swap with no transition at all
+             unless each carries its own, and the transition that matters
+             most is exactly this first one - pending to the first real
+             answer - not a later refresh. Keying "pending" alongside
+             "stop"/"timeline" puts all three departures through the same
+             `out:crossfade` (ticket 189). -->
         <span class="fan-icon">
-          {#if runningKnown}
-            {#key running ? 'stop' : 'timeline'}
-              <span out:crossfade><Icon name={running ? 'stop' : 'timeline'} size={22} /></span>
-            {/key}
-          {:else}
-            <Icon name="timeline" size={22} />
-          {/if}
+          {#key runningKnown ? (running ? 'stop' : 'timeline') : 'pending'}
+            <span out:crossfade>
+              {#if runningKnown}
+                <Icon name={running ? 'stop' : 'timeline'} size={22} />
+              {:else}
+                <!-- Neither glyph until it's known which is true: the
+                     label already withholds its word (below), and
+                     showing 'timeline' here in the meantime would make
+                     the same wrong claim through the icon channel
+                     instead. -->
+                <span class="skeleton skeleton-dot" style="width: 22px; height: 22px" aria-hidden="true"></span>
+              {/if}
+            </span>
+          {/key}
         </span>
         <span class="fan-label">
-          {#if runningKnown}
-            {#key running ? 'stop' : 'start'}
-              <span out:crossfade>{running ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>
-            {/key}
-          {:else}
-            <!-- Neither word until it's known which is true (ticket 189) -
-                 "Start wearing" was the wrong half of that guess for a
-                 persona already wearing something, shown for up to 2.5s
-                 on a device before cutting straight to "Stop". -->
-            <!-- A fixed width rather than `is-short`'s 40%: this span is
-                 itself the flex item (`.fan-label`'s own box), so a
-                 percentage here would be resolving against a width its
-                 only child is also deciding - the same size either word
-                 wants. -->
-            <span class="skeleton skeleton-line" style="width: 96px" aria-hidden="true"></span>
-          {/if}
+          {#key runningKnown ? (running ? 'stop' : 'start') : 'pending'}
+            <span out:crossfade>
+              {#if runningKnown}
+                {running ? m.wear_session_stop_action() : m.wear_session_start_action()}
+              {:else}
+                <!-- Neither word until it's known which is true (ticket
+                     189) - "Start wearing" was the wrong half of that
+                     guess for a persona already wearing something, shown
+                     for up to 2.5s on a device before cutting straight to
+                     "Stop". A fixed width rather than `is-short`'s 40%:
+                     this span is itself the flex item (`.fan-label`'s own
+                     box), so a percentage here would be resolving
+                     against a width its only child is also deciding -
+                     the same size either word wants. -->
+                <span class="skeleton skeleton-line" style="width: 96px" aria-hidden="true"></span>
+              {/if}
+            </span>
+          {/key}
         </span>
       </button>
       {#if showEffects}
