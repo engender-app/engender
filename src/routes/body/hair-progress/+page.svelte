@@ -465,7 +465,7 @@
   </Sheet>
 
   <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="hair-progress" />
+  <AreaFinish group="hair-progress" held={dosesQuery.loading} />
 
   <RecordSheet
     record={stageRecord}
