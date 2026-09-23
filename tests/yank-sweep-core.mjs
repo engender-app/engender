@@ -434,6 +434,19 @@ export const INIT_HIDE_DEMO_SCRIPT = `(() => {
   document.addEventListener('DOMContentLoaded', inject);
 })()`;
 
+/** Headless Chromium always denies `navigator.storage.persist()` (no
+ *  profile behind it to grant), which raises the app's own "didn't grant
+ *  persistent storage" toast on every cold load (`boot.svelte.ts`'s
+ *  `warn-persist-denied`); the dropout detector then misreads its fade
+ *  over changing content as a region vanishing. Stubbed to resolve true
+ *  before any page script runs, so the sweep measures the app rather
+ *  than manufacturing its own finding (ticket 192). */
+export const STUB_PERSIST_SCRIPT = `(() => {
+  if (!navigator.storage) return;
+  navigator.storage.persist = () => Promise.resolve(true);
+  navigator.storage.persisted = () => Promise.resolve(true);
+})()`;
+
 /** The page-side half of settling a scene: toasts gone, demo bar hidden
     (kept in the tree for the setup scenes' first-run control, but out of
     the frame and out of the flow), and the theme stamped on <html> the way
@@ -1039,6 +1052,89 @@ export const OUTLIER_MIN = 0.03;
  *  different slice of time than the styles did; motion aliased across a
  *  gap reads as a teleport. Guard rather than chase. */
 export const GAP_RATIO = 2.5;
+
+/** Painted onto the still-live old document immediately before a cold
+ *  navigation (`location.assign`/`page.goto`), so the screencast frames
+ *  a `Page.startScreencast` session keeps delivering across the load
+ *  cannot still show that document's real content: a cold scene's first
+ *  cast frame used to be the previous scene's document, then one blank
+ *  frame of the new document before its first paint, and a region that
+ *  happened to match across both (most often the header) read as a
+ *  dropout or bloat that was never there (ticket 192). Two rAFs plus a
+ *  settle so a compositor frame actually lands on the flat fill before
+ *  the navigation tears the document down. */
+export const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
+  document.documentElement.style.cssText = 'background:#000 !important';
+  if (document.body) document.body.style.cssText = 'visibility:hidden !important';
+  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+})()`;
+
+/** How long to let the sentinel settle before navigating - long enough
+ *  for a slower CI box's compositor to deliver a screencast frame of
+ *  it, on top of the two rAFs the expression itself already waits on. */
+export const PRENAV_SETTLE_MS = 150;
+
+/** Runs `PAINT_BLANK_SENTINEL_EXPRESSION` and settles, on whichever
+ *  transport the caller drives - Playwright's `page.evaluate` /
+ *  `page.waitForTimeout` on the desktop sweep, the raw CDP `ev` / a
+ *  plain `sleep` on the device sweep. One place for the two cold-load
+ *  scenes (the scene itself, the lock-gate epilogue) in both files to
+ *  share, so the settle time and the sentinel can't drift apart
+ *  between them. */
+export async function paintBlankSentinel(evaluate, wait) {
+  await evaluate(PAINT_BLANK_SENTINEL_EXPRESSION);
+  await wait(PRENAV_SETTLE_MS);
+}
+
+/** A screencast frame with almost no internal contrast: the sentinel
+ *  fill above, or the browser's own blank paint between the old and new
+ *  document. Read by shape - the spread between its darkest and
+ *  lightest pixel - rather than by matching a specific color: an
+ *  earlier attempt matched frames against the sentinel's own average
+ *  gray value, which collided with the persistent-storage toast's
+ *  average gray landing in the same range and mis-dropped real content
+ *  (ticket 192's triage). `DIFF_EPS` is the render detector's own noise
+ *  floor for "the same render", so anything flatter than that is
+ *  read as blank rather than as painted content. */
+export function isBlankGray(gray) {
+  let min = 255;
+  let max = 0;
+  for (let i = 0; i < gray.length; i++) {
+    if (gray[i] < min) min = gray[i];
+    if (gray[i] > max) max = gray[i];
+  }
+  return max - min <= DIFF_EPS;
+}
+
+/** `Page.startScreencast` delivers whatever is on screen the instant it
+ *  starts, which for a cold scene is still the previous scene's real,
+ *  painted content - not blank at all - so a check that only drops
+ *  frames already flat would walk straight past it and leave it in the
+ *  analysed cast (ticket 192's first attempt: the old document's real
+ *  frame plus the sentinel still made the same before/blank/after triple
+ *  the render detector reads as a dropout). This scans forward through
+ *  whatever the old document was showing, keeps going while the sentinel
+ *  fill is on screen, and stops the moment something else is painted -
+ *  the new document's first real frame. Bounded, and a no-op if the
+ *  sentinel never shows up in that window: better to leave a cast
+ *  unfiltered than to mistake real hydration content for "still the old
+ *  document" and eat it. */
+const PRENAV_SCAN_LIMIT = 6;
+export function dropLeadingBlankFrames(cast) {
+  let i = 0;
+  let sawBlank = false;
+  while (i < cast.length - 1 && i < PRENAV_SCAN_LIMIT) {
+    const blank = isBlankGray(grayFrame(decodePng(Buffer.from(cast[i].data, 'base64'))));
+    if (blank) {
+      sawBlank = true;
+      i++;
+      continue;
+    }
+    if (sawBlank) break;
+    i++;
+  }
+  return sawBlank ? cast.slice(i) : cast;
+}
 
 const round4 = (n) => Math.round(n * 10000) / 10000;
 

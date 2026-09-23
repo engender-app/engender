@@ -67,14 +67,17 @@ import {
   OUTLIER_MIN,
   PROOF,
   RESET_PERSONA_EXPRESSION,
+  STUB_PERSIST_SCRIPT,
   TRANSIENT_MIN,
   GAP_RATIO,
   UNLOCK_PIN_EXPRESSION,
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
+  dropLeadingBlankFrames,
   fillTokens,
   hydrationScreensFor,
   missingProofYanks,
+  paintBlankSentinel,
   pushHydrationRun,
   samplerExpression,
   scrapeHrefExpression,
@@ -114,6 +117,7 @@ const report = [];
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 page.on('pageerror', (err) => errors.push(String(err)));
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
+await page.addInitScript(STUB_PERSIST_SCRIPT);
 
 /* ---------- the camera, desktop edition ---------- */
 
@@ -142,10 +146,11 @@ const waitFor = (selector, path = null, timeout = 40000) => {
  *  boot stamps, and the cold window is meant to be untouched. */
 async function recordCold(href) {
   return screencast(async (cast) => {
+    await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
     await page.goto(`${base}${href}`, { waitUntil: 'commit', timeout: 40000 });
     await waitFor('[data-app-root][data-boot="ready"]');
     const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    return { cast: [...cast], frames };
+    return { cast: dropLeadingBlankFrames([...cast]), frames };
   });
 }
 
@@ -288,10 +293,11 @@ if (lockScene && profiles.includes('persona')) {
     await settle('/settings/access-mode', themes[0]);
     await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
     const result = await screencast(async (cast) => {
+      await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
       await page.goto(`${base}/`, { waitUntil: 'commit', timeout: 40000 });
       await waitFor('[data-pin-pad]', '/', 40000);
       const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-      return { cast: [...cast], frames };
+      return { cast: dropLeadingBlankFrames([...cast]), frames };
     });
     await pushHydrationRun(report, outDir, {
       name: 'lock-gate',
