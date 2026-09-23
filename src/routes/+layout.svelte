@@ -18,6 +18,7 @@
   import '$lib/motion/materials.css';
 
   import { page } from '$app/state';
+  import { MediaQuery } from 'svelte/reactivity';
   import { assets } from '$app/paths';
   import { afterNavigate, goto, onNavigate } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -363,22 +364,8 @@
   });
 
   /* Theme, palette, disguise → document. */
-  let systemDark = $state(false);
-  let systemReducedMotion = $state(false);
-  $effect(() => {
-    const mq = matchMedia('(prefers-color-scheme: dark)');
-    systemDark = mq.matches;
-    const onChange = (e: MediaQueryListEvent) => (systemDark = e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  });
-  $effect(() => {
-    const mq = matchMedia('(prefers-reduced-motion: reduce)');
-    systemReducedMotion = mq.matches;
-    const onChange = (e: MediaQueryListEvent) => (systemReducedMotion = e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  });
+  const systemDark = new MediaQuery('(prefers-color-scheme: dark)');
+  const systemReducedMotion = new MediaQuery('(prefers-reduced-motion: reduce)');
   $effect(() => {
     const root = document.documentElement;
     /* The eight stamps app.html also writes before first paint, from the
@@ -387,8 +374,8 @@
        has the live preferences and the media queries; that side has a
        mirror in localStorage and the same two queries. */
     const chrome = documentChrome(prefs, {
-      prefersDark: systemDark,
-      prefersReducedMotion: systemReducedMotion
+      prefersDark: systemDark.current,
+      prefersReducedMotion: systemReducedMotion.current
     });
     root.dataset.palette = chrome.palette;
     root.dataset.moodPreset = chrome.moodPreset;
