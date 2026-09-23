@@ -307,23 +307,30 @@ test('a key with a conversion waiting converts first, reporting progress, then o
   ]);
 });
 
-test('an opened journal is ready, and a browser that refused storage gets a warning', () => {
+test('an opened journal is ready, and journal-opened alone asks for no warning', () => {
   const quiet = walk(
     started('web'),
     surveyedWeb({ keystoreSecretSource: 'passphrase' }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
-    { type: 'journal-opened', journal: {} as never, persistDenied: false }
+    { type: 'journal-opened', journal: {} as never }
   );
 
   expect(quiet.machine.boot.status).toBe('ready');
   expect(quiet.machine.boot.journal).not.toBeNull();
+  expect(quiet.machine.boot.persistDenied).toBe(false);
   expect(quiet.effects).toEqual([]);
+});
 
+/* ticket 202: the persistence request's answer no longer holds up
+   journal-opened, so a refusal arrives as its own event - whenever the
+   browser answers - and still reaches the same warning. */
+test('a persist-request-denied event, once ready, still warns', () => {
   const denied = walk(
     started('web'),
     surveyedWeb({ keystoreSecretSource: 'passphrase' }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
-    { type: 'journal-opened', journal: {} as never, persistDenied: true }
+    { type: 'journal-opened', journal: {} as never },
+    { type: 'persist-request-denied' }
   );
   expect(denied.machine.boot.persistDenied).toBe(true);
   expect(denied.effects).toEqual([{ type: 'warn-persist-denied' }]);
@@ -390,7 +397,7 @@ test('changing the access mode of an open journal moves it without leaving ready
     started('web'),
     surveyedWeb({ deviceBoundKeystoreExists: true }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound', unlocked: false },
-    { type: 'journal-opened', journal: {} as never, persistDenied: false },
+    { type: 'journal-opened', journal: {} as never },
     { type: 'access-mode-changed', accessMode: 'passphrase' }
   );
 
@@ -437,7 +444,7 @@ test('illegal events throw rather than moving the boot somewhere it cannot be', 
     reduce(setup, { type: 'conversion-progressed', progress: { stage: 'database' } })
   ).toThrow(/invalid transition/i);
   expect(() =>
-    reduce(setup, { type: 'journal-opened', journal: {} as never, persistDenied: false })
+    reduce(setup, { type: 'journal-opened', journal: {} as never })
   ).toThrow(/invalid transition/i);
   expect(() => reduce(setup, { type: 'pre-migration-copy-checked', usable: true })).toThrow(
     /invalid transition/i

@@ -79,7 +79,11 @@ export type BootEvent =
   | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean }
   | { type: 'conversion-progressed'; progress: ConversionProgress }
   | { type: 'converted'; dataKey: DataKey; accessMode: JournalAccessMode }
-  | { type: 'journal-opened'; journal: Journal; persistDenied: boolean }
+  | { type: 'journal-opened'; journal: Journal }
+  /** The persistence request came back denied, whenever the browser answers
+      (ticket 202) - decoupled from `journal-opened` because that no longer
+      waits for it. */
+  | { type: 'persist-request-denied' }
   /** However boot() ended badly, unread. Three very different destinations
       hide in this one value, and telling them apart is an ordering decision. */
   | { type: 'journal-open-failed'; error: unknown }
@@ -320,14 +324,12 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 
 
     case 'journal-opened':
-      return step(
-        machine,
-        bootTransitions.toReady(machine.boot, {
-          journal: event.journal,
-          persistDenied: event.persistDenied
-        }),
-        event.persistDenied ? [{ type: 'warn-persist-denied' }] : []
-      );
+      return step(machine, bootTransitions.toReady(machine.boot, { journal: event.journal }));
+
+    case 'persist-request-denied':
+      return step(machine, bootTransitions.markPersistDenied(machine.boot), [
+        { type: 'warn-persist-denied' }
+      ]);
 
     case 'journal-open-failed': {
       /* The rollback direction: older code has met a journal a newer build

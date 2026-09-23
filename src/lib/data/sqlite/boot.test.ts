@@ -139,7 +139,7 @@ test('housekeeping runs on every boot even with no scheduler injected', async ()
   assert.deepEqual(order, ['trashPurge', 'photoSweep']);
 });
 
-test('reports persistDenied when persistent storage is refused', async () => {
+test('persistRequest resolves denied when persistent storage is refused', async () => {
   const result = await boot({
     createDriver: makeFakeDriver,
     fileOps: noopFileOps(),
@@ -147,14 +147,24 @@ test('reports persistDenied when persistent storage is refused', async () => {
   });
 
   assert.equal(result.phase, 'ready');
-  if (result.phase === 'ready') assert.equal(result.persistDenied, true);
+  if (result.phase === 'ready') assert.equal(await result.persistRequest, true);
 });
 
-test('does not ask for persistent storage when no hook is given', async () => {
+test('persistRequest resolves not-denied when no hook is given', async () => {
   const result = await boot({ createDriver: makeFakeDriver, fileOps: noopFileOps() });
 
   assert.equal(result.phase, 'ready');
-  if (result.phase === 'ready') assert.equal(result.persistDenied, false);
+  if (result.phase === 'ready') assert.equal(await result.persistRequest, false);
+});
+
+test('reports ready without waiting on the persistence request (ticket 202: Firefox answers it only through a permission prompt, unbounded)', async () => {
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    requestPersistentStorage: () => new Promise(() => {}) // never settles
+  });
+
+  assert.equal(result.phase, 'ready');
 });
 
 test('a migration failure surfaces as a handled error result, not a thrown exception', async () => {
