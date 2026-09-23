@@ -163,6 +163,26 @@ function isEntryEditor(path: string): boolean {
   return /^\/entry\/\d+$/.test(path);
 }
 
+/** Home is the one screen carrying the sun ring, so it is the one departure
+    whose field-part hold lands over a second large graphic in the same
+    corner rather than empty screen (ticket 159, measured on the mood-pick
+    gesture specifically). Named as its own fact rather than folded into the
+    tier-2 table above: this is still a fade-through like any other tab
+    crossing, and every other one keeps the shared blind budget - only this
+    one gets a shorter ride, which +layout.svelte reads to scope
+    `--blind-dur` (app.css) to just this navigation.
+
+    Every `/entry/new` departure from Home, not only mood-pick's own
+    `seedMood` query: the geometry that makes the gap read as broken is
+    Home's sun ring sitting in the corner, which is the same regardless of
+    which control sent the tap there (a mood row, quick add's fan, an
+    appointment's `debriefFor` link). Narrowing to `seedMood` alone would
+    leave the identical gap open on those other paths into the same
+    screen. */
+export function leavesHomeForEntry(from: string | null, to: string): boolean {
+  return from === '/' && to.startsWith('/entry/new');
+}
+
 /* Two ways back, and both have to count.
    The system's back and the browser's arrive as a popstate with a negative
    delta. But most of the app's own back controls are ordinary links to a

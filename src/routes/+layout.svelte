@@ -43,7 +43,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
-  import { screenTransition } from '$lib/navigation/screen-transition';
+  import { leavesHomeForEntry, screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';
   import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
@@ -301,6 +301,15 @@
       fromSheet: document.querySelector('[role="dialog"][aria-modal="true"]') !== null,
       chromeOrigin: chromeTabOrigin()
     });
+    /* Scopes app.css's shorter --blind-dur to just this one departure
+       (ticket 159) - see screen-transition.ts's own comment on
+       leavesHomeForEntry for why this is not folded into `pattern` above.
+       Read here rather than inside the closure below, where TS no longer
+       trusts `navigation.to`'s guard above across the function boundary. */
+    const shortBlindHold = leavesHomeForEntry(
+      navigation.from?.url.pathname ?? null,
+      navigation.to.url.pathname
+    );
     /* Before the capture below, and on every navigation rather than only the
        animated ones: a card left wearing the container name is pulled out of
        the screen's own snapshot, so it would hold still while the rest of
@@ -327,6 +336,7 @@
 
     return new Promise((resolve) => {
       document.documentElement.dataset.nav = pattern;
+      if (shortBlindHold) document.documentElement.dataset.blindHold = 'short';
       const transition = document.startViewTransition(async () => {
         resolve();
         /* Both of these reject rather than resolve when a navigation is
@@ -376,6 +386,7 @@
         .catch(() => {})
         .finally(() => {
           delete document.documentElement.dataset.nav;
+          delete document.documentElement.dataset.blindHold;
           blind.release();
         });
     });
