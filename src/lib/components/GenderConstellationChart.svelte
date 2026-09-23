@@ -136,8 +136,9 @@
   /** No two point labels closer than this, in real pixels. A day label runs
       up to about 45px wide and 14px tall, off-centre from its own point - so
       the gap has to clear a label's whole box, not just the dot it is
-      anchored to (ticket CARPET-07, tests/constellation-gallery.mjs's own
-      pairwise check is what this was tuned against). */
+      anchored to (ticket CARPET-07; the pairwise check in
+      tests/constellation-gallery.mjs, deleted since, is what this was
+      tuned against). */
   const MIN_LABEL_GAP = 48;
 
   /* Which dataset this is, as cheaply as it can be asked. A live query
