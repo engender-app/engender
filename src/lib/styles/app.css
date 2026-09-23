@@ -606,13 +606,6 @@ body {
       var(--pill-far-delay, 0ms),
     opacity var(--dur-fast) var(--ease-out);
 }
-/* The first placement is not a slide (AppNav's `place`): the pill fades in
-   where it lands. Without this the insets' own transitions ran from the
-   unmeasured whole-track box to the tab, in the same style change that
-   opened it. */
-.nav-pill:not(.is-sliding) {
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
 /* Hidden until a tab is lit rather than absent from the DOM: seven routes
    light no tab at all (active-tab.ts), and a pill that is removed and
    remounted has no previous position to travel from when one of them leads
