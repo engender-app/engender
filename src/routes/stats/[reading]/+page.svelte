@@ -27,6 +27,8 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import ReadGroup from '$lib/components/kit/ReadGroup.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import WordsReading from '$lib/components/WordsReading.svelte';
   import DayByDayReading from '$lib/components/readings/DayByDayReading.svelte';
   import DaysReading from '$lib/components/readings/DaysReading.svelte';
@@ -66,6 +68,21 @@
     back="/stats"
   />
 
+  <!-- One placeholder from the first frame to the card (ticket 167). The
+       screen waits on the recap, then mounts the reading, whose own reads
+       used to show through as they settled: its chart card's own skeleton,
+       then "Not enough data in this range yet." at full opacity for three
+       or four frames on a journal with months of data, then the chart. The
+       vocabulary mirror is waited on too, since the readings pick their
+       scales from it. The reading now
+       mounts inside a ReadGroup whose skeleton is the same block as the
+       screen's own, so the two skeletons hand over without a visible
+       change and the card fades in once, whole.
+
+       Mounting the reading at once, in parallel with the recap, was tried
+       and measured slower on the phone - the card at 600-820ms against
+       185-290ms - because every read shares one SQLite worker and the
+       recap then queued behind the reading's own. -->
   <div class="screen-part" use:resize>
   {#if !reading}
     <Notice
@@ -77,7 +94,13 @@
     />
   {:else if recapQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else if reading === 'day-by-day'}
+  {:else}
+  <!-- Keyed: SvelteKit reuses this page between two readings, and a group
+       is one-way, so the second reading would otherwise arrive through a
+       group that had already shown. -->
+  {#key reading}
+  <ReadGroup answered={vocabulary.ready}>
+  {#if reading === 'day-by-day'}
     <DayByDayReading {span} {today} {enoughEntries} />
   {:else if reading === 'plane'}
     <PlaneReading {span} />
@@ -91,6 +114,9 @@
     <HighestReading {span} {today} {enoughEntries} />
   {:else}
     <ThemesReading {span} />
+  {/if}
+  </ReadGroup>
+  {/key}
   {/if}
   </div>
 </div>
