@@ -51,6 +51,18 @@ function paintedAt(cell: HTMLElement, grid: HTMLElement): { x: number; y: number
   return { x: box.left - frame.left - grid.clientLeft, y: box.top - frame.top - grid.clientTop };
 }
 
+/** The rules a tile's place gives it (ReadingGrid.svelte), as keyframe
+    values. */
+function ruleOf(cell: HTMLElement): Keyframe {
+  const style = getComputedStyle(cell);
+  return {
+    paddingLeft: style.paddingLeft,
+    paddingRight: style.paddingRight,
+    borderLeftColor: style.borderLeftColor,
+    borderTopColor: style.borderTopColor
+  };
+}
+
 /** The transition for a tile in the grid: fade in at its cell, or lift out
     of flow where it is painted and fade there. */
 export function gridCell(
@@ -71,7 +83,9 @@ export function gridCell(
     const laid = lastPlace.get(cell) ?? { x: cell.offsetLeft, y: cell.offsetTop };
     const at = { x: laid.x + painted.x - cell.offsetLeft, y: laid.y + painted.y - cell.offsetTop };
     const { offsetWidth, offsetHeight } = cell;
-    for (const travel of cell.getAnimations()) travel.cancel();
+    /* Its travel is folded into where it is put; a rule change under way
+       is left to finish on the way out. */
+    for (const travel of cell.getAnimations()) if (travel.id === 'cell-travel') travel.cancel();
     Object.assign(cell.style, {
       position: 'absolute',
       left: `${at.x}px`,
@@ -94,15 +108,30 @@ export const settleCells: Action<HTMLElement> = (grid) => {
   const settle = () => {
     const cells = ([...grid.children] as HTMLElement[]).filter((cell) => !leaving(cell));
     const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
-    grid.dataset.cols = String(cols);
-    cellPlaces(cells.length, cols).forEach((place, i) => {
-      cells[i].dataset.col = String(place.col);
-      if (place.below) cells[i].dataset.below = '';
-      else delete cells[i].dataset.below;
-    });
-
     const animate = !isReducedMotion() && !stillArriving();
     const duration = motionDuration('--dur-med');
+    grid.dataset.cols = String(cols);
+    cellPlaces(cells.length, cols).forEach((place, i) => {
+      const cell = cells[i];
+      const col = String(place.col);
+      if (cell.dataset.col === col && (cell.dataset.below !== undefined) === place.below) return;
+      /* A tile that changes column or row also changes its rules: the inset
+         on its inner side and the hairline on its left or top. Written in
+         one frame, the content inside shifted 16px and a rule vanished
+         while the tile itself travelled, so the rules travel with it. A
+         tile being placed for the first time just takes them. */
+      /* Read as painted, a rule change already under way included, and
+         only then is that one stopped - or a second change inside the
+         first one's travel would start from the old rule and snap back to
+         it when the first ended. */
+      const before = cell.dataset.col === undefined || !animate ? null : ruleOf(cell);
+      for (const change of cell.getAnimations()) if (change.id === 'cell-rule') change.cancel();
+      cell.dataset.col = col;
+      if (place.below) cell.dataset.below = '';
+      else delete cell.dataset.below;
+      if (before) cell.animate([before, ruleOf(cell)], { duration, easing: EASE_OUT_CSS, id: 'cell-rule' });
+    });
+
     for (const cell of cells) {
       const now = { x: cell.offsetLeft, y: cell.offsetTop };
       const was = last.get(cell);
@@ -117,22 +146,31 @@ export const settleCells: Action<HTMLElement> = (grid) => {
       const dx = was.x + (painted.x - now.x) - now.x;
       const dy = was.y + (painted.y - now.y) - now.y;
       for (const travel of cell.getAnimations()) if (travel.id === 'cell-travel') travel.cancel();
-      const travel = cell.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
+      cell.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
         duration,
-        easing: EASE_OUT_CSS
+        easing: EASE_OUT_CSS,
+        id: 'cell-travel'
       });
-      travel.id = 'cell-travel';
     }
   };
 
   settle();
-  const mutations = new MutationObserver(settle);
-  mutations.observe(grid, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-leaving'] });
+  /* Subtree, because a tile lifting out marks itself and that mark is an
+     attribute on a child; but only the grid's own children coming and
+     going, or that mark, are worth a settle - a count ticking inside a
+     tile mutates every frame of its travel. */
+  const mutations =
+    typeof MutationObserver === 'undefined'
+      ? null
+      : new MutationObserver((records) => {
+          if (records.some((record) => record.type === 'attributes' || record.target === grid)) settle();
+        });
+  mutations?.observe(grid, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-leaving'] });
   const resizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(settle);
   resizes?.observe(grid);
   return {
     destroy() {
-      mutations.disconnect();
+      mutations?.disconnect();
       resizes?.disconnect();
     }
   };
