@@ -1041,10 +1041,26 @@ export const resize: Action<HTMLElement> = (node) => {
     animating = true;
     const restoreOverflow = node.style.overflow;
     node.style.overflow = 'hidden';
+    const duration = motionDuration('--dur-med');
     current = node.animate(
       [{ height: `${oldHeight}px` }, { height: `${newHeight}px` }],
-      { duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS }
+      { duration, easing: EASE_OUT_CSS }
     );
+    /* A box that empties, or fills from empty, also loses or gains its own
+       bottom margin at one end of the travel (ux-carpet ticket 196). Empty
+       and unclipped, its top and bottom margins collapse through it into
+       its neighbours'; clipped for the travel, they do not. So the moment
+       the clip came off a box that had travelled to nothing, everything
+       under it went up by the screen's 20px in one frame - the look-back
+       facts on a span too thin for them. The margin travels too, as a
+       negative top margin that cancels the one above it, the same answer
+       ReadReserve gives for its own swap. */
+    const margin = typeof getComputedStyle === 'function' ? parseFloat(getComputedStyle(node).marginBottom) || 0 : 0;
+    if (margin > 0 && (oldHeight < 1 || newHeight < 1)) {
+      const open = { marginTop: '0px' };
+      const shut = { marginTop: `${-margin}px` };
+      node.animate(oldHeight < 1 ? [shut, open] : [open, shut], { duration, easing: EASE_OUT_CSS });
+    }
     current.finished
       .catch(() => {
         // Cancelled below, by the node leaving mid-travel - `out:disclose`
