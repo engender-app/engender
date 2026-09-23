@@ -232,7 +232,9 @@ function needsAuthentication(state: BootState, androidKey: AndroidKeyRefusal | n
 }
 
 function needsDeviceRecovery(state: BootState): NeedsDeviceRecoveryState {
-  if (state.status !== 'booting') invalidTransition(state, 'needs-device-recovery');
+  if (state.status !== 'booting' && state.status !== 'needs-unlock') {
+    invalidTransition(state, 'needs-device-recovery');
+  }
   return {
     status: 'needs-device-recovery',
     accessMode: state.accessMode,
@@ -241,7 +243,9 @@ function needsDeviceRecovery(state: BootState): NeedsDeviceRecoveryState {
 }
 
 function conversionRefused(state: BootState, refusal: ConversionRefusal): ConversionRefusedState {
-  if (state.status !== 'booting') invalidTransition(state, 'conversion-refused');
+  if (state.status !== 'booting' && state.status !== 'needs-unlock') {
+    invalidTransition(state, 'conversion-refused');
+  }
   return {
     status: 'conversion-refused',
     accessMode: state.accessMode,
