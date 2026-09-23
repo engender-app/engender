@@ -74,6 +74,8 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import {
     depletingStocks,
     isStockNoticeSnoozed,
@@ -81,7 +83,7 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { collapse, disclose, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
+  import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   /* A fold's label changes under a standing button - "Ready letter, Active
@@ -235,6 +237,19 @@
   let entryCountQuery = liveQuery((j) => j.entries.countAll());
   let journalBoundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let entryCount = $derived(entryCountQuery.value);
+  /* Whether the count line will draw, before the count has answered: the
+     mirror below is the last answer this device saw, written for the
+     calendar's own boot guess (ticket 109) and read here for the line's
+     room (ticket 183). */
+  const hadEntries = (() => {
+    try {
+      return typeof localStorage !== 'undefined' && localStorage.getItem('engender-has-entries') === '1';
+    } catch {
+      return false;
+    }
+  })();
+  let countPending = $derived(entryCountQuery.loading || journalBoundsQuery.loading);
+  const countFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   $effect(() => {
     if (entryCountQuery.value != null && typeof localStorage !== 'undefined') {
@@ -267,16 +282,22 @@
      clock, so a run tracking it would re-issue the whole forward read once
      a second. A boolean only wakes the query when it flips. */
   let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
-  let agendaQuery = liveQuery((j) =>
-    readAgenda(
+  /* The answer carries the boolean it was asked with, so the reserve below
+     can tell an agenda read for the composed grid from the one read before
+     the grid had answered, when the boolean was still false (ticket 183:
+     the second answer used to land a frame after everything else). */
+  let agendaQuery = liveQuery(async (j) => {
+    const covered = dosePanelCoversEveryDose;
+    const agenda = await readAgenda(
       { dayAhead: j.dayAhead, doses: j.doses },
       today,
       prefs.disguise,
       shownAgendaKinds(prefs),
       dosePanelCoversEveryDose
-    )
-  );
-  let agenda = $derived(agendaQuery.value ?? null);
+    );
+    return { covered, agenda };
+  });
+  let agenda = $derived(agendaQuery.value?.agenda ?? null);
   let agendaExpanded = $state(false);
   /* The two fold labels, keyed in the markup so a change crosses (labelFade).
      The agenda's says what stretch of time it is holding rather than only
@@ -342,6 +363,14 @@
       : fallbackReading(today)
   );
   let pinned = $derived(pinnedRows(prefs, reading));
+  /* One-way, because each `loading` is: the pinned rows' own reserve opens
+     once, when all four reads behind their lines have answered, failed
+     included (a failed read keeps its row on the standing line). */
+  let pinnedReadsAgree = $derived(
+    !lastWritesQuery.loading && !areaStatesQuery.loading && !forwardQuery.loading && !voiceMemoLastWriteQuery.loading
+  );
+  const reservePinned = readReserve('pinned');
+  const rememberPinned = (px: number) => rememberReserve('pinned', px);
 
   /* Edit mode (ticket 14), which is a state of this block rather than a
      screen of its own: the rows being arranged are these rows, so the
@@ -428,6 +457,55 @@
       : null
   );
   let stockDismissSheetOpen = $state(false);
+
+  /* The reserve (phase 12 ux-carpet ticket 183, Alicja's call: "reserve +
+     fade"). On a cold open the today tier, the agenda, the stock and debrief
+     notices and the rest of the tiles all answered in the same frame, ~50ms
+     after the screen had painted without them, and every block under them
+     teleported - the log strip 396px, the pinned rows 977px. Two slots now
+     hold the room those blocks rested at last time (homeReserve.ts) until
+     every read that decides them has agreed, then crossfade them in, and a
+     wrong guess travels (`resize`) rather than jumps.
+
+     "Agreed" is more than `loading` for two of them. The agenda is asked
+     with the grid's own dose-panel answer, which is false until the grid
+     composes, so its first answer is for the wrong grid and a second one
+     follows; the debrief offer's read is asked with an appointment id that
+     only arrives with the appointments read. Each answer carries the input
+     it was asked with, and the gate waits for the one asked with the
+     current input. A failed read counts as answered - it will not answer
+     any better by waiting. */
+  const settledFor = <T,>(read: { loading: boolean; failed: boolean; value: T | undefined }, askedWith: (value: T) => boolean) =>
+    !read.loading && (read.failed || (read.value !== undefined && askedWith(read.value)));
+  let foldReadsAgree = $derived(
+    liveTiles.ready &&
+      settledFor(agendaQuery, (answer) => answer.covered === dosePanelCoversEveryDose) &&
+      !appointmentsQuery.loading &&
+      settledFor(debriefStateQuery, (answer) => answer.appointmentId === lastAppointmentId) &&
+      !stockProjectionsQuery.loading
+  );
+  /* Latched, because the second condition is not one-way the way `loading`
+     is: logging a dose can flip the dose-panel answer, and the agenda's
+     next answer is a round trip behind it. Once the fold is on screen it
+     stays; the reserve is for arriving, not for every change after. Opening
+     marks a screen arrival, so a notice or a tile inside the fade does not
+     also play its own entrance: the fade is theirs. */
+  let foldRevealed = $state(false);
+  $effect.pre(() => {
+    if (foldRevealed || !foldReadsAgree) return;
+    markScreenArrival();
+    foldRevealed = true;
+  });
+  const reserveAbove = readReserve('above');
+  const reserveBelow = readReserve('below');
+  /* An open fold is taller than the one the next visit will draw, so a
+     height taken while one is open is not remembered. */
+  const rememberAbove = (px: number) => {
+    if (!agendaExpanded) rememberReserve('above', px);
+  };
+  const rememberBelow = (px: number) => {
+    if (!tilesExpanded) rememberReserve('below', px);
+  };
 
   /* The one authored moment besides the sun: on a milestone day, opening
      Home throws a little confetti over the notice that names it. It plays
@@ -590,12 +668,18 @@
              A month and a year rather than a day: the day the journal opened
              on is not the fact this line is about. -->
         {#if entryCount && journalBoundsQuery.value}
-          <p class="home-count" data-home-count>
+          <p class="home-count" data-home-count in:countFade>
             {m.home_count_since({
               entries: m.n_entries({ n: entryCount }),
               date: fmtDay(journalBoundsQuery.value.firstEpochDay, { month: 'short', year: 'numeric' })
             })}
           </p>
+        {:else if countPending && hadEntries}
+          <!-- The line's room, held while the two reads answer (ticket 183):
+               drawn the frame they did, it grew the foot 9px under
+               everything on the screen. An empty line of the same type is
+               the same height, and the words fade up into it. -->
+          <p class="home-count" aria-hidden="true">&nbsp;</p>
         {/if}
       </div>
       <!-- Preferences are chrome, not content, so they leave the fourth door
@@ -675,106 +759,111 @@
     {/if}
   {/snippet}
 
-  <!-- The today tier leads Home, above the agenda (phase 8 features
-       ticket 63, ADR-0067; redesign ticket 13): what is happening now - a
-       wear session running, a dose the day expects, an appointment on the
-       date - answers before what is coming does, and both before "how are
-       you feeling". A reorder rather than a second grid: this is the same
-       today-tier row the block below used to draw in its own turn, only
-       moved. Empty, and nothing here renders at all. -->
-  {#if todayTiles.length > 0}
-    <div transition:collapse={panel}>
-      {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
-    </div>
-  {/if}
+  <!-- The first of the two reserves (ticket 183): the today tier and the
+       agenda hold their room above the log strip until their reads agree,
+       so the strip and everything under it stay where they painted. -->
+  <ReadReserve ready={foldRevealed} estimate={reserveAbove} onrest={rememberAbove} data-home-reserve="above">
+    <!-- The today tier leads Home, above the agenda (phase 8 features
+         ticket 63, ADR-0067; redesign ticket 13): what is happening now - a
+         wear session running, a dose the day expects, an appointment on the
+         date - answers before what is coming does, and both before "how are
+         you feeling". A reorder rather than a second grid: this is the same
+         today-tier row the block below used to draw in its own turn, only
+         moved. Empty, and nothing here renders at all. -->
+    {#if todayTiles.length > 0}
+      <div transition:collapse={panel}>
+        {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
+      </div>
+    {/if}
 
-  <!-- The agenda (ticket 04, ADR-0074): the week ahead as a list, since it
-       is one (rule 6), each row carrying its day as a block because a date
-       is a value (rule 3) and the kind in the day view's own words, going
-       to the screen that owns the fact. The block is always one of the
-       flag's colours (tileRoleAt, ticket 24's rule for a block): on trans
-       the agenda's slot lands on the white band, and a white day block on a
-       light page is the outline the passed slot below draws, so the two
-       would read as one. Absent rather than empty: a window
-       with nothing in it hands the screen nothing to draw, so day one and a
-       quiet week both render no heading and no card. The passed slot is
-       the one row that looks backwards, stated once with its date under
-       the words /coming-back uses, and drawn apart from the dated rows as
-       an outlined block rather than a filled one, so it cannot be read as
-       the next item on a list. -->
-  {#if agenda}
-    <div class="home-agenda" transition:collapse={panel} data-home-agenda>
-      <SectionHeading text={m.home_agenda_heading()} />
-      <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
-        {#each agendaRows as item, i (item.key)}
-          {@const label = dayAheadMarkLabel(item.kind)}
-          <!-- Each row owns its height and gives it back (rule 10): a row
-               the fold discloses opens rather than appears, and one whose
-               day passes closes, the rows under it following. The day
-               block on it arrives the way every block does, clipping open
-               from its left edge, the rows of one arrival one stagger step
-               apart (redesign ticket 19): counted from the first row the
-               screen shows, or from the first row the fold lets out, so a
-               row arriving out of the fold never waits its turn behind
-               rows that were already there (ticket 25's lesson on the
-               tiles). Capped where the tiles' stagger is. -->
-          <div class="rows-divide" transition:disclose={panel} style:--row-index={Math.min(6, i < agenda.shown.length ? i : i - agenda.shown.length)}>
-            <ListRow
-              key={item.key}
-              href={item.route}
-              title={label.title}
-              subtitle={agendaWhen(item.epochDay)}
-              data-agenda-item={item.kind}
-              data-agenda-day={item.epochDay}
-            >
-              {#snippet leading()}
-                {@render dayBlock(item.epochDay, false)}
-              {/snippet}
-            </ListRow>
+    <!-- The agenda (ticket 04, ADR-0074): the week ahead as a list, since it
+         is one (rule 6), each row carrying its day as a block because a date
+         is a value (rule 3) and the kind in the day view's own words, going
+         to the screen that owns the fact. The block is always one of the
+         flag's colours (tileRoleAt, ticket 24's rule for a block): on trans
+         the agenda's slot lands on the white band, and a white day block on a
+         light page is the outline the passed slot below draws, so the two
+         would read as one. Absent rather than empty: a window
+         with nothing in it hands the screen nothing to draw, so day one and a
+         quiet week both render no heading and no card. The passed slot is
+         the one row that looks backwards, stated once with its date under
+         the words /coming-back uses, and drawn apart from the dated rows as
+         an outlined block rather than a filled one, so it cannot be read as
+         the next item on a list. -->
+    {#if agenda}
+      <div class="home-agenda" transition:collapse={panel} data-home-agenda>
+        <SectionHeading text={m.home_agenda_heading()} />
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+          {#each agendaRows as item, i (item.key)}
+            {@const label = dayAheadMarkLabel(item.kind)}
+            <!-- Each row owns its height and gives it back (rule 10): a row
+                 the fold discloses opens rather than appears, and one whose
+                 day passes closes, the rows under it following. The day
+                 block on it arrives the way every block does, clipping open
+                 from its left edge, the rows of one arrival one stagger step
+                 apart (redesign ticket 19): counted from the first row the
+                 screen shows, or from the first row the fold lets out, so a
+                 row arriving out of the fold never waits its turn behind
+                 rows that were already there (ticket 25's lesson on the
+                 tiles). Capped where the tiles' stagger is. -->
+            <div class="rows-divide" transition:disclose={panel} style:--row-index={Math.min(6, i < agenda.shown.length ? i : i - agenda.shown.length)}>
+              <ListRow
+                key={item.key}
+                href={item.route}
+                title={label.title}
+                subtitle={agendaWhen(item.epochDay)}
+                data-agenda-item={item.kind}
+                data-agenda-day={item.epochDay}
+              >
+                {#snippet leading()}
+                  {@render dayBlock(item.epochDay, false)}
+                {/snippet}
+              </ListRow>
+            </div>
+          {/each}
+        </ListCard>
+        <!-- Its own list, not the last row of the one above: ADR-0074 gives
+             the passed slot its own shape so it can never be sorted among
+             the things coming, and a row under the same hairlines would read
+             as the next of them however its block was drawn. -->
+        {#if agenda.passed}
+          <!-- The one row that arrives and leaves on its own, when a slot's
+               day passes or the dose is logged: it opens and closes its own
+               height like every other row (redesign ticket 19). -->
+          <div transition:disclose={panel}>
+            <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+              <ListRow
+                key={agenda.passed.key}
+                href={agenda.passed.route}
+                title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
+                data-agenda-passed={agenda.passed.epochDay}
+              >
+                {#snippet leading()}
+                  {@render dayBlock(agenda.passed!.epochDay, true)}
+                {/snippet}
+              </ListRow>
+            </ListCard>
           </div>
-        {/each}
-      </ListCard>
-      <!-- Its own list, not the last row of the one above: ADR-0074 gives
-           the passed slot its own shape so it can never be sorted among
-           the things coming, and a row under the same hairlines would read
-           as the next of them however its block was drawn. -->
-      {#if agenda.passed}
-        <!-- The one row that arrives and leaves on its own, when a slot's
-             day passes or the dose is logged: it opens and closes its own
-             height like every other row (redesign ticket 19). -->
-        <div transition:disclose={panel}>
-          <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
-            <ListRow
-              key={agenda.passed.key}
-              href={agenda.passed.route}
-              title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
-              data-agenda-passed={agenda.passed.epochDay}
-            >
-              {#snippet leading()}
-                {@render dayBlock(agenda.passed!.epochDay, true)}
-              {/snippet}
-            </ListRow>
-          </ListCard>
-        </div>
-      {/if}
-      {#if agenda.folded.length > 0}
-        <button
-          type="button"
-          class="home-fold press"
-          data-home-agenda-fold
-          aria-expanded={agendaExpanded}
-          onclick={() => (agendaExpanded = !agendaExpanded)}
-        >
-          <span class="home-fold-mark" class:is-open={agendaExpanded} aria-hidden="true">
-            <Icon name="chevronDown" size={16} />
-          </span>
-          <span class="home-fold-text">
-            {#key agendaFoldLabel}<span transition:labelFade>{agendaFoldLabel}</span>{/key}
-          </span>
-        </button>
-      {/if}
-    </div>
-  {/if}
+        {/if}
+        {#if agenda.folded.length > 0}
+          <button
+            type="button"
+            class="home-fold press"
+            data-home-agenda-fold
+            aria-expanded={agendaExpanded}
+            onclick={() => (agendaExpanded = !agendaExpanded)}
+          >
+            <span class="home-fold-mark" class:is-open={agendaExpanded} aria-hidden="true">
+              <Icon name="chevronDown" size={16} />
+            </span>
+            <span class="home-fold-text">
+              {#key agendaFoldLabel}<span transition:labelFade>{agendaFoldLabel}</span>{/key}
+            </span>
+          </button>
+        {/if}
+      </div>
+    {/if}
+  </ReadReserve>
 
   <!-- The log strip: the five faces, and now nothing else (phase 11 ticket
        03). It carried four icon squares as well - a dose, both tallies and
@@ -796,149 +885,157 @@
        next rule, so a person read their month as a dose and a nag about
        backups. Under no heading of their own, and with no coloured side
        border and no role - the flag colours the areas of the journal, and
-       this is the app talking about itself. -->
-  {#if showBackupNotice}
-    <Notice
-      icon="download"
-      key="backup"
-      title={m.backup_stale_title({ days: String(backupAge) })}
-      text={m.backup_stale_body()}
-      action={{ label: m.backup_now(), href: '/settings/export' }}
-      dismiss={{ label: m.dismiss(), onclick: () => (prefs.backupNoticeDismissed = true) }}
-      aria-live="polite"
-      data-backup-notice=""
-    />
-  {/if}
+       this is the app talking about itself.
 
-  {#if showStockNotice && urgentDepletingStock && stockNoticeCopy}
-    <Notice
-      icon="alert"
-      key="stock-low"
-      title={stockNoticeCopy.title}
-      text={stockNoticeCopy.body}
-      action={{ label: m.notice_stock_manage(), href: '/care' }}
-      dismiss={{
-        label: m.notice_stock_dismiss_action(),
-        onclick: () => {
-          stockDismissSheetOpen = true;
-        }
-      }}
-      aria-live="polite"
-      data-stock-notice=""
-    />
-  {/if}
+       The second reserve (ticket 183) holds all three notices and the rest
+       of the tiles, between the log strip and the pinned rows. The backup
+       notice is in it although it has no read of its own: it waits for the
+       real preferences, which land when the journal opens, and drawn then
+       it shoved the pinned rows 179px in the frame boot went ready. -->
+  <ReadReserve ready={foldRevealed} estimate={reserveBelow} onrest={rememberBelow} data-home-reserve="below">
+    {#if showBackupNotice}
+      <Notice
+        icon="download"
+        key="backup"
+        title={m.backup_stale_title({ days: String(backupAge) })}
+        text={m.backup_stale_body()}
+        action={{ label: m.backup_now(), href: '/settings/export' }}
+        dismiss={{ label: m.dismiss(), onclick: () => (prefs.backupNoticeDismissed = true) }}
+        aria-live="polite"
+        data-backup-notice=""
+      />
+    {/if}
 
-  <!-- The appointment debrief offer (phase 6 ticket 08): in-app only, per
-       the unprompted registry's admission rule (registry.ts) - nothing here
-       schedules a notification. Offered once; dismissing or writing about
-       it both stop it for good until a newer past appointment supersedes it
-       (debriefOfferVisible, checklists.ts, ticket 58). No coloured side
-       border and no role, the same reasoning the backup notice's own
-       comment gives: this is the app naming an appointment the person
-       recorded, not one of the journal's own coloured areas. -->
-  {#if showDebriefOffer}
-    <Notice
-      icon="calendar"
-      key="debrief-offer"
-      title={m.debrief_offer_title()}
-      action={{
-        label: m.debrief_offer_write(),
-        href: `/entry/new/today?debriefFor=${lastAppointmentId}`
-      }}
-      dismiss={{
-        label: m.dismiss(),
-        onclick: () => journal.checklists.setDebriefDismissed(lastAppointmentId!)
-      }}
-      aria-live="polite"
-      data-debrief-offer=""
-    />
-  {/if}
+    {#if showStockNotice && urgentDepletingStock && stockNoticeCopy}
+      <Notice
+        icon="alert"
+        key="stock-low"
+        title={stockNoticeCopy.title}
+        text={stockNoticeCopy.body}
+        action={{ label: m.notice_stock_manage(), href: '/care' }}
+        dismiss={{
+          label: m.notice_stock_dismiss_action(),
+          onclick: () => {
+            stockDismissSheetOpen = true;
+          }
+        }}
+        aria-live="polite"
+        data-stock-notice=""
+      />
+    {/if}
 
-  <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
-       UX ticket 01) - the moment weight as a card, the dormant weight as a
-       quiet list row. The today tier's own row leads the screen; this
-       block never draws it (phase 8 features ticket 63).
+    <!-- The appointment debrief offer (phase 6 ticket 08): in-app only, per
+         the unprompted registry's admission rule (registry.ts) - nothing here
+         schedules a notification. Offered once; dismissing or writing about
+         it both stop it for good until a newer past appointment supersedes it
+         (debriefOfferVisible, checklists.ts, ticket 58). No coloured side
+         border and no role, the same reasoning the backup notice's own
+         comment gives: this is the app naming an appointment the person
+         recorded, not one of the journal's own coloured areas. -->
+    {#if showDebriefOffer}
+      <Notice
+        icon="calendar"
+        key="debrief-offer"
+        title={m.debrief_offer_title()}
+        action={{
+          label: m.debrief_offer_write(),
+          href: `/entry/new/today?debriefFor=${lastAppointmentId}`
+        }}
+        dismiss={{
+          label: m.dismiss(),
+          onclick: () => journal.checklists.setDebriefDismissed(lastAppointmentId!)
+        }}
+        aria-live="polite"
+        data-debrief-offer=""
+      />
+    {/if}
 
-       Two shapes rather than the three the grid as a whole has: a moment is
-       a card in the two-up grid, and a dormant nudge is a line in a list
-       with no action of its own - tapping it opens the screen the action
-       lived on. They share one role, so they still read as one area of the
-       screen (HOME_AREA_ROLE.liveTiles).
+    <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
+         UX ticket 01) - the moment weight as a card, the dormant weight as a
+         quiet list row. The today tier's own row leads the screen; this
+         block never draws it (phase 8 features ticket 63).
 
-       Separation is an opaque surface and a line: box-shadow is banned in
-       the kit and tested for. -->
-  {#if momentTiles.length > 0 || quietTiles.length > 0 || tileSplit.folded.length > 0}
-    <div class="home-tiles" transition:collapse={panel}>
-      {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
+         Two shapes rather than the three the grid as a whole has: a moment is
+         a card in the two-up grid, and a dormant nudge is a line in a list
+         with no action of its own - tapping it opens the screen the action
+         lived on. They share one role, so they still read as one area of the
+         screen (HOME_AREA_ROLE.liveTiles).
 
-      <!-- Carpet ticket 03: this one dormant tile gets a Notice instead of a
-           quiet row - a stalled tryout is a thing to act on, and the
-           snooze/action it already carries (dismissSnooze, the "Log
-           feeling" link) were sitting unused under the ListRow's plainer
-           tap-through. Same liveTiles role as the tiles beside it: this is
-           journal content, not the app talking about itself.
+         Separation is an opaque surface and a line: box-shadow is banned in
+         the kit and tested for. -->
+    {#if momentTiles.length > 0 || quietTiles.length > 0 || tileSplit.folded.length > 0}
+      <div class="home-tiles" transition:collapse={panel}>
+        {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
 
-           `dismiss` isn't `feltSenseGapTile.dismiss` straight through, unlike
-           `tileRow`'s `dismiss={tile.dismiss}` below: `HomeTileDismiss.onclick`
-           takes a MouseEvent, which `Tile.svelte` also declares and forwards
-           untouched, but `Notice`'s own `dismiss.onclick` takes none - the
-           same snooze (`liveTiles.snooze`, the tile's own `dismissSnooze`)
-           called through a zero-arg wrapper `svelte-check` requires here. -->
-      {#if feltSenseGapTile}
-        <Notice
-          icon="heart"
-          key="active-tryout-tile"
-          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-          title={feltSenseGapTile.title}
-          text={feltSenseGapTile.note}
-          action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
-          dismiss={{
-            label: feltSenseGapTile.dismiss!.label,
-            onclick: () => liveTiles.snooze('active-tryout-tile')
-          }}
-          data-live-tile={feltSenseGapTile.key}
-          {...feltSenseGapTile.attrs}
-        />
-      {/if}
+        <!-- Carpet ticket 03: this one dormant tile gets a Notice instead of a
+             quiet row - a stalled tryout is a thing to act on, and the
+             snooze/action it already carries (dismissSnooze, the "Log
+             feeling" link) were sitting unused under the ListRow's plainer
+             tap-through. Same liveTiles role as the tiles beside it: this is
+             journal content, not the app talking about itself.
 
-      <!-- The quiet weight. A dormant nudge keeps neither its action nor its
-           dismiss: the whole line taps through to the screen its action
-           opened anyway, and the fewest controls belong on the quietest
-           thing. Its value goes with them - "40 days" is what the note
-           already says. -->
-      {#if quietListTiles.length > 0}
-        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
-          {#each quietListTiles as tile (tile.key)}
-            <ListRow
-              key={tile.tileKey}
-              href={tile.href}
-              title={tile.title}
-              subtitle={tile.note}
-              {...tile.attrs}
-              data-live-tile={tile.key}
-            />
-          {/each}
-        </ListCard>
-      {/if}
+             `dismiss` isn't `feltSenseGapTile.dismiss` straight through, unlike
+             `tileRow`'s `dismiss={tile.dismiss}` below: `HomeTileDismiss.onclick`
+             takes a MouseEvent, which `Tile.svelte` also declares and forwards
+             untouched, but `Notice`'s own `dismiss.onclick` takes none - the
+             same snooze (`liveTiles.snooze`, the tile's own `dismissSnooze`)
+             called through a zero-arg wrapper `svelte-check` requires here. -->
+        {#if feltSenseGapTile}
+          <Notice
+            icon="heart"
+            key="active-tryout-tile"
+            role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+            title={feltSenseGapTile.title}
+            text={feltSenseGapTile.note}
+            action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
+            dismiss={{
+              label: feltSenseGapTile.dismiss!.label,
+              onclick: () => liveTiles.snooze('active-tryout-tile')
+            }}
+            data-live-tile={feltSenseGapTile.key}
+            {...feltSenseGapTile.attrs}
+          />
+        {/if}
 
-      {#if tileSplit.folded.length > 0}
-        <button
-          type="button"
-          class="home-fold press"
-          data-home-tiles-fold
-          aria-expanded={tilesExpanded}
-          onclick={() => (tilesExpanded = !tilesExpanded)}
-        >
-          <span class="home-fold-mark" class:is-open={tilesExpanded} aria-hidden="true">
-            <Icon name="chevronDown" size={16} />
-          </span>
-          <span class="home-fold-text">
-            {#key tilesFoldLabel}<span transition:labelFade>{tilesFoldLabel}</span>{/key}
-          </span>
-        </button>
-      {/if}
-    </div>
-  {/if}
+        <!-- The quiet weight. A dormant nudge keeps neither its action nor its
+             dismiss: the whole line taps through to the screen its action
+             opened anyway, and the fewest controls belong on the quietest
+             thing. Its value goes with them - "40 days" is what the note
+             already says. -->
+        {#if quietListTiles.length > 0}
+          <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+            {#each quietListTiles as tile (tile.key)}
+              <ListRow
+                key={tile.tileKey}
+                href={tile.href}
+                title={tile.title}
+                subtitle={tile.note}
+                {...tile.attrs}
+                data-live-tile={tile.key}
+              />
+            {/each}
+          </ListCard>
+        {/if}
+
+        {#if tileSplit.folded.length > 0}
+          <button
+            type="button"
+            class="home-fold press"
+            data-home-tiles-fold
+            aria-expanded={tilesExpanded}
+            onclick={() => (tilesExpanded = !tilesExpanded)}
+          >
+            <span class="home-fold-mark" class:is-open={tilesExpanded} aria-hidden="true">
+              <Icon name="chevronDown" size={16} />
+            </span>
+            <span class="home-fold-text">
+              {#key tilesFoldLabel}<span transition:labelFade>{tilesFoldLabel}</span>{/key}
+            </span>
+          </button>
+        {/if}
+      </div>
+    {/if}
+  </ReadReserve>
 
   <!-- The pinned rows (ticket 05, ADR-0073): what the person put on their
        front page, in their order, each with its reading and the day of it
@@ -966,33 +1063,46 @@
     {:else}
       <div transition:collapse={panel}>
         <SectionHeading text={m.home_pinned_heading()} />
-        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
-          {#each pinned as row (row.spec.key)}
-            <div class="rows-divide" transition:disclose={panel}>
-              <ListRow
-                key={row.spec.key}
-                icon={row.spec.icon}
-                title={hubRowTitle(row.spec.key)}
-                subtitle={hubRowLine(row.spec.key, row.line, today, liveTiles.nowMs)}
-                href={row.spec.href}
-                data-pinned-row={row.spec.key}
-                data-hub-line={row.line.kind}
-              />
-            </div>
-          {/each}
-          <!-- The way in, as the last row of the block (ticket 14). It is a
-               row rather than a control on the heading because it is the
-               next thing after the rows it edits, and it names the first
-               pin where there are none to arrange yet. -->
-          <ListRow
-            key="edit-today"
-            icon="pencil"
-            title={pinned.length > 0 ? m.home_pinned_edit() : m.home_pinned_edit_empty()}
-            chevron={false}
-            onclick={() => (editing = true)}
-            data-edit-today
-          />
-        </ListCard>
+        <!-- The rows themselves wait for their four reads, in a reserve of
+           their own (ticket 183). They used to draw at once with standing
+           lines (ticket 106) and swap in the real ones a frame after the
+           reads answered: every line changed its words in one frame and
+           the card lost 56px under the persona journal, the standing
+           lines being the longer. -->
+        <ReadReserve ready={pinnedReadsAgree} estimate={reservePinned} onrest={rememberPinned} data-home-reserve="pinned">
+          <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
+            {#each pinned as row (row.spec.key)}
+              <!-- A row whose reading changes once it is drawn - after a
+                   write somewhere - crosses its words rather than cutting
+                   them, the More hub's own rule, and for its reason the
+                   wear row's ticking line cuts. -->
+              <div class="rows-divide" transition:disclose={panel}>
+                <ListRow
+                  key={row.spec.key}
+                  icon={row.spec.icon}
+                  title={hubRowTitle(row.spec.key)}
+                  subtitle={hubRowLine(row.spec.key, row.line, today, liveTiles.nowMs)}
+                  fadeSwap={row.spec.key !== 'wear'}
+                  href={row.spec.href}
+                  data-pinned-row={row.spec.key}
+                  data-hub-line={row.line.kind}
+                />
+              </div>
+            {/each}
+            <!-- The way in, as the last row of the block (ticket 14). It is a
+                 row rather than a control on the heading because it is the
+                 next thing after the rows it edits, and it names the first
+                 pin where there are none to arrange yet. -->
+            <ListRow
+              key="edit-today"
+              icon="pencil"
+              title={pinned.length > 0 ? m.home_pinned_edit() : m.home_pinned_edit_empty()}
+              chevron={false}
+              onclick={() => (editing = true)}
+              data-edit-today
+            />
+          </ListCard>
+        </ReadReserve>
       </div>
     {/if}
   </div>

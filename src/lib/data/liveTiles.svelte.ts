@@ -45,6 +45,11 @@ import {
 interface HomeTileGrid {
   /** Ordered, preference-gated, snooze-checked, uncapped. */
   readonly tiles: readonly HomeTile[];
+  /** Whether every read behind the grid has answered, so `tiles` is the
+      composition rather than the empty list it holds until then. One-way,
+      like the `loading` it is made of. Home holds its reserve until this
+      and its own reads agree (ticket 183). */
+  readonly ready: boolean;
   /** The grid's own second hand, so a surface next to it that also counts
       up reads the same tick rather than starting a loop of its own. */
   readonly nowMs: number;
@@ -255,6 +260,9 @@ export function homeTiles(
   return {
     get tiles() {
       return tiles;
+    },
+    get ready() {
+      return composable;
     },
     /* The grid's own clock, handed out so Home's pinned rows ride it rather
        than opening a second one (ADR-0051). The wear row counts up beside
