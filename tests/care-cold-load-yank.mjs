@@ -1,10 +1,10 @@
 /* Care's cold load, one surface at a time (ux-carpet ticket 184).
 
-   Two things the hydration sweep flagged on /care, measured here from the
-   first frame of the document rather than from boot-ready, and under a
-   slowed CPU so the journal's first answer reliably lands after the first
-   paint - the order a phone always sees and the desktop sweep only caught
-   one run in three.
+   Four yanks on a cold /care, measured here from the first frame of the
+   document rather than from boot-ready, at full speed and under a slowed
+   CPU so the journal's first answer reliably lands after the first paint -
+   the order a phone always sees and the desktop sweep only caught one run
+   in three.
 
    - Every rail caption (`.care-mark`) sits where its settle animation will
      put it before that animation starts. Its x against the rail may not
@@ -15,10 +15,18 @@
      The interval-mood card and the hosted "Changes you've noticed" row used
      to draw under the skeleton and then get pushed some 1500px down the
      screen when the rail landed above them.
+   - What the care read answers with fades in. The rail's heading, a lane's
+     name and the hosted row each start their first frame under half
+     opacity; they used to arrive at 1 over the skeleton still fading out.
+   - The navigation's pill never paints wider than the tab it lights. On
+     its first placement it used to open as the whole bar and sweep across
+     to the tab (0 to 295px over 250ms), because its inset transitions were
+     live for the one placement that is not a slide.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/care-cold-load-yank.mjs [--runs 5] [--cpu 4] [--out <abs dir>]
+     node tests/care-cold-load-yank.mjs [--runs 5] [--cpu 1,4] [--out <abs dir>]
+   Runs every CPU rate given, --runs times each.
    Exits 1 on any finding. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -34,7 +42,7 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const RUNS = Number(flag('runs', '5'));
-const CPU = Number(flag('cpu', '4'));
+const CPUS = flag('cpu', '1,4').split(',').map(Number);
 const WINDOW_MS = 1800;
 const outDir = resolve(flag('out', resolve(here, '../.claude/care-cold-load')));
 await mkdir(outDir, { recursive: true });
@@ -51,6 +59,16 @@ const SAMPLER = `(() => {
     const railLeft = rail ? rail.getBoundingClientRect().left : null;
     const mood = document.querySelector('[data-chart-card="interval-mood"]');
     const hosted = document.querySelector('[data-hub-host="care"]');
+    /* Painted opacity is the product of every ancestor's. */
+    const seen = (el) => {
+      if (!el) return null;
+      let o = 1;
+      for (let n = el; n && n.nodeType === 1; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+      return Math.round(o * 1000) / 1000;
+    };
+    const pill = document.querySelector('[data-nav-pill="bar"]');
+    const tab = document.querySelector('.app-nav [aria-current="page"]');
+    const pillBox = pill && pill.getBoundingClientRect();
     const marks = {};
     if (rail) {
       for (const el of rail.querySelectorAll('.care-mark[data-care-mark]')) {
@@ -68,6 +86,12 @@ const SAMPLER = `(() => {
       skeleton: !!document.querySelector('.screen .skeleton-block'),
       mood: mood ? Math.round(mood.getBoundingClientRect().top) : null,
       hosted: hosted ? Math.round(hosted.getBoundingClientRect().top) : null,
+      seen: {
+        heading: seen(document.querySelector('[data-chart-card="care-spine"] h3')),
+        lane: seen(document.querySelector('.care-lane-name')),
+        hosted: seen(hosted)
+      },
+      pill: pill && tab ? { w: pillBox.width, tab: tab.getBoundingClientRect().width, o: Number(getComputedStyle(pill).opacity) } : null,
       marks
     });
     if (now - t0 < ${WINDOW_MS}) requestAnimationFrame(tick);
@@ -91,7 +115,7 @@ await page.waitForTimeout(1500);
 
 const cdp = await page.context().newCDPSession(page);
 const runs = [];
-for (let run = 0; run < RUNS; run += 1) {
+for (const CPU of CPUS) for (let run = 0; run < RUNS; run += 1) {
   await page.evaluate(() => sessionStorage.setItem('care-probe', '1'));
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
   await page.goto(`${base}/care`, { waitUntil: 'commit', timeout: 40000 });
@@ -119,15 +143,24 @@ for (let run = 0; run < RUNS; run += 1) {
   }
   const firstRail = frames.find((f) => f.rail)?.at ?? null;
   const worstJump = Math.max(0, ...jumps.map((j) => j.step));
-  runs.push({ run, frames: frames.length, firstRail, early: early.length, worstJump, jumps });
+  /* Each arrival's opacity on the first frame it exists. */
+  const arrivals = {};
+  for (const key of ['heading', 'lane', 'hosted']) arrivals[key] = frames.find((f) => f.seen[key] !== null)?.seen[key] ?? null;
+  const popped = Object.entries(arrivals).filter(([, o]) => o === null || o >= 0.5);
+  /* The widest the pill was ever painted past its tab, at any opacity. */
+  const pillOver = Math.max(0, ...frames.filter((f) => f.pill && f.pill.o > 0).map((f) => f.pill.w - f.pill.tab));
+  const label = `${CPU}x run ${run + 1}`;
+  runs.push({ cpu: CPU, run, frames: frames.length, firstRail, early: early.length, worstJump, arrivals, pillOver, jumps });
   console.log(
-    `run ${run + 1}: ${frames.length} frames, rail at ${firstRail}ms, ` +
+    `${label}: ${frames.length} frames, rail at ${firstRail}ms, ` +
       `${early.length} frame(s) with content below the gate before the rail, ` +
-      `worst caption step ${worstJump}px over ${keys.length} captions`
+      `worst caption step ${worstJump}px over ${keys.length} captions, ` +
+      `first-frame opacity ${JSON.stringify(arrivals)}, pill up to ${Math.round(pillOver)}px wider than its tab`
   );
+  for (const [key, o] of popped) console.log(`  ${key} arrived at opacity ${o}`);
   for (const j of jumps.filter((j) => j.step >= 2))
     console.log(`  ${j.key}: ${j.step}px in one frame at ${j.at}ms (opacity ${j.o})`);
-  await writeFile(`${outDir}/run-${run + 1}.frames.json`, JSON.stringify(frames));
+  await writeFile(`${outDir}/run-${CPU}x-${run + 1}.frames.json`, JSON.stringify(frames));
 }
 
 await page.close();
@@ -135,8 +168,10 @@ await browser.close();
 await app.close();
 
 const railless = runs.filter((r) => r.firstRail === null).length;
-const failed = runs.filter((r) => r.early > 0 || r.worstJump >= 2).length;
-await writeFile(`${outDir}/report.json`, JSON.stringify({ cpu: CPU, runs, errors }, null, 2));
+const failed = runs.filter(
+  (r) => r.early > 0 || r.worstJump >= 2 || r.pillOver > 2 || Object.values(r.arrivals).some((o) => o === null || o >= 0.5)
+).length;
+await writeFile(`${outDir}/report.json`, JSON.stringify({ cpus: CPUS, runs, errors }, null, 2));
 if (errors.length) console.log('page errors:', errors);
 if (railless) console.log(`${railless} run(s) never drew the rail - not a measurement`);
 console.log(`\n${failed} of ${runs.length} run(s) with a finding; ${outDir}/report.json`);
