@@ -741,6 +741,18 @@ async function hydrationScenes() {
       const { tokens, skipped } = await hydrationTokens(profile, theme);
       for (const note of skipped)
         console.log(`[${profile}] no ${note} to resolve in this journal; its detail scenes will skip`);
+      /* hydrationTokens() always ends on whichever HYDRATION_NEEDS list it
+         scraped last (`/media/documents` today), regardless of which
+         scenes actually run below - an artifact of scrape order, not a
+         real predecessor screen. Left uncorrected, the scene loop's first
+         hydrationCold scene starts its camera on that leftover page (ticket
+         160): harmless in an unfiltered sweep where a real earlier scene
+         would have landed there anyway, but a narrowed `--scenes` run has
+         no such earlier scene, so the leftover bleeds into evidence for a
+         route that never showed it. Settling home first removes the
+         dependency on scrape order without touching how later scenes in
+         the loop chain from each other. */
+      await settle('/', theme);
       for (const scene of SCENES) {
         if (scene.setup) continue; /* the prologues run outside the loop */
         if (scene.when && scene.when !== profile) continue;
