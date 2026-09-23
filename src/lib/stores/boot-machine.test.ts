@@ -336,6 +336,34 @@ test('a persist-request-denied event, once ready, still warns', () => {
   expect(denied.effects).toEqual([{ type: 'warn-persist-denied' }]);
 });
 
+/* The other order: nothing awaits the request any more, so it can answer
+   before ready just as easily as after - Chromium in particular denies
+   fast enough that this is the common case, not the exotic one. A denial
+   seen too early to mark on anything must not be dropped; it has to show
+   up once ready is reached. */
+test('a persist-request-denied event arriving before ready is not lost - it warns once ready is reached', () => {
+  const early = walk(
+    started('web'),
+    surveyedWeb({ keystoreSecretSource: 'passphrase' }),
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
+    { type: 'persist-request-denied' }
+  );
+  // Not ready yet, so nothing to warn about on the spot.
+  expect(early.machine.boot.status).toBe('booting');
+  expect(early.effects).toEqual([]);
+
+  const ready = walk(
+    started('web'),
+    surveyedWeb({ keystoreSecretSource: 'passphrase' }),
+    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
+    { type: 'persist-request-denied' },
+    { type: 'journal-opened', journal: {} as never }
+  );
+  expect(ready.machine.boot.status).toBe('ready');
+  expect(ready.machine.boot.persistDenied).toBe(true);
+  expect(ready.effects).toEqual([{ type: 'warn-persist-denied' }]);
+});
+
 /** The three very different endings that arrive as one failed boot. */
 function failedOpen(error: unknown, ...after: BootEvent[]) {
   return walk(
