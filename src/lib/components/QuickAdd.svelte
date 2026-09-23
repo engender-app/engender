@@ -62,7 +62,7 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
-  import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { MAGNIFIER_SPREAD, gazeRow, magnify } from '$lib/motion/magnifier';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
@@ -290,6 +290,38 @@
      other read in the app, and ticket 176 already fixed this exact shape
      on the export screen's backup ages. */
   let runningKnown = $state(false);
+  /* The wear row's own arriving icon/label, for the fade-in below - the
+     same two elements `out:crossfade` already animates on their way out. */
+  let wearIconArriveEl = $state<HTMLElement>();
+  let wearLabelArriveEl = $state<HTMLElement>();
+  /* The arriving side of the crossfade above was still popping in at
+     opacity 1 the instant `runningKnown` flips true, on top of the
+     skeleton still fading out beside it (ticket 189, coordinator
+     follow-up) - `out:crossfade` only ever handles the leaving half.
+     Same gap `ReadGate.svelte` closed for every gated read (ticket 184b,
+     0b7b7001): no `in:` transition can do it here either, for the same
+     reason - the icon and the label are two independent `{#key}` blocks,
+     not one element a transition directive could sit on. An `$effect`
+     runs after the DOM update lands the new icon/label and before the
+     next paint, so their first painted frame already has the fade
+     started rather than showing opacity 1 for one frame first. Only the
+     swap out of pending, mirroring ReadGate's `wasLoading`: a later
+     refresh (already known, one word to another) still just crossfades
+     the old value out, which is what the previous commit already proved
+     clean. */
+  let wasRunningKnown = false;
+  $effect(() => {
+    const known = runningKnown;
+    if (!wasRunningKnown && known) {
+      const duration = motionDuration('--dur-fast');
+      if (duration > 0) {
+        const fade = [{ opacity: 0 }, { opacity: 1 }];
+        wearIconArriveEl?.animate(fade, { duration, easing: EASE_OUT_CSS });
+        wearLabelArriveEl?.animate(fade, { duration, easing: EASE_OUT_CSS });
+      }
+    }
+    wasRunningKnown = known;
+  });
   /* Which kind a start from here writes (ticket 50). This is the one place
      a session is created with no picker in front of the person, so it
      repeats whatever they logged last rather than choosing for them, and
@@ -715,7 +747,7 @@
              `out:crossfade` (ticket 189). -->
         <span class="fan-icon">
           {#key runningKnown ? (running ? 'stop' : 'timeline') : 'pending'}
-            <span out:crossfade>
+            <span out:crossfade bind:this={wearIconArriveEl}>
               {#if runningKnown}
                 <Icon name={running ? 'stop' : 'timeline'} size={22} />
               {:else}
@@ -731,7 +763,7 @@
         </span>
         <span class="fan-label">
           {#key runningKnown ? (running ? 'stop' : 'start') : 'pending'}
-            <span out:crossfade>
+            <span out:crossfade bind:this={wearLabelArriveEl}>
               {#if runningKnown}
                 {running ? m.wear_session_stop_action() : m.wear_session_start_action()}
               {:else}
