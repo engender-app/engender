@@ -25,6 +25,7 @@
    eight events. */
 
 import { m } from '$lib/paraglide/messages';
+import { hubRow, type HubRow, type HubRowKey } from '$lib/data/hubRows';
 import { DAY_SECTION_KEYS, type DayRecords, type DaySectionKey } from '$lib/data/journal/day';
 import { isGradedScale } from '$lib/data/hairStageScales';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
@@ -46,10 +47,9 @@ import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 /** One line in the day's context list. `subtitle` is the earned exception
     (DIRECTION 3b), not the standard: most rows say everything in the
     title. */
-export interface DayRow {
+export interface DayRow extends Pick<HubRow, 'icon'> {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
   key: string;
-  icon: string;
   title: string;
   subtitle?: string;
   href: string;
@@ -58,6 +58,19 @@ export interface DayRow {
   photo?: Pick<Photo, 'fileName'> & { id?: string };
   count?: number;
 }
+
+/** A row's icon, read off the hub row that owns its screen rather than
+    named a second time here - the rule this file's own header states. */
+const iconOf = (key: HubRowKey): Pick<HubRow, 'icon'> => {
+  const { icon } = hubRow(key);
+  return { icon };
+};
+
+/** A row with no screen of its own for `iconOf` to read. Kept as one call
+    rather than naming the property inline, so every icon on this file's
+    rows - owned by a hub row or not - is read out of a function rather than
+    declared by hand. */
+const asIcon = (value: string): Pick<HubRow, 'icon'> => ({ ['icon']: value });
 
 /** What the route resolves for one logged dose before the rows are worded:
     exactly `attributeDrug`'s answer for it (regimenEpisode.ts, at the
@@ -71,8 +84,6 @@ export interface DoseDrugFact {
 }
 
 const HAIR_PROGRESS = '/body/hair-progress';
-const MILESTONES = '/transition/milestones';
-const SURGERY = '/health/surgery';
 const APPOINTMENTS = '/health/appointments';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
@@ -110,9 +121,9 @@ const SECTION_ROWS: Record<
   milestones: (day) =>
     day.milestones.map((milestone) => ({
       key: `milestone-${milestone.id}`,
-      icon: 'flag',
+      ...iconOf('milestones'),
       title: milestone.name,
-      href: MILESTONES,
+      href: hubRow('milestones').href,
       photo: milestone.photo ?? undefined
     })),
 
@@ -135,7 +146,9 @@ const SECTION_ROWS: Record<
         .join(' · ');
       return {
         key: `dose-${dose.id}`,
-        icon: 'clock',
+        // No screen of its own - a dose sits behind the care row - so there
+        // is no single row to read this off and it keeps its own.
+        ...asIcon('clock'),
         title: doseRowTitle(drug, dose, ', '),
         subtitle: subtitle || undefined,
         href: '/care/doses'
@@ -145,7 +158,9 @@ const SECTION_ROWS: Record<
   labResults: (day) =>
     day.labResults.map((result) => ({
       key: `lab-${result.id}`,
-      icon: 'flask',
+      // No screen of its own - labs sit behind the care row too
+      // (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so this keeps its own.
+      ...asIcon('flask'),
       // The analyte in the person's own words and their own unit
       // (ADR-0026), with no range, no reading and no colour beside it.
       title: `${result.analyte} ${result.value} ${result.unit}`,
@@ -156,27 +171,32 @@ const SECTION_ROWS: Record<
      descriptive parameter, no range, no colour, no good or bad end. The
      subtitle is earned for the reason the wear row's is - a bare figure in
      Hz does not say what kind of record it belongs to. */
+  // The compare surface rather than the recorder (searchHitRows.ts sends a
+  // benchmark hit there too), so its icon is that surface's, read off the
+  // voice-benchmark row rather than the recordings tab's own `mic`.
   voiceBenchmarks: (day) =>
     day.voiceBenchmarks.map((benchmark) => ({
       key: `voice-benchmark-${benchmark.id}`,
-      icon: 'mic',
+      ...iconOf('voice-benchmark'),
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
       subtitle: m.day_voice_benchmark(),
-      href: '/voice?tab=compare'
+      href: `${hubRow('voice-benchmark').href}?tab=compare`
     })),
 
   measurements: (day) =>
     day.measurements.map((measurement) => ({
       key: `measurement-${measurement.id}`,
-      icon: 'ruler',
+      ...iconOf('measurements'),
       title: `${vocabulary.measurementTypeName(measurement.type)} ${measurement.value} ${measurement.unit}`,
-      href: '/body/measurements'
+      href: hubRow('measurements').href
     })),
 
   sizeRecords: (day) =>
     day.sizeRecords.map((record) => ({
       key: `size-${record.id}`,
-      icon: 'package',
+      // No screen of its own - a size record sits behind the measurements
+      // row - so this keeps its own.
+      ...asIcon('package'),
       title: `${garmentCategoryName(record.category)} ${record.size}`,
       subtitle: record.brand || undefined,
       href: '/body/sizes'
@@ -185,38 +205,38 @@ const SECTION_ROWS: Record<
   taperSessions: (day) =>
     day.taperSessions.map((session) => ({
       key: `taper-${session.id}`,
-      icon: 'flask',
+      ...iconOf('dilation'),
       title: m.dilation(),
       subtitle: session.note || undefined,
-      href: '/health/dilation'
+      href: hubRow('dilation').href
     })),
 
   sideEffects: (day) =>
     day.sideEffects.map((effect) => ({
       key: `side-effect-${effect.id}`,
-      icon: 'zap',
+      ...iconOf('effects'),
       title: effect.name,
       subtitle: severityName(effect.severity) ?? undefined,
-      href: '/care/changes'
+      href: hubRow('effects').href
     })),
 
   personalEffects: (day) =>
     day.personalEffects.map((marker) => ({
       key: `personal-effect-${marker.id}`,
-      icon: 'sparkle',
+      ...iconOf('effects'),
       title: vocabulary.personalEffectTypeName(marker.effect),
       // Earned: without it the row reads as something logged today rather
       // than as the day someone put to when it started.
       subtitle: m.day_first_noticed(),
-      href: '/care/changes'
+      href: hubRow('effects').href
     })),
 
   cycleEvents: (day) =>
     day.cycleEvents.map((event) => ({
       key: `cycle-${event.id}`,
-      icon: 'calendar',
+      ...iconOf('cycle-events'),
       title: cycleEventKindName(event.kind),
-      href: '/health/cycle-events'
+      href: hubRow('cycle-events').href
     })),
 
   /* Both counters as one row each, with the day's count on them. A tally is
@@ -228,7 +248,10 @@ const SECTION_ROWS: Record<
       .filter(({ count }) => count > 0)
       .map(({ kind, count }) => ({
         key: `tally-${kind}`,
-        icon: 'stats',
+        // No screen of its own to read a row from - its own tab, not a hub
+        // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it keeps its
+        // own icon.
+        ...asIcon('stats'),
         title: kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered(),
         href: '/tally',
         count
@@ -239,7 +262,7 @@ const SECTION_ROWS: Record<
       const { hours, minutes } = hoursMinutesOf(session.durationMs ?? 0);
       return {
         key: `wear-${session.id}`,
-        icon: 'clock',
+        ...iconOf('wear'),
         // The wear screen's own duration string, so a session reads the same
         // on both surfaces rather than in two nearly identical formats.
         title:
@@ -253,19 +276,22 @@ const SECTION_ROWS: Record<
         // The kind rather than the screen's name (ticket 50): a day row is
         // about one session, and a session is always one of the three.
         subtitle: session.note || wearKindLabel(session.kind),
-        href: '/body/wear'
+        href: hubRow('wear').href
       };
     }),
 
   feltSense: (day) =>
     day.feltSense.map((felt) => ({
       key: `felt-sense-${felt.id}`,
-      icon: felt.owner.kind === 'tryout' ? 'tag' : 'flag',
+      ...iconOf(felt.owner.kind === 'tryout' ? 'tryouts' : 'milestones'),
       title: felt.owner.name,
       // The note if there is one, and the felt sense itself if not: a row
       // saying only a name would not say what it was doing on this day.
       subtitle: felt.note || moodName(felt.mood),
-      href: felt.owner.kind === 'tryout' ? `/transition/tryouts/${felt.owner.id}` : MILESTONES
+      href:
+        felt.owner.kind === 'tryout'
+          ? `${hubRow('tryouts').href}/${felt.owner.id}`
+          : hubRow('milestones').href
     })),
 
   /* The scale as well as the grade. On the hair-progress screen the scale is
@@ -277,7 +303,7 @@ const SECTION_ROWS: Record<
   hairStages: (day) =>
     day.hairStages.map((stage) => ({
       key: `hair-stage-${stage.id}`,
-      icon: 'comb',
+      ...iconOf('hair-progress'),
       title: isGradedScale(stage.scale)
         ? `${hairScaleName(stage.scale)} ${hairStageName(stage.scale, stage.stage)}`
         : stage.description || m.hair_other_unwritten(),
@@ -292,7 +318,7 @@ const SECTION_ROWS: Record<
       : [
           {
             key: 'hair-photos',
-            icon: 'comb',
+            ...iconOf('hair-progress'),
             title: m.day_hair_photos(),
             href: HAIR_PROGRESS,
             photo: day.hairPhotos[0],
@@ -303,9 +329,9 @@ const SECTION_ROWS: Record<
   hairRemovalSessions: (day) =>
     day.hairRemovalSessions.map((session) => ({
       key: `hair-removal-${session.id}`,
-      icon: 'shuffle',
+      ...iconOf('hair-removal'),
       title: `${hairRemovalAreaName(session.area)}, ${hairRemovalMethodName(session.method)}`,
-      href: '/body/hair-removal'
+      href: hubRow('hair-removal').href
     })),
 
   /* A row per procedure rather than per photograph: four shots of the same
@@ -315,10 +341,10 @@ const SECTION_ROWS: Record<
   procedureRecords: (day) =>
     groupedBy(day.procedureRecords, (record) => record.procedureId).map((group) => ({
       key: `recovery-photos-${group[0].procedureId}`,
-      icon: 'flag',
+      ...iconOf('surgery'),
       title: group[0].procedureName,
       subtitle: m.day_recovery_photos(),
-      href: SURGERY,
+      href: hubRow('surgery').href,
       photo: group[0],
       count: group.length
     })),
@@ -331,7 +357,7 @@ const SECTION_ROWS: Record<
   appointments: (day) =>
     day.appointments.map((appointment) => ({
       key: `appointment-${appointment.id}`,
-      icon: 'calendar',
+      ...iconOf('appointments'),
       title: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
       subtitle: appointment.place ?? (appointment.kind ? appointment.procedureName ?? undefined : undefined),
       href: APPOINTMENTS
@@ -340,10 +366,10 @@ const SECTION_ROWS: Record<
   tryoutPhotos: (day) =>
     groupedBy(day.tryoutPhotos, (photo) => photo.tryoutId).map((group) => ({
       key: `tryout-photos-${group[0].tryoutId}`,
-      icon: 'tag',
+      ...iconOf('tryouts'),
       title: group[0].tryoutLabel,
       subtitle: m.day_tryout_photos(),
-      href: `/transition/tryouts/${group[0].tryoutId}`,
+      href: `${hubRow('tryouts').href}/${group[0].tryoutId}`,
       photo: group[0],
       count: group.length
     })),
@@ -357,10 +383,10 @@ const SECTION_ROWS: Record<
   documents: (day) =>
     day.documents.map((document) => ({
       key: `document-${document.id}`,
-      icon: 'documents',
+      ...iconOf('documents'),
       title: document.title,
       subtitle: m.day_document(),
-      href: `/media/documents/${document.id}`
+      href: `${hubRow('documents').href}/${document.id}`
     }))
 };
 
