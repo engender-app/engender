@@ -218,7 +218,14 @@
     marginNotesRead.value && sameIds(marginNotesRead.value.ids, entryIds) ? marginNotesRead.value : undefined
   );
   let marginNotesByEntry = $derived(marginNotesAnswer?.byEntry ?? new Map());
-  let marginNotesLoading = $derived(marginNotesAnswer === undefined);
+  /* Answered for these ids, or gave up trying to - either way the gate
+     below has heard back and should stop waiting. Without the `.failed`
+     half a rejected chained read left `marginNotesAnswer` undefined
+     forever (readState.ts's `loading` is one-way, but a fresh rejection
+     after landing is not what `marginNotesAnswer` tracks), so the day's
+     gate would spin on its skeleton rather than surfacing the failed
+     state a rejection is supposed to reach. */
+  let marginNotesReady = $derived(marginNotesAnswer !== undefined || marginNotesRead.failed);
 
   /* Which drug each logged dose carries (phase 11 ticket 19): a day row
      names it, so concurrent regimens at the same amount and route stay
@@ -242,7 +249,8 @@
     doseDrugsRead.value && sameIds(doseDrugsRead.value.ids, doseDrugIds) ? doseDrugsRead.value : undefined
   );
   let doseDrugs = $derived(doseDrugsAnswer?.byId ?? undefined);
-  let doseDrugsLoading = $derived(doseDrugsAnswer === undefined);
+  /* Same reasoning as `marginNotesReady` above. */
+  let doseDrugsReady = $derived(doseDrugsAnswer !== undefined || doseDrugsRead.failed);
 
   /* What the gate branches on: a day is empty when no section has a row,
      which is not something a single list read can say for itself. Flattening
@@ -263,7 +271,7 @@
      after the gate opens (ticket 174). A day with no records needs neither
      chained read to have anything real to wait for - `entryIds`/`dayDoses`
      are `[]` there, so both settle on the same frame the day read does. */
-  let dayRecordsReady = $derived(!everythingLogged.loading && !marginNotesLoading && !doseDrugsLoading);
+  let dayRecordsReady = $derived(!everythingLogged.loading && marginNotesReady && doseDrugsReady);
   let dayRecordsRead = {
     get rows() {
       return everythingLogged.rows;
@@ -274,13 +282,20 @@
     get empty() {
       return dayRecordsReady && everythingLogged.empty;
     },
+    /* Any of the three failing surfaces as failed, not only the day read
+       itself - a rejected chained read is not "nothing to show", it is
+       the same failure `Notice`'s retry button exists for. */
     get failed() {
-      return everythingLogged.failed;
+      return everythingLogged.failed || marginNotesRead.failed || doseDrugsRead.failed;
     },
     get stale() {
       return everythingLogged.stale;
     },
-    retry: () => everythingLogged.retry()
+    retry: () => {
+      everythingLogged.retry();
+      marginNotesRead.retry();
+      doseDrugsRead.retry();
+    }
   };
 
   /* Two areas, so two roles in reading order. Role 0 for the entries, which
