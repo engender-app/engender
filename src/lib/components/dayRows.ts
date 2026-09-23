@@ -25,7 +25,7 @@
    eight events. */
 
 import { m } from '$lib/paraglide/messages';
-import { hubRow, type HubRow, type HubRowKey } from '$lib/data/hubRows';
+import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { DAY_SECTION_KEYS, type DayRecords, type DaySectionKey } from '$lib/data/journal/day';
 import { isGradedScale } from '$lib/data/hairStageScales';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
@@ -43,6 +43,7 @@ import {
 } from '$lib/data/vocabulary/labels';
 import { doseRowTitle, statusLabel } from '$lib/data/vocabulary/doseLabels';
 import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+import { iconOf, literalIcon } from './rowIcon';
 
 /** One line in the day's context list. `subtitle` is the earned exception
     (DIRECTION 3b), not the standard: most rows say everything in the
@@ -58,19 +59,6 @@ export interface DayRow extends Pick<HubRow, 'icon'> {
   photo?: Pick<Photo, 'fileName'> & { id?: string };
   count?: number;
 }
-
-/** A row's icon, read off the hub row that owns its screen rather than
-    named a second time here - the rule this file's own header states. */
-const iconOf = (key: HubRowKey): Pick<HubRow, 'icon'> => {
-  const { icon } = hubRow(key);
-  return { icon };
-};
-
-/** A row with no screen of its own for `iconOf` to read. Kept as one call
-    rather than naming the property inline, so every icon on this file's
-    rows - owned by a hub row or not - is read out of a function rather than
-    declared by hand. */
-const asIcon = (value: string): Pick<HubRow, 'icon'> => ({ ['icon']: value });
 
 /** What the route resolves for one logged dose before the rows are worded:
     exactly `attributeDrug`'s answer for it (regimenEpisode.ts, at the
@@ -148,7 +136,7 @@ const SECTION_ROWS: Record<
         key: `dose-${dose.id}`,
         // No screen of its own - a dose sits behind the care row - so there
         // is no single row to read this off and it keeps its own.
-        ...asIcon('clock'),
+        ...literalIcon('clock'),
         title: doseRowTitle(drug, dose, ', '),
         subtitle: subtitle || undefined,
         href: '/care/doses'
@@ -160,7 +148,7 @@ const SECTION_ROWS: Record<
       key: `lab-${result.id}`,
       // No screen of its own - labs sit behind the care row too
       // (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so this keeps its own.
-      ...asIcon('flask'),
+      ...literalIcon('flask'),
       // The analyte in the person's own words and their own unit
       // (ADR-0026), with no range, no reading and no colour beside it.
       title: `${result.analyte} ${result.value} ${result.unit}`,
@@ -196,7 +184,7 @@ const SECTION_ROWS: Record<
       key: `size-${record.id}`,
       // No screen of its own - a size record sits behind the measurements
       // row - so this keeps its own.
-      ...asIcon('package'),
+      ...literalIcon('package'),
       title: `${garmentCategoryName(record.category)} ${record.size}`,
       subtitle: record.brand || undefined,
       href: '/body/sizes'
@@ -251,7 +239,7 @@ const SECTION_ROWS: Record<
         // No screen of its own to read a row from - its own tab, not a hub
         // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it keeps its
         // own icon.
-        ...asIcon('stats'),
+        ...literalIcon('stats'),
         title: kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered(),
         href: '/tally',
         count
