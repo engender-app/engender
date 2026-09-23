@@ -26,7 +26,10 @@ export async function readWrappedEras(journal: Pick<Journal, 'eras' | 'eraMutes'
 }
 
 /** One result for a wrapped period. Start every journal call before
-    awaiting so liveQuery observes every dependency on its first run. */
+    awaiting so liveQuery observes every dependency on its first run. The
+    screen already held the period whole until every figure had landed; a
+    failed read now also fails it whole, rather than drawing a recap beside
+    sections that silently read as empty. */
 export async function readWrappedPeriod(
   journal: Pick<Journal, 'stats' | 'letters'>,
   period: {

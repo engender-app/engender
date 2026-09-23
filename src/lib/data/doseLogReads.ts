@@ -39,7 +39,9 @@ export interface DoseLogQuestion {
 
 /** One result for the dose log's two views and its editor (final-audit
     ticket 31). Start every journal call before awaiting so liveQuery observes
-    every dependency on its first run. */
+    every dependency on its first run. One answer, as readCare is: both views
+    land together, and a failed read leaves the screen at NO_DOSE_LOG rather
+    than half of it drawn from reads that did answer. */
 export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, question: DoseLogQuestion) {
   const { today, fromEpochDay, deepLinkedDoseId, regimenClaims } = question;
   const [episodes, allDoses, schedules, pauses, deepLinkedDose] = await Promise.all([
