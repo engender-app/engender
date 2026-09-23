@@ -87,7 +87,8 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import { isReducedMotion } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -128,8 +129,13 @@
 
   // Falls back off 'waist' when it has been hidden - the picker below only
   // ever offers a visible type, and defaulting to a hidden one would open
-  // on a selection Segmented has no button for.
-  let type = $state<string>(vocabulary.visibleMeasurementTypes[0]?.key ?? 'waist');
+  // on a selection Segmented has no button for. Derived rather than seeded
+  // once at mount: on a cold navigation straight here the vocabulary mirror
+  // is still empty when this script runs (ticket 170), and a one-off seed
+  // would have kept 'waist' even for somebody who hid it. Once a type is
+  // picked, the pick wins.
+  let pickedType = $state<string | null>(null);
+  let type = $derived(pickedType ?? vocabulary.visibleMeasurementTypes[0]?.key ?? 'waist');
   let typeOptions = $derived(vocabulary.visibleMeasurementTypes.map((t) => ({ value: t.key, label: t.name })));
 
   let measurementsQuery = liveList((j) => j.measurements.getMeasurements(type));
@@ -196,7 +202,7 @@
         value,
         unit: draft.unit
       });
-      type = draft.type;
+      pickedType = draft.type;
     },
     remove: (id) => journal.measurements.deleteMeasurement(id),
     findById: (id) => measurements.find((r) => r.id === id)
@@ -224,7 +230,7 @@
     await journal.measurements.setMeasurementTypeHidden(key, hidden);
     if (hidden && type === key) {
       const fallback = vocabulary.measurementTypes.find((t) => t.key !== key && !t.hidden);
-      if (fallback) type = fallback.key;
+      if (fallback) pickedType = fallback.key;
     }
   }
 
@@ -234,7 +240,7 @@
     const created = await journal.measurements.addCustomMeasurementType(name);
     newTypeName = '';
     manageOpen = false;
-    type = created.key;
+    pickedType = created.key;
   }
 
   function dismissProtocol() {
@@ -406,8 +412,16 @@
       key="measurement-sections"
     />
   </div>
-  <div id="measurements-picker">
-    <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
+  <!-- Gated on the vocabulary mirror (ticket 170, the same gap ticket 152
+       closed on four other screens): a cold navigation straight here paints
+       before the mirror fills, and the picker drew as an empty track that
+       then popped to its full height and shoved everything under it down. -->
+  <div id="measurements-picker" use:resize>
+    {#if !vocabulary.ready}
+      <div out:crossfade><Skeleton variant="line" count={1} /></div>
+    {:else}
+      <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (pickedType = v)} />
+    {/if}
   </div>
 
   <!-- What is true now, before anything explains how to measure or lists
