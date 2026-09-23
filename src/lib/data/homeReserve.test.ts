@@ -19,6 +19,11 @@ describe('the home reserve', () => {
   it('keeps its key under the prefix reset clears', () => {
     expect(reserveKey('above')).toMatch(/^engender-/);
     expect(reserveKey('measurements-now')).toMatch(/^engender-/);
+    expect(reserveKey('hosted-care')).toMatch(/^engender-/);
+  });
+
+  it('keeps Home the keys its reserves were first remembered under', () => {
+    expect(reserveKey('above')).toBe('engender-home-reserve-above');
   });
 
   it('reads nothing as zero, which reserves no space', () => {

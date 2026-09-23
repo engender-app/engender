@@ -93,7 +93,10 @@ const SAMPLER = `(() => {
     for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *')) {
       if (el.hasAttribute('data-gate-skeleton') || el.hasAttribute('data-read-reserve-hold')) continue;
       const box = el.getBoundingClientRect();
-      if (box.height === 0 || box.top > ${VIEWPORT_H}) continue;
+      /* Kept below the fold too, so a travel that leaves the viewport
+         still reads as the run of frames it is; only steps seen on
+         screen are reported (analyse). */
+      if (box.height === 0) continue;
       row.boxes[name(el)] = Math.round(box.top * 10) / 10;
     }
     out.push(row);
@@ -118,7 +121,7 @@ function teleports(series, samples) {
     for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
     for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
     if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
-      out.push({ px: Math.round(d), at: Math.round(samples[i].at), run });
+      out.push({ i, px: Math.round(d), at: Math.round(samples[i].at), run });
   }
   return out;
 }
@@ -128,7 +131,8 @@ function analyse(samples) {
   const findings = [];
   for (const key of keys) {
     const series = samples.map((s) => s.boxes[key] ?? null);
-    for (const t of teleports(series, samples))
+    const onScreen = (i) => Math.min(series[i] ?? Infinity, series[i - 1] ?? Infinity) < VIEWPORT_H;
+    for (const t of teleports(series, samples).filter((t) => onScreen(t.i)))
       findings.push(`${key.replace(/^\d+:/, '')} ${t.px > 0 ? 'down' : 'up'} ${Math.abs(t.px)}px in one frame at ${t.at}ms (${t.run}-frame move)`);
   }
   return findings;

@@ -44,6 +44,8 @@
   import Switch from '$lib/components/Switch.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { crossfade } from '$lib/motion/reveal';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
 
   const today = todayEpochDay();
   const todayInput = dateInputValueFromEpochDay(today);
@@ -74,6 +76,8 @@
      device preference set once rather than a per-print control. */
   let regimenEpisodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let drugNames = $derived(regimenDrugNames(regimenEpisodesQuery.value ?? []));
+  const rowEstimate = readReserve('clinician-summary-row');
+  const rememberRow = (px: number) => rememberReserve('clinician-summary-row', px);
   let excludedDrugs = $derived(
     new Set(drugNames.filter((drug) => prefs.clinicianSummaryDrugExcluded[drug]))
   );
@@ -187,13 +191,18 @@
        page underneath it doesn't. Unopenable state (no valid range) reads
        as the same prompt the old inline paragraph gave, in the one place
        left to give it. -->
+  <!-- Held until the regimen read answers: the row names the drugs, and
+       drawn before it knew them it grew a line in one frame on every cold
+       open, pushing the preview 21px (ux-carpet ticket 193). -->
   <div class="no-print settings-row-wrap">
-    <ListRow
-      title={range ? m.clinician_summary_settings_row({ scope: scopeText }) : scopeText}
-      key="clinician-summary-settings"
-      data-settings-row
-      onclick={() => (controlsOpen = true)}
-    />
+    <ReadReserve ready={!regimenEpisodesQuery.loading} estimate={rowEstimate} onrest={rememberRow}>
+      <ListRow
+        title={range ? m.clinician_summary_settings_row({ scope: scopeText }) : scopeText}
+        key="clinician-summary-settings"
+        data-settings-row
+        onclick={() => (controlsOpen = true)}
+      />
+    </ReadReserve>
   </div>
 
   <!-- Generated dossier, shown as the page it will become rather than as
@@ -347,6 +356,12 @@
      is this screen's call rather than a bare margin on a shared kit row. */
   .settings-row-wrap {
     margin-bottom: var(--space-2);
+  }
+
+  /* The reserve spaces its blocks by the screen's 20; this one row keeps
+     the wrap's own 8 under it. */
+  .settings-row-wrap :global(.read-reserve-body > *) {
+    margin-bottom: 0;
   }
 
   .cd-since-appointment {

@@ -20,7 +20,7 @@
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
   import { paddedSeries } from '$lib/charts/geometry';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
@@ -131,7 +131,46 @@
      one query per unit for the same six tables. */
   let drawnOn = $derived(series.flatMap((s) => s.results.map((r) => r.epochDay)));
   let span = $derived(annotationSpan(drawnOn, todayEpochDay()));
-  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(span.from, span.to, todayEpochDay()));
+  let annotationsAnsweredFor = $state('');
+  let annotationsQuery = liveList((j) => {
+    const asked = `${span.from}:${span.to}`;
+    return j.chartAnnotations
+      .getAnnotations(span.from, span.to, todayEpochDay())
+      .finally(() => (annotationsAnsweredFor = asked));
+  });
+
+  /* The charts wait for their annotations as well as for the analytes. The
+     annotations are asked over the series' own span, so their real answer
+     comes a round trip after the series', and the caption under a chart
+     arrived a frame after the chart did - 20px in one frame, pushing the
+     list under it while the gate's fade was still running (ux-carpet
+     ticket 193). `loading` on the query itself cannot say this: it goes
+     false on the first answer, the one asked over an empty span. Latched,
+     like a read's own loading: a span that changes later (a new result) is
+     the chart's own change, not an arrival. */
+  let chartsSettled = $state(false);
+  $effect.pre(() => {
+    if (chartsSettled || usedQuery.loading || seriesQuery.loading) return;
+    if (annotationsAnsweredFor === `${span.from}:${span.to}`) chartsSettled = true;
+  });
+  const chartsRead: LiveList<string> = {
+    get rows() {
+      return usedQuery.rows;
+    },
+    get loading() {
+      return !chartsSettled;
+    },
+    get empty() {
+      return chartsSettled && usedQuery.empty;
+    },
+    get failed() {
+      return usedQuery.failed;
+    },
+    get stale() {
+      return usedQuery.stale;
+    },
+    retry: () => usedQuery.retry()
+  };
 
   /* Ten as the flat-run floor rather than measurements' one: an analyte's
      values run in the hundreds, so a whole unit either side would still
@@ -431,7 +470,7 @@
     found={deepLinkedLabQuery.value !== null}
   />
 
-  <ReadGate read={usedQuery} variant="block" count={1}>
+  <ReadGate read={chartsRead} variant="block" count={1}>
     {#snippet rows()}
     <Segmented
       name={m.labs_analyte_group()}
