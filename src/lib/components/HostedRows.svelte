@@ -35,6 +35,8 @@
   import { rowLine, rowsHostedBy, rowHidden, type HubRowHostKey } from '$lib/data/hubRows';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
+  import { fade } from 'svelte/transition';
+  import { motionDuration } from '$lib/motion/tokens';
 
   let {
     host,
@@ -96,7 +98,15 @@
 
 {#if card}
   {#if rows.length}
-    <ListCard>{@render hostedRows()}</ListCard>
+    <!-- Faded rather than cut in when the read lands after the screen
+         around it (ux-carpet ticket 184: on Care the card arrived at full
+         opacity 50-100ms after the rest of the screen, every cold load).
+         The block spacing moves to the wrapper with no change, since
+         `.screen > *` and `.screen > .screen-part > *` reach one level
+         down and the card is its only child. -->
+    <div in:fade={{ duration: motionDuration('--dur-fast') }}>
+      <ListCard>{@render hostedRows()}</ListCard>
+    </div>
   {/if}
 {:else}
   {@render hostedRows()}
