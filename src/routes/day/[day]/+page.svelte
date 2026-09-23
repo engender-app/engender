@@ -188,15 +188,44 @@
     day !== undefined && DAY_SECTION_KEYS.some((key) => (day![key] as unknown[]).length > 0)
   );
 
+  /* Whether a chained read's landed value actually answers for the ids the
+     screen is asking about right now, rather than an earlier (or the very
+     first, vacuous) set - the same keyed-answer idiom detailDraft.svelte.ts
+     uses for a route id, widened to a list. Needed because `LiveQuery.loading`
+     is one-way (readState.ts): `marginNotesRead`'s and `doseDrugsRead`'s very
+     first run answers for an empty id list (the day read hasn't landed yet),
+     which settles in a frame or two and never reports loading again, so a
+     gate that trusted `.loading` alone would open on that empty answer and
+     the real one would land a few frames later - ticket 174's bug. */
+  function sameIds<K>(a: readonly K[], b: readonly K[]): boolean {
+    return a.length === b.length && a.every((id, i) => id === b[i]);
+  }
+
   /* Margin notes are not one of `day.ts`'s sections (they render with the
      entry they annotate, not as a record of the day they were written on -
      day.ts's own DAY_OPT_OUTS says why): a second, batched read rather than
      a section, over whichever entries this day turns out to hold. Reads
      `day?.entries` before its first await, the same reactivity contract
-     `dayRead` above follows. */
+     `dayRead` above follows. Tagged with the ids it answered for (see
+     `sameIds` above) so the gate below can tell a landed answer from a stale
+     one apart. */
   let entryIds = $derived((day?.entries ?? []).map((e) => e.id));
-  let marginNotesRead = liveQuery((j) => j.marginNotes.forEntries(entryIds));
-  let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
+  let marginNotesRead = liveQuery(async (j) => {
+    const ids = entryIds;
+    return { ids, byEntry: await j.marginNotes.forEntries(ids) };
+  });
+  let marginNotesAnswer = $derived(
+    marginNotesRead.value && sameIds(marginNotesRead.value.ids, entryIds) ? marginNotesRead.value : undefined
+  );
+  let marginNotesByEntry = $derived(marginNotesAnswer?.byEntry ?? new Map());
+  /* Answered for these ids, or gave up trying to - either way the gate
+     below has heard back and should stop waiting. Without the `.failed`
+     half a rejected chained read left `marginNotesAnswer` undefined
+     forever (readState.ts's `loading` is one-way, but a fresh rejection
+     after landing is not what `marginNotesAnswer` tracks), so the day's
+     gate would spin on its skeleton rather than surfacing the failed
+     state a rejection is supposed to reach. */
+  let marginNotesReady = $derived(marginNotesAnswer !== undefined || marginNotesRead.failed);
 
   /* Which drug each logged dose carries (phase 11 ticket 19): a day row
      names it, so concurrent regimens at the same amount and route stay
@@ -208,13 +237,20 @@
      neither read, and until this lands the rows state amount and route
      only rather than borrowing a name. */
   let dayDoses = $derived(day?.doses ?? []);
+  let doseDrugIds = $derived(dayDoses.map((dose) => dose.id));
   let doseDrugsRead = liveQuery(async (j) => {
     const doses = dayDoses;
-    if (doses.length === 0) return null;
+    const ids = doses.map((dose) => dose.id);
+    if (doses.length === 0) return { ids, byId: null };
     const episodes = await j.regimen.getEpisodes();
-    return new Map(doses.map((dose) => [dose.id, attributeDrug(episodes, dose)]));
+    return { ids, byId: new Map(doses.map((dose) => [dose.id, attributeDrug(episodes, dose)])) };
   });
-  let doseDrugs = $derived(doseDrugsRead.value ?? undefined);
+  let doseDrugsAnswer = $derived(
+    doseDrugsRead.value && sameIds(doseDrugsRead.value.ids, doseDrugIds) ? doseDrugsRead.value : undefined
+  );
+  let doseDrugs = $derived(doseDrugsAnswer?.byId ?? undefined);
+  /* Same reasoning as `marginNotesReady` above. */
+  let doseDrugsReady = $derived(doseDrugsAnswer !== undefined || doseDrugsRead.failed);
 
   /* What the gate branches on: a day is empty when no section has a row,
      which is not something a single list read can say for itself. Flattening
@@ -227,6 +263,40 @@
   let everythingLogged = liveListIn(dayRead, (records) =>
     DAY_SECTION_KEYS.flatMap((key) => records[key] as unknown[])
   );
+
+  /* `everythingLogged` widened to also hold for the day's two chained reads,
+     the same "reveal once, when everything has answered" call ticket 146
+     made for Home's fold: the records draw once, already carrying their
+     margin notes and dose drug names, rather than gaining them a few frames
+     after the gate opens (ticket 174). A day with no records needs neither
+     chained read to have anything real to wait for - `entryIds`/`dayDoses`
+     are `[]` there, so both settle on the same frame the day read does. */
+  let dayRecordsReady = $derived(!everythingLogged.loading && marginNotesReady && doseDrugsReady);
+  let dayRecordsRead = {
+    get rows() {
+      return everythingLogged.rows;
+    },
+    get loading() {
+      return !dayRecordsReady;
+    },
+    get empty() {
+      return dayRecordsReady && everythingLogged.empty;
+    },
+    /* Any of the three failing surfaces as failed, not only the day read
+       itself - a rejected chained read is not "nothing to show", it is
+       the same failure `Notice`'s retry button exists for. */
+    get failed() {
+      return everythingLogged.failed || marginNotesRead.failed || doseDrugsRead.failed;
+    },
+    get stale() {
+      return everythingLogged.stale;
+    },
+    retry: () => {
+      everythingLogged.retry();
+      marginNotesRead.retry();
+      doseDrugsRead.retry();
+    }
+  };
 
   /* Two areas, so two roles in reading order. Role 0 for the entries, which
      is the only index guaranteed to be a colour on all 8 palettes, and role 1
@@ -287,7 +357,7 @@
       <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} {doseDrugs} />
     {/if}
   {:else}
-    <ReadGate read={everythingLogged} variant="card" count={2}>
+    <ReadGate read={dayRecordsRead} variant="card" count={2}>
       {#snippet rows()}
         <!-- `day!` because the gate renders this snippet only once the read
              has landed with something, which the compiler cannot see across a
