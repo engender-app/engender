@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { clearBrowserMirrors, wipeLocalData, type LocalDataTargets } from './reset.ts';
 import { RECOVERY_KEY_FILE } from './recovery-key-file.ts';
-import { BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
+import { BOOT_ACCESS_MODE_KEY, BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
 function targets(
@@ -189,6 +189,7 @@ test('a completed reset leaves no key of this app behind in localStorage', async
     'engender-entry-draft': '{"note":"first day on the patch"}',
     'engender-pin-attempts': '{"failures":3}',
     [BOOT_CACHE_KEY]: '{"theme":"dark"}',
+    [BOOT_ACCESS_MODE_KEY]: 'pin',
     'unrelated-app-key': 'not ours to take'
   });
 
@@ -196,7 +197,10 @@ test('a completed reset leaves no key of this app behind in localStorage', async
   await wipeLocalData({
     ...deps,
     clearBrowserMirrors: () => clearBrowserMirrors(storage),
-    clearBootCache: () => storage.removeItem(BOOT_CACHE_KEY)
+    clearBootCache: () => {
+      storage.removeItem(BOOT_CACHE_KEY);
+      storage.removeItem(BOOT_ACCESS_MODE_KEY);
+    }
   });
 
   const left = Array.from({ length: storage.length }, (_, index) => storage.key(index));
@@ -230,11 +234,13 @@ test('the sweep leaves the boot mirror for clearBootCache to take last', async (
      unlocked. */
   const storage = fakeStorage({
     'engender-entry-draft': '{}',
-    [BOOT_CACHE_KEY]: '{"theme":"dark"}'
+    [BOOT_CACHE_KEY]: '{"theme":"dark"}',
+    [BOOT_ACCESS_MODE_KEY]: 'pin'
   });
 
   clearBrowserMirrors(storage);
 
   expect(storage.getItem('engender-entry-draft')).toBeNull();
   expect(storage.getItem(BOOT_CACHE_KEY)).not.toBeNull();
+  expect(storage.getItem(BOOT_ACCESS_MODE_KEY)).not.toBeNull();
 });

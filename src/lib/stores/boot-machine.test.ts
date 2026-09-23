@@ -496,3 +496,49 @@ test('journal-open-failed with database lock preserves the lock error and allows
     { type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }
   ]);
 });
+
+test.each(['pin', 'passphrase'] as const)(
+  'a cached %s access mode starts in needs-unlock and survives survey',
+  (mode) => {
+    const machine = initialBoot(mode);
+    expect(machine.boot.status).toBe('needs-unlock');
+    expect(machine.boot.accessMode).toBe(mode);
+
+    const afterStart = reduce(machine, started('web'));
+    expect(afterStart.machine.boot.status).toBe('needs-unlock');
+
+    const afterSurvey = reduce(afterStart.machine, surveyedWeb({ keystoreSecretSource: mode }));
+    expect(afterSurvey.machine.boot.status).toBe('needs-unlock');
+    expect(afterSurvey.machine.boot.accessMode).toBe(mode);
+  }
+);
+
+/* A cached mode only ever seeds a guess for frame 0 - the survey that follows
+   is still the one that decides anything. Unlike the happy path above, these
+   two put the seeded needs-unlock through the same refusal screens the
+   uncached boot already reaches (see the equivalent uncached tests further
+   up), to prove a stale or merely unconfirmed cache doesn't trade a proper
+   refusal screen for the generic boot-failed one. */
+test('a cached access mode does not block a refused conversion from reaching its screen', () => {
+  const seeded = reduce(initialBoot('pin'), started('web'));
+  const surveyed = reduce(seeded.machine, surveyedWeb({ plaintextJournalPresent: true }));
+  expect(surveyed.machine.boot.status).toBe('needs-unlock');
+
+  const { machine } = reduce(surveyed.machine, {
+    type: 'conversion-prechecked',
+    result: { ok: false, reason: 'not-enough-space', needBytes: 500, freeBytes: 120 }
+  });
+
+  expect(machine.boot.status).toBe('conversion-refused');
+  expect(machine.boot.conversionRefusal).toMatchObject({ reason: 'not-enough-space' });
+});
+
+test('a cached access mode does not block a device-key refusal from reaching its screen', () => {
+  const seeded = reduce(initialBoot('pin'), started('web'));
+  const surveyed = reduce(seeded.machine, surveyedWeb({ deviceBoundKeystoreExists: true }));
+  expect(surveyed.machine.boot.status).toBe('needs-unlock');
+
+  const { machine } = reduce(surveyed.machine, { type: 'device-key-unavailable' });
+
+  expect(machine.boot.status).toBe('needs-device-recovery');
+});
