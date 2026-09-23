@@ -324,26 +324,48 @@ function query<T>(
     if (!ready) return; // still booting; this re-runs when the database opens
 
     const mine = ++latest;
-    recording = true;
-    let running: Promise<T>;
-    try {
-      running = run(recordingJournal(ready, dependOn));
-    } catch (error) {
-      running = Promise.reject(error);
-    } finally {
-      recording = false;
-    }
-    running.then(
-      (result) => {
-        if (mine !== latest) return;
-        state = landed(result);
-      },
-      (error) => {
-        if (mine !== latest) return;
-        console.error('a journal query failed', error);
-        state = gaveUp(state);
+    /* Only a query's very first attempt in its whole lifetime gets the grace
+       below: every later run - an explicit retry(), a write-triggered
+       re-run - reports a rejection immediately, exactly as before. */
+    const firstEverAttempt = mine === 1;
+
+    const attempt = (): Promise<T> => {
+      recording = true;
+      let running: Promise<T>;
+      try {
+        running = run(recordingJournal(ready, dependOn));
+      } catch (error) {
+        running = Promise.reject(error);
+      } finally {
+        recording = false;
       }
-    );
+      return running;
+    };
+
+    const settle = (result: T) => {
+      if (mine !== latest) return;
+      state = landed(result);
+    };
+
+    const fail = (error: unknown) => {
+      if (mine !== latest) return;
+      console.error('a journal query failed', error);
+      state = gaveUp(state);
+    };
+
+    attempt().then(settle, (error) => {
+      if (mine !== latest || !firstEverAttempt) return fail(error);
+      /* A route visited for the first time this session can reject once on
+         its table's first touch and recover a couple of frames later
+         (ticket 161): reporting that as `failed` flashes the read's error
+         Notice in and back out. One bounded retry after a beat gives the
+         table a chance to settle before this query's first answer is
+         trusted either way. */
+      setTimeout(() => {
+        if (mine !== latest) return;
+        attempt().then(settle, fail);
+      }, 50);
+    });
     return () => { latest += 1; };
   });
 

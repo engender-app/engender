@@ -32,6 +32,10 @@ export async function verifyReadFailures({ gallery = false } = {}) {
         if (fault.mode === 'throw') throw new Error('injected synchronous read failure');
         if (fault.mode === 'fail') return Promise.reject(new Error('injected read failure'));
         if (fault.mode === 'empty') return Promise.resolve([]);
+        /* Ticket 161: rejects only the very first call, then heals - the
+           shape of a route's first touch racing something transient. */
+        if (fault.mode === 'reject-once' && fault.calls === 1)
+          return Promise.reject(new Error('injected first-touch race'));
         if (fault.mode === 'pending') return new Promise((resolve, reject) => fault.pending.push({ resolve, reject }));
         return Promise.resolve([{ id: 'read-proof', uuid: 'read-proof', name: 'Private era proof', startEpochDay: 19000, endEpochDay: 19010 }]);
       };
@@ -174,6 +178,33 @@ export async function verifyReadFailures({ gallery = false } = {}) {
     await retry.click();
     await retry.waitFor({ state: 'detached' });
     await page.getByText('Dependent entry proof', { exact: true }).waitFor();
+
+    // A query's first-ever attempt heals silently rather than flashing failed (ticket 161).
+    await page.evaluate(() => {
+      window.readFault.mode = 'reject-once';
+      window.readFault.calls = 0;
+      document.querySelector('#read-proof-link').href = '/settings/eras';
+    });
+    await page.locator('#read-proof-link').click();
+    const flashedFailed = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const until = Date.now() + 500;
+          let seen = false;
+          const isReadFailedNotice = () =>
+            [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Try again');
+          const tick = () => {
+            if (isReadFailedNotice()) seen = true;
+            if (Date.now() < until) requestAnimationFrame(tick);
+            else resolve(seen);
+          };
+          requestAnimationFrame(tick);
+        })
+    );
+    assert.equal(flashedFailed, false, 'a first-ever read that heals must never paint the failed Notice');
+    await page.getByText('Private era proof', { exact: true }).waitFor();
+    assert.equal(await retry.count(), 0);
+
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();
@@ -183,5 +214,5 @@ export async function verifyReadFailures({ gallery = false } = {}) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await verifyReadFailures({ gallery: process.argv.includes('--gallery') });
-  console.log('PASS read failures, retry races, empty recovery and locked list concealment');
+  console.log('PASS read failures, retry races, empty recovery, locked list concealment and a first-touch race');
 }
