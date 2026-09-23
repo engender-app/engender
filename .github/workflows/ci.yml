@@ -196,10 +196,6 @@ jobs:
         run: |
           mkdir -p ci-logs
           npm run test:browser 2>&1 | tee ci-logs/browser-tier.log
-      - name: Dilation schedule action
-        run: npm run test:dilation-schedule-action
-      - name: Letters ready jump
-        run: npm run test:letters-ready-jump
       - name: Walkthroughs
         run: npm run test:walkthrough 2>&1 | tee ci-logs/walkthrough.log
       - name: Built app
@@ -212,6 +208,52 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: browser-logs-${{ github.run_id }}
+          path: ci-logs/
+          retention-days: 7
+
+  guards:
+    name: Regression guards, the real-browser checks tests/PROBES.md lists
+    runs-on: ubuntu-latest
+    # Its own job rather than more steps in the browser one, which already
+    # spends most of its 30 minutes on the walkthrough. About twelve minutes
+    # here: twenty checks against the dev server, then eleven against a demo
+    # build and one against a production build.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # The same reason as the browser job's step of the same name: the dev
+      # server these checks start has to find the compiled runtime on disk.
+      - name: Compile message catalogues
+        run: npx paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+
+      - name: Chromium
+        run: |
+          npx playwright-core install --with-deps chromium
+          echo "CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
+
+      # Synthetic fixtures and the demo persona only, like the browser job,
+      # so the logs are safe to keep.
+      - name: Against the dev server
+        run: |
+          mkdir -p ci-logs
+          npm run test:guards 2>&1 | tee ci-logs/guards.log
+      - name: Against the built app
+        run: npm run test:guards:built 2>&1 | tee ci-logs/guards-built.log
+
+      - name: Keep the output of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guards-logs-${{ github.run_id }}
           path: ci-logs/
           retention-days: 7
 
