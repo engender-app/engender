@@ -73,7 +73,10 @@ try {
         [...calendar.querySelectorAll('button, input, select, [role="button"], .flatpickr-day')]
           .filter(el => el.getClientRects().length && !el.disabled)
           .map(el => { const r = el.getBoundingClientRect(); return [el.className, r.width, r.height]; }));
-      assert.ok(controls.every(([, width, height]) => width >= 48 && height >= 48), JSON.stringify(controls));
+      /* A day cell comes back 47.99999px tall in Polish at 320px - a 48px
+         row after the grid is divided in floats, not a short target - so
+         the floor gets a hundredth of slack. */
+      assert.ok(controls.every(([, width, height]) => width >= 47.99 && height >= 47.99), JSON.stringify(controls));
       await shot(page, `picker-${language}-${width}`);
       await page.keyboard.press('Escape');
       assert.equal(await page.locator('[data-sheet]').count(), 1, 'calendar Escape preserves parent sheet');

@@ -122,6 +122,16 @@ try {
     await page.addStyleTag({ content: '.demo-bar, [data-toast] { display: none !important; }' });
     for (const width of [195, 390, 1280]) {
       await page.setViewportSize({ width, height: 844 });
+      /* ReadGate's box travels to its new height after a resize rather than
+         snapping (36937c85), so the controls under it are moving for a
+         moment; grip them once they have stood still for a few frames. */
+      await page.waitForFunction(() => new Promise((resolve) => {
+        const top = () => document.querySelector('[data-document-zoom]')?.getBoundingClientRect().top;
+        const first = top();
+        let frames = 0;
+        const step = () => (top() !== first ? resolve(false) : ++frames === 10 ? resolve(true) : requestAnimationFrame(step));
+        requestAnimationFrame(step);
+      }));
       await page.locator('[data-document-zoom]').scrollIntoViewIfNeeded();
       await page.locator('.doc-pager').waitFor();
       const geometry = await page.evaluate(() => {

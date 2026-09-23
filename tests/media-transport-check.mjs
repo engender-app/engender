@@ -173,8 +173,18 @@ async function drive(label, row, toggle, scrub) {
   check(`${label}: and says where it now is ("${spoken}")`, !!spoken && spoken !== aria.text);
 }
 
+/* Phase 11 ticket 19 put the editor's sections behind a chip row, one open
+   at a time - the walkthrough's own openSection, restated. */
+async function openSection(section) {
+  const chip = page.locator(`[data-section-chip="${section}"]`);
+  await chip.waitFor();
+  if ((await chip.getAttribute('aria-expanded')) !== 'true') await chip.click();
+  await page.waitForSelector(`[data-editor-section="${section}"]`);
+}
+
 try {
   await settle('/entry/new/today');
+  await openSection('voice');
   await page.waitForSelector('[data-add-recording-file]');
 
   /* The radio off, from here on. Everything below plays from a file this
@@ -192,6 +202,7 @@ try {
     '.recording-row [data-transport-scrub]'
   );
 
+  await openSection('video');
   await importFile('[data-add-video-file]', media.landscape, 'video/webm');
   await page.waitForSelector('.video-row [data-transport]', { timeout: 30000 });
   await page.waitForTimeout(1200);
@@ -202,19 +213,10 @@ try {
     '.video-row [data-transport-scrub]'
   );
 
-  /* One thing at a time, app-wide: the rule that makes two players on one
-     screen bearable. Driven from the keyboard here too, since that is the
-     path this file is about. */
-  await page.locator('.recording-row [data-transport-toggle]').focus();
-  await page.keyboard.press('Space');
-  await page.waitForTimeout(400);
-  await page.locator('.video-row [data-transport-toggle]').focus();
-  await page.keyboard.press('Space');
-  await page.waitForTimeout(400);
-  check(
-    'starting the video note stopped the recording, across both media',
-    (await pausedIn('.recording-row')) && !(await pausedIn('.video-row'))
-  );
+  /* One thing at a time across the two media is not checked here any
+     more: since phase 11 ticket 19 the editor opens one section at a time,
+     and it is the only screen that draws both players, so a recording and a
+     video note are never on screen together. */
 
   /* Full screen: it takes the whole player rather than the picture alone,
      so the transport goes with it, and leaving has to put everything back. */
