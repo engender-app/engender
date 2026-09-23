@@ -973,26 +973,30 @@ export function crossfade(
  * a change inside a screen has no journey for a fade to stand in for, the
  * same reasoning `disclose`'s own substitute rests on.
  *
- * One box, one animation at a time, and a second resize inside the first
- * one's 240ms is missed rather than redirected. Not a corner cut: the
- * animation's own frames are resizes too, so the observer cannot tell "the
- * content changed again" from "the animation I started is still running"
- * without a signal, and the only signal available - ignore callbacks while
- * animating - is also what stops the box chasing its own frame-by-frame
- * travel forever. Content that changes twice inside 240ms lands on the
- * second change in one frame, which is where every change lands today; it
- * does not lose the first change's travel.
+ * One box, one animation at a time: the animation's own frames are resizes
+ * too, so the observer cannot tell "the content changed again" from "the
+ * animation I started is still running" without a signal, and the only
+ * signal available - ignore callbacks while animating - is also what stops
+ * the box chasing its own frame-by-frame travel forever.
  *
- * It very nearly did overshoot past it, the first time this was written:
- * ignoring the second resize left `lastHeight` at the first animation's own
- * target, and once that animation's `fill: none` reverted to whatever the
- * node actually measured by then - the second change's real height, since
- * nothing had animated to it - the revert was itself a resize this same
- * observer would see, compared against that now-stale number, and re-open a
- * second animation travelling backwards from a height nothing was showing
- * any more. The `finished` handler's own re-sync below is what closes that:
- * read at the one moment nothing is overriding height, so the revert reads
- * as arriving already there rather than as a fresh resize to chase.
+ * A resize that lands mid-flight is not lost, though: the `finished`
+ * handler reads the node's real height at the one moment nothing is
+ * overriding it, and if that differs from the animation that just finished,
+ * starts a second animation from there rather than snapping to it. One box,
+ * one animation at a time still holds - the second animation only starts
+ * once the first has fully finished - so a caller with several
+ * independently-settling children (a tile grid, a reading grid) gets a
+ * chain of smooth pushes instead of a smooth push followed by a silent
+ * jump on whichever child happens to settle after the first 240ms.
+ *
+ * It very nearly overshot instead, the first time this was written:
+ * treating the mid-flight resize as ignored *and* resyncing `lastHeight` to
+ * whatever the node measured once `fill: none` reverted would have read as
+ * a fresh resize against a now-stale number, and reopened a second
+ * animation travelling backwards from a height nothing was showing any
+ * more. Chasing it forward from the animation's own last known target,
+ * rather than backward from a stale `lastHeight`, is what keeps the chain
+ * moving the one direction the content actually went.
  */
 export const resize: Action<HTMLElement> = (node) => {
   if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
@@ -1001,18 +1005,7 @@ export const resize: Action<HTMLElement> = (node) => {
   let animating = false;
   let current: Animation | undefined;
 
-  const observer = new ResizeObserver(() => {
-    // The animation's own frames are themselves resizes; ignored rather than
-    // measured, or the box would chase its own tail mid-travel.
-    if (animating) return;
-
-    const newHeight = node.getBoundingClientRect().height;
-    const oldHeight = lastHeight;
-    lastHeight = newHeight;
-    // Under a pixel is a rounding wobble, not a resize - animating one would
-    // run a 240ms transition over nothing to look at.
-    if (Math.abs(newHeight - oldHeight) < 1) return;
-
+  const animateTo = (oldHeight: number, newHeight: number) => {
     animating = true;
     const restoreOverflow = node.style.overflow;
     node.style.overflow = 'hidden';
@@ -1030,16 +1023,41 @@ export const resize: Action<HTMLElement> = (node) => {
         node.style.overflow = restoreOverflow;
         animating = false;
         current = undefined;
-        // Re-synced here rather than left at newHeight above: a resize
+        // Read here rather than trusted to still be `newHeight`: a resize
         // arriving mid-travel was ignored, not measured, and the node's own
         // fill: none reverts to whatever the content is by now - which is
         // that ignored resize's real height, not this animation's own
-        // target, whenever the two differ. Reading it now, the one moment
-        // nothing is overriding height, is what stops that reveal being
-        // read as a fresh resize against a stale number and re-animated
-        // backwards to a target already behind it.
-        lastHeight = node.getBoundingClientRect().height;
+        // target, whenever the two differ. A second block settling inside
+        // the first one's 240ms used to land here as a silent snap - one
+        // sibling-displacing frame with nothing chasing it; a caller with
+        // several independently-settling children (a tile grid, a reading
+        // grid) hits that far more than the single skeleton-to-content swap
+        // this was written for, so the snap is chased as its own animation
+        // instead of accepted.
+        const settled = node.getBoundingClientRect().height;
+        if (Math.abs(settled - newHeight) >= 1) {
+          animateTo(newHeight, settled);
+        } else {
+          lastHeight = settled;
+        }
       });
+  };
+
+  const observer = new ResizeObserver(() => {
+    // The animation's own frames are themselves resizes; ignored rather than
+    // measured, or the box would chase its own tail mid-travel. One that
+    // lands while an animation is already running is picked up once that
+    // animation's `finally` reads the node's real height, above.
+    if (animating) return;
+
+    const newHeight = node.getBoundingClientRect().height;
+    const oldHeight = lastHeight;
+    lastHeight = newHeight;
+    // Under a pixel is a rounding wobble, not a resize - animating one would
+    // run a 240ms transition over nothing to look at.
+    if (Math.abs(newHeight - oldHeight) < 1) return;
+
+    animateTo(oldHeight, newHeight);
   });
   observer.observe(node);
 
