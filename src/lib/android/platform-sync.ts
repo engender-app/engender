@@ -74,7 +74,7 @@ export interface PlatformSyncDeps {
   journal: {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
-    stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<void> };
+    stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<unknown> };
     /** The journaling pause: while one covers today, the check-in prompt
         goes quiet while a journaling pause runs, without touching the
         `checkInEnabled` preference itself. */
