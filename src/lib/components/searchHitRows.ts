@@ -35,10 +35,11 @@
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
-import { hubRow, type HubRow, type HubRowKey } from '$lib/data/hubRows';
+import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
+import { iconOf, literalIcon } from './rowIcon';
 
 /** One hit as a row: where it goes, and what it says. */
 interface SearchHitRow extends Pick<HubRow, 'icon'> {
@@ -57,22 +58,6 @@ interface SearchHitRow extends Pick<HubRow, 'icon'> {
       anywhere in it. */
   excerpt: string;
 }
-
-/** An area's icon, read off the hub row that owns its screen rather than
-    named a second time here - the rule this file's own header states. */
-const iconOf = (key: HubRowKey): Pick<HubRow, 'icon'> => {
-  const { icon } = hubRow(key);
-  return { icon };
-};
-
-/** A raw icon name, wrapped the same shape `iconOf` hands back - for an area
-    with no screen of its own to read one from (a Settings reference list, or
-    content with no route beyond the record it annotates), and for handing a
-    row's already-resolved icon on to `searchHitRows`' own return value.
-    Kept as one call rather than naming the property inline, so every icon on
-    this file's rows - owned by a hub row or not - is read out of a function
-    rather than declared by hand. */
-const asIcon = (value: string): Pick<HubRow, 'icon'> => ({ ['icon']: value });
 
 /** How each registered area reads as a row.
 
@@ -126,14 +111,14 @@ const AREA_ROWS: Record<
     href: (hit) => `${hubRow('tryouts').href}/${hit.id}`
   },
   presentations: {
-    ...asIcon('palette'),
+    ...literalIcon('palette'),
     label: () => m.presentations_title(),
     href: () => '/settings/presentations'
   },
-  eras: { ...asIcon('columns'), label: () => m.eras_title(), href: () => '/settings/eras' },
+  eras: { ...literalIcon('columns'), label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
   affirmations: {
-    ...asIcon('sparkle'),
+    ...literalIcon('sparkle'),
     label: () => m.affirmations_row_title(),
     href: () => '/settings/affirmations'
   },
@@ -148,8 +133,8 @@ const AREA_ROWS: Record<
   /* Neither area has a row of its own - both sit behind the care row
      (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW), so there is no single
      screen's icon to read these off and they keep their own. */
-  labResults: { ...asIcon('flask'), label: () => m.lab_results(), href: () => '/care/labs' },
-  sizeRecords: { ...asIcon('package'), label: () => m.size_log(), href: () => '/body/sizes' },
+  labResults: { ...literalIcon('flask'), label: () => m.lab_results(), href: () => '/care/labs' },
+  sizeRecords: { ...literalIcon('package'), label: () => m.size_log(), href: () => '/body/sizes' },
   taperSessions: { ...iconOf('dilation'), label: () => m.dilation(), href: () => hubRow('dilation').href },
   wearSessions: { ...iconOf('wear'), label: () => m.wear_log(), href: () => hubRow('wear').href },
   // The compare surface rather than the recorder: a hit is a take somebody
@@ -174,14 +159,14 @@ const AREA_ROWS: Record<
      a second time. That is the care row's own screen, exactly, so its icon
      comes from there too. */
   medicationStock: { ...iconOf('care'), label: () => m.stock_title(), href: () => hubRow('care').href },
-  reminders: { ...asIcon('bell'), label: () => m.reminders(), href: () => '/settings/reminders' },
+  reminders: { ...literalIcon('bell'), label: () => m.reminders(), href: () => '/settings/reminders' },
   /* A margin note has no screen of its own - it opens the entry it
      annotates, and `date` on the row is already that entry's own day
      (textSearch.ts's own reasoning for dating this area by the owner
      rather than by when the note was written), which is what lets the hit
      name the entry without this label needing to. */
   marginNotes: {
-    ...asIcon('note'),
+    ...literalIcon('note'),
     label: () => m.margin_note_search_label(),
     href: (hit) => `/entry/${hit.context}`
   }
@@ -215,7 +200,7 @@ export function searchHitRows(hits: readonly SearchHit[], query: string): Search
         key: `${hit.area}-${hit.id}`,
         area: hit.area as SearchAreaKey,
         label: declared.label(),
-        ...asIcon(declared.icon),
+        ...literalIcon(declared.icon),
         href: declared.href(hit),
         date: hit.epochDay === null ? undefined : fmtDay(hit.epochDay, { month: 'short', year: '2-digit' }),
         excerpt: excerptOf(hit.value, query)
