@@ -36,13 +36,12 @@
     epochDayFromDateInputValue,
     todayEpochDay
   } from '$lib/data/epochDay';
-  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { readWrappedEras, readWrappedPeriod } from '$lib/data/wrappedReads';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
-  import { wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
-  import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
   import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import {
     WRAPPED_RANGE_CHOICES,
@@ -58,7 +57,6 @@
     completedWrappedPeriod,
     type WrappedCadence
   } from '$lib/data/wrapped';
-  import type { DayAverage } from '$lib/data/journal/stats';
   import Icon from '$lib/components/Icon.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -87,14 +85,10 @@
   );
   let isRange = $derived(view === 'range');
 
-  /* Phase 6 ticket 03: the eras an `era` choice can name, and the journal's
-     own edges to clamp an open one against - both read once here rather
-     than by `wrappedRange.ts`, which stays pure over what it is handed
-     (ADR-0010). */
-  let erasQuery = liveList((j) => j.eras.getEras());
-  let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
-  // Phase 6 ticket 05: which of those eras are muted.
-  let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
+  /* The eras, the journal's edges and the mutes, read here rather than by
+     `wrappedRange.ts`, which stays pure over what it is handed (ADR-0010). */
+  let erasQuery = liveQuery((j) => readWrappedEras(j));
+  let eras = $derived(erasQuery.value?.eras ?? []);
 
   /* The picked range lives in the URL rather than in component state, the
      same way a cadence does, so it survives a reload, a back gesture and a
@@ -105,7 +99,7 @@
       page.url.searchParams.get('from'),
       page.url.searchParams.get('to'),
       today,
-      { eraId: page.url.searchParams.get('era'), eras: erasQuery.rows, bounds: boundsQuery.value ?? null }
+      { eraId: page.url.searchParams.get('era'), eras, bounds: erasQuery.value?.bounds ?? null }
     )
   );
 
@@ -119,7 +113,7 @@
      directly and a cadence that happens to fall inside a muted era are the
      same situation from here. */
   let muted = $derived(
-    range ? touchesMutedEra(erasQuery.rows, mutedQuery.value ?? new Set(), range.start, range.end) : false
+    range ? touchesMutedEra(eras, erasQuery.value?.mutedEraUuids ?? new Set(), range.start, range.end) : false
   );
 
   /* The four tabs. Ordered shortest first, the way a person thinks about
@@ -219,67 +213,24 @@
     void replaceRoute(`/wrapped/range${wrappedRangeQuery('era', undefined, eraId)}`);
   }
 
-  /* The preference is read inside every query rather than around them, so
-     that turning wrapped off stops the reads themselves: `run` is called
+  /* The preference is read inside the period's query rather than around
+     it, so that turning wrapped off stops the reads themselves: `run` is called
      synchronously, which makes `prefs.wrappedEnabled` a dependency, and the
      branch means no SQL is ever issued while it is false. Home goes further
      and does not mount its card at all. */
   let on = $derived(prefs.wrappedEnabled);
 
-  let recapQuery = liveQuery((j) =>
-    on && range && !muted ? j.stats.recap(range.start, range.end) : Promise.resolve(null)
+  let periodQuery = liveQuery((j) =>
+    on && range && !muted
+      ? readWrappedPeriod(j, { ...range, today, metric: metricKey(prefs), year: cadence === 'year' })
+      : Promise.resolve(null)
   );
-  let recap = $derived(recapQuery.value);
-
-  let moodTrendQuery = liveList((j) =>
-    on && range && !muted ? j.stats.dayAverages('mood', range.start, range.end) : Promise.resolve([])
-  );
-  let moodTrend = $derived((moodTrendQuery.rows) as DayAverage[]);
-
-  /* The year's rows shade the active scale rather than mood (phase 11
-     ticket 07, WrappedYear.svelte), so a year reads that scale's series
-     too; the compact template's chart stays on mood. */
-  let scaleTrendQuery = liveList((j) =>
-    on && cadence === 'year' && range && !muted
-      ? j.stats.dayAverages(metricKey(prefs), range.start, range.end)
-      : Promise.resolve([])
-  );
-  let scaleTrend = $derived(scaleTrendQuery.rows as DayAverage[]);
-
-  /* The four reads spec 06 adds. Tag insights follow the selected metric,
-     the same one the stats hub's own insight card reads: which scale "better
-     or worse days" is measured on is one preference with one control, and it
-     is set on the screen that draws the scales. */
-  let insightsQuery = liveList((j) =>
-    on && range && !muted ? j.stats.tagInsights(metricKey(prefs), range.start, range.end) : Promise.resolve([])
-  );
-
-  let tallyQuery = liveQuery(async (j) => {
-    if (!on || !range || muted) return null;
-    const [misgendered, correctlyGendered] = await Promise.all([
-      j.stats.tallyTrend('misgendered', range.start, range.end),
-      j.stats.tallyTrend('correctly_gendered', range.start, range.end)
-    ]);
-    return { misgendered, correctlyGendered };
-  });
-
-  let insights = $derived(nameTagInsights(wrappedTagInsights(insightsQuery.rows) ?? []));
-  let tally = $derived(
-    tallyQuery.value ? wrappedTallyCounts(tallyQuery.value.misgendered, tallyQuery.value.correctlyGendered) : null
-  );
-
-  /* The year's letters to the future self (phase 5 deepening ticket 13):
-     written inside the period and unlocked today, which is the only way a
-     past self's words may resurface. A year read only - the compact
-     template's week and month have no prose section to put them in, and
-     the ticket names the annual recap. Sealed ones never reach the
-     component: letterRetrospective.ts answers the seal question. */
-  let lettersQuery = liveList((j) =>
-    on && cadence === 'year' && !muted ? j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT) : Promise.resolve([])
-  );
-  let yearLetters = $derived(
-    period && cadence === 'year' && !muted ? wrappedLetters(lettersQuery.rows, period.start, period.end, today) : []
-  );
+  let recap = $derived(periodQuery.value?.recap ?? null);
+  let moodTrend = $derived(periodQuery.value?.moodTrend ?? []);
+  let scaleTrend = $derived(periodQuery.value?.scaleTrend ?? []);
+  let insights = $derived(nameTagInsights(periodQuery.value?.insights ?? []));
+  let tally = $derived(periodQuery.value?.tally ?? null);
+  let yearLetters = $derived(periodQuery.value?.letters ?? []);
 
   /* Both templates take the dimension and the tags already named, so neither
      of them has to know that a built-in tag stores a key and takes its
@@ -294,7 +245,7 @@
   let rangeName = $derived.by(() => {
     // An era names itself: the person's own word for the stretch, read off
     // the row it was picked from rather than off any fixed label.
-    if (picked.choice === 'era') return erasQuery.rows.find((e) => e.id === picked.eraId)?.name ?? '';
+    if (picked.choice === 'era') return eras.find((e) => e.id === picked.eraId)?.name ?? '';
     if (picked.choice === 'custom' && picked.range) {
       return `${fmtDay(picked.range.start, { day: 'numeric', month: 'short' })} - ${fmtDay(picked.range.end, {
         day: 'numeric',
@@ -355,14 +306,7 @@
     anchor ? { name: anchor.name, duration: fmtDuration(calendarDuration(anchor.epochDay, today)) } : null
   );
 
-  let loading = $derived(
-    recapQuery.loading ||
-      moodTrendQuery.loading ||
-      scaleTrendQuery.loading ||
-      insightsQuery.loading ||
-      tallyQuery.loading ||
-      lettersQuery.loading
-  );
+  let loading = $derived(periodQuery.loading);
 </script>
 
 <div class="screen">
@@ -511,13 +455,13 @@
         {/each}
       </ListCard>
 
-      {#if erasQuery.rows.length}
+      {#if eras.length}
         <!-- The person's own eras, offered the same way `/compare`'s era
              sheet does (phase 6 ticket 03): a stretch they already named,
              picked whole rather than as two dates. -->
         <SectionHeading text={m.eras_title()} />
         <ListCard>
-          {#each erasQuery.rows as era (era.id)}
+          {#each eras as era (era.id)}
             <ListRow key={`range-era-${era.id}`} title={era.name} chevron={false} onclick={() => chooseEra(era.id)}>
               {#snippet trailing()}
                 {#if picked.choice === 'era' && picked.eraId === era.id}
