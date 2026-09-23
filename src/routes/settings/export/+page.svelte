@@ -4,7 +4,8 @@
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
   import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
+  import { resize } from '$lib/motion/reveal';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
@@ -686,7 +687,15 @@
 <div class="screen">
   <ScreenHeader title={m.exp_title()} back="/settings" />
 
-  <div class="kit-panel" data-kit-surface style="margin-bottom:var(--space-4)">
+  <!-- Both ages are preferences outside the boot set, so on a cold
+       navigation straight here they read null until SQLite opens: the card
+       said "never" with a tick for a persona backed up 34 days ago, then
+       lost a line and shoved everything under it up 19px in one frame
+       (ticket 176). The rows stand from the first frame and only their
+       values wait, a one-line bar in each, so a one-line age lands without
+       moving anything; the two-line "never" grows the card through
+       `resize`. -->
+  <div class="kit-panel" data-kit-surface style="margin-bottom:var(--space-4)" use:resize>
     <div class="spread">
       <span class="kit-row-text">
         <span class="kit-row-title">{m.exp_last_backup()}</span>
@@ -694,14 +703,21 @@
              the backup age is what the plain-export flow checks moved to today,
              and reaching it by layout broke silently once this card grew rows. -->
         <span class="kit-row-sub" data-backup-age>
-          {backupAge == null
-            ? m.exp_last_backup_never()
-            : backupAge === 0
-              ? m.exp_last_backup_today()
-              : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
+          {#if !preferencesAttached()}
+            {@render pendingValue()}
+          {:else}
+            {backupAge == null
+              ? m.exp_last_backup_never()
+              : backupAge === 0
+                ? m.exp_last_backup_today()
+                : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
+          {/if}
         </span>
       </span>
-      {#if stale}
+      {#if !preferencesAttached()}
+        <!-- Neither mark until the age is known: the tick was the half of the
+             wrong answer that looked most sure of itself. -->
+      {:else if stale}
         <span class="notice-warn" style="padding:4px 10px;border-radius:var(--r-block);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
       {:else}
         <Icon name="check" size={20} />
@@ -712,16 +728,26 @@
       <span class="kit-row-text">
         <span class="kit-row-title">{m.exp_last_verified()}</span>
         <span class="kit-row-sub">
-          {verifiedAge == null
-            ? m.exp_last_verified_never()
-            : verifiedAge === 0
-              ? m.exp_last_verified_today()
-              : m.exp_last_verified_days({ days: m.n_days({ n: verifiedAge }) })}
+          {#if !preferencesAttached()}
+            {@render pendingValue()}
+          {:else}
+            {verifiedAge == null
+              ? m.exp_last_verified_never()
+              : verifiedAge === 0
+                ? m.exp_last_verified_today()
+                : m.exp_last_verified_days({ days: m.n_days({ n: verifiedAge }) })}
+          {/if}
         </span>
       </span>
       <Icon name="shield" size={20} />
     </div>
   </div>
+
+  {#snippet pendingValue()}
+    <!-- The kit's own skeleton bar, held to the subtitle's line box (12px bar,
+         4px either side) so the value that replaces it takes the same height. -->
+    <span class="skeleton skeleton-line is-short" style="margin:4px 0" aria-hidden="true"></span>
+  {/snippet}
 
   {#if importLog.length > 0}
     <SectionHeading text={m.imp_log_section()} />
