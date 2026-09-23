@@ -35,19 +35,20 @@
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
+import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
+import { iconOf, literalIcon } from './rowIcon';
 
 /** One hit as a row: where it goes, and what it says. */
-interface SearchHitRow {
+interface SearchHitRow extends Pick<HubRow, 'icon'> {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
   key: string;
   /** The registered area's key, for the walkthrough's handle on the row. */
   area: SearchAreaKey;
   /** What kind of thing this is, in the words its own screen uses. */
   label: string;
-  icon: string;
   href: string;
   /** The day the record belongs to, already worded, or undefined for an area
       whose records have no day (a roadmap goal, an affirmation). */
@@ -58,10 +59,6 @@ interface SearchHitRow {
   excerpt: string;
 }
 
-const MILESTONES = '/transition/milestones';
-const SURGERY = '/health/surgery';
-const TRYOUTS = '/transition/tryouts';
-
 /** How each registered area reads as a row.
 
     A full `Record` over the registry's own keys, and that is the half of the
@@ -71,71 +68,108 @@ const TRYOUTS = '/transition/tryouts';
     A new key is a type error here until somebody says what it looks like. */
 const AREA_ROWS: Record<
   SearchAreaKey,
-  { icon: string; label: () => string; href: (hit: SearchHit) => string }
+  Pick<HubRow, 'icon'> & { label: () => string; href: (hit: SearchHit) => string }
 > = {
-  letters: { icon: 'book', label: () => m.letters_title(), href: (hit) => `/transition/letters/${hit.id}` },
-  milestones: { icon: 'flag', label: () => m.milestones(), href: () => MILESTONES },
-  procedures: { icon: 'flag', label: () => m.surgery_journey_title(), href: () => SURGERY },
-  appointments: { icon: 'calendar', label: () => m.appointments_title(), href: () => '/health/appointments' },
+  letters: {
+    ...iconOf('letters'),
+    label: () => m.letters_title(),
+    href: (hit) => `${hubRow('letters').href}/${hit.id}`
+  },
+  milestones: { ...iconOf('milestones'), label: () => m.milestones(), href: () => hubRow('milestones').href },
+  procedures: { ...iconOf('surgery'), label: () => m.surgery_journey_title(), href: () => hubRow('surgery').href },
+  appointments: {
+    ...iconOf('appointments'),
+    label: () => m.appointments_title(),
+    href: () => hubRow('appointments').href
+  },
   /* One area, two screens. A question written for an appointment belongs to
      the prep list, which is a section of the visit screen since phase 11
      all-four-doors ticket 12; a line of a procedure's recovery checklist
      belongs to that journey, and the owner kind on the row is what tells
-     them apart (procedures.ts). */
+     them apart (procedures.ts). The prep list is the more common of the two,
+     so its screen is what the row's own icon names. */
   checklistItems: {
-    icon: 'check',
+    ...iconOf('appointments'),
     label: () => m.appointment_prep_title(),
-    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointments')
+    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? hubRow('surgery').href : hubRow('appointments').href)
   },
-  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/care/changes' },
+  sideEffects: { ...iconOf('effects'), label: () => m.side_effects(), href: () => hubRow('effects').href },
   /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
      travels with the hit for exactly this (textSearch.ts): with one, the hit
      opens that tryout, which is where its history is read; without one, the
-     owner is a milestone and the milestones screen is as close as there is. */
+     owner is a milestone and the milestones screen is as close as there is.
+     The tryout is the more common of the two, so its screen is what the
+     row's own icon names. */
   feltSense: {
-    icon: 'tag',
+    ...iconOf('tryouts'),
     label: () => m.search_area_felt_sense(),
-    href: (hit) => (hit.context ? `${TRYOUTS}/${hit.context}` : MILESTONES)
+    href: (hit) => (hit.context ? `${hubRow('tryouts').href}/${hit.context}` : hubRow('milestones').href)
   },
-  tryouts: { icon: 'tag', label: () => m.tryout_title(), href: (hit) => `${TRYOUTS}/${hit.id}` },
-  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/settings/presentations' },
-  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
-  roadmapGoals: { icon: 'globe', label: () => m.roadmap_title(), href: () => '/transition/roadmap' },
+  tryouts: {
+    ...iconOf('tryouts'),
+    label: () => m.tryout_title(),
+    href: (hit) => `${hubRow('tryouts').href}/${hit.id}`
+  },
+  presentations: {
+    ...literalIcon('palette'),
+    label: () => m.presentations_title(),
+    href: () => '/settings/presentations'
+  },
+  eras: { ...literalIcon('columns'), label: () => m.eras_title(), href: () => '/settings/eras' },
+  roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
   affirmations: {
-    icon: 'sparkle',
+    ...literalIcon('sparkle'),
     label: () => m.affirmations_row_title(),
     href: () => '/settings/affirmations'
   },
   /* Goes to the document itself rather than to the list: a hit is one
      piece of paper somebody is looking for, and its own screen is the only
      place the page image is drawn at all (ADR-0065). */
-  documents: { icon: 'documents', label: () => m.documents_title(), href: (hit) => `/media/documents/${hit.id}` },
-  labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/care/labs' },
-  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
-  taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/health/dilation' },
-  wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/body/wear' },
+  documents: {
+    ...iconOf('documents'),
+    label: () => m.documents_title(),
+    href: (hit) => `${hubRow('documents').href}/${hit.id}`
+  },
+  /* Neither area has a row of its own - both sit behind the care row
+     (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW), so there is no single
+     screen's icon to read these off and they keep their own. */
+  labResults: { ...literalIcon('flask'), label: () => m.lab_results(), href: () => '/care/labs' },
+  sizeRecords: { ...literalIcon('package'), label: () => m.size_log(), href: () => '/body/sizes' },
+  taperSessions: { ...iconOf('dilation'), label: () => m.dilation(), href: () => hubRow('dilation').href },
+  wearSessions: { ...iconOf('wear'), label: () => m.wear_log(), href: () => hubRow('wear').href },
   // The compare surface rather than the recorder: a hit is a take somebody
   // is looking for, not a new one (dayRows.ts sends a benchmark there too).
-  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/voice?tab=compare' },
-  hairStages: { icon: 'comb', label: () => m.hair_progress(), href: () => '/body/hair-progress' },
-  hairRemovalSessions: {
-    icon: 'shuffle',
-    label: () => m.hair_removal(),
-    href: () => '/body/hair-removal'
+  voiceBenchmarks: {
+    ...iconOf('voice-benchmark'),
+    label: () => m.vb_title(),
+    href: () => `${hubRow('voice-benchmark').href}?tab=compare`
   },
-  regimenEpisodes: { icon: 'timeline', label: () => m.regimen(), href: () => '/care/regimen' },
+  hairStages: { ...iconOf('hair-progress'), label: () => m.hair_progress(), href: () => hubRow('hair-progress').href },
+  hairRemovalSessions: {
+    ...iconOf('hair-removal'),
+    label: () => m.hair_removal(),
+    href: () => hubRow('hair-removal').href
+  },
+  // No screen of its own - the regimen sits behind the care row - but the
+  // icon it always had already agrees with that row's, so read it off there.
+  regimenEpisodes: { ...iconOf('care'), label: () => m.regimen(), href: () => '/care/regimen' },
   /* No screen of its own to deep-link into any more - the stock editor is
      a sheet off Care's own regimen block (ticket 09, ADR-0084) - so a hit
      lands on Care itself rather than on a stub that would bounce it there
-     a second time. */
-  medicationStock: { icon: 'package', label: () => m.stock_title(), href: () => '/care' },
-  reminders: { icon: 'bell', label: () => m.reminders(), href: () => '/settings/reminders' },
+     a second time. That is the care row's own screen, exactly, so its icon
+     comes from there too. */
+  medicationStock: { ...iconOf('care'), label: () => m.stock_title(), href: () => hubRow('care').href },
+  reminders: { ...literalIcon('bell'), label: () => m.reminders(), href: () => '/settings/reminders' },
   /* A margin note has no screen of its own - it opens the entry it
      annotates, and `date` on the row is already that entry's own day
      (textSearch.ts's own reasoning for dating this area by the owner
      rather than by when the note was written), which is what lets the hit
      name the entry without this label needing to. */
-  marginNotes: { icon: 'note', label: () => m.margin_note_search_label(), href: (hit) => `/entry/${hit.context}` }
+  marginNotes: {
+    ...literalIcon('note'),
+    label: () => m.margin_note_search_label(),
+    href: (hit) => `/entry/${hit.context}`
+  }
 };
 
 /** The text a row shows: the window around the match, joined, or the whole
@@ -166,7 +200,7 @@ export function searchHitRows(hits: readonly SearchHit[], query: string): Search
         key: `${hit.area}-${hit.id}`,
         area: hit.area as SearchAreaKey,
         label: declared.label(),
-        icon: declared.icon,
+        ...literalIcon(declared.icon),
         href: declared.href(hit),
         date: hit.epochDay === null ? undefined : fmtDay(hit.epochDay, { month: 'short', year: '2-digit' }),
         excerpt: excerptOf(hit.value, query)

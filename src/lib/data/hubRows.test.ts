@@ -57,7 +57,7 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
     silently dropped from it read identically to a glob.
 
     What this proves and what it does not: every file that imports `hubRows`
-    is one of these six, so a seventh reader appearing anywhere fails here
+    is one of these nine, so a tenth reader appearing anywhere fails here
     rather than passing silently. `TodayEditor.svelte` is the sixth, added
     by ticket 14 - it reads `HubReading` and `HubRowKey` to arrange the
     front page, and everything it draws about a row comes off the registry
@@ -65,10 +65,23 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
     without importing this module at all - no scan can - which is why the
     stronger claim is the deletion itself: `statsAreas.ts` was the one file
     doing that, confirmed by grep before it was removed, and nothing has
-    replaced it. */
+    replaced it.
+
+    `dayRows.ts`, `searchHitRows.ts` and `rowIcon.ts` are the seventh,
+    eighth and ninth, added by ticket 30: a search hit and a day row used to
+    declare an icon and a route of their own for every screen the hub
+    already named, an agreement the two files stated only in a comment.
+    They now read a row's `icon` and `href` off `hubRow()` wherever a
+    screen has one - the same reasoning `TodayEditor.svelte` already stood
+    on - and keep their own words and local icons only where no hub row
+    owns the screen at all. `rowIcon.ts` is the one call both files share
+    for reading or declaring that icon, rather than each restating it. */
 const REGISTRY_SURFACES = [
   'src/lib/components/HostedRows.svelte',
   'src/lib/components/TodayEditor.svelte',
+  'src/lib/components/dayRows.ts',
+  'src/lib/components/rowIcon.ts',
+  'src/lib/components/searchHitRows.ts',
   'src/lib/data/pinnedRows.ts',
   'src/lib/data/vocabulary/hubLabels.ts',
   'src/routes/more/+page.svelte',
