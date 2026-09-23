@@ -98,3 +98,16 @@ test('a deep-linked dose is resolved by id whatever the window, and a missing on
   const missing = await readDoseLog(journal, question({ deepLinkedDoseId: 'deleted-dose' }));
   assert.equal(missing.deepLinkedDose, null);
 });
+
+test('only a recent auto-logged dose that was not already skipped offers the one-tap skip', async () => {
+  const journal = await twoRegimens();
+  const scheduled = (epochDay: number, status: 'taken' | 'skipped') =>
+    journal.doses.upsertDose({ ...oral('estradiol', epochDay), status, source: 'schedule' });
+  const recent = await scheduled(TODAY - 30, 'taken');
+  await scheduled(TODAY - 31, 'taken');
+  await scheduled(TODAY - 2, 'skipped');
+  await journal.doses.upsertDose(oral('estradiol', TODAY - 1));
+
+  const log = await readDoseLog(journal, question());
+  assert.deepEqual(log.logRows.filter((row) => row.offersSkip).map((row) => row.dose.id), [recent]);
+});
