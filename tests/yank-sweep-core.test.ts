@@ -23,6 +23,7 @@ import {
   findPixelYanks,
   findYanks,
   hydrationScreensFor,
+  isBlankGray,
   missingProofYanks,
   parseCssColor,
   replySlices,
@@ -549,6 +550,31 @@ describe('findPixelYanks', () => {
     expect(findings).toContainEqual(
       expect.objectContaining({ kind: 'dropout', frame: 2, toFrame: 4, span: 3 })
     );
+  });
+});
+
+describe('isBlankGray (ticket 192 - cross-document blank frames)', () => {
+  const flat = (v, n = 400) => new Uint8Array(n).fill(v);
+
+  it('reads a solid fill as blank, whatever its gray level', () => {
+    expect(isBlankGray(flat(0))).toBe(true);
+    expect(isBlankGray(flat(255))).toBe(true);
+    expect(isBlankGray(flat(105))).toBe(true); // pure magenta's own luma
+  });
+
+  it('reads real content as not blank even when its mean lands on the sentinel gray', () => {
+    // Half the frame at 0, half at 210: mean is ~105, same as flat(105)
+    // above, but the spread is what a toast or a header actually looks
+    // like - the bug the first (magenta, mean-matched) attempt had.
+    const g = new Uint8Array(400);
+    for (let i = 0; i < g.length; i++) g[i] = i < 200 ? 0 : 210;
+    expect(isBlankGray(g)).toBe(false);
+  });
+
+  it('tolerates the antialiasing noise a lossless render still carries', () => {
+    const g = flat(100);
+    g[0] = 106; // inside DIFF_EPS
+    expect(isBlankGray(g)).toBe(true);
   });
 });
 

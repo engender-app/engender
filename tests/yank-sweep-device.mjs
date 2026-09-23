@@ -82,15 +82,18 @@ import {
   JUMP_FIRST_RUN_EXPRESSION,
   LOCK_SETUP_EXPRESSION,
   OUTLIER_MIN,
+  PAINT_BLANK_SENTINEL_EXPRESSION,
   PROOF,
   RESET_PERSONA_EXPRESSION,
   SCENE_MS,
   SETTLE_PAGE_EXPRESSION,
+  STUB_PERSIST_SCRIPT,
   TRANSIENT_MIN,
   GAP_RATIO,
   UNLOCK_PIN_EXPRESSION,
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
+  dropLeadingBlankFrames,
   fillTokens,
   findPixelYanks,
   findYanks,
@@ -269,6 +272,9 @@ async function initClient(c) {
   await c.send('Page.enable');
   await c.send('Page.addScriptToEvaluateOnNewDocument', {
     source: INIT_HIDE_DEMO_SCRIPT
+  });
+  await c.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: STUB_PERSIST_SCRIPT
   });
   c.onEvent(onEvent);
 }
@@ -624,10 +630,12 @@ let evidenceCount = 0;
 async function hydrationCold(href) {
   const pathname = href.split('?')[0].split('#')[0];
   return screencast(async (cast) => {
+    await ev(PAINT_BLANK_SENTINEL_EXPRESSION);
+    await sleep(150);
     await ev(`location.assign(${JSON.stringify(href)}); true;`);
     await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    return { cast: [...cast], frames };
+    return { cast: dropLeadingBlankFrames([...cast]), frames };
   });
 }
 
@@ -786,10 +794,12 @@ async function hydrationScenes() {
       await settle('/settings/access-mode', themes[0]);
       await ev(LOCK_SETUP_EXPRESSION(PIN));
       const result = await screencast(async (cast) => {
+        await ev(PAINT_BLANK_SENTINEL_EXPRESSION);
+        await sleep(150);
         await ev(`location.assign('/'); true;`);
         await ev(waitForExpression('[data-pin-pad]', 40000, '/'));
         const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-        return { cast: [...cast], frames };
+        return { cast: dropLeadingBlankFrames([...cast]), frames };
       });
       await pushHydrationRun(report, outDir, {
         name: 'lock-gate',
