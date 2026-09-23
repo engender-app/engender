@@ -53,6 +53,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   const today = todayEpochDay();
   const todayInput = dateInputValueFromEpochDay(today);
@@ -93,17 +94,42 @@
     book?.entries ? book.entries.slice(0, renderedCount) : []
   );
 
+  /* Printing jumps every remaining chunk in at once - the point of the
+     jump is that the printed page is never missing entries, not that it
+     arrives smoothly - so the rows that appear that way skip the same
+     transition the chunked rows otherwise get. */
+  let printing = $state(false);
+
   $effect(() => {
     function onBeforePrint() {
+      printing = true;
       if (book?.entries) {
         renderedCount = book.entries.length;
       }
     }
+    function onAfterPrint() {
+      printing = false;
+    }
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeprint', onBeforePrint);
-      return () => window.removeEventListener('beforeprint', onBeforePrint);
+      window.addEventListener('afterprint', onAfterPrint);
+      return () => {
+        window.removeEventListener('beforeprint', onBeforePrint);
+        window.removeEventListener('afterprint', onAfterPrint);
+      };
     }
   });
+
+  /* Opacity-only, not `disclose`: a chunk mounts up to 25 of these at
+     once, and disclose's one-time height measurement lands wrong when
+     that many siblings are being laid out and collapsed in the same
+     instant - it reads back small, so the row sits short for its whole
+     travel and then snaps to true height the moment the transition ends
+     instead of arriving there smoothly. Opacity never depends on a
+     measurement, so nothing to get wrong: the row occupies its real,
+     final space from the first frame (which is also why the rows below
+     it in the same chunk never move once mounted) and only fades in. */
+  const entryFade = (_node: Element) => (printing ? { duration: 0 } : fadeOnly(motionDuration('--dur-med')));
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -246,7 +272,7 @@
       <SectionTitle text={journalBookPartName('entries')} />
       <div class="section-block">
         {#each visibleEntries as entry (entry.id)}
-          <article class="book-entry" data-book-entry>
+          <article class="book-entry" data-book-entry transition:entryFade>
             <h3 class="book-day">{dayLong(entry.epochDay)}, {fmtTime(entry.timestamp)}</h3>
             {#if entry.mood !== null}<p class="muted small">{moodName(entry.mood)}</p>{/if}
             {#if entry.note.trim()}<p class="book-note">{entry.note}</p>{/if}
