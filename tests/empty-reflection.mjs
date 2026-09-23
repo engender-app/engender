@@ -63,6 +63,10 @@ try {
     await page.waitForURL('**/doubt/comfort');
     await page.setViewportSize({ width: 320, height: 568 });
     await visit('/doubt');
+    /* The dev server's demo bar wraps to 407px at 320px wide and sits above
+       the app, so the fold is measured without it - the bar is not part of
+       the screen a person on a short phone gets. */
+    await page.evaluate(() => document.querySelector('.demo-bar')?.style.setProperty('display', 'none'));
     const comfort = page.getByRole('link', { name: comfortName, exact: true });
     await capture(`${locale}-support-short`);
     await page.waitForFunction(() => {
