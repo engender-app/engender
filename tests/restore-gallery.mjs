@@ -64,7 +64,9 @@ const settle = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
   if (await page.locator('[data-leave-setup]').count()) {
-    await page.locator('[data-leave-setup]').click();
+    /* Clicked in the page, as browser-harness's settlePage does: the demo
+       bar wraps tall enough to push the control out of the viewport. */
+    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
     await page.waitForSelector('[data-home-hello]');
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
@@ -292,7 +294,12 @@ await page.locator('[data-restore-check]').click();
 await page.waitForSelector('[data-next]', { timeout: 120000 });
 await strip();
 await shoot('access-mode-step', '[data-app-root]');
-await page.locator('[data-next]').click();
+/* The finish is no longer the next step: permissions and disguise came in
+   between, so Continue until it shows. */
+for (let i = 0; i < 6 && !(await page.locator('[data-finish]').count()); i++) {
+  await page.locator('[data-next]').click();
+  await page.waitForTimeout(700);
+}
 await page.waitForSelector('[data-finish]');
 await strip();
 await shoot('finish-restore', '[data-app-root]');

@@ -9,11 +9,11 @@ before the ticket merges, or the probe is deleted before the merge.
 The rule for keeping one, from phase 12 final-audit ticket 33: it guards
 something a later ticket can break, or it proves a frame someone will look
 at again. A probe that `src/` or a node test names as the source of a number
-counts as the second kind. On 2026-09-23 that rule sorted 201 files into 38
-guards, 29 galleries and tools, 13 helpers and the walkthrough, and 120
-deletions. Deleted probes are still in history, and a few kept files still
-name them as the source of a pattern: `git log --all -- tests/<name>.mjs`
-finds the last version.
+counts as the second kind, as long as it still runs. On 2026-09-23 that rule
+sorted 201 files into 38 guards, 24 galleries and tools, 13 helpers and the
+walkthrough, and 125 deletions. Deleted probes are still in history, and a
+few kept files still name them as the source of a pattern:
+`git log --all -- tests/<name>.mjs` finds the last version.
 
 Most of these start their own Vite server or `vite preview`. Anything that
 says "demo build" serves `build/`, which has to be a `VITE_DEMO=1` build.
@@ -103,15 +103,11 @@ build. Output goes to `.claude/` unless the script takes a directory.
 | `gallery:permissions` | every permission row state, including the Android-only ones a browser cannot reach |
 | `gallery:dose-sheet` | the log-a-dose sheet |
 | `gallery:documents` | the documents area, including a PDF page and one the renderer could not read |
-| `gallery:voice-benchmark` | the benchmark flow against a fake microphone, the only way to see it off a phone |
-| `gallery:voice-screen` | the voice screen's tabs, a live figure and a finished take |
-| `gallery:constellation` | the constellation chart at rest, mid-scrub, swapped and empty |
 
 ### Motion (demo build)
 
 | Script | Shows |
 | --- | --- |
-| `gallery:state-motion` | the state changes across the four doors, frame by frame (`--only a,b`) |
 | `gallery:blind-motion` | the field as a blind, in depth - the yank sweep sends you here |
 | `gallery:noticed-axis-motion` | the changes axis between frames, the numbers `NoticedAxis.svelte` cites |
 | `gallery:return-motion` | the return moment's five movements |
@@ -119,6 +115,10 @@ build. Output goes to `.claude/` unless the script takes a directory.
 | `gallery:flipbook` | not a gallery: turns a directory of screencast frames into one JSON bundle for a review page |
 
 ### Sweeps and measurements (demo build)
+
+The two yank sweeps and the hydration sweep belong to their own phase of
+work and were kept here without being run by ticket 33. Every other entry
+on this page ran green on 2026-09-23.
 
 | Script | Measures |
 | --- | --- |
@@ -129,7 +129,6 @@ build. Output goes to `.claude/` unless the script takes a directory.
 | `gallery:savebar` | what the save bar covers, per screen and viewport, in minutes rather than the cohesion sweep's 25 |
 | `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
 | `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
-| `cost:media-list` | twenty recordings' waveforms, first visit and return, the number `VoicePlayer.svelte` cites |
 
 ## Helpers
 
