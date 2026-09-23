@@ -10,13 +10,11 @@ import { notificationText } from '../../unprompted/notificationText';
 import { quietHoursOf } from '../../unprompted/quietHours';
 import { androidAutoExport } from './android-auto-export-bridge';
 import { exportFailureNoticeStep } from './failureNotice';
+import { periodicCheck } from '../backgroundSchedulers';
 
-let active = false;
-let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
 let lastAttemptAt = 0;
 
-const CHECK_EVERY_MS = 15 * 60 * 1000;
 const MIN_GAP_MS = 60 * 1000;
 
 /* The failure notice, under the unprompted registry's rules (phase 6 ticket
@@ -54,7 +52,7 @@ async function reportFailure(failedNow: boolean, at: number) {
 }
 
 async function maybeRun() {
-  if (!active || running || !isAndroid()) return;
+  if (running || !isAndroid()) return;
 
   const now = Date.now();
   if (now - lastAttemptAt < MIN_GAP_MS) return;
@@ -98,22 +96,10 @@ async function maybeRun() {
   }
 }
 
+const check = periodicCheck(() => void maybeRun());
+
 export function startAutoExportScheduler() {
-  if (active || !isAndroid()) return;
-  active = true;
-  void maybeRun();
-  timer = setInterval(() => void maybeRun(), CHECK_EVERY_MS);
-  document.addEventListener('visibilitychange', onVisibility);
+  if (isAndroid()) check.start();
 }
 
-export function stopAutoExportScheduler() {
-  if (!active) return;
-  active = false;
-  if (timer) clearInterval(timer);
-  timer = null;
-  document.removeEventListener('visibilitychange', onVisibility);
-}
-
-function onVisibility() {
-  if (document.visibilityState === 'visible') void maybeRun();
-}
+export const stopAutoExportScheduler = check.stop;
