@@ -505,11 +505,15 @@ describe('loading states, since all six read entry data', () => {
      Each screen names which read it is waiting on either way, so that a gate
      over some other list on the same screen cannot stand in for this one. */
   it.each([
-    /* `everythingLogged` rather than `dayEntries` since deepening ticket 21:
+    /* `dayRecordsRead` rather than `dayEntries` since deepening ticket 21:
        the day screen waits on everything the day holds, not on its entries
        alone, and the gate's emptiness test moved with it. The rule the name
-       is here for is unchanged. */
-    ['day', SCREENS.day, /<ReadGate\s+read=\{everythingLogged\}/],
+       is here for is unchanged. Widened from `everythingLogged` on ux-carpet
+       ticket 174: the gate now also waits on the day's two chained reads
+       (margin notes, dose drug names), so `dayRecordsRead` wraps
+       `everythingLogged` rather than being handed to `ReadGate` directly -
+       still the whole day's records, not the entries alone. */
+    ['day', SCREENS.day, /<ReadGate\s+read=\{dayRecordsRead\}/],
     ['search', SCREENS.search, /<Skeleton/]
   ])('%s waits with a skeleton', (_name, path, waits) => {
     expect(markupOf(read(path))).toMatch(waits);

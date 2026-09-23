@@ -21,6 +21,7 @@
   import { onThisDayCandidates } from '$lib/data/on-this-day';
   import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import Tile from './kit/Tile.svelte';
+  import { joinReadGroup } from './kit/readGroup.svelte';
 
   /* On the Look back door the tile opens the day in place under the pair
      (phase 11 ticket 07): the door hands in `onOpen` and prevents the
@@ -50,6 +51,8 @@
       (c, i) => goodDays[i] && !touchesMutedEra(eras, mutedEraUuids, c.epochDay, c.epochDay)
     );
   });
+  /* Whether there is a card is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !goodDaysQuery.loading);
   let qualifying = $derived(goodDaysQuery.rows);
 
   /* The tile's reading: how far back the furthest qualifying day is.

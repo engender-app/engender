@@ -11,6 +11,7 @@
   import { spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
 
   let { span }: { span: Span } = $props();
 
@@ -18,6 +19,8 @@
   let to = $derived(span.end);
 
   let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, to));
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !mapQuery.loading);
   let region = $derived(mostMarkedRegion(mapQuery.rows));
   let regionName = $derived(
     region ? (vocabulary.visibleBodyRegions.find((r) => r.id === region.region)?.name ?? region.region) : ''

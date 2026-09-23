@@ -30,6 +30,7 @@
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
 
   let { span, view = 'screen' }: { span: Span; view?: 'tile' | 'screen' } = $props();
 
@@ -70,6 +71,8 @@
     if (!canPlot) return Promise.resolve([]);
     return j.stats.constellationReadings(x, y, from, to);
   });
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !constellationQuery.loading);
   let readings = $derived(new Map(constellationQuery.rows.map((r) => [r.id, r])));
   let points = $derived(
     xScale && yScale

@@ -79,6 +79,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import ReadingGrid from '$lib/components/kit/ReadingGrid.svelte';
+  import ReadGroup from '$lib/components/kit/ReadGroup.svelte';
   import DayByDayReading from '$lib/components/readings/DayByDayReading.svelte';
   import PlaneReading from '$lib/components/readings/PlaneReading.svelte';
   import DaysReading from '$lib/components/readings/DaysReading.svelte';
@@ -89,6 +90,7 @@
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -247,9 +249,39 @@
      500px of nothing. The block discloses under the pair; the tile's own
      href still points at the route, which a notification deep-links to. */
   let dayOpen = $state(false);
+
+  /* What replaces the rail's skeleton fades in over it (ticket 157), the
+     way ReadGate's answer does (ticket 184): the skeleton's `out:crossfade`
+     only handles the leaving half, and on a journal with nothing dated the
+     empty notice was drawn at full opacity in the frame the skeleton began
+     to go - on the phone, in 16 of 16 cold loads. The branch is a run of
+     separately spaced siblings of `.screen`, so no one `in:` can carry it;
+     each child that was not there while the rail loaded is faded here, on
+     the frame it first paints. */
+  let screen = $state<HTMLElement>();
+  let whileLoading = new Set<Element>();
+  /* Still loading until the span exists too: the branch with the rail in it
+     waits on `span`, which the effect above sets a tick after the rail
+     answers. */
+  let railPending = $derived(railLoading || (railStart !== null && span === null));
+  $effect(() => {
+    if (!screen) return;
+    if (railPending) {
+      whileLoading = new Set(screen.children);
+      return;
+    }
+    if (whileLoading.size === 0) return;
+    const duration = motionDuration('--dur-fast');
+    if (duration > 0) {
+      for (const child of screen.children) {
+        if (!whileLoading.has(child)) child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+      }
+    }
+    whileLoading = new Set();
+  });
 </script>
 
-<div class="screen">
+<div class="screen" bind:this={screen}>
   <!-- The door's title at 48 on the field, and nothing under it: the span
        is written under the rail, against the handles that move it
        (ticket 06). -->
@@ -417,8 +449,16 @@
          the grid draws the hairlines between whatever is there. In the
          ticket's order: the two over the scales first, then what the span
          was made of, then the two screens that were screens already, then
-         the one that moved here from Safe space. -->
+         the one that moved here from Safe space.
+
+         Drawn as one group once every tile has decided whether it exists
+         (ticket 190): drawn as each answered, a tile landing a tick after
+         its neighbours - "How the days fell" and "Highest days" wait on
+         the recap as well as their own read - was inserted between them
+         and the tiles after it jumped a cell in one frame. The recap and
+         the vocabulary mirror are the two reads the screen holds for them. -->
     <div class="screen-part" use:resize>
+    <ReadGroup answered={!recapQuery.loading && vocabulary.ready} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
@@ -430,14 +470,19 @@
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
+    </ReadGroup>
     </div>
 
     <!-- The resurfacing block: the two look-back offers, moved here from
          Home (redesign ticket 11), each gating itself on its own preference
          and its own floor. The on-this-day tile opens in place: the day,
          its photos and the way to the whole day disclose under the pair
-         (ticket 07). -->
+         (ticket 07). One group for the same reason as the readings above:
+         on its own, whichever card answered first stood full width for a
+         frame before the other halved it. No fade: each tile's own clip
+         from the left, on the grid's stagger, is the arrival. -->
     <div class="screen-part" use:resize>
+    <ReadGroup fade={false}>
     <TileGrid
       role={tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack)}
       bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack))}
@@ -456,6 +501,7 @@
         />
       {/if}
     </TileGrid>
+    </ReadGroup>
     </div>
     {#if dayOpen && prefs.onThisDayEnabled}
       <div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose>
