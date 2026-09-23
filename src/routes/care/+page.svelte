@@ -806,9 +806,13 @@
       href="/health/clinician-summary"
     />
   </ListCard>
-    {/snippet}
-  </ReadGate>
 
+  <!-- Held behind the care read with everything above it (ux-carpet
+       ticket 184), for the reason the regimen blocks are (ticket 99 item
+       42): drawn outside the gate, this card and the hosted row painted
+       under the skeleton and were then pushed some 1500px down the screen
+       when the rail landed over them. Each still waits on its own reads
+       inside, and sits below every block that could move it. -->
   <!-- Mood between injections (redesign ticket 05: moved off a general
        stats door, since this is a regimen reading and Care is where the
        regimen lives). Two readings under one heading rather than two
@@ -902,9 +906,11 @@
 
        No SectionHeading: it is one row, and a heading over "Changes you've
        noticed" would be that title said twice. What separates it from the
-       hormones card is the --space-6 `.screen > *` gives two unrelated
-       blocks. -->
+       hormones card is the --space-5 `.screen > .screen-part > *` gives
+       two unrelated blocks. -->
   <HostedRows host="care" card />
+    {/snippet}
+  </ReadGate>
 
   <!-- The stock editor, off Care rather than its own screen (ADR-0084): one
        sheet, two shapes inside it depending on how it was opened. Landing
