@@ -25,15 +25,16 @@
 
      The figure counts to its new value when the span moves where it is a
      count (ADR-0078, the same rule Tile.svelte keeps), and a tile joins and
-     leaves the grid through the panel primitive rather than in one frame:
-     a reading with no data in the span has no tile, so the count varies
-     with the span and the grid rewraps. `|global`, for the reason Tile
+     leaves the grid by fading in its cell while the tiles around it travel
+     to theirs (readingGrid.ts, ticket 196) rather than in one frame: a
+     reading with no data in the span has no tile, so the count varies with
+     the span and the grid rewraps. `|global`, for the reason Tile
      gives - the block that creates and destroys a tile is the caller's, not
      this component's own body. */
   import { untrack, type Snippet } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
-  import { collapse } from '$lib/motion/reveal';
+  import { gridCell } from './readingGrid';
   import { heldByReadGroup, readGroup } from './readGroup.svelte';
   import { asCount, countUp } from '$lib/motion/countUp';
 
@@ -64,9 +65,18 @@
 
   /* Also stood down while a ReadGroup is holding it (ticket 190): nobody
      can see it arrive under the group's placeholder, and the group's fade
-     is the arrival. */
+     is the arrival.
+
+     A function called as the transition starts, not a `$derived` (ticket
+     196). Svelte reads the params again when the outro starts, and a
+     derived read from an effect that is already being destroyed hands back
+     its cached value (Svelte's `derived_inert`) - which was the value from
+     mount, `skip: true` while the group still held it. Every tile on the
+     Look back door then left the grid in one frame, cut rather than
+     collapsed, and a navigation starting after mount was missed the same
+     way. Notice.svelte writes its params inline for the same reason. */
   const group = readGroup();
-  let panel = $derived({ skip: navigating.to !== null || heldByReadGroup(group) });
+  const panel = () => ({ skip: navigating.to !== null || heldByReadGroup(group) });
 
   let shown = $state<string | undefined>(untrack(() => (asCount(headline) === null ? headline : '0')));
   let landed: number | null = null;
@@ -86,7 +96,7 @@
   });
 </script>
 
-<a class="kit-reading press" data-reading={key} {href} transition:collapse|global={panel} {...rest}>
+<a class="kit-reading press" data-reading={key} {href} transition:gridCell|global={panel()} {...rest}>
   <span class="kit-reading-name">
     <span>{name}</span>
     <Icon name="chevronRight" size={22} />
