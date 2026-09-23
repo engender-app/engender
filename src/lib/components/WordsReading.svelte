@@ -55,6 +55,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import WordCloud from '$lib/components/kit/WordCloud.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
 
   /* Two views since phase 11 ticket 07: the card, on the reading's own
      screen, and the tile on the Look back door - the top word as the
@@ -87,6 +88,8 @@
   let entriesQuery = liveList((j) => j.entries.noteEntries());
   let erasQuery = liveList((j) => j.eras.getEras());
   let ignoredQuery = liveQuery((j) => j.wordIgnore.getIgnoredWords());
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !entriesQuery.loading && !erasQuery.loading && !ignoredQuery.loading);
   let ignoredWords = $derived(ignoredQuery.value ?? new Set<string>());
 
   /* Eras arrive oldest first (eras.ts orders by start day), and the card
