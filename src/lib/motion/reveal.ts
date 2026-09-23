@@ -944,6 +944,14 @@ export function crossfade(
       style.zIndex = '-1';
       style.pointerEvents = 'none';
     }
+    /* Named for the stylesheet, which cannot see the positioning above: a
+       leaving node is still a DOM sibling for the length of its fade, so
+       it still counts for `:first-child`. `.kit-heading:first-child`
+       (kit.css) reads through it, so heading-led content does not lose
+       24px of top margin in one frame when the skeleton is finally
+       removed (ux-carpet ticket 191). */
+    const data = (node as HTMLElement).dataset;
+    if (data) data.leaving = '';
   }
 
   return {
@@ -994,10 +1002,16 @@ export function crossfade(
  * same one-shot shape, but nothing stops it doing its own ongoing watching in
  * between - which is exactly what `ResizeObserver` is.
  *
- * `overflow: hidden` for the animation's own duration and no longer: content
+ * `overflow: clip` for the animation's own duration and no longer: content
  * on the way from a short box to a tall one would otherwise sit outside the
  * animating box until the box catches up, and the box's resting rule already
- * says whatever it says about its own overflow the rest of the time.
+ * says whatever it says about its own overflow the rest of the time. `clip`
+ * rather than `hidden`, because `hidden` makes the box a block formatting
+ * context: a first child's top margin that collapses through the box at
+ * rest landed inside it for the travel instead, and the content stepped up
+ * by that margin in the one frame the overflow came off (ux-carpet ticket
+ * 191, a heading-led ReadGate: 16px, 240ms after its content landed).
+ * `clip` clips the same and leaves the margins where they rest.
  *
  * Reduced motion skips both the observer's first, harmless call (mount, no
  * prior height to compare against) and every animation after: the box still
@@ -1040,7 +1054,7 @@ export const resize: Action<HTMLElement> = (node) => {
   const animateTo = (oldHeight: number, newHeight: number) => {
     animating = true;
     const restoreOverflow = node.style.overflow;
-    node.style.overflow = 'hidden';
+    node.style.overflow = 'clip';
     current = node.animate(
       [{ height: `${oldHeight}px` }, { height: `${newHeight}px` }],
       { duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS }
