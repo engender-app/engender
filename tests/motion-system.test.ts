@@ -969,7 +969,7 @@ describe('ticket 28: the field is a blind over the content', () => {
         );
       }
     }
-    const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
+    const layout = readFileSync(join(root, 'src/lib/navigation/navigationTransition.ts'), 'utf8');
     expect(layout).toContain("import { carryBlind } from '$lib/motion/fieldBlind'");
     expect(layout, 'every navigation, not the tab crossing alone').toContain(
       'const blind = carryBlind(document, {'
