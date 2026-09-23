@@ -12,18 +12,24 @@
    clears with the rest of the app's keys. A height says nothing about what
    is in the journal beyond roughly how much of it is on Home today. */
 
-export type ReserveSlot = 'above' | 'below' | 'pinned' | 'measurements-now';
+export type ReserveSlot =
+  | 'above'
+  | 'below'
+  | 'pinned'
+  | 'measurements-now'
+  | 'clinician-summary-row'
+  | `hosted-${string}`;
 
-/* Home's three slots kept the keys ticket 183 gave them. The measurements
-   screen's "what is true now" block (the span and the size changes above
-   its protocol notice) arrived at full height the same way, and holds its
-   room the same way (ux-carpet ticket 193). */
-const KEYS: Record<ReserveSlot, string> = {
-  above: 'engender-home-reserve-above',
-  below: 'engender-home-reserve-below',
-  pinned: 'engender-home-reserve-pinned',
-  'measurements-now': 'engender-measurements-reserve-now'
-};
+const HOME_SLOTS: readonly string[] = ['above', 'below', 'pinned'];
+
+/* Home's three slots keep the keys ticket 183 gave them. Other screens'
+   late blocks hold their room the same way (ux-carpet ticket 193): the
+   measurements screen's span and size changes, the clinician summary's
+   scope row, and the hosted-rows card a screen draws for the More hub
+   (`hosted-<host>`). */
+function keyFor(slot: ReserveSlot): string {
+  return HOME_SLOTS.includes(slot) ? `engender-home-reserve-${slot}` : `engender-reserve-${slot}`;
+}
 
 /* No Home block is taller than a few phone screens; anything past this is a
    bad write, and reserving it would be a worse jump than reserving nothing. */
@@ -31,7 +37,7 @@ const MAX_RESERVE_PX = 4000;
 
 /* Exported for its own test, which holds it to the prefix reset clears. */
 export function reserveKey(slot: ReserveSlot): string {
-  return KEYS[slot];
+  return keyFor(slot);
 }
 
 function resolveStorage(storage?: Storage): Storage | null {

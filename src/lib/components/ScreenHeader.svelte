@@ -69,7 +69,7 @@
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, resize } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
 
   let {
@@ -201,8 +201,11 @@
          swaps its words once while the screen is up. Keyed, so the previous
          line fades off the one replacing it - DayStrip's own treatment of a
          label that swaps - instead of cutting. Local by default: a screen
-         arriving or leaving never plays it. -->
-    <p class="screen-subtitle" data-screen-subtitle>
+         arriving or leaving never plays it. And the line's height travels
+         with it: the return surface's answer is a line longer than the one
+         it replaces, and the page under the header took those 23px in one
+         frame (ux-carpet ticket 193). -->
+    <p class="screen-subtitle" data-screen-subtitle use:resize>
       {#key subtitle}<span out:crossfade>{subtitle}</span>{/key}
     </p>
   {/if}

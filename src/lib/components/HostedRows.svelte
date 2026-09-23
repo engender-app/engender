@@ -35,8 +35,8 @@
   import { rowLine, rowsHostedBy, rowHidden, type HubRowHostKey } from '$lib/data/hubRows';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
-  import { fade } from 'svelte/transition';
-  import { motionDuration } from '$lib/motion/tokens';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
 
   let {
     host,
@@ -53,6 +53,8 @@
   } = $props();
 
   const today = todayEpochDay();
+  let estimate = $derived(readReserve(`hosted-${host}`));
+  const remember = (px: number) => rememberReserve(`hosted-${host}`, px);
 
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
   let states = $derived(statesQuery.value);
@@ -97,17 +99,17 @@
 {/snippet}
 
 {#if card}
-  {#if rows.length}
-    <!-- Faded rather than cut in when the read lands after the screen
-         around it (ux-carpet ticket 184: on Care the card arrived at full
-         opacity 50-100ms after the rest of the screen, every cold load).
-         The block spacing moves to the wrapper with no change, since
-         `.screen > *` and `.screen > .screen-part > *` reach one level
-         down and the card is its only child. -->
-    <div in:fade={{ duration: motionDuration('--dur-fast') }}>
+  <!-- Held rather than drawn when the read lands. The read lands after the
+       screen around it, so a card cut in at full height pushed whatever sat
+       under it - Care changes' area-finish row, 97px in one frame on every
+       cold open (ux-carpet ticket 193) - and at full opacity (ticket 184).
+       The reserve keeps the card's room from the last visit and fades the
+       rows in over it; a card whose height changed travels. -->
+  <ReadReserve ready={!statesQuery.loading} {estimate} onrest={remember} data-hosted-reserve={host}>
+    {#if rows.length}
       <ListCard>{@render hostedRows()}</ListCard>
-    </div>
-  {/if}
+    {/if}
+  </ReadReserve>
 {:else}
   {@render hostedRows()}
 {/if}
