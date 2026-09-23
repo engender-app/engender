@@ -26,6 +26,7 @@
     insets,
     leadingEdge,
     LEAD,
+    PLACE,
     schedules,
     travel,
     type Axis,
@@ -218,9 +219,15 @@
        navigation: the tab under the pill never changed, so replaying the
        travel would be the app claiming something happened. That second case
        is also how a nav that was display: none arrives at a real position.
-       Both edges on the leading schedule there, so the shape moves as one
-       piece and never opens. */
-    if (!prev.shown || !animate) {
+       The first moves neither edge (PLACE): the unplaced pill is pinned at
+       the whole bar, so edges on a clock there faded it in across every tab
+       before it shrank onto one (ticket 166). The re-measure keeps both
+       edges on the leading schedule, so the shape moves as one piece and
+       never opens. */
+    if (!prev.shown) {
+      return { next: { box, host, at, shown: true, near: PLACE, far: PLACE }, dir: 0 };
+    }
+    if (!animate) {
       return { next: { box, host, at, shown: true, near: LEAD, far: LEAD }, dir: 0 };
     }
     const dir = travel(prev.box, box, axis);

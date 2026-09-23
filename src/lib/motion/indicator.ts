@@ -129,6 +129,16 @@ export const TRAIL: Schedule = {
   delay: 'var(--stagger-step)'
 };
 
+/** The first placement, which is not a move at all. An unplaced pill is
+    pinned at `left: 0; right: 0` - the whole track - and hidden by opacity,
+    and the placement that shows it sets its insets in the same update. On
+    LEAD those insets transitioned, so the pill faded in across the whole
+    track and then shrank onto its segment: on a cold load at 4x CPU it sat
+    full-width for about 280ms and then closed in two frames (ticket 166).
+    Here the edges land where they belong in the frame the fade starts, and
+    only the fade is seen. */
+export const PLACE: Schedule = { dur: '0ms', ease: 'linear', delay: '0ms' };
+
 /** Which clock each of an axis's two insets runs on, for a move in this
     direction. A placement that is not a slide gets both on LEAD, so the
     shape moves as one piece and never opens. */
