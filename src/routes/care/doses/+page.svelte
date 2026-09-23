@@ -27,24 +27,23 @@
   import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { DOSE_LOG_WINDOW_DAYS, NO_DOSE_LOG, readDoseLog } from '$lib/data/doseLogReads';
+  import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft, type DoseDraft } from '$lib/data/doseDraft';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, type attributeDose } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
     isTopicalDose,
     lastInjectionBefore,
-    matchDoseRoute,
     siteRecency,
     APPLICATION_SITES
   } from '$lib/data/doseSchedule';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
-    dateInputValueFromEpochDay,
     epochDayFromDateInputValueOrToday,
     epochDayFromTimestamp,
-    startOfDayTimestamp,
     todayEpochDay
   } from '$lib/data/epochDay';
   import {
@@ -58,8 +57,7 @@
     statusLabel,
     vehicleLabel
   } from '$lib/data/vocabulary/doseLabels';
-  import type { ApplicationSiteKey, InjectionSiteKey } from '$lib/data/doseSchedule';
-  import type { DoseEvent, DoseRoute, DoseStatus, InjectionVehicle } from '$lib/data/types';
+  import type { DoseEvent, DoseStatus } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -83,94 +81,47 @@
      they are compared against, and what fell outside either. */
   const SECTION_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
-  /** How far back the log and the comparison look. Initial window is 90
-      days, extendable via Earlier or deep link (phase 11 ticket 18). */
-  const WINDOW_DAYS = 90;
-  let windowDays = $state(WINDOW_DAYS);
-  /** How far nearestActiveEpisode may search either side of today for a
-      schedule's nearest open slot (ticket 40) - a different question from
-      WINDOW_DAYS above (how much history the log and comparison show), not
-      the same number reused: it happens to share WINDOW_DAYS's value only
-      because `doses` below is fetched for that window, and a wider search
-      would find a "nearest" slot the page has no doses to check against. */
-  const NEAREST_SLOT_RADIUS_DAYS = WINDOW_DAYS;
+  let windowDays = $state(DOSE_LOG_WINDOW_DAYS);
   const today = todayEpochDay();
   let from = $derived(today - windowDays);
 
-  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
-  let dosesQuery = liveList((j) => j.doses.getDoses(from, today));
-  let hasOlderDosesQuery = liveQuery((j) => j.doses.hasDosesBefore(from));
-  let hasOlderDoses = $derived(hasOlderDosesQuery.value ?? false);
-
-  /** Read separately from the windowed `dosesQuery` above (ticket 10): a
-      rotation site's last use routinely predates the log's 90-day window,
-      and "never used" has to mean never, not merely not in that window. */
-  let allInjectionDosesQuery = liveList((j) => j.doses.getDoses(0, today));
-  /** Every schedule and pause, for the nearest-slot default below (ticket
-      40) - the same two reads getComparison already makes, only across all
-      episodes rather than the single active one it resolves to. */
-  let schedulesQuery = liveList((j) => j.doses.getSchedules());
-  let pausesQuery = liveList((j) => j.doses.getPauses());
-
-  let episodes = $derived(episodesQuery.rows);
-  let doses = $derived(dosesQuery.rows);
-  let schedules = $derived(schedulesQuery.rows);
-  let pauses = $derived(pausesQuery.rows);
-
-  /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18):
-     resolve the dose by its UUID directly so a dose outside the initial
-     90 days can be reached by expanding the window to contain it, and a
-     missing or deleted dose can show an explicit unavailable notice
-     instead of scrolling to an unrelated recent row. */
+  /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
+     dose outside the window widens it to contain the dose, and a missing
+     one shows an explicit notice instead of scrolling to an unrelated row. */
   let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
-  let deepLinkedDoseQuery = liveQuery((j) =>
-    deepLinkedDoseId ? j.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
-  );
-
-  let deepLinkedDoseUnavailable = $derived(
-    Boolean(deepLinkedDoseId && !deepLinkedDoseQuery.loading && !deepLinkedDoseQuery.value)
-  );
-
   let targetSlotDate = $derived(page.url.searchParams.get('date'));
+  /** The schedule view's regimen, picked on this visit (ticket 15); the
+      read weighs it against a Care spine link's `?drug=` and the stored
+      pick, so a link can outrank the preference without writing it. */
+  let pickedRegimenDrug = $state<string | null>(null);
+
+  let doseLogQuery = liveQuery((j) =>
+    readDoseLog(j, {
+      today,
+      fromEpochDay: from,
+      deepLinkedDoseId,
+      regimenClaims: [pickedRegimenDrug, page.url.searchParams.get('drug'), prefs.adherenceRegimenPick]
+    })
+  );
+  let {
+    episodes, doses, allDoses, hasOlderDoses, deepLinkedDose, logRows, activeEpisodes, activeEpisode,
+    activeDrugChoices, selectedRegimenDrug, scheduleView, unmatchedRows
+  } = $derived(doseLogQuery.value ?? NO_DOSE_LOG);
+  let loading = $derived(doseLogQuery.loading);
+  let deepLinkedDoseUnavailable = $derived(Boolean(deepLinkedDoseId && !loading && !deepLinkedDose));
 
   $effect(() => {
-    const dose = deepLinkedDoseQuery.value;
-    if (dose) {
-      const doseEpochDay = epochDayFromTimestamp(dose.timestamp);
-      const daysAgo = today - doseEpochDay;
-      if (daysAgo > windowDays) {
-        const needed = Math.max(WINDOW_DAYS, Math.ceil(daysAgo / WINDOW_DAYS) * WINDOW_DAYS);
-        windowDays = needed;
-      }
-    }
+    if (!deepLinkedDose) return;
+    const daysAgo = today - epochDayFromTimestamp(deepLinkedDose.timestamp);
+    if (daysAgo > windowDays) windowDays = Math.ceil(daysAgo / DOSE_LOG_WINDOW_DAYS) * DOSE_LOG_WINDOW_DAYS;
   });
-
-  let loading = $derived(
-    episodesQuery.loading || dosesQuery.loading || (Boolean(deepLinkedDoseId) && deepLinkedDoseQuery.loading)
-  );
-
-  /* Newest first, each row carrying the episode it was attributed to and
-     the drug that goes with it. Derived rather than resolved in the row:
-     `attributeDose` was called per rendered row, which re-scanned the
-     whole episode list on every render, and the reversed copy was rebuilt
-     with it. The drug is `attributeDrug`'s answer rather than the
-     attribution's: it also tolerates two active episodes agreeing on one
-     drug and takes a dose's own name as-is, which is what a row needs
-     when the episode alone is ambiguous but the drug is not. */
-  let logRows = $derived(
-    [...doses].reverse().map((dose) => ({
-      dose,
-      attribution: attributeDose(episodes, dose),
-      drug: attributeDrug(episodes, dose).drug
-    }))
-  );
 
   let deepLinkedDoseIndex = $derived(
     deepLinkedDoseId ? logRows.findIndex(({ dose }) => dose.id === deepLinkedDoseId) : -1
   );
 
   function loadEarlier() {
-    windowDays += WINDOW_DAYS;
+    windowDays += DOSE_LOG_WINDOW_DAYS;
   }
 
   let view = $state<'log' | 'schedule'>(page.url.searchParams.get('view') === 'schedule' ? 'schedule' : 'log');
@@ -181,79 +132,6 @@
   /** The old intro, folded under the tab bar rather than printed over every
       row (ticket 09). Closed by default: the log opens on the log. */
   let attributionOpen = $state(false);
-
-  /* Every episode active right now (phase 5 ticket 38): usually one, but a
-     concurrent second drug's episode makes it two. This is the editor's
-     question - which regimen a new dose is being logged under - and the
-     schedule view asks its own version of it through getComparison, over the
-     range it is comparing rather than over this instant. */
-  let activeEpisodes = $derived(activeEpisodesAt(episodes, Date.now()));
-  /** The episode a new dose should default to (ticket 40): the sole active
-      one, or - with more than one active - whichever schedule's slot sits
-      nearest to now, when that is not a tie. Null leaves the picker below
-      to ask, same as before this ticket for the tied and no-schedule
-      cases. */
-  let activeEpisode = $derived(
-    nearestActiveEpisode(episodes, activeEpisodes, schedules, pauses, doses, today, NEAREST_SLOT_RADIUS_DAYS)
-  );
-  /** The drugs to choose between when logging a new dose while more than
-      one episode is active - empty whenever activeEpisode already answers
-      the question on its own. Also what the schedule view's own regimen
-      picker below offers (ticket 15): both ask "which of the concurrently
-      active drugs", so one list answers them both. */
-  let activeDrugChoices = $derived([...new Set(activeEpisodes.map((e) => e.drug))]);
-
-  /** Which regimen the schedule view compares against, while more than one
-      episode is active at once (ticket 15). Order of claim: the pick made
-      on this visit, then the one a Care spine link named (`?drug=`, phase
-      11 ticket 14), then the person's own stored pick, then the same
-      default `activeEpisode` above already resolves to for the new-dose
-      editor. The local pick exists so a link's drug can outrank the stored
-      preference without writing it - and so the picker keeps answering
-      after the link's drug stops being one of the active choices. Always
-      one of `activeDrugChoices`, or null with none of them - a
-      `prefs.adherenceRegimenPick` left over from a regimen that has since
-      ended is never handed to `getComparison` as though still active. */
-  let pickedRegimenDrug = $state<string | null>(null);
-  let selectedRegimenDrug = $derived.by(() => {
-    if (pickedRegimenDrug && activeDrugChoices.includes(pickedRegimenDrug)) return pickedRegimenDrug;
-    const urlDrug = page.url.searchParams.get('drug');
-    if (urlDrug && activeDrugChoices.includes(urlDrug)) return urlDrug;
-    const picked = prefs.adherenceRegimenPick;
-    if (picked && activeDrugChoices.includes(picked)) return picked;
-    return activeEpisode?.drug ?? activeDrugChoices[0] ?? null;
-  });
-
-  /** The whole schedule view in one question (phase 5 audit-deepening
-      ticket 17): which episode is in effect, its schedule, its pauses, and
-      the comparison over the doses attributed to it - or the reason there
-      is nothing to compare. The six-step assembly that used to stand here
-      is doses.ts's getComparison, which is also what the long-journal
-      benchmark measures, so "the same way the screen does" is the same
-      function rather than a comment.
-
-      `drug` only travels down while more than one regimen is active
-      (ticket 15) - with at most one, getComparison's own default already
-      answers the question and there is no picker on screen to have chosen
-      anything else, so the common single-regimen journal asks exactly the
-      question it always has. */
-  let comparisonQuery = liveQuery((j) =>
-    j.doses.getComparison({
-      fromEpochDay: from,
-      toEpochDay: today,
-      drug: activeDrugChoices.length > 1 ? (selectedRegimenDrug ?? undefined) : undefined
-    })
-  );
-  let scheduleView = $derived(comparisonQuery.value ?? null);
-  /** The doses the comparison could not place, each with the drug its own
-     attribution resolves - derived, not asked per rendered row, the same
-     rule logRows above follows. */
-  let unmatchedRows = $derived(
-    (scheduleView?.reason === null ? scheduleView.comparison.unmatched : []).map((dose) => ({
-      dose,
-      drug: attributeDrug(episodes, dose).drug
-    }))
-  );
 
   /* Null when the row has no site rather than when the route has none: a
      dose imported without one shows no site line instead of a blank bullet. */
@@ -266,13 +144,6 @@
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
-
-  /** How long an auto-logged dose keeps its one-tap correction (ticket 11).
-      A month is long enough to cover a person opening the app after a
-      fortnight away and reading back what was written for them, and short
-      enough that a two-year log is not a wall of buttons. Past it the row is
-      an ordinary row and the flip is still there in the editor. */
-  const SKIP_CONTROL_DAYS = 30;
 
   /** What an auto-logged dose says about itself on its second line, or null
       for one the person logged (ticket 11, ADR-0086). A skipped one says
@@ -295,13 +166,6 @@
         ? m.doses_ambiguous_episode()
         : m.doses_no_episode();
 
-  /** Whether this row offers the one-tap correction: an auto-logged dose
-      that has not already been corrected, inside its window. */
-  const offersSkip = (dose: DoseEvent): boolean =>
-    dose.source === 'schedule' &&
-    dose.status !== 'skipped' &&
-    epochDayFromTimestamp(dose.timestamp) >= today - SKIP_CONTROL_DAYS;
-
   /* The correction, in one tap: the status flips and the source stays, so
      the row still says the schedule wrote it and now also says the person
      did not take it. Nothing else about the dose moves - the amount and the
@@ -321,42 +185,7 @@
     });
   }
 
-  /** `<input type="time">` value for a timestamp, and back again. Local
-      wall-clock both ways: the field shows the time of day the user took the
-      dose at, which is the thing being recorded. */
-  function timeInputValue(timestamp: number): string {
-    const date = new Date(timestamp);
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  }
-
-  function timestampOf(dayValue: string, timeValue: string): number {
-    const epochDay = epochDayFromDateInputValueOrToday(dayValue);
-    const [hours, minutes] = timeValue.split(':').map(Number);
-    return startOfDayTimestamp(epochDay) + (hours || 0) * 3600000 + (minutes || 0) * 60000;
-  }
-
-  type Editor = {
-    id?: string;
-    day: string;
-    time: string;
-    route: DoseRoute;
-    dose: string;
-    doseUnit: string;
-    /** `''` until the picker is tapped; the save guard below refuses that. */
-    injectionSite: InjectionSiteKey | '';
-    vehicle: InjectionVehicle;
-    applicationSite: ApplicationSiteKey | '';
-    status: DoseStatus;
-    scheduledDose: string;
-    scheduledRoute: DoseRoute;
-    scheduledTime: string;
-    /** Which drug this is, when it needs saying (phase 5 ticket 38). `''`
-        on every dose logged while at most one episode was active - the
-        common case, and the one this field must not add friction to. */
-    drug: string;
-  };
-
-  let editor = $state<Editor | null>(null);
+  let editor = $state<DoseDraft | null>(null);
   /** True only for a *new* dose, while it is genuinely ambiguous which of
       several active episodes it is for (ticket 40: two schedules tied for
       nearest, or neither has a schedule to break the tie with) - not for
@@ -423,115 +252,41 @@
   });
 
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
-    const now = Date.now();
-    if (!dose) {
-      /* Seeded from the active episode: someone logging today's dose is
-         almost always logging the regimen they are on, and retyping the
-         amount and unit every time is the tax that stops people logging.
-         With more than one episode active, there is no single "the
-         active episode" to seed from - the drug picker below fills the
-         amount and unit in once a drug is chosen.
-
-         Three more seeds than that (phase 5 UX ticket 37), because the
-         sheet's job is to state what the app already knows rather than to
-         ask for it again:
-
-         The route comes off the episode's own words. It is free text there
-         and one of six keys here, so it needs reading rather than copying
-         (matchDoseRoute), and where the words name no route or two the
-         answer is oral - the same default as before, now only for the
-         cases nothing better is available.
-         The amount prefers what the schedule is still expecting today over
-         the episode's single figure, which is the alternating 2mg/1mg
-         regimen: seeding from the episode fills in the wrong number every
-         other day.
-         The vehicle comes off the last injection logged, whatever drug it
-         was for. It is not on the episode at all, and asking on every
-         injection for something that changes about once a prescription is
-         the definition of asking twice. */
-      const seededAmount = scheduleView?.reason === null ? expectedAmountOn(scheduleView.comparison, today) : null;
-      const lastInjection = lastInjectionBefore(doses, now);
-      /* Built as a local first, and the reason is load-bearing: quick add
-         reaches this function from inside the `?add=1` effect below, and an
-         effect that reads back a `$state` it has just written depends on it
-         and so invalidates itself. Deciding `openGroup` from `editor.dose`
-         rather than from `draft.dose` looped until Svelte's depth guard
-         stopped it, which is what the walkthrough's page-error check caught
-         (effect_update_depth_exceeded, on quick add's dose row only - every
-         other way in calls this from an event handler, where nothing is
-         being tracked). */
-      const draft: Editor = {
-        day: dateInputValueFromEpochDay(today),
-        time: timeInputValue(now),
-        route: (activeEpisode && matchDoseRoute(activeEpisode.route, ROUTE_OPTIONS)) || 'oral',
-        dose: seededAmount ? String(seededAmount.dose) : activeEpisode ? String(activeEpisode.dose) : '',
-        doseUnit: seededAmount?.doseUnit ?? activeEpisode?.doseUnit ?? '',
-        injectionSite: '',
-        vehicle: lastInjection?.vehicle ?? 'oil',
-        applicationSite: '',
-        status: 'taken',
-        scheduledDose: '',
-        scheduledRoute: 'oral',
-        scheduledTime: timeInputValue(now),
-        drug: activeEpisode?.drug ?? ''
-      };
-      const seeded = seedDrug ? withDrug(draft, seedDrug) : draft;
-      /* A line whose fact the app does not know opens as the fields that
-         make one. Those are the two cases that also block the save: an
-         amount nothing seeded, and several active episodes tied with no
-         drug named yet (ticket 40 - activeEpisode already resolves the
-         common case, seeding draft.dose above with it; a caller that named
-         the drug resolves it too). Everything else opens stated and
-         closed. */
-      openGroup = seeded.dose === '' || (activeDrugChoices.length > 1 && !seeded.drug) ? 'what' : null;
-      editor = seeded;
+    if (dose) {
+      openGroup = null;
+      editor = draftOfDose(dose);
       return;
     }
-
-    openGroup = null;
-    editor = {
-      id: dose.id,
-      day: dateInputValueFromEpochDay(epochDayFromTimestamp(dose.timestamp)),
-      time: timeInputValue(dose.timestamp),
-      route: dose.route,
-      dose: String(dose.dose),
-      doseUnit: dose.doseUnit,
-      injectionSite: isInjectionDose(dose) ? ((dose.injectionSite ?? '') as InjectionSiteKey | '') : '',
-      vehicle: (isInjectionDose(dose) ? dose.vehicle : null) ?? 'oil',
-      applicationSite: isTopicalDose(dose) ? ((dose.applicationSite ?? '') as ApplicationSiteKey | '') : '',
-      status: dose.status,
-      scheduledDose: dose.scheduled ? String(dose.scheduled.dose) : String(dose.dose),
-      scheduledRoute: dose.scheduled?.route ?? dose.route,
-      scheduledTime: timeInputValue(dose.scheduled?.timestamp ?? dose.timestamp),
-      drug: dose.drug ?? ''
-    };
-  }
-
-  /** A draft with this drug named on it, and with the amount, the unit and
-      the route that come with it - the same convenience a single active
-      episode already gets for free. A drug no active episode carries is
-      still named on the draft and seeds nothing else, which is what leaves
-      the fields for somebody logging a drug they have no regimen row for.
-
-      Pure, and separate from the handler below, because the `?add=1` effect
-      seeds a draft through `openEditor` before there is an `editor` to read
-      back (and an effect that read one would invalidate itself). */
-  function withDrug(draft: Editor, drug: string): Editor {
-    const match = activeEpisodes.find((e) => e.drug === drug);
-    if (!match) return { ...draft, drug };
-    return {
-      ...draft,
-      drug,
-      dose: String(match.dose),
-      doseUnit: match.doseUnit,
-      route: matchDoseRoute(match.route, ROUTE_OPTIONS) ?? draft.route
-    };
+    const draft = newDoseDraft({
+      today,
+      now: Date.now(),
+      activeEpisode,
+      expectedAmount: scheduleView.reason === null ? expectedAmountOn(scheduleView.comparison, today) : null,
+      doses,
+      routeWords: ROUTE_OPTIONS
+    });
+    /* Seeded with the drug the caller named, before `editor` is written:
+       quick add reaches this from inside the `?add=1` effect, and an effect
+       that reads back a `$state` it has just written depends on it and so
+       invalidates itself. Deciding `openGroup` from `editor.dose` rather than
+       from the local looped until Svelte's depth guard stopped it, which is
+       what the walkthrough's page-error check caught
+       (effect_update_depth_exceeded, on quick add's dose row only - every
+       other way in calls this from an event handler, where nothing is being
+       tracked). */
+    const seeded = seedDrug ? draftWithDrug(draft, activeEpisodes, seedDrug, ROUTE_OPTIONS) : draft;
+    /* A line whose fact the app does not know opens as the fields that make
+       one. Those are the two cases that also block the save: an amount
+       nothing seeded, and several active episodes tied with no drug named
+       yet (ticket 40). Everything else opens stated and closed. */
+    openGroup = seeded.dose === '' || (activeDrugChoices.length > 1 && !seeded.drug) ? 'what' : null;
+    editor = seeded;
   }
 
   /** Picking a drug in the disambiguation prompt. */
   function pickDrug(drug: string) {
     if (!editor) return;
-    editor = withDrug(editor, drug);
+    editor = draftWithDrug(editor, activeEpisodes, drug, ROUTE_OPTIONS);
   }
 
   /* What the record's three lines state, and the one rule they share: a
@@ -546,7 +301,7 @@
   let editorEpisode = $derived.by(() => {
     const draft = editor;
     if (!draft) return null;
-    const at = activeEpisodesAt(episodes, timestampOf(draft.day, draft.time));
+    const at = activeEpisodesAt(episodes, draftTimestamp(draft.day, draft.time));
     if (draft.drug) return at.find((e) => e.drug === draft.drug) ?? null;
     return at.length === 1 ? at[0] : null;
   });
@@ -566,7 +321,7 @@
   });
   let editorWhenText = $derived(
     editor
-      ? `${fmtDayShort(epochDayFromDateInputValueOrToday(editor.day))}, ${fmtTime(timestampOf(editor.day, editor.time))}`
+      ? `${fmtDayShort(epochDayFromDateInputValueOrToday(editor.day))}, ${fmtTime(draftTimestamp(editor.day, editor.time))}`
       : ''
   );
 
@@ -582,12 +337,12 @@
 
       Both leave out the dose being edited, the way lastInjectionBefore
       already does on its own: a dose is never its own predecessor. */
-  let editorMoment = $derived(editor ? timestampOf(editor.day, editor.time) : null);
+  let editorMoment = $derived(editor ? draftTimestamp(editor.day, editor.time) : null);
   let dosesBeforeEditor = $derived.by(() => {
     const moment = editorMoment;
-    if (moment === null) return allInjectionDosesQuery.rows;
+    if (moment === null) return allDoses;
     const editing = editor?.id;
-    return allInjectionDosesQuery.rows.filter((d) => d.timestamp < moment && d.id !== editing);
+    return allDoses.filter((d) => d.timestamp < moment && d.id !== editing);
   });
   let siteRecencyByKey = $derived(
     siteRecency(
@@ -596,8 +351,7 @@
     )
   );
   /** Read off the whole log rather than the 90-day window the list shows: a
-      rotation site's last use routinely predates that window, which is why
-      allInjectionDosesQuery exists. */
+      rotation site's last use routinely predates that window. */
   let lastUsedSite = $derived(
     editorMoment === null
       ? null
@@ -619,67 +373,9 @@
 
   async function saveDose() {
     if (!editor || !editorCanSave) return;
-    const timestamp = timestampOf(editor.day, editor.time);
-    const dose = parseFloat(editor.dose);
-    const doseUnit = editor.doseUnit.trim();
-    const scheduled =
-      editor.status === 'changed'
-        ? {
-            dose: parseFloat(editor.scheduledDose) || dose,
-            route: editor.scheduledRoute,
-            timestamp: timestampOf(editor.day, editor.scheduledTime)
-          }
-        : null;
-
-    /* Split by route so each call carries exactly the fields its arm has,
-       which is what stops an oral dose from arriving with a site (types.ts).
-       Each branch refuses an untapped picker outright rather than falling
-       through to the next, which would have written an injection as though
-       it had no site to record. */
-    const drug = editor.drug.trim() || null;
-
-    if (isInjectionDose(editor)) {
-      if (editor.injectionSite === '') return;
-      await journal.doses.upsertDose({
-        id: editor.id,
-        timestamp,
-        route: editor.route,
-        dose,
-        doseUnit,
-        injectionSite: editor.injectionSite,
-        vehicle: editor.vehicle,
-        status: editor.status,
-        scheduled,
-        drug
-      });
-    } else if (isTopicalDose(editor)) {
-      if (editor.applicationSite === '') return;
-      await journal.doses.upsertDose({
-        id: editor.id,
-        timestamp,
-        route: editor.route,
-        dose,
-        doseUnit,
-        applicationSite: editor.applicationSite,
-        status: editor.status,
-        scheduled,
-        drug
-      });
-    } else if (editor.route === 'oral' || editor.route === 'sublingual') {
-      /* Spelled out rather than left as a bare `else`: the editor's draft is a
-         plain record, not the union, so nothing subtracts the other four
-         routes from it here. The three branches cover all six between them. */
-      await journal.doses.upsertDose({
-        id: editor.id,
-        timestamp,
-        route: editor.route,
-        dose,
-        doseUnit,
-        status: editor.status,
-        scheduled,
-        drug
-      });
-    }
+    const input = doseInputOfDraft(editor);
+    if (!input) return;
+    await journal.doses.upsertDose(input);
     editor = null;
   }
 
@@ -764,7 +460,7 @@
           focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
         >
           {#snippet rows(shownRows)}
-            {#each shownRows as { dose, attribution, drug } (dose.id)}
+            {#each shownRows as { dose, attribution, drug, offersSkip } (dose.id)}
               {@const site = siteOf(dose)}
               {@const sourceNote = sourceNoteOf(dose)}
               <!-- Keyed on what the row says about itself, so correcting an
@@ -803,7 +499,7 @@
                   ]}
                   chevron={false}
                   onclick={() => openEditor(dose)}
-                  action={offersSkip(dose)
+                  action={offersSkip
                     ? {
                         /* The app's own word for the status this sets, not a
                            sentence: a dose row already carries an amount, a
@@ -909,22 +605,11 @@
         />
       </div>
     {/if}
-    {#if comparisonQuery.loading}
-      <!-- The comparison is one read, so the schedule view waits for it rather
-           than deciding on half an answer: the old shape read four lists and
-           showed "no schedule yet" for as long as the schedules were in
-           flight. On `loading` alone, though, and not on "no value yet" - a
-           read that failed reports itself done with nothing, and a placeholder
-           held forever tells the reader less than a statement does
-           (kit/readGate.ts). -->
-      <div out:crossfade><Skeleton variant="line" count={3} /></div>
-    {:else if !scheduleView || scheduleView.reason === 'noEpisode'}
+    {#if scheduleView.reason === 'noEpisode'}
       <!-- Either nothing is in effect to compare against, or the read did not
            work. readGate.ts's rule for a screen that passes no failed snippet
            is that the two share the empty state, and this is the schedule
-           view's: there is nothing to compare. Telling them apart here would
-           be a fourth notice and its own copy, which is a call for the ticket
-           that wants it. -->
+           view's: there is nothing to compare. -->
       <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
     {:else if scheduleView.reason === 'multipleEpisodes'}
       <!-- Reachable only when two active episodes share one drug name

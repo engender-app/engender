@@ -136,6 +136,55 @@ export type DoseScheduleComparison =
       comparison: Adherence;
     };
 
+/** getComparison's answer over reads a caller already holds: the dose
+    log screen reads these four lists for itself and asks the same
+    question of them without a second round trip (final-audit ticket 31).
+    `doses` is the log over `[fromEpochDay, toEpochDay]`. */
+export function compareDoseSchedule(
+  episodes: readonly RegimenEpisode[],
+  doses: readonly DoseEvent[],
+  schedules: readonly DoseSchedule[],
+  pauses: readonly DosePause[],
+  { fromEpochDay, toEpochDay, drug }: { fromEpochDay: number; toEpochDay: number; drug?: string }
+): DoseScheduleComparison {
+  /* Concurrent episodes for different drugs make this two (phase 5
+     ticket 38), and then there is no single schedule to compare
+     against - the same answer as none at all as far as the comparison
+     goes, worded apart because the two read differently on screen.
+     `drug` (phase 9 UX carpet ticket 15) narrows to the episode a
+     screen's own picker chose; a `drug` naming none of the active
+     episodes falls back to the full list rather than reporting nothing
+     active, since a stale pick is not the same fact as no episode. */
+  const active = activeEpisodesAt(episodes, startOfDayTimestamp(toEpochDay));
+  const matchingDrug = drug === undefined ? active : active.filter((episode) => episode.drug.trim() === drug.trim());
+  const resolvedActive = matchingDrug.length > 0 ? matchingDrug : active;
+  if (resolvedActive.length > 1) return { reason: 'multipleEpisodes' };
+  const activeEpisode = resolvedActive[0];
+  if (!activeEpisode) return { reason: 'noEpisode' };
+
+  const schedule = schedules.find((s) => s.episodeId === activeEpisode.id);
+  if (!schedule) return { reason: 'noSchedule', activeEpisode };
+
+  const episodePauses = pauses.filter((pause) => pause.episodeId === activeEpisode.id);
+  /* Only the doses this episode is responsible for. adherence cannot
+     check this itself - it is handed slots and doses and knows nothing
+     about episodes (doseSchedule.ts) - and handing it the whole window
+     instead puts every earlier episode's doses in `unmatched`, where the
+     wording says they were extras or fell in a pause. Attributed rather
+     than filtered by date, so the split is the one every other screen
+     makes. */
+  const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === activeEpisode.id);
+  const slots = expectedSlots(schedule, activeEpisode.startEpochDay, fromEpochDay, toEpochDay);
+
+  return {
+    reason: null,
+    activeEpisode,
+    schedule,
+    pauses: episodePauses,
+    comparison: adherence(slots, episodeDoses, episodePauses)
+  };
+}
+
 export interface DosesArea {
   /** Every dose whose timestamp falls on a day in `[fromEpochDay,
       toEpochDay]`, oldest first. Bounded by day rather than unbounded
@@ -744,43 +793,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         area.getSchedules(),
         area.getPauses()
       ]);
-
-      /* Concurrent episodes for different drugs make this two (phase 5
-         ticket 38), and then there is no single schedule to compare
-         against - the same answer as none at all as far as the comparison
-         goes, worded apart because the two read differently on screen.
-         `drug` (phase 9 UX carpet ticket 15) narrows to the episode a
-         screen's own picker chose; a `drug` naming none of the active
-         episodes falls back to the full list rather than reporting nothing
-         active, since a stale pick is not the same fact as no episode. */
-      const active = activeEpisodesAt(episodes, startOfDayTimestamp(toEpochDay));
-      const matchingDrug = drug === undefined ? active : active.filter((episode) => episode.drug.trim() === drug.trim());
-      const resolvedActive = matchingDrug.length > 0 ? matchingDrug : active;
-      if (resolvedActive.length > 1) return { reason: 'multipleEpisodes' };
-      const activeEpisode = resolvedActive[0];
-      if (!activeEpisode) return { reason: 'noEpisode' };
-
-      const schedule = schedules.find((s) => s.episodeId === activeEpisode.id);
-      if (!schedule) return { reason: 'noSchedule', activeEpisode };
-
-      const episodePauses = pauses.filter((pause) => pause.episodeId === activeEpisode.id);
-      /* Only the doses this episode is responsible for. adherence cannot
-         check this itself - it is handed slots and doses and knows nothing
-         about episodes (doseSchedule.ts) - and handing it the whole window
-         instead puts every earlier episode's doses in `unmatched`, where the
-         wording says they were extras or fell in a pause. Attributed rather
-         than filtered by date, so the split is the one every other screen
-         makes. */
-      const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === activeEpisode.id);
-      const slots = expectedSlots(schedule, activeEpisode.startEpochDay, fromEpochDay, toEpochDay);
-
-      return {
-        reason: null,
-        activeEpisode,
-        schedule,
-        pauses: episodePauses,
-        comparison: adherence(slots, episodeDoses, episodePauses)
-      };
+      return compareDoseSchedule(episodes, doses, schedules, pauses, { fromEpochDay, toEpochDay, drug });
     }
   };
 
