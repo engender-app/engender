@@ -829,7 +829,7 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
    applied first, and neither animation touches the other's. A pattern that
    names only one animation simply leaves the second duration unused. */
 ::view-transition-new(screen) {
-  animation-duration: var(--dur-med), var(--dur-slow);
+  animation-duration: var(--dur-med), var(--blind-dur, var(--dur-slow));
   animation-timing-function: var(--ease-out);
   animation-fill-mode: both;
 }
@@ -929,7 +929,7 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 ::view-transition-group-children(field) { overflow: clip; }
 ::view-transition-old(blind),
 ::view-transition-new(blind) {
-  animation: blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+  animation: blind-slide var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 @keyframes blind-slide {
   from {
@@ -966,18 +966,44 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 ::view-transition-old(*.field-part) {
   animation:
     field-part-out var(--dur-fast) var(--ease-in-out) both,
-    blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+    blind-lead var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 ::view-transition-new(*.field-part) {
   animation:
     field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
-    blind-follow var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+    blind-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 @keyframes field-part-out {
   to { opacity: 0; transform: translateY(var(--part-travel, 12px)); }
 }
 @keyframes field-part-in {
   from { opacity: 0; transform: translateY(calc(-1 * var(--part-travel, 12px))); }
+}
+
+/* Home → Entry (mood-pick) is the one departure whose field-part hold lands
+   on top of another large graphic in the same corner - Home's own sun ring
+   - rather than on empty screen (ticket 159). Every other navigation keeps
+   the shared budget; only this one gets a shorter one, scoped by the
+   attribute `+layout.svelte`'s onNavigate sets and clears around the one
+   transition it names.
+
+   The ride, not the fade: the field-part text itself (both the outgoing
+   wordmark and the incoming title) and the sun's own close each finish
+   well inside --dur-fast's own budget - measuring this against the fix
+   (`tests/yank-sweep.mjs --scenes mood-pick`) showed that shortening
+   field-part-out/in alone left the corner's measured blank window
+   unchanged. What actually runs to the transition's own end is
+   blind-lead/blind-follow/blind-slide - the field's edge settling and
+   everything printed on it (title, sun rings) riding along - on
+   --dur-slow. --blind-dur scopes just that ride, and every
+   `var(--dur-slow)` below that drives blind-slide/blind-lead/blind-follow
+   reads it with the same fallback.
+
+   Halving rather than a literal ms figure so a reduced-motion visitor's
+   already-clamped --dur-slow (1ms) halves too, instead of this override
+   overriding that contract back up. */
+html[data-blind-hold='short'] {
+  --blind-dur: calc(var(--dur-slow) / 2);
 }
 
 /* The sun leaves as a movement rather than as part of a photograph: every
@@ -1004,7 +1030,7 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 ::view-transition-old(*.sun-ring) {
   animation:
     sun-ring-close var(--dur-fast) var(--ease-in-out) both,
-    blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+    blind-lead var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 ::view-transition-new(*.sun-ring) {
   /* Much slower than the fast tier it drew on before (Alicja, 2026-09-10:
