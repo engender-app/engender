@@ -30,6 +30,7 @@ import {
   describeWebBootPlan,
   type JournalAccessMode
 } from '../data/journal-access-mode.ts';
+import type { CachedAccessMode } from '../data/prefs/boot-cache.ts';
 import type { JournalSecretSource } from '../crypto/keystore.ts';
 import type { Journal } from '../data/journal/journal.ts';
 import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
@@ -127,9 +128,12 @@ interface BootStep {
   effects: BootEffect[];
 }
 
-export function initialBoot(): BootMachine {
+export function initialBoot(cachedAccessMode: CachedAccessMode | null = null): BootMachine {
   return {
-    boot: bootStates.booting(),
+    boot:
+      cachedAccessMode === null
+        ? bootStates.booting(cachedAccessMode)
+        : bootStates.needsUnlock(cachedAccessMode),
     demo: false,
     retired: false,
     conversionResumable: false

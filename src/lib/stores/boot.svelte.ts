@@ -65,7 +65,7 @@ import { openWithRecoveryKey } from '../data/recovery-key';
 import type { JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles, setVoiceFiles } from './voiceFiles';
-import { localStorageCache } from '../data/prefs/boot-cache';
+import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
 import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
@@ -91,7 +91,7 @@ import {
   type DeviceBoundSetupResult
 } from './boot-machine';
 
-let machine: BootMachine = initialBoot();
+let machine: BootMachine = initialBoot(readCachedAccessMode());
 
 export const bootState = $state<BootState>({ ...machine.boot });
 
@@ -117,7 +117,24 @@ function dispatch(event: BootEvent): void {
      another gate is not it - a refusal is the same screen changing its mind,
      and it moves on the field's own edge without a transition (stepBlind). */
   const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
+  const previousAccessMode = machine.boot.accessMode;
   machine = step.machine;
+  const currentAccessMode = machine.boot.accessMode;
+  /* Written only on a real change (or on reaching needs-setup, which must
+     clear a stale mode) rather than on every dispatch, since most events
+     leave accessMode exactly where it was and a write is a localStorage
+     round trip. Passphrase is skipped for a demo build specifically: a
+     reviewer can change or clear the demo passphrase from Settings
+     (surfaced above as `demo-unlock-failed`, the boot machine's honest
+     fallback when that happens), which does not go through this dispatch
+     loop, so a cached passphrase mode could out-live the state it was
+     cached from and paint a lock screen the next survey would have skipped.
+     PIN has no such live-reconfiguration path during demo review, so it
+     stays cached. */
+  if (currentAccessMode !== previousAccessMode || machine.boot.status === 'needs-setup') {
+    const isLockMode = currentAccessMode === 'pin' || (currentAccessMode === 'passphrase' && !machine.demo);
+    writeCachedAccessMode(isLockMode ? currentAccessMode : null);
+  }
   /* Off `machine` rather than off the step it came from, so a second event
      landing inside the frame this one is capturing cannot be undone by an
      older answer arriving late. */

@@ -14,6 +14,38 @@
 import type { BootPreferences, PreferenceCache } from './preferences.ts';
 
 export const BOOT_CACHE_KEY = 'engender-boot-prefs';
+export const BOOT_ACCESS_MODE_KEY = 'engender-boot-access-mode';
+/** Both boot mirrors, in one place: the keys a reset's browser-mirror sweep
+    must step over and clear() must remove together, so the two lists this
+    repo has always kept (one for "skip on the way past", one for "take
+    these last") can't drift apart by a key added to only one of them. */
+export const BOOT_MIRROR_KEYS = [BOOT_CACHE_KEY, BOOT_ACCESS_MODE_KEY] as const;
+
+export type CachedAccessMode = 'pin' | 'passphrase';
+
+export function readCachedAccessMode(): CachedAccessMode | null {
+  try {
+    const raw = localStorage.getItem(BOOT_ACCESS_MODE_KEY);
+    if (raw === 'pin' || raw === 'passphrase') {
+      return raw;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedAccessMode(mode: CachedAccessMode | null): void {
+  try {
+    if (mode === null) {
+      localStorage.removeItem(BOOT_ACCESS_MODE_KEY);
+    } else {
+      localStorage.setItem(BOOT_ACCESS_MODE_KEY, mode);
+    }
+  } catch {
+    /* storage full / private mode */
+  }
+}
 
 export function localStorageCache(): PreferenceCache {
   return {
@@ -35,7 +67,7 @@ export function localStorageCache(): PreferenceCache {
       }
     },
     clear() {
-      localStorage.removeItem(BOOT_CACHE_KEY);
+      for (const key of BOOT_MIRROR_KEYS) localStorage.removeItem(key);
     }
   };
 }
