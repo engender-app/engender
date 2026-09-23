@@ -30,6 +30,7 @@
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
 
   let {
     span,
@@ -54,6 +55,8 @@
   let shown = $derived(shownMetric(metrics));
 
   let correlationCardsQuery = liveList((j) => j.correlationCards.getCards(from, to));
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !correlationCardsQuery.loading);
   let correlationCards = $derived(correlationCardsQuery.rows);
 
   const occurrenceLabel = (card: CorrelationCard) =>

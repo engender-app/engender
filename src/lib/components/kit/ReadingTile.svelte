@@ -34,6 +34,7 @@
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { collapse } from '$lib/motion/reveal';
+  import { heldByReadGroup, readGroup } from './readGroup.svelte';
   import { asCount, countUp } from '$lib/motion/countUp';
 
   let {
@@ -61,7 +62,11 @@
     [attribute: string]: unknown;
   } = $props();
 
-  let panel = $derived({ skip: navigating.to !== null });
+  /* Also stood down while a ReadGroup is holding it (ticket 190): nobody
+     can see it arrive under the group's placeholder, and the group's fade
+     is the arrival. */
+  const group = readGroup();
+  let panel = $derived({ skip: navigating.to !== null || heldByReadGroup(group) });
 
   let shown = $state<string | undefined>(untrack(() => (asCount(headline) === null ? headline : '0')));
   let landed: number | null = null;
@@ -72,6 +77,9 @@
       landed = null;
       return;
     }
+    /* Held by a ReadGroup, the count waits at its seed for the group to
+       show, so the arrival it belongs to is one somebody sees. */
+    if (heldByReadGroup(group)) return;
     const from = landed ?? 0;
     landed = target;
     return countUp(from, target, (n) => (shown = String(n)));

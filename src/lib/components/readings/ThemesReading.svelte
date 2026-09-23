@@ -24,6 +24,7 @@
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
 
   let { span, view = 'screen' }: { span: Span; view?: 'tile' | 'screen' } = $props();
 
@@ -32,6 +33,8 @@
   const CHART_ROLE = 0;
 
   let poolQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT, { from, to }));
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !poolQuery.loading);
   let themes = $derived(affirmingThemeCounts(poolQuery.rows));
   let themeRows = $derived<BarRow[]>(
     themes.map((theme) => ({

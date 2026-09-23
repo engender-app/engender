@@ -34,6 +34,7 @@
   import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod } from '$lib/data/wrapped';
   import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import Tile from './kit/Tile.svelte';
+  import { joinReadGroup } from './kit/readGroup.svelte';
 
   const period = offeredWrappedPeriod(todayEpochDay());
 
@@ -56,6 +57,8 @@
     muted ? Promise.resolve(null) : j.stats.recap(period.start, period.end)
   );
   let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
+  /* Whether there is a card is settled once these answer (ReadGroup). */
+  joinReadGroup(() => !recapQuery.loading && !erasQuery.loading && !mutedQuery.loading);
 
   let title = $derived(
     period.cadence === 'week'
