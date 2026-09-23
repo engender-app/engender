@@ -88,6 +88,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { resize } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -95,7 +96,29 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
 
-  let { group }: { group: AreaGroupKey } = $props();
+  let {
+    group,
+    held = false
+  }: {
+    group: AreaGroupKey;
+    /** Kept out of the layout while the screen above it is still a
+        skeleton. The row sits at the foot, so a screen whose body swaps in
+        from a page-level skeleton with no wrapper to travel its height
+        (hair progress) threw it hundreds of pixels down in one frame
+        (ux-carpet ticket 193). Held, it takes no room; let go, it fades in
+        where it rests. */
+    held?: boolean;
+  } = $props();
+
+  let root = $state<HTMLElement>();
+  let wasHeld: boolean | undefined;
+  $effect(() => {
+    if (wasHeld === true && !held && root) {
+      const duration = motionDuration('--dur-fast');
+      if (duration > 0) root.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+    }
+    wasHeld = held;
+  });
 
   const OFFER = OFFERS['area-finished'];
   const SUSPEND_OFFER = OFFERS['area-suspended'];
@@ -209,7 +232,7 @@
   }
 </script>
 
-<div class="screen-part area-finish">
+<div class="screen-part area-finish" bind:this={root} style:display={held ? 'none' : null}>
   {#if offering && lastWrite !== null}
     <Notice
       key="area-finish-offer"

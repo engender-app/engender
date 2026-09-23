@@ -14,7 +14,7 @@
      a destination is a destination to the keyboard and to the screen reader
      as well as to the eye. */
   import type { Snippet } from 'svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, resize } from '$lib/motion/reveal';
   import Icon from '../Icon.svelte';
   import Check from './Check.svelte';
 
@@ -130,6 +130,13 @@
   /* Read at the moment a line leaves, so a row that never opts in (or one
      whose words tick) pays nothing but the function call. */
   const lineOut = (node: Element) => (fadeSwap ? crossfade(node) : { duration: 0 });
+
+  /* And a row whose words cross also travels its height: the old line leaves
+     out of flow, so a new line shorter or longer than it resized the row in
+     one frame and moved every row under it. The More hub's lines land
+     together once its reads answer, and each row gave back 9-19px at once,
+     37px down the door by the second group (ux-carpet ticket 193). */
+  const textTravel = (node: HTMLElement) => (fadeSwap ? resize(node) : undefined);
 </script>
 
 {#snippet body()}
@@ -138,7 +145,7 @@
   {:else if icon}
     <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
   {/if}
-  <span class="kit-row-text">
+  <span class="kit-row-text" use:textTravel>
     {#if title}
       <span class="kit-row-title" data-row-title>
         {#key title}<span out:lineOut>{title}</span>{/key}
