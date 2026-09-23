@@ -7,6 +7,7 @@ import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
 import { journalIsBusy } from '../journal-busy.ts';
+import { startOfDayTimestamp } from '../epochDay.ts';
 import { JOURNAL_WIDE, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 import { COMPOSING_READS } from './test-support/composing-reads.ts';
 
@@ -132,6 +133,52 @@ test('a rejected write announces nothing: nothing changed, so nothing is stale',
   await assert.rejects(journal.milestones.upsertMilestone({ id: 'nope', name: 'x', epochDay: 1 }), /unknown/);
 
   assert.deepEqual(announced, []);
+});
+
+test('a run-out reconcile with nothing to change announces nothing (ux-carpet 199)', async () => {
+  const { journal, announced } = await observed();
+
+  /* Android reruns this pass on every 'stock' announcement, and it declares
+     'stock' itself. When a pass that wrote nothing still announced, it
+     retriggered itself about twelve times a second, forever, and took the
+     reminder sync with it every time. */
+  await journal.stock.reconcileRunOutReminders(19000);
+  assert.deepEqual(announced, [], 'an empty journal');
+
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: 19000 });
+  announced.length = 0;
+  await journal.stock.reconcileRunOutReminders(19000);
+  assert.deepEqual(announced, [], 'a count with nothing to project from');
+});
+
+test('a run-out reconcile that does change something still announces it', async () => {
+  const { journal, announced } = await observed();
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 19000,
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 3, unit: 'pills', recordedEpochDay: 19000 });
+  for (let day = 19000; day <= 19002; day++) {
+    await journal.doses.upsertDose({ timestamp: startOfDayTimestamp(day) + 8 * 3600000, route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+  announced.length = 0;
+
+  const result = await journal.stock.reconcileRunOutReminders(19002);
+
+  assert.equal(result, undefined, 'the wrapper hands nothing of its own back');
+  assert.deepEqual(announced, [['stock', 'reminder']]);
+  assert.equal((await journal.reminders.getReminders()).length, 1);
+
+  announced.length = 0;
+  await journal.stock.reconcileRunOutReminders(19002);
+  assert.deepEqual(announced, [], 'the second pass finds the reminder in place and writes nothing');
 });
 
 test('reconciling built-ins announces the reference tables it may have filled', async () => {
