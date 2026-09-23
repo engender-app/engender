@@ -973,26 +973,30 @@ export function crossfade(
  * a change inside a screen has no journey for a fade to stand in for, the
  * same reasoning `disclose`'s own substitute rests on.
  *
- * One box, one animation at a time, and a second resize inside the first
- * one's 240ms is missed rather than redirected. Not a corner cut: the
- * animation's own frames are resizes too, so the observer cannot tell "the
- * content changed again" from "the animation I started is still running"
- * without a signal, and the only signal available - ignore callbacks while
- * animating - is also what stops the box chasing its own frame-by-frame
- * travel forever. Content that changes twice inside 240ms lands on the
- * second change in one frame, which is where every change lands today; it
- * does not lose the first change's travel.
+ * One box, one animation at a time: the animation's own frames are resizes
+ * too, so the observer cannot tell "the content changed again" from "the
+ * animation I started is still running" without a signal, and the only
+ * signal available - ignore callbacks while animating - is also what stops
+ * the box chasing its own frame-by-frame travel forever.
  *
- * It very nearly did overshoot past it, the first time this was written:
- * ignoring the second resize left `lastHeight` at the first animation's own
- * target, and once that animation's `fill: none` reverted to whatever the
- * node actually measured by then - the second change's real height, since
- * nothing had animated to it - the revert was itself a resize this same
- * observer would see, compared against that now-stale number, and re-open a
- * second animation travelling backwards from a height nothing was showing
- * any more. The `finished` handler's own re-sync below is what closes that:
- * read at the one moment nothing is overriding height, so the revert reads
- * as arriving already there rather than as a fresh resize to chase.
+ * A resize that lands mid-flight is not lost, though: the `finished`
+ * handler reads the node's real height at the one moment nothing is
+ * overriding it, and if that differs from the animation that just finished,
+ * starts a second animation from there rather than snapping to it. One box,
+ * one animation at a time still holds - the second animation only starts
+ * once the first has fully finished - so a caller with several
+ * independently-settling children (a tile grid, a reading grid) gets a
+ * chain of smooth pushes instead of a smooth push followed by a silent
+ * jump on whichever child happens to settle after the first 240ms.
+ *
+ * It very nearly overshot instead, the first time this was written:
+ * treating the mid-flight resize as ignored *and* resyncing `lastHeight` to
+ * whatever the node measured once `fill: none` reverted would have read as
+ * a fresh resize against a now-stale number, and reopened a second
+ * animation travelling backwards from a height nothing was showing any
+ * more. Chasing it forward from the animation's own last known target,
+ * rather than backward from a stale `lastHeight`, is what keeps the chain
+ * moving the one direction the content actually went.
  */
 export const resize: Action<HTMLElement> = (node) => {
   if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
