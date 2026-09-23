@@ -177,6 +177,7 @@ describe('the surfaces', () => {
          have for a read that failed - and renders the screen's snippet for
          it. The rule it renders is readGate.ts, node-tested beside it. */
       'ReadGate.svelte',
+      'ReadReserve.svelte',
       /* The Look back door's readings as tiles (phase 11 ticket 07): a
          flush tile stating one figure for the span with a chevron into its
          own screen, and the two-column hairlined grid they sit in. In the

@@ -293,7 +293,7 @@
       today,
       prefs.disguise,
       shownAgendaKinds(prefs),
-      covered
+      dosePanelCoversEveryDose
     );
     return { covered, agenda };
   });
