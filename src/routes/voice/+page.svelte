@@ -404,7 +404,7 @@
     </div>
   {:else}
     <ScreenHeader title={m.vb_screen_title()} back="/more" />
-    <div class="screen-part">
+    <div class="screen-part voice-tabs">
       <Segmented
         name={m.vb_screen_title()}
         options={[
@@ -639,7 +639,16 @@
   /* Under the control it is answering, at the gap a screen part's own rows
      take from each other rather than a paragraph's default block margin. */
   .voice-tasks-lead {
-    margin: var(--space-3) 0 0;
+    margin: calc(var(--space-5) + var(--space-3)) 0 0;
+  }
+  /* The strip keeps no margin of its own, so the whole gap above the line
+     is the line's, and arrives with it. `.screen-part > *` gives every row
+     but the last --space-5 under it; the strip was last until the line
+     arrived, so it took those 20px in the frame the line was inserted and
+     everything under it jumped before disclose had started (ticket 166).
+     At rest the gap is the 32px it always was. */
+  .voice-tabs > :global(.segmented-wrap) {
+    margin-bottom: 0;
   }
 
   /* The section owns the gap between its heading and its panel; the sheet
