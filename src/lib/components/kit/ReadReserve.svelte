@@ -120,4 +120,10 @@
   .read-reserve-body > :global(*) {
     margin-bottom: var(--space-5);
   }
+
+  /* And a heading keeps the 12 under it that it has as the screen's own
+     child (app.css, `.screen > .kit-heading`). */
+  .read-reserve-body > :global(.kit-heading) {
+    margin-bottom: var(--space-3);
+  }
 </style>

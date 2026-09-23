@@ -50,10 +50,13 @@ const RUNS = Number(flag('runs', '3'));
 const THEME = flag('theme', 'light');
 const DUMP = flag('dump', '');
 /* The screens with a heading-led ReadGate (191) and the ones found with a
-   late ungated block (193). */
+   late ungated block (193). `--routes` takes any list; every static route
+   was swept this way on 2026-09-23. */
 const ROUTES = flag(
   'routes',
-  '/transition/tryouts,/body/measurements,/care/labs,/care/regimen,/health/appointments,/health/surgery,/settings/eras,/transition/letters,/body/hair-removal,/media/documents'
+  '/transition/tryouts,/health/surgery,/transition/letters,/body/hair-removal,/media/photos/export,' +
+    '/body/measurements,/tally,/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
+    '/more,/settings/tags,/body/hair-progress,/settings/access-mode,/settings/affirmations'
 ).split(',');
 const JUMP_PX = 24;
 const STEP_PX = 4;
