@@ -103,8 +103,10 @@ try {
   /* Positive: the line has to *be* a day. Negating the unset wording passes
      for free the moment that wording changes, which is exactly the trap the
      heading check above was in. */
-  const where = (await page.locator('[data-visit-lead]').innerText()).split('\n').pop() ?? '';
-  check(`and the opening names a day (${JSON.stringify(where)})`, /\d{1,2}\s+\p{L}+/u.test(where));
+  /* Any line of it: the day and the place are two lines since 42c49346,
+     and the place is the last one when a visit has one. */
+  const lead = (await page.locator('[data-visit-lead]').innerText()).split('\n');
+  check(`and the opening names a day (${JSON.stringify(lead)})`, lead.some((line) => /\d{1,2}\s+\p{L}+/u.test(line)));
   check(
     'an empty list keeps every section the screen had',
     withList.every((heading) => emptied.includes(heading))

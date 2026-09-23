@@ -69,7 +69,8 @@
   });
 
   /* Decoding is the expensive half - 206ms for a seven-second recording on
-     a desktop, measured by tests/media-list-cost.mjs - so it waits until the
+     a desktop, measured by tests/media-list-cost.mjs (deleted since, in
+     history) - so it waits until the
      player is somewhere near the screen. A journal with three hundred memos
      in it mounts three hundred of these at once, and decoding all of them to
      draw bars nobody has scrolled to yet is a minute of work for a screenful

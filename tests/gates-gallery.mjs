@@ -1,6 +1,6 @@
 /* Screenshots of the chromeless screens (phase 5 ticket 26): the five
-   pre-unlock gates, the security module on both platforms, and all seven steps
-   of the first run.
+   pre-unlock gates, the security module on both platforms, and every step of
+   the first run (tests/setup-flow.mjs holds the order).
 
    Two sources, because the screens come from two places. Four of the five
    gates are boot states rather than URLs, so those are driven through
@@ -16,6 +16,7 @@ import { createServer, preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SETUP_STEPS } from './setup-flow.mjs';
 import { launchChromium } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
@@ -308,8 +309,7 @@ const base = `http://localhost:${address.port}`;
     await page.selectOption('#demo-jump', 'first-run');
     await page.waitForSelector('[data-next]');
 
-    const steps = ['welcome', 'name', 'flag', 'scales', 'lock', 'checkin', 'done'];
-    for (const [i, step] of steps.entries()) {
+    for (const [i, step] of SETUP_STEPS.entries()) {
       // The sun grows on --dur-slow and the step crosses on --dur-med; both
       // are well inside this, and what is wanted is the resting frame.
       await page.waitForTimeout(600);
@@ -323,14 +323,9 @@ const base = `http://localhost:${address.port}`;
         await page.waitForTimeout(400);
         await shoot(page, `setup-${i}-${step}-on-${palette}-${theme}`);
       }
-      if (step === 'checkin') {
-        await page.getByRole('switch').first().click();
-        await page.waitForTimeout(400);
-        await shoot(page, `setup-${i}-${step}-open-${palette}-${theme}`);
-      }
       // Tick one more than the default set, so the shot shows a mix of
       // ticked and unticked rows rather than a uniform column.
-      if (step === 'scales') await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
+      if (step === 'scales') await page.locator('[data-list-row^="scale-"][aria-checked="false"]').first().click();
       if (step !== 'done') await page.locator('[data-next]').click();
     }
   }
@@ -353,13 +348,16 @@ const base = `http://localhost:${address.port}`;
   /* Every step, not one. The spec says "verify with prefs.disguise set, on
      every one of them", and shooting only the welcome is what let the flag
      step - eight pride flags with their names under them - through the
-     first time. Six steps rather than seven: the flag step is not hidden
+     first time. One step fewer than the flow: the flag step is not hidden
      under disguise, it is not in the flow. */
-  const disguisedSteps = ['welcome', 'name', 'scales', 'lock', 'checkin', 'done'];
+  const disguisedSteps = SETUP_STEPS.filter((step) => step !== 'flag');
   for (const [i, step] of disguisedSteps.entries()) {
     await page.waitForTimeout(600);
     await shoot(page, `setup-disguised-${i}-${step}`);
-    if (step === 'scales') await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
+    if (step === 'scales') {
+      const unticked = page.locator('[data-list-row^="scale-"][aria-checked="false"]');
+      if (await unticked.count()) await unticked.first().click();
+    }
     if (step !== 'done') await page.locator('[data-next]').click();
   }
 
