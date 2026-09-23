@@ -64,6 +64,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `roadmap-track-summary` | the selected track travels with the goal list it shows |
 | `prep-context-check` | an empty prep list still shows the next visit and keeps every section |
 | `debrief-offer-check` | the appointment debrief loop, end to end |
+| `home-fold-reserve` | nothing under Home's reserves moves in one frame on a cold open, with a right, wrong or missing guess, or when a notice inside one is dismissed |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
 
 ### Written as a guard, not in CI yet
