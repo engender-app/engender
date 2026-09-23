@@ -220,7 +220,7 @@
        travel would be the app claiming something happened.
        The first moves neither edge (PLACE): the unplaced pill is pinned at
        the whole bar, so edges on a clock there faded it in across every tab
-       before it shrank onto one (ticket 166). A nav coming back from
+       before it shrank onto one (tickets 184 and 166). A nav coming back from
        display: none is this case too, since the early return above hid its
        pill, so it lands where it belongs and fades in rather than sliding
        from wherever it was last drawn. The re-measure keeps both edges on

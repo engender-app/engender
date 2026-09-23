@@ -58,13 +58,14 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `tryout-form-check` | what a screen reader is handed for the tryout form's fields |
 | `media-transport-check` | both players' transports work by keyboard, speak their position, go full screen and run offline |
 | `care-lane-labels` | three Care lanes' captions do not collide at 390px in Polish |
-| `care-cold-load-yank` | Care's cold load at 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail |
+| `care-cold-load-yank` | Care's cold load at 1x and 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail, what it answers with fades in, and the nav pill never paints wider than its tab |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |
 | `roadmap-track-summary` | the selected track travels with the goal list it shows |
 | `prep-context-check` | an empty prep list still shows the next visit and keeps every section |
 | `debrief-offer-check` | the appointment debrief loop, end to end |
+| `home-fold-reserve` | nothing under Home's reserves moves in one frame on a cold open, with a right, wrong or missing guess, or when a notice inside one is dismissed |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
 
 ### Written as a guard, not in CI yet
