@@ -22,6 +22,7 @@ import type { RemindersArea } from './reminders';
 import { projectEveryStock, reorderByEpochDay, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
+import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 
 interface StockEntryInput {
   drug: string;
@@ -74,8 +75,11 @@ export interface StockArea {
       moved, cleared, or left alone for a drug whose reminder a person has
       already taken over. In effect Android-only, since Reminder never
       fires on web, but that gate belongs to the caller: this module has
-      no reason to know what platform it is running on. */
-  reconcileRunOutReminders(asOfEpochDay: number): Promise<void>;
+      no reason to know what platform it is running on.
+
+      Returns NOTHING_WRITTEN when every drug came out 'none', so a pass
+      with nothing to do announces nothing (ux-carpet 199). */
+  reconcileRunOutReminders(asOfEpochDay: number): Promise<void | NothingWritten>;
 }
 
 type StockRow = {
@@ -233,8 +237,9 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
 
     async reconcileRunOutReminders(asOfEpochDay) {
       const rows = await projections(asOfEpochDay);
-      if (rows.length === 0) return;
+      if (rows.length === 0) return NOTHING_WRITTEN;
       const allReminders = await reminders.getReminders();
+      let wrote = false;
 
       for (const { entry, projection } of rows) {
         const auto = findAutoReminder(allReminders, entry.drug);
@@ -247,7 +252,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
 
         switch (action.kind) {
           case 'none':
-            break;
+            continue;
           case 'mark-dismissed':
             await setReminderFlags(entry.id, entry.reminderEverCreated, true);
             break;
@@ -274,10 +279,13 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
             await setReminderFlags(entry.id, true, false);
             break;
           case 'update':
-            if (auto) await reminders.upsertReminder({ ...auto, epochDay: action.epochDay });
+            if (!auto) continue;
+            await reminders.upsertReminder({ ...auto, epochDay: action.epochDay });
             break;
         }
+        wrote = true;
       }
+      if (!wrote) return NOTHING_WRITTEN;
     }
   };
 }
