@@ -188,8 +188,17 @@ function booting(accessMode: JournalAccessMode = null): BootingState {
   };
 }
 
+function needsUnlockState(accessMode: JournalAccessMode = null): NeedsUnlockState {
+  return {
+    status: 'needs-unlock',
+    accessMode,
+    ...base(),
+    conversion: null
+  };
+}
+
 function needsSetup(state: BootState, options: SetupUnlockOptions = {}): NeedsSetupState {
-  if (state.status !== 'booting') invalidTransition(state, 'needs-setup');
+  if (state.status !== 'booting' && state.status !== 'needs-unlock') invalidTransition(state, 'needs-setup');
   const accessMode = options.accessMode ?? state.accessMode;
   return {
     status: 'needs-setup',
@@ -200,7 +209,7 @@ function needsSetup(state: BootState, options: SetupUnlockOptions = {}): NeedsSe
 }
 
 function needsUnlock(state: BootState, options: SetupUnlockOptions = {}): NeedsUnlockState {
-  if (state.status !== 'booting') invalidTransition(state, 'needs-unlock');
+  if (state.status !== 'booting' && state.status !== 'needs-unlock') invalidTransition(state, 'needs-unlock');
   const accessMode = options.accessMode ?? state.accessMode;
   return {
     status: 'needs-unlock',
@@ -211,7 +220,9 @@ function needsUnlock(state: BootState, options: SetupUnlockOptions = {}): NeedsU
 }
 
 function needsAuthentication(state: BootState, androidKey: AndroidKeyRefusal | null = null): NeedsAuthenticationState {
-  if (state.status !== 'booting' && state.status !== 'needs-authentication') invalidTransition(state, 'needs-authentication');
+  if (state.status !== 'booting' && state.status !== 'needs-unlock' && state.status !== 'needs-authentication') {
+    invalidTransition(state, 'needs-authentication');
+  }
   return {
     status: 'needs-authentication',
     accessMode: state.accessMode,
@@ -412,7 +423,8 @@ export function passphraseScreen(state: BootState): PassphraseScreen {
 }
 
 export const bootStates = {
-  booting
+  booting,
+  needsUnlock: needsUnlockState
 };
 
 export const bootTransitions = {

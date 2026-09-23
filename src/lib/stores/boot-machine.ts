@@ -127,9 +127,10 @@ interface BootStep {
   effects: BootEffect[];
 }
 
-export function initialBoot(): BootMachine {
+export function initialBoot(cachedAccessMode: JournalAccessMode = null): BootMachine {
+  const needsUnlockOnBoot = cachedAccessMode === 'pin' || cachedAccessMode === 'passphrase';
   return {
-    boot: bootStates.booting(),
+    boot: needsUnlockOnBoot ? bootStates.needsUnlock(cachedAccessMode) : bootStates.booting(cachedAccessMode),
     demo: false,
     retired: false,
     conversionResumable: false

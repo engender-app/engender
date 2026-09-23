@@ -12,8 +12,34 @@
    finding no mirror and painting defaults, which the fixture fails on. */
 
 import type { BootPreferences, PreferenceCache } from './preferences.ts';
+import type { JournalAccessMode } from '../journal-access-mode.ts';
 
 export const BOOT_CACHE_KEY = 'engender-boot-prefs';
+export const BOOT_ACCESS_MODE_KEY = 'engender-boot-access-mode';
+
+export function readCachedAccessMode(): JournalAccessMode | null {
+  try {
+    const raw = localStorage.getItem(BOOT_ACCESS_MODE_KEY);
+    if (raw === 'pin' || raw === 'passphrase' || raw === 'biometric' || raw === 'device-bound' || raw === 'unlocked') {
+      return raw;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedAccessMode(mode: JournalAccessMode | null): void {
+  try {
+    if (mode === null) {
+      localStorage.removeItem(BOOT_ACCESS_MODE_KEY);
+    } else {
+      localStorage.setItem(BOOT_ACCESS_MODE_KEY, mode);
+    }
+  } catch {
+    /* storage full / private mode */
+  }
+}
 
 export function localStorageCache(): PreferenceCache {
   return {
@@ -36,6 +62,7 @@ export function localStorageCache(): PreferenceCache {
     },
     clear() {
       localStorage.removeItem(BOOT_CACHE_KEY);
+      localStorage.removeItem(BOOT_ACCESS_MODE_KEY);
     }
   };
 }

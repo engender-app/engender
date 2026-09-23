@@ -8,7 +8,7 @@
    so. Everything is injected so the destructive part can be tested against
    fakes rather than against a real OPFS. */
 
-import { BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
+import { BOOT_ACCESS_MODE_KEY, BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
 /* LocalDataTargets stays exported only for its own test (AU-09 test-only
@@ -49,7 +49,13 @@ export function clearBrowserMirrors(storage: Storage): void {
   const doomed: string[] = [];
   for (let index = 0; index < storage.length; index++) {
     const key = storage.key(index);
-    if (key && key !== BOOT_CACHE_KEY && (key.startsWith('engender-') || key === 'letter_tile_snooze_until')) doomed.push(key);
+    if (
+      key &&
+      key !== BOOT_CACHE_KEY &&
+      key !== BOOT_ACCESS_MODE_KEY &&
+      (key.startsWith('engender-') || key === 'letter_tile_snooze_until')
+    )
+      doomed.push(key);
   }
   // Collected first: removing while enumerating by index skips keys.
   for (const key of doomed) storage.removeItem(key);
