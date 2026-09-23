@@ -1,4 +1,4 @@
-import { startOfDayTimestamp } from './epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { compareDoseSchedule } from './journal/doses';
 import type { Journal } from './journal/journal';
 import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode } from './regimenEpisode';
@@ -15,6 +15,13 @@ export const DOSE_LOG_WINDOW_DAYS = 90;
     for that window, and a wider search would find a "nearest" slot the screen
     has no doses to check against. */
 const NEAREST_SLOT_RADIUS_DAYS = DOSE_LOG_WINDOW_DAYS;
+
+/** How long an auto-logged dose keeps its one-tap correction (ticket 11).
+    A month is long enough to cover a person opening the app after a
+    fortnight away and reading back what was written for them, and short
+    enough that a two-year log is not a wall of buttons. Past it the row is
+    an ordinary row and the flip is still there in the editor. */
+const SKIP_CONTROL_DAYS = 30;
 
 export interface DoseLogQuestion {
   today: number;
@@ -60,9 +67,9 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
   /* The drugs to choose between, for both the editor and the schedule view's
      picker: both ask "which of the concurrently active drugs". */
   const activeDrugChoices = [...new Set(activeEpisodes.map((episode) => episode.drug))];
-  const selectedRegimenDrug: string | null =
+  const selectedRegimenDrug =
     regimenClaims.find((drug): drug is string => drug !== null && activeDrugChoices.includes(drug)) ??
-    activeEpisode?.drug ?? activeDrugChoices[0] ?? null;
+    activeEpisode?.drug ?? (activeDrugChoices.length > 0 ? activeDrugChoices[0] : null);
   /* `drug` only travels while more than one regimen is active - with at most
      one, the comparison's own default already answers the question. */
   const scheduleView = compareDoseSchedule(episodes, doses, schedules, pauses, {
@@ -78,7 +85,11 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
   const logRows = [...doses].reverse().map((dose) => ({
     dose,
     attribution: attributeDose(episodes, dose),
-    drug: attributeDrug(episodes, dose).drug
+    drug: attributeDrug(episodes, dose).drug,
+    /* The one-tap correction: an auto-logged dose not already corrected,
+       inside its window. */
+    offersSkip: dose.source === 'schedule' && dose.status !== 'skipped' &&
+      epochDayFromTimestamp(dose.timestamp) >= today - SKIP_CONTROL_DAYS
   }));
   const unmatchedRows = (scheduleView.reason === null ? scheduleView.comparison.unmatched : []).map((dose) => ({
     dose,
