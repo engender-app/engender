@@ -52,7 +52,8 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { crossfade, resize } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   const today = todayEpochDay();
   const todayInput = dateInputValueFromEpochDay(today);
@@ -118,6 +119,17 @@
       };
     }
   });
+
+  /* Opacity-only, not `disclose`: a chunk mounts up to 25 of these at
+     once, and disclose's one-time height measurement lands wrong when
+     that many siblings are being laid out and collapsed in the same
+     instant - it reads back small, so the row sits short for its whole
+     travel and then snaps to true height the moment the transition ends
+     instead of arriving there smoothly. Opacity never depends on a
+     measurement, so nothing to get wrong: the row occupies its real,
+     final space from the first frame (which is also why the rows below
+     it in the same chunk never move once mounted) and only fades in. */
+  const entryFade = (_node: Element) => (printing ? { duration: 0 } : fadeOnly(motionDuration('--dur-med')));
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -260,7 +272,7 @@
       <SectionTitle text={journalBookPartName('entries')} />
       <div class="section-block">
         {#each visibleEntries as entry (entry.id)}
-          <article class="book-entry" data-book-entry transition:disclose={{ skip: printing }}>
+          <article class="book-entry" data-book-entry transition:entryFade>
             <h3 class="book-day">{dayLong(entry.epochDay)}, {fmtTime(entry.timestamp)}</h3>
             {#if entry.mood !== null}<p class="muted small">{moodName(entry.mood)}</p>{/if}
             {#if entry.note.trim()}<p class="book-note">{entry.note}</p>{/if}
