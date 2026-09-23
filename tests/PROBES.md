@@ -89,7 +89,7 @@ build. Output goes to `.claude/` unless the script takes a directory.
 | `gallery:kit` | the surface kit and the chart kit, every palette and both themes |
 | `gallery:controls` | the control kit, every palette, plus reduced motion |
 | `gallery:icons` | the navigation set and mood's faces at every size they ship |
-| `gallery:mood` | mood's ramps and faces per preset (`--app` shoots the built app instead, after a demo build) |
+| `gallery:mood` | mood's ramps and faces per preset (`VITE_DEMO=1 npm run build && node tests/mood-gallery.mjs --app` shoots the built app instead) |
 | `gallery:tile-block` | the tile, one crop per shape per palette |
 | `gallery:progress` | the progress bar and a strip of its indeterminate sweep |
 | `gallery:day` | a day's records in its three shapes, every palette |
