@@ -4279,11 +4279,17 @@ try {
   // endEpisode() writes to the DB asynchronously and only then updates the
   // end-date field's own value via Svelte's reactive binding - filling it
   // before that settles gets clobbered right back to today's date.
+  // Read off the plain input until the picker exists: since ticket 165
+  // flatpickr is built on the field's first click, and until then the
+  // bound value sits on the input itself, already as Y-m-d. Clicking to
+  // build it here would open the calendar mid-wait (ticket 194).
   const today = localDateInput();
   await page.waitForFunction(
     ([sel, expected]) => {
-      const fp = document.querySelector(sel)?._flatpickr;
-      return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d') === expected;
+      const el = document.querySelector(sel);
+      const fp = el?._flatpickr;
+      const shown = fp ? fp.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d') : el?.value;
+      return shown === expected;
     },
     ['#regimen-end', today]
   );
