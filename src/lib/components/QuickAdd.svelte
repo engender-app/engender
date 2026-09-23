@@ -61,6 +61,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
+  import { crossfade } from '$lib/motion/reveal';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { MAGNIFIER_SPREAD, gazeRow, magnify } from '$lib/motion/magnifier';
   import { ui } from '$lib/stores/ui.svelte';
@@ -278,6 +279,17 @@
      the fan covers the app, and the only way to start or stop a session
      from anywhere else is to close it first. */
   let running = $state<WearSession | null>(null);
+  /* Whether the read above has ever landed. `running` defaults to null,
+     "nothing running", which is a specific claim rather than "not known
+     yet" - so before this is true the label below cannot say either
+     "Start wearing" or "Stop" without a chance of being wrong (ticket 189:
+     a persona with a running session read "Start wearing" for 322ms-2.5s
+     on a device, then cut straight to "Stop" mid-fan-opening). Set once
+     and never unset: a refresh after this always has something true to
+     show, the same distinction readState.ts's `loading` draws for every
+     other read in the app, and ticket 176 already fixed this exact shape
+     on the export screen's backup ages. */
+  let runningKnown = $state(false);
   /* Which kind a start from here writes (ticket 50). This is the one place
      a session is created with no picker in front of the person, so it
      repeats whatever they logged last rather than choosing for them, and
@@ -291,13 +303,33 @@
      current, gone once every onset window has passed. Tapping navigates to
      /care/changes. */
   let showEffects = $state(false);
+
+  /* Fired once at creation, not gated on the fan opening (ticket 189):
+     this component mounts once for the app's whole life, so a read kicked
+     off here has the entire time before the first press to land, rather
+     than starting the same round trip only once the fan is already up.
+     Not a live subscription - one read, same as the per-open refresh below
+     - so it does not reopen the cost the comment above the effect already
+     ruled out. */
+  void journal.wearSessions
+    .getRunningSession()
+    .then((session) => {
+      running = session;
+      runningKnown = true;
+    })
+    .catch((error) => {
+      console.error('quick add: could not read the running wear session', error);
+    });
+
   $effect(() => {
     if (!ui.chooserOpen) return;
     let stale = false;
     void journal.wearSessions
       .getRunningSession()
       .then((session) => {
-        if (!stale) running = session;
+        if (stale) return;
+        running = session;
+        runningKnown = true;
       })
       /* A journal that cannot be read is a journal that cannot be written
          either, so the write behind this row will fail and say so. What
@@ -339,6 +371,13 @@
      that any reminder is entirely your own call; on a stop, omitting it is
      what leaves a reminder the wear screen set alone (wearSessions.ts). */
   async function toggleWear() {
+    /* Whether to start or stop is read off `running`, which is only a
+       real answer once `runningKnown` is true (ticket 189) - before that
+       it is still the default, and writing against a default risks
+       starting a second session over one already running. The row's own
+       label says the same thing is still unknown, so a press here while
+       it does simply does nothing rather than act on a guess. */
+    if (!runningKnown) return;
     const session = running;
     const from = flightFrom('wear');
     close();
@@ -655,9 +694,32 @@
         data-wear-running={running ? '' : undefined}
         onclick={ACTIONS.wear}
       >
-        <span class="fan-icon"><Icon name={running ? 'stop' : 'timeline'} size={22} /></span>
+        <span class="fan-icon">
+          {#if runningKnown}
+            {#key running ? 'stop' : 'timeline'}
+              <span out:crossfade><Icon name={running ? 'stop' : 'timeline'} size={22} /></span>
+            {/key}
+          {:else}
+            <Icon name="timeline" size={22} />
+          {/if}
+        </span>
         <span class="fan-label">
-          {running ? m.wear_session_stop_action() : m.wear_session_start_action()}
+          {#if runningKnown}
+            {#key running ? 'stop' : 'start'}
+              <span out:crossfade>{running ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>
+            {/key}
+          {:else}
+            <!-- Neither word until it's known which is true (ticket 189) -
+                 "Start wearing" was the wrong half of that guess for a
+                 persona already wearing something, shown for up to 2.5s
+                 on a device before cutting straight to "Stop". -->
+            <!-- A fixed width rather than `is-short`'s 40%: this span is
+                 itself the flex item (`.fan-label`'s own box), so a
+                 percentage here would be resolving against a width its
+                 only child is also deciding - the same size either word
+                 wants. -->
+            <span class="skeleton skeleton-line" style="width: 96px" aria-hidden="true"></span>
+          {/if}
         </span>
       </button>
       {#if showEffects}
