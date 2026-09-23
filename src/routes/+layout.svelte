@@ -43,6 +43,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
+  import { routeGate } from '$lib/navigation/routeGates';
   import { leavesHomeForEntry, screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';
@@ -111,22 +112,8 @@
 
   let path = $derived(page.url.pathname);
 
-  /* The first-run exception (ticket 54): a brand new install's very first
-     boot state is `needs-setup` - nothing to unlock, nothing chosen yet -
-     which used to mean the gate above painted before onboarding's own
-     first-run redirect ever got a chance to run, since `prefs.onboarded`
-     lives in the encrypted database this state has no database for.
-
-     Held for the whole of `needs-setup` rather than only up to onboarding's
-     own access-mode step: that step wires the same four-mode module in
-     directly (ticket 53's AccessModeSetup, inside onboarding/+page.svelte)
-     rather than asking this layout to hand the screen to JournalGate and
-     back. Trying the handoff first is what found the reason not to - the
-     `{#if}` chain below unmounts `children()` while a sibling branch
-     renders, so a route given back after a detour through JournalGate
-     remounts from scratch and loses every local answer onboarding was
-     holding, `step` included. One route, one component instance, for the
-     whole flow is what this simpler condition buys. */
+  /* A brand new install (ticket 54); routeGates.ts says why onboarding
+     renders over this one gate state instead of meeting it. */
   let onboardingFirstRun = $derived(needsOnboardingAccessMode(bootState));
   let needsPassphrase = $derived(gate === 'passphrase' && !onboardingFirstRun);
 
@@ -145,14 +132,6 @@
      route, not over it, so no screen mounts and no query runs behind a
      screen somebody has not finished. */
   let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
-  /* Quick add is a layout-level sibling of the gate chain (below), not
-     inside it, so its own open flag is the only thing keeping it up. This
-     screen's arrival is the same kind of instead-of-the-route moment as a
-     mid-session lock - not a navigation, not Escape - so it gets the same
-     clear, for the same reason lockNow() does (phase 8 audit ticket 08). */
-  $effect(() => {
-    if (needsAccessModeAfterRecovery) ui.chooserOpen = false;
-  });
   /* Older code against a newer Journal (ticket 04). Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
@@ -176,16 +155,6 @@
   /* Those, plus the routes that render without chrome whoever is looking at
      them - which now includes a step the app does navigate to. */
   let chromeless = $derived(replacesApp || chromelessPath(path));
-
-  /* The other half of the exception above: onboarding is a route like any
-     other, so getting there needs the same redirect the returning-user
-     first-run gate below uses - except this one cannot wait for
-     `isReadyState`, since a state with no database is exactly what it is
-     for. */
-  let redirectingToOnboarding = $derived(onboardingFirstRun && !path.startsWith('/onboarding'));
-  $effect(() => {
-    if (redirectingToOnboarding) goto('/onboarding');
-  });
 
   /* Tier 2 (phase 5 ticket 18): one screen becoming another.
 
@@ -470,32 +439,31 @@
     document.documentElement.lang = getLocale();
   });
 
-  /* First-run gate: onboarding is the entire first-run experience (F16).
-     Held until boot is ready, because `onboarded` lives in SQLite (ticket
-     06) and is not in the small set mirrored outside it - before the
-     database opens it reads as its default, which would send every
-     returning user through onboarding again. */
+  /* The four things owed before the route (routeGates.ts has the order
+     and the reasons); the layout only does what the gate names. */
+  let pendingGate = $derived(
+    routeGate({
+      path,
+      firstRunSetup: onboardingFirstRun,
+      owesAccessMode: needsAccessModeAfterRecovery,
+      ready: isReadyState(bootState),
+      locked,
+      onboarded: prefs.onboarded
+    })
+  );
+  let redirectingToOnboarding = $derived(onboardingFirstRun && pendingGate === 'onboarding');
   $effect(() => {
-    if (!isReadyState(bootState) || locked) return;
-    if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
+    if (pendingGate === 'close-chooser') ui.chooserOpen = false;
+    else if (pendingGate === 'onboarding') goto('/onboarding');
+    else if (pendingGate === 'coming-back') offerComingBack();
   });
 
-  /* The return moment (phase 8 features ticket 05, ADR-0062). Here rather
-     than on Home, which the features spec does not render on and which is
-     built for somebody who was here yesterday anyway - and here rather than
-     as a hub row, because a place you can go and check what is waiting is a
-     place that accumulates what you have not done.
-
-     Only from Home: somebody who opened the app on a notification, a deep
-     link or an Android launch route asked for something specific, and a
-     return surface is not allowed to take that over.
-
-     What stops it opening twice is the preference and nothing else. The
-     surface stamps `comingBackSeenSince` as it draws, so this has an answer
-     before the person could have left it, and a flag latching the decision
-     for the page load would only add a second guard that disagrees - it
-     also has to be wrong for a demo build, where the journal underneath can
-     be replaced without a reload.
+  /* What stops the return moment opening twice is the preference and
+     nothing else (ADR-0062). The surface stamps `comingBackSeenSince` as it
+     draws, so this has an answer before the person could have left it, and
+     a flag latching the decision for the page load would only add a second
+     guard that disagrees - it also has to be wrong for a demo build, where
+     the journal underneath can be replaced without a reload.
 
      So this does re-read on every arrival at Home, and what makes that
      affordable is that the first read answers on its own for almost
@@ -508,9 +476,7 @@
 
      Nothing is navigated to on an empty answer: a gap with nothing waiting
      in it is not a return worth a screen, and the person is left on Home. */
-  $effect(() => {
-    if (!isReadyState(bootState) || locked || !prefs.onboarded) return;
-    if (path !== '/') return;
+  function offerComingBack() {
     const day = todayEpochDay();
     void import('$lib/data/comingBackReads').then(async ({ readReturnGap, readWhatIsWaiting }) => {
       const since = await readReturnGap(journal, day);
@@ -519,7 +485,7 @@
       if (page.url.pathname !== '/') return;
       goto('/coming-back');
     });
-  });
+  }
 
   $effect(() => {
     if (isReadyState(bootState) && !locked && isAndroid()) {
