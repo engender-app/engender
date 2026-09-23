@@ -149,89 +149,139 @@
       fp.calendarContainer.append(footer);
     }
 
-    picker = flatpickr(node, {
-      dateFormat: 'Y-m-d',
-      altInput: !invis,
-      altFormat: 'Y-m-d',
-      defaultDate: value || undefined,
-      minDate: min || undefined,
-      maxDate: max || undefined,
-      disableMobile: true,
-      // Flatpickr dismisses on touchstart, before Android can cancel a Back
-      // gesture. Outside dismissal below waits for a completed click.
-      ignoredFocusElements: [document.body],
-      clickOpens: false,
-      locale: pickerLocale(),
-      position: fitPopup,
-      onChange: (dates) => {
-        const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
-        value = next;
-        onchange?.(next);
-      },
-      onReady: (_dates, _text, fp) => addControls(fp),
-      onMonthChange: focusableNavigation,
-      onYearChange: focusableNavigation,
-      onOpen: () => {
-        if (!picker) return;
-        fitPopup();
-        directInput.value = value;
-        directInput.setCustomValidity('');
-        clearButton.disabled = !value;
-        releaseOverlay?.();
-        const launcher = picker.altInput ?? node;
-        releaseOverlay = registerOverlayRegion(launcher, picker.calendarContainer, {
-          dismiss: () => picker?.close(),
-          restoreFocus: launcher
-        });
-      },
-      onClose: () => {
-        releaseOverlay?.();
-        releaseOverlay = null;
+    /* Building the calendar grid and its footer is genuinely heavy
+       synchronous DOM work (ticket 165) - competing for the main thread
+       with whatever entrance transition is animating the field's host
+       surface, if it runs at mount like it used to. Deferred to the
+       field's first click or ArrowDown instead, both direct responses to
+       a real gesture rather than something that can fire on its own.
+
+       Deliberately NOT triggered by focus, idle, or any other
+       independently-timed hook: this swaps the field's id from the plain
+       input onto flatpickr's alt input (below), and a host sheet already
+       focuses its first field on its own clock (Sheet.svelte's `introend`
+       idiom, ticket 115) - a trigger that can fire whenever, unrelated to
+       whatever a caller is doing right then, raced a test driver that had
+       already resolved that id to the plain input and was still polling
+       it when the swap landed underneath it. A click or ArrowDown can't
+       have that problem: the swap only ever happens inside the same
+       synchronous handler that the gesture itself woke up. */
+    let destroyed = false;
+
+    function ensurePicker() {
+      if (picker || destroyed) return;
+      const hadFocus = document.activeElement === node;
+      picker = flatpickr(node, {
+        dateFormat: 'Y-m-d',
+        altInput: !invis,
+        altFormat: 'Y-m-d',
+        defaultDate: value || undefined,
+        minDate: min || undefined,
+        maxDate: max || undefined,
+        disableMobile: true,
+        // Flatpickr dismisses on touchstart, before Android can cancel a Back
+        // gesture. Outside dismissal below waits for a completed click.
+        ignoredFocusElements: [document.body],
+        clickOpens: false,
+        locale: pickerLocale(),
+        position: fitPopup,
+        onChange: (dates) => {
+          const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
+          value = next;
+          onchange?.(next);
+        },
+        onReady: (_dates, _text, fp) => addControls(fp),
+        onMonthChange: focusableNavigation,
+        onYearChange: focusableNavigation,
+        onOpen: () => {
+          if (!picker) return;
+          fitPopup();
+          directInput.value = value;
+          directInput.setCustomValidity('');
+          clearButton.disabled = !value;
+          releaseOverlay?.();
+          const launcher = picker.altInput ?? node;
+          releaseOverlay = registerOverlayRegion(launcher, picker.calendarContainer, {
+            dismiss: () => picker?.close(),
+            restoreFocus: launcher
+          });
+        },
+        onClose: () => {
+          releaseOverlay?.();
+          releaseOverlay = null;
+        }
+      });
+      /* The id belongs on the field a person sees and a label points at; the
+         hidden original keeps the name for whatever submits it. The instance
+         goes on both, so anything holding the visible field - a label, a
+         test - reaches the picker through it. */
+      if (picker.altInput) {
+        if (id) {
+          picker.altInput.id = id as string;
+          node.removeAttribute('id');
+        }
+        if (describedBy) {
+          picker.altInput.setAttribute('aria-describedby', describedBy);
+          node.removeAttribute('aria-describedby');
+        }
+        const visible = picker.altInput as unknown as Record<string, unknown>;
+        visible.flatpickr = picker;
+        visible._flatpickr = picker;
+        // `node` is hidden once the alt input exists, so it stops receiving
+        // clicks/keydowns/focus - the launcher moves to the alt input. If
+        // `node` held focus the instant before this ran (a real Tab or the
+        // host sheet's own auto-focus), that focus would otherwise fall
+        // through to the document.
+        picker.altInput.addEventListener('click', open);
+        picker.altInput.addEventListener('keydown', openFromKeyboard, true);
+        if (hadFocus) picker.altInput.focus({ preventScroll: true });
       }
-    });
+    }
+
+    const open = () => {
+      ensurePicker();
+      picker?.open();
+    };
+    const openFromKeyboard = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'Enter') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      ensurePicker();
+      if (!picker) return;
+      picker.open();
+      /* Enter just opens, matching flatpickr's own native behavior on an
+         already-built instance (which this always preempts, capturing
+         ahead of it) - only ArrowDown also steps focus into the grid. */
+      if (event.key !== 'ArrowDown') return;
+      const selected = picker.days.querySelector<HTMLElement>('.selected');
+      (selected ?? picker.days.querySelector<HTMLElement>('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)'))?.focus();
+    };
     const dismissOutside = (event: MouseEvent) => {
       if (!picker?.isOpen || !(event.target instanceof Node)) return;
+      /* The click that lazily builds the picker (above) targets `node`
+         itself, before its id and launcher role move to the alt input -
+         still bubbling up to this same document listener afterwards, in
+         the same turn. `node` counts as "inside" regardless of which
+         element is the current launcher, or that first click both opens
+         and immediately closes the popup it just built. */
       if (picker.calendarContainer.contains(event.target)
+        || node.contains(event.target)
         || (picker.altInput ?? node).contains(event.target)) return;
       picker.close();
     };
     document.addEventListener('click', dismissOutside);
-    /* The id belongs on the field a person sees and a label points at; the
-       hidden original keeps the name for whatever submits it. The instance
-       goes on both, so anything holding the visible field - a label, a
-       test - reaches the picker through it. */
-    if (picker.altInput) {
-      if (id) {
-        picker.altInput.id = id as string;
-        node.removeAttribute('id');
-      }
-      if (describedBy) {
-        picker.altInput.setAttribute('aria-describedby', describedBy);
-        node.removeAttribute('aria-describedby');
-      }
-      const visible = picker.altInput as unknown as Record<string, unknown>;
-      visible.flatpickr = picker;
-      visible._flatpickr = picker;
-    }
-    const launcher = picker.altInput ?? node;
-    const open = () => picker?.open();
-    const openFromKeyboard = (event: KeyboardEvent) => {
-      if (event.key !== 'ArrowDown' || !picker) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      picker.open();
-      const selected = picker.days.querySelector<HTMLElement>('.selected');
-      (selected ?? picker.days.querySelector<HTMLElement>('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)'))?.focus();
-    };
-    launcher.addEventListener('click', open);
-    launcher.addEventListener('keydown', openFromKeyboard, true);
+    node.addEventListener('click', open);
+    node.addEventListener('keydown', openFromKeyboard, true);
     window.visualViewport?.addEventListener('resize', fitPopup);
     window.visualViewport?.addEventListener('scroll', fitPopup);
     return {
       destroy() {
+        destroyed = true;
         document.removeEventListener('click', dismissOutside);
-        launcher.removeEventListener('click', open);
-        launcher.removeEventListener('keydown', openFromKeyboard, true);
+        node.removeEventListener('click', open);
+        node.removeEventListener('keydown', openFromKeyboard, true);
+        picker?.altInput?.removeEventListener('click', open);
+        picker?.altInput?.removeEventListener('keydown', openFromKeyboard, true);
         window.visualViewport?.removeEventListener('resize', fitPopup);
         window.visualViewport?.removeEventListener('scroll', fitPopup);
         releaseOverlay?.();
@@ -261,6 +311,7 @@
   type="text"
   {id}
   {name}
+  {value}
   use:mount
   aria-label={ariaLabel}
   aria-describedby={describedBy}
