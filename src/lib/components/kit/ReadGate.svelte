@@ -6,6 +6,7 @@
   import { gateBranch } from './readGate';
   import type { LiveList } from '$lib/data/live/journal.svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
 
   let {
     read,
@@ -35,6 +36,35 @@
   } = $props();
 
   let branch = $derived(gateBranch(read));
+
+  /* The answer fades in over the skeleton fading out (ux-carpet ticket
+     184). The skeleton's `out:crossfade` only ever handled the leaving
+     half: whatever replaced it was inserted at full opacity, so a whole
+     screen's worth of headings, lines and rows appeared in one frame on
+     top of a placeholder still on its way out - measured on Care's cold
+     load at 1x and 4x CPU, opacity 1 on the first frame every run. No
+     `in:` transition can do this, because a transition needs one element
+     and `rows` hands this wrapper several siblings that `.screen >
+     .screen-part > *` spaces individually, so each arriving child is
+     faded here instead. An `$effect` runs after the DOM update and before
+     the next paint, so the first frame that shows the answer already has
+     it at the start of the fade. Only the swap out of loading: a gate that
+     mounts on a warm answer has nothing to cross from. */
+  let part = $state<HTMLElement>();
+  let wasLoading: boolean | undefined;
+  $effect(() => {
+    const loading = branch === 'loading';
+    if (wasLoading === true && !loading && part) {
+      const duration = motionDuration('--dur-fast');
+      if (duration > 0) {
+        for (const child of part.children) {
+          if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
+          child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+        }
+      }
+    }
+    wasLoading = loading;
+  });
 </script>
 
 <!-- The skeleton and whatever replaces it share one wrapper (ticket 144),
@@ -48,9 +78,9 @@
      caller's own one used to (see each `rows`/`empty` snippet below) -
      `.screen > .screen-part > *` (app.css) is what gives their content
      its floor. -->
-<div class="screen-part" use:resize>
+<div class="screen-part" use:resize bind:this={part}>
   {#if branch === 'loading'}
-    <div out:crossfade><Skeleton {variant} {count} /></div>
+    <div out:crossfade data-gate-skeleton><Skeleton {variant} {count} /></div>
   {:else}
     {#if branch === 'failed' || branch === 'stale'}
       <div role="status">
