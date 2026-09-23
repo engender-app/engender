@@ -33,6 +33,7 @@
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
   import { crossfade } from '$lib/motion/reveal';
 
   let {
@@ -57,6 +58,8 @@
   let highestMetric = $derived(metrics.find((mt) => mt.key === highestRanks) ?? shown);
 
   let seriesQuery = liveList((j) => j.stats.dayAverages(highestMetric.key, from, to));
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !seriesQuery.loading);
   let highestRows = $derived<BarRow[]>(
     rankHighestDays(today, seriesQuery.rows).map((point) => ({
       key: String(point.day),

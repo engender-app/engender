@@ -26,7 +26,6 @@
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
@@ -169,16 +168,11 @@
     key="tally-range"
   />
 
-  <!-- The chip row reads the vocabulary mirror, which a cold open fills
-       ~190ms after the first paint: drawn outside the gate it arrived at
-       full height in one frame and pushed both charts 87px (ux-carpet
-       ticket 193). It waits with the charts instead (ticket 152's
-       `vocabulary.ready`). -->
-  {#if misgenderedQuery.loading || correctlyGenderedQuery.loading || !vocabulary.ready}
+  <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+
+  {#if misgenderedQuery.loading || correctlyGenderedQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={2} /></div>
   {:else}
-    <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-
     <ChartCard heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
       <AreaChart
         scrubLabel={grainLabel(plottedMis.grain)}

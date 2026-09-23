@@ -16,6 +16,7 @@
      the same index every chart on it has always shared. */
   import type { Snippet } from 'svelte';
   import { roleAttrs } from './role';
+  import { settleCells } from './readingGrid';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -32,12 +33,14 @@
   } = $props();
 </script>
 
-<nav class="kit-readings" data-kit-surface data-reading-grid aria-label={label} {...roleAttrs(role)} {...rest}>
+<nav class="kit-readings" use:settleCells data-kit-surface data-reading-grid aria-label={label} {...roleAttrs(role)} {...rest}>
   {@render children()}
 </nav>
 
 <style>
   .kit-readings {
+    /* The containing block a leaving tile is lifted into (readingGrid.ts). */
+    position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: 1fr;
@@ -45,39 +48,38 @@
     border-bottom: 1px solid var(--hairline);
   }
 
-  /* The right column starts past a hairline; the left keeps the screen's
-     own inset as its edge. */
-  .kit-readings > :global(:nth-child(2n)) {
-    padding-left: var(--space-4);
-    border-left: 1px solid var(--hairline);
+  /* Keyed on the column each tile is written into (readingGrid.ts,
+     `settleCells`) rather than on `:nth-child`: a tile fading out is still
+     a child, and would shift every rule after it one place along. The
+     right column starts past a hairline; the left keeps the screen's own
+     inset as its edge.
+
+     Every tile carries both hairlines, transparent where its place has
+     none, so a tile changing place fades a rule in or out rather than
+     growing or losing a pixel of border (readingGrid.ts, `ruleOf`). */
+  .kit-readings > :global(*) {
+    border-left: 1px solid transparent;
+    border-top: 1px solid transparent;
   }
 
-  .kit-readings > :global(:nth-child(2n + 1)) {
+  .kit-readings > :global([data-col]:not([data-col='0'])) {
+    padding-left: var(--space-4);
+    border-left-color: var(--hairline);
+  }
+
+  .kit-readings[data-cols='2'] > :global([data-col='0']) {
     padding-right: var(--space-4);
   }
 
-  .kit-readings > :global(:nth-child(n + 3)) {
-    border-top: 1px solid var(--hairline);
+  .kit-readings > :global([data-below]) {
+    border-top-color: var(--hairline);
   }
 
   /* One column where two would leave a figure no room: the same threshold
-     the tile pair stacks at. */
+     the tile pair stacks at. The marks follow from the column count. */
   @media (max-width: 300px) {
     .kit-readings {
       grid-template-columns: 1fr;
-    }
-
-    .kit-readings > :global(:nth-child(2n)) {
-      padding-left: 0;
-      border-left: 0;
-    }
-
-    .kit-readings > :global(:nth-child(2n + 1)) {
-      padding-right: 0;
-    }
-
-    .kit-readings > :global(:nth-child(n + 2)) {
-      border-top: 1px solid var(--hairline);
     }
   }
 </style>

@@ -41,6 +41,7 @@
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
   import { crossfade } from '$lib/motion/reveal';
 
   let {
@@ -79,6 +80,8 @@
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
   });
+  /* Whether there is a tile is settled once this answers (ReadGroup). */
+  joinReadGroup(() => !seriesQuery.loading);
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
