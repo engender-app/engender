@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boxesMatch, insets, leadingEdge, travel, type Box } from './indicator';
+import { boxesMatch, insets, leadingEdge, PLACE, travel, type Box } from './indicator';
 
 const box = (x: number, y: number, w: number, h: number): Box => ({ x, y, w, h });
 
@@ -93,5 +93,17 @@ describe('leadingEdge', () => {
      re-measure after a rotation are both this case. */
   it('has no leading edge when nothing travelled', () => {
     expect(leadingEdge(0)).toBe(null);
+  });
+});
+
+describe('PLACE', () => {
+  /* The first placement is not a travel. An unplaced pill is pinned at
+     `left: 0; right: 0`, the whole track, and hidden by opacity; if its
+     edges ran on LEAD when it was first placed, it would fade in across
+     the whole track and then shrink onto its segment (ticket 166: about
+     280ms full-width at 4x CPU, then a two-frame snap). */
+  it('moves the edges in no time at all', () => {
+    expect(parseFloat(PLACE.dur)).toBe(0);
+    expect(parseFloat(PLACE.delay)).toBe(0);
   });
 });

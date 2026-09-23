@@ -26,6 +26,7 @@
     insets,
     leadingEdge,
     LEAD,
+    PLACE,
     schedules,
     travel,
     type Axis,
@@ -150,20 +151,13 @@
     y: { near: 'center top', far: 'center bottom' }
   } as const;
 
-  /* `slides` says whether a change of `at` may travel. False for the first
-     placement only (ux-carpet ticket 184): the pill was drawn with HIDDEN's
-     insets, which are the whole track, so opening it at a tab with its
-     left/right transitions live swept a bar-wide pill across to the tab
-     while it faded in - on every cold load, 0 to 295px over 250ms, and
-     under a slow CPU the same sweep with its middle frames dropped. */
-  type Pill = { box: Box; host: Host; at: Insets; shown: boolean; slides: boolean; near: Schedule; far: Schedule };
+  type Pill = { box: Box; host: Host; at: Insets; shown: boolean; near: Schedule; far: Schedule };
 
   const HIDDEN: Pill = {
     box: { x: 0, y: 0, w: 0, h: 0 },
     host: { w: 0, h: 0 },
     at: { left: 0, right: 0, top: 0, bottom: 0 },
     shown: false,
-    slides: false,
     near: LEAD,
     far: LEAD
   };
@@ -223,17 +217,25 @@
        not slide the pill into the tab you opened it on - it starts there. And
        a re-measure after a nav changed size, because a rotation is not a
        navigation: the tab under the pill never changed, so replaying the
-       travel would be the app claiming something happened. That second case
-       is also how a nav that was display: none arrives at a real position.
-       Both edges on the leading schedule there, so the shape moves as one
-       piece and never opens. */
-    if (!prev.shown || !animate) {
-      return { next: { box, host, at, shown: true, slides: prev.shown, near: LEAD, far: LEAD }, dir: 0 };
+       travel would be the app claiming something happened.
+       The first moves neither edge (PLACE): the unplaced pill is pinned at
+       the whole bar, so edges on a clock there faded it in across every tab
+       before it shrank onto one (tickets 184 and 166). A nav coming back from
+       display: none is this case too, since the early return above hid its
+       pill, so it lands where it belongs and fades in rather than sliding
+       from wherever it was last drawn. The re-measure keeps both edges on
+       the leading schedule, so the shape moves as one piece and never
+       opens. */
+    if (!prev.shown) {
+      return { next: { box, host, at, shown: true, near: PLACE, far: PLACE }, dir: 0 };
+    }
+    if (!animate) {
+      return { next: { box, host, at, shown: true, near: LEAD, far: LEAD }, dir: 0 };
     }
     const dir = travel(prev.box, box, axis);
     const lead = leadingEdge(dir);
     return {
-      next: { box, host, at, shown: true, slides: true, ...schedules(dir) },
+      next: { box, host, at, shown: true, ...schedules(dir) },
       dir,
       anchor: lead ? ANCHOR[axis][lead] : ANCHOR[axis].far
     };
@@ -282,7 +284,6 @@
   <span
     class="nav-pill"
     class:is-shown={pill[shape].shown}
-    class:is-sliding={pill[shape].slides}
     aria-hidden="true"
     data-nav-pill={shape}
     style:--pill-left="{pill[shape].at.left}px"
