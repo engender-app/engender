@@ -84,7 +84,7 @@ function restoring(
   return { driver, mode, journal: journal as ArchiveJournal, ts };
 }
 
-async function q<T extends Record<string, unknown> = Record<string, unknown>>(
+async function select<T extends Record<string, unknown> = Record<string, unknown>>(
   driver: SqliteDriver,
   sql: string,
   params?: unknown[]
@@ -120,11 +120,11 @@ test('applyDimensions inserts a new dimension and merge leaves a matched key alo
   };
 
   await applyDimensions(restoring(driver, { dimensions: [dim] }, 'merge', 3));
-  let rows = await q(driver, 'SELECT key, name, is_built_in, updated_at FROM gender_dimension');
+  let rows = await select(driver, 'SELECT key, name, is_built_in, updated_at FROM gender_dimension');
   assert.deepEqual(rows, [{ key: 'euphoria', name: 'Euphoria', is_built_in: 1, updated_at: 3 }]);
 
   await applyDimensions(restoring(driver, { dimensions: [{ ...dim, name: 'Renamed' }] }, 'merge', 9));
-  rows = await q(driver, 'SELECT name FROM gender_dimension');
+  rows = await select(driver, 'SELECT name FROM gender_dimension');
   assert.deepEqual(rows, [{ name: 'Euphoria' }]);
 });
 
@@ -143,7 +143,7 @@ test('applyDimensions replace updates a matched key', async () => {
   await applyDimensions(restoring(driver, { dimensions: [dim] }, 'merge', 3));
 
   await applyDimensions(restoring(driver, { dimensions: [{ ...dim, name: 'Renamed', hidden: true }] }, 'replace', 9));
-  const rows = await q(driver, 'SELECT name, hidden, updated_at FROM gender_dimension');
+  const rows = await select(driver, 'SELECT name, hidden, updated_at FROM gender_dimension');
   assert.deepEqual(rows, [{ name: 'Renamed', hidden: 1, updated_at: 9 }]);
 });
 
@@ -159,7 +159,7 @@ async function seedTwoDimensions(driver: SqliteDriver): Promise<void> {
 }
 
 async function presetDimensionKeys(driver: SqliteDriver): Promise<string[]> {
-  const rows = await q<{ key: string }>(driver, 
+  const rows = await select<{ key: string }>(driver,
     `SELECT d.key FROM preset_dimension pd JOIN gender_dimension d ON d.id = pd.dimension_id ORDER BY pd.order_index`
   );
   return rows.map((r) => r.key);
@@ -172,7 +172,7 @@ test('applyPresets inserts a preset with its dimension links', async () => {
 
   await applyPresets(restoring(driver, { presets: [preset] }, 'merge', 3));
 
-  const rows = await q(driver, 'SELECT key, name, updated_at FROM gender_preset');
+  const rows = await select(driver, 'SELECT key, name, updated_at FROM gender_preset');
   assert.deepEqual(rows, [{ key: 'euphoric', name: 'Euphoric', updated_at: 3 }]);
   assert.deepEqual(await presetDimensionKeys(driver), ['a']);
 });
@@ -186,13 +186,13 @@ test('applyPresets merge keeps a matched preset\'s own links, replace swaps them
   await applyPresets(
     restoring(driver, { presets: [{ ...preset, name: 'Renamed', dims: ['b'] }] }, 'merge', 9)
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM gender_preset'))[0].name, 'Euphoric');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM gender_preset'))[0].name, 'Euphoric');
   assert.deepEqual(await presetDimensionKeys(driver), ['a']);
 
   await applyPresets(
     restoring(driver, { presets: [{ ...preset, name: 'Renamed', dims: ['b'] }] }, 'replace', 9)
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM gender_preset'))[0].name, 'Renamed');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM gender_preset'))[0].name, 'Renamed');
   assert.deepEqual(await presetDimensionKeys(driver), ['b']);
 });
 
@@ -218,13 +218,13 @@ test('applyEntryTemplates inserts a template with its tags and dimension values'
 
   await applyEntryTemplates(restoring(driver, { entryTemplates: [template] }, 'merge', 4));
 
-  const rows = await q(driver, 'SELECT key, name, note_scaffold, updated_at FROM entry_template');
+  const rows = await select(driver, 'SELECT key, name, note_scaffold, updated_at FROM entry_template');
   assert.deepEqual(rows, [{ key: 'started_hrt', name: 'Started HRT', note_scaffold: 'Today I...', updated_at: 4 }]);
-  const tagLinks = await q<{ label: string }>(driver, 
+  const tagLinks = await select<{ label: string }>(driver,
     'SELECT t.label FROM entry_template_tag ett JOIN tag t ON t.id = ett.tag_id'
   );
   assert.deepEqual(tagLinks, [{ label: 'Tag' }]);
-  const dimLinks = await q<{ value: number }>(driver, 'SELECT value FROM entry_template_dimension_value');
+  const dimLinks = await select<{ value: number }>(driver, 'SELECT value FROM entry_template_dimension_value');
   assert.deepEqual(dimLinks, [{ value: 40 }]);
 });
 
@@ -250,15 +250,15 @@ test('applyEntryTemplates merge leaves a matched template alone, replace re-link
   await applyEntryTemplates(
     restoring(driver, { entryTemplates: [{ ...template, name: 'Renamed', dims: { b: 10 } }] }, 'merge', 9)
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Started HRT');
-  assert.deepEqual(await q(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 40 }]);
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Started HRT');
+  assert.deepEqual(await select(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 40 }]);
 
   await applyEntryTemplates(
     restoring(driver, { entryTemplates: [{ ...template, name: 'Renamed', tags: [], dims: { b: 10 } }] }, 'replace', 9)
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Renamed');
-  assert.deepEqual(await q(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 10 }]);
-  assert.deepEqual(await q(driver, 'SELECT * FROM entry_template_tag'), []);
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Renamed');
+  assert.deepEqual(await select(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 10 }]);
+  assert.deepEqual(await select(driver, 'SELECT * FROM entry_template_tag'), []);
 });
 
 // applyTagGroups ----------------------------------------------------------------
@@ -278,9 +278,9 @@ test('applyTagGroups inserts a group and its tags, in order', async () => {
 
   await applyTagGroups(restoring(driver, { tagGroups: [group] }, 'merge', 5));
 
-  const groupRows = await q(driver, 'SELECT key, name, order_index FROM tag_group');
+  const groupRows = await select(driver, 'SELECT key, name, order_index FROM tag_group');
   assert.deepEqual(groupRows, [{ key: 'moods', name: 'Moods', order_index: 0 }]);
-  const tagRows = await q(driver, 'SELECT key, label, order_index FROM tag ORDER BY order_index');
+  const tagRows = await select(driver, 'SELECT key, label, order_index FROM tag ORDER BY order_index');
   assert.deepEqual(tagRows, [
     { key: 't1', label: 'Euphoric', order_index: 0 },
     { key: 't2', label: 'Dysphoric', order_index: 1 }
@@ -317,8 +317,8 @@ test('applyTagGroups walks tags of an existing group in both modes, but only rep
       9
     )
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM tag_group'))[0].name, 'Moods');
-  assert.deepEqual(await q(driver, 'SELECT label FROM tag ORDER BY order_index'), [
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM tag_group'))[0].name, 'Moods');
+  assert.deepEqual(await select(driver, 'SELECT label FROM tag ORDER BY order_index'), [
     { label: 'Euphoric' },
     { label: 'Neutral' }
   ]);
@@ -331,8 +331,8 @@ test('applyTagGroups walks tags of an existing group in both modes, but only rep
       12
     )
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM tag_group'))[0].name, 'Renamed');
-  assert.deepEqual(await q(driver, 'SELECT label FROM tag WHERE key = ?', ['t1']), [{ label: 'Relabeled' }]);
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM tag_group'))[0].name, 'Renamed');
+  assert.deepEqual(await select(driver, 'SELECT label FROM tag WHERE key = ?', ['t1']), [{ label: 'Relabeled' }]);
 });
 
 // applyAffirmations ---------------------------------------------------------
@@ -342,15 +342,15 @@ test('applyAffirmations inserts and merge leaves a matched id alone, replace upd
   const a: ArchiveAffirmation = { id: 'calm', language: null, text: 'I am calm.', builtIn: true, hidden: false };
 
   await applyAffirmations(restoring(driver, { affirmations: [a] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT key, text, updated_at FROM affirmation'), [
+  assert.deepEqual(await select(driver, 'SELECT key, text, updated_at FROM affirmation'), [
     { key: 'calm', text: 'I am calm.', updated_at: 2 }
   ]);
 
   await applyAffirmations(restoring(driver, { affirmations: [{ ...a, text: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await q<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'I am calm.');
+  assert.deepEqual((await select<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'I am calm.');
 
   await applyAffirmations(restoring(driver, { affirmations: [{ ...a, text: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await q<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'Renamed');
+  assert.deepEqual((await select<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'Renamed');
 });
 
 // applyBodyRegions -----------------------------------------------------------
@@ -360,13 +360,13 @@ test('applyBodyRegions inserts and merge leaves a matched id alone, replace upda
   const r: ArchiveBodyRegion = { id: 'chest', name: 'Chest', builtIn: true, hidden: false };
 
   await applyBodyRegions(restoring(driver, { bodyRegions: [r] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT key, name FROM body_region'), [{ key: 'chest', name: 'Chest' }]);
+  assert.deepEqual(await select(driver, 'SELECT key, name FROM body_region'), [{ key: 'chest', name: 'Chest' }]);
 
   await applyBodyRegions(restoring(driver, { bodyRegions: [{ ...r, name: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM body_region'))[0].name, 'Chest');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM body_region'))[0].name, 'Chest');
 
   await applyBodyRegions(restoring(driver, { bodyRegions: [{ ...r, name: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM body_region'))[0].name, 'Renamed');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM body_region'))[0].name, 'Renamed');
 });
 
 // applyEntries ----------------------------------------------------------------
@@ -399,7 +399,7 @@ test('applyEntries inserts an entry with its dims, tags, body regions and files'
   await applyEntries(restoring(driver, { entries: [entry] }, 'merge', 7));
 
   assert.deepEqual(
-    await q(driver, 'SELECT uuid, epoch_day, timestamp, mood, note, starred, presentation_id, updated_at FROM entry'),
+    await select(driver, 'SELECT uuid, epoch_day, timestamp, mood, note, starred, presentation_id, updated_at FROM entry'),
     [
       {
         uuid: 'e1',
@@ -414,28 +414,28 @@ test('applyEntries inserts an entry with its dims, tags, body regions and files'
     ]
   );
   assert.deepEqual(
-    await q<{ value: number }>(driver, 
+    await select<{ value: number }>(driver,
       `SELECT value FROM entry_dimension_value edv JOIN gender_dimension d ON d.id = edv.dimension_id WHERE d.key = 'a'`
     ),
     [{ value: 40 }]
   );
   assert.equal(
-    (await q(driver, `SELECT 1 AS x FROM entry_tag et JOIN tag t ON t.id = et.tag_id WHERE t.key = 't1'`)).length,
+    (await select(driver, `SELECT 1 AS x FROM entry_tag et JOIN tag t ON t.id = et.tag_id WHERE t.key = 't1'`)).length,
     1
   );
-  assert.deepEqual(await q(driver, 'SELECT region, value FROM entry_body_region'), [{ region: 'chest', value: 2 }]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path, starred FROM photo'), [
+  assert.deepEqual(await select(driver, 'SELECT region, value FROM entry_body_region'), [{ region: 'chest', value: 2 }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path, starred FROM photo'), [
     { uuid: 'p1', file_path: 'p1.jpg', starred: 1 }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM voice_recording'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM voice_recording'), [
     { uuid: 'r1', file_path: 'r1.webm' }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM video_note'), [{ uuid: 'v1', file_path: 'v1.webm' }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM video_note'), [{ uuid: 'v1', file_path: 'v1.webm' }]);
   // A contentless FTS5 table stores no column to read back - MATCH is the
   // only way to prove the folded text actually landed (search.test.ts's own
   // convention).
   assert.equal(
-    (await q(driver, `SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?`, [foldText('first entry')])).length,
+    (await select(driver, `SELECT rowid FROM entry_fts WHERE entry_fts MATCH ?`, [foldText('first entry')])).length,
     1
   );
 });
@@ -463,8 +463,8 @@ test('applyEntries leaves a matched uuid whole, photos included', async () => {
     restoring(driver, { entries: [{ ...entry, note: 'changed', photos: [] }] }, 'merge', 11)
   );
 
-  assert.deepEqual(await q<{ note: string }>(driver, 'SELECT note FROM entry'), [{ note: 'first entry' }]);
-  assert.equal((await q(driver, 'SELECT * FROM photo')).length, 1);
+  assert.deepEqual(await select<{ note: string }>(driver, 'SELECT note FROM entry'), [{ note: 'first entry' }]);
+  assert.equal((await select(driver, 'SELECT * FROM photo')).length, 1);
 });
 
 // applyMilestones -------------------------------------------------------------
@@ -486,13 +486,13 @@ test('applyMilestones inserts a milestone with its photo, and leaves a matched u
   await applyMilestones(restoring(driver, { milestones: [milestone] }, 'merge', 4));
 
   assert.deepEqual(
-    await q(driver, 'SELECT uuid, name, epoch_day, description, template_key, updated_at FROM milestone'),
+    await select(driver, 'SELECT uuid, name, epoch_day, description, template_key, updated_at FROM milestone'),
     [{ uuid: 'm1', name: 'Started HRT', epoch_day: 20000, description: 'first shot', template_key: 'started_hrt', updated_at: 4 }]
   );
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM photo'), [{ uuid: 'mp1', file_path: 'mp1.jpg' }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM photo'), [{ uuid: 'mp1', file_path: 'mp1.jpg' }]);
 
   await applyMilestones(restoring(driver, { milestones: [{ ...milestone, name: 'Renamed', photo: null }] }, 'merge', 9));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM milestone'))[0].name, 'Started HRT');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM milestone'))[0].name, 'Started HRT');
 });
 
 // applyMeasurementTypes -------------------------------------------------------
@@ -502,13 +502,13 @@ test('applyMeasurementTypes inserts and merge leaves a matched key alone, replac
   const t: ArchiveMeasurementType = { key: 'waist', name: 'Waist', builtIn: true, hidden: false };
 
   await applyMeasurementTypes(restoring(driver, { measurementTypes: [t] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT key, name FROM measurement_type'), [{ key: 'waist', name: 'Waist' }]);
+  assert.deepEqual(await select(driver, 'SELECT key, name FROM measurement_type'), [{ key: 'waist', name: 'Waist' }]);
 
   await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Waist');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Waist');
 
   await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Renamed');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Renamed');
 });
 
 // applyCounterevidenceSnapshots ------------------------------------------------
@@ -524,18 +524,18 @@ test('applyCounterevidenceSnapshots inserts a snapshot with its items, and leave
 
   await applyCounterevidenceSnapshots(restoring(driver, { counterevidenceSnapshots: [snapshot] }, 'merge', 3));
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, epoch_day, timestamp, updated_at FROM doubt_snapshot'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, epoch_day, timestamp, updated_at FROM doubt_snapshot'), [
     { uuid: 's1', epoch_day: 20000, timestamp: snapshot.timestamp, updated_at: 3 }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT order_index, epoch_day, mood, note FROM doubt_snapshot_entry'), [
+  assert.deepEqual(await select(driver, 'SELECT order_index, epoch_day, mood, note FROM doubt_snapshot_entry'), [
     { order_index: 0, epoch_day: 19990, mood: 4, note: 'felt good' }
   ]);
 
   await applyCounterevidenceSnapshots(
     restoring(driver, { counterevidenceSnapshots: [{ ...snapshot, items: [] }] }, 'merge', 9)
   );
-  assert.equal((await q(driver, 'SELECT * FROM doubt_snapshot')).length, 1);
-  assert.equal((await q(driver, 'SELECT * FROM doubt_snapshot_entry')).length, 1);
+  assert.equal((await select(driver, 'SELECT * FROM doubt_snapshot')).length, 1);
+  assert.equal((await select(driver, 'SELECT * FROM doubt_snapshot_entry')).length, 1);
 });
 
 // applyRoadmapChecks ------------------------------------------------------------
@@ -545,12 +545,12 @@ test('applyRoadmapChecks inserts a check and leaves a matched pack/goal pair alo
   const check: ArchiveRoadmapCheck = { packKey: 'poland', goalKey: 'legal-name', status: 'checked' };
 
   await applyRoadmapChecks(restoring(driver, { roadmapChecks: [check] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT pack_key, goal_key, status FROM roadmap_check'), [
+  assert.deepEqual(await select(driver, 'SELECT pack_key, goal_key, status FROM roadmap_check'), [
     { pack_key: 'poland', goal_key: 'legal-name', status: 'checked' }
   ]);
 
   await applyRoadmapChecks(restoring(driver, { roadmapChecks: [{ ...check, status: 'not_my_path' }] }, 'merge', 9));
-  assert.deepEqual((await q<{ status: string }>(driver, 'SELECT status FROM roadmap_check'))[0].status, 'checked');
+  assert.deepEqual((await select<{ status: string }>(driver, 'SELECT status FROM roadmap_check'))[0].status, 'checked');
 });
 
 // applyChecklists ---------------------------------------------------------------
@@ -567,10 +567,10 @@ test('applyChecklists inserts a checklist with its items', async () => {
 
   await applyChecklists(restoring(driver, { checklists: [checklist] }, 'merge', 4));
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, appointment_epoch_day FROM checklist'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, appointment_epoch_day FROM checklist'), [
     { uuid: 'prep', appointment_epoch_day: 20000 }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, content, order_index FROM checklist_item'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, content, order_index FROM checklist_item'), [
     { uuid: 'item-1', content: 'Bring ID', order_index: 0 }
   ]);
 });
@@ -604,7 +604,7 @@ test('applyChecklists walks an existing checklist\'s items in both modes, append
       8
     )
   );
-  assert.deepEqual(await q(driver, 'SELECT uuid, content, order_index FROM checklist_item ORDER BY order_index'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, content, order_index FROM checklist_item ORDER BY order_index'), [
     { uuid: 'item-1', content: 'Bring ID', order_index: 0 },
     { uuid: 'item-2', content: 'Bring insurance card', order_index: 1 }
   ]);
@@ -623,7 +623,7 @@ test('applyChecklists walks an existing checklist\'s items in both modes, append
       12
     )
   );
-  assert.deepEqual(await q(solo, 'SELECT uuid, content, checked, order_index FROM checklist_item'), [
+  assert.deepEqual(await select(solo, 'SELECT uuid, content, checked, order_index FROM checklist_item'), [
     { uuid: 'item-1', content: 'Renamed', checked: 1, order_index: 0 }
   ]);
 });
@@ -644,10 +644,10 @@ test('applyTryouts inserts a tryout with its photos, and leaves a matched uuid w
 
   await applyTryouts(restoring(driver, { tryouts: [tryout] }, 'merge', 3));
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, kind, label FROM tryout'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, kind, label FROM tryout'), [
     { uuid: 't1', kind: 'name', label: 'Trying "Alex"' }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM tryout_photo'), [{ uuid: 'p1', file_path: 'p1.jpg' }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM tryout_photo'), [{ uuid: 'p1', file_path: 'p1.jpg' }]);
 
   await applyTryouts(
     restoring(
@@ -661,8 +661,8 @@ test('applyTryouts inserts a tryout with its photos, and leaves a matched uuid w
       9
     )
   );
-  assert.deepEqual((await q<{ label: string }>(driver, 'SELECT label FROM tryout'))[0].label, 'Trying "Alex"');
-  assert.deepEqual(await q(driver, 'SELECT uuid FROM tryout_photo ORDER BY uuid'), [{ uuid: 'p1' }, { uuid: 'p2' }]);
+  assert.deepEqual((await select<{ label: string }>(driver, 'SELECT label FROM tryout'))[0].label, 'Trying "Alex"');
+  assert.deepEqual(await select(driver, 'SELECT uuid FROM tryout_photo ORDER BY uuid'), [{ uuid: 'p1' }, { uuid: 'p2' }]);
 });
 
 // applyFeltSenseEntries -------------------------------------------------------
@@ -690,7 +690,7 @@ test('applyFeltSenseEntries resolves its tryout owner, and drops an entry whose 
     restoring(driver, { feltSenseEntries: [entry, { ...entry, id: 'fs2', tryoutId: 'missing' }] }, 'merge', 5)
   );
 
-  const rows = await q<{ uuid: string; tryout_id: number | null }>(driver, 
+  const rows = await select<{ uuid: string; tryout_id: number | null }>(driver,
     'SELECT uuid, tryout_id FROM felt_sense'
   );
   assert.equal(rows.length, 1);
@@ -732,7 +732,7 @@ test('applyMarginNotes resolves its entry owner, and drops a note whose entry is
 
   await applyMarginNotes(restoring(driver, { marginNotes: [note, { ...note, id: 'mn2', entryId: 'missing' }] }, 'merge', 6));
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, text FROM margin_note'), [{ uuid: 'mn1', text: 'a thought' }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, text FROM margin_note'), [{ uuid: 'mn1', text: 'a thought' }]);
 });
 
 // applyDoseSchedules ------------------------------------------------------------
@@ -754,14 +754,14 @@ test('applyDoseSchedules inserts a schedule with its weekdays and dose amounts',
   await applyDoseSchedules(restoring(driver, { doseSchedules: [schedule] }, 'merge', 4));
 
   assert.deepEqual(
-    await q(driver, 'SELECT uuid, recurrence_kind, doses_per_day, auto_log_from_epoch_day FROM dose_schedule'),
+    await select(driver, 'SELECT uuid, recurrence_kind, doses_per_day, auto_log_from_epoch_day FROM dose_schedule'),
     [{ uuid: 'sch1', recurrence_kind: 'weekdays', doses_per_day: 1, auto_log_from_epoch_day: null }]
   );
-  assert.deepEqual(await q(driver, 'SELECT weekday FROM dose_schedule_weekday ORDER BY weekday'), [
+  assert.deepEqual(await select(driver, 'SELECT weekday FROM dose_schedule_weekday ORDER BY weekday'), [
     { weekday: 0 },
     { weekday: 3 }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT dose, dose_unit FROM dose_schedule_dose_amount'), [
+  assert.deepEqual(await select(driver, 'SELECT dose, dose_unit FROM dose_schedule_dose_amount'), [
     { dose: 2, dose_unit: 'mg' }
   ]);
 });
@@ -795,7 +795,7 @@ test('applyDoseSchedules drops a schedule with no episode, and a second one for 
     )
   );
 
-  assert.deepEqual(await q(driver, 'SELECT uuid FROM dose_schedule'), [{ uuid: 'sch1' }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid FROM dose_schedule'), [{ uuid: 'sch1' }]);
 });
 
 // applyDosePauses -----------------------------------------------------------
@@ -809,7 +809,7 @@ test('applyDosePauses inserts a pause resolved against its episode, and drops on
     restoring(driver, { dosePauses: [pause, { ...pause, id: 'pause2', episodeId: 'missing' }] }, 'merge', 3)
   );
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, start_epoch_day, reason FROM dose_pause'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, start_epoch_day, reason FROM dose_pause'), [
     { uuid: 'pause1', start_epoch_day: 20000, reason: 'travel' }
   ]);
 });
@@ -821,15 +821,15 @@ test('applyEffectCategories inserts and merge leaves a matched key alone, replac
   const c: ArchiveEffectCategory = { key: 'skin', name: 'Skin and hair', enabled: true };
 
   await applyEffectCategories(restoring(driver, { effectCategories: [c] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT key, name, enabled FROM effect_category'), [
+  assert.deepEqual(await select(driver, 'SELECT key, name, enabled FROM effect_category'), [
     { key: 'skin', name: 'Skin and hair', enabled: 1 }
   ]);
 
   await applyEffectCategories(restoring(driver, { effectCategories: [{ ...c, name: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM effect_category'))[0].name, 'Skin and hair');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM effect_category'))[0].name, 'Skin and hair');
 
   await applyEffectCategories(restoring(driver, { effectCategories: [{ ...c, name: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM effect_category'))[0].name, 'Renamed');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM effect_category'))[0].name, 'Renamed');
 });
 
 // applyPersonalEffectTypes -------------------------------------------------------
@@ -846,18 +846,18 @@ test('applyPersonalEffectTypes inserts and merge leaves a matched key alone, rep
   };
 
   await applyPersonalEffectTypes(restoring(driver, { personalEffectTypes: [t] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT key, name, direction FROM personal_effect_type'), [
+  assert.deepEqual(await select(driver, 'SELECT key, name, direction FROM personal_effect_type'), [
     { key: 'breast-growth', name: 'Breast growth', direction: 'feminizing' }
   ]);
 
   await applyPersonalEffectTypes(restoring(driver, { personalEffectTypes: [{ ...t, name: 'Renamed' }] }, 'merge', 5));
   assert.deepEqual(
-    (await q<{ name: string }>(driver, 'SELECT name FROM personal_effect_type'))[0].name,
+    (await select<{ name: string }>(driver, 'SELECT name FROM personal_effect_type'))[0].name,
     'Breast growth'
   );
 
   await applyPersonalEffectTypes(restoring(driver, { personalEffectTypes: [{ ...t, name: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM personal_effect_type'))[0].name, 'Renamed');
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM personal_effect_type'))[0].name, 'Renamed');
 });
 
 // applyHairPhotos -----------------------------------------------------------
@@ -867,10 +867,10 @@ test('applyHairPhotos inserts and leaves a matched uuid alone', async () => {
   const p: ArchiveHairPhoto = { id: 'hp1', epochDay: 20000, fileName: 'hp1.jpg' };
 
   await applyHairPhotos(restoring(driver, { hairPhotos: [p] }, 'merge', 2));
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM hair_photo'), [{ uuid: 'hp1', file_path: 'hp1.jpg' }]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM hair_photo'), [{ uuid: 'hp1', file_path: 'hp1.jpg' }]);
 
   await applyHairPhotos(restoring(driver, { hairPhotos: [{ ...p, fileName: 'other.jpg' }] }, 'merge', 5));
-  assert.equal((await q(driver, 'SELECT * FROM hair_photo')).length, 1);
+  assert.equal((await select(driver, 'SELECT * FROM hair_photo')).length, 1);
 });
 
 // applyHairRemovalSessions ----------------------------------------------------
@@ -890,10 +890,10 @@ test('applyHairRemovalSessions inserts a session with its photos, and walks phot
 
   await applyHairRemovalSessions(restoring(driver, { hairRemovalSessions: [session] }, 'merge', 3));
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, area, provider FROM hair_removal_session'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, area, provider FROM hair_removal_session'), [
     { uuid: 'hrs1', area: 'chest', provider: 'Clinic A' }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM hair_removal_photo'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM hair_removal_photo'), [
     { uuid: 'hp1', file_path: 'hp1.jpg' }
   ]);
 
@@ -906,10 +906,10 @@ test('applyHairRemovalSessions inserts a session with its photos, and walks phot
     )
   );
   assert.deepEqual(
-    (await q<{ provider: string }>(driver, 'SELECT provider FROM hair_removal_session'))[0].provider,
+    (await select<{ provider: string }>(driver, 'SELECT provider FROM hair_removal_session'))[0].provider,
     'Clinic A'
   );
-  assert.deepEqual(await q(driver, 'SELECT uuid FROM hair_removal_photo ORDER BY uuid'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid FROM hair_removal_photo ORDER BY uuid'), [
     { uuid: 'hp1' },
     { uuid: 'hp2' }
   ]);
@@ -929,10 +929,10 @@ test('applyProcedures inserts a procedure with its photos, defaulting an absent 
 
   await applyProcedures(restoring(driver, { procedures: [procedure] }, 'merge', 3));
 
-  assert.deepEqual(await q(driver, 'SELECT uuid, name, kind, dilation_opt_in, archived FROM procedure'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, name, kind, dilation_opt_in, archived FROM procedure'), [
     { uuid: 'proc1', name: 'Vaginoplasty', kind: 'custom', dilation_opt_in: 0, archived: 0 }
   ]);
-  assert.deepEqual(await q(driver, 'SELECT uuid, file_path FROM procedure_photo'), [
+  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM procedure_photo'), [
     { uuid: 'pp1', file_path: 'pp1.jpg' }
   ]);
 
@@ -944,8 +944,8 @@ test('applyProcedures inserts a procedure with its photos, defaulting an absent 
       9
     )
   );
-  assert.deepEqual((await q<{ name: string }>(driver, 'SELECT name FROM procedure'))[0].name, 'Vaginoplasty');
-  assert.deepEqual(await q(driver, 'SELECT uuid FROM procedure_photo ORDER BY uuid'), [
+  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM procedure'))[0].name, 'Vaginoplasty');
+  assert.deepEqual(await select(driver, 'SELECT uuid FROM procedure_photo ORDER BY uuid'), [
     { uuid: 'pp1' },
     { uuid: 'pp2' }
   ]);
@@ -960,12 +960,12 @@ test('applyTaper resolves its procedure link, drops a taper whose procedure is n
 
   await applyTaper(restoring(driver, { taper: [taper, { ...taper, id: 'taper2', procedureId: 'missing' }] }, 'merge', 4));
 
-  const rows = await q<{ uuid: string; procedure_id: number }>(driver, 'SELECT uuid, procedure_id FROM taper');
+  const rows = await select<{ uuid: string; procedure_id: number }>(driver, 'SELECT uuid, procedure_id FROM taper');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].uuid, 'taper1');
 
   await applyTaper(restoring(driver, { taper: [{ ...taper, stagesJson: '["x"]' }] }, 'merge', 9));
-  assert.deepEqual((await q<{ stages: string }>(driver, 'SELECT stages FROM taper'))[0].stages, '[]');
+  assert.deepEqual((await select<{ stages: string }>(driver, 'SELECT stages FROM taper'))[0].stages, '[]');
 });
 
 // applyAppointments -------------------------------------------------------------
@@ -978,7 +978,7 @@ test('applyAppointments resolves its optional procedure link, keeps the day when
 
   await applyAppointments(restoring(driver, { appointments: [linked, dangling] }, 'merge', 3));
 
-  const rows = await q<{ uuid: string; procedure_id: number | null; epoch_day: number }>(driver, 
+  const rows = await select<{ uuid: string; procedure_id: number | null; epoch_day: number }>(driver,
     'SELECT uuid, procedure_id, epoch_day FROM appointment ORDER BY uuid'
   );
   assert.equal(rows[0].uuid, 'appt1');
@@ -987,7 +987,7 @@ test('applyAppointments resolves its optional procedure link, keeps the day when
 
   await applyAppointments(restoring(driver, { appointments: [{ ...linked, kind: 'Renamed' }] }, 'merge', 9));
   assert.deepEqual(
-    (await q<{ kind: string }>(driver, "SELECT kind FROM appointment WHERE uuid = 'appt1'"))[0].kind,
+    (await select<{ kind: string }>(driver, "SELECT kind FROM appointment WHERE uuid = 'appt1'"))[0].kind,
     'endokrynolog'
   );
 });
@@ -1000,12 +1000,12 @@ test('applyImportLog inserts a record the device does not have yet and leaves a 
 
   await applyImportLog(restoring(driver, { importLog: [record] }, 'merge', 5));
   assert.deepEqual(
-    await q(driver, 'SELECT uuid, source, counts, imported_at, updated_at FROM import_log'),
+    await select(driver, 'SELECT uuid, source, counts, imported_at, updated_at FROM import_log'),
     [{ uuid: 'rec1', source: 'daylio', counts: JSON.stringify({ entries: 2 }), imported_at: 100, updated_at: 5 }]
   );
 
   await applyImportLog(restoring(driver, { importLog: [{ ...record, source: 'pixels' }] }, 'merge', 9));
-  assert.deepEqual((await q<{ source: string }>(driver, 'SELECT source FROM import_log'))[0].source, 'daylio');
+  assert.deepEqual((await select<{ source: string }>(driver, 'SELECT source FROM import_log'))[0].source, 'daylio');
 });
 
 test('recordImport writes one row with a minted uuid and both timestamps set from the moment it runs', async () => {
@@ -1013,7 +1013,7 @@ test('recordImport writes one row with a minted uuid and both timestamps set fro
 
   await recordImport(driver, 'daylio', { entries: 3, tags: 1 });
 
-  const rows = await q<{
+  const rows = await select<{
     uuid: string;
     source: string;
     counts: string;
