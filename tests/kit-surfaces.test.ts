@@ -177,6 +177,9 @@ describe('the surfaces', () => {
          have for a read that failed - and renders the screen's snippet for
          it. The rule it renders is readGate.ts, node-tested beside it. */
       'ReadGate.svelte',
+      /* Not a surface either: the gate that holds several independently read
+         components behind one placeholder (ux-carpet ticket 190). */
+      'ReadGroup.svelte',
       'ReadReserve.svelte',
       /* The Look back door's readings as tiles (phase 11 ticket 07): a
          flush tile stating one figure for the span with a chevron into its

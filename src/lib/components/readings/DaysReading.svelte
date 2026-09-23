@@ -25,6 +25,7 @@
   import Donut from '$lib/components/kit/Donut.svelte';
   import OrderedStrip from '$lib/components/kit/OrderedStrip.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
+  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
   import { crossfade } from '$lib/motion/reveal';
 
   let {
@@ -46,6 +47,9 @@
      parts-of-a-whole form computes each share against the sum of what it
      is handed, and a LIMIT 3 read drew three tags as a full circle. */
   let tagShareQuery = liveList((j) => j.stats.tagShare(from, to));
+  /* Whether there is a tile is settled once the mood read answers; the
+     card waits on the tag shares as well (ReadGroup). */
+  joinReadGroup(() => !moodQuery.loading && (view === 'tile' || !tagShareQuery.loading));
   let tagParts = $derived<Part[]>(
     tagShareQuery.rows.map((tag) => ({
       key: tag.id,

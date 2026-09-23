@@ -336,10 +336,12 @@ describe('what the worker is still fetching', () => {
     /* Two ways to hold one, since phase 5 audit ticket 04: a screen either
        hands its read to ReadGate, which owns the placeholder and the branch
        around it, or it draws a Skeleton against a `.loading` of its own where
-       what it is waiting on is not a list. What must not happen is neither. */
+       what it is waiting on is not a list. What must not happen is neither.
+       A ReadGroup (ux-carpet ticket 190) is a gate over several reads at
+       once and owns its placeholder the same way. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
-      const gated = source.includes('ReadGate.svelte');
+      const gated = source.includes('ReadGate.svelte') || source.includes('ReadGroup.svelte');
       expect(gated || source.includes('Skeleton.svelte'), `${route} waits for nothing`).toBe(true);
       if (!gated) expect(source, route).toMatch(/\.loading/);
     }
@@ -366,7 +368,7 @@ describe('what the worker is still fetching', () => {
        out of the routes the first pass had written it into. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
-      if (!source.includes('ReadGate.svelte')) {
+      if (!source.includes('ReadGate.svelte') && !source.includes('ReadGroup.svelte')) {
         expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
         expect(markupOf.get(route), route).toMatch(/out:crossfade/);
       }
@@ -377,10 +379,12 @@ describe('what the worker is still fetching', () => {
   });
 
   it('fades the gate\'s own placeholder out, on the one file that draws it', () => {
-    const gate = readFileSync(root + 'src/lib/components/kit/ReadGate.svelte', 'utf8');
-    expect(gate).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
-    expect(gate).toMatch(/out:crossfade/);
-    expect(gate).not.toMatch(/in:crossfade/);
+    for (const file of ['ReadGate.svelte', 'ReadGroup.svelte']) {
+      const gate = readFileSync(root + `src/lib/components/kit/${file}`, 'utf8');
+      expect(gate, file).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
+      expect(gate, file).toMatch(/out:crossfade/);
+      expect(gate, file).not.toMatch(/in:crossfade/);
+    }
   });
 });
 
