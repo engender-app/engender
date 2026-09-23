@@ -82,7 +82,6 @@ import {
   JUMP_FIRST_RUN_EXPRESSION,
   LOCK_SETUP_EXPRESSION,
   OUTLIER_MIN,
-  PAINT_BLANK_SENTINEL_EXPRESSION,
   PROOF,
   RESET_PERSONA_EXPRESSION,
   SCENE_MS,
@@ -99,6 +98,7 @@ import {
   findYanks,
   hydrationScreensFor,
   missingProofYanks,
+  paintBlankSentinel,
   pushHydrationRun,
   replySlices,
   scenesFor,
@@ -630,8 +630,7 @@ let evidenceCount = 0;
 async function hydrationCold(href) {
   const pathname = href.split('?')[0].split('#')[0];
   return screencast(async (cast) => {
-    await ev(PAINT_BLANK_SENTINEL_EXPRESSION);
-    await sleep(150);
+    await paintBlankSentinel(ev, sleep);
     await ev(`location.assign(${JSON.stringify(href)}); true;`);
     await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
@@ -794,8 +793,7 @@ async function hydrationScenes() {
       await settle('/settings/access-mode', themes[0]);
       await ev(LOCK_SETUP_EXPRESSION(PIN));
       const result = await screencast(async (cast) => {
-        await ev(PAINT_BLANK_SENTINEL_EXPRESSION);
-        await sleep(150);
+        await paintBlankSentinel(ev, sleep);
         await ev(`location.assign('/'); true;`);
         await ev(waitForExpression('[data-pin-pad]', 40000, '/'));
         const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
