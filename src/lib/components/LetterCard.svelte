@@ -112,8 +112,16 @@
   /* Tile's panel contract, and the same reasoning: `|global` because what
      creates and destroys a card is the caller's `{#each}`, a parent block a
      local transition never sees, and `skip` so a screen leaving does not
-     spend --dur-slow folding its letters up on the way out. */
-  let panel = $derived({ skip: navigating.to !== null });
+     spend --dur-slow folding its letters up on the way out.
+
+     A function called as the transition starts, not a `$derived` (ticket
+     197, the same fix Tile had in 196): Svelte reads the params again when
+     the outro starts, and a derived read from a card that is already being
+     destroyed hands back its value from mount - `skip: false` - and warns
+     (`derived_inert`), once per card on every navigation off a screen of
+     letters. The cards still did not fold, but only because the screen's
+     arrival window also stands `collapse` down (screenArrival.ts). */
+  const panel = () => ({ skip: navigating.to !== null });
 </script>
 
 {#snippet trailing()}
@@ -168,7 +176,7 @@
   data-letter={letter.id}
   data-letter-state={sealed ? 'sealed' : open ? 'reading' : read ? 'opened' : 'ready'}
   bind:this={card}
-  transition:collapse|global={panel}
+  transition:collapse|global={panel()}
 >
   {#if sealed}
     <!-- No button anywhere in this branch. A sealed card is a closed object
