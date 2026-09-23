@@ -25,6 +25,7 @@
    Svelte bug rather than a missing line here. */
 
 import { markJournalBusy } from '../journal-busy';
+import { NOTHING_WRITTEN } from '../journal/nothingWritten';
 import type { Journal } from '../journal/journal';
 import { DAY_TABLES } from '../journal/day';
 import { DAY_AHEAD_TABLES } from '../journal/dayAhead';
@@ -1215,6 +1216,9 @@ function announcing(implementation: Mutation, tables: TableName[], onWrite: (tab
     const done = markJournalBusy();
     try {
       const result = await implementation(...args);
+      // A write that looked and changed nothing says so, and announcing it
+      // anyway is how the run-out reconcile kept waking itself (ux-carpet 199).
+      if (result === NOTHING_WRITTEN) return undefined;
       onWrite(tables);
       return result;
     } finally {
