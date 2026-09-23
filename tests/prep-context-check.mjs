@@ -16,7 +16,7 @@
    Run: node tests/prep-context-check.mjs */
 import { preview } from 'vite';
 import { resolve } from 'node:path';
-import { launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium } from './browser-harness.mjs';
 import { clearPrepList } from './prep-fixture.mjs';
 
 const root = resolve(import.meta.dirname, '..');
@@ -66,9 +66,7 @@ try {
   await settle('/health/appointments');
   await page.locator('[data-add]').click();
   await page.waitForSelector('#appointment-date');
-  await page.evaluate((day) => {
-    document.getElementById('appointment-date')._flatpickr.setDate(day, true);
-  }, inTwoWeeks);
+  await fillDate(page, '#appointment-date', inTwoWeeks);
   await page.locator('[data-save-appointment]').click();
   await page.waitForSelector('[data-appointment]');
 

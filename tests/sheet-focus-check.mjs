@@ -7,7 +7,7 @@
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createReporter, launchChromium } from './browser-harness.mjs';
+import { createReporter, launchChromium, waitForFlatpickr } from './browser-harness.mjs';
 
 const outDir = process.argv[2] ? resolve(process.argv[2]) : null;
 if (outDir) await mkdir(outDir, { recursive: true });
@@ -136,6 +136,7 @@ await block('ticket 04 sheet focus', 13, async () => {
     ok('reverse Tab from calendar grid stays within sheet owner');
   else fail('reverse Tab from calendar grid stays within sheet owner', JSON.stringify(active));
 
+  await waitForFlatpickr(page, '#appointment-date');
   await page.evaluate(() => document.querySelector('#appointment-date')._flatpickr.open());
   await page.waitForSelector('.flatpickr-calendar.open');
   await page.locator('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)').first().focus();

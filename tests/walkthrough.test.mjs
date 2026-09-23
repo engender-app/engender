@@ -12,7 +12,7 @@
    #demo-jump control), then serves that build. */
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate, waitForFlatpickr } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 
@@ -617,7 +617,7 @@ try {
   await page.waitForSelector('#appointment-kind');
   const inThreeDays = new Date();
   inThreeDays.setDate(inThreeDays.getDate() + 3);
-  await page.$eval('#appointment-date', (input, value) => input._flatpickr.setDate(value, true), inThreeDays.toISOString().slice(0, 10));
+  await fillDate(page, '#appointment-date', inThreeDays.toISOString().slice(0, 10));
   await page.fill('#appointment-kind', AGENDA_KIND);
   await page.click('[data-save-appointment]');
   await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { timeout: 8000 }); // text-under-test
@@ -7516,9 +7516,10 @@ try {
      calendar affordance on its cell, prefilled with what was just set. */
   await datedCell.locator('xpath=../button[@data-photo-edit-day]').click();
   await page.waitForSelector('[data-photo-day-edit-save]');
+  await waitForFlatpickr(page, '#photo-day-edit');
   const prefilled = await page.evaluate(() => {
     const el = document.querySelector('#photo-day-edit');
-    const fp = el?._flatpickr ?? el?.flatpickr;
+    const fp = el?._flatpickr;
     return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d');
   });
   if (prefilled !== '1994-03-15') throw new Error(`the edit sheet did not prefill the photo's day: ${prefilled}`);
