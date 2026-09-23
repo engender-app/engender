@@ -88,10 +88,21 @@ if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('persona r
 await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
 await page.waitForTimeout(1500);
 
+/* page.waitForFunction evaluates its string with eval, which the app's CSP
+   refuses; page.evaluate goes over CDP, which the CSP does not govern. */
+async function waitFor(expression) {
+  const until = Date.now() + 20000;
+  while (Date.now() < until) {
+    if (await page.evaluate(expression)) return;
+    await page.waitForTimeout(50);
+  }
+  throw new Error(`timed out waiting for ${expression.slice(0, 80)}`);
+}
+
 async function warm(to) {
   const from = to === '/' ? '/stats' : '/';
   await page.goto(`${base}${from}`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(TILES[from], null, { timeout: 20000 });
+  await waitFor(TILES[from]);
   await page.waitForTimeout(800);
   return page.evaluate(
     FIRST_FRAME(`location.pathname === '${to}' && ${TILES[to]}`, {
@@ -105,6 +116,68 @@ async function cold(path) {
   const shellAt = await page.evaluate(FIRST_FRAME(`!!document.querySelector('[data-app-root][data-boot="ready"]')`, { t0: '0' }));
   const tilesAt = await page.evaluate(FIRST_FRAME(TILES[path], { t0: '0' }));
   return shellAt == null || tilesAt == null ? null : tilesAt - shellAt;
+}
+
+/* Each screen's own first element, which the other screen does not have:
+   the header selector alone matches the old screen's header too while the
+   address has already changed. */
+const SCREEN = {
+  '/': `!!document.querySelector('[data-home-hello]')`,
+  '/stats': `!!document.querySelector('[data-lookback-rail], [data-lookback-readings]') || /Look back/.test(document.querySelector('h1')?.textContent ?? '')`
+};
+
+/* The frames after a click, one sample per painted frame: whether the new
+   route is up, whether its tiles are, and whether any placeholder is. */
+const FRAMES_AFTER_CLICK = (to) => `(() => {
+  const t0 = performance.now();
+  document.querySelector('nav a[href="${to}"]').click();
+  const out = [];
+  return new Promise((done) => {
+    const tick = () => {
+      const at = performance.now() - t0;
+      out.push({
+        at: Math.round(at),
+        route: location.pathname === '${to}' && ${SCREEN[to]},
+        tiles: location.pathname === '${to}' && ${TILES[to]},
+        skeleton: [...document.querySelectorAll('.skeleton, [data-read-reserve-hold], .read-group-wait')].some((el) => el.getClientRects().length > 0),
+        /* Where every block of the screen stands, and how opaque the read
+           layers are: a revisit that paints from memory has nothing left to
+           move or fade in. */
+        layout: [...document.querySelectorAll('.screen > *')].map((el) => Math.round(el.getBoundingClientRect().top) + ':' + Math.round(el.getBoundingClientRect().height)).join(' '),
+        faded: [...document.querySelectorAll('.read-group-members, [data-read-reserve-body]')].some((el) => Number(getComputedStyle(el).opacity) < 0.99)
+      });
+      if (at > 1500) return done(out);
+      requestAnimationFrame(() => setTimeout(tick, 0));
+    };
+    requestAnimationFrame(() => setTimeout(tick, 0));
+  });
+})()`;
+
+/** A second visit to a tab in the same session: the frames from the click
+    until the tiles are up. Passes when the first frame showing the new
+    route already has its tiles and no placeholder anywhere. */
+async function revisit(to) {
+  const from = to === '/' ? '/stats' : '/';
+  await page.goto(`${base}${from}`, { waitUntil: 'networkidle' });
+  await waitFor(TILES[from]);
+  await page.evaluate(`document.querySelector('nav a[href="${to}"]').click()`);
+  await waitFor(`location.pathname === '${to}' && ${TILES[to]}`);
+  await page.waitForTimeout(800);
+  await page.evaluate(`document.querySelector('nav a[href="${from}"]').click()`);
+  await waitFor(`location.pathname === '${from}' && ${TILES[from]}`);
+  await page.waitForTimeout(800);
+  const frames = await page.evaluate(FRAMES_AFTER_CLICK(to));
+  const first = frames.findIndex((f) => f.route);
+  const after = first >= 0 ? frames.slice(first) : [];
+  const moved = after.findIndex((f) => f.layout !== after[0].layout);
+  const faded = after.findIndex((f) => f.faded);
+  return {
+    frames,
+    first,
+    moved: moved < 0 ? null : after[moved].at,
+    faded: faded < 0 ? null : after[faded].at,
+    ok: first >= 0 && frames[first].tiles && !after.some((f) => f.skeleton) && moved < 0 && faded < 0
+  };
 }
 
 const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
@@ -126,6 +199,19 @@ for (const [name, run, budget] of cases) {
     `${ok ? 'ok  ' : 'FAIL'} ${name}: median ${m == null ? 'never' : Math.round(m) + 'ms'} (budget ${budget}ms), ` +
       `runs ${times.map((t) => (t == null ? 'never' : Math.round(t))).join('/')}`
   );
+}
+for (const to of ['/', '/stats']) {
+  for (let i = 0; i < RUNS; i++) {
+    const { frames, first, moved, faded, ok } = await revisit(to);
+    if (!ok) failed = true;
+    const tilesAt = frames.findIndex((f) => f.tiles);
+    console.log(
+      `${ok ? 'ok  ' : 'FAIL'} revisit ${to}: route first painted at ${first >= 0 ? frames[first].at + 'ms' : 'never'}, ` +
+        `tiles ${tilesAt < 0 ? 'never' : tilesAt === first ? 'in that frame' : `${tilesAt - first} frames later (${frames[tilesAt].at}ms)`}` +
+        `${frames.slice(Math.max(first, 0)).some((f) => f.skeleton) ? ', a placeholder showed' : ''}` +
+        `${moved !== null ? `, a block moved at ${moved}ms` : ''}${faded !== null ? `, a read layer was under full opacity at ${faded}ms` : ''}`
+    );
+  }
 }
 if (errors.length) console.log(`page errors:\n  ${errors.join('\n  ')}`);
 

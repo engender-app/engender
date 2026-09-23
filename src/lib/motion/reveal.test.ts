@@ -900,6 +900,31 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
+  it('does not travel from a height the box had before it was ever painted (ux-carpet 201)', async () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    let frame: (() => void) | undefined;
+    g.requestAnimationFrame = (cb: () => void) => (frame = cb);
+    const { node, calls, setHeight, trigger, restore } = resizingNode(120);
+    try {
+      resize(node);
+      // A warm revisit swaps a placeholder for its content in the flush
+      // that mounts the box: the first height anyone sees is the content's.
+      setHeight(900);
+      trigger();
+      expect(calls).toEqual([]);
+
+      frame?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      setHeight(700);
+      trigger();
+      expect(calls).toEqual([[900, 700]]);
+    } finally {
+      delete g.requestAnimationFrame;
+      restore();
+    }
+  });
+
   it('chases a size that changed again mid-flight as its own animation, rather than snapping to it', async () => {
     stubDocument(false);
     const { node, calls, setHeight, trigger, finish, restore } = resizingNode(100);
