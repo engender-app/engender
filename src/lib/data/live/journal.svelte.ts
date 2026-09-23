@@ -278,6 +278,12 @@ export function liveQueryWatchingOnly<T>(
   return query(tables, run, null);
 }
 
+/** How long a query's first-ever attempt waits before retrying a rejection,
+    once, before reporting `failed` (ticket 161) - long enough to cover "a
+    couple of frames" at 60Hz with room to spare, short enough that a
+    genuine failure isn't noticeably delayed. */
+const FIRST_ATTEMPT_RETRY_DELAY_MS = 50;
+
 function query<T>(
   narrowedTo: TableName[] | null,
   run: (journal: Journal) => Promise<T>,
@@ -354,7 +360,7 @@ function query<T>(
     };
 
     attempt().then(settle, (error) => {
-      if (mine !== latest || !firstEverAttempt) return fail(error);
+      if (!firstEverAttempt) return fail(error);
       /* A route visited for the first time this session can reject once on
          its table's first touch and recover a couple of frames later
          (ticket 161): reporting that as `failed` flashes the read's error
@@ -364,7 +370,7 @@ function query<T>(
       setTimeout(() => {
         if (mine !== latest) return;
         attempt().then(settle, fail);
-      }, 50);
+      }, FIRST_ATTEMPT_RETRY_DELAY_MS);
     });
     return () => { latest += 1; };
   });
