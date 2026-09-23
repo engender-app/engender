@@ -28,6 +28,8 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
 
   type Mode = AccessSetupMode;
 
@@ -46,6 +48,8 @@
      a fourth mode would have gone missing from "Now: ..." without anything
      failing. */
   let current = $derived(bootState.accessMode);
+  const reserve = readReserve('access-mode');
+  const rememberHeight = (px: number) => rememberReserve('access-mode', px);
 
   /* Whether this journal already has a recovery key (ADR-0054, ticket
      sec-02). Two jobs: the line below, because the honest description of
@@ -184,38 +188,44 @@
       </button>
     </div>
   {:else}
-    <div class="kit-panel" data-kit-surface>
-      <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} />
-      {#if recoveryKeyPresence.exists}
-        <!-- The fact every mode's description depends on and this screen
-             could not see before ADR-0054: whatever is chosen here, the
-             written key opens the journal too. -->
-        <p class="ob-text" data-access-recovery-active>{m.am_recovery_active()}</p>
-      {/if}
-    </div>
+    <!-- Held until the boot says which mode this journal is on. A cold open
+         paints before it does, so the list first offered every mode, then
+         dropped the current one for the line naming it: 40px up in one
+         frame, 70ms in (ux-carpet ticket 193). -->
+    <ReadReserve ready={current !== null} estimate={reserve} onrest={rememberHeight}>
+      <div class="kit-panel" data-kit-surface>
+        <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} />
+        {#if recoveryKeyPresence.exists}
+          <!-- The fact every mode's description depends on and this screen
+               could not see before ADR-0054: whatever is chosen here, the
+               written key opens the journal too. -->
+          <p class="ob-text" data-access-recovery-active>{m.am_recovery_active()}</p>
+        {/if}
+      </div>
 
-    <!-- Changing the secret without changing the mode. Two rows rather than
-         one, because only one of them applies at a time and a disabled row
-         explaining why would be a third thing to read. -->
-    <ListCard>
-      {#if current === 'passphrase'}
-        <ListRow
-          key="change-passphrase"
-          icon="shield"
-          title={m.pp_change_title()}
-          subtitle={m.pp_change_sub({ min: String(MIN_PASSPHRASE_LENGTH) })}
-          href="/settings/passphrase"
-        />
-      {/if}
-      {#if current === 'pin'}
-        <ListRow
-          key="change-pin"
-          icon="lock"
-          title={m.pin_change_title()}
-          subtitle={m.pin_change_sub()}
-          onclick={() => (changingPin = true)}
-        />
-      {/if}
-    </ListCard>
+      <!-- Changing the secret without changing the mode. Two rows rather than
+           one, because only one of them applies at a time and a disabled row
+           explaining why would be a third thing to read. -->
+      <ListCard>
+        {#if current === 'passphrase'}
+          <ListRow
+            key="change-passphrase"
+            icon="shield"
+            title={m.pp_change_title()}
+            subtitle={m.pp_change_sub({ min: String(MIN_PASSPHRASE_LENGTH) })}
+            href="/settings/passphrase"
+          />
+        {/if}
+        {#if current === 'pin'}
+          <ListRow
+            key="change-pin"
+            icon="lock"
+            title={m.pin_change_title()}
+            subtitle={m.pin_change_sub()}
+            onclick={() => (changingPin = true)}
+          />
+        {/if}
+      </ListCard>
+    </ReadReserve>
   {/if}
 </div>
