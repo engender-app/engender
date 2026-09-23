@@ -18,6 +18,7 @@ function memoryStorage(): Storage {
 describe('the home reserve', () => {
   it('keeps its key under the prefix reset clears', () => {
     expect(reserveKey('above')).toMatch(/^engender-/);
+    expect(reserveKey('measurements-now')).toMatch(/^engender-/);
   });
 
   it('reads nothing as zero, which reserves no space', () => {
