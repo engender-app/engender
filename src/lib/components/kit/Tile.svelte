@@ -122,9 +122,18 @@
      while the screen is still arriving is simply there. */
   /* Also stood down while a ReadGroup is holding it (ticket 190): nobody
      can see it arrive under the group's placeholder, and the group's fade
-     is the arrival. */
+     is the arrival.
+
+     A function called as the transition starts, not a `$derived` (ticket
+     196). Svelte reads the params again when the outro starts, and a
+     derived read from an effect that is already being destroyed hands back
+     its cached value (Svelte's `derived_inert`) - which was the value from
+     mount, `skip: true` while the group still held it. Every tile on the
+     Look back door then left the grid in one frame, cut rather than
+     collapsed, and a navigation starting after mount was missed the same
+     way. Notice.svelte writes its params inline for the same reason. */
   const group = readGroup();
-  let panel = $derived({ skip: navigating.to !== null || heldByReadGroup(group) });
+  const panel = () => ({ skip: navigating.to !== null || heldByReadGroup(group) });
 
   /* The value on the block counts up where it is a count (phase 10 rule 10,
      redesign ticket 25): from nothing on arrival, from the last number on a
@@ -157,7 +166,7 @@
 </script>
 
 {#if action}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel()} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
@@ -209,7 +218,7 @@
     {/if}
   </div>
 {:else if dismiss}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse|global={panel} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse|global={panel()} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
@@ -238,7 +247,7 @@
     </button>
   </div>
 {:else}
-  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse|global={panel} {...rest}>
+  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse|global={panel()} {...rest}>
     <span class="kit-tile-title">{title}</span>
     {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}

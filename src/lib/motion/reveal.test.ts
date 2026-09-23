@@ -847,11 +847,16 @@ describe('tier 3, a box resizing under its own content', () => {
       disconnect() {}
     };
     const calls: Array<[number, number]> = [];
+    const margins: Array<[number, number]> = [];
     let settle: (() => void) | undefined;
     const node = {
       style: { overflow: '' },
       getBoundingClientRect: () => ({ height }) as DOMRect,
       animate: (keyframes: Keyframe[]) => {
+        if (keyframes[0].marginTop !== undefined) {
+          margins.push([parseFloat(String(keyframes[0].marginTop)), parseFloat(String(keyframes[1].marginTop))]);
+          return { finished: Promise.resolve(), cancel: () => {} };
+        }
         calls.push([parseFloat(String(keyframes[0].height)), parseFloat(String(keyframes[1].height))]);
         return {
           finished: new Promise<void>((resolve) => {
@@ -864,6 +869,7 @@ describe('tier 3, a box resizing under its own content', () => {
     return {
       node,
       calls,
+      margins,
       setHeight: (h: number) => (height = h),
       trigger: () => notify(),
       finish: async () => {
@@ -917,6 +923,46 @@ describe('tier 3, a box resizing under its own content', () => {
         [100, 240],
         [240, 390]
       ]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('carries its own margin with it when it empties or fills from empty', () => {
+    stubDocument(false, true, { marginBottom: '20px' });
+    const { node, calls, margins, setHeight, trigger, restore } = resizingNode(154);
+    try {
+      resize(node);
+      setHeight(0);
+      trigger();
+      expect(calls).toEqual([[154, 0]]);
+      expect(margins).toEqual([[0, -20]]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('carries the margin back in when it fills from empty', () => {
+    stubDocument(false, true, { marginBottom: '20px' });
+    const { node, margins, setHeight, trigger, restore } = resizingNode(0);
+    try {
+      resize(node);
+      setHeight(154);
+      trigger();
+      expect(margins).toEqual([[-20, 0]]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('leaves the margin alone for a resize between two real heights', () => {
+    stubDocument(false, true, { marginBottom: '20px' });
+    const { node, margins, setHeight, trigger, restore } = resizingNode(154);
+    try {
+      resize(node);
+      setHeight(80);
+      trigger();
+      expect(margins).toEqual([]);
     } finally {
       restore();
     }
