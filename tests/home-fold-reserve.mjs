@@ -163,6 +163,11 @@ const CASES = {
    234px on consecutive frames, which the sweep's own "still either side"
    rule reads as not a teleport, and this probe passed main with it. */
 const TRAVEL_FRAMES = 4;
+/* And a step of any visible size with nothing moving either side is a step,
+   however small: the 20px a collapsing notice's margin used to land short
+   is under the teleport floor and was exactly the defect (redesign ticket
+   25, frames 32 to 33). */
+const STEP_PX = 4;
 function teleports(series, label, samples) {
   const out = [];
   const step = (i) =>
@@ -171,11 +176,11 @@ function teleports(series, label, samples) {
       : 0;
   for (let i = 1; i < series.length; i++) {
     const d = step(i);
-    if (Math.abs(d) <= JUMP_PX) continue;
+    if (Math.abs(d) < STEP_PX) continue;
     let run = 1;
     for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
     for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
-    if (run < TRAVEL_FRAMES)
+    if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
       out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, in a ${run}-frame move`);
   }
   return out;
@@ -226,7 +231,59 @@ function analyse(samples) {
   };
 }
 
+/* After the reveal the reserves must be invisible: a notice dismissed from
+   inside one closes the way it does as the screen's own child, the rows
+   under it following on every frame and landing without a step. The
+   backup notice is the reserve's first child, the case where the block
+   has no sibling above it inside the reserve to measure its margin from. */
+async function dismissal() {
+  /* Dismissing is remembered, so each run puts the persona back first. */
+  await settlePage(page, base, '/', THEME);
+  if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('persona reset never reached Home');
+  await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
+  await page.waitForTimeout(1500);
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-backup-notice] [data-notice-dismiss]', { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  return page.evaluate(
+    (ms) =>
+      new Promise((done) => {
+        const out = [];
+        const t0 = performance.now();
+        const read = () => {
+          const at = performance.now() - t0;
+          const box = (sel) => {
+            const el = document.querySelector(sel);
+            if (!el) return undefined;
+            const r = el.getBoundingClientRect();
+            return { top: r.top, h: r.height };
+          };
+          out.push({ at, vt: false, hold: [], body: [], pinned: box('[data-home-pinned]'), below: box('[data-home-reserve="below"]') });
+          if (at < ms) requestAnimationFrame(() => setTimeout(read, 0));
+          else done(out);
+        };
+        read();
+        requestAnimationFrame(() => document.querySelector('[data-backup-notice] [data-notice-dismiss]').click());
+      }),
+    900
+  );
+}
+
 let failed = false;
+for (let run = 1; run <= RUNS; run++) {
+  const samples = await dismissal();
+  if (DUMP) {
+    await mkdir(DUMP, { recursive: true });
+    await writeFile(`${DUMP}/${THEME}-dismiss-${run}.json`, JSON.stringify(samples));
+  }
+  const tops = samples.map((x) => x.pinned?.top ?? null);
+  const findings = teleports(tops, 'pinned moved', samples);
+  const steps = tops.slice(1).map((t, i) => Math.round(t - tops[i]));
+  if (findings.length) failed = true;
+  console.log(`[${THEME}] dismiss run ${run}: ${findings.length ? 'FAIL' : 'ok'} - pinned steps ${steps.filter((x, i) => x || steps[i - 1]).join(' ')}`);
+  for (const f of findings) console.log(`    ${f}`);
+}
+
 for (const [name, prepare] of Object.entries(CASES)) {
   for (let run = 1; run <= RUNS; run++) {
     const samples = await coldLoad(prepare);
