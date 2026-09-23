@@ -21,6 +21,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { MOVED_ADDRESSES } from '../src/lib/navigation/movedAddresses.ts';
+
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
@@ -169,10 +171,11 @@ describe('what only Android carries', () => {
 
 describe('the old address', () => {
   it('redirects rather than 404s (ADR-0043\'s bookmark precedent)', () => {
-    /* An ordinary `+page.ts` stub since ticket 04, so where it points is
-       settings-route-redirects.test.ts's to assert with the other
-       twenty-seven. What is left here is that the screen itself is gone. */
-    expect(redirect).toContain("redirect(307, '/settings/notifications')");
+    /* An ordinary movedAddresses.ts row since ticket 04 (audit item A3
+       reduced the stub to a re-export), so where it points is
+       settings-route-redirects.test.ts's to assert with the other rows.
+       What is left here is that the screen itself is gone. */
+    expect(MOVED_ADDRESSES['/settings/live-tiles']).toBe('/settings/notifications');
     expect(redirect).not.toContain('UNPROMPTED_ROWS');
     expect(redirect).not.toContain('RegistryRow');
   });
