@@ -44,6 +44,7 @@
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
   import { routeGate } from '$lib/navigation/routeGates';
+  import { startBackgroundSchedulers } from '$lib/data/backgroundSchedulers';
   import { leavesHomeForEntry, screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';
@@ -487,37 +488,12 @@
     });
   }
 
+  /* Auto-export and the retrospective notifications, for as long as an
+     Android journal is open and unlocked (backgroundSchedulers.ts). */
   $effect(() => {
-    if (isReadyState(bootState) && !locked && isAndroid()) {
-      let cancelled = false;
-      let stop: (() => void) | undefined;
-      void import('$lib/data/archive/auto-export-scheduler').then((m) => {
-        if (cancelled) return;
-        m.startAutoExportScheduler();
-        stop = m.stopAutoExportScheduler;
-      });
-      return () => {
-        cancelled = true;
-        stop?.();
-      };
-    }
+    if (isReadyState(bootState) && !locked && isAndroid()) return startBackgroundSchedulers();
   });
 
-  $effect(() => {
-    if (isReadyState(bootState) && !locked && isAndroid()) {
-      let cancelled = false;
-      let stop: (() => void) | undefined;
-      void import('$lib/data/retrospective-notifications-scheduler').then((m) => {
-        if (cancelled) return;
-        m.startRetrospectiveNotificationsScheduler();
-        stop = m.stopRetrospectiveNotificationsScheduler;
-      });
-      return () => {
-        cancelled = true;
-        stop?.();
-      };
-    }
-  });
   /* Putting the pre-migration copy back (ticket 04). Only reachable from the
      boot-failure notice, and only when boot found a copy to put back. */
   let restoring = $state(false);
