@@ -90,16 +90,23 @@ test('valid conversion transitions carry progress payload', () => {
   });
 });
 
-test('ready transition carries journal payload', () => {
+test('ready transition carries journal payload, persistDenied starting false', () => {
   const base = bootStates.booting();
-  const ready = bootTransitions.toReady(base, {
-    journal: {} as never,
-    persistDenied: true
-  });
+  const ready = bootTransitions.toReady(base, { journal: {} as never });
 
   expect(ready.status).toBe('ready');
   expect(ready.journal).not.toBeNull();
-  expect(ready.persistDenied).toBe(true);
+  expect(ready.persistDenied).toBe(false);
+});
+
+/* ticket 202: the persistence request's answer arrives on its own, after
+   ready rather than folded into it - so its own transition marks it. */
+test('markPersistDenied sets persistDenied once ready, and is a no-op otherwise', () => {
+  const ready = bootTransitions.toReady(bootStates.booting(), { journal: {} as never });
+  expect(bootTransitions.markPersistDenied(ready).persistDenied).toBe(true);
+
+  const booting = bootStates.booting();
+  expect(bootTransitions.markPersistDenied(booting)).toBe(booting);
 });
 
 test('rejects invalid transitions', () => {
@@ -108,7 +115,7 @@ test('rejects invalid transitions', () => {
 
   expect(() => bootTransitions.toConverting(base)).toThrow(/invalid transition/i);
   expect(() => bootTransitions.updateConversionProgress(unlock as never, { stage: 'database' })).toThrow(/invalid transition/i);
-  expect(() => bootTransitions.toReady(unlock, { journal: {} as never, persistDenied: false })).toThrow(/invalid transition/i);
+  expect(() => bootTransitions.toReady(unlock, { journal: {} as never })).toThrow(/invalid transition/i);
 });
 
 /* The window ticket 53 opened and then closed. Mid-session locking reads the
@@ -124,7 +131,7 @@ test('the mid-session lock waits for the journal to be open', () => {
   expect(midSessionLockApplies(bootTransitions.toNeedsAuthentication(booting))).toBe(false);
   expect(midSessionLockApplies(bootTransitions.toConverting(bootTransitions.toNeedsSetup(booting, { conversionRequired: true })))).toBe(false);
   expect(
-    midSessionLockApplies(bootTransitions.toReady(booting, { journal: {} as never, persistDenied: false }))
+    midSessionLockApplies(bootTransitions.toReady(booting, { journal: {} as never }))
   ).toBe(true);
 });
 
@@ -164,6 +171,6 @@ test('needsOnboardingAccessMode is true only for a first run with no keystore', 
     )
   ).toBe(false);
   expect(
-    needsOnboardingAccessMode(bootTransitions.toReady(booting, { journal: {} as never, persistDenied: false }))
+    needsOnboardingAccessMode(bootTransitions.toReady(booting, { journal: {} as never }))
   ).toBe(false);
 });

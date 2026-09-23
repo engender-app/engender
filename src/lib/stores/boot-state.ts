@@ -283,15 +283,23 @@ function schemaTooNew(state: BootState): SchemaTooNewState {
   };
 }
 
-function ready(state: BootState, payload: { journal: Journal; persistDenied: boolean }): ReadyState {
+function ready(state: BootState, payload: { journal: Journal }): ReadyState {
   if (state.status !== 'booting') invalidTransition(state, 'ready');
   return {
     status: 'ready',
     accessMode: state.accessMode,
     ...base(),
-    journal: payload.journal,
-    persistDenied: payload.persistDenied
+    journal: payload.journal
   };
+}
+
+/** The persistence request's answer, arriving whenever the browser gets to
+    it (ticket 202: no longer awaited before `ready`). A no-op once the
+    journal has moved past `ready` - a late answer is still true, but there
+    is no `persistDenied` left on a state whose type pins it to `false`. */
+function markPersistDenied(state: BootState): BootState {
+  if (state.status !== 'ready') return state;
+  return { ...state, persistDenied: true };
 }
 
 function failure(state: BootState, error: string): ErrorState {
@@ -444,5 +452,6 @@ export const bootTransitions = {
   toSchemaTooNew: schemaTooNew,
   toReady: ready,
   toError: failure,
-  markErrorRecoverable: errorRecoverable
+  markErrorRecoverable: errorRecoverable,
+  markPersistDenied
 };
