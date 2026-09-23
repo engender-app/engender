@@ -35,7 +35,7 @@ describe('Tile component contract', () => {
      the one that snapped, and the branch a tile takes is decided by which
      controls its caller passed rather than by anything about the motion. */
   it('collapses through the panel primitive on all three branches', () => {
-    expect((tileFile.match(/transition:collapse\|global=\{panel\}/g) ?? []).length).toBe(3);
+    expect((tileFile.match(/transition:collapse\|global=\{panel\(\)\}/g) ?? []).length).toBe(3);
     expect(tileFile).toContain("from '$lib/motion/reveal'");
     // The `skip` that stops a screen folding its own tiles up as it leaves.
     expect(tileFile).toContain('navigating.to !== null');
