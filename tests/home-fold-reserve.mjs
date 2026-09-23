@@ -23,7 +23,7 @@
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/home-fold-reserve.mjs [--runs 3] [--theme light|dark] */
+     node tests/home-fold-reserve.mjs [--runs 3] [--theme light|dark] [--root <built tree>] */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -110,7 +110,7 @@ const SAMPLER = `(() => {
 })()`;
 
 const browser = await launchChromium();
-const app = await preview({ root: resolve(here, '..'), preview: { port: 0 } });
+const app = await preview({ root: resolve(flag('root', resolve(here, '..'))), preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 const errors = [];
@@ -154,34 +154,45 @@ const CASES = {
   })()`
 };
 
+/* A teleport in the sweep's own sense (yank-sweep-core.mjs): a move over
+   the floor in one frame with no movement in the frames either side. A
+   travel on the tier's ease-out takes its biggest step first - a few
+   hundred pixels at --dur-med is 100px or more on the first frame - and
+   keeps moving after it, which is the difference between arriving and
+   appearing. */
+function teleports(series, label, samples) {
+  const out = [];
+  const step = (i) => (series[i] != null && series[i - 1] != null ? series[i] - series[i - 1] : 0);
+  for (let i = 1; i < series.length; i++) {
+    if (series[i] == null || series[i - 1] == null || samples[i].vt || samples[i - 1].vt) continue;
+    const d = step(i);
+    if (Math.abs(d) <= JUMP_PX) continue;
+    const before = i > 1 ? step(i - 1) : 0;
+    const after = i + 1 < series.length ? step(i + 1) : 0;
+    if (Math.abs(before) < 1 && Math.abs(after) < 1)
+      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, still either side`);
+  }
+  return out;
+}
+
 function analyse(samples) {
   const findings = [];
   let worst = 0;
-  for (const name of ['log', 'backup', 'pinned']) {
-    let prev = null;
-    for (let i = 0; i < samples.length; i++) {
-      const cur = samples[i][name];
-      if (cur && prev && !samples[i].vt && !samples[i - 1].vt) {
-        const d = Math.abs(cur.top - prev.top);
-        worst = Math.max(worst, d);
-        if (d > JUMP_PX) findings.push(`${name} moved ${Math.round(d)}px in one frame at ${Math.round(samples[i].at)}ms`);
-      }
-      if (!cur && prev && !samples[i].vt) findings.push(`${name} left the page at ${Math.round(samples[i].at)}ms`);
-      prev = cur ?? null;
+  const series = (name, key) => samples.map((s) => (s[name] ? s[name][key] : null));
+  for (const name of ['header', 'log', 'backup', 'pinned']) {
+    const tops = series(name, 'top');
+    findings.push(...teleports(tops, `${name} moved`, samples));
+    for (let i = 1; i < tops.length; i++) {
+      if (tops[i] != null && tops[i - 1] != null && !samples[i].vt && !samples[i - 1].vt)
+        worst = Math.max(worst, Math.abs(tops[i] - tops[i - 1]));
+      if (tops[i] == null && tops[i - 1] != null && !samples[i].vt)
+        findings.push(`${name} left the page at ${Math.round(samples[i].at)}ms`);
     }
   }
-  /* And the reserves' own heights: a wrong guess has to travel, so a
-     reserve whose height changes by more than the floor between two frames
-     moved its bottom edge, and everything under it, in one. */
-  for (const name of ['above', 'below', 'list']) {
-    for (let i = 1; i < samples.length; i++) {
-      const cur = samples[i][name];
-      const prev = samples[i - 1][name];
-      if (!cur || !prev || samples[i].vt || samples[i - 1].vt) continue;
-      const d = Math.abs(cur.h - prev.h);
-      worst = Math.max(worst, d);
-      if (d > JUMP_PX) findings.push(`${name} reserve changed height ${Math.round(d)}px in one frame at ${Math.round(samples[i].at)}ms`);
-    }
+  /* And the reserves' own heights, and the header's: a height that jumps
+     moves its bottom edge, and everything under it, in one frame. */
+  for (const name of ['header', 'above', 'below', 'list']) {
+    findings.push(...teleports(series(name, 'h'), `${name} height changed`, samples));
   }
   /* The placeholder's and the content's opacity on the frame each is first
      and last seen: a hold that is gone the frame after it read 1, or a body
