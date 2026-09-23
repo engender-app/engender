@@ -996,7 +996,7 @@ describe('ticket 28: the field is a blind over the content', () => {
       ruleOf(app, '::view-transition-old(blind),\n::view-transition-new(blind)')?.body ?? ''
     );
     expect(halves.animation).toBe(
-      'blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both'
+      'blind-slide var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both'
     );
     const slide = frames(keyframesOf(app, 'blind-slide')!.body);
     expect(slide.length, 'one curve from one height to another, not a phase list').toBe(2);
@@ -1038,7 +1038,7 @@ describe('ticket 28: the field is a blind over the content', () => {
      animations sit on one element without overwriting each other.
      Opening sun appears independently without riding the blind overshoot (ticket 99). */
   it('rides everything painted on the field with the blind, on the blind\'s own curve', () => {
-    const ride = 'var(--dur-slow) var(--blind-ease, var(--ease-out)) both';
+    const ride = 'var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both';
     for (const [selector, keyframe] of [
       ['::view-transition-old(*.field-part)', 'blind-lead'],
       ['::view-transition-new(*.field-part)', 'blind-follow'],
@@ -1066,7 +1066,7 @@ describe('ticket 28: the field is a blind over the content', () => {
      navigation time rather than written per screen. */
   it("follows the blind's edge with the incoming screen, on the blind's clock", () => {
     const incoming = declarations(ruleOf(app, '::view-transition-new(screen)')?.body ?? '');
-    expect(incoming['animation-duration']).toBe('var(--dur-med), var(--dur-slow)');
+    expect(incoming['animation-duration']).toBe('var(--dur-med), var(--blind-dur, var(--dur-slow))');
     expect(incoming['animation-timing-function']).toBe('var(--ease-out)');
     const follow = frames(keyframesOf(app, 'blind-follow')!.body);
     for (const frame of follow) {

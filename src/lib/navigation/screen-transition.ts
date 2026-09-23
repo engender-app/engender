@@ -163,6 +163,18 @@ function isEntryEditor(path: string): boolean {
   return /^\/entry\/\d+$/.test(path);
 }
 
+/** Home is the one screen carrying the sun ring, so it is the one departure
+    whose field-part hold lands over a second large graphic in the same
+    corner rather than empty screen (ticket 159). Named as its own fact
+    rather than folded into the tier-2 table above: this is still a
+    fade-through like any other tab crossing, and every other one keeps the
+    shared blind budget - only this one gets a shorter ride, which
+    +layout.svelte reads to scope `--blind-dur` (app.css) to just this
+    navigation. */
+export function leavesHomeForEntry(from: string | null, to: string): boolean {
+  return from === '/' && to.startsWith('/entry/new');
+}
+
 /* Two ways back, and both have to count.
    The system's back and the browser's arrive as a popstate with a negative
    delta. But most of the app's own back controls are ordinary links to a
