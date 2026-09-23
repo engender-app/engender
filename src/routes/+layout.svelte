@@ -18,9 +18,9 @@
   import '$lib/motion/materials.css';
 
   import { page } from '$app/state';
-  import { MediaQuery } from 'svelte/reactivity';
   import { assets } from '$app/paths';
   import { afterNavigate, goto, onNavigate } from '$app/navigation';
+  import { MediaQuery } from 'svelte/reactivity';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { todayEpochDay } from '$lib/data/epochDay';

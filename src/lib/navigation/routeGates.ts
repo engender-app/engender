@@ -31,7 +31,8 @@
    reason lockNow() does (phase 8 audit ticket 08). Ahead of the return
    moment: nothing runs behind a screen somebody has not finished, and the
    moment is asked for once the access mode is chosen and this stops
-   answering.
+   answering. It is ahead of the first-run gate too, which never meets it:
+   a recovery unlock only exists for a journal that finished setup.
 
    **The first-run gate (F16).** Onboarding is the entire first-run
    experience. Held until boot is ready, because `onboarded` lives in SQLite
