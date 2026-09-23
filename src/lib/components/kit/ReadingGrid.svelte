@@ -52,10 +52,19 @@
      `settleCells`) rather than on `:nth-child`: a tile fading out is still
      a child, and would shift every rule after it one place along. The
      right column starts past a hairline; the left keeps the screen's own
-     inset as its edge. */
+     inset as its edge.
+
+     Every tile carries both hairlines, transparent where its place has
+     none, so a tile changing place fades a rule in or out rather than
+     growing or losing a pixel of border (readingGrid.ts, `ruleOf`). */
+  .kit-readings > :global(*) {
+    border-left: 1px solid transparent;
+    border-top: 1px solid transparent;
+  }
+
   .kit-readings > :global([data-col]:not([data-col='0'])) {
     padding-left: var(--space-4);
-    border-left: 1px solid var(--hairline);
+    border-left-color: var(--hairline);
   }
 
   .kit-readings[data-cols='2'] > :global([data-col='0']) {
@@ -63,7 +72,7 @@
   }
 
   .kit-readings > :global([data-below]) {
-    border-top: 1px solid var(--hairline);
+    border-top-color: var(--hairline);
   }
 
   /* One column where two would leave a figure no room: the same threshold
