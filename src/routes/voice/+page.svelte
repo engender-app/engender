@@ -642,11 +642,11 @@
     margin: calc(var(--space-5) + var(--space-3)) 0 0;
   }
   /* The strip keeps no margin of its own, so the whole gap above the line
-     is the line's, and arrives with it. `.screen-part > *` gives every row
-     but the last --space-5 under it; the strip was last until the line
-     arrived, so it took those 20px in the frame the line was inserted and
-     everything under it jumped before disclose had started (ticket 166).
-     At rest the gap is the 32px it always was. */
+     is the line's, and arrives with it: disclose opens the line's top
+     margin along with its height (ticket 166). With the strip's own 20
+     under it, the two margins would collapse and the line's 32 would only
+     start to move anything once it passed 20. At rest the gap is the 32px
+     it always was. */
   .voice-tabs > :global(.segmented-wrap) {
     margin-bottom: 0;
   }
