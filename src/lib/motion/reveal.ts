@@ -401,6 +401,38 @@ function arrivesFromAbove(node: Element): TransitionConfig {
     where a block stops being a block a thumb can cover. */
 const FROM_ABOVE_MAX = 400;
 
+/** The block a margin actually meets on one side of `node`.
+
+    Its sibling where it has one. Where it is the first or last child of a
+    plain block wrapper - nothing on that edge to hold a margin in: no
+    padding, no border, not a formatting context - its margin passes
+    through the wrapper's edge and meets the wrapper's own sibling, so that
+    is the neighbour, however many such wrappers deep. Home's reserves
+    (ReadReserve.svelte, ticket 183) put its notices one wrapper down from
+    the blocks they close between; reading only siblings, the first notice
+    found nothing above it and its margin ended 20px short. */
+function flowNeighbour(node: Element, side: 'prev' | 'next'): Element | null {
+  let at: Element = node;
+  for (;;) {
+    const sibling = side === 'prev' ? at.previousElementSibling : at.nextElementSibling;
+    if (sibling) return sibling;
+    const wrapper = at.parentElement;
+    if (!wrapper || !marginPassesThrough(wrapper, side)) return null;
+    at = wrapper;
+  }
+}
+
+function marginPassesThrough(wrapper: Element, side: 'prev' | 'next'): boolean {
+  const style = getComputedStyle(wrapper);
+  const edge = side === 'prev' ? 'Top' : 'Bottom';
+  return (
+    style.display === 'block' &&
+    (style.overflow ?? 'visible') === 'visible' &&
+    !parseFloat(style[`padding${edge}`] ?? '0') &&
+    !parseFloat(style[`border${edge}Width`] ?? '0')
+  );
+}
+
 /** Where a collapsing or arriving box's bottom margin ends in block flow.
 
     An open box with `overflow: hidden` or content is a formatting context,
@@ -414,8 +446,8 @@ const FROM_ABOVE_MAX = 400;
 function restingMarginBelow(node: Element): number {
   const parent = node.parentElement;
   const flow = parent ? !/flex|grid/.test(getComputedStyle(parent).display ?? '') : false;
-  const prev = node.previousElementSibling;
-  const next = node.nextElementSibling;
+  const prev = flowNeighbour(node, 'prev');
+  const next = flowNeighbour(node, 'next');
   if (!flow || !prev || !next) return 0;
   return -Math.min(
     parseFloat(getComputedStyle(prev).marginBottom) || 0,
