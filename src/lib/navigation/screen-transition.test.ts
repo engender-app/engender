@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { screenTransition, type NavigationFacts } from './screen-transition';
+import { leavesHomeForEntry, screenTransition, type NavigationFacts } from './screen-transition';
 import { chromelessPath, replacesAppNavigation } from './chromeless';
 
 const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string }): NavigationFacts => ({
@@ -225,5 +225,20 @@ describe('the blind runs on every navigation the app makes (ADR-0080)', () => {
         path
       ).not.toBe('none');
     }
+  });
+});
+
+describe('leavesHomeForEntry scopes the short field-part hold (ticket 159)', () => {
+  it('is true only for Home departing straight to a new entry', () => {
+    expect(leavesHomeForEntry('/', '/entry/new/today?seedMood=4')).toBe(true);
+    expect(leavesHomeForEntry('/', '/entry/new/today?debriefFor=12')).toBe(true);
+    expect(leavesHomeForEntry('/', '/entry/new/20690')).toBe(true);
+  });
+
+  it('is false for every other departure, including other entry routes', () => {
+    expect(leavesHomeForEntry('/', '/calendar')).toBe(false);
+    expect(leavesHomeForEntry('/day/20690', '/entry/new/20690')).toBe(false);
+    expect(leavesHomeForEntry('/', '/entry/41')).toBe(false);
+    expect(leavesHomeForEntry(null, '/entry/new/today')).toBe(false);
   });
 });
