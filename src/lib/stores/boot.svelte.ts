@@ -65,7 +65,7 @@ import { openWithRecoveryKey } from '../data/recovery-key';
 import type { JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles, setVoiceFiles } from './voiceFiles';
-import { localStorageCache } from '../data/prefs/boot-cache';
+import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
 import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
@@ -91,7 +91,7 @@ import {
   type DeviceBoundSetupResult
 } from './boot-machine';
 
-let machine: BootMachine = initialBoot();
+let machine: BootMachine = initialBoot(readCachedAccessMode());
 
 export const bootState = $state<BootState>({ ...machine.boot });
 
@@ -118,6 +118,11 @@ function dispatch(event: BootEvent): void {
      and it moves on the field's own edge without a transition (stepBlind). */
   const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
   machine = step.machine;
+  if (machine.boot.accessMode !== null) {
+    writeCachedAccessMode(machine.boot.accessMode);
+  } else if (machine.boot.status === 'needs-setup') {
+    writeCachedAccessMode(null);
+  }
   /* Off `machine` rather than off the step it came from, so a second event
      landing inside the frame this one is capturing cannot be undone by an
      older answer arriving late. */
