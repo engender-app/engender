@@ -6,7 +6,7 @@
 import { preview } from 'vite';
 import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium } from './browser-harness.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 
@@ -66,9 +66,7 @@ try {
     await settle('/health/appointments');
     await page.locator('[data-add]').click();
     await page.waitForSelector('#appointment-date');
-    await page.evaluate((day) => {
-      document.getElementById('appointment-date')._flatpickr.setDate(day, true);
-    }, date);
+    await fillDate(page, '#appointment-date', date);
     await page.locator('[data-save-appointment]').click();
     await page.waitForSelector('[data-appointment]');
   };

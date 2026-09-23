@@ -23,7 +23,7 @@ import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium } from './browser-harness.mjs';
 import { makePaperPdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -146,12 +146,7 @@ for (const theme of ['light', 'dark']) {
     /* The visible field is flatpickr's altInput and the ISO value lives on
        the hidden original, so a date is set through the picker instance the
        way walkthrough.test.mjs sets one. */
-    await page.evaluate((iso) => {
-      const el = document.querySelector('#document-day');
-      const fp = el?._flatpickr ?? el?.flatpickr;
-      if (!fp) throw new Error('no flatpickr instance on #document-day');
-      fp.setDate(iso, true);
-    }, paper.day);
+    await fillDate(page, '#document-day', paper.day);
     return bytes;
   };
 
@@ -167,12 +162,7 @@ for (const theme of ['light', 'dark']) {
     await page.locator('[data-add]').click();
     await page.waitForSelector('#document-title');
     await page.locator('#document-title').fill(title);
-    await page.evaluate((iso) => {
-      const el = document.querySelector('#document-day');
-      const fp = el?._flatpickr ?? el?.flatpickr;
-      if (!fp) throw new Error('no flatpickr instance on #document-day');
-      fp.setDate(iso, true);
-    }, day);
+    await fillDate(page, '#document-day', day);
   };
 
   await settle('/');
