@@ -8,6 +8,7 @@
     schedules,
     travel,
     LEAD,
+    PLACE,
     type Box,
     type Insets,
     type Schedule
@@ -247,10 +248,15 @@
        negative `right`, correctly. */
     const at = insets(box, { w: track.clientWidth, h: track.clientHeight });
     /* The control does not slide into its own initial state, it starts
-       there: both edges on the leading clock, so the shape arrives as one
-       piece. */
-    const dir = pill.shown ? travel(pill.box, box, 'x') : 0;
-    pill = { box, at, shown: true, ...schedules(dir) };
+       there: the first placement moves neither edge (PLACE), so what shows
+       is the pill fading in on its segment rather than across the whole
+       track. A later re-measure that is not a slide keeps both edges on the
+       leading clock, so the shape moves as one piece. */
+    if (!pill.shown) {
+      pill = { box, at, shown: true, near: PLACE, far: PLACE };
+      return;
+    }
+    pill = { box, at, shown: true, ...schedules(travel(pill.box, box, 'x')) };
   });
 </script>
 
