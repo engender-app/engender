@@ -773,9 +773,17 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
    compositing would test the mock, not the primitive, which is why
    AppNav.svelte's own ResizeObserver-driven pill has no unit test for its
    resize-triggered behaviour either. What is tested here is what a stub
-   safely can: the two guards that skip the browser work entirely. The
-   travel itself - old height to new, smoothly, once - is a real-browser
-   frame capture, not a unit test. */
+   safely can: the two guards that skip the browser work entirely, and -
+   the same way `maskHeight`'s tests below fake `node.animate` to check
+   what travels rather than how it composites - the *decision* a mid-flight
+   resize takes: chased as a second animation once the first finishes,
+   rather than snapped to silently (ticket 186, stats' reading and
+   resurfacing grids). A fake `ResizeObserver` whose callback the test
+   drives by hand, and a fake `animate` that records its keyframes and
+   hands back a controllable `finished`, exercise that decision without
+   touching real callback timing or real compositing. The travel itself -
+   old height to new, smoothly, once - is still a real-browser frame
+   capture, not a unit test. */
 describe('tier 3, a box resizing under its own content', () => {
   it('does nothing under reduced motion - the box still resizes, in the one frame it always could', () => {
     stubDocument(true);
@@ -794,6 +802,111 @@ describe('tier 3, a box resizing under its own content', () => {
       expect(resize(node)).toBeUndefined();
     } finally {
       if (hadResizeObserver) g.ResizeObserver = prior;
+    }
+  });
+
+  /** A node whose height the test controls, wired to a `ResizeObserver`
+      stub the test fires by hand, and an `animate` that records its
+      keyframes and hands back a `finished` the test settles by hand. */
+  function resizingNode(initialHeight: number) {
+    let height = initialHeight;
+    let notify: () => void = () => {};
+    const g = globalThis as Record<string, unknown>;
+    const prior = g.ResizeObserver;
+    g.ResizeObserver = class {
+      constructor(cb: () => void) {
+        notify = cb;
+      }
+      observe() {}
+      disconnect() {}
+    };
+    const calls: Array<[number, number]> = [];
+    let settle: (() => void) | undefined;
+    const node = {
+      style: { overflow: '' },
+      getBoundingClientRect: () => ({ height }) as DOMRect,
+      animate: (keyframes: Keyframe[]) => {
+        calls.push([parseFloat(String(keyframes[0].height)), parseFloat(String(keyframes[1].height))]);
+        return {
+          finished: new Promise<void>((resolve) => {
+            settle = resolve;
+          }),
+          cancel: () => {}
+        };
+      }
+    } as unknown as HTMLElement;
+    return {
+      node,
+      calls,
+      setHeight: (h: number) => (height = h),
+      trigger: () => notify(),
+      finish: async () => {
+        settle?.();
+        // The `finished.catch().finally()` chain is a couple of microtask
+        // hops past the promise the test resolves.
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      },
+      restore: () => {
+        if (prior) g.ResizeObserver = prior;
+        else delete g.ResizeObserver;
+      }
+    };
+  }
+
+  it('animates a single resize old height to new, once', () => {
+    stubDocument(false);
+    const { node, calls, setHeight, trigger, restore } = resizingNode(100);
+    try {
+      resize(node);
+      setHeight(240);
+      trigger();
+      expect(calls).toEqual([[100, 240]]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('chases a size that changed again mid-flight as its own animation, rather than snapping to it', async () => {
+    stubDocument(false);
+    const { node, calls, setHeight, trigger, finish, restore } = resizingNode(100);
+    try {
+      resize(node);
+
+      setHeight(240);
+      trigger();
+      expect(calls).toEqual([[100, 240]]);
+
+      // Content changes again while the first animation is still running;
+      // ignored as the animation's own frame, not chased yet.
+      setHeight(390);
+      trigger();
+      expect(calls).toHaveLength(1);
+
+      // The first animation finishes; the real height by now (390) differs
+      // from what it targeted (240), so a second animation chases it.
+      await finish();
+      expect(calls).toEqual([
+        [100, 240],
+        [240, 390]
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('does not open a second animation once the settled height matches the first one\'s target', async () => {
+    stubDocument(false);
+    const { node, calls, setHeight, trigger, finish, restore } = resizingNode(100);
+    try {
+      resize(node);
+      setHeight(240);
+      trigger();
+      await finish();
+      expect(calls).toEqual([[100, 240]]);
+    } finally {
+      restore();
     }
   });
 });
