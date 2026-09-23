@@ -154,23 +154,29 @@ const CASES = {
   })()`
 };
 
-/* A teleport in the sweep's own sense (yank-sweep-core.mjs): a move over
-   the floor in one frame with no movement in the frames either side. A
+/* A move over the floor in one frame counts as travel only inside a run of
+   at least `TRAVEL_FRAMES` consecutive frames all moving the same way. A
    travel on the tier's ease-out takes its biggest step first - a few
    hundred pixels at --dur-med is 100px or more on the first frame - and
-   keeps moving after it, which is the difference between arriving and
-   appearing. */
+   keeps moving for a dozen frames after. A pop is one frame, or two when
+   the reads land in two batches: main moved the pinned rows 743px and then
+   234px on consecutive frames, which the sweep's own "still either side"
+   rule reads as not a teleport, and this probe passed main with it. */
+const TRAVEL_FRAMES = 4;
 function teleports(series, label, samples) {
   const out = [];
-  const step = (i) => (series[i] != null && series[i - 1] != null ? series[i] - series[i - 1] : 0);
+  const step = (i) =>
+    i > 0 && i < series.length && series[i] != null && series[i - 1] != null && !samples[i].vt && !samples[i - 1].vt
+      ? series[i] - series[i - 1]
+      : 0;
   for (let i = 1; i < series.length; i++) {
-    if (series[i] == null || series[i - 1] == null || samples[i].vt || samples[i - 1].vt) continue;
     const d = step(i);
     if (Math.abs(d) <= JUMP_PX) continue;
-    const before = i > 1 ? step(i - 1) : 0;
-    const after = i + 1 < series.length ? step(i + 1) : 0;
-    if (Math.abs(before) < 1 && Math.abs(after) < 1)
-      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, still either side`);
+    let run = 1;
+    for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
+    for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
+    if (run < TRAVEL_FRAMES)
+      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, in a ${run}-frame move`);
   }
   return out;
 }
