@@ -45,12 +45,9 @@ import { androidRetrospectiveNotifications } from '$lib/retrospective/android-br
    the test wants to see actually applied rather than mocked away. */
 import { mayFireAt, quietHoursOf } from '../unprompted/quietHours';
 import { notificationText } from '../unprompted/notificationText';
+import { periodicCheck } from './backgroundSchedulers';
 
-let active = false;
-let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
-
-const CHECK_EVERY_MS = 15 * 60 * 1000;
 
 function wrappedPeriodKey(period: Pick<WrappedPeriod, 'cadence' | 'start'>): string {
   return `${period.cadence}:${period.start}`;
@@ -107,7 +104,7 @@ async function checkOnThisDay(now: Date) {
 }
 
 async function maybeRun() {
-  if (!active || running || !isAndroid()) return;
+  if (running || !isAndroid()) return;
   running = true;
   try {
     const at = new Date();
@@ -120,22 +117,10 @@ async function maybeRun() {
   }
 }
 
+const check = periodicCheck(() => void maybeRun());
+
 export function startRetrospectiveNotificationsScheduler() {
-  if (active || !isAndroid()) return;
-  active = true;
-  void maybeRun();
-  timer = setInterval(() => void maybeRun(), CHECK_EVERY_MS);
-  document.addEventListener('visibilitychange', onVisibility);
+  if (isAndroid()) check.start();
 }
 
-export function stopRetrospectiveNotificationsScheduler() {
-  if (!active) return;
-  active = false;
-  if (timer) clearInterval(timer);
-  timer = null;
-  document.removeEventListener('visibilitychange', onVisibility);
-}
-
-function onVisibility() {
-  if (document.visibilityState === 'visible') void maybeRun();
-}
+export const stopRetrospectiveNotificationsScheduler = check.stop;

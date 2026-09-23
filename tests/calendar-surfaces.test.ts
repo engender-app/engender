@@ -321,7 +321,7 @@ describe('the container transform, which needs both halves to exist', () => {
   it('clears the name on any navigation that is not the transform', () => {
     /* A named element is pulled out of the screen's snapshot, so a card left
        wearing the name would hold still while the rest of the screen slid. */
-    expect(read('src/routes/+layout.svelte')).toContain(
+    expect(read('src/lib/navigation/navigationTransition.ts')).toContain(
       "if (pattern !== 'container') closeEntryContainer();"
     );
   });
