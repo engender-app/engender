@@ -67,7 +67,11 @@ type BootResult =
   | {
       phase: 'ready';
       driver: SqliteDriver;
-      persistDenied: boolean;
+      /** Whether the persistence request came back denied, known whenever
+          the browser answers - which for Firefox is only through a
+          permission prompt (ticket 202), so nothing here awaits it before
+          resolving. Whoever wants the answer awaits this on its own. */
+      persistRequest: Promise<boolean>;
       /** Resolves when the housekeeping passes have finished, and never
           rejects - a failure in any of them is warned about and left for the
           next boot. Nothing in the app awaits it; the benchmarks and the
@@ -131,7 +135,14 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     }
   }
 
-  const persistDenied = deps.requestPersistentStorage ? !(await deps.requestPersistentStorage()) : false;
+  /* Asked, not awaited (ticket 202): Firefox answers navigator.storage.
+     persist() only through a permission prompt, so a headless run (and a
+     LibreWolf that clears site permissions) waited here with no bound
+     before any journal read. The request still goes out; the reads go on
+     without it, and persistRequest is there for whoever wants the answer. */
+  const persistRequest: Promise<boolean> = deps.requestPersistentStorage
+    ? deps.requestPersistentStorage().then((granted) => !granted)
+    : Promise.resolve(false);
 
   await deps.loadReferenceData?.(driver);
 
@@ -159,7 +170,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     else run();
   });
 
-  return { phase: 'ready', driver, persistDenied, housekeeping };
+  return { phase: 'ready', driver, persistRequest, housekeeping };
 }
 
 /** All three passes, in order, each one's failure its own. A failure is a

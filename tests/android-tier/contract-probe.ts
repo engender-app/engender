@@ -40,7 +40,7 @@ async function run() {
   }
 
   const checks = await runJournalContract(result.driver, appPrivatePhotoFiles('contract-probe-photos'));
-  publish({ persistDenied: result.persistDenied, checks });
+  publish({ persistDenied: await result.persistRequest, checks });
   await driver.close();
 }
 
