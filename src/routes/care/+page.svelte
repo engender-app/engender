@@ -1406,9 +1406,15 @@
     /* Settles as the line reaches it: a mark a third of the way out waits a
        third of the growth. The delay is a multiple of a duration token
        rather than a literal, so reduced motion collapses it along with
-       everything else - base.css clamps every --dur-* to 1ms. */
+       everything else - base.css clamps every --dur-* to 1ms.
+
+       `both` rather than `forwards`, so the delay is spent on the first
+       keyframe and not on this rule. With `forwards` a waiting caption had
+       no transform at all, so it sat uncentred until its delay ran out and
+       then jumped half its own width (26-30px) on the frame it began to
+       fade in (ux-carpet ticket 184). */
     opacity: 0;
-    animation: care-mark-settle var(--dur-med) var(--ease-out) forwards;
+    animation: care-mark-settle var(--dur-med) var(--ease-out) both;
     animation-delay: calc(var(--care-settle) * var(--dur-authored));
   }
   @keyframes care-mark-settle {
