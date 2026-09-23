@@ -180,6 +180,7 @@ describe('the surfaces', () => {
       /* Not a surface either: the gate that holds several independently read
          components behind one placeholder (ux-carpet ticket 190). */
       'ReadGroup.svelte',
+      'ReadReserve.svelte',
       /* The Look back door's readings as tiles (phase 11 ticket 07): a
          flush tile stating one figure for the span with a chevron into its
          own screen, and the two-column hairlined grid they sit in. In the
