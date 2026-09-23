@@ -65,7 +65,6 @@ import {
   JUMP_FIRST_RUN_EXPRESSION,
   LOCK_SETUP_EXPRESSION,
   OUTLIER_MIN,
-  PAINT_BLANK_SENTINEL_EXPRESSION,
   PROOF,
   RESET_PERSONA_EXPRESSION,
   STUB_PERSIST_SCRIPT,
@@ -78,6 +77,7 @@ import {
   fillTokens,
   hydrationScreensFor,
   missingProofYanks,
+  paintBlankSentinel,
   pushHydrationRun,
   samplerExpression,
   scrapeHrefExpression,
@@ -146,8 +146,7 @@ const waitFor = (selector, path = null, timeout = 40000) => {
  *  boot stamps, and the cold window is meant to be untouched. */
 async function recordCold(href) {
   return screencast(async (cast) => {
-    await page.evaluate(PAINT_BLANK_SENTINEL_EXPRESSION);
-    await page.waitForTimeout(150);
+    await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
     await page.goto(`${base}${href}`, { waitUntil: 'commit', timeout: 40000 });
     await waitFor('[data-app-root][data-boot="ready"]');
     const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
@@ -294,8 +293,7 @@ if (lockScene && profiles.includes('persona')) {
     await settle('/settings/access-mode', themes[0]);
     await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
     const result = await screencast(async (cast) => {
-      await page.evaluate(PAINT_BLANK_SENTINEL_EXPRESSION);
-      await page.waitForTimeout(150);
+      await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
       await page.goto(`${base}/`, { waitUntil: 'commit', timeout: 40000 });
       await waitFor('[data-pin-pad]', '/', 40000);
       const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));

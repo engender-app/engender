@@ -1069,6 +1069,23 @@ export const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 })()`;
 
+/** How long to let the sentinel settle before navigating - long enough
+ *  for a slower CI box's compositor to deliver a screencast frame of
+ *  it, on top of the two rAFs the expression itself already waits on. */
+export const PRENAV_SETTLE_MS = 150;
+
+/** Runs `PAINT_BLANK_SENTINEL_EXPRESSION` and settles, on whichever
+ *  transport the caller drives - Playwright's `page.evaluate` /
+ *  `page.waitForTimeout` on the desktop sweep, the raw CDP `ev` / a
+ *  plain `sleep` on the device sweep. One place for the two cold-load
+ *  scenes (the scene itself, the lock-gate epilogue) in both files to
+ *  share, so the settle time and the sentinel can't drift apart
+ *  between them. */
+export async function paintBlankSentinel(evaluate, wait) {
+  await evaluate(PAINT_BLANK_SENTINEL_EXPRESSION);
+  await wait(PRENAV_SETTLE_MS);
+}
+
 /** A screencast frame with almost no internal contrast: the sentinel
  *  fill above, or the browser's own blank paint between the old and new
  *  document. Read by shape - the spread between its darkest and
