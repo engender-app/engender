@@ -418,6 +418,7 @@
          ticket's order: the two over the scales first, then what the span
          was made of, then the two screens that were screens already, then
          the one that moved here from Safe space. -->
+    <div class="screen-part" use:resize>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
@@ -429,12 +430,14 @@
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
+    </div>
 
     <!-- The resurfacing block: the two look-back offers, moved here from
          Home (redesign ticket 11), each gating itself on its own preference
          and its own floor. The on-this-day tile opens in place: the day,
          its photos and the way to the whole day disclose under the pair
          (ticket 07). -->
+    <div class="screen-part" use:resize>
     <TileGrid
       role={tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack)}
       bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack))}
@@ -453,6 +456,7 @@
         />
       {/if}
     </TileGrid>
+    </div>
     {#if dayOpen && prefs.onThisDayEnabled}
       <div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose>
         <OnThisDayBlock />
