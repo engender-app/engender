@@ -9,6 +9,9 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import org.json.JSONArray;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * The Android half of the driver seam (ADR-0017): SQL in, rows out, and
  * nothing above it can tell this from the web driver.
@@ -20,17 +23,30 @@ import org.json.JSONArray;
  * SQLCipher raw. So the open below accepts a hex key and passes it through
  * unchanged, and derives nothing.
  *
- * <p>Every method is one bridge call, and the JS side serializes them, so the
- * connection needs no locking of its own beyond what {@link SqliteConnection}
- * already gives it. Transactions are explicit begin/commit/rollback calls
- * rather than a callback across the bridge, matching what the web driver does
- * over its worker for the same reason: the migration runner's callback calls
- * back into the driver's own exec.
+ * <p>Every method is one bridge call. The JS side sends them without waiting
+ * for each other and numbers them, and {@link CallSequencer} runs them in
+ * that order on this plugin's one worker thread (ADR-0089), so the
+ * connection is only ever used from one thread and needs no locking of its
+ * own beyond what {@link SqliteConnection} already gives it. Transactions are
+ * explicit begin/commit/rollback calls rather than a callback across the
+ * bridge, matching what the web driver does over its worker for the same
+ * reason: the migration runner's callback calls back into the driver's own
+ * exec.
  */
 @CapacitorPlugin(name = "Sqlite")
 public class SqlitePlugin extends Plugin {
 
     private final SqliteConnection connection = new SqliteConnection();
+
+    /* One thread of this plugin's own for every call that touches the
+       connection, so the order the sequencer settles on is the order SQLite
+       sees, and so a long statement never holds up another plugin's calls on
+       Capacitor's shared plugin thread. */
+    private final ExecutorService worker =
+        Executors.newSingleThreadExecutor((runnable) -> new Thread(runnable, "SqlitePlugin"));
+
+    /** Only ever touched on {@link #worker}. */
+    private final CallSequencer sequencer = new CallSequencer();
 
     @Override
     public void load() {
@@ -47,17 +63,19 @@ public class SqlitePlugin extends Plugin {
      */
     @PluginMethod
     public void open(PluginCall call) {
-        String name = call.getString("name");
-        if (name == null || name.isEmpty()) {
-            call.reject("open requires a database name");
-            return;
-        }
-        try {
-            connection.open(getContext(), name, call.getString("hexKey"));
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            String name = call.getString("name");
+            if (name == null || name.isEmpty()) {
+                call.reject("open requires a database name");
+                return;
+            }
+            try {
+                connection.open(getContext(), name, call.getString("hexKey"));
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /**
@@ -68,51 +86,57 @@ public class SqlitePlugin extends Plugin {
      */
     @PluginMethod
     public void isPlaintextDatabase(PluginCall call) {
-        String name = call.getString("name");
-        if (name == null || name.isEmpty()) {
-            call.reject("isPlaintextDatabase requires a database name");
-            return;
-        }
-        try {
-            JSObject result = new JSObject();
-            result.put("plaintext", SqliteConnection.isPlaintextDatabase(getContext(), name));
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        worker.execute(() -> {
+            String name = call.getString("name");
+            if (name == null || name.isEmpty()) {
+                call.reject("isPlaintextDatabase requires a database name");
+                return;
+            }
+            try {
+                JSObject result = new JSObject();
+                result.put("plaintext", SqliteConnection.isPlaintextDatabase(getContext(), name));
+                call.resolve(result);
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /** Runs one or more statements for their effect. Used by migrations. */
     @PluginMethod
     public void exec(PluginCall call) {
-        String sql = call.getString("sql");
-        if (sql == null) {
-            call.reject("exec requires sql");
-            return;
-        }
-        try {
-            connection.exec(sql);
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            String sql = call.getString("sql");
+            if (sql == null) {
+                call.reject("exec requires sql");
+                return;
+            }
+            try {
+                connection.exec(sql);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /** Runs a parameterized query and returns its rows as JSON objects. */
     @PluginMethod
     public void query(PluginCall call) {
-        String sql = call.getString("sql");
-        if (sql == null) {
-            call.reject("query requires sql");
-            return;
-        }
-        try {
-            JSObject result = new JSObject();
-            result.put("rows", connection.query(sql, params(call)));
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            String sql = call.getString("sql");
+            if (sql == null) {
+                call.reject("query requires sql");
+                return;
+            }
+            try {
+                JSObject result = new JSObject();
+                result.put("rows", connection.query(sql, params(call)));
+                call.resolve(result);
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /**
@@ -123,57 +147,63 @@ public class SqlitePlugin extends Plugin {
      */
     @PluginMethod
     public void run(PluginCall call) {
-        String sql = call.getString("sql");
-        if (sql == null) {
-            call.reject("run requires sql");
-            return;
-        }
-        try {
-            call.resolve(connection.run(sql, params(call)));
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            String sql = call.getString("sql");
+            if (sql == null) {
+                call.reject("run requires sql");
+                return;
+            }
+            try {
+                call.resolve(connection.run(sql, params(call)));
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     @PluginMethod
     public void getUserVersion(PluginCall call) {
-        try {
-            JSObject result = new JSObject();
-            result.put("version", connection.getUserVersion());
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            try {
+                JSObject result = new JSObject();
+                result.put("version", connection.getUserVersion());
+                call.resolve(result);
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     @PluginMethod
     public void setUserVersion(PluginCall call) {
-        Integer version = call.getInt("version");
-        if (version == null) {
-            call.reject("setUserVersion requires a version");
-            return;
-        }
-        try {
-            connection.setUserVersion(version);
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            Integer version = call.getInt("version");
+            if (version == null) {
+                call.reject("setUserVersion requires a version");
+                return;
+            }
+            try {
+                connection.setUserVersion(version);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     @PluginMethod
     public void beginTransaction(PluginCall call) {
-        transactionStep(call, SqliteConnection.TransactionStep.BEGIN);
+        sequenced(call, () -> transactionStep(call, SqliteConnection.TransactionStep.BEGIN));
     }
 
     @PluginMethod
     public void commitTransaction(PluginCall call) {
-        transactionStep(call, SqliteConnection.TransactionStep.COMMIT);
+        sequenced(call, () -> transactionStep(call, SqliteConnection.TransactionStep.COMMIT));
     }
 
     @PluginMethod
     public void rollbackTransaction(PluginCall call) {
-        transactionStep(call, SqliteConnection.TransactionStep.ROLLBACK);
+        sequenced(call, () -> transactionStep(call, SqliteConnection.TransactionStep.ROLLBACK));
     }
 
     /**
@@ -182,45 +212,53 @@ public class SqlitePlugin extends Plugin {
      */
     @PluginMethod
     public void copyDatabaseFile(PluginCall call) {
-        try {
-            connection.copyDatabaseFile();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            try {
+                connection.copyDatabaseFile();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /** Whether there is a copy worth going back to (ticket 04). */
     @PluginMethod
     public void preMigrationCopyIsUsable(PluginCall call) {
-        try {
-            JSObject result = new JSObject();
-            result.put("usable", connection.preMigrationCopyIsUsable());
-            call.resolve(result);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            try {
+                JSObject result = new JSObject();
+                result.put("usable", connection.preMigrationCopyIsUsable());
+                call.resolve(result);
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /** Puts that copy back as the live database and closes the connection. */
     @PluginMethod
     public void restorePreMigrationCopy(PluginCall call) {
-        try {
-            connection.restorePreMigrationCopy();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            try {
+                connection.restorePreMigrationCopy();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     @PluginMethod
     public void cleanupPreMigrationCopy(PluginCall call) {
-        try {
-            connection.cleanupPreMigrationCopy();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            try {
+                connection.cleanupPreMigrationCopy();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     /** The reset path's wipe (ticket 13): the journal's files, which are in
@@ -228,22 +266,26 @@ public class SqlitePlugin extends Plugin {
         does not reach them. */
     @PluginMethod
     public void deleteDatabase(PluginCall call) {
-        try {
-            connection.deleteDatabaseFiles();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        worker.execute(() -> {
+            try {
+                connection.deleteDatabaseFiles();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     @PluginMethod
     public void close(PluginCall call) {
-        try {
-            connection.close();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        sequenced(call, () -> {
+            try {
+                connection.close();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
+        });
     }
 
     private void transactionStep(PluginCall call, SqliteConnection.TransactionStep step) {
@@ -253,6 +295,23 @@ public class SqlitePlugin extends Plugin {
         } catch (Exception e) {
             call.reject(message(e), e);
         }
+    }
+
+    /**
+     * Hands a connection call to the worker, to run when its turn in the
+     * driver's sequence comes (ADR-0089). Every method that touches the open
+     * connection goes through here; the two that run with no driver open
+     * (isPlaintextDatabase, deleteDatabase) only share the worker.
+     */
+    private void sequenced(PluginCall call, Runnable work) {
+        String session = call.getString("session");
+        JSObject data = call.getData();
+        if (session == null || session.isEmpty() || !data.has("seq")) {
+            call.reject(call.getMethodName() + " requires a session and a sequence number");
+            return;
+        }
+        long seq = data.optLong("seq", -1);
+        worker.execute(() -> sequencer.accept(session, seq, work, call::reject));
     }
 
     /** Bind parameters, defaulted to none so callers can omit them. */
