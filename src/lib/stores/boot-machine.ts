@@ -79,7 +79,11 @@ export type BootEvent =
   | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean }
   | { type: 'conversion-progressed'; progress: ConversionProgress }
   | { type: 'converted'; dataKey: DataKey; accessMode: JournalAccessMode }
-  | { type: 'journal-opened'; journal: Journal; persistDenied: boolean }
+  | { type: 'journal-opened'; journal: Journal }
+  /** The persistence request came back denied, whenever the browser answers
+      (ticket 202) - decoupled from `journal-opened` because that no longer
+      waits for it. */
+  | { type: 'persist-request-denied' }
   /** However boot() ended badly, unread. Three very different destinations
       hide in this one value, and telling them apart is an ordering decision. */
   | { type: 'journal-open-failed'; error: unknown }
@@ -121,6 +125,13 @@ export interface BootMachine {
       than for a new one. Read from the survey, which is the same moment the
       old code re-read it - the precheck writes a marker, never a keystore. */
   conversionResumable: boolean;
+  /** A `persist-request-denied` seen before the journal reached `ready`
+      (ticket 202: the request is no longer awaited, so its answer can land
+      before or after `journal-opened` - Chromium in particular denies fast
+      enough that the race is not exotic). Consumed and cleared the moment
+      `journal-opened` arrives; a denial seen after `ready` is applied right
+      away instead, without ever setting this. */
+  persistDeniedPending: boolean;
 }
 
 interface BootStep {
@@ -136,7 +147,8 @@ export function initialBoot(cachedAccessMode: CachedAccessMode | null = null): B
         : bootStates.needsUnlock(cachedAccessMode),
     demo: false,
     retired: false,
-    conversionResumable: false
+    conversionResumable: false,
+    persistDeniedPending: false
   };
 }
 
@@ -319,15 +331,28 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       return openingJournal(machine, event.dataKey, event.accessMode);
 
 
-    case 'journal-opened':
-      return step(
-        machine,
-        bootTransitions.toReady(machine.boot, {
-          journal: event.journal,
-          persistDenied: event.persistDenied
-        }),
-        event.persistDenied ? [{ type: 'warn-persist-denied' }] : []
-      );
+    case 'journal-opened': {
+      const ready = bootTransitions.toReady(machine.boot, { journal: event.journal });
+      /* A denial that arrived before ready is applied here rather than lost
+         (ticket 202): the request is no longer awaited, so nothing orders it
+         against journal-opened any more. */
+      if (machine.persistDeniedPending) {
+        return step({ ...machine, persistDeniedPending: false }, bootTransitions.markPersistDenied(ready), [
+          { type: 'warn-persist-denied' }
+        ]);
+      }
+      return step(machine, ready);
+    }
+
+    case 'persist-request-denied':
+      /* Not ready yet: nothing to mark denied on, so the fact is carried on
+         the machine instead and applied once journal-opened arrives. */
+      if (machine.boot.status !== 'ready') {
+        return step({ ...machine, persistDeniedPending: true }, machine.boot);
+      }
+      return step(machine, bootTransitions.markPersistDenied(machine.boot), [
+        { type: 'warn-persist-denied' }
+      ]);
 
     case 'journal-open-failed': {
       /* The rollback direction: older code has met a journal a newer build

@@ -109,7 +109,7 @@ async function run() {
     },
     userVersion,
     latestSchemaVersion: LATEST_SCHEMA_VERSION,
-    persistDenied: result.persistDenied,
+    persistDenied: await result.persistRequest,
     markerExisted,
     windowFunctionRun: windowed,
     runContract: {

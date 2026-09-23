@@ -706,6 +706,13 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
     return;
   }
 
+  // Off the path the reads below take (ticket 202): whenever the browser
+  // answers, a refusal still reaches the toast - it just no longer holds up
+  // journal-opened to do it.
+  result.persistRequest.then((denied) => {
+    if (denied) dispatch({ type: 'persist-request-denied' });
+  });
+
   const preferences = await openPreferences(result.driver, bootCache);
   /* The demo persona (Alice, onboarded, her active preset, 150 days of
      entries) is what makes the demo build land on a populated Home rather
@@ -736,5 +743,5 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
      seeded entry. */
   journalIsOpen();
 
-  dispatch({ type: 'journal-opened', journal: journal!, persistDenied: result.persistDenied });
+  dispatch({ type: 'journal-opened', journal: journal! });
 }
