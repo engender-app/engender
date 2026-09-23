@@ -410,7 +410,9 @@ const scenes = [
         await settle('/practice/voice?tab=record');
         if (!(await page.locator('[data-vb-record]').count())) return false;
         await page.locator('[data-vb-record]').click();
-        await page.waitForTimeout(2600);
+        /* Long enough to clear the passage's own floor - voiced time against
+           its word count since b17ef333 - which 2.6s no longer does. */
+        await page.waitForTimeout(15000);
         await page.locator('[data-vb-stop]').click();
         await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
         await page.locator('[data-vb-record]').click();
