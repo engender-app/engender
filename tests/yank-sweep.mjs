@@ -85,11 +85,10 @@
    `--scenes a,b` narrows the run; `--out <dir>` names where the report and
    the frames of any yank land; `--themes light,dark` runs each scene under
    more than the default light theme. */
-import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, screencast } from './browser-harness.mjs';
+import { launchChromium, screencast, previewBuild } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import {
   BLOAT_PX,
@@ -157,7 +156,7 @@ async function firstRunTo(p, target) {
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
-const app = await preview({ root, preview: { port: 0 } });
+const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
 const report = [];

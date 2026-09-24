@@ -47,11 +47,10 @@
    scene's style frames as JSON alongside the report, and any scene with a
    style finding gets its frames written whether or not it was asked for -
    the frames are the evidence a person reads a yank out of. */
-import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, screencast as captureScreencast, settlePage } from './browser-harness.mjs';
+import { launchChromium, screencast as captureScreencast, settlePage, previewBuild } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
   DIFF_EPS,
@@ -109,7 +108,7 @@ const SCENES = hydrationScreensFor({ prove, only });
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
-const app = await preview({ root, preview: { port: 0 } });
+const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
 const report = [];

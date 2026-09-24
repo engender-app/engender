@@ -21,10 +21,9 @@
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/boot-error-alone.mjs [--root <built tree>] */
-import { preview } from 'vite';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, screencast } from './browser-harness.mjs';
+import { launchChromium, screencast, previewBuild } from './browser-harness.mjs';
 import { INIT_HIDE_DEMO_SCRIPT } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,7 +33,7 @@ const root = resolve(at >= 0 ? args[at + 1] : resolve(here, '..'));
 
 const browser = await launchChromium();
 const decoder = await browser.newPage();
-const app = await preview({ root, preview: { port: 0 } });
+const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 
 /* What only a booted app draws. The notice itself is not in this list. */

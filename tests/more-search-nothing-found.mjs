@@ -26,10 +26,9 @@
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/more-search-nothing-found.mjs [--runs 3] [--root <built tree>] */
-import { preview } from 'vite';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage } from './browser-harness.mjs';
+import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, RESET_PERSONA_EXPRESSION } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -45,12 +44,7 @@ const JUMP_PX = 24;
 const SAMPLE_MS = 1400;
 
 const browser = await launchChromium();
-/* SvelteKit's preview finds the built server under the working directory,
-   not under Vite's root, so a --root without this served whatever tree the
-   probe was started in (ticket 224). */
-const root = resolve(flag('root', resolve(here, '..')));
-process.chdir(root);
-const app = await preview({ root, preview: { port: 0 } });
+const app = await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
