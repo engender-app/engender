@@ -8,13 +8,20 @@
    the phone alike. FlagSun now drops the entrance once it has ended, and the
    compositor runs the breath with no raster at all.
 
+   And it keeps the main thread asleep between the mood faces' moves (ticket
+   228). The faces' glance and blink are SVG children, which never
+   composite, and an infinite CSS loop costs a main frame on every vsync for
+   its whole life, holds included: 300 main frames in five seconds for five
+   faces that are, most of the time, not moving. The faces now pause their
+   own loops while they hold (motion/holdWhileStill.ts), so main frames happen
+   only while an eye moves.
+
    This loads Home over the "fill every feature" journal, waits for the
    entrance to finish, then records five seconds of a Chromium trace and
-   counts the raster tasks in it. What legitimately rasters at idle is small:
-   a running timer ticking once a second. The mood faces' glance and blink
-   repaint on the main thread only in the frames they visibly move (SVG
-   children cannot composite), and those repaints raster nothing on their
-   own. RUNS runs, each judged on its own.
+   counts the raster tasks and the main frames in it. What legitimately
+   rasters at idle is small: a running timer ticking once a second. The
+   compositor still draws every vsync, because the sun's breath never stops
+   moving; that costs no main frame. RUNS runs, each judged on its own.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
@@ -35,6 +42,9 @@ const RUNS = Number(flag('runs', '3'));
 /* Five seconds of a once-a-second timer is a handful of raster tasks; the
    defect was 1500. */
 const RASTER_BUDGET = 40;
+/* The faces' moves, each with a frame or two either side, and the timer's
+   tick: 74-76 in five seconds after 228. A loop left running is 300. */
+const MAIN_FRAME_BUDGET = 130;
 const IDLE_MS = 5000;
 
 const browser = await launchChromium();
@@ -63,7 +73,7 @@ for (let run = 1; run <= RUNS; run++) {
   const onData = (e) => events.push(...e.value);
   cdp.on('Tracing.dataCollected', onData);
   const complete = new Promise((r) => cdp.once('Tracing.tracingComplete', r));
-  await cdp.send('Tracing.start', { categories: 'disabled-by-default-devtools.timeline,devtools.timeline', transferMode: 'ReportEvents' });
+  await cdp.send('Tracing.start', { categories: 'disabled-by-default-devtools.timeline,devtools.timeline,cc', transferMode: 'ReportEvents' });
   await page.waitForTimeout(IDLE_MS);
   await cdp.send('Tracing.end');
   await complete;
@@ -71,11 +81,12 @@ for (let run = 1; run <= RUNS; run++) {
 
   const count = (name) => events.filter((e) => e.name === name && (e.ph === 'X' || e.ph === 'B')).length;
   const raster = count('RasterTask');
-  const ok = raster <= RASTER_BUDGET && rings > 0;
+  const mainFrames = count('ProxyMain::BeginMainFrame');
+  const ok = raster <= RASTER_BUDGET && mainFrames <= MAIN_FRAME_BUDGET && rings > 0;
   if (!ok) failed = true;
   console.log(
-    `${ok ? 'ok  ' : 'FAIL'} run ${run}: ${raster} raster tasks in ${IDLE_MS / 1000}s idle (budget ${RASTER_BUDGET}), ` +
-      `${count('Paint')} paints, ${rings} sun rings`
+    `${ok ? 'ok  ' : 'FAIL'} run ${run}: in ${IDLE_MS / 1000}s idle, ${raster} raster tasks (budget ${RASTER_BUDGET}), ` +
+      `${mainFrames} main frames (budget ${MAIN_FRAME_BUDGET}), ${count('Paint')} paints, ${rings} sun rings`
   );
 }
 if (errors.length) console.log(`page errors:\n  ${errors.join('\n  ')}`);
