@@ -41,6 +41,13 @@ const toHex = (bytes: Uint8Array): string =>
    either way: a recovery that failed has still let the pool go. */
 let recovering: Promise<void> | null = null;
 
+/* Every connection this tab has open, so `releaseOnPageHide` below can reach
+   all of them without each caller (prewarm, the live driver, a conversion,
+   a recovery worker) remembering to register its own. Removed in
+   `terminate()`, the one place a connection stops being any of this tab's
+   business. */
+const liveConnections = new Set<Connection>();
+
 /** One worker and the message plumbing over it. Two things are built on
     this: the driver below, and ticket 10's conversion, which needs the same
     pool and the same encryption shim but no open database. */
@@ -106,12 +113,47 @@ function connectWorker() {
     stopped ??= new Error('the database worker was closed');
     for (const waiter of pending.values()) waiter.reject(stopped);
     pending.clear();
+    liveConnections.delete(connection);
   }
 
-  return { post, terminate, gone: () => stopped !== null };
+  const connection = { post, terminate, gone: () => stopped !== null };
+  liveConnections.add(connection);
+  return connection;
 }
 
 type Connection = ReturnType<typeof connectWorker>;
+
+/* A tab that navigates away or reloads while a connection is open leaves its
+   access handles for the browser to reclaim from a worker it is about to
+   kill outright - which a moment later is late enough for the next boot's
+   own `attach()` (ux-carpet 243): "Access Handles cannot be created if there
+   is another open Access Handle", thrown while the handles this tab's own
+   worker held are still being torn down. Real, not a fixture of one probe -
+   `pagehide` fires for exactly this tab's own reload or navigation, on both
+   the archive-restore path this was found on and any ordinary reload of an
+   open Journal.
+
+   `pauseVfs()` (mc-worker.ts's `close`) is what actually lets go of the pool,
+   synchronously once the worker's message reaches it - so posting `close` to
+   every live connection here, ahead of the browser's own teardown, is what
+   the next `attach()` needs already done rather than raced. Fire-and-forget
+   deliberately: a page hiding for good has nothing to wait for an answer
+   with, and one still open in another tab (`gone()` false, not yet asked to
+   close otherwise) tolerates a second `close` later - the worker's own
+   handler is idempotent, `db` and `poolUtil` already null.
+
+   Exported only for its own test: nothing above this file calls it by
+   name, `window`'s own `pagehide` is what fires it, and the Node tier has
+   no `window` to dispatch one on. */
+export function releaseOnPageHide(): void {
+  for (const connection of liveConnections) {
+    if (!connection.gone()) connection.post('close').catch(() => {});
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', releaseOnPageHide);
+}
 
 /* A worker started at boot start, before any key exists (ux-carpet ticket
    209). Worker start, the wasm compile and the pool install took 65-70ms
