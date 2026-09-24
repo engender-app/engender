@@ -18,6 +18,7 @@ import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
 import { markJournalBusy } from '../data/journal-busy';
 import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
 import { readKeystoreSource } from '../data/keystore-file';
+import { surveyAndroid } from './android-survey';
 import {
   deviceBoundJournalExists,
   DeviceBoundKeyUnavailableError,
@@ -83,15 +84,13 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
        conversion marker are about a web install that predated the keystore,
        and a phone has neither - this is the first build that runs on one. */
     case 'survey-android': {
-      const keystoreSecretSource = await readKeystoreSource();
-      const { hasKey, authRequired } = await androidKeystore.status();
-      dispatch({
-        type: 'android-surveyed',
-        keystoreSecretSource,
-        nativeDeviceKeyExists: hasKey,
-        nativeDeviceKeyAuthRequired: authRequired ?? true,
-        plaintextJournalPresent: await androidJournalIsPlaintext(JOURNAL_DATABASE)
+      /* All three at once (android-survey.ts says why). */
+      const survey = await surveyAndroid({
+        readKeystoreSource,
+        keystoreStatus: () => androidKeystore.status(),
+        journalIsPlaintext: () => androidJournalIsPlaintext(JOURNAL_DATABASE)
       });
+      dispatch({ type: 'android-surveyed', ...survey });
       return;
     }
 
@@ -134,12 +133,13 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     }
 
     case 'auto-unlock-android': {
-      const result = await openAndroidDataKey(androidKeystore, {
-        title: '',
-        subtitle: '',
-        cancel: '',
-        deviceCredential: false
-      });
+      /* Only planned when the survey found a device key
+         (describeAndroidBootPlan), so the bridge is not asked again. */
+      const result = await openAndroidDataKey(
+        androidKeystore,
+        { title: '', subtitle: '', cancel: '', deviceCredential: false },
+        { hasKey: true }
+      );
       if (result.kind === 'key') {
         dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode: 'unlocked', unlocked: false });
       } else {

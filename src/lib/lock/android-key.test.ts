@@ -45,6 +45,20 @@ test('a first run mints a key without asking anyone to authenticate', async () =
   assert.equal(result.kind === 'key' && result.dataKey[31], 0x1f);
 });
 
+test('a boot that already asked whether there is a key does not ask the bridge again (ux-carpet 207)', async () => {
+  /* The boot survey has just asked Keystore.status; auto-unlock only runs
+     when the answer was yes (describeAndroidBootPlan). A second status call
+     was a second bridge round trip on a cold launch, and bridge results
+     reach JS through the Android UI thread, which is busy for ~300ms with
+     the WebView's first frame right then. */
+  const result = await openAndroidDataKey(
+    bridge({ unlock: async () => ({ outcome: 'authenticated', hexKey: HEX }) }),
+    COPY,
+    { hasKey: true }
+  );
+  assert.equal(result.kind, 'key');
+});
+
 test('a later run unwraps behind the prompt, and the request goes to the prompt', async () => {
   let shown: unknown = null;
   const result = await openAndroidDataKey(
