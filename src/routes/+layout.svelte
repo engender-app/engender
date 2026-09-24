@@ -36,6 +36,7 @@
     bootGate,
     isErrorState,
     isReadyState,
+    journalIsUnreadable,
     midSessionLockApplies,
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
@@ -532,6 +533,14 @@
               <span>{m.boot_retry_action()}</span>
             </button>
           </div>
+          <!-- Retrying never opens a file the key cannot read (ux-carpet 210).
+               Imported here, like Progress above, so a boot that never fails
+               does not carry it. -->
+          {#if journalIsUnreadable(bootState)}
+            {#await import('$lib/components/UnreadableJournalWayOut.svelte') then { default: UnreadableJournalWayOut }}
+              <UnreadableJournalWayOut />
+            {/await}
+          {/if}
         </div>
       </div>
     {/if}
