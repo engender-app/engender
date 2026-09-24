@@ -20,16 +20,11 @@
    `[data-app-savebar]` after carpet 26 and `.editor-savebar` before it, so
    the selector names both and the before column needs no separate script.
 
-   Run against a demo build, once per side. The before side has to run with
-   its own checkout as the *working directory*, not just as --root: vite's
-   preview server resolves .svelte-kit/output relative to the cwd whatever
-   root it is handed, so running it from here serves this branch's build
-   under the before tag (redesign ticket 20's note, and it happened again).
+   Run against a demo build, once per side, with the before side's checkout
+   (built the same way) handed as --root:
      VITE_DEMO=1 npm run build
      node tests/savebar-clearance-gallery.mjs --tag after --out /abs/path
-     cd /path/to/main-worktree && VITE_DEMO=1 npm run build && \
-       node /abs/path/to/tests/savebar-clearance-gallery.mjs \
-         --tag before --root . --out /abs/path
+     node tests/savebar-clearance-gallery.mjs --tag before --root /path/to/main-worktree --out /abs/path
 */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
