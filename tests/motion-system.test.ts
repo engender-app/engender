@@ -983,14 +983,33 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(layout).toContain('blind.release()');
   });
 
+  const zIndex = (prelude: string) =>
+    Number(declarations(ruleOf(app, prelude)?.body ?? '')['z-index']);
+
   /* ux-carpet 230. The blind and the rings are nested under the field's own
      group, so their z-index only orders them inside it, and the field group
      is what has to sit over the screen's. At auto it fell under the screen,
      and a screen whose snapshot is opaque (the entry editor's .editor-bg)
      hid the whole field for the length of Home to a new entry. */
   it('paints the field group over the screen group, since the blind is nested inside it', () => {
-    const z = (prelude: string) => Number(declarations(ruleOf(app, prelude)?.body ?? '')['z-index']);
-    expect(z('::view-transition-group(field)')).toBeGreaterThan(z('::view-transition-group(screen)'));
+    expect(zIndex('::view-transition-group(field)')).toBeGreaterThan(
+      zIndex('::view-transition-group(screen)')
+    );
+  });
+
+  /* ux-carpet 241. The sun rings are lifted out of the field group so their
+     z-index 5 orders them over the titles (*.field-part at 4) rather than
+     being trapped inside field at 3. */
+  it('orders the sun rings above the field parts and the field parts above the field group', () => {
+    expect(zIndex('::view-transition-group(*.sun-ring)')).toBeGreaterThan(
+      zIndex('::view-transition-group(*.field-part)')
+    );
+    expect(zIndex('::view-transition-group(*.field-part)')).toBeGreaterThan(
+      zIndex('::view-transition-group(field)')
+    );
+    expect(zIndex('::view-transition-group(field)')).toBeGreaterThan(
+      zIndex('::view-transition-group(screen)')
+    );
   });
 
   /* The bottom corners stay exact on every frame of the slide, which is
