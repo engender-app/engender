@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { resolveReminderOrigin } from '$lib/data/provenance';
@@ -69,6 +71,14 @@
     if (isWeb) return;
     void refreshStatus();
   });
+
+  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  let remindersRevealed = $state(false);
+  $effect.pre(() => {
+    if (!reminders.loading) remindersRevealed = true;
+  });
+  const remindersEstimate = readReserve('reminders');
+  const remindersRemember = (px: number) => rememberReserve('reminders', px);
 </script>
 
 <div class="screen" data-screen>
@@ -92,28 +102,33 @@
       action={{ label: m.export_import(), href: '/settings/export' }}
     />
 
-    {#if reminders.rows.length === 0}
-      <Notice icon="bell" key="reminders-empty" title={m.rem_empty_title()} text={m.rem_empty_body()} />
-    {:else}
-      <ListCard>
-        {#each reminders.rows as r (r.id)}
-          {@const origin = resolveReminderOrigin(r)}
-          <ListRow
-            static
-            key={r.id}
-            data-reminder={r.id}
-            icon={TYPE_ICON[r.type] || 'bell'}
-            title={r.title}
-            subtitle={[`${reminderTypeLabel(r.type)} · ${reminderScheduleLabel(r)}`, origin?.text]}
-            action={{
-              icon: 'trash',
-              label: m.rem_delete_aria({ title: r.title }),
-              onclick: () => record.askToDelete(r)
-            }}
-          />
-        {/each}
-      </ListCard>
-    {/if}
+    <!-- Held until the reminders have answered, then faded in (ux-carpet
+         ticket 211): the empty notice stood in for a list that then cut in
+         at full opacity. -->
+    <ReadReserve ready={remindersRevealed} estimate={remindersEstimate} onrest={remindersRemember}>
+      {#if reminders.rows.length === 0}
+        <Notice icon="bell" key="reminders-empty" title={m.rem_empty_title()} text={m.rem_empty_body()} />
+      {:else}
+        <ListCard>
+          {#each reminders.rows as r (r.id)}
+            {@const origin = resolveReminderOrigin(r)}
+            <ListRow
+              static
+              key={r.id}
+              data-reminder={r.id}
+              icon={TYPE_ICON[r.type] || 'bell'}
+              title={r.title}
+              subtitle={[`${reminderTypeLabel(r.type)} · ${reminderScheduleLabel(r)}`, origin?.text]}
+              action={{
+                icon: 'trash',
+                label: m.rem_delete_aria({ title: r.title }),
+                onclick: () => record.askToDelete(r)
+              }}
+            />
+          {/each}
+        </ListCard>
+      {/if}
+    </ReadReserve>
 
     <RecordSheet
       {record}

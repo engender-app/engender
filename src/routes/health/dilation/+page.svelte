@@ -34,6 +34,8 @@
      since surgery is a count on nearly every day, a flat line at 1 for
      months, and the strip plus today's own row already say everything it
      said. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -193,6 +195,14 @@
     if (existing) session.openEditor(existing);
     else session.editor = { date: dateInputValueFromEpochDay(epochDay), note: '' };
   }
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let dilationRevealed = $state(false);
+  $effect.pre(() => {
+    if (!dilationRevealed && (!taperQuery.loading && !proceduresQuery.loading && (!taperQuery.value || !sessionsQuery.loading))) dilationRevealed = true;
+  });
+  const dilationEstimate = readReserve('dilation');
+  const dilationRemember = (px: number) => rememberReserve('dilation', px);
 </script>
 
 <div class="screen">
@@ -214,221 +224,220 @@
   <!-- Both reads, not the taper's alone: which notice the empty screen owes
        depends on the procedure list, and a screen that answered before it
        arrived would show the wrong one and then swap it. -->
-  {#if taperQuery.loading || proceduresQuery.loading}
-    <div class="screen-part" out:crossfade>
-      <Skeleton variant="line" count={3} />
-    </div>
-  {:else if !taper && eligibleProcedures.length === 0}
-    <!-- A schedule names the procedure it follows (audit item 7), so with
-         none to name there is nothing to type in yet - and the editor would
-         open on a save it could never enable. Says so, and sends the person
-         to the screen that fixes it. -->
-    <div class="screen-part">
-      <Notice
-        icon="flask"
-        key="dilation-no-procedure"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
-        title={m.dilation_no_procedure_title()}
-        text={m.dilation_no_procedure_body()}
-        action={{ label: m.dilation_no_procedure_action(), primary: true, href: '/health/surgery' }}
-      />
-    </div>
-  {:else if !taper && !editingSchedule}
-    <div class="screen-part">
-      <Notice
-        icon="flask"
-        key="dilation-schedule-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
-        title={m.dilation_schedule_empty_title()}
-        text={m.dilation_schedule_empty_body()}
-        action={{ label: m.dilation_schedule_empty_action(), primary: true, onclick: openScheduleEditor }}
-      />
-    </div>
-  {:else if editingSchedule}
-    <div class="screen-part">
-      <SectionHeading text={m.dilation_schedule_heading()} />
-      {#if eligibleProcedures.length > 1}
-        <!-- A picker only where there is a real choice to make (audit item
-             7): with exactly one eligible procedure, `openScheduleEditor`
-             already selected it and there is nothing here to ask. -->
-        <Field label={m.dilation_procedure_label()} legend>
-          {#snippet children()}
-            <Segmented
-              name={m.dilation_procedure_label()}
-              options={eligibleProcedures.map((p) => ({ value: p.id, label: p.name }))}
-              value={selectedProcedureId ?? eligibleProcedures[0].id}
-              onChange={(v) => (selectedProcedureId = v)}
-            />
-          {/snippet}
-        </Field>
-      {/if}
-      <Field label={m.dilation_start_day_label()} id="dilation-start-day">
-        {#snippet children(id)}
-          <DatePicker name="dilation-start-day" bind:value={startDayInput} {id} />
-        {/snippet}
-      </Field>
-      <p class="muted small">{m.dilation_start_day_hint()}</p>
-
-      <FieldGroupHeading legend={m.dilation_stage_legend()} hint={m.dilation_stage_hint()} />
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-        {#each stagesInput as stage, index (index)}
-          <div class="kit-row is-static">
-            <span class="kit-row-text cd-endpoints">
-              <span class="field">
-                <input
-                  class="input"
-                  type="number"
-                  min="0"
-                  inputmode="numeric"
-                  data-stage-frequency={index}
-                  aria-label={m.dilation_stage_frequency_aria()}
-                  bind:value={stage.everyNDays}
-                />
-              </span>
-              <span class="field">
-                <input
-                  class="input"
-                  type="number"
-                  min="1"
-                  inputmode="numeric"
-                  data-stage-duration={index}
-                  aria-label={m.dilation_stage_duration_aria()}
-                  bind:value={stage.days}
-                />
-              </span>
-            </span>
-            <button
-              class="kit-row-act press"
-              data-delete-stage={index}
-              aria-label={m.dilation_stage_delete_aria({ index: index + 1 })}
-              onclick={() => removeStage(index)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        {/each}
-      </ListCard>
-      <button class="btn btn-ghost press" data-add-stage onclick={addStage}>
-        <span>{m.dilation_stage_add()}</span>
-      </button>
-
-      <div class="stack-3 dilation-schedule-actions">
-        <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
-          <span>{m.dilation_schedule_save()}</span>
-        </button>
-        <button class="btn btn-ghost" onclick={() => (editingSchedule = false)}>
-          <span>{m.cancel()}</span>
-        </button>
-      </div>
-    </div>
-  {:else if taper}
-    <!-- What is true now, before what was true before (rule 16): the week
-         as a strip, and today under it at full size with the way to log it
-         on the row. -->
-    {#if sessionsQuery.loading}
-      <div class="screen-part" out:crossfade>
-        <Skeleton variant="line" count={3} />
-      </div>
-    {:else if expectedDays.length === 0}
+  <!-- Held at last visit's height until the taper, the procedures and the sessions have answered, then faded in (ux-carpet ticket 211): the body used to cut in at full opacity when they did. -->
+  <ReadReserve ready={dilationRevealed} estimate={dilationEstimate} onrest={dilationRemember}>
+    {#if !taper && eligibleProcedures.length === 0}
+      <!-- A schedule names the procedure it follows (audit item 7), so with
+           none to name there is nothing to type in yet - and the editor would
+           open on a save it could never enable. Says so, and sends the person
+           to the screen that fixes it. -->
       <div class="screen-part">
         <Notice
           icon="flask"
-          key="dilation-sessions-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={m.dilation_sessions_empty_title()}
-          text={m.dilation_sessions_empty_body()}
+          key="dilation-no-procedure"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
+          title={m.dilation_no_procedure_title()}
+          text={m.dilation_no_procedure_body()}
+          action={{ label: m.dilation_no_procedure_action(), primary: true, href: '/health/surgery' }}
         />
       </div>
-    {:else}
+    {:else if !taper && !editingSchedule}
       <div class="screen-part">
-        <DayStrip
-          {today}
-          markOf={(day) => markOf(day)}
-          labelOf={(day, mark) => m.strip_day_state({ day: dayLong(day), state: stateWords(mark) })}
-          earliest={taper.startEpochDay}
-          onPick={openSessionFor}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
-          bind:weeksBack
+        <Notice
+          icon="flask"
+          key="dilation-schedule-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
+          title={m.dilation_schedule_empty_title()}
+          text={m.dilation_schedule_empty_body()}
+          action={{ label: m.dilation_schedule_empty_action(), primary: true, onclick: openScheduleEditor }}
         />
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-          <ListRow
-            key="dilation-today"
-            data-dilation-today
-            title={m.today()}
-            subtitle={sessionsByDay.get(today)?.note || dayLong(today)}
-            onclick={() => openSessionFor(today)}
-          >
-            {#snippet trailing()}
-              <!-- Suppressed once the note is already saying it, the same
-                   rule the week's rows below follow: "Logged" beside a note
-                   about the session is the row saying it twice. -->
-              {#if !sessionsByDay.get(today)?.note}
-                {stateWords(todayMark)}
-              {/if}
+      </div>
+    {:else if editingSchedule}
+      <div class="screen-part">
+        <SectionHeading text={m.dilation_schedule_heading()} />
+        {#if eligibleProcedures.length > 1}
+          <!-- A picker only where there is a real choice to make (audit item
+               7): with exactly one eligible procedure, `openScheduleEditor`
+               already selected it and there is nothing here to ask. -->
+          <Field label={m.dilation_procedure_label()} legend>
+            {#snippet children()}
+              <Segmented
+                name={m.dilation_procedure_label()}
+                options={eligibleProcedures.map((p) => ({ value: p.id, label: p.name }))}
+                value={selectedProcedureId ?? eligibleProcedures[0].id}
+                onChange={(v) => (selectedProcedureId = v)}
+              />
             {/snippet}
-          </ListRow>
+          </Field>
+        {/if}
+        <Field label={m.dilation_start_day_label()} id="dilation-start-day">
+          {#snippet children(id)}
+            <DatePicker name="dilation-start-day" bind:value={startDayInput} {id} />
+          {/snippet}
+        </Field>
+        <p class="muted small">{m.dilation_start_day_hint()}</p>
+
+        <FieldGroupHeading legend={m.dilation_stage_legend()} hint={m.dilation_stage_hint()} />
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
+          {#each stagesInput as stage, index (index)}
+            <div class="kit-row is-static">
+              <span class="kit-row-text cd-endpoints">
+                <span class="field">
+                  <input
+                    class="input"
+                    type="number"
+                    min="0"
+                    inputmode="numeric"
+                    data-stage-frequency={index}
+                    aria-label={m.dilation_stage_frequency_aria()}
+                    bind:value={stage.everyNDays}
+                  />
+                </span>
+                <span class="field">
+                  <input
+                    class="input"
+                    type="number"
+                    min="1"
+                    inputmode="numeric"
+                    data-stage-duration={index}
+                    aria-label={m.dilation_stage_duration_aria()}
+                    bind:value={stage.days}
+                  />
+                </span>
+              </span>
+              <button
+                class="kit-row-act press"
+                data-delete-stage={index}
+                aria-label={m.dilation_stage_delete_aria({ index: index + 1 })}
+                onclick={() => removeStage(index)}
+              >
+                <Icon name="trash" size={18} />
+              </button>
+            </div>
+          {/each}
+        </ListCard>
+        <button class="btn btn-ghost press" data-add-stage onclick={addStage}>
+          <span>{m.dilation_stage_add()}</span>
+        </button>
+
+        <div class="stack-3 dilation-schedule-actions">
+          <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
+            <span>{m.dilation_schedule_save()}</span>
+          </button>
+          <button class="btn btn-ghost" onclick={() => (editingSchedule = false)}>
+            <span>{m.cancel()}</span>
+          </button>
+        </div>
+      </div>
+    {:else if taper}
+      <!-- What is true now, before what was true before (rule 16): the week
+           as a strip, and today under it at full size with the way to log it
+           on the row. -->
+      {#if sessionsQuery.loading}
+        <div class="screen-part" out:crossfade>
+          <Skeleton variant="line" count={3} />
+        </div>
+      {:else if expectedDays.length === 0}
+        <div class="screen-part">
+          <Notice
+            icon="flask"
+            key="dilation-sessions-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+            title={m.dilation_sessions_empty_title()}
+            text={m.dilation_sessions_empty_body()}
+          />
+        </div>
+      {:else}
+        <div class="screen-part">
+          <DayStrip
+            {today}
+            markOf={(day) => markOf(day)}
+            labelOf={(day, mark) => m.strip_day_state({ day: dayLong(day), state: stateWords(mark) })}
+            earliest={taper.startEpochDay}
+            onPick={openSessionFor}
+            role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+            bind:weeksBack
+          />
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            <ListRow
+              key="dilation-today"
+              data-dilation-today
+              title={m.today()}
+              subtitle={sessionsByDay.get(today)?.note || dayLong(today)}
+              onclick={() => openSessionFor(today)}
+            >
+              {#snippet trailing()}
+                <!-- Suppressed once the note is already saying it, the same
+                     rule the week's rows below follow: "Logged" beside a note
+                     about the session is the row saying it twice. -->
+                {#if !sessionsByDay.get(today)?.note}
+                  {stateWords(todayMark)}
+                {/if}
+              {/snippet}
+            </ListRow>
+          </ListCard>
+        </div>
+
+        <div class="screen-part">
+          <SectionHeading text={m.dilation_sessions_heading()} />
+          {#if weekRows.length === 0}
+            <!-- Its own words rather than a day's answer stretched over
+                 seven: "Nothing expected" is what one cell says. -->
+            <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+          {:else}
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+              {#each weekRows as epochDay (epochDay)}
+                {@const logged = sessionsByDay.get(epochDay)}
+                <ListRow
+                  key={String(epochDay)}
+                  data-session-day={epochDay}
+                  title={dayLong(epochDay)}
+                  subtitle={logged?.note || undefined}
+                  onclick={() => openSessionFor(epochDay)}
+                >
+                  {#snippet trailing()}
+                    {#if !logged}
+                      {m.adherence_nothing_logged()}
+                    {:else if !logged.note}
+                      {m.dilation_session_logged()}
+                    {/if}
+                  {/snippet}
+                </ListRow>
+              {/each}
+            </ListCard>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- The schedule itself, under the reading of it rather than over: it
+           is where the taper is edited, not what a person opens this screen
+           to find out (rule 16, and the same lesson ticket 54 took on the
+           roadmap - open on where you are, not on the pack's provenance). -->
+      <div class="screen-part">
+        <SectionHeading text={m.dilation_schedule_heading()} />
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
+          <ListRow
+            key="dilation-schedule"
+            data-schedule
+            icon="flask"
+            title={m.dilation_schedule_edit_action()}
+            subtitle={[
+              followedProcedure?.name,
+              followedProcedure?.surgeryEpochDay != null
+                ? dayLong(followedProcedure.surgeryEpochDay)
+                : m.dilation_procedure_date_unset()
+            ]}
+            onclick={openScheduleEditor}
+          />
         </ListCard>
       </div>
 
-      <div class="screen-part">
-        <SectionHeading text={m.dilation_sessions_heading()} />
-        {#if weekRows.length === 0}
-          <!-- Its own words rather than a day's answer stretched over
-               seven: "Nothing expected" is what one cell says. -->
-          <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-        {:else}
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-            {#each weekRows as epochDay (epochDay)}
-              {@const logged = sessionsByDay.get(epochDay)}
-              <ListRow
-                key={String(epochDay)}
-                data-session-day={epochDay}
-                title={dayLong(epochDay)}
-                subtitle={logged?.note || undefined}
-                onclick={() => openSessionFor(epochDay)}
-              >
-                {#snippet trailing()}
-                  {#if !logged}
-                    {m.adherence_nothing_logged()}
-                  {:else if !logged.note}
-                    {m.dilation_session_logged()}
-                  {/if}
-                {/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
-        {/if}
-      </div>
+      <!-- Saying you are done dilating (phase 8 features ticket 04, ADR-0052) -
+           the finish control lives on `taperSessions`, never on the schedule:
+           a taper ending is the normal outcome this ticket exists to name. -->
+      <AreaFinish group="dilation" />
     {/if}
-
-    <!-- The schedule itself, under the reading of it rather than over: it
-         is where the taper is edited, not what a person opens this screen
-         to find out (rule 16, and the same lesson ticket 54 took on the
-         roadmap - open on where you are, not on the pack's provenance). -->
-    <div class="screen-part">
-      <SectionHeading text={m.dilation_schedule_heading()} />
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-        <ListRow
-          key="dilation-schedule"
-          data-schedule
-          icon="flask"
-          title={m.dilation_schedule_edit_action()}
-          subtitle={[
-            followedProcedure?.name,
-            followedProcedure?.surgeryEpochDay != null
-              ? dayLong(followedProcedure.surgeryEpochDay)
-              : m.dilation_procedure_date_unset()
-          ]}
-          onclick={openScheduleEditor}
-        />
-      </ListCard>
-    </div>
-
-    <!-- Saying you are done dilating (phase 8 features ticket 04, ADR-0052) -
-         the finish control lives on `taperSessions`, never on the schedule:
-         a taper ending is the normal outcome this ticket exists to name. -->
-    <AreaFinish group="dilation" />
-  {/if}
+  </ReadReserve>
 
   <RecordSheet
     record={session}

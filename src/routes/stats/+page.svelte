@@ -551,6 +551,14 @@
     gap: var(--space-5);
   }
 
+  /* The day's blocks now arrive through OnThisDayBlock's reserve (ux-carpet
+     ticket 211), one wrapper down, spaced by the reserve's own 20 rather
+     than this grid's gap. A grid item holds its content's last margin in,
+     so the last block gives its 20 up here or the day ends 20px taller. */
+  .lookback-day :global(.read-reserve-body > :last-child) {
+    margin-bottom: 0;
+  }
+
   /* The "name this stretch" offer (redesign ticket 48), drawn as rule 13's
      offer row - the icon block, the title, one reason line, and the two
      labelled answers under them. Not a `Notice`: this offer lives on the
