@@ -43,6 +43,36 @@
 
   let templates = $derived(vocabulary.entryTemplates);
 
+  /* A cold navigation straight to this sheet (`?raise=templates`, ticket
+     231) mounts this component's own tree - Field, TagPicker,
+     DimensionSlider and the rest RecordSheet's fields snippet pulls in -
+     which is enough synchronous work that `vocabulary.ready` can flip true
+     within the same narrow window `use:resize`'s own `painted` guard uses
+     to tell "the box's mount-time height" from "a real change" (reveal.ts,
+     ux-carpet 201). The skeleton is genuinely on screen for a beat first,
+     so the swap that follows is a real change worth animating, not the
+     placeholder-height case that guard exists for - but landing inside its
+     window read as the same thing, and the fourteen rows snapped in across
+     two un-animated frames instead of growing (measured: 528px -> 286px ->
+     127px of sheet top, ~400px in two frames; Modes/PresentationsManager,
+     with less to mount ahead of its own equivalent div, cleared that window
+     before its own data arrived and grows smoothly).
+     `settled` holds the reveal back one frame past mount, on the same
+     rAF-then-timeout the guard itself waits on, so the swap this div's
+     ResizeObserver sees always lands after the guard has opened - never
+     before it, whichever way the data and the mount happen to race. */
+  let settled = $state(false);
+  $effect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const raf = requestAnimationFrame(() => {
+      timer = setTimeout(() => (settled = true));
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
+    };
+  });
+
   interface TemplateDraft {
     id?: string;
     name: string;
@@ -111,7 +141,7 @@
 <p class="ob-text">{m.entry_templates_intro()}</p>
 
 <div use:resize>
-  {#if !vocabulary.ready}
+  {#if !settled || !vocabulary.ready}
     <div out:crossfade><Skeleton variant="line" count={3} /></div>
   {:else}
     <ListCard role={roleAt(activeFlag.roles, 0)}>
