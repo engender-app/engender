@@ -3,13 +3,37 @@
   import { sheetRise, scrimFade } from '$lib/motion/navigation';
   import { firstFocusable, lockBackground, registerOverlay } from './overlayLock';
 
+  /* Ticket 242: `|global` is a compile-time modifier, so it cannot be
+     parametrised on the directive itself - the two branches below (where
+     `globalTransitions` is read) are otherwise identical. Local (default)
+     is right for the ~36 ordinary call sites: a sheet's own {#if open}
+     block is what triggers its transitions, exactly as it should, and
+     navigating away no longer replays a 380ms outro over the next screen
+     because that removal is caused by the *page* unmounting, not by this
+     block, and a local transition only fires for the latter.
+
+     `globalTransitions` stays true only for VocabularyManagerSheets, which
+     raises Sheet from behind `{#if ui.raisedManager}{#await import(...)}`
+     in +layout.svelte (ticket 231) - there the entrance is itself caused by
+     an ancestor block being created, so only `|global` plays it. That one
+     sheet still holds its outro across a navigation away from it; ticket
+     231's fix takes priority there and nothing in 242 asked for both at
+     once. */
   let {
     open = $bindable(false),
     title = '',
     onClose,
     onRequestClose,
     children,
-  }: { open?: boolean; title?: string; onClose?: () => void; onRequestClose?: () => void; children: Snippet } = $props();
+    globalTransitions = false,
+  }: {
+    open?: boolean;
+    title?: string;
+    onClose?: () => void;
+    onRequestClose?: () => void;
+    children: Snippet;
+    globalTransitions?: boolean;
+  } = $props();
 
   let sheetEl: HTMLElement | null = null;
 
@@ -160,11 +184,19 @@
     }}
     {@attach lockBackground}
   >
-    <div
-      class="sheet-scrim-tint scrim-withdraw"
-      data-sheet-tint
-      transition:scrimFade|global
-    ></div>
+    {#if globalTransitions}
+      <div
+        class="sheet-scrim-tint scrim-withdraw"
+        data-sheet-tint
+        transition:scrimFade|global
+      ></div>
+    {:else}
+      <div
+        class="sheet-scrim-tint scrim-withdraw"
+        data-sheet-tint
+        transition:scrimFade
+      ></div>
+    {/if}
     <div
       class="sheet-drag"
       role="presentation"
@@ -176,21 +208,39 @@
       onpointerup={dragEnd}
       onpointercancel={dragEnd}
     >
-      <div
-        class="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabindex="-1"
-        data-sheet
-        in:sheetRise|global
-        out:sheetRise|global
-        {@attach focusInitial}
-        {@attach ownSheet}
-      >
-        <div class="sheet-handle"></div>
-        {@render children()}
-      </div>
+      {#if globalTransitions}
+        <div
+          class="sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          tabindex="-1"
+          data-sheet
+          in:sheetRise|global
+          out:sheetRise|global
+          {@attach focusInitial}
+          {@attach ownSheet}
+        >
+          <div class="sheet-handle"></div>
+          {@render children()}
+        </div>
+      {:else}
+        <div
+          class="sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          tabindex="-1"
+          data-sheet
+          in:sheetRise
+          out:sheetRise
+          {@attach focusInitial}
+          {@attach ownSheet}
+        >
+          <div class="sheet-handle"></div>
+          {@render children()}
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
