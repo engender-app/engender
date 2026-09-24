@@ -34,6 +34,7 @@
    `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
    resolution, which needs a real scheduler to be seen re-running at all. */
 
+import { untrack } from 'svelte';
 import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
@@ -319,7 +320,8 @@ function query<T>(
      learn what it asks for. */
   const instance = ++queriesMade;
   liveQueries.add(instance);
-  const recalled = site && openedJournal ? recallFor(site, run, openedJournal) : undefined;
+  const asked = site && openedJournal ? recallFor(site, run, openedJournal) : null;
+  const recalled = asked?.value;
   let state = $state<ReadState<T>>(recalled === undefined ? pending<T>() : landed(recalled as T));
   /* The painted answer the first refresh compares against: equal, and the
      refresh assigns nothing, so nothing on screen re-renders or moves. */
@@ -420,7 +422,25 @@ function query<T>(
       state = gaveUp(state);
     };
 
-    attempt().then(settle, (error) => {
+    const running = attempt();
+
+    /* Asked again with the first real run's key, when that differs from the
+       one asked at initialisation. A closure whose arguments come from state
+       an earlier `$effect` of the same component settles - Look back's plane
+       reading picks its two axes that way - saw none of it at
+       initialisation, returned early and asked for nothing. By this effect
+       the state is settled, and the browser has still not painted, so an
+       answer found now is still in the tab's first frame. */
+    if (firstEverAttempt && site && untrack(() => state.loading)) {
+      const now = key ?? (calls.length === 0 ? `${site}|${NO_CALLS}` : null);
+      const again = now !== null && now !== asked?.key ? recallKey(now) : undefined;
+      if (again !== undefined) {
+        state = landed(again as T);
+        painted = again;
+      }
+    }
+
+    running.then(settle, (error) => {
       if (!firstEverAttempt) return fail(error);
       /* A route visited for the first time this session can reject once on
          its table's first touch and recover a couple of frames later
@@ -501,16 +521,23 @@ function recordingJournal(
     and then never answers, so the closure stops at its first await and
     everything it called before then is the key. Nothing reaches the
     database. */
-function recallFor(site: string, run: (journal: Journal) => Promise<unknown>, ready: Journal): unknown {
+function recallFor(
+  site: string,
+  run: (journal: Journal) => Promise<unknown>,
+  ready: Journal
+): { key: string | null; value: unknown } {
   const calls: (string | null)[] = [];
   try {
     void run(recordingJournal(ready, () => {}, calls, () => new Promise(() => {}))).catch(() => {});
   } catch {
-    return undefined;
+    return { key: null, value: undefined };
   }
   const key = calls.length === 0 ? `${site}|${NO_CALLS}` : keyOf(site, calls);
-  return key === null ? undefined : recall(key, (table) => settledVersionOf(table as TableName), isLiveQuery);
+  return { key, value: key === null ? undefined : recallKey(key) };
 }
+
+const recallKey = (key: string): unknown =>
+  recall(key, (table) => settledVersionOf(table as TableName), isLiveQuery);
 
 /** What a closure that calls no operation at all is keyed under. A closure
     that calls one only after an await looks the same to the asking run
