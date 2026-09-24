@@ -13,6 +13,7 @@
    throws into a failed boot, which is what the four sequences this replaced
    each ended in. */
 
+import { releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
 import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
 import { markJournalBusy } from '../data/journal-busy';
 import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
@@ -180,7 +181,9 @@ async function performDemoEffect(
        wiped rather than converted. */
     case 'wipe-demo-journal':
       await wipeLocalData({
-        closeDatabase: async () => {},
+        /* Nothing is open yet, but the database worker started at boot
+           (ux-carpet ticket 209) holds the pool this is about to delete. */
+        closeDatabase: releasePrewarmedJournalWorker,
         storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
         clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
         clearBootCache: () => localStorageCache().clear()
