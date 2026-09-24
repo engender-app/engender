@@ -354,7 +354,7 @@ export function startBoot() {
      wasm and its pool, which the Journal's driver takes over once the key
      exists, and - where the unlock will derive one - the argon2id worker
      with hash-wasm compiled. Neither is given a secret here. */
-  if (!isAndroid()) void prewarmJournalWorker(JOURNAL_DATABASE);
+  if (!isAndroid()) prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
   if (__DEMO__ || readCachedAccessMode() !== null) prewarmArgon2();
   dispatch({ type: 'started', platform: isAndroid() ? 'android' : 'web', demo: __DEMO__ });
 }

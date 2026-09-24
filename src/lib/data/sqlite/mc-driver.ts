@@ -96,7 +96,16 @@ let prewarmed: { path: string; connection: Connection; attached: Promise<void> }
 
 export function prewarmJournalWorker(databasePath: string): Promise<void> {
   if (!prewarmed) {
-    const connection = connectWorker();
+    /* A worker that cannot even be constructed (a policy that refuses
+       module workers throws on `new Worker`) must not take startBoot down
+       with it: nothing is kept, and the driver made once the key exists
+       constructs its own inside boot(), where that failure is a boot error. */
+    let connection: Connection;
+    try {
+      connection = connectWorker();
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
     const attached = connection.post<void>('attach', { path: databasePath });
     attached.catch(() => {});
     prewarmed = { path: databasePath, connection, attached };
@@ -116,6 +125,10 @@ export async function releasePrewarmedJournalWorker(): Promise<void> {
   held.connection.terminate();
 }
 
+/* Only ever handed to its own path. A driver for another database leaves it
+   where it is, for the Journal's open still to come: it holds no key, and
+   its pool directory is its own path's (mc-worker.ts, poolDirectory), so it
+   holds nothing another database's worker needs. */
 function takePrewarmed(databasePath: string): Connection | null {
   if (!prewarmed || prewarmed.path !== databasePath) return null;
   const { connection } = prewarmed;
