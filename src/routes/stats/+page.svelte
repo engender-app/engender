@@ -357,26 +357,15 @@
           <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
             {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
           </ListRow>
-          <!-- No `transition:collapse` on these two rows (ux-carpet 234):
-               `activeAverage` and `dimChange` answer off two different
-               reads (`activeSeriesQuery`, `recapQuery`), so a fast drag on
-               the span rail can lose both within the same span of frames
-               but not the same tick - each row then ran its own local
-               collapse, and the two, closing at once, read as rows sliding
-               under each other rather than as one list closing. The card
-               itself already sits in a `use:resize` box (the `screen-part`
-               above), so the fix is to let that ONE mechanism carry the
-               height change: a row's own appearance or disappearance is
-               instant now, and the card's own height eases around it. -->
           {#if activeAverage}
-            <div class="rows-divide">
+            <div class="rows-divide" transition:collapse>
               <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
                 {#snippet trailing()}<b class="wrapped-figure-value">{activeAverage}</b>{/snippet}
               </ListRow>
             </div>
           {/if}
           {#if dimChange}
-            <div class="rows-divide">
+            <div class="rows-divide" transition:collapse>
               <ListRow
                 static
                 data-lookback-fact
