@@ -67,6 +67,7 @@
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
   import MoodFace from './MoodFace.svelte';
+  import { holdFacesWhileStill } from '$lib/motion/holdWhileStill';
 
   let backdateOpen = $state(false);
   let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
@@ -669,7 +670,7 @@
         <span class="fan-icon"><Icon name="calendar" size={22} /></span>
         <span class="fan-label">{m.another_day()}</span>
       </button>
-      <div class="fan-moods" data-fan-moods>
+      <div class="fan-moods" data-fan-moods {@attach holdFacesWhileStill}>
         {#each MOODS as value, i (value)}
           <button
             class="fan-mood"

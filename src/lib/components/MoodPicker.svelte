@@ -4,6 +4,7 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import { moodMagnifier } from './moodMagnifier.svelte';
   import MoodFace from './MoodFace.svelte';
+  import { holdFacesWhileStill } from '$lib/motion/holdWhileStill';
 
   let {
     value = null,
@@ -43,6 +44,7 @@
   <div
     class="mood-row"
     role="presentation"
+    {@attach holdFacesWhileStill}
     onpointermove={magnifier.onRowMove}
     onpointerup={magnifier.onRowRelease}
     onpointercancel={magnifier.onRowRelease}
