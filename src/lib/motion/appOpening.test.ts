@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { openApp } from './appOpening';
+import { crossBootFailure, openApp } from './appOpening';
 
 /** The blind's own element, as the carry treats it: a style bag. */
 const el = () => {
@@ -143,6 +143,28 @@ describe('the app opening', () => {
   it('commits with no document at all, which is what the server has', () => {
     let committed = false;
     openApp(() => (committed = true), undefined);
+    expect(committed).toBe(true);
+  });
+});
+
+describe('a boot failing over the drawn route (ux-carpet 213)', () => {
+  it('commits inside a fade-through and takes the pattern off after', async () => {
+    const doc = fakeDocument();
+    let committed = false;
+    const done = crossBootFailure(() => (committed = true), doc.as);
+    expect(committed).toBe(false);
+    expect(doc.root.dataset.nav).toBe('fade-through');
+    await doc.update();
+    expect(committed).toBe(true);
+    doc.finish();
+    await done;
+    expect(doc.root.dataset.nav).toBeUndefined();
+  });
+
+  it('commits at once where there are no view transitions', () => {
+    const doc = fakeDocument({ present: false });
+    let committed = false;
+    crossBootFailure(() => (committed = true), doc.as);
     expect(committed).toBe(true);
   });
 });

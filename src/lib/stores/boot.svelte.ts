@@ -79,7 +79,7 @@ import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, type BootState } from './boot-state';
-import { openApp } from '../motion/appOpening';
+import { crossBootFailure, openApp } from '../motion/appOpening';
 import { ui } from './ui.svelte';
 import { performPlatformEffect } from './boot-platform';
 import {
@@ -101,6 +101,11 @@ export const bootState = $state<BootState>({ ...machine.boot });
     started. Synchronous but for one case: the event that ends a gate
     publishes itself a frame later, inside a view transition, because the app
     arriving is a movement rather than a swap ($lib/motion/appOpening). */
+/** Set while a crossing into or out of a boot failure waits for its view
+    transition's commit. */
+let failureCrossing = false;
+let lastCrossing: Promise<void> = Promise.resolve();
+
 function dispatch(event: BootEvent): void {
   let step;
   try {
@@ -119,6 +124,12 @@ function dispatch(event: BootEvent): void {
      another gate is not it - a refusal is the same screen changing its mind,
      and it moves on the field's own edge without a transition (stepBlind). */
   const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
+  /* A boot failing while the route is drawn, or a retry leaving the
+     failure (ux-carpet 213): the layout swaps the route for the notice
+     alone and back, and that swap moves. */
+  const crossesFailure =
+    (bootState.status === 'booting' && step.machine.boot.status === 'error') ||
+    (bootState.status === 'error' && step.machine.boot.status !== 'error');
   const previousAccessMode = machine.boot.accessMode;
   machine = step.machine;
   const currentAccessMode = machine.boot.accessMode;
@@ -147,6 +158,24 @@ function dispatch(event: BootEvent): void {
        (ui.svelte.ts). */
     ui.appOpening = true;
     void openApp(publish).finally(() => (ui.appOpening = false));
+  } else if (failureCrossing) {
+    /* A failure is already crossing, and more events follow it at once: the
+       pre-migration check's answer, and a second report of the same failure.
+       Publishing one before the browser has photographed the old screen
+       puts the notice in the photograph, and starting a second transition
+       skips the first; either way the crossing becomes a cut. Its commit
+       publishes whatever the machine holds by then, so nothing is lost. */
+  } else if (crossesFailure) {
+    /* After the previous crossing has finished rather than over it: a retry
+       that fails again lands inside the retry's own transition, and a new
+       one would skip it to its end state - Today, in one frame. */
+    failureCrossing = true;
+    lastCrossing = lastCrossing.then(() =>
+      crossBootFailure(() => {
+        failureCrossing = false;
+        publish();
+      })
+    );
   } else publish();
   /* Started before the publication rather than after it, which is the order
      this always ran in for every event but the one above. Nothing in `run`
