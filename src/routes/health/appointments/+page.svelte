@@ -52,6 +52,8 @@
      entitled to make: a built-in endocrinologist/psychologist/surgeon list
      would be a picture of a medical path. On an empty journal there are no
      chips and the field is simply blank. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { Appointment, ChecklistItem } from '$lib/data/types';
@@ -228,6 +230,14 @@
   function toggleCarriedForward(item: ChecklistItem) {
     journal.checklists.setItemCarriedForward(item.id, !item.carriedForward);
   }
+
+  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  let visitsRevealed = $state(false);
+  $effect.pre(() => {
+    if (!appointmentsQuery.loading) visitsRevealed = true;
+  });
+  const visitsEstimate = readReserve('appointments-visits');
+  const visitsRemember = (px: number) => rememberReserve('appointments-visits', px);
 </script>
 
 <!-- One visit as a row of a list. `calendar` rather than the `check` the hub
@@ -425,67 +435,72 @@
     </ListCard>
   </div>
 
-  {#if later.length}
-    <SectionHeading text={m.appointments_later_heading()} />
-    <div class="screen-part" data-later>
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each later as appointment (appointment.id)}{@render visitRow(appointment)}{/each}
-      </ListCard>
-    </div>
-  {/if}
+  <!-- Held until the appointments have answered, then faded in (ux-carpet
+       ticket 211): the later and past visits cut in at full opacity under
+       the gate above when they did. -->
+  <ReadReserve ready={visitsRevealed} estimate={visitsEstimate} onrest={visitsRemember}>
+    {#if later.length}
+      <SectionHeading text={m.appointments_later_heading()} />
+      <div class="screen-part" data-later>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each later as appointment (appointment.id)}{@render visitRow(appointment)}{/each}
+        </ListCard>
+      </div>
+    {/if}
 
-  {#if past.length}
-    <SectionHeading text={m.appointments_past_heading()} />
-    <div class="screen-part" data-past>
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each past as appointment (appointment.id)}
-          {@render visitRow(appointment)}
-          <!-- The debrief belongs to the most recent visit and to no other:
-               one entry is linked at a time (checklists.ts), and back-filling
-               history is entering a record rather than living through a
-               visit. Under that visit's own row rather than in a notice of
-               its own, and carrying its day either way - adjacency alone
-               would read as the debrief of whichever visit the eye lands on
-               next, which is the reading ticket 58 already fixed once on the
-               completed row. It opens and closes its height, so the offer
-               arrives by moving (ADR-0078).
+    {#if past.length}
+      <SectionHeading text={m.appointments_past_heading()} />
+      <div class="screen-part" data-past>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each past as appointment (appointment.id)}
+            {@render visitRow(appointment)}
+            <!-- The debrief belongs to the most recent visit and to no other:
+                 one entry is linked at a time (checklists.ts), and back-filling
+                 history is entering a record rather than living through a
+                 visit. Under that visit's own row rather than in a notice of
+                 its own, and carrying its day either way - adjacency alone
+                 would read as the debrief of whichever visit the eye lands on
+                 next, which is the reading ticket 58 already fixed once on the
+                 completed row. It opens and closes its height, so the offer
+                 arrives by moving (ADR-0078).
 
-               Its own handle rather than Home's `data-debrief-offer`: Home
-               draws the same offer as a Notice with a Notice's controls, and
-               one selector over two shapes is a check that passes on the
-               wrong surface. -->
-          {#if appointment.id === lastVisit?.id && showDebriefOffer}
-            <div transition:collapse>
-              <ListRow
-                key="debrief-offer"
-                data-visit-debrief-offer=""
-                icon="book"
-                title={m.debrief_offer_title()}
-                subtitle={[dayShort(appointment.epochDay), m.debrief_offer_write()]}
-                href={`/entry/new/today?debriefFor=${appointment.id}`}
-                action={{
-                  icon: 'x',
-                  label: m.dismiss(),
-                  onclick: () => journal.checklists.setDebriefDismissed(appointment.id),
-                  attrs: { 'data-dismiss-debrief': '' }
-                }}
-              />
-            </div>
-          {:else if appointment.id === lastVisit?.id && debriefEntryId !== null}
-            <div transition:collapse>
-              <ListRow
-                key="debrief"
-                icon="book"
-                title={m.appointment_debrief_row()}
-                subtitle={dayShort(appointment.epochDay)}
-                href={`/entry/${debriefEntryId}`}
-              />
-            </div>
-          {/if}
-        {/each}
-      </ListCard>
-    </div>
-  {/if}
+                 Its own handle rather than Home's `data-debrief-offer`: Home
+                 draws the same offer as a Notice with a Notice's controls, and
+                 one selector over two shapes is a check that passes on the
+                 wrong surface. -->
+            {#if appointment.id === lastVisit?.id && showDebriefOffer}
+              <div transition:collapse>
+                <ListRow
+                  key="debrief-offer"
+                  data-visit-debrief-offer=""
+                  icon="book"
+                  title={m.debrief_offer_title()}
+                  subtitle={[dayShort(appointment.epochDay), m.debrief_offer_write()]}
+                  href={`/entry/new/today?debriefFor=${appointment.id}`}
+                  action={{
+                    icon: 'x',
+                    label: m.dismiss(),
+                    onclick: () => journal.checklists.setDebriefDismissed(appointment.id),
+                    attrs: { 'data-dismiss-debrief': '' }
+                  }}
+                />
+              </div>
+            {:else if appointment.id === lastVisit?.id && debriefEntryId !== null}
+              <div transition:collapse>
+                <ListRow
+                  key="debrief"
+                  icon="book"
+                  title={m.appointment_debrief_row()}
+                  subtitle={dayShort(appointment.epochDay)}
+                  href={`/entry/${debriefEntryId}`}
+                />
+              </div>
+            {/if}
+          {/each}
+        </ListCard>
+      </div>
+    {/if}
+  </ReadReserve>
 
   <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
     <h3>{m.appointment_prep_new_sheet()}</h3>

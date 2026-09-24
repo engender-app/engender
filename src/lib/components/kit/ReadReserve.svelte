@@ -185,20 +185,10 @@
     margin-bottom: 0;
   }
 
-  /* The blocks inside keep the screen's own floor (app.css, `.screen > *`):
-     20 under each, the last one's collapsing out through this block into
-     whatever follows, so the screen lays out exactly as it did when they
-     were the screen's own children, and each block's own collapse still
-     finds the neighbouring margins it measures. */
-  .read-reserve-body > :global(*) {
-    margin-bottom: var(--space-5);
-  }
-
-  /* And a heading keeps the 12 under it that it has as the screen's own
-     child (app.css, `.screen > .kit-heading`). */
-  .read-reserve-body > :global(.kit-heading) {
-    margin-bottom: var(--space-3);
-  }
+  /* The blocks inside keep the screen's own floor: app.css spaces them
+     beside `.screen > *`, at the same specificity, so a block's own margin
+     wins or loses exactly as it would as the screen's child (ux-carpet
+     ticket 211: a section title's own 12 had been losing to a scoped 20). */
 
   /* An inline-level last block keeps nothing under it: its margin cannot
      collapse out through this one (app.css, ticket 195's exception). */

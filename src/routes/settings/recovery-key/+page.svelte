@@ -12,6 +12,8 @@
      rather than a decision this screen makes: only the wrap is stored
      (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
      sure I still have it". */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { beforeNavigate, goto } from '$app/navigation';
   import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
@@ -108,11 +110,23 @@
       else if (navigation.to) void goto(navigation.to.url);
     };
   });
+
+  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  let presenceRevealed = $state(false);
+  $effect.pre(() => {
+    if (recoveryKeyPresence.known) presenceRevealed = true;
+  });
+  const presenceEstimate = readReserve('recovery-key');
+  const presenceRemember = (px: number) => rememberReserve('recovery-key', px);
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.rk_title()} back="/settings/security" />
 
+  <!-- Held until the key's presence is known, then faded in (ux-carpet
+       ticket 211): a cold open reads it after the first paint, and the panel
+       cut in at full opacity when it came back. -->
+  <ReadReserve ready={presenceRevealed} estimate={presenceEstimate} onrest={presenceRemember}>
   {#if recoveryKeyPresence.known}
     {#if shown !== null}
       <!-- The one moment the characters exist. No back arrow out of this
@@ -174,6 +188,7 @@
       </button>
     {/if}
   {/if}
+  </ReadReserve>
 </div>
 
 <Sheet

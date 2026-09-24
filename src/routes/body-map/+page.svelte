@@ -27,6 +27,8 @@
      just dragged. A direct visit with no query still gets a window - the
      door's own default of the last thirty days - rather than an empty
      screen. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
@@ -209,192 +211,206 @@
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   });
+
+  /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
+     must not put its placeholder back over the map (ticket 211). */
+  let mapRevealed = $state(false);
+  $effect.pre(() => {
+    if (vocabulary.ready) mapRevealed = true;
+  });
+  const mapEstimate = readReserve('body-map');
+  const mapRemember = (px: number) => rememberReserve('body-map', px);
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.body_map_title()} subtitle={m.body_map_sub()} screen="body-map" back="/stats" />
 
-  {#if regions.length}
-    <div class="body-map-figure-card" data-body-map-figure>
-      <BodyRegionMap
-        {regions}
-        readings={mapQuery.rows}
-        selected={region}
-        role={figureRole}
-        onSelect={(picked) => (region = picked)}
-      />
+  <!-- Held at last visit's height until the vocabulary mirror names the
+       regions, then faded in (ux-carpet ticket 211): the figure cut in at
+       full opacity when it did. -->
+  <ReadReserve ready={mapRevealed} estimate={mapEstimate} onrest={mapRemember}>
+    {#if regions.length}
+      <div class="body-map-figure-card" data-body-map-figure>
+        <BodyRegionMap
+          {regions}
+          readings={mapQuery.rows}
+          selected={region}
+          role={figureRole}
+          onSelect={(picked) => (region = picked)}
+        />
 
-      <!-- The pick, in words, on the figure's own card: the name, what the
-           range has to say about that region, and the way down to its two
-           charts. No hairline over it - the elsewhere cluster above ends on
-           one already, and a second line a few pixels under the first reads
-           as a mistake rather than as a boundary.
+        <!-- The pick, in words, on the figure's own card: the name, what the
+             range has to say about that region, and the way down to its two
+             charts. No hairline over it - the elsewhere cluster above ends on
+             one already, and a second line a few pixels under the first reads
+             as a mistake rather than as a boundary.
 
-           Keyed on the region, so the words ease in on a pick rather than
-           swapping in place, and the sentence's slot travels between its own
-           two heights rather than stepping (ticket 25's ease-in, rule 10). -->
-      <div class="body-map-selected" data-body-map-context>
-        <div class="body-map-selected-line">
-          <div class="body-map-selected-name-slot">
-            {#key region}
-              <h2 class="body-map-selected-name" in:crossfade data-body-map-selected>{regionName}</h2>
-            {/key}
+             Keyed on the region, so the words ease in on a pick rather than
+             swapping in place, and the sentence's slot travels between its own
+             two heights rather than stepping (ticket 25's ease-in, rule 10). -->
+        <div class="body-map-selected" data-body-map-context>
+          <div class="body-map-selected-line">
+            <div class="body-map-selected-name-slot">
+              {#key region}
+                <h2 class="body-map-selected-name" in:crossfade data-body-map-selected>{regionName}</h2>
+              {/key}
+            </div>
+            <a
+              class="kit-heading-action"
+              href="#body-map-charts"
+              data-body-map-chart-jump
+              onclick={rememberMapScroll}
+            >
+              {m.body_map_chart_jump()}
+            </a>
           </div>
-          <a
-            class="kit-heading-action"
-            href="#body-map-charts"
-            data-body-map-chart-jump
-            onclick={rememberMapScroll}
-          >
-            {m.body_map_chart_jump()}
-          </a>
-        </div>
 
-        <div class="body-map-selected-slot" use:resize>
-          {#if mapQuery.loading}
-            <Skeleton variant="line" count={1} />
-          {:else}
-            {#key region}
-              <p class="muted small body-map-selected-summary" in:crossfade data-body-map-summary>
-                {summaryText}
-              </p>
-            {/key}
+          <div class="body-map-selected-slot" use:resize>
+            {#if mapQuery.loading}
+              <Skeleton variant="line" count={1} />
+            {:else}
+              {#key region}
+                <p class="muted small body-map-selected-summary" in:crossfade data-body-map-summary>
+                  {summaryText}
+                </p>
+              {/key}
+            {/if}
+          </div>
+        </div>
+      </div>
+
+      <!-- The axis sits above the range, because it decides whether there is
+           a range to pick. Absent for a journal that can only answer the
+           calendar - no dose log with a completed interval in it and no
+           procedure with a date - which is the same data gating the mode
+           filter below makes. -->
+      <div class="kit-reading-controls">
+        {#if readAxis.axes.length > 1}
+          <div class="kit-filter">
+            <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
+            <ChartPicker
+              key="body-map-axis"
+              id="body-map-axis"
+              labelledBy="body-map-axis"
+              value={readAxis.axis}
+              options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
+              onPick={(value) => (readAxis.axis = value as DayAxis)}
+            />
+          </div>
+        {/if}
+
+      <!-- The range picker that used to sit in this slot is gone (redesign
+           ticket 05): the screen takes its span from Look back now, the same
+           way /compare takes its two. A re-keyed axis still reads all
+           history regardless of that span, so the note it says so with keeps
+           its own resize and crossfade - what used to swap out for the range
+           picker now just leaves. -->
+        <div class="kit-reading-slot" use:resize>
+          {#if readAxis.keying}
+            <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
           {/if}
         </div>
       </div>
-    </div>
 
-    <!-- The axis sits above the range, because it decides whether there is
-         a range to pick. Absent for a journal that can only answer the
-         calendar - no dose log with a completed interval in it and no
-         procedure with a date - which is the same data gating the mode
-         filter below makes. -->
-    <div class="kit-reading-controls">
-      {#if readAxis.axes.length > 1}
+      {#if vocabulary.visiblePresentations.length > 0}
         <div class="kit-filter">
-          <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
+          <label class="kit-filter-label" for="body-map-mode-filter">{m.presentation_label()}</label>
           <ChartPicker
-            key="body-map-axis"
-            id="body-map-axis"
-            labelledBy="body-map-axis"
-            value={readAxis.axis}
-            options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
-            onPick={(value) => (readAxis.axis = value as DayAxis)}
+            key="body-map-mode"
+            id="body-map-mode-filter"
+            labelledBy="body-map-mode-filter"
+            value={modeFilter ?? 'all'}
+            options={[
+              { value: 'all', label: m.body_map_mode_filter_all() },
+              ...vocabulary.visiblePresentations.map((p) => ({ value: p.id, label: p.name }))
+            ]}
+            onPick={(v) => (modeFilter = v === 'all' ? undefined : v)}
           />
         </div>
       {/if}
 
-    <!-- The range picker that used to sit in this slot is gone (redesign
-         ticket 05): the screen takes its span from Look back now, the same
-         way /compare takes its two. A re-keyed axis still reads all
-         history regardless of that span, so the note it says so with keeps
-         its own resize and crossfade - what used to swap out for the range
-         picker now just leaves. -->
-      <div class="kit-reading-slot" use:resize>
-        {#if readAxis.keying}
-          <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-        {/if}
-      </div>
-    </div>
-
-    {#if vocabulary.visiblePresentations.length > 0}
-      <div class="kit-filter">
-        <label class="kit-filter-label" for="body-map-mode-filter">{m.presentation_label()}</label>
-        <ChartPicker
-          key="body-map-mode"
-          id="body-map-mode-filter"
-          labelledBy="body-map-mode-filter"
-          value={modeFilter ?? 'all'}
-          options={[
-            { value: 'all', label: m.body_map_mode_filter_all() },
-            ...vocabulary.visiblePresentations.map((p) => ({ value: p.id, label: p.name }))
-          ]}
-          onPick={(v) => (modeFilter = v === 'all' ? undefined : v)}
-        />
-      </div>
-    {/if}
-
-    <!-- Which region the two charts below describe. The figure says it in
-         colour and this says it in words, which is also the equivalent the
-         shapes owe a screen reader beyond their own names. Keyed, so the
-         label eases in on a change rather than swapping in place (ticket
-         25's ease-in). -->
-    {#key region}
-      <h2
-        class="body-map-reading-head"
-        id="body-map-charts"
-        tabindex="-1"
-        in:crossfade
-        data-body-map-heading
-      >
-        {m.body_map_reading_heading({ region: regionName })}
-      </h2>
-    {/key}
-
-    <!-- One card's series. The two cards differ in which of the two axes
-         they draw and in which order the accessible name names them, and in
-         nothing else - the crossfade on a region change, the shared ends and
-         the annotations are one behaviour and belong in one place, not
-         transcribed twice.
-
-         Keyed on the region, so a pick crossfades the series rather than
-         re-mounting the chart. -->
-    {#snippet series(plottedSeries: AxisPlot, first: string, second: string)}
+      <!-- Which region the two charts below describe. The figure says it in
+           colour and this says it in words, which is also the equivalent the
+           shapes owe a screen reader beyond their own names. Keyed, so the
+           label eases in on a change rather than swapping in place (ticket
+           25's ease-in). -->
       {#key region}
-        <div in:crossfade>
-          <AreaChart
-            scrubLabel={dayAxisScrubLabel(plottedSeries)}
-            points={plottedSeries.points}
-            min={BODY_REGION_INTENSITY_MIN}
-            max={BODY_REGION_INTENSITY_MAX}
-            from={rangeEnds.from}
-            to={rangeEnds.to}
-            annotations={annotationsQuery.rows}
-            ariaLabel={withAxis(m.body_map_chart_aria({ region: regionName, first, second }))}
-          />
-        </div>
+        <h2
+          class="body-map-reading-head"
+          id="body-map-charts"
+          tabindex="-1"
+          in:crossfade
+          data-body-map-heading
+        >
+          {m.body_map_reading_heading({ region: regionName })}
+        </h2>
       {/key}
-    {/snippet}
 
-    <!-- The block reserves its height, so picking a region with less data
-         cannot shorten the page under the figure and pull the shapes up
-         from under the finger that just tapped one. Two cards, each a
-         chart at its fixed height plus its own heading and padding. -->
-    <div class="body-map-charts" style="--plot-h:{PLOT_HEIGHT}px" use:resize>
-    {#if dysphoriaQuery.loading || euphoriaQuery.loading}
-      <div out:crossfade><Skeleton variant="block" count={2} /></div>
-    {:else}
-      <ChartCard heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
-        {@render series(
-          plottedDysphoria,
-          m.body_region_axis_dysphoria(),
-          m.body_region_axis_euphoria()
-        )}
-      </ChartCard>
+      <!-- One card's series. The two cards differ in which of the two axes
+           they draw and in which order the accessible name names them, and in
+           nothing else - the crossfade on a region change, the shared ends and
+           the annotations are one behaviour and belong in one place, not
+           transcribed twice.
 
-      <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={figureRole}>
-        {@render series(
-          plottedEuphoria,
-          m.body_region_axis_euphoria(),
-          m.body_region_axis_dysphoria()
-        )}
-      </ChartCard>
+           Keyed on the region, so a pick crossfades the series rather than
+           re-mounting the chart. -->
+      {#snippet series(plottedSeries: AxisPlot, first: string, second: string)}
+        {#key region}
+          <div in:crossfade>
+            <AreaChart
+              scrubLabel={dayAxisScrubLabel(plottedSeries)}
+              points={plottedSeries.points}
+              min={BODY_REGION_INTENSITY_MIN}
+              max={BODY_REGION_INTENSITY_MAX}
+              from={rangeEnds.from}
+              to={rangeEnds.to}
+              annotations={annotationsQuery.rows}
+              ariaLabel={withAxis(m.body_map_chart_aria({ region: regionName, first, second }))}
+            />
+          </div>
+        {/key}
+      {/snippet}
+
+      <!-- The block reserves its height, so picking a region with less data
+           cannot shorten the page under the figure and pull the shapes up
+           from under the finger that just tapped one. Two cards, each a
+           chart at its fixed height plus its own heading and padding. -->
+      <div class="body-map-charts" style="--plot-h:{PLOT_HEIGHT}px" use:resize>
+      {#if dysphoriaQuery.loading || euphoriaQuery.loading}
+        <div out:crossfade><Skeleton variant="block" count={2} /></div>
+      {:else}
+        <ChartCard heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
+          {@render series(
+            plottedDysphoria,
+            m.body_region_axis_dysphoria(),
+            m.body_region_axis_euphoria()
+          )}
+        </ChartCard>
+
+        <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={figureRole}>
+          {@render series(
+            plottedEuphoria,
+            m.body_region_axis_euphoria(),
+            m.body_region_axis_dysphoria()
+          )}
+        </ChartCard>
+      {/if}
+      </div>
+
+      <!-- The sheet, behind one explicit row. It used to be what every tap on
+           this screen did, which is why the map could not be browsed; it is a
+           place to go now rather than the consequence of looking. -->
+      <ListCard>
+        <ListRow
+          title={m.body_map_inspect_row()}
+          subtitle={regionName}
+          icon="search"
+          key="body-region-inspector"
+          onclick={() => (inspectorOpen = true)}
+        />
+      </ListCard>
     {/if}
-    </div>
-
-    <!-- The sheet, behind one explicit row. It used to be what every tap on
-         this screen did, which is why the map could not be browsed; it is a
-         place to go now rather than the consequence of looking. -->
-    <ListCard>
-      <ListRow
-        title={m.body_map_inspect_row()}
-        subtitle={regionName}
-        icon="search"
-        key="body-region-inspector"
-        onclick={() => (inspectorOpen = true)}
-      />
-    </ListCard>
-  {/if}
+  </ReadReserve>
 
   <BodyRegionInspectorSheet
     bind:open={inspectorOpen}

@@ -321,14 +321,19 @@ body {
    by hairlines can sit closer than two outlined cards, and 20 is one of
    the three distances the rhythm names. A section heading asks for 40
    above its rule and owns that margin itself (kit.css). */
-.screen > * {
+/* A reserve's body (ReadReserve.svelte) stands where the screen's own
+   children stood, so its blocks take the same floor at the same
+   specificity (ux-carpet ticket 211). */
+.screen > *,
+.read-reserve-body > * {
   margin-bottom: var(--space-5);
 }
 
 /* A heading belongs to what comes after it. Less space under it than over it
    is what makes a screen read as named areas rather than as an even column
    of blocks: 12 under the heading (rule 1). */
-.screen > .kit-heading {
+.screen > .kit-heading,
+.read-reserve-body > .kit-heading {
   margin-bottom: var(--space-3);
 }
 

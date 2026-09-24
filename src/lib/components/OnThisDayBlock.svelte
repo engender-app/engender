@@ -18,6 +18,8 @@
      that turning on-this-day off stops the reads themselves. Up to three
      good-day checks, up to three per-day entry reads, and the one letters
      read, all bounded by the day or by the letters read's own limit. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -32,8 +34,6 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { Entry } from '$lib/data/types';
-  import { crossfade } from '$lib/motion/reveal';
-  import Skeleton from './Skeleton.svelte';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import LookBackLetterCard from './LookBackLetterCard.svelte';
   import DayCard from './kit/DayCard.svelte';
@@ -108,58 +108,67 @@
     if (!days.length || !scrollTo) return;
     document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ block: 'start' });
   });
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let onThisDayRevealed = $state(false);
+  $effect.pre(() => {
+    if (!onThisDayRevealed && (!daysQuery.loading)) onThisDayRevealed = true;
+  });
+  const onThisDayEstimate = readReserve('on-this-day');
+  const onThisDayRemember = (px: number) => rememberReserve('on-this-day', px);
 </script>
 
-{#if daysQuery.loading}
-  <div out:crossfade><Skeleton variant="card" count={2} /></div>
-{:else if !days.length}
-  <Notice icon="info" key="on-this-day-none" title={m.on_this_day_none_title()} text={m.on_this_day_none_body()} />
-{:else}
-  {#each days as d, i (d.key)}
-    <!-- Two headings, saying two different things: how long ago it was,
-         and which day it actually was, which is the day card's own bar. -->
-    <section id="on-this-day-{d.key}" data-lookback={d.key}>
-      <SectionHeading text={d.title}>
-        {#snippet action()}
-          <a class="kit-heading-action" data-lookback-open={d.key} href={`/day/${d.epochDay}`}>{m.day_open_whole()}</a>
-        {/snippet}
-      </SectionHeading>
-      <!-- No count on the bar: an entry count above a list of that many
-           entries is noise (spec 05). -->
-      {#if d.entries.length}
-        <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} date={d.date}>
-          {#each d.entries as entry (entry.id)}
-            {@const presentation = entryPresentation(entry)}
-            <DayEntry
-              key={String(entry.id)}
-              href={`/entry/${entry.id}`}
-              time={fmtTime(entry.timestamp)}
-              mood={entry.mood}
-              note={entry.note ?? undefined}
-              tags={entryTags(entry)}
-              marks={entryMarks(entry)}
-              {presentation}
-            />
-          {/each}
-        </DayCard>
-      {/if}
+<!-- Held at last visit's height until the look-back has answered, then faded in (ux-carpet ticket 211): the days cut in at full opacity over the skeleton. -->
+<ReadReserve ready={onThisDayRevealed} estimate={onThisDayEstimate} onrest={onThisDayRemember}>
+  {#if !days.length}
+    <Notice icon="info" key="on-this-day-none" title={m.on_this_day_none_title()} text={m.on_this_day_none_body()} />
+  {:else}
+    {#each days as d, i (d.key)}
+      <!-- Two headings, saying two different things: how long ago it was,
+           and which day it actually was, which is the day card's own bar. -->
+      <section id="on-this-day-{d.key}" data-lookback={d.key}>
+        <SectionHeading text={d.title}>
+          {#snippet action()}
+            <a class="kit-heading-action" data-lookback-open={d.key} href={`/day/${d.epochDay}`}>{m.day_open_whole()}</a>
+          {/snippet}
+        </SectionHeading>
+        <!-- No count on the bar: an entry count above a list of that many
+             entries is noise (spec 05). -->
+        {#if d.entries.length}
+          <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} date={d.date}>
+            {#each d.entries as entry (entry.id)}
+              {@const presentation = entryPresentation(entry)}
+              <DayEntry
+                key={String(entry.id)}
+                href={`/entry/${entry.id}`}
+                time={fmtTime(entry.timestamp)}
+                mood={entry.mood}
+                note={entry.note ?? undefined}
+                tags={entryTags(entry)}
+                marks={entryMarks(entry)}
+                {presentation}
+              />
+            {/each}
+          </DayCard>
+        {/if}
 
-      {#if d.letters.length}
-        <!-- Written that day, or unlocked that day - the card says which. -->
-        <ListCard role={roleAt(activeFlag.roles, i)}>
-          {#each d.letters as rl (rl.letter.id)}
-            <LookBackLetterCard letter={rl.letter} kind={rl.kind} />
-          {/each}
-        </ListCard>
-      {/if}
+        {#if d.letters.length}
+          <!-- Written that day, or unlocked that day - the card says which. -->
+          <ListCard role={roleAt(activeFlag.roles, i)}>
+            {#each d.letters as rl (rl.letter.id)}
+              <LookBackLetterCard letter={rl.letter} kind={rl.kind} />
+            {/each}
+          </ListCard>
+        {/if}
 
-      {#if d.photos.length}
-        <div class="otd-photos" data-lookback-photos>
-          {#each d.photos as photo (photo.id)}
-            <ResurfacedPhoto {photo} size={88} />
-          {/each}
-        </div>
-      {/if}
-    </section>
-  {/each}
-{/if}
+        {#if d.photos.length}
+          <div class="otd-photos" data-lookback-photos>
+            {#each d.photos as photo (photo.id)}
+              <ResurfacedPhoto {photo} size={88} />
+            {/each}
+          </div>
+        {/if}
+      </section>
+    {/each}
+  {/if}
+</ReadReserve>
