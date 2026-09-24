@@ -15,7 +15,7 @@ import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { rankByLean, scaleLean } from '../lean';
-import { milestoneTemplateRows, regimenTemplateRows } from './builtins';
+import { milestoneTemplateRows, regimenTemplateRows } from './builtinTemplates';
 import { resolveBuiltInWording } from './entryTemplates';
 import type {
   Affirmation,

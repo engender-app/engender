@@ -29,7 +29,7 @@ import { forgetLastResults } from '../data/live/lastResults';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
-import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
+import { JOURNAL_DATABASE } from '../data/conversion/plaintext-journal';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';

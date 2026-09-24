@@ -1,7 +1,7 @@
 /* Port constructors for the journal: SQLite driver and photo files store.
    Decoupled so photo file store creation never instantiates an unmanaged SQLite connection (ticket 128). */
 
-import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
+import { JOURNAL_DATABASE } from '../data/conversion/plaintext-journal';
 import { createAndroidSqlite } from '../data/sqlite/android-driver';
 import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
