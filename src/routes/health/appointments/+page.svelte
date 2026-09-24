@@ -131,8 +131,8 @@
      ticket 238). Neither ReadGate sees the other's read, so `gateTogether`
      holds each one at "loading" until both have answered - one combined
      resize instead of two, a frame apart. Latched like `visitsRevealed`
-     above: once both have answered once, a later refetch of either (stale,
-     not loading) must not put either placeholder back. */
+     further down: once both have answered once, a later refetch of
+     either (stale, not loading) must not put either placeholder back. */
   let visitAndPrepAnswered = $state(false);
   $effect.pre(() => {
     if (!appointmentsQuery.loading && !checklistQuery.loading) visitAndPrepAnswered = true;
