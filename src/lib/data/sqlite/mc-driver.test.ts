@@ -89,4 +89,16 @@ describe('the database worker started ahead of the key', () => {
     const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
     await expect(driver.query('SELECT 1')).rejects.toThrow(/wasm failed to compile/);
   });
+
+  it('keeps nothing when a worker cannot be constructed, so boot can still start', async () => {
+    g.Worker = class {
+      constructor() {
+        throw new Error('module workers are not allowed here');
+      }
+    };
+    await expect(prewarmJournalWorker('journal.sqlite3')).rejects.toThrow(/not allowed/);
+    g.Worker = FakeWorker;
+    createEncryptedWebSqlite('journal.sqlite3', key);
+    expect(FakeWorker.made[0].posted.map((m) => m.op)).toEqual(['open']);
+  });
 });
