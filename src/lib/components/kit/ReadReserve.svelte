@@ -110,6 +110,41 @@
     const to = box.height;
     if (isReducedMotion()) return;
     const duration = motionDuration('--dur-med');
+    /* `fill: 'forwards'` on every margin travel below, released once it has
+       safely finished (ux-carpet ticket 233). Without `fill`, a `.animate()`
+       call reverts its property to the stylesheet's own value the instant
+       it finishes - natively, on the compositor, independent of the main
+       thread - which is normally invisible, since these margins are chosen
+       to already land where the resting layout would put them once
+       `maskHeight`'s own clip comes off. But that native revert and
+       `maskHeight`'s `settle()` (its own `.finished` handler, a *JS*
+       promise a busy main thread can leave queued) are two independent
+       cleanups with no ordering between them: on a main thread busy with
+       ten parallel reads answering at once during boot, on Measurements'
+       empty state, the compositor's revert could land a frame before
+       `settle()` gets to run - the margin's compensation gone but the clip
+       still up, showing the wrong one of two otherwise-equivalent
+       positions for exactly one painted frame. A cast of
+       `/body/measurements` on an empty, previously-populated journal
+       (localStorage's `measurements-now` reserve carried a real height
+       over) caught the button's row 20px too high for one frame at ~400ms,
+       back on the next.
+
+       `fill: 'forwards'` alone would trade that race for a standing one:
+       held forever, a margin here would keep outranking a later plain CSS
+       change to the same property - this block's own content "has motion
+       of its own after it arrives" (a size record added or the last one
+       removed flips `.read-reserve:has(...)`), and nothing else re-runs
+       this effect to re-animate it. `releaseWhenDone` below cancels each animation
+       once its own `.finished` promise resolves - a *JS* microtask, the
+       same timing class `settle()` runs in, rather than the compositor's
+       immediate native revert - so cancelling reliably lands after
+       `settle()` rather than racing it, and once cancelled the property is
+       plain CSS again, free to answer a later change normally. */
+    const releaseWhenDone = (animation: Animation) => {
+      animation.finished.then(() => animation.cancel()).catch(() => {});
+      return animation;
+    };
     /* The content's first block may bring a top margin the placeholder did
        not have, and it collapses out through this block's bare top edge:
        the doses log's first line moved the whole block 4px down in the
@@ -117,7 +152,13 @@
        stood and travels the difference, as a top margin that cancels it. */
     const shift = box.top - edgeAbove() - beforeTop;
     if (Math.abs(shift) >= 1 && from >= 1 && to >= 1) {
-      wrapper.animate([{ marginTop: `${-shift}px` }, { marginTop: '0px' }], { duration, easing: EASE_OUT_CSS });
+      releaseWhenDone(
+        wrapper.animate([{ marginTop: `${-shift}px` }, { marginTop: '0px' }], {
+          duration,
+          easing: EASE_OUT_CSS,
+          fill: 'forwards'
+        })
+      );
     }
     /* Holding, this block carries the screen's 20 under it; answered, its
        content's last block carries its own and this one carries none
@@ -133,10 +174,13 @@
     const handed = collapsedBottom(wrapper.querySelector('[data-read-reserve-body]'));
     const end = travels ? Math.max(afterMargin, handed) : afterMargin;
     if (Math.abs(afterMargin - beforeMargin) >= 1) {
-      wrapper.animate([{ marginBottom: `${beforeMargin}px` }, { marginBottom: `${end}px` }], {
-        duration,
-        easing: EASE_OUT_CSS
-      });
+      releaseWhenDone(
+        wrapper.animate([{ marginBottom: `${beforeMargin}px` }, { marginBottom: `${end}px` }], {
+          duration,
+          easing: EASE_OUT_CSS,
+          fill: 'forwards'
+        })
+      );
     }
     if (!travels) return;
     maskHeight(wrapper, from, duration);
@@ -150,7 +194,13 @@
     if (margin > 0 && (from < 1 || to < 1)) {
       const hidden = { marginTop: `${-margin}px` };
       const shown = { marginTop: '0px' };
-      wrapper.animate(from < 1 ? [hidden, shown] : [shown, hidden], { duration, easing: EASE_OUT_CSS });
+      releaseWhenDone(
+        wrapper.animate(from < 1 ? [hidden, shown] : [shown, hidden], {
+          duration,
+          easing: EASE_OUT_CSS,
+          fill: 'forwards'
+        })
+      );
     }
   });
 </script>
