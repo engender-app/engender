@@ -338,10 +338,12 @@ describe('what the worker is still fetching', () => {
        around it, or it draws a Skeleton against a `.loading` of its own where
        what it is waiting on is not a list. What must not happen is neither.
        A ReadGroup (ux-carpet ticket 190) is a gate over several reads at
-       once and owns its placeholder the same way. */
+       once and owns its placeholder the same way, and so does a ReadReserve
+       (tickets 183, 205), which holds the body's room at its last height. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
-      const gated = source.includes('ReadGate.svelte') || source.includes('ReadGroup.svelte');
+      const gated =
+        source.includes('ReadGate.svelte') || source.includes('ReadGroup.svelte') || source.includes('ReadReserve.svelte');
       expect(gated || source.includes('Skeleton.svelte'), `${route} waits for nothing`).toBe(true);
       if (!gated) expect(source, route).toMatch(/\.loading/);
     }
@@ -368,7 +370,7 @@ describe('what the worker is still fetching', () => {
        out of the routes the first pass had written it into. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
-      if (!source.includes('ReadGate.svelte') && !source.includes('ReadGroup.svelte')) {
+      if (!source.includes('ReadGate.svelte') && !source.includes('ReadGroup.svelte') && !source.includes('ReadReserve.svelte')) {
         expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
         expect(markupOf.get(route), route).toMatch(/out:crossfade/);
       }

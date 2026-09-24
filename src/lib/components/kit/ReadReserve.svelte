@@ -65,17 +65,80 @@
   /* The height on screen the moment before the swap, read before the DOM
      changes and spent the moment after, in the same flush, so the frame the
      browser paints next is already the travel's first. */
+  /** The bottom margin that leaves `box` through its bare bottom edge: its
+      last child's, and that child's last child's, as far down as nothing
+      holds it in - the largest of them, since they collapse into one. */
+  const collapsedBottom = (box: Element | null): number => {
+    let most = 0;
+    for (let at = box?.lastElementChild; at; at = at.lastElementChild) {
+      const style = getComputedStyle(at);
+      most = Math.max(most, parseFloat(style.marginBottom) || 0);
+      const holds =
+        style.display !== 'block' ||
+        style.overflow !== 'visible' ||
+        (parseFloat(style.paddingBottom) || 0) > 0 ||
+        (parseFloat(style.borderBottomWidth) || 0) > 0;
+      if (holds) break;
+    }
+    return most;
+  };
+
   let before: number | null = null;
+  let beforeTop = 0;
+  /* Where the block above this one ends, so a move that block makes in the
+     same flush (Home's reserves open together) is not read as this one's. */
+  const edgeAbove = () => {
+    const above = wrapper.previousElementSibling ?? wrapper.parentElement;
+    if (!above) return 0;
+    const box = above.getBoundingClientRect();
+    return above === wrapper.parentElement ? box.top : box.bottom;
+  };
+  let beforeMargin = 0;
   $effect.pre(() => {
-    if (ready && before === null && wrapper) before = wrapper.getBoundingClientRect().height;
+    if (ready && before === null && wrapper) {
+      const box = wrapper.getBoundingClientRect();
+      before = box.height;
+      beforeTop = box.top - edgeAbove();
+      beforeMargin = parseFloat(getComputedStyle(wrapper).marginBottom) || 0;
+    }
   });
   $effect(() => {
     if (!ready || before === null || before < 0) return;
     const from = before;
     before = -1;
-    const to = wrapper.getBoundingClientRect().height;
-    if (isReducedMotion() || Math.abs(to - from) < 1) return;
+    const box = wrapper.getBoundingClientRect();
+    const to = box.height;
+    if (isReducedMotion()) return;
     const duration = motionDuration('--dur-med');
+    /* The content's first block may bring a top margin the placeholder did
+       not have, and it collapses out through this block's bare top edge:
+       the doses log's first line moved the whole block 4px down in the
+       frame of the swap (ux-carpet ticket 205). The block starts where it
+       stood and travels the difference, as a top margin that cancels it. */
+    const shift = box.top - edgeAbove() - beforeTop;
+    if (Math.abs(shift) >= 1 && from >= 1 && to >= 1) {
+      wrapper.animate([{ marginTop: `${-shift}px` }, { marginTop: '0px' }], { duration, easing: EASE_OUT_CSS });
+    }
+    /* Holding, this block carries the screen's 20 under it; answered, its
+       content's last block carries its own and this one carries none
+       (below), so a last block asking for something else - hair progress's
+       photos, 16 - does not change the gap at rest. The difference travels
+       rather than landing in the frame of the swap. While `maskHeight`
+       holds a height, the last block's margin cannot collapse out through
+       this one, so the travel ends at that margin, which is what the gap
+       becomes once the height lets go; with no height to travel it ends at
+       this block's own, and the collapse does the rest. */
+    const afterMargin = parseFloat(getComputedStyle(wrapper).marginBottom) || 0;
+    const travels = Math.abs(to - from) >= 1;
+    const handed = collapsedBottom(wrapper.querySelector('[data-read-reserve-body]'));
+    const end = travels ? Math.max(afterMargin, handed) : afterMargin;
+    if (Math.abs(afterMargin - beforeMargin) >= 1) {
+      wrapper.animate([{ marginBottom: `${beforeMargin}px` }, { marginBottom: `${end}px` }], {
+        duration,
+        easing: EASE_OUT_CSS
+      });
+    }
+    if (!travels) return;
     maskHeight(wrapper, from, duration);
     /* A block that had nothing in it, or is left with nothing, also gains
        or loses its own margin: empty, its margins collapse through it into
@@ -83,7 +146,7 @@
        20 arriving or going in one frame at one end of the travel, so the
        margin travels too, from minus itself - which cancels the 20 of the
        block above, adjoining it - to its resting nothing. */
-    const margin = parseFloat(getComputedStyle(wrapper).marginBottom) || 0;
+    const margin = from < 1 ? beforeMargin : afterMargin;
     if (margin > 0 && (from < 1 || to < 1)) {
       const hidden = { marginTop: `${-margin}px` };
       const shown = { marginTop: '0px' };
@@ -112,6 +175,16 @@
     overflow: clip;
   }
 
+  /* Answered and not empty, the block hands its spacing to what it holds:
+     the last block's own bottom margin collapses out through this one's
+     bare edge, so the screen lays out exactly as it did with those blocks
+     as its own children, whatever margin the last one asks for (ux-carpet
+     ticket 205). Empty, it keeps the screen's 20, which the swap's margin
+     travel below counts on. */
+  .read-reserve:has(> .read-reserve-body > :global(*)) {
+    margin-bottom: 0;
+  }
+
   /* The blocks inside keep the screen's own floor (app.css, `.screen > *`):
      20 under each, the last one's collapsing out through this block into
      whatever follows, so the screen lays out exactly as it did when they
@@ -125,5 +198,11 @@
      child (app.css, `.screen > .kit-heading`). */
   .read-reserve-body > :global(.kit-heading) {
     margin-bottom: var(--space-3);
+  }
+
+  /* An inline-level last block keeps nothing under it: its margin cannot
+     collapse out through this one (app.css, ticket 195's exception). */
+  .read-reserve-body > :global(:is(.segmented-wrap, .btn):last-child) {
+    margin-bottom: 0;
   }
 </style>
