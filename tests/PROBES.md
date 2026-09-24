@@ -51,6 +51,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
 | `measurements-sizes-jump-check` | the Measurements/Sizes jump moves focus and keeps an open editor's input |
+| `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
 | `search-filter-scope` | search says what its filter covers and what a saved question holds |
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
 
