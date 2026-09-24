@@ -23,6 +23,8 @@
    screen to render already has a vocabulary. */
 
 import { boot } from '../data/sqlite/boot';
+import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
+import { prewarmArgon2 } from '../crypto/argon2id';
 import { forgetLastResults } from '../data/live/lastResults';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
@@ -239,6 +241,7 @@ export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise
   forgetLastResults();
   await wipeLocalData({
     closeDatabase: async () => {
+      await releasePrewarmedJournalWorker();
       await openDriver?.close();
     },
     storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
@@ -346,6 +349,13 @@ export async function retryBoot(): Promise<void> {
 export function startBoot() {
   if (started) return;
   started = true;
+  /* What needs no key starts now, beside the survey and the unlock rather
+     than after them (ux-carpet ticket 209): the web's database worker, its
+     wasm and its pool, which the Journal's driver takes over once the key
+     exists, and - where the unlock will derive one - the argon2id worker
+     with hash-wasm compiled. Neither is given a secret here. */
+  if (!isAndroid()) void prewarmJournalWorker(JOURNAL_DATABASE);
+  if (__DEMO__ || readCachedAccessMode() !== null) prewarmArgon2();
   dispatch({ type: 'started', platform: isAndroid() ? 'android' : 'web', demo: __DEMO__ });
 }
 

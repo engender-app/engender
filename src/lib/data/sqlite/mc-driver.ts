@@ -53,13 +53,21 @@ function connectWorker() {
      every caller waiting on it would wait for the rest of the session.
      Failing them all is the only honest answer, and it is what turns that
      class of fault into a boot error the layout can show. */
+  /* And every caller after it: a worker started ahead of the key (ticket
+     209, `prewarmJournalWorker`) can die before anything but `attach` has
+     been posted, and a message posted to a dead worker is never answered.
+     Remembered, so the `open` that comes later fails with the same cause
+     and boot reports it rather than waiting forever. */
+  let stopped: Error | null = null;
   worker.onerror = (event: ErrorEvent) => {
     const failure = new Error(`the database worker stopped: ${event.message || 'no message'}`);
+    stopped = failure;
     for (const waiter of pending.values()) waiter.reject(failure);
     pending.clear();
   };
 
   function post<T>(op: string, args: Record<string, unknown> = {}, transfer: Transferable[] = []): Promise<T> {
+    if (stopped) return Promise.reject(stopped);
     const id = nextId++;
     return new Promise<T>((resolve, reject) => {
       pending.set(id, { resolve, reject });
@@ -68,6 +76,51 @@ function connectWorker() {
   }
 
   return { post, terminate: () => worker.terminate() };
+}
+
+type Connection = ReturnType<typeof connectWorker>;
+
+/* A worker started at boot start, before any key exists (ux-carpet ticket
+   209). Worker start, the wasm compile and the pool install took 65-70ms
+   and began only once the key was ready, though none of them needs it. So
+   the boot starts one at once, with the survey and the key derivation, and
+   the driver that opens the Journal takes it over.
+
+   `attach` brings up the module, the pool and the encryption shim and opens
+   nothing: there is no database handle in the worker until `open` arrives
+   with the key (ADR-0018), and nothing here or in the worker holds a key
+   before then. A failure to start is kept on the promise, and the worker's
+   own `stopped` makes the `open` behind it fail with the same cause, which
+   boot() reports as the journal failing to open. */
+let prewarmed: { path: string; connection: Connection; attached: Promise<void> } | null = null;
+
+export function prewarmJournalWorker(databasePath: string): Promise<void> {
+  if (!prewarmed) {
+    const connection = connectWorker();
+    const attached = connection.post<void>('attach', { path: databasePath });
+    attached.catch(() => {});
+    prewarmed = { path: databasePath, connection, attached };
+  }
+  return prewarmed.attached;
+}
+
+/** Lets go of a worker started ahead of the key without it ever opening
+    anything. The pool's access handles belong to one worker at a time, so
+    anything else about to touch the Journal's files - a conversion writing
+    them, a reset deleting them - has to have this worker gone first. */
+export async function releasePrewarmedJournalWorker(): Promise<void> {
+  const held = prewarmed;
+  prewarmed = null;
+  if (!held) return;
+  await held.connection.post('close').catch(() => {});
+  held.connection.terminate();
+}
+
+function takePrewarmed(databasePath: string): Connection | null {
+  if (!prewarmed || prewarmed.path !== databasePath) return null;
+  const { connection } = prewarmed;
+  prewarmed = null;
+  return connection;
 }
 
 /** Writes an encrypted copy of a plaintext-era database as the live
@@ -81,10 +134,14 @@ interface ConversionTarget {
 }
 
 export function createConversionTarget(databasePath: string, dataKey: Uint8Array): ConversionTarget {
+  /* The pool is the prewarmed worker's until it lets go, so this one waits
+     for that before it asks for the pool itself. */
+  const released = releasePrewarmedJournalWorker();
   const { post, terminate } = connectWorker();
 
   return {
     async writeFrom(plaintext: Uint8Array) {
+      await released;
       /* Transferred rather than cloned: this is the whole Journal, and a
          structured clone would hold two copies of it in memory at once on
          a phone. The caller's view is detached afterwards, which is what
@@ -99,7 +156,7 @@ export function createConversionTarget(databasePath: string, dataKey: Uint8Array
 }
 
 export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Array): WebSqlite {
-  const { post, terminate } = connectWorker();
+  const { post, terminate } = takePrewarmed(databasePath) ?? connectWorker();
 
   // Fire-and-queue: every later message waits behind this in the worker's
   // chain, and its failure resurfaces on the first statement (mc-worker.ts

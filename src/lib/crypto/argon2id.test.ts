@@ -53,3 +53,60 @@ test('never logs the password or the derived key', async () => {
     expect(text.includes(keyHex)).toBe(false);
   }
 });
+
+/* Off the main thread where there is a worker (ux-carpet ticket 209). The
+   stand-in below plays the worker's side with the same in-thread call, so
+   what is checked is the hand-over, not argon2id itself. */
+test('a worker derives the key and is terminated afterwards', async () => {
+  const g = globalThis as Record<string, unknown>;
+  const prior = g.Worker;
+  const made: { terminated: boolean; got: unknown }[] = [];
+  g.Worker = class {
+    terminated = false;
+    got: unknown = null;
+    onmessage: ((event: { data: unknown }) => void) | null = null;
+    onerror: ((event: { message: string; preventDefault(): void }) => void) | null = null;
+    constructor() {
+      made.push(this);
+    }
+    postMessage(message: { password: string; salt: Uint8Array<ArrayBuffer>; params: Argon2Params }) {
+      this.got = message;
+      g.Worker = prior;
+      void deriveKey(message.password, message.salt, message.params).then((key) => this.onmessage?.({ data: { ok: true, key } }));
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  };
+  try {
+    const salt = randomSalt();
+    const viaWorker = await deriveKey('correct horse', salt, CHEAP);
+    expect(made).toHaveLength(1);
+    expect(made[0].terminated).toBe(true);
+    expect(viaWorker).toEqual(await deriveKey('correct horse', salt, CHEAP));
+  } finally {
+    g.Worker = prior;
+  }
+});
+
+test('a worker that never starts leaves the derivation to this thread', async () => {
+  const g = globalThis as Record<string, unknown>;
+  const prior = g.Worker;
+  g.Worker = class {
+    onerror: ((event: { message: string; preventDefault(): void }) => void) | null = null;
+    postMessage() {
+      queueMicrotask(() => this.onerror?.({ message: 'blocked', preventDefault() {} }));
+    }
+    terminate() {}
+  };
+  try {
+    const salt = randomSalt();
+    await capturedConsoleOutput(async () => {
+      const key = await deriveKey('correct horse', salt, CHEAP);
+      g.Worker = prior;
+      expect(key).toEqual(await deriveKey('correct horse', salt, CHEAP));
+    });
+  } finally {
+    g.Worker = prior;
+  }
+});
