@@ -344,7 +344,7 @@ test('the limit bounds the page, and the count is of every match', async () => {
   assert.equal(all.total, 5);
 });
 
-test('a search is two round trips, whatever the registry grows to', async () => {
+test('a search is one round trip, whatever the registry grows to', async () => {
   const db = await migratedDb();
   const { driver, roundTrips, resetRoundTrips } = countingDriver(db);
   const journal = openJournal(driver, fakeFileStore());
@@ -353,8 +353,8 @@ test('a search is two round trips, whatever the registry grows to', async () => 
 
   resetRoundTrips();
   await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
-  // The page and the count, and nothing per area.
-  assert.deepEqual(roundTrips(), { query: 2, run: 0 });
+  // The page and its count in one statement, and nothing per area (ticket 220).
+  assert.deepEqual(roundTrips(), { query: 1, run: 0 });
 });
 
 test('searching writes nothing', async () => {
