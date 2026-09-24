@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -8,8 +10,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, discloseWidth, resize } from '$lib/motion/reveal';
-  import Skeleton from '$lib/components/Skeleton.svelte';
+  import { discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
 
@@ -37,6 +38,15 @@
   let newLabel = $state('');
   let groupSheet = $state(false);
   let newGroupName = $state('');
+
+  /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
+     must not put its placeholder back over settled groups. */
+  let tagsRevealed = $state(false);
+  $effect.pre(() => {
+    if (vocabulary.ready) tagsRevealed = true;
+  });
+  const tagsEstimate = readReserve('tags');
+  const tagsRemember = (px: number) => rememberReserve('tags', px);
 </script>
 
 <div class="screen">
@@ -89,24 +99,19 @@
     <Icon name="plus" size={20} /><span>{m.tags_new_group()}</span>
   </button>
 
-  <!-- The skeleton stands where the first group's heading will: the button
-       above is inline-level, so the heading's 16px top margin does not
-       collapse into the button's 20 but adds to it, and a skeleton without
-       it put the whole list 16px high until the mirror answered (ux-carpet
-       ticket 193). While it waits, the wrapper carries that margin. -->
-  <div use:resize style:margin-top={vocabulary.ready ? null : 'var(--space-4)'}>
-    {#if !vocabulary.ready}
-      <!-- Every built-in tag group is reconciled on every boot (ADR-0004),
-           so this is never legitimately empty - but on a cold navigation
-           straight here, `vocabulary.tagGroups` reads empty for a few
-           frames before the mirror behind it hydrates, and with no gate
-           that painted nothing at all where five groups of tags belong
-           (ticket 152). -->
-      <div out:crossfade><Skeleton variant="line" count={4} /></div>
-    {:else}
+  <!-- Held at last visit's height and faded in once the vocabulary mirror
+       answers (ux-carpet ticket 205; ticket 152 found the gap). Every
+       built-in group is reconciled on every boot (ADR-0004), so this is
+       never legitimately empty, but a cold navigation straight here reads
+       the mirror empty for a few frames. The outer box carries the first
+       heading's 16px while the placeholder stands: the button above is
+       inline-level, so that margin adds to the button's 20 rather than
+       collapsing into it (ticket 193). -->
+  <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
+    <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>
       {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
       {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
-    {/if}
+    </ReadReserve>
   </div>
 
   <Sheet open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>

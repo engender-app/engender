@@ -22,14 +22,14 @@
      phase 8 ticket 33 moved it to the hub, so the redirect that carried
      /settings/words to /transition/words is gone and the old link is a real
      screen again. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { crossfade } from '$lib/motion/reveal';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -38,6 +38,14 @@
   let words = $derived([...(ignoredQuery.value ?? new Set<string>())].sort());
   let returnParam = $derived(page.url.searchParams.get('return'));
   let returnHref = $derived(returnParam || '/stats/words');
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let wordsIgnoredRevealed = $state(false);
+  $effect.pre(() => {
+    if (!wordsIgnoredRevealed && (!ignoredQuery.loading)) wordsIgnoredRevealed = true;
+  });
+  const wordsIgnoredEstimate = readReserve('words-ignored');
+  const wordsIgnoredRemember = (px: number) => rememberReserve('words-ignored', px);
 </script>
 
 <div class="screen">
@@ -51,27 +59,28 @@
     </div>
   {/if}
 
-  {#if ignoredQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if words.length === 0}
-    <Notice icon="note" key="words-ignored-empty" text={m.words_ignored_empty()} />
-  {:else}
-    <ListCard role={roleAt(activeFlag.roles, 0)}>
-      {#each words as word (word)}
-        <ListRow
-          static
-          title={word}
-          data-ignored-word-row={word}
-          action={{
-            icon: 'eye',
-            label: m.words_unignore_aria({ word }),
-            onclick: () => journal.wordIgnore.setWordIgnored(word, false),
-            attrs: { 'data-unignore-word': word }
-          }}
-        />
-      {/each}
-    </ListCard>
-  {/if}
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={wordsIgnoredRevealed} estimate={wordsIgnoredEstimate} onrest={wordsIgnoredRemember}>
+    {#if words.length === 0}
+      <Notice icon="note" key="words-ignored-empty" text={m.words_ignored_empty()} />
+    {:else}
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each words as word (word)}
+          <ListRow
+            static
+            title={word}
+            data-ignored-word-row={word}
+            action={{
+              icon: 'eye',
+              label: m.words_unignore_aria({ word }),
+              onclick: () => journal.wordIgnore.setWordIgnored(word, false),
+              attrs: { 'data-unignore-word': word }
+            }}
+          />
+        {/each}
+      </ListCard>
+    {/if}
+  </ReadReserve>
 </div>
 
 <style>

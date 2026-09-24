@@ -59,7 +59,12 @@ const ROUTES = flag(
     '/more,/settings/tags,/body/hair-progress,/settings/access-mode,/settings/affirmations'
 ).split(',');
 const JUMP_PX = 24;
-const STEP_PX = 4;
+/* `--step` lowers the floor a lone step is reported at (ticket 205 asks
+   for 2px). `--arrivals` also reports a block that first paints after the
+   screen's first frame already at full painted opacity: content cut in
+   rather than faded (ticket 205, 184's ReadGate finding). */
+const STEP_PX = Number(flag('step', '4'));
+const ARRIVALS = args.includes('--arrivals');
 const TRAVEL_FRAMES = 4;
 const SAMPLE_MS = 1600;
 const VIEWPORT_H = 844;
@@ -92,8 +97,8 @@ const SAMPLER = `(() => {
   const t0 = performance.now();
   const tick = () => {
     const at = performance.now() - t0;
-    const row = { at, vt, boxes: {} };
-    for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *')) {
+    const row = { at, vt, boxes: {}, ops: {} };
+    for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *, .read-reserve-body > *')) {
       if (el.hasAttribute('data-gate-skeleton') || el.hasAttribute('data-read-reserve-hold')) continue;
       const box = el.getBoundingClientRect();
       /* Kept below the fold too, so a travel that leaves the viewport
@@ -101,6 +106,9 @@ const SAMPLER = `(() => {
          screen are reported (analyse). */
       if (box.height === 0) continue;
       row.boxes[name(el)] = Math.round(box.top * 10) / 10;
+      let o = 1;
+      for (let n = el; n && n.nodeType === 1; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+      row.ops[name(el)] = Math.round(o * 100) / 100;
     }
     out.push(row);
     if (at < ${SAMPLE_MS}) requestAnimationFrame(later);
@@ -137,6 +145,18 @@ function analyse(samples) {
     const onScreen = (i) => Math.min(series[i] ?? Infinity, series[i - 1] ?? Infinity) < VIEWPORT_H;
     for (const t of teleports(series, samples).filter((t) => onScreen(t.i)))
       findings.push(`${key.replace(/^\d+:/, '')} ${t.px > 0 ? 'down' : 'up'} ${Math.abs(t.px)}px in one frame at ${t.at}ms (${t.run}-frame move)`);
+  }
+  if (ARRIVALS) {
+    /* The screen's own first paint is not an arrival, and a reserve's
+       wrapper is not content: what it holds is sampled as its own rows. */
+    const first = samples.findIndex((s) => Object.keys(s.boxes).length > 0);
+    for (const key of keys) {
+      if (/read-reserve\b(?!-)/.test(key)) continue;
+      const i = samples.findIndex((s) => s.boxes[key] != null);
+      if (i <= first || samples[i].vt || samples[i].boxes[key] >= VIEWPORT_H) continue;
+      if (samples[i].ops[key] >= 0.9)
+        findings.push(`${key.replace(/^\d+:/, '')} arrived at opacity ${samples[i].ops[key]} at ${Math.round(samples[i].at)}ms`);
+    }
   }
   return findings;
 }

@@ -39,6 +39,8 @@
      journal/hormoneCurve.ts's, where it has tests. What is left here is
      wording and marks. */
 
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -58,13 +60,11 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -238,6 +238,14 @@
   function toggleFit(next: boolean) {
     prefs.hormoneCurveFitToOwnLabs = next;
   }
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let curveRevealed = $state(false);
+  $effect.pre(() => {
+    if (!curveRevealed && (!curveQuery.loading && !!view)) curveRevealed = true;
+  });
+  const curveEstimate = readReserve('curve');
+  const curveRemember = (px: number) => rememberReserve('curve', px);
 </script>
 
 <!-- The invitation to the dose log, passed only when logging could actually
@@ -291,293 +299,296 @@
 <div class="screen">
   <ScreenHeader title={m.curve_title()} back="/more" />
 
-  {#if curveQuery.loading || !view}
-    <div out:crossfade><Skeleton variant="block" count={2} /></div>
-  {:else if view.injectable.charts.length === 0 && view.qualitative.sections.length === 0}
-    <!-- One empty state for every way of having no curve at all, across both
-         kinds: nothing in the log adds up to either one. -->
-    <!-- The invitation to the dose log only when logging could actually produce
-         a curve. Someone whose doses are all on an ester this screen draws
-         nothing for has already done the thing it would be asking for, and
-         saying so again would put the limit on them rather than on this
-         screen. -->
-    {@const futile = view.dosesNoCurveAnywhere > 0}
-    <Notice
-      icon="curve"
-      key="curve-empty"
-      role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
-      title={m.curve_empty_title()}
-      text={m.curve_empty_body()}
-      action={futile ? undefined : { label: m.curve_empty_action(), primary: true, href: '/care/doses' }}
-    />
-    {#if futile}
-      <p class="muted small curve-note" data-no-curve-note>
-        {m.curve_no_curve_note({ count: String(view.dosesNoCurveAnywhere) })}
-      </p>
-    {/if}
-    {#if view.injectable.dosesWithoutMilligrams > 0}
-      <p class="muted small curve-note">
-        {m.curve_volume_note({ count: String(view.injectable.dosesWithoutMilligrams) })}
-      </p>
-    {/if}
-    {#if view.labPointsOffAxis > 0}
-      <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(view.labPointsOffAxis) })}</p>
-    {/if}
-    {#if view.qualitative.dosesWithoutMilligrams > 0}
-      <p class="muted small curve-note">
-        {m.curve_qual_volume_note({ count: String(view.qualitative.dosesWithoutMilligrams) })}
-      </p>
-    {/if}
-  {:else}
-    <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={curveRevealed} estimate={curveEstimate} onrest={curveRemember}>
+    {#if !view}
+      <!-- Latched open, so never reached: the gate waits for a view. -->
+    {:else if view.injectable.charts.length === 0 && view.qualitative.sections.length === 0}
+      <!-- One empty state for every way of having no curve at all, across both
+           kinds: nothing in the log adds up to either one. -->
+      <!-- The invitation to the dose log only when logging could actually produce
+           a curve. Someone whose doses are all on an ester this screen draws
+           nothing for has already done the thing it would be asking for, and
+           saying so again would put the limit on them rather than on this
+           screen. -->
+      {@const futile = view.dosesNoCurveAnywhere > 0}
+      <Notice
+        icon="curve"
+        key="curve-empty"
+        role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
+        title={m.curve_empty_title()}
+        text={m.curve_empty_body()}
+        action={futile ? undefined : { label: m.curve_empty_action(), primary: true, href: '/care/doses' }}
+      />
+      {#if futile}
+        <p class="muted small curve-note" data-no-curve-note>
+          {m.curve_no_curve_note({ count: String(view.dosesNoCurveAnywhere) })}
+        </p>
+      {/if}
+      {#if view.injectable.dosesWithoutMilligrams > 0}
+        <p class="muted small curve-note">
+          {m.curve_volume_note({ count: String(view.injectable.dosesWithoutMilligrams) })}
+        </p>
+      {/if}
+      {#if view.labPointsOffAxis > 0}
+        <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(view.labPointsOffAxis) })}</p>
+      {/if}
+      {#if view.qualitative.dosesWithoutMilligrams > 0}
+        <p class="muted small curve-note">
+          {m.curve_qual_volume_note({ count: String(view.qualitative.dosesWithoutMilligrams) })}
+        </p>
+      {/if}
+    {:else}
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.curve_intro()}</p>
 
-    <Segmented
-      name={m.curve_window_label()}
-      options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
-      value={String(windowDays)}
-      onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
-      compact
-      key="curve-window"
-    />
+      <Segmented
+        name={m.curve_window_label()}
+        options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
+        value={String(windowDays)}
+        onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
+        compact
+        key="curve-window"
+      />
 
-    {#if view.injectable.charts.length > 0}
-      <SectionHeading text={m.curve_injectable_heading()} />
-      {#each view.injectable.charts as curve (curve.ester)}
-        {@const points = curve.labPoints}
-        {@const selected = picked[curve.ester] ?? null}
-        {@const openMark = pickedMarker[curve.ester] ?? null}
-        <ChartCard
-          heading={esterLabel(curve.ester)}
-          kind="curve-{curve.ester}"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
-        >
-          <HormoneBandChart
-            band={curve.band}
-            labPoints={points}
-            max={view.injectable.axisMax}
-            formatValue={round}
-            unitLabel={CURVE_UNIT}
-            ariaLabel={m.curve_chart_aria({
-              ester: esterLabel(curve.ester),
-              from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
-              to: fmtDay(today, { day: 'numeric', month: 'short' }),
-              count: String(points.length)
-            })}
-            {selected}
-            onSelect={(index) => pickPoint(curve.ester, index)}
-            pointLabel={(index) =>
-              m.curve_point_aria({
-                value: String(points[index].result.value),
-                /* Never blank: a result only reaches this chart if its unit
-                   converts, so there is no unitless case to substitute for -
-                   and substituting CURVE_UNIT would announce a unit nobody
-                   logged. */
-                unit: points[index].result.unit,
-                date: fmtDay(points[index].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-              })}
-            markers={markersFor(curve.ester)}
-            selectedMarker={openMark?.key ?? null}
-            onSelectMarker={(mark) => pickMarker(curve.ester, mark)}
-            {markLabel}
-          />
-
-          <div class="curve-legend">
-            <details class="curve-legend-detail">
-              <summary class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</summary>
-              <p>{m.curve_band_note()}</p>
-              <p>{m.curve_source()}</p>
-            </details>
-            <details class="curve-legend-detail">
-              <summary class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</summary>
-              <p>{m.curve_intro()}</p>
-            </details>
-            {@render markerLegend(markersFor(curve.ester).length)}
-          </div>
-
-          <!-- The readout. aria-live because tapping a result changes text
-               elsewhere on the screen, which a screen reader would otherwise
-               not announce. -->
-          <div class="curve-readout" aria-live="polite">
-            {#if openMark}
-              {@render markerReadout(openMark, () => pickMarker(curve.ester, openMark))}
-            {:else if selected !== null && points[selected]}
-              {@const lines = resultLines(points[selected])}
-              <div class="spread">
-                <p class="readout-label">
-                  {m.curve_result_at({
-                    date: fmtDay(points[selected].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                  })}
-                </p>
-                <button class="icon-btn" aria-label={m.curve_point_clear()} onclick={() => pickPoint(curve.ester, selected)}>
-                  <Icon name="x" size={18} />
-                </button>
-              </div>
-              <p class="readout-value">{lines.native}</p>
-              {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
-              {#if lines.context}<p class="muted small">{lines.context}</p>{/if}
-            {:else}
-              {@const lines = bandLines(curve)}
-              {#if lines}
-                <p class="readout-label">
-                  {m.curve_band_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                </p>
-                <p class="readout-value">{lines.native}</p>
-                {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
-              {/if}
-            {/if}
-          </div>
-        </ChartCard>
-      {/each}
-
-      <p class="muted small curve-note">{m.curve_band_note()}</p>
-    {/if}
-
-    {#if view.qualitative.sections.length > 0}
-      <SectionHeading text={m.curve_qual_heading()} />
-      <!-- Keyed by hormone and route together: the same route on the two
-           hormones is two cards, and a key of the route alone would collide. -->
-      {#each view.qualitative.sections as section (section.drug)}
-        {#each section.charts as curve (curve.key)}
-          {@const lines = qualLines(section, curve)}
-          {@const openMark = pickedMarker[curve.key] ?? null}
+      {#if view.injectable.charts.length > 0}
+        <SectionHeading text={m.curve_injectable_heading()} />
+        {#each view.injectable.charts as curve (curve.ester)}
+          {@const points = curve.labPoints}
+          {@const selected = picked[curve.ester] ?? null}
+          {@const openMark = pickedMarker[curve.ester] ?? null}
           <ChartCard
-            heading={qualitativeCurveLabel(curve.key)}
-            kind="curve-qual-{curve.key}"
+            heading={esterLabel(curve.ester)}
+            kind="curve-{curve.ester}"
             role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
           >
-            {#snippet control()}
-              <!-- On the heading's line, because it is what this heading
-                   means: the shape under it is illustrative rather than
-                   fitted to a published study. -->
-              <span class="qual-notice">{m.curve_qual_notice()}</span>
-            {/snippet}
-
-            <QualitativeCurveChart
-              points={curve.points}
-              max={curve.axisMax}
+            <HormoneBandChart
+              band={curve.band}
+              labPoints={points}
+              max={view.injectable.axisMax}
               formatValue={round}
-              unitLabel={section.unit}
-              ariaLabel={m.curve_qual_chart_aria({
-                curve: qualitativeCurveLabel(curve.key),
+              unitLabel={CURVE_UNIT}
+              ariaLabel={m.curve_chart_aria({
+                ester: esterLabel(curve.ester),
                 from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
-                to: fmtDay(today, { day: 'numeric', month: 'short' })
+                to: fmtDay(today, { day: 'numeric', month: 'short' }),
+                count: String(points.length)
               })}
-              markers={markersFor(curve.key)}
+              {selected}
+              onSelect={(index) => pickPoint(curve.ester, index)}
+              pointLabel={(index) =>
+                m.curve_point_aria({
+                  value: String(points[index].result.value),
+                  /* Never blank: a result only reaches this chart if its unit
+                     converts, so there is no unitless case to substitute for -
+                     and substituting CURVE_UNIT would announce a unit nobody
+                     logged. */
+                  unit: points[index].result.unit,
+                  date: fmtDay(points[index].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                })}
+              markers={markersFor(curve.ester)}
               selectedMarker={openMark?.key ?? null}
-              onSelectMarker={(mark) => pickMarker(curve.key, mark)}
+              onSelectMarker={(mark) => pickMarker(curve.ester, mark)}
               {markLabel}
             />
 
             <div class="curve-legend">
               <details class="curve-legend-detail">
-                <summary class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</summary>
-                <p>{m.curve_qual_note()}</p>
+                <summary class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</summary>
+                <p>{m.curve_band_note()}</p>
+                <p>{m.curve_source()}</p>
               </details>
-              {@render markerLegend(markersFor(curve.key).length)}
+              <details class="curve-legend-detail">
+                <summary class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</summary>
+                <p>{m.curve_intro()}</p>
+              </details>
+              {@render markerLegend(markersFor(curve.ester).length)}
             </div>
 
-            <!-- The marker readout takes the card's own readout over while a
-                 mark is open, the same way it does on a fitted chart: this
-                 one's ordinary content is a single figure for today, and two
-                 answers stacked would read as one contradicting itself. -->
-            {#if openMark}
-              <div class="curve-readout" aria-live="polite">
-                {@render markerReadout(openMark, () => pickMarker(curve.key, openMark))}
-              </div>
-            {:else if lines}
-              <div class="curve-readout">
-                <p class="readout-label">
-                  {m.curve_qual_readout_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                </p>
+            <!-- The readout. aria-live because tapping a result changes text
+                 elsewhere on the screen, which a screen reader would otherwise
+                 not announce. -->
+            <div class="curve-readout" aria-live="polite">
+              {#if openMark}
+                {@render markerReadout(openMark, () => pickMarker(curve.ester, openMark))}
+              {:else if selected !== null && points[selected]}
+                {@const lines = resultLines(points[selected])}
+                <div class="spread">
+                  <p class="readout-label">
+                    {m.curve_result_at({
+                      date: fmtDay(points[selected].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                    })}
+                  </p>
+                  <button class="icon-btn" aria-label={m.curve_point_clear()} onclick={() => pickPoint(curve.ester, selected)}>
+                    <Icon name="x" size={18} />
+                  </button>
+                </div>
                 <p class="readout-value">{lines.native}</p>
                 {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
-              </div>
-            {/if}
+                {#if lines.context}<p class="muted small">{lines.context}</p>{/if}
+              {:else}
+                {@const lines = bandLines(curve)}
+                {#if lines}
+                  <p class="readout-label">
+                    {m.curve_band_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                  </p>
+                  <p class="readout-value">{lines.native}</p>
+                  {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
+                {/if}
+              {/if}
+            </div>
           </ChartCard>
         {/each}
-      {/each}
 
-    {/if}
+        <p class="muted small curve-note">{m.curve_band_note()}</p>
+      {/if}
 
-    <div class="curve-fit">
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.fit)}>
-        <!-- Static rather than an ordinary ListRow: an ordinary one renders
-             as a link or a button, and a button wrapping the switch's own
-             button is a nested control. Same call ticket 24 made in
-             Settings. -->
-        <ListRow static data-curve-fit title={m.curve_fit_label()} subtitle={m.curve_fit_hint()}>
-          {#snippet trailing()}
-            <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
-          {/snippet}
-        </ListRow>
-      </ListCard>
-    </div>
+      {#if view.qualitative.sections.length > 0}
+        <SectionHeading text={m.curve_qual_heading()} />
+        <!-- Keyed by hormone and route together: the same route on the two
+             hormones is two cards, and a key of the route alone would collide. -->
+        {#each view.qualitative.sections as section (section.drug)}
+          {#each section.charts as curve (curve.key)}
+            {@const lines = qualLines(section, curve)}
+            {@const openMark = pickedMarker[curve.key] ?? null}
+            <ChartCard
+              heading={qualitativeCurveLabel(curve.key)}
+              kind="curve-qual-{curve.key}"
+              role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
+            >
+              {#snippet control()}
+                <!-- On the heading's line, because it is what this heading
+                     means: the shape under it is illustrative rather than
+                     fitted to a published study. -->
+                <span class="qual-notice">{m.curve_qual_notice()}</span>
+              {/snippet}
 
-    {#if prefs.hormoneCurveFitToOwnLabs && view.injectable.charts.length > 0}
-      <p class="muted small curve-note" data-fit-status aria-live="polite">
-        {#if view.injectable.scaleFactor !== null}
-          {m.curve_fit_applied({
-            count: String(view.injectable.fitPointCount),
-            factor: view.injectable.scaleFactor.toFixed(2)
-          })}
-        {:else if view.injectable.dosesWithoutMilligrams > 0}
-          {m.curve_fit_incomplete()}
-        {:else}
-          {m.curve_fit_no_points()}
-        {/if}
-      </p>
-    {/if}
-    {#if prefs.hormoneCurveFitToOwnLabs}
-      <!-- One line per hormone drawn, each naming its own: two hormones are
-           fitted separately, against their own analyte and in their own unit,
-           so two unlabelled lines would read as one contradicting itself. -->
-      {#each view.qualitative.sections as section (section.drug)}
-        <p class="muted small curve-note" data-qual-fit-status={section.drug} aria-live="polite">
-          {#if section.scaleFactor !== null}
-            {m.curve_qual_fit_applied({
-              drug: curveDrugLabel(section.drug),
-              count: String(section.fitPointCount),
-              factor: section.scaleFactor.toFixed(2)
+              <QualitativeCurveChart
+                points={curve.points}
+                max={curve.axisMax}
+                formatValue={round}
+                unitLabel={section.unit}
+                ariaLabel={m.curve_qual_chart_aria({
+                  curve: qualitativeCurveLabel(curve.key),
+                  from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
+                  to: fmtDay(today, { day: 'numeric', month: 'short' })
+                })}
+                markers={markersFor(curve.key)}
+                selectedMarker={openMark?.key ?? null}
+                onSelectMarker={(mark) => pickMarker(curve.key, mark)}
+                {markLabel}
+              />
+
+              <div class="curve-legend">
+                <details class="curve-legend-detail">
+                  <summary class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</summary>
+                  <p>{m.curve_qual_note()}</p>
+                </details>
+                {@render markerLegend(markersFor(curve.key).length)}
+              </div>
+
+              <!-- The marker readout takes the card's own readout over while a
+                   mark is open, the same way it does on a fitted chart: this
+                   one's ordinary content is a single figure for today, and two
+                   answers stacked would read as one contradicting itself. -->
+              {#if openMark}
+                <div class="curve-readout" aria-live="polite">
+                  {@render markerReadout(openMark, () => pickMarker(curve.key, openMark))}
+                </div>
+              {:else if lines}
+                <div class="curve-readout">
+                  <p class="readout-label">
+                    {m.curve_qual_readout_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                  </p>
+                  <p class="readout-value">{lines.native}</p>
+                  {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
+                </div>
+              {/if}
+            </ChartCard>
+          {/each}
+        {/each}
+
+      {/if}
+
+      <div class="curve-fit">
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.fit)}>
+          <!-- Static rather than an ordinary ListRow: an ordinary one renders
+               as a link or a button, and a button wrapping the switch's own
+               button is a nested control. Same call ticket 24 made in
+               Settings. -->
+          <ListRow static data-curve-fit title={m.curve_fit_label()} subtitle={m.curve_fit_hint()}>
+            {#snippet trailing()}
+              <Switch checked={prefs.hormoneCurveFitToOwnLabs} onChange={toggleFit} label={m.curve_fit_label()} />
+            {/snippet}
+          </ListRow>
+        </ListCard>
+      </div>
+
+      {#if prefs.hormoneCurveFitToOwnLabs && view.injectable.charts.length > 0}
+        <p class="muted small curve-note" data-fit-status aria-live="polite">
+          {#if view.injectable.scaleFactor !== null}
+            {m.curve_fit_applied({
+              count: String(view.injectable.fitPointCount),
+              factor: view.injectable.scaleFactor.toFixed(2)
             })}
-          {:else if section.dosesWithoutMilligrams > 0}
-            {m.curve_qual_fit_incomplete({ drug: curveDrugLabel(section.drug) })}
+          {:else if view.injectable.dosesWithoutMilligrams > 0}
+            {m.curve_fit_incomplete()}
           {:else}
-            {m.curve_qual_fit_no_points({ drug: curveDrugLabel(section.drug) })}
+            {m.curve_fit_no_points()}
           {/if}
         </p>
-      {/each}
-    {/if}
+      {/if}
+      {#if prefs.hormoneCurveFitToOwnLabs}
+        <!-- One line per hormone drawn, each naming its own: two hormones are
+             fitted separately, against their own analyte and in their own unit,
+             so two unlabelled lines would read as one contradicting itself. -->
+        {#each view.qualitative.sections as section (section.drug)}
+          <p class="muted small curve-note" data-qual-fit-status={section.drug} aria-live="polite">
+            {#if section.scaleFactor !== null}
+              {m.curve_qual_fit_applied({
+                drug: curveDrugLabel(section.drug),
+                count: String(section.fitPointCount),
+                factor: section.scaleFactor.toFixed(2)
+              })}
+            {:else if section.dosesWithoutMilligrams > 0}
+              {m.curve_qual_fit_incomplete({ drug: curveDrugLabel(section.drug) })}
+            {:else}
+              {m.curve_qual_fit_no_points({ drug: curveDrugLabel(section.drug) })}
+            {/if}
+          </p>
+        {/each}
+      {/if}
 
-    {#if view.injectable.dosesWithoutMilligrams > 0}
-      <p class="muted small curve-note">
-        {m.curve_volume_note({ count: String(view.injectable.dosesWithoutMilligrams) })}
-      </p>
-    {/if}
-    <!-- One line for both classes: a result's analyte belongs to one hormone,
-         so the area counts it once (journal/hormoneCurve.ts) where this screen
-         used to print the same estradiol count twice, once per query. -->
-    {#if view.labPointsOffAxis > 0}
-      <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(view.labPointsOffAxis) })}</p>
-    {/if}
-    {#if view.injectable.subcutaneousDoses > 0}
-      <p class="muted small curve-note">{m.curve_sc_note({ count: String(view.injectable.subcutaneousDoses) })}</p>
-    {/if}
-    <!-- Also on the populated screen, not only when nothing drew: someone with
-         an estradiol curve and undecanoate injections beside it would otherwise
-         watch those doses vanish without a word. -->
-    {#if view.dosesNoCurveAnywhere > 0}
-      <p class="muted small curve-note" data-no-curve-note>
-        {m.curve_no_curve_note({ count: String(view.dosesNoCurveAnywhere) })}
-      </p>
-    {/if}
-    {#if view.qualitative.dosesWithoutMilligrams > 0}
-      <p class="muted small curve-note">
-        {m.curve_qual_volume_note({ count: String(view.qualitative.dosesWithoutMilligrams) })}
-      </p>
-    {/if}
+      {#if view.injectable.dosesWithoutMilligrams > 0}
+        <p class="muted small curve-note">
+          {m.curve_volume_note({ count: String(view.injectable.dosesWithoutMilligrams) })}
+        </p>
+      {/if}
+      <!-- One line for both classes: a result's analyte belongs to one hormone,
+           so the area counts it once (journal/hormoneCurve.ts) where this screen
+           used to print the same estradiol count twice, once per query. -->
+      {#if view.labPointsOffAxis > 0}
+        <p class="muted small curve-note">{m.curve_off_axis_note({ count: String(view.labPointsOffAxis) })}</p>
+      {/if}
+      {#if view.injectable.subcutaneousDoses > 0}
+        <p class="muted small curve-note">{m.curve_sc_note({ count: String(view.injectable.subcutaneousDoses) })}</p>
+      {/if}
+      <!-- Also on the populated screen, not only when nothing drew: someone with
+           an estradiol curve and undecanoate injections beside it would otherwise
+           watch those doses vanish without a word. -->
+      {#if view.dosesNoCurveAnywhere > 0}
+        <p class="muted small curve-note" data-no-curve-note>
+          {m.curve_no_curve_note({ count: String(view.dosesNoCurveAnywhere) })}
+        </p>
+      {/if}
+      {#if view.qualitative.dosesWithoutMilligrams > 0}
+        <p class="muted small curve-note">
+          {m.curve_qual_volume_note({ count: String(view.qualitative.dosesWithoutMilligrams) })}
+        </p>
+      {/if}
 
-    <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
-  {/if}
+      <p class="muted small curve-note" data-evidence-note>{m.curve_evidence_note()}</p>
+    {/if}
+  </ReadReserve>
 </div>
 
 <style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import PhotoViewer from '$lib/components/PhotoViewer.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import { page } from '$app/state';
@@ -32,7 +34,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -44,7 +45,7 @@
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -80,6 +81,14 @@
 
   let photosQuery = liveList((j) => j.hairProgress.getPhotos());
   let photos = $derived(photosQuery.rows);
+
+  /* Latched: a reserve must not put its placeholder back over the body. */
+  let bodyRevealed = $state(false);
+  $effect.pre(() => {
+    if (!bodyRevealed && !dosesQuery.loading && !stagesQuery.loading && !photosQuery.loading) bodyRevealed = true;
+  });
+  const bodyEstimate = readReserve('hair-progress');
+  const rememberBody = (px: number) => rememberReserve('hair-progress', px);
   let sourceId = $derived(page.url.searchParams.get('photo'));
   let sourcePhoto = $derived(photos.find((photo) => photo.id === sourceId));
   let viewing = $state<HairPhoto | null>(null);
@@ -295,9 +304,12 @@
     />
   </div>
 
-  {#if dosesQuery.loading}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else}
+  <!-- The body waits for the doses (the anchor line), the stages and the
+       photos together, held at last visit's height and faded in (ux-carpet
+       ticket 205). It used to swap from a page-level skeleton: cut in at
+       full opacity, with nothing to travel its height, and a stages gate
+       inside it that could still be answering. -->
+  <ReadReserve ready={bodyRevealed} estimate={bodyEstimate} onrest={rememberBody} data-hair-body>
     <div data-anchor>
       <Notice
         icon="clock"
@@ -444,7 +456,7 @@
         {/snippet}
       </PhotoSection>
     </div>
-  {/if}
+  </ReadReserve>
 
   <Sheet open={anchorEditor !== null} title={m.hair_anchor_sheet()} onClose={() => (anchorEditor = null)}>
     {#if anchorEditor !== null}
@@ -465,7 +477,7 @@
   </Sheet>
 
   <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="hair-progress" held={dosesQuery.loading} />
+  <AreaFinish group="hair-progress" held={!bodyRevealed} />
 
   <RecordSheet
     record={stageRecord}
