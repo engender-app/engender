@@ -14,15 +14,23 @@ import { preview } from 'vite';
 import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
+const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
 
 /** Launches headless Chromium. Set CHROMIUM_PATH to point at a different
     binary (e.g. on a machine or CI image where chromium-browser lives
-    somewhere else) instead of editing source. */
+    somewhere else) instead of editing source.
+
+    The crash reporter is off in both launchers (ticket 239): system
+    Chromium aborted at startup inside crash_reporter::InitializeCrashpad
+    seven times on 2026-09-24, and each core dump raised a notification on
+    the desktop. Neither flag touches rendering. A caller's own `args`
+    are kept after them. */
 export function launchChromium(options = {}) {
   return chromium.launch({
     executablePath: process.env.CHROMIUM_PATH ?? DEFAULT_CHROMIUM_PATH,
     headless: true,
     ...options,
+    args: [...NO_CRASH_REPORTER, ...(options.args ?? [])],
   });
 }
 
@@ -36,6 +44,7 @@ export function launchPersistentChromium(userDataDir, options = {}) {
     executablePath: process.env.CHROMIUM_PATH ?? DEFAULT_CHROMIUM_PATH,
     headless: true,
     ...options,
+    args: [...NO_CRASH_REPORTER, ...(options.args ?? [])],
   });
 }
 
