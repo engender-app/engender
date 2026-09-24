@@ -23,15 +23,13 @@ import {
   DeviceBoundKeyUnavailableError,
   unlockDeviceBoundJournal
 } from '../data/device-bound-journal';
-import { finishRetirement, prepareConversion, runConversion } from '../data/conversion/conversion';
 import { opfsConversionMarker } from '../data/conversion/marker-file';
 import {
   JOURNAL_DATABASE,
   plaintextJournalPresent,
-  removePlaintextRemnants,
-  webConversionPorts,
-  webConversionPrecheckPorts
-} from '../data/conversion/web-ports';
+  removePlaintextRemnants
+} from '../data/conversion/plaintext-journal';
+
 import { LATEST_SCHEMA_VERSION } from '../data/sqlite/schema-version';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
@@ -39,6 +37,12 @@ import { openAndroidDataKey } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import type { BootEffect, BootEvent } from './boot-machine';
+
+/* The conversion itself, and the ports that read the old plaintext file
+   through SQLocal, load only when an install that predates encryption is
+   actually converting (ux-carpet ticket 223) - not on every launch. */
+const conversion = () => import('../data/conversion/conversion');
+const conversionPorts = () => import('../data/conversion/web-ports');
 
 type BootDispatch = (event: BootEvent) => void;
 
@@ -91,10 +95,12 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
       return;
     }
 
-    case 'finish-retirement':
+    case 'finish-retirement': {
+      const { finishRetirement } = await conversion();
       await finishRetirement(opfsConversionMarker(), removePlaintextRemnants);
       await performPlatformEffect({ type: 'survey-web' }, dispatch);
       return;
+    }
 
     case 'wipe-demo-journal':
     case 'demo-setup':
@@ -102,12 +108,14 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
       await performDemoEffect(effect, dispatch);
       return;
 
-    case 'precheck-conversion':
+    case 'precheck-conversion': {
+      const [{ prepareConversion }, { webConversionPrecheckPorts }] = await Promise.all([conversion(), conversionPorts()]);
       dispatch({
         type: 'conversion-prechecked',
         result: await prepareConversion(webConversionPrecheckPorts(), LATEST_SCHEMA_VERSION)
       });
       return;
+    }
 
     case 'auto-unlock-device-bound': {
       let dataKey;
@@ -145,8 +153,12 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
          04): a whole Journal and every photo, rewritten on a phone. The
          conversion survives being killed and resumes, but code replaced under
          it mid-write is not an interruption it can reason about. */
+      /* Busy before the modules load, not after: the window starts when
+         the decision to convert is made, and a chunk fetch is exactly the
+         kind of wait an update could otherwise land in. */
       const converting = markJournalBusy();
       try {
+        const [{ runConversion }, { webConversionPorts }] = await Promise.all([conversion(), conversionPorts()]);
         await runConversion(webConversionPorts(effect.dataKey), (progress) => {
           dispatch({ type: 'conversion-progressed', progress });
         });

@@ -10,7 +10,7 @@
      on an entry the person themselves starred or tagged as a good one. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
+  import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { COUNTEREVIDENCE_LIMIT } from '$lib/data/counterevidence';
   import { affirmingThemeCounts } from '$lib/data/affirmingThemes';
   import { readingHref } from '$lib/data/lookBackReadings';
