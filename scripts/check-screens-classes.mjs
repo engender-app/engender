@@ -148,7 +148,11 @@ const SHEETS = [
          and more) - the third, `line`, reuses the sheet's already-shared
          `.skeleton-line`. */
       'skeleton-card',
-      'skeleton-block'
+      'skeleton-block',
+      /* overlayLock.ts adds `is-withdrawn` via classList.add() one rAF after
+         `inert`, so the pre-blurred ::after can crossfade in (ticket 232).
+         Added in TypeScript, not a .svelte class attribute. */
+      'is-withdrawn'
     ])
   }
 ];

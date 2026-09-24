@@ -1791,23 +1791,63 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    rendered every icon and word in full sharpness under it (Alicja,
    2026-08-27, "the blur effect looks bad on web" - confirmed on the
    desktop rail specifically, screenshot against Cycle's edit sheet).
-   Blurring the rail's own pixels directly sidesteps needing backdrop-filter
-   to see across that boundary at all. Same token as the scrim's own radius,
-   so it reads as one material rather than a second, undocumented blur.
+   Blurring the rail's own pixels sidesteps needing backdrop-filter to see
+   across that boundary at all - this pseudo-element still samples only
+   what sits directly under it in the same element, never the scrim's
+   region. Same token as the scrim's own radius, so it reads as one
+   material rather than a second, undocumented blur.
 
-   No transition on it, on purpose: materials.css's own withdrawal states
-   the radius is constant and never animates - a radius that changes
-   re-blurs the region every frame, which is a cost the scrim itself avoids
-   by crossfading a fixed blur through opacity instead. `filter` doesn't
-   have an opacity-only equivalent for a whole subtree the way a
-   background-image scrim does, so the honest way to keep the same rule
-   here is to not transition it at all: the blur snaps with `inert`, and
-   the scrim's own opacity fade is what still carries the felt sense of the
-   withdrawal arriving gradually. */
+   A crossfaded overlay rather than a filter on the bar itself (ux-carpet
+   232, Alicja's design call): the first pass put `filter: blur()` straight
+   on `[inert]` with no transition, which is right about the radius -
+   materials.css's own withdrawal states it never animates, because a
+   radius that changes re-blurs the region every frame - but wrong about
+   what that implies. A radius held constant is not a reason to skip
+   fading in the blur itself: it means the fade has to happen a different
+   way, on a second layer rather than on the filter. `filter` has no
+   opacity-only equivalent for a whole subtree, so this `::after` is that
+   second layer - a pre-blurred copy of exactly what sits under it, made
+   of nothing but its own constant backdrop-filter, which only ever fades
+   its *opacity* in. The sharp bar underneath never changes; the blurred
+   copy over it goes from invisible to fully covering across the scrim's
+   own `--dur-slow`, so what the eye reads is the bar softening, not
+   snapping. Before this, on a scrolled screen the frame `inert` landed on
+   also dropped the bar behind `.app-main` in the same tick, so whatever
+   the screen was scrolled to painted through where the bar had been for
+   one frame; the delayed z-index below is the other half of that fix. */
+/* No `position` written here: `.app-nav` is already `position: absolute`
+   and `.app-rail` (app.css) is already `position: relative` at the
+   desktop breakpoint, which is what `::after`'s own `inset: 0` needs from
+   an ancestor - and a rule this generic writing `position` would win over
+   either one on specificity alone ([data-app-root] > [inert] beats a
+   single class), turning the floating bar into an in-flow block for as
+   long as a sheet stayed open. Measured the hard way: the first version of
+   this fix did exactly that, and the bar's own pixels moved far more than
+   the blur crossfade this ticket exists to add. */
+[data-app-root] > [inert]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
 @supports (backdrop-filter: blur(1px)) {
-  [data-app-root] > [inert] {
-    filter: blur(var(--blur-withdraw));
+  [data-app-root] > [inert]::after {
+    backdrop-filter: blur(var(--blur-withdraw));
   }
+}
+/* The frame after `inert` lands, never the same one: an `::after` this
+   selector has never matched before has nothing to fade from, so the
+   first paint would show it already at rest (opacity 1, fully blurred)
+   with no crossfade at all - the exact snap this ticket exists to remove.
+   `lockBackground` (overlayLock.ts) adds `.is-withdrawn` one
+   `requestAnimationFrame` after `inert`, so the browser paints the
+   overlay's own resting state - opacity 0, the rule above - at least once
+   before this rule gives it something to transition to. */
+[data-app-root] > [inert].is-withdrawn::after {
+  opacity: 1;
 }
 /* Behind the screen while it is withdrawn, and this is the whole of ticket
    99 item 40 ("overall - the menu renders over the popups", and Alicja
@@ -1832,16 +1872,29 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    An earlier round of this ticket read the same symptom as the blur failing
    to composite and dimmed the bar to 0.5 to compensate. The blur was
    painting all along; it was painting in the wrong place. The dim goes with
-   the diagnosis that asked for it. */
+   the diagnosis that asked for it.
+
+   Delayed rather than instant now (ux-carpet 232): `transition: z-index 0s
+   var(--dur-slow)` holds the old value for the whole delay and then jumps,
+   which is what a discrete property can do instead of animating - the same
+   trick as a `visibility` swap timed to an opacity fade. Landing at
+   `--dur-slow` means the drop happens once the scrim's own fade
+   (Sheet.svelte's `scrimFade`, the same duration) has actually finished
+   covering the bar, not on the frame the sheet started opening - so
+   whatever the screen is scrolled to is never what paints where the bar
+   was. */
 [data-app-root] > [inert] {
   z-index: -1;
+  transition: z-index 0s var(--dur-slow);
 }
-html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
-  filter: none;
+html[data-a11y-motion='reduce'] [data-app-root] > [inert]::after {
+  opacity: 0;
+  backdrop-filter: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-app-root] > [inert] {
-    filter: none;
+  [data-app-root] > [inert]::after {
+    opacity: 0;
+    backdrop-filter: none;
   }
 }
 /* Carries the drag, so the sheet inside it keeps its transition's transform
