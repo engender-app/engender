@@ -60,6 +60,21 @@ export function clearBrowserMirrors(storage: Storage): void {
   for (const key of doomed) storage.removeItem(key);
 }
 
+/** What Android keeps in app-private storage for the journal, taken in the
+    order that leaves a retryable reset if any step fails: the database, then
+    the photo files sealed under the same key (ux-carpet 214; until then they
+    outlived every start-over), and the key last. A key erased first would
+    leave ciphertext nothing can open or clean up (ticket 13, ux-carpet 210). */
+export async function wipeAndroidJournalFiles(steps: {
+  deleteDatabase: () => Promise<void>;
+  deletePhotos: () => Promise<void>;
+  eraseKey: () => Promise<void>;
+}): Promise<void> {
+  await steps.deleteDatabase();
+  await steps.deletePhotos();
+  await steps.eraseKey();
+}
+
 export async function wipeLocalData(targets: LocalDataTargets): Promise<void> {
   // A worker that is already gone is not a reason to abandon the reset;
   // the delete below will tell us soon enough if the file is still held.
