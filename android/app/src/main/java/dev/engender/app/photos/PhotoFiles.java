@@ -46,6 +46,34 @@ final class PhotoFiles {
         return directory;
     }
 
+    /**
+     * Deletes the photo directory and everything in it, for the reset
+     * (ux-carpet 214). Nothing else ever removed it: the web's reset empties
+     * OPFS, which is not where these live, and the orphan sweep that would
+     * reach them skips any boot that writes, which a first run always does.
+     * So every photo a journal had outlived its start-over, sealed under a
+     * key that no longer exists, and kept its space.
+     *
+     * <p>Flat by construction - names are validated as single path segments
+     * on the way in - so one level is everything. Throws rather than leaving
+     * a part: a reset that half happened has to say so.
+     */
+    static void deleteDirectory(Context context, String directoryName) throws IOException {
+        if (directoryName == null || directoryName.trim().isEmpty() || directoryName.contains("/")
+            || directoryName.contains("\\") || directoryName.contains("..")) {
+            throw new IllegalArgumentException("invalid photo directory name");
+        }
+        File directory = new File(context.getFilesDir(), directoryName);
+        if (!directory.exists()) return;
+        File[] children = directory.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                if (!child.delete() && child.exists()) throw new IOException("could not delete " + child.getName());
+            }
+        }
+        if (!directory.delete() && directory.exists()) throw new IOException("could not delete " + directory);
+    }
+
     static File fileFor(Context context, String directoryName, String name) {
         String trimmed = name.trim();
         if (trimmed.isEmpty() || trimmed.contains("/") || trimmed.contains("\\") || trimmed.contains("..")) {
