@@ -194,8 +194,11 @@ async function resolveTokens(profile, theme) {
 async function runScene(scene, profile, theme, tokens) {
   const needsToken = /\{(\w+)\}/.exec(scene.at)?.[1];
   if (scene.needs && needsToken && !tokens[scene.needs]) {
-    report.push({ scene: scene.name, profile, theme, skipped: `no ${scene.needs} in this journal` });
-    console.log(`[${profile}-${theme}] ${scene.name}: skipped, no ${scene.needs}`);
+    const why = HYDRATION_NEEDS[scene.needs].androidOnly
+      ? `the web draws no ${scene.needs} list; the device sweep runs this scene`
+      : `no ${scene.needs} in this journal`;
+    report.push({ scene: scene.name, profile, theme, skipped: why });
+    console.log(`[${profile}-${theme}] ${scene.name}: skipped, ${why}`);
     return;
   }
   const href = fillTokens(scene.at, tokens);
