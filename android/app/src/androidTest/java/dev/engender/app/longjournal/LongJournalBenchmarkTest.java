@@ -90,6 +90,10 @@ public class LongJournalBenchmarkTest {
             Log.i(TAG, String.format(
                 "Fixture generated in %ds, %.0fMB of photos.",
                 generatedInMs / 1000, photoBytes / 1_048_576.0));
+            // What the probe took back out of the app's origin before it
+            // reported (origin-snapshot.ts, ux-carpet 216): its keystore.json,
+            // on a phone whose journal does not keep one there.
+            Log.i(TAG, "App origin restored: " + result.optJSONArray("originRestored"));
 
             JSONObject budgets = readBudgets();
             JSONObject budgetTable = budgets.getJSONObject("measurements");

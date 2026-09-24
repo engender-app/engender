@@ -22,6 +22,7 @@ import { generateLongJournal, TEN_YEARS_IN_DAYS } from '../../long-journal/gener
 import { measureLongJournal } from '../../long-journal/measure.ts';
 import type { NormalizedPhoto } from '../../../src/lib/data/journal/photos.ts';
 import type { Measurement } from '../../long-journal/measure.ts';
+import { snapshotOrigin, type OriginDirectory } from './origin-snapshot.ts';
 
 declare global {
   interface Window {
@@ -88,7 +89,7 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   };
 }
 
-async function run() {
+async function run(): Promise<Record<string, unknown>> {
   /* One fixed name, so LongJournalBenchmarkTest can delete it before launch
      and each run starts from an empty database. */
   const { driver, fileOps } = createAndroidSqlite('long-journal-benchmark.sqlite3', PROBE_DATA_KEY);
@@ -187,7 +188,31 @@ async function run() {
   });
 
   await reopened.driver.close();
-  publish({ summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes });
+  return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes };
 }
 
-run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));
+/* The probe shares the app's origin, so it hands the origin back before it
+   reports (origin-snapshot.ts, ux-carpet 216): the Java test ends the moment
+   the result appears. A restore that fails is reported as the run's error,
+   because a phone left holding the probe's keystore is worse than a failed
+   benchmark. */
+async function main() {
+  const restoreOrigin = await snapshotOrigin(
+    (await navigator.storage.getDirectory()) as unknown as OriginDirectory,
+    localStorage
+  );
+  let result: Record<string, unknown>;
+  try {
+    result = await run();
+  } catch (error) {
+    result = { error: String((error as Error)?.stack ?? error) };
+  }
+  try {
+    result.originRestored = await restoreOrigin();
+  } catch (error) {
+    result = { error: `the probe could not put the app's origin back: ${String((error as Error)?.stack ?? error)}` };
+  }
+  publish(result);
+}
+
+main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));
