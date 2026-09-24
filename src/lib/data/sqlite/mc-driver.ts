@@ -31,11 +31,25 @@ import { oneTransactionAtATime } from './transactor.ts';
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
+/* The recovery worker in flight, if any (ux-carpet 222). The pool's access
+   handles belong to one worker at a time, and after a failed boot the copy
+   check holds them on a worker of its own for a few hundred ms (219). A
+   "Try opening again" pressed in that window started a new worker that
+   asked for the pool at once and failed with "Access Handles cannot be
+   created" - every time, measured, while a retry a moment later worked. So
+   a new connection holds its messages until that worker has closed. Settled
+   either way: a recovery that failed has still let the pool go. */
+let recovering: Promise<void> | null = null;
+
 /** One worker and the message plumbing over it. Two things are built on
     this: the driver below, and ticket 10's conversion, which needs the same
     pool and the same encryption shim but no open database. */
 function connectWorker() {
   const worker = new Worker(new URL('./mc-worker.ts', import.meta.url), { type: 'module' });
+  /* Taken now rather than read at each post, so a connection waits only for
+     the recoveries started before it - which is also what keeps a recovery
+     worker from waiting for itself. */
+  const poolFree = recovering;
 
   let nextId = 0;
   const pending = new Map<number, { resolve: (value: never) => void; reject: (reason: Error) => void }>();
@@ -71,7 +85,14 @@ function connectWorker() {
     const id = nextId++;
     return new Promise<T>((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      worker.postMessage({ id, op, args }, transfer);
+      /* In the order posted: every post waits on the same promise, and its
+         callbacks run in the order they were attached. Straight through when
+         nothing is recovering, which is every boot that did not fail. */
+      if (!poolFree) worker.postMessage({ id, op, args }, transfer);
+      else
+        void poolFree.then(() => {
+          if (!stopped) worker.postMessage({ id, op, args }, transfer);
+        });
     });
   }
 
@@ -243,13 +264,24 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
   async function recover<T>(op: string): Promise<T> {
     if (!connection.gone()) return post<T>(op);
     const own = connectWorker();
-    try {
-      await own.post('target', { path: databasePath, hexKey: toHex(dataKey) });
-      return await own.post<T>(op);
-    } finally {
-      await own.post('close').catch(() => {});
-      own.terminate();
-    }
+    const run = (async () => {
+      try {
+        await own.post('target', { path: databasePath, hexKey: toHex(dataKey) });
+        return await own.post<T>(op);
+      } finally {
+        await own.post('close').catch(() => {});
+        own.terminate();
+      }
+    })();
+    const settled: Promise<void> = run.then(
+      () => {},
+      () => {}
+    );
+    recovering = settled;
+    void settled.then(() => {
+      if (recovering === settled) recovering = null;
+    });
+    return run;
   }
 
   const fileOps: MigrationFileOps = {

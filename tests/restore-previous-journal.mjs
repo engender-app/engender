@@ -23,7 +23,9 @@
 
    Checks: the failure screen offers the restore, pressing it reloads into a
    journal that boots, and the copy is cleaned up by that boot (the offer
-   does not come back).
+   does not come back). Ticket 222 adds the interrupted restore (live file
+   at schema 0 beside a readable copy, finished without asking) and a retry
+   pressed in the frame its button appears, five times, against a slow one.
 
    Against a demo build:
      VITE_DEMO=1 npm run build
@@ -51,7 +53,7 @@ const check = (ok, line) => {
 
 /* Appended to the real worker module, after it has assigned its own
    onmessage. */
-const FAIL_A_MIGRATION = `
+const failAMigration = (stamp) => `
 ;(() => {
   const handle = self.onmessage;
   const answer = self.postMessage.bind(self);
@@ -75,7 +77,7 @@ const FAIL_A_MIGRATION = `
          so the failed migration's rollback cannot undo it: a journal on
          schema 1 cannot boot on this build. Only the copy can bring back
          one that does. Its answer goes to an id nothing waits on. */
-      handle({ data: { id: -1, op: 'exec', args: { sql: 'PRAGMA user_version = 1' } } });
+      if (${stamp} !== null) handle({ data: { id: -1, op: 'exec', args: { sql: 'PRAGMA user_version = ${stamp}' } } });
       return;
     }
     if (copied && (op === 'exec' || op === 'run') && !/^(BEGIN|COMMIT|ROLLBACK)$/i.test(sql.trim())) {
@@ -88,14 +90,17 @@ const FAIL_A_MIGRATION = `
 `;
 
 const worker = /mc-worker-[^/]*\.js$/;
-const wrap = async (route) => {
+const wrapWith = (stamp) => async (route) => {
   const response = await route.fetch();
-  await route.fulfill({ response, body: (await response.text()) + FAIL_A_MIGRATION });
+  await route.fulfill({ response, body: (await response.text()) + failAMigration(stamp) });
 };
 
 /** A fresh profile with a seeded demo journal, then a boot whose migration
-    fails after its copy. */
-async function failedMigration(label) {
+    fails after its copy. `stamp` is the schema version written to the live
+    file right after the copy, or null to leave it alone. With `retryAtOnce`
+    the retry is pressed from inside the page the moment it exists. */
+async function failedMigration(label, stamp = 1, retryAtOnce = false) {
+  const wrap = wrapWith(stamp);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const page = await context.newPage();
   await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
@@ -109,8 +114,30 @@ async function failedMigration(label) {
   await page.goto(base + '/');
   await settled();
   check((await bootOf()) === 'ready', `${label}: the demo journal boots before anything is broken`);
-  await context.route(worker, wrap);
+  /* Once, when retrying at once: the failed boot's worker is the only one
+     that should be wrapped, and the copy check's and the retry's are stock. */
+  await context.route(worker, wrap, retryAtOnce ? { times: 1 } : undefined);
+  if (retryAtOnce) {
+    /* Unrouted as soon as the failed boot's requests are in, so the retry's
+       worker is the stock one; pressed in the frame the button appears. */
+    await page.addInitScript(() => {
+      new MutationObserver((_, observer) => {
+        const retry = document.querySelector('[data-retry-boot]');
+        if (!retry || sessionStorage.getItem('retried')) return;
+        sessionStorage.setItem('retried', '1');
+        observer.disconnect();
+        retry.click();
+      }).observe(document, { childList: true, subtree: true });
+    });
+  }
   await page.reload();
+  if (retryAtOnce) {
+    await page.waitForFunction(() => sessionStorage.getItem('retried'), null, { timeout: 60000 }).catch(() => {});
+    await page
+      .waitForFunction(() => document.querySelector('[data-app-root]')?.dataset.boot === 'ready', null, { timeout: 30000 })
+      .catch(() => {});
+    return { context, page, bootOf, settled };
+  }
   await settled();
   check((await bootOf()) === 'error', `${label}: a migration that fails after its copy ends in the boot error (boot=${await bootOf()})`);
   await context.unroute(worker, wrap);
@@ -144,6 +171,40 @@ if (offered) {
     (await bootOf()) === 'ready' && (await page.locator('[data-restore-offer]').count()) === 0,
     'restore: the next boot is clean and offers nothing to restore'
   );
+}
+
+/* Ticket 222: a restore that was interrupted - the live file back at
+   schema 0 with a readable copy beside it - is finished without asking.
+   The runner throws InterruptedRestoreError from inside boot(), after which
+   the driver is closed, so the restore has to run on a worker of its own
+   (219). Stamped 0 here, and reloaded rather than retried: nothing is
+   pressed, the next boot has to find it and put the copy back. */
+{
+  const { context, page, bootOf, settled } = await failedMigration('interrupted', 0);
+  await page.reload();
+  await settled();
+  check((await bootOf()) === 'ready', `interrupted: the next boot finishes the restore by itself and boots (boot=${await bootOf()})`);
+  await context.close();
+}
+
+/* Ticket 222: "Try opening again" pressed in the frame it appears, while
+   the copy check's own worker may still hold the pool. It has to end where
+   a slow retry does - the live file is untouched, so ready - on every run. */
+const noticeOf = (page) => page.evaluate(() => document.querySelector('.notice-danger')?.innerText.replace(/\s+/g, ' ').slice(0, 140) ?? '');
+{
+  const { context, page, bootOf, settled } = await failedMigration('slow retry', null);
+  await page.waitForTimeout(2000);
+  await page.click('[data-retry-boot]');
+  await page
+    .waitForFunction(() => document.querySelector('[data-app-root]')?.dataset.boot === 'ready', null, { timeout: 30000 })
+    .catch(() => {});
+  check((await bootOf()) === 'ready', `slow retry: a retry pressed after the copy check boots (boot=${await bootOf()} ${await noticeOf(page)})`);
+  await context.close();
+}
+for (let run = 1; run <= 5; run++) {
+  const { context, page, bootOf } = await failedMigration(`fast retry ${run}`, null, true);
+  check((await bootOf()) === 'ready', `fast retry ${run}: a retry pressed at once boots like a slow one (boot=${await bootOf()} ${await noticeOf(page)})`);
+  await context.close();
 }
 
 await browser.close();
