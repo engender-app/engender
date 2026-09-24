@@ -302,6 +302,44 @@ test('retries transient database lock errors during boot with exponential backof
   assert.deepEqual(sleepCalls, [50, 100]);
 });
 
+/* ux-carpet 243: a tab that just navigated away or reloaded can still be
+   letting go of the OPFS SAH pool when this tab's own worker asks for it,
+   and the browser reports that collision through the web driver's own
+   message rather than through SQLite's "database is locked" - so boot()'s
+   already-retrying loop has to recognise this one too. */
+test('retries the OPFS access-handle collision the web driver reports on a raced reload', async () => {
+  let attempts = 0;
+  const sleepCalls: number[] = [];
+  const fakeDriver = makeFakeDriver();
+
+  const flakyDriver = (): SqliteDriver => {
+    attempts++;
+    if (attempts < 3) {
+      return {
+        ...fakeDriver,
+        getUserVersion: async () => {
+          throw new Error(
+            "Failed to execute 'createSyncAccessHandle' on 'FileSystemFileHandle': Access Handles cannot be created if there is another open Access Handle or Writable stream associated with the same file."
+          );
+        }
+      };
+    }
+    return fakeDriver;
+  };
+
+  const result = await boot({
+    createDriver: flakyDriver,
+    fileOps: noopFileOps(),
+    sleep: async (ms) => {
+      sleepCalls.push(ms);
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+  assert.equal(attempts, 3);
+  assert.deepEqual(sleepCalls, [50, 100]);
+});
+
 test('surfaces error after exhausting database lock retries', async () => {
   let attempts = 0;
   const sleepCalls: number[] = [];
