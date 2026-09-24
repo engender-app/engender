@@ -60,6 +60,7 @@
   } from '$lib/data/lookBackSpan';
   import { spanLabel } from '$lib/data/spanLabel';
   import { recapDimChange } from '$lib/data/recapDisplay';
+  import type { RecapDimChange } from '$lib/data/recapDisplay';
   import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { metricStandings } from '$lib/data/statsCharts';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -90,7 +91,7 @@
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -200,6 +201,16 @@
     eraOfferSpan = null;
   };
 
+  /* The link and the "not enough entries" line share one slot in
+     `.lookback-line` (ux-carpet 234): narrowing the span on Look back can
+     cross `enoughEntries` several times a second while a drag is still
+     moving, and the two used to swap by cut - one at full opacity, gone the
+     frame the other took its place. `crossfade` (out-only, reveal.ts) lifts
+     the leaving one out of flow and fades it there; the arriving one still
+     needs its own fade in, which is what `fadeIn` is for
+     (ReadReserve.svelte's own copy of the same three lines). */
+  const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
+
   /* Two epoch days to the journal, which never reads the clock for a
      domain answer: the span's own, and wrapped's default until the rail
      has answered, so the readings have something honest to read while it
@@ -220,28 +231,53 @@
   let shown = $derived(shownMetric(metricChoices()));
 
   /* ---------------------------------------------------------------------
-     The recap, for three things at once (ADR-0056). `entryCount` is the
+     The span's facts, all of one read (ADR-0056). `entryCount` is the
      floor every summary panel on this door is held to - WRAPPED_ENTRY_FLOOR,
      the same bar a retrospective clears - and `biggestDimensionChange`
      feeds the span's facts (redesign ticket 05). One read answers both,
      and the tiles that hold to the floor are handed its answer rather than
-     asking again (ADR-0010). */
-  let recapQuery = liveQuery((j) => j.stats.recap(from, to));
-  let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
-  let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+     asking again (ADR-0010).
 
-  /* The span's facts (redesign ticket 05: "zero facts in the first
-     viewport"). Wrapped's own three-line shape, with one deliberate
-     difference: the second line is whichever scale the person has active,
-     so the door's first number is never a scale nobody keeps. The active
-     scale's average is one read of its own series here - the door no
-     longer draws every scale's standing, that card is the day-by-day
-     reading's now. */
-  let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);
-  let activeSeriesQuery = liveList((j) => j.stats.dayAverages(shown.key, from, to));
+     The active scale's average rides the same query rather than one of
+     its own (ux-carpet 234): the recap and the series used to be two live
+     queries, and on a span commit they answered a beat apart, so the
+     average row could start collapsing on its own and the card then close
+     over it mid-flight - the two rows read as sliding into each other
+     rather than the list closing from below. One query lands both answers
+     in one flush, so `enoughEntries`, the average and the scale arc all
+     change together and the card's own close is the one motion left. */
+  let factsQuery = liveQuery(async (j) => {
+    const [recap, series] = await Promise.all([j.stats.recap(from, to), j.stats.dayAverages(shown.key, from, to)]);
+    return { recap, series };
+  });
+  let entryCount = $derived(factsQuery.value?.recap.entryCount ?? 0);
+  let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+  let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);
   let activeAverage = $derived.by(() => {
-    const standing = metricStandings([{ key: shown.key, range: { min: shown.min, max: shown.max } }], () => activeSeriesQuery.rows)[0];
+    const standing = metricStandings([{ key: shown.key, range: { min: shown.min, max: shown.max } }], () => factsQuery.value?.series ?? [])[0];
     return standing && standing.value !== null ? nativeValue(shown.key, standing.value) : '';
+  });
+
+  /* The two optional rows freeze their content the instant the card
+     itself decides to leave (ux-carpet 234, item 2). The fold above
+     (factsQuery) synced `activeAverage` and `dimChange` against each
+     other, but the same reactive flush that drops `entryCount` under
+     the floor also nulls both of them - so their own `{#if}`s saw that
+     same flip and started their own `transition:collapse` at the same
+     instant as the card's, one collapse nested inside the other, which
+     read as the rows sliding into each other rather than the card
+     closing as a block. `closingFacts` only updates while the card is
+     staying open, so once `enoughEntries` goes false the rows keep
+     showing whatever they last held and never see their own condition
+     flip - the card's own collapse is what plays. While the card holds,
+     a row's data genuinely emptying still updates here immediately, so
+     that row's own collapse still runs as before. */
+  let closingFacts = $state<{ activeAverage: string; dimChange: RecapDimChange | null }>({
+    activeAverage: '',
+    dimChange: null
+  });
+  $effect(() => {
+    if (enoughEntries) closingFacts = { activeAverage, dimChange };
   });
 
   /* The on-this-day tile opens in place (phase 11 ticket 07, the audit's
@@ -339,7 +375,7 @@
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
     <div class="screen-part" use:resize>
-    {#if recapQuery.loading || activeSeriesQuery.loading}
+    {#if factsQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
       <div data-lookback-facts transition:collapse>
@@ -347,14 +383,15 @@
           <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
             {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
           </ListRow>
-          {#if activeAverage}
+          {#if closingFacts.activeAverage}
             <div class="rows-divide" transition:collapse>
               <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
-                {#snippet trailing()}<b class="wrapped-figure-value">{activeAverage}</b>{/snippet}
+                {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
               </ListRow>
             </div>
           {/if}
-          {#if dimChange}
+          {#if closingFacts.dimChange}
+            {@const dimChange = closingFacts.dimChange}
             <div class="rows-divide" transition:collapse>
               <ListRow
                 static
@@ -425,20 +462,26 @@
          these two days. Under the floor the line says why there is nothing
          to open, in the words the range view uses for the same case. -->
     <div class="lookback-line">
-      {#if recapQuery.loading}
+      {#if factsQuery.loading}
         <span class="lookback-thin" aria-hidden="true"></span>
       {:else if enoughEntries}
-        <a class="lookback-read" data-lookback-read data-span-keep href={`/wrapped/range${spanRangeQuery(span)}`}>
+        <a class="lookback-read"
+          data-lookback-read
+          data-span-keep
+          href={`/wrapped/range${spanRangeQuery(span)}`}
+          in:fadeIn
+          out:crossfade
+        >
           {m.lookback_read_span()}
         </a>
       {:else}
-        <span class="lookback-thin" data-lookback-thin>
+        <span class="lookback-thin" in:fadeIn out:crossfade data-lookback-thin>
           {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
         </span>
       {/if}
     </div>
 
-    {#if !recapQuery.loading && !recapQuery.failed && !enoughEntries}
+    {#if !factsQuery.loading && !factsQuery.failed && !enoughEntries}
       <div transition:disclose>
         <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
       </div>
@@ -458,7 +501,7 @@
          and the tiles after it jumped a cell in one frame. The recap and
          the vocabulary mirror are the two reads the screen holds for them. -->
     <div class="screen-part" use:resize>
-    <ReadGroup answered={!recapQuery.loading && vocabulary.ready} count={2}>
+    <ReadGroup answered={!factsQuery.loading && vocabulary.ready} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
@@ -522,6 +565,7 @@
      `.kit-heading-action`): on a page whose colour is spent as blocks, an
      accent-coloured word is a fourth voice. */
   .lookback-line {
+    position: relative;
     display: flex;
     align-items: center;
     min-height: var(--touch-target);
