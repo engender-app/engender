@@ -121,6 +121,14 @@ try {
 
   await page.waitForFunction((sel) => document.querySelector(sel)?.getAttribute('data-status') === 'checked', rowSel);
 
+  // Checking a goal can mint a milestone and prompt a sheet over the row
+  // (unrelated to this ticket) - close it before the next click, harmless
+  // if none appeared.
+  if (await page.locator('[data-sheet]').count()) {
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 0);
+  }
+
   console.log('border-color channel sum, first 10 frames:', borderSeries.slice(0, 10));
   console.log('tick opacity, first 10 frames:', opacitySeries.slice(0, 10));
   console.log('tick scale, first 10 frames:', scaleSeries.slice(0, 10));
@@ -137,6 +145,31 @@ try {
   assert(opacityMid >= 2, `the tick's opacity should pass through at least two intermediate frames, got ${opacityMid}`);
   assert(scaleMid >= 2, `the tick's scale should pass through at least two intermediate frames, got ${scaleMid}`);
   assert(strikeMid >= 2, `the strike's scaleX should pass through at least two intermediate frames, got ${strikeMid}`);
+
+  // checked -> not-my-path: the same box, crossing to its second glyph (the
+  // x, [1] of the two always-mounted `.roadmap-tick` spans - safe here since
+  // neither is ever removed, unlike the querySelectorAll(...)[1] trap a
+  // removed neighbour sets).
+  const skipGetters = [
+    `() => { const s = getComputedStyle(document.querySelector('${rowSel} .roadmap-box')); const m = s.borderColor.match(/[\\d.]+/g) || [0,0,0]; return (+m[0]) + (+m[1]) + (+m[2]); }`,
+    `() => +getComputedStyle(document.querySelectorAll('${rowSel} .roadmap-tick')[1]).opacity`,
+    `() => { const m = getComputedStyle(document.querySelectorAll('${rowSel} .roadmap-tick')[1]).transform.match(/[\\d.-]+/g) || [1]; return +m[0]; }`
+  ];
+  const [skipSamples] = await Promise.all([
+    sampleFrames(skipGetters, 260),
+    page.locator(`${rowSel} .kit-row-main`).click() // checked -> not-my-path
+  ]);
+  await page.waitForFunction((sel) => document.querySelector(sel)?.getAttribute('data-status') === 'not-my-path', rowSel);
+  const [skipBorder, skipOpacity, skipScale] = skipSamples;
+  console.log('not-my-path border-color, first 10 frames:', skipBorder.slice(0, 10));
+  console.log('not-my-path x-glyph opacity, first 10 frames:', skipOpacity.slice(0, 10));
+  const skipBorderMid = intermediateCount(skipBorder);
+  const skipOpacityMid = intermediateCount(skipOpacity);
+  const skipScaleMid = intermediateCount(skipScale);
+  console.log(`intermediate frames - not-my-path border ${skipBorderMid}, opacity ${skipOpacityMid}, scale ${skipScaleMid}`);
+  assert(skipBorderMid >= 2, `the box's border-color (checked -> not-my-path) should pass through at least two intermediate frames, got ${skipBorderMid}`);
+  assert(skipOpacityMid >= 2, `the x-glyph's opacity should pass through at least two intermediate frames, got ${skipOpacityMid}`);
+  assert(skipScaleMid >= 2, `the x-glyph's scale should pass through at least two intermediate frames, got ${skipScaleMid}`);
 
   assert.equal(errors.length, 0, `Page errors encountered: ${errors.join(', ')}`);
   console.log('PASS roadmap tick fill/strike motion check');
