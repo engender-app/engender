@@ -18,7 +18,8 @@ class FakeWorker {
   }
   postMessage(message: Posted) {
     this.posted.push(message);
-    if (FakeWorker.silent) return;
+    /* A terminated worker answers nothing, as a real one does. */
+    if (FakeWorker.silent || this.terminated) return;
     /* Answers every message at once, the way a worker that has already
        attached does. */
     queueMicrotask(() => this.onmessage?.({ data: { id: message.id, ok: true, result: undefined } }));
@@ -100,5 +101,24 @@ describe('the database worker started ahead of the key', () => {
     g.Worker = FakeWorker;
     createEncryptedWebSqlite('journal.sqlite3', key);
     expect(FakeWorker.made[0].posted.map((m) => m.op)).toEqual(['open']);
+  });
+});
+
+/* ux-carpet 215: a boot that failed closes its driver twice - once in boot()
+   and once in closeActiveDriver() - and the second close went to a worker
+   the first had terminated, which answers nothing. The boot waited on it
+   forever and never showed the failure. */
+describe('a closed worker', () => {
+  it('refuses what is sent to it after close instead of leaving it unanswered', async () => {
+    const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await driver.close();
+    const settled = await Promise.race([
+      driver.close().then(
+        () => 'resolved',
+        () => 'rejected'
+      ),
+      new Promise((resolve) => setTimeout(() => resolve('pending'), 50))
+    ]);
+    expect(settled).toBe('rejected');
   });
 });

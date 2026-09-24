@@ -73,7 +73,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `more-search-nothing-found` | typed past its last area or record match, More's search collapses the last card and the "nothing found" notice arrives clipped, with nothing vanishing or jumping |
 | `documents-rows-settle` | the documents list's first group never changes height after it paints on a cold load (row link lines and the size line land with the list), at 4x CPU |
 | `tile-arrival-timing` | Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, and a revisit paints them in its first frame with no placeholder and nothing moving, on the web tier (the Android bridge is ADR-0089's device record, not this) |
-| `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a normal boot still reaches Today |
+| `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
 
 ### Written as a guard, not in CI yet

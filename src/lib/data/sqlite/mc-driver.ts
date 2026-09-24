@@ -75,7 +75,19 @@ function connectWorker() {
     });
   }
 
-  return { post, terminate: () => worker.terminate() };
+  /* Closed is stopped too (ux-carpet 215). A terminated worker answers
+     nothing, so a message posted after terminate() waited for the rest of
+     the session - and a failed boot closes its driver twice, once in boot()
+     and once in closeActiveDriver(), so the second close never came back
+     and the boot sat at 'booting' with no notice. */
+  function terminate() {
+    worker.terminate();
+    stopped ??= new Error('the database worker was closed');
+    for (const waiter of pending.values()) waiter.reject(stopped);
+    pending.clear();
+  }
+
+  return { post, terminate };
 }
 
 type Connection = ReturnType<typeof connectWorker>;
