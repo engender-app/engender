@@ -338,6 +338,15 @@ export function isErrorState(state: BootState): state is ErrorState {
   return state.status === 'error';
 }
 
+/** A boot that failed because the key does not read the journal file:
+    SQLCipher reports a wrong key and a file that is not a database the same
+    way, SQLITE_NOTADB (ADR-0020). Retrying cannot fix either, so the error
+    screen offers a restore or a fresh start beside the retry (ux-carpet
+    210). The plaintext-journal case has its own sentence and is not this. */
+export function journalIsUnreadable(state: BootState): boolean {
+  return isErrorState(state) && /not a database|SQLITE_NOTADB/i.test(state.error);
+}
+
 type BootGate = 'none' | 'passphrase' | 'authentication' | 'device-recovery' | 'schema-too-new';
 
 type PassphraseMode = 'setup' | 'unlock';
