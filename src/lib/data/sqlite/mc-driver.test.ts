@@ -122,3 +122,32 @@ describe('a closed worker', () => {
     expect(settled).toBe('rejected');
   });
 });
+
+/* ux-carpet 219: the copy check and the restore are what a failed boot does
+   after it has closed its driver, so they cannot go to that driver's worker. */
+describe('the pre-migration copy after the driver has closed', () => {
+  it('is asked of a worker of its own, pointed at the files without opening them, and closed after', async () => {
+    const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await driver.close();
+    await fileOps.preMigrationCopyIsUsable();
+    expect(FakeWorker.made).toHaveLength(2);
+    const [, own] = FakeWorker.made;
+    expect(own.posted.map((m) => m.op)).toEqual(['target', 'preMigrationCopyIsUsable', 'close']);
+    expect(own.posted[0].args).toMatchObject({ path: 'journal.sqlite3' });
+    expect(own.terminated).toBe(true);
+  });
+
+  it('restores through a worker of its own too', async () => {
+    const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await driver.close();
+    await fileOps.restorePreMigrationCopy();
+    expect(FakeWorker.made[1].posted.map((m) => m.op)).toEqual(['target', 'restorePreMigrationCopy', 'close']);
+  });
+
+  it('still goes through the open driver while it is open, since the pool is its', async () => {
+    const { fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await fileOps.preMigrationCopyIsUsable();
+    expect(FakeWorker.made).toHaveLength(1);
+    expect(FakeWorker.made[0].posted.map((m) => m.op)).toEqual(['open', 'preMigrationCopyIsUsable']);
+  });
+});

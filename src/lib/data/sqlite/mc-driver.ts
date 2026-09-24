@@ -87,7 +87,7 @@ function connectWorker() {
     pending.clear();
   }
 
-  return { post, terminate };
+  return { post, terminate, gone: () => stopped !== null };
 }
 
 type Connection = ReturnType<typeof connectWorker>;
@@ -181,7 +181,8 @@ export function createConversionTarget(databasePath: string, dataKey: Uint8Array
 }
 
 export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Array): WebSqlite {
-  const { post, terminate } = takePrewarmed(databasePath) ?? connectWorker();
+  const connection = takePrewarmed(databasePath) ?? connectWorker();
+  const { post, terminate } = connection;
 
   // Fire-and-queue: every later message waits behind this in the worker's
   // chain, and its failure resurfaces on the first statement (mc-worker.ts
@@ -228,9 +229,32 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     }
   };
 
+  /* The copy check and the restore, which are what a failed boot does next
+     (ux-carpet 219). boot() closes this driver when migrating fails, and
+     closing terminates the worker, so the failure screen's question - is
+     there a copy to go back to? - and the restore itself were both sent to
+     a worker that was gone: the answer was always "no copy", and the safety
+     net ticket 04 built never caught anything on the web. Once this
+     driver's worker has gone they run on one of their own, pointed at the
+     same files and key without opening the live database, and closed again
+     before the answer is handed back so the next boot's worker can take
+     the pool. While it is still alive - the runner asks before migrating -
+     they go through it as before, since the pool is its. */
+  async function recover<T>(op: string): Promise<T> {
+    if (!connection.gone()) return post<T>(op);
+    const own = connectWorker();
+    try {
+      await own.post('target', { path: databasePath, hexKey: toHex(dataKey) });
+      return await own.post<T>(op);
+    } finally {
+      await own.post('close').catch(() => {});
+      own.terminate();
+    }
+  }
+
   const fileOps: MigrationFileOps = {
     async preMigrationCopyIsUsable() {
-      return post<boolean>('preMigrationCopyIsUsable');
+      return recover<boolean>('preMigrationCopyIsUsable');
     },
     async copyDatabaseFile() {
       await post('copyDatabaseFile');
@@ -240,7 +264,7 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
        run against. The caller reloads the page - boot.svelte.ts does - rather
        than carrying on over a connection that is gone. */
     async restorePreMigrationCopy() {
-      await post('restorePreMigrationCopy');
+      await recover('restorePreMigrationCopy');
     },
     async cleanupPreMigrationCopy() {
       await post('cleanupPreMigrationCopy');
