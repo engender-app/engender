@@ -2491,6 +2491,18 @@ html[data-a11y-motion='reduce'] .bloom-core {
   box-sizing: border-box;
   border: 3px solid #000;
   transform: translate(-50%, -50%);
+  /* The corner, which is where the ring's centre sits once translated, is
+     the point both animations scale about (ux-carpet 227). ring-in scales
+     through the individual `scale` property and breathe through
+     `transform`, because Chromium will not run an animation on the
+     compositor beside another that animates the same property: while both
+     were `transform`, breathe ran on the main thread and re-rastered every
+     ring on every frame, forever - about 300 raster tasks a second on an
+     idle Home. `scale` is applied after `transform`, about this origin, so
+     with the origin at 0 0 a ring still grows out of the corner; breathe's
+     keyframes put their scale first for the same reason. At rest the
+     matrix is exactly what it was. */
+  transform-origin: 0 0;
   /* The ring's own copy of .home-field's overflow: hidden clip (Alicja,
      2026-09-10: "the sun overlaps on web"). A view transition promotes a
      named element into its own top-layer group, which is no longer a
@@ -2507,12 +2519,12 @@ html[data-a11y-motion='reduce'] .bloom-core {
     breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
 }
 @keyframes ring-in {
-  from { transform: translate(-50%, -50%) scale(0); }
-  to { transform: translate(-50%, -50%) scale(1); }
+  from { scale: 0; }
+  to { scale: 1; }
 }
 @keyframes breathe {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(var(--sun-breathe-scale)); }
+  0%, 100% { transform: scale(1) translate(-50%, -50%); }
+  50% { transform: scale(var(--sun-breathe-scale)) translate(-50%, -50%); }
 }
 /* Arrived at through a door rather than opened cold (redesign ticket 28):
    the rings' own entrance is dropped and the breathing kept, because the
@@ -2525,7 +2537,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
      above: what the breathing ends on has to be where the ring rests, or
      the 1ms clamp strands it there (the reduced-motion invariant), and
      what breathe ends on is the identity scale written out. */
-  transform: translate(-50%, -50%) scale(1);
+  transform: scale(1) translate(-50%, -50%);
   animation: breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
 }
 /* MO-001: the global reduce rule clamps every animation's duration to 1ms,
