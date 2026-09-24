@@ -164,7 +164,7 @@ for (const theme of themes) {
       const COVERED_RANGE = 10;
       let lastUncovered = crops.length - 1;
       for (let i = 0; i < crops.length; i++) {
-        if (range(crops[i]) < COVERED_RANGE) {
+        if (range(crops[i]) < COVERED_RANGE || (i > 0 && meanAbsDiff(crops[i - 1], crops[i]) > 5)) {
           lastUncovered = i - 1;
           break;
         }

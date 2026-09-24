@@ -156,8 +156,8 @@ export function lockBackground(node: HTMLElement): () => void {
      matched has no prior frame to animate away from. One
      `requestAnimationFrame` is that one frame; a class added in the same
      tick as `inert` would never be seen on its own. */
-  let settle: ReturnType<typeof requestAnimationFrame> | undefined = requestAnimationFrame(() => {
-    settle = undefined;
+  let withdrawRaf: ReturnType<typeof requestAnimationFrame> | undefined = requestAnimationFrame(() => {
+    withdrawRaf = undefined;
     for (const child of restoreInert) child.classList.add('is-withdrawn');
   });
   const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
@@ -165,7 +165,7 @@ export function lockBackground(node: HTMLElement): () => void {
   if (mainEl) mainEl.style.overflow = 'hidden';
 
   return () => {
-    if (settle !== undefined) cancelAnimationFrame(settle);
+    if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
     restoreInert.forEach((el) => {
       el.removeAttribute('inert');
       el.classList.remove('is-withdrawn');
