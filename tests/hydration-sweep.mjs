@@ -79,7 +79,7 @@ import {
   paintBlankSentinel,
   pushHydrationRun,
   samplerExpression,
-  scrapeHrefExpression,
+  scrapeIdExpression,
   yesterdayEpochDay
 } from './yank-sweep-core.mjs';
 
@@ -171,17 +171,24 @@ async function recordSheet(scene, theme) {
 async function resolveTokens(profile, theme) {
   const tokens = { yesterday: String(yesterdayEpochDay()) };
   const skipped = [];
+  /* Lists a browser cannot read at all, whatever the journal holds - not
+     the same news as a journal with no such record, so said differently. */
+  const unreadable = [];
   if (profile !== 'persona') {
     for (const key of Object.keys(HYDRATION_NEEDS)) skipped.push(key);
-    return { tokens, skipped };
+    return { tokens, skipped, unreadable };
   }
-  for (const [key, { list, prefix }] of Object.entries(HYDRATION_NEEDS)) {
-    await settle(list, theme);
-    const href = await page.evaluate(scrapeHrefExpression(prefix));
-    if (href) tokens[key] = href.split('/').pop();
+  for (const [key, need] of Object.entries(HYDRATION_NEEDS)) {
+    if (need.androidOnly) {
+      unreadable.push(key);
+      continue;
+    }
+    await settle(need.list, theme);
+    const id = await page.evaluate(scrapeIdExpression(need));
+    if (id) tokens[key] = id;
     else skipped.push(key);
   }
-  return { tokens, skipped };
+  return { tokens, skipped, unreadable };
 }
 
 async function runScene(scene, profile, theme, tokens) {
@@ -250,9 +257,11 @@ for (const profile of profiles) {
        not patched onto <html> after the fact. */
     await settle('/', theme);
     await page.evaluate(DEMO_THEME_EXPRESSION(theme));
-    const { tokens, skipped } = await resolveTokens(profile, theme);
+    const { tokens, skipped, unreadable } = await resolveTokens(profile, theme);
     for (const note of skipped)
       console.log(`[${profile}] no ${note} to resolve in this journal; its detail scenes will skip`);
+    for (const note of unreadable)
+      console.log(`[${profile}] the web draws no ${note} list to read an id off; its detail scenes run on the device sweep`);
     for (const scene of SCENES) {
       if (scene.setup) continue; /* the prologues run outside the loop */
       if (scene.when && scene.when !== profile) continue;

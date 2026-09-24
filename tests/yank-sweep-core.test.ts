@@ -27,7 +27,8 @@ import {
   missingProofYanks,
   parseCssColor,
   replySlices,
-  scenesFor
+  scenesFor,
+  scrapeIdExpression
 } from './yank-sweep-core.mjs';
 
 /** A frame holding one mark, sized and placed - the shape the rows
@@ -736,5 +737,58 @@ describe('replySlices', () => {
 
   it('has nothing to cut for an empty reply', () => {
     expect(replySlices(0, 1000)).toEqual([]);
+  });
+});
+
+describe('scraping a detail id off a list screen (ux-carpet 235)', () => {
+  /** Runs a page expression against a stand-in document, the way
+   *  page.evaluate would: `hrefs` are its links, `cards` the elements a
+   *  card selector can match, keyed by that selector. */
+  const onPage = async (expression, { hrefs = [], cards = {} } = {}) => {
+    const link = (href) => ({ getAttribute: () => href });
+    globalThis.document = {
+      querySelectorAll: (sel) => {
+        const prefix = /^a\[href\^="(.*)"\]$/.exec(sel)?.[1];
+        return prefix === undefined ? [] : hrefs.filter((h) => h.startsWith(prefix)).map(link);
+      },
+      querySelector: (sel) => (sel in cards ? { getAttribute: () => cards[sel] } : null)
+    };
+    try {
+      return await (0, eval)(expression);
+    } finally {
+      delete globalThis.document;
+    }
+  };
+  const quick = { waitMs: 0 };
+
+  it('reads the id after the prefix, past a list\'s add-a-day cells', async () => {
+    const hrefs = ['/', '/entry/new/20000', '/entry/660'];
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.entry, quick), { hrefs })).toBe('660');
+  });
+
+  it('takes no add control or deeper route for a record', async () => {
+    const hrefs = ['/transition/tryouts/new', '/transition/tryouts/abc/photos', '/transition/tryouts/?x=1'];
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.tryout, quick), { hrefs })).toBeNull();
+  });
+
+  it('drops a query or hash from the id', async () => {
+    const hrefs = ['/media/documents/d-1?from=list'];
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.document, quick), { hrefs })).toBe('d-1');
+  });
+
+  it('reads a letter off its card, an unsealed one before a sealed one', async () => {
+    const [unsealed, any] = HYDRATION_NEEDS.letter.cards;
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.letter, quick), { cards: { [any]: 'sealed-1', [unsealed]: 'open-1' } })).toBe('open-1');
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.letter, quick), { cards: { [any]: 'sealed-1' } })).toBe('sealed-1');
+  });
+
+  it('waits for rows that draw after the list settles', async () => {
+    const hrefs = [];
+    setTimeout(() => hrefs.push('/search/questions/q-7'), 150);
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.question, { waitMs: 1000 }), { hrefs })).toBe('q-7');
+  });
+
+  it('marks reminders as a list only the device can read', () => {
+    expect(HYDRATION_NEEDS.reminder.androidOnly).toBe(true);
   });
 });

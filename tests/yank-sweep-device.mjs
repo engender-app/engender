@@ -103,7 +103,7 @@ import {
   replySlices,
   scenesFor,
   samplerExpression,
-  scrapeHrefExpression,
+  scrapeIdExpression,
   yesterdayEpochDay
 } from './yank-sweep-core.mjs';
 import { decodePng, grayFrame } from './png-decode.mjs';
@@ -658,18 +658,18 @@ async function hydrationTokens(profile, theme) {
     for (const key of Object.keys(HYDRATION_NEEDS)) skipped.push(key);
     return { tokens, skipped };
   }
-  for (const [key, { list, prefix }] of Object.entries(HYDRATION_NEEDS)) {
+  for (const [key, need] of Object.entries(HYDRATION_NEEDS)) {
     /* One list route that will not settle is a finding for the report, not
        a reason to lose the hours of seeding the walk sits on (ticket 139's
        /search/questions hang): record, skip, keep walking. */
     try {
-      await settle(list, theme);
-      const href = await ev(scrapeHrefExpression(prefix));
-      if (href) tokens[key] = href.split('/').pop();
+      await settle(need.list, theme);
+      const id = await ev(scrapeIdExpression(need));
+      if (id) tokens[key] = id;
       else skipped.push(key);
     } catch (err) {
       skipped.push(key);
-      console.log(`[persona] ${key}: could not settle ${list} (${String(err).slice(0, 120)}); detail scenes skip`);
+      console.log(`[persona] ${key}: could not settle ${need.list} (${String(err).slice(0, 120)}); detail scenes skip`);
     }
   }
   return { tokens, skipped };

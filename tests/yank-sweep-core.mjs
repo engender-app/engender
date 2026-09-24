@@ -1445,15 +1445,24 @@ const HYDRATION_SCENES = [
   { name: 'lock-gate', at: '/', when: 'persona', setup: 'pin', is: 'the PIN gate drawn on a cold load' }
 ];
 
-/** Where each `needs` token is scraped from: the list screen that links
- *  the detail records, and the href prefix that identifies them. One
- *  place, so the desktop and device crawlers resolve the same ids. */
+/** Where each `needs` token is scraped from: the list screen that shows
+ *  the detail records, and how a record's id is read off it - the href
+ *  prefix of the link into its detail route, or, where the list links no
+ *  detail route, the card that carries the id. One place, so the desktop
+ *  and device crawlers resolve the same ids. */
 export const HYDRATION_NEEDS = {
   entry: { list: '/day/today', prefix: '/entry/' },
-  letter: { list: '/transition/letters', prefix: '/transition/letters/' },
+  /* The letters list opens a letter where it sits (LetterCard, `#opened`)
+     and links no detail route, so the id comes off the card. An unsealed
+     one first, since the scene is a letter being read; a sealed one if
+     that is all the journal has, which the detail route draws sealed. */
+  letter: { list: '/transition/letters', cards: ['[data-letter]:not([data-letter-state="sealed"])', '[data-letter]'], attr: 'data-letter' },
   tryout: { list: '/transition/tryouts', prefix: '/transition/tryouts/' },
   question: { list: '/search?questions=1', prefix: '/search/questions/' },
-  reminder: { list: '/settings/reminders', prefix: '/settings/reminders/' },
+  /* On the web the list is the install-the-app empty state whatever the
+     journal holds (settings/reminders: `isWeb`), so only the device can
+     read an id off it. The desktop crawler skips this one by name. */
+  reminder: { list: '/settings/reminders', prefix: '/settings/reminders/', androidOnly: true },
   document: { list: '/media/documents', prefix: '/media/documents/' }
 };
 
@@ -1467,17 +1476,41 @@ export function hydrationScreensFor({ prove = false, only = [] } = {}) {
   return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
 }
 
-/** The first href into a detail route on the page the transport has
- *  already settled: exactly one segment beyond the prefix, and not the
- *  "new" editor, so a list's own add-controls cannot pose as a record. */
-export const scrapeHrefExpression = (prefix) => `(async () => {
-  for (const a of document.querySelectorAll('a[href^=${JSON.stringify(prefix)}]')) {
-    const href = a.getAttribute('href');
-    if (href.split('/').length !== ${JSON.stringify(prefix)}.split('/').length + 1) continue;
-    if (href.split('/').pop() === 'new') continue;
-    return href;
+/** The id of the first record a list screen shows, per its HYDRATION_NEEDS
+ *  entry: off a card's attribute, or off the first link into the detail
+ *  route - one segment after the prefix and not the "new" editor, so a
+ *  list's own add-controls cannot pose as a record.
+ *
+ *  Polled for `waitMs` rather than read once. The crawlers settle a list
+ *  on boot and network idle, and its rows are a liveQuery that can answer
+ *  after both; a read that finds nothing is only an honest "no record"
+ *  once the list has had time to draw one. (ux-carpet 235: this used to
+ *  compare segment counts with the prefix's trailing slash counted as a
+ *  segment, so it rejected every real id and took `/entry/new/<day>` for
+ *  one - seven detail scenes skipped on every run.) */
+export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () => {
+  const need = ${JSON.stringify(need)};
+  const find = () => {
+    /* In preference order: a selector list would answer in DOM order. */
+    if (need.cards) {
+      for (const card of need.cards) {
+        const id = document.querySelector(card)?.getAttribute(need.attr);
+        if (id) return id;
+      }
+      return null;
+    }
+    for (const a of document.querySelectorAll('a[href^=' + JSON.stringify(need.prefix) + ']')) {
+      const id = a.getAttribute('href').slice(need.prefix.length).split(/[?#]/)[0];
+      if (id && !id.includes('/') && id !== 'new') return id;
+    }
+    return null;
+  };
+  const until = Date.now() + ${Number(waitMs)};
+  for (;;) {
+    const id = find();
+    if (id || Date.now() >= until) return id;
+    await new Promise((r) => setTimeout(r, 100));
   }
-  return null;
 })()`;
 
 /** Waiting for a demo-bar state jump to be *finished* (ticket 135).
