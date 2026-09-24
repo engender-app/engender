@@ -376,6 +376,18 @@ public class PhotosPlugin extends Plugin {
         }
     }
 
+    /** The reset's half of the photos (ux-carpet 214): the whole directory,
+        before the key they are sealed under is erased. */
+    @PluginMethod
+    public void removeDirectory(PluginCall call) {
+        try {
+            PhotoFiles.deleteDirectory(getContext(), call.getString("directory", PhotoFiles.DEFAULT_DIRECTORY));
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
     @PluginMethod
     public void listFiles(PluginCall call) {
         try {
