@@ -148,12 +148,28 @@ export function lockBackground(node: HTMLElement): () => void {
       restoreInert.push(child);
     }
   }
+  /* The withdrawal crossfades rather than snapping (ux-carpet 232):
+     components.css fades a pre-blurred `::after` in and delays the z-index
+     drop, both keyed off `.is-withdrawn`, and both need the browser to have
+     painted the *un*-withdrawn state at least once first or there is
+     nothing to crossfade from - an `::after` this selector has never
+     matched has no prior frame to animate away from. One
+     `requestAnimationFrame` is that one frame; a class added in the same
+     tick as `inert` would never be seen on its own. */
+  let settle: ReturnType<typeof requestAnimationFrame> | undefined = requestAnimationFrame(() => {
+    settle = undefined;
+    for (const child of restoreInert) child.classList.add('is-withdrawn');
+  });
   const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
   const previousOverflow = mainEl?.style.overflow ?? '';
   if (mainEl) mainEl.style.overflow = 'hidden';
 
   return () => {
-    restoreInert.forEach((el) => el.removeAttribute('inert'));
+    if (settle !== undefined) cancelAnimationFrame(settle);
+    restoreInert.forEach((el) => {
+      el.removeAttribute('inert');
+      el.classList.remove('is-withdrawn');
+    });
     if (mainEl) mainEl.style.overflow = previousOverflow;
     queueMicrotask(() => {
       if (previouslyFocused?.isConnected && isFocusable(previouslyFocused)) {
