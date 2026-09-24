@@ -340,17 +340,29 @@
        screen, a fifth of the screen, recurring every run (ticket 240).
        The inline opacity lands with the same style update as the class,
        so the canvas's first painted frame is already transparent; the
-       animation takes it from there and hands opacity back when done. */
+       animation takes it from there.
+
+       `fill: 'forwards'`, released only once `.finished` resolves
+       (ReadReserve's own fix, ux-carpet ticket 233, same race): without
+       `fill`, `.animate()` reverts its effect the instant it completes -
+       natively, on the compositor, independent of the main thread - which
+       would hand the canvas back to the inline `opacity: 0` set above
+       rather than to CSS (no rule sets one, so the resting value is 1),
+       invisible again until the *JS* `.finished` handler gets to run on a
+       thread busy with everything else this screen has just started
+       reading. That is the same flash this fix removes, just moved to the
+       end of it. Cancelling after `.finished` is safe because by then the
+       plain CSS is already the animation's own end state. */
     target.style.opacity = '0';
     const fade = target.animate(
       [{ opacity: 0, transform: `translateX(${travel}px)` }, { opacity: 1, transform: 'none' }],
-      { duration, easing: EASE_OUT_CSS }
+      { duration, easing: EASE_OUT_CSS, fill: 'forwards' }
     );
-    const settle = () => {
+    const release = () => {
       target.style.opacity = '';
+      fade.cancel();
     };
-    fade.onfinish = settle;
-    fade.oncancel = settle;
+    fade.finished.then(release, release);
   }
 
   const turnPage = (by: number) => {
