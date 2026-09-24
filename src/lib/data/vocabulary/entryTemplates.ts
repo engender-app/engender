@@ -10,7 +10,7 @@
    `withBuiltInDimensions`) - it exists as the seam this rule is proven
    against before the SQL is trusted to match it. */
 
-import { ENTRY_TEMPLATES } from './builtins';
+import { ENTRY_TEMPLATES } from './builtinTemplates';
 import type { EntryTemplate } from '../types';
 
 /** Most built-ins seed visible; the appointment debrief is the one
