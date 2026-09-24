@@ -151,3 +151,29 @@ describe('the pre-migration copy after the driver has closed', () => {
     expect(FakeWorker.made[0].posted.map((m) => m.op)).toEqual(['open', 'preMigrationCopyIsUsable']);
   });
 });
+
+/* ux-carpet 222: a retry pressed while the copy check's worker still holds
+   the pool asked for it at once and failed with "Access Handles cannot be
+   created". A new connection waits for that worker to close. */
+describe('a connection made while a recovery worker is running', () => {
+  it('sends nothing until the recovery worker has closed', async () => {
+    const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await driver.close();
+    FakeWorker.silent = true;
+    const check = fileOps.preMigrationCopyIsUsable();
+    await Promise.resolve();
+    FakeWorker.silent = false;
+    createEncryptedWebSqlite('journal.sqlite3', key);
+    const [, recovery, retry] = FakeWorker.made;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(retry.posted).toEqual([]);
+
+    /* The recovery worker answers its target, its check and its close. */
+    for (const message of recovery.posted) recovery.onmessage?.({ data: { id: message.id, ok: true, result: false } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    for (const message of recovery.posted.slice(2)) recovery.onmessage?.({ data: { id: message.id, ok: true } });
+    await check;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(retry.posted.map((m) => m.op)).toEqual(['open']);
+  });
+});
