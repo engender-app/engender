@@ -31,10 +31,9 @@
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>] */
-import { preview } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage } from './browser-harness.mjs';
+import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, RESET_PERSONA_EXPRESSION } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -75,7 +74,7 @@ const FIRST_FRAME = (condition, { t0 = 'performance.now()', before = '' } = {}) 
 })()`;
 
 const browser = await launchChromium();
-const app = await preview({ root: resolve(flag('root', resolve(here, '..'))), preview: { port: 0 } });
+const app = await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 const errors = [];
