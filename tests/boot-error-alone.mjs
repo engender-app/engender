@@ -15,6 +15,9 @@
    booted app draws. A normal boot is checked alongside, so the probe cannot
    pass by hiding Today altogether.
 
+   Ticket 215 adds the database that never loads: a refused wasm request
+   and a worker served without COEP both have to reach the same notice.
+
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/boot-error-alone.mjs [--root <built tree>] */
@@ -137,6 +140,48 @@ for (let pass = 1; pass <= 3; pass++) {
 
 const healthy = await open(false);
 check(healthy.boot === 'ready' && healthy.present.includes('[data-home-hello]'), `a normal boot still reaches Today (boot=${healthy.boot})`);
+
+/* Ticket 215: a database that never loads is a failed boot too. A blocked
+   wasm request (an extension, a stale cache) left the boot at 'booting' for
+   good, because the failed boot's second close went to a worker the first
+   had terminated and waited for an answer that never came. Both load
+   failures must reach the notice, and a healthy boot at 6x CPU must not be
+   mistaken for one. */
+async function verdict(prepare, cpu = 1) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await prepare(context);
+  const page = await context.newPage();
+  if (cpu > 1) await (await context.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: cpu });
+  await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
+  const started = Date.now();
+  await page.goto(base + '/');
+  await page
+    .waitForFunction(() => ['ready', 'error'].includes(document.querySelector('[data-app-root]')?.dataset.boot ?? ''), null, {
+      timeout: 30000
+    })
+    .catch(() => {});
+  const boot = await page.evaluate(() => document.querySelector('[data-app-root]')?.dataset.boot);
+  const retry = await page.locator('[data-retry-boot]').count();
+  await context.close();
+  return { boot, retry, ms: Date.now() - started };
+}
+
+const refusedWasm = await verdict((context) => context.route(/sqlite3[^/]*\.wasm$/, (route) => route.abort()));
+check(refusedWasm.boot === 'error' && refusedWasm.retry === 1, `a refused SQLite wasm ends in the error notice (boot=${refusedWasm.boot} after ${refusedWasm.ms}ms)`);
+
+const bareWorker = await verdict((context) =>
+  context.route(/mc-worker-[^/]*\.js$/, async (route) => {
+    const response = await route.fetch();
+    const headers = { ...response.headers() };
+    delete headers['cross-origin-embedder-policy'];
+    delete headers['cross-origin-resource-policy'];
+    await route.fulfill({ status: response.status(), headers, body: await response.body() });
+  })
+);
+check(bareWorker.boot === 'error' && bareWorker.retry === 1, `a journal worker served without COEP ends in the error notice (boot=${bareWorker.boot} after ${bareWorker.ms}ms)`);
+
+const slow = await verdict(async () => {}, 6);
+check(slow.boot === 'ready', `a healthy boot at 6x CPU still reaches ready (boot=${slow.boot} after ${slow.ms}ms)`);
 
 await browser.close();
 await new Promise((done) => app.httpServer.close(done));
