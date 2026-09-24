@@ -53,18 +53,19 @@
        encrypted database (ADR-0020): the scan happens inside SQLite, which
        is also why the fold has a SQL spelling at all.
 
-   **The cost, and the strategy chosen for it.** Two statements, not forty.
-   Every area is a branch of one UNION ALL with a uniform projection, so a
-   search costs a page and a count whatever the registry grows to - which
-   matters most where a statement is a bridge call rather than a function
-   call (ADR-0020's Android driver). The page carries the LIMIT and stops;
-   the count is the same union without one, for the reason the entry side
-   counts separately (entries.ts) - a screen that says how many results a
-   query found cannot take that number off a page of thirty. Measured
-   against the ten-year fixture as `search-everywhere` in
-   tests/long-journal, which budgets.json carries the number for; entries
-   stay on their own FTS queries beside it, as the screen has always run
-   them.
+   **The cost, and the strategy chosen for it.** One statement, not forty.
+   Every declared column of every area is a branch of one UNION ALL with a
+   uniform projection, the fold is applied once to that union's text
+   column, and the page and the count come out of the same pass - the
+   count as a window evaluated before the LIMIT, since a screen that says
+   how many results a query found cannot take that number off a page of
+   thirty. That matters most where a statement is a bridge call rather than
+   a function call (ADR-0020's Android driver): until ux-carpet ticket 220
+   this was two statements of 123 KB each, the fold spelled out once per
+   column per area, and preparing them cost more than the scan. Measured
+   against the ten-year fixture as `search-everywhere` in tests/long-journal,
+   which budgets.json carries the number for; entries stay on their own FTS
+   queries beside it, as the screen has always run them.
 
    It is a pure read. Searching writes nothing - no recent-searches history,
    no index, no counter - and textSearch.test.ts holds that against the
@@ -619,24 +620,19 @@ interface Branch {
   params: unknown[];
 }
 
-/** One area as a branch of the compound select: the same five columns in the
-    same order, whatever the area's own table looks like.
+/** One declared column of one area as a branch of the compound select: the
+    same columns in the same order whatever the area's own table looks like,
+    with the column's text as `text` and its declaration order as `col`.
 
-    `value` is a CASE over the declared columns in declaration order, so a
-    row that matched on two of them shows the one the area prefers rather
-    than an arbitrary one. */
-function branchFor(declared: SearchArea, pattern: string, request: SearchRequest): Branch {
+    One branch per column rather than per area (ux-carpet ticket 220): the
+    fold is then applied once, to `text`, outside the union, instead of once
+    per column per area and again inside a CASE for the value. Spelled per
+    column the statement was 123 KB of nested REPLACE() text, sent twice per
+    search across the Android bridge and prepared twice by SQLite; the rows
+    it scanned were the smaller cost. */
+function branchesFor(declared: SearchArea, request: SearchRequest): Branch[] {
   const params: unknown[] = [];
-  const matches = declared.columns.map((column) => `${foldedSql(column)} LIKE ? ESCAPE '\\'`);
-
-  const value: string[] = [];
-  for (const [index, column] of declared.columns.entries()) {
-    value.push(`WHEN ${matches[index]} THEN ${column}`);
-    params.push(pattern);
-  }
-
-  const where: string[] = [`(${matches.join(' OR ')})`];
-  params.push(...declared.columns.map(() => pattern));
+  const where: string[] = [];
 
   if (declared.where) {
     where.push(`(${declared.where.sql})`);
@@ -677,14 +673,13 @@ function branchFor(declared: SearchArea, pattern: string, request: SearchRequest
         ? declared.date.column
         : `${declared.date.column} / 86400000`;
 
-  return {
+  return declared.columns.map((column, index) => ({
     sql: `SELECT '${declared.key}' AS area, ${declared.uuid} AS id, ${epochDay} AS epoch_day,
-            ${timestamp} AS timestamp, CASE ${value.join(' ')} END AS value,
+            ${timestamp} AS timestamp, ${index} AS col, ${column} AS text,
             ${declared.context ?? 'NULL'} AS context, ${sortKey} AS sort_key
-          FROM ${declared.from}
-          WHERE ${where.join(' AND ')}`,
+          FROM ${declared.from}${where.length ? `\n          WHERE ${where.join(' AND ')}` : ''}`,
     params
-  };
+  }));
 }
 
 interface HitRow extends Record<string, unknown> {
@@ -695,6 +690,7 @@ interface HitRow extends Record<string, unknown> {
   timestamp: number | null;
   value: string;
   context: string | null;
+  total: number;
 }
 
 interface SearchResults {
@@ -723,23 +719,35 @@ export function makeTextSearchArea(driver: SqliteDriver): TextSearchArea {
       const pattern = likePattern(request.query);
       if (pattern === null) return NOTHING_FOUND;
 
-      const branches = SEARCH_AREAS.map((declared) => branchFor(declared, pattern, request));
+      const branches = SEARCH_AREAS.flatMap((declared) => branchesFor(declared, request));
       const union = branches.map((b) => b.sql).join('\nUNION ALL\n');
       const params = branches.flatMap((b) => b.params);
 
-      /* The compound select is wrapped rather than ordered directly: a
-         compound's own ORDER BY may only name an output column, and the rule
-         here is an expression over one - undated hits last, then newest
-         first, then by area so a page is stable across runs. */
-      const [rows, counted] = await Promise.all([
-        driver.query<HitRow>(
-          `SELECT * FROM (${union})
-             ORDER BY sort_key IS NULL, sort_key DESC, area
-             LIMIT ?`,
-          [...params, request.limit]
-        ),
-        driver.query<{ total: number }>(`SELECT COUNT(*) AS total FROM (${union})`, params)
-      ]);
+      /* One statement for the page and the count. The inner select is every
+         column that matched, numbered per record in declaration order, and
+         only each record's first is kept, so a row that matched on two
+         columns shows the one its area prefers and is counted once - one
+         pass over the union rather than a join back to it. The count is a window over
+         the whole answer, which SQLite evaluates before the LIMIT, so it is
+         every match and not the page's length. The outer select is ordered
+         rather than the compound directly: a compound's own ORDER BY may
+         only name an output column, and the rule here is an expression over
+         one - undated hits last, then newest first, then by area, then by
+         record id. The id is new with ticket 220: before it, two hits of one
+         area on one day came back in whatever order the scan produced them,
+         and a page of thirty could cut between them either way. */
+      const rows = await driver.query<HitRow>(
+        `SELECT area, id, epoch_day, timestamp, text AS value, context, COUNT(*) OVER () AS total
+           FROM (
+             SELECT *, ROW_NUMBER() OVER (PARTITION BY area, id ORDER BY col) AS nth
+               FROM (${union})
+              WHERE ${foldedSql('text')} LIKE ? ESCAPE '\\'
+           )
+          WHERE nth = 1
+          ORDER BY sort_key IS NULL, sort_key DESC, area, id
+          LIMIT ?`,
+        [...params, pattern, request.limit]
+      );
 
       /* The area is cast rather than checked: every branch of the query above
          wrote its own key into the projection as a literal, so the only
@@ -751,7 +759,7 @@ export function makeTextSearchArea(driver: SqliteDriver): TextSearchArea {
         value: row.value,
         context: row.context
       }));
-      return { hits, total: counted[0]?.total ?? hits.length };
+      return { hits, total: rows[0]?.total ?? 0 };
     }
   };
 }
