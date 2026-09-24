@@ -76,12 +76,17 @@ export type AndroidKeyRefusal =
     the only thing SQLCipher's raw-key open accepts. */
 const KEY_HEX = /^[0-9a-f]{64}$/i;
 
+/** `hasKey`, when the caller already asked the bridge (boot's survey does,
+    moments before auto-unlock), saves asking again: a cold launch's bridge
+    results reach JS through the Android UI thread, and each extra round trip
+    there can land behind the WebView's first frame (ux-carpet 207). The
+    answer means the same either way. */
 export async function openAndroidDataKey(
   bridge: KeystoreBridge,
   request: UnlockRequest,
-  options?: { authRequired?: boolean }
+  options?: { authRequired?: boolean; hasKey?: boolean }
 ): Promise<AndroidKeyResult> {
-  const { hasKey } = await bridge.status();
+  const hasKey = options?.hasKey ?? (await bridge.status()).hasKey;
 
   if (!hasKey) {
     const created = await bridge.create(options);
