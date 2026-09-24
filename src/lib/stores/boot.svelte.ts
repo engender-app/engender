@@ -68,7 +68,8 @@ import type { JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles, setVoiceFiles } from './voiceFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
-import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
+import { clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData } from '../data/reset';
+import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
@@ -220,10 +221,12 @@ export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise
        unopenable, and the next boot would mint a fresh key and meet a
        database it cannot read. */
     wipePlatformStorage: isAndroid()
-      ? async () => {
-          await deleteAndroidDatabase(JOURNAL_DATABASE);
-          await androidKeystore.erase();
-        }
+      ? () =>
+          wipeAndroidJournalFiles({
+            deleteDatabase: () => deleteAndroidDatabase(JOURNAL_DATABASE),
+            deletePhotos: () => androidPhotos.removeDirectory({ directory: 'photos' }),
+            eraseKey: () => androidKeystore.erase()
+          })
       : undefined,
     /* The rest of what the phone holds: the three preference files, the
        alarms scheduled off the reminder one, and the Keystore alias the

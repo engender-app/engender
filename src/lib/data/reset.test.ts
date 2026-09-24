@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { clearBrowserMirrors, wipeLocalData, type LocalDataTargets } from './reset.ts';
+import { clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData, type LocalDataTargets } from './reset.ts';
 import { RECOVERY_KEY_FILE } from './recovery-key-file.ts';
 import { BOOT_ACCESS_MODE_KEY, BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
@@ -243,4 +243,30 @@ test('the sweep leaves the boot mirror for clearBootCache to take last', async (
   expect(storage.getItem('engender-entry-draft')).toBeNull();
   expect(storage.getItem(BOOT_CACHE_KEY)).not.toBeNull();
   expect(storage.getItem(BOOT_ACCESS_MODE_KEY)).not.toBeNull();
+});
+
+/* ux-carpet 214: the photos went nowhere on a start-over. They are sealed
+   under the data key, so they go with the database, before the key. */
+test('the Android wipe takes the database and the photos before the key', async () => {
+  const log: string[] = [];
+  await wipeAndroidJournalFiles({
+    deleteDatabase: async () => void log.push('database'),
+    deletePhotos: async () => void log.push('photos'),
+    eraseKey: async () => void log.push('key')
+  });
+  expect(log).toEqual(['database', 'photos', 'key']);
+});
+
+test('photos that will not delete keep the key, so the reset can be retried', async () => {
+  const log: string[] = [];
+  await expect(
+    wipeAndroidJournalFiles({
+      deleteDatabase: async () => void log.push('database'),
+      deletePhotos: async () => {
+        throw new Error('could not delete photos');
+      },
+      eraseKey: async () => void log.push('key')
+    })
+  ).rejects.toThrow('could not delete photos');
+  expect(log).toEqual(['database']);
 });
