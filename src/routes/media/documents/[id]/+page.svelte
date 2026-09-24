@@ -122,11 +122,21 @@
      Images use their full stored resolution for enlargement. A PDF uses
      its import thumbnail until the renderer has a page of its own. The
      PDF thumbnail name comes from the area rather than readThumbnail,
-     whose extension rewrite would read the PDF bytes as a JPEG. */
+     whose extension rewrite would read the PDF bytes as a JPEG.
+
+     `fileName` is its own derived rather than `stored?.fileName` read
+     straight in each effect below: `stored` is a liveQuery answer, and a
+     table write anywhere else in the journal can hand back a new record
+     object for the same row. A derived's output is compared by value, so
+     an unchanged filename does not re-signal; read off `stored` directly,
+     both effects below reran on every such answer - measured on the
+     hydration sweep as the image flashing fully in and out inside 300ms
+     of the reader mounting (ticket 240), and it would have cost the PDF
+     path a second decrypt of its bytes for the same reason. */
+  let fileName = $derived(stored?.fileName);
   let pageUrl = $state<string | null>(null);
 
   $effect(() => {
-    const fileName = stored?.fileName;
     if (!fileName) return;
 
     let stale = false;
@@ -160,7 +170,6 @@
   let pdfBytes = $state<Uint8Array | null>(null);
 
   $effect(() => {
-    const fileName = stored?.fileName;
     if (!fileName || !isPdfDocument(fileName)) return;
 
     let stale = false;
@@ -324,10 +333,36 @@
     const travel = turnedBy === 0 ? 0 : motionDistance('--motion-distance-sm') * turnedBy;
     turnedBy = 0;
     if (duration === 0) return;
-    target.animate([{ opacity: 0, transform: `translateX(${travel}px)` }, { opacity: 1, transform: 'none' }], {
-      duration,
-      easing: EASE_OUT_CSS
-    });
+    /* The class that displays this canvas and the fade arrive in the same
+       task, but a busy compositor can paint the newly displayed canvas
+       before it applies a running animation - measured on the hydration
+       sweep as three frames of full-opacity white paper over a dark
+       screen, a fifth of the screen, recurring every run (ticket 240).
+       The inline opacity lands with the same style update as the class,
+       so the canvas's first painted frame is already transparent; the
+       animation takes it from there.
+
+       `fill: 'forwards'`, released only once `.finished` resolves
+       (ReadReserve's own fix, ux-carpet ticket 233, same race): without
+       `fill`, `.animate()` reverts its effect the instant it completes -
+       natively, on the compositor, independent of the main thread - which
+       would hand the canvas back to the inline `opacity: 0` set above
+       rather than to CSS (no rule sets one, so the resting value is 1),
+       invisible again until the *JS* `.finished` handler gets to run on a
+       thread busy with everything else this screen has just started
+       reading. That is the same flash this fix removes, just moved to the
+       end of it. Cancelling after `.finished` is safe because by then the
+       plain CSS is already the animation's own end state. */
+    target.style.opacity = '0';
+    const fade = target.animate(
+      [{ opacity: 0, transform: `translateX(${travel}px)` }, { opacity: 1, transform: 'none' }],
+      { duration, easing: EASE_OUT_CSS, fill: 'forwards' }
+    );
+    const release = () => {
+      target.style.opacity = '';
+      fade.cancel();
+    };
+    fade.finished.then(release, release);
   }
 
   const turnPage = (by: number) => {
@@ -442,6 +477,7 @@
         <div
           class="doc-reader"
           class:enlarged
+          class:reserving={isPdf && !pageDrawn && !unreadable && !pageFailed}
           data-document-reader
           bind:this={reader}
           role="region"
@@ -460,15 +496,34 @@
                too. -->
           {m.document_page_alt({ title: stored.title })}
         </canvas>
-        {#if !pageDrawn}
-          <!-- Not the thumbnail when a page failed: that thumbnail is page
-               one, and page one under a line about page five is a worse
-               answer than the empty sheet. -->
-          {#if pageUrl && !pageFailed}
-            <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
-          {:else}
-            <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
-          {/if}
+        <!-- Not the thumbnail when a page failed: that thumbnail is page
+             one, and page one under a line about page five is a worse
+             answer than the empty sheet.
+
+             One `{#if}` rather than the nested pair this used to be
+             (`{#if !pageDrawn}{#if pageUrl}...{/if}{/if}`): an `out:`
+             transition only reliably plays when the block whose own
+             condition flipped is the one carrying it, and `pageDrawn`
+             flipping true changed the *outer* block's condition while the
+             inner one's (`pageUrl`) had not - the image left at full
+             opacity with no transitional frame at all, measured on the
+             hydration sweep as the sheet's whole box flashing (ticket
+             240). The canvas above already fades itself in once a page
+             draws (`sheetArrives`); this is what pairs a fade for the
+             thing it replaces. Taken out of flow and behind (see
+             `crossfade`'s own doc), so it fades where the canvas can
+             already be seen through it rather than blocking it for its
+             own last frames. -->
+        {#if !pageDrawn && pageUrl && !pageFailed}
+          <img
+            class="doc-page-image"
+            data-document-page
+            src={pageUrl}
+            alt={m.document_page_alt({ title: stored.title })}
+            out:crossfade
+          />
+        {:else if !pageDrawn}
+          <div class="doc-page-empty" out:crossfade><Icon name="documents" size={28} /></div>
         {/if}
 
         </div>
@@ -513,6 +568,13 @@
               </button>
             {/if}
           </div>
+        {:else if isPdf && !unreadable}
+          <!-- The count row is one library-open late; its place is held
+               empty so the file's own block below does not step down when
+               the count arrives (ticket 240). Held at the one-page shape -
+               a count alone - so a multi-page document's chevrons still
+               settle 24px lower, which no measurement has asked about. -->
+          <div class="doc-pager one-page reserving" aria-hidden="true"><p class="doc-page-count"></p></div>
         {/if}
       </div>
     </div>
@@ -713,6 +775,15 @@
     overflow: auto;
   }
 
+  /* The rendered page stands at the sheet's full height while the import
+     thumbnail is shorter than that; holding the reader open at the same
+     height while a PDF's first page is still rendering keeps the controls
+     below from stepping down when the page replaces the thumbnail
+     (ticket 240). */
+  .doc-reader.reserving {
+    height: var(--doc-sheet-height);
+  }
+
   .doc-reader > :is(img, canvas, .doc-page-empty) {
     margin-inline: auto;
   }
@@ -765,6 +836,13 @@
        chevrons under the thumb that is tapping them. */
     font-variant-numeric: tabular-nums;
     color: var(--text-2);
+  }
+
+  /* The held place keeps exactly the line box the real count will have,
+     in whatever leading the body runs at, rather than a number that
+     would drift from it. */
+  .doc-pager.reserving .doc-page-count {
+    min-height: calc(1em * var(--leading-body));
   }
 
   .doc-page-empty {
