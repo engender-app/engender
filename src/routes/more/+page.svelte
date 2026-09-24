@@ -311,7 +311,16 @@
          interpolate against each other with no frame where the page is
          missing both. -->
     <div class="screen-part" data-hub-results transition:collapse={{ skip: leaving }}>
+      <!-- The card goes as one block when the last match does (ux-carpet
+           ticket 206). The rows' own `disclose` is local to the rows, so
+           when the card's `{#if}` went they did not play: the card stood
+           at its last height for as long as the rows' outros held the
+           block, some 550ms, then left in one frame, and the "nothing
+           found" notice that had already arrived under it jumped 190px up.
+           Collapsing the card itself gives the notice its place to arrive
+           into. -->
       {#if matches.length}
+        <div transition:disclose={{ skip: leaving }}>
         <ListCard role={matchesRole}>
           {#each matches as row (row.spec.key)}
             <!-- Which section the row was drawn in and which kind of line it
@@ -349,9 +358,15 @@
             </div>
           {/each}
         </ListCard>
+        </div>
       {/if}
 
+      <!-- The records go as one block too, heading and all, for the same
+           reason as the areas above them (ticket 206): typed past its last
+           hit, this card stood 170px tall until the rows' outros let the
+           block go and then left in one frame. -->
       {#if hitRows.length}
+        <div transition:disclose={{ skip: leaving }}>
         <!-- The records, under the areas and named once, in the words the
              search screen already uses for the same read - and named only
              when there are areas above them to be elsewhere from. On a
@@ -399,6 +414,7 @@
             />
           </div>
         </ListCard>
+        </div>
       {/if}
 
       {#if foundNothing}
