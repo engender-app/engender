@@ -98,3 +98,35 @@ export function openApp(
       endScreenArrival();
     });
 }
+
+/**
+ * Commits a boot failure over the screen that was drawn while it booted, or
+ * a retry leaving one (ux-carpet 213).
+ *
+ * A cold start renders the route while the journal opens, so Today is on
+ * screen by the time an open can fail, and the failure replaces it with the
+ * notice alone; a retry puts the route back. As bare state changes those
+ * were one screen gone and the other there in the same frame. This runs
+ * them as the tabs' fade-through instead: one screen settles out, the other
+ * comes in, and the notice, which is outside the named screen, crossfades
+ * in the root group.
+ */
+export function crossBootFailure(
+  commit: () => void,
+  doc: Document | undefined = globalThis.document
+): Promise<void> {
+  if (!doc?.startViewTransition) {
+    commit();
+    return Promise.resolve();
+  }
+  const root = doc.documentElement;
+  root.dataset.nav = 'fade-through';
+  const transition = doc.startViewTransition(async () => {
+    commit();
+    await tick();
+  });
+  /* Superseded rejects rather than resolves, as for openApp above. */
+  return transition.finished.catch(() => {}).finally(() => {
+    delete root.dataset.nav;
+  });
+}

@@ -136,6 +136,12 @@
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
+  /* A boot that failed has no journal behind it, so nothing a booted app
+     draws belongs on screen: the notice above <main> and its ways out are
+     the whole page. Until ux-carpet 213 no gate claimed this state and
+     Today mounted under the notice, greeting and mood row and all, which
+     read as a boot to a person and to every walk keyed on the greeting. */
+  let bootFailed = $derived(isErrorState(bootState));
 
   /* What is being drawn instead of the app: the gate states, which depend
      on how boot went and are this file's own. Held apart from the routes
@@ -149,6 +155,7 @@
       needsAuthentication ||
       needsDeviceRecovery ||
       schemaTooNew ||
+      bootFailed ||
       onboardingFirstRun
   );
 
@@ -577,6 +584,8 @@
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
         {#if schemaTooNew}
           <SchemaTooNew />
+        {:else if bootFailed}
+          <!-- Instead of the route, like the gates: the notice is above. -->
         {:else if needsPassphrase}
           <JournalGate />
         {:else if needsAuthentication}
