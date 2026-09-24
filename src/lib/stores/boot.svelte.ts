@@ -321,8 +321,12 @@ export async function restorePreviousJournal(): Promise<void> {
   /* Closed before the reload, the way resetApp does it: the restore left the
      database connection gone but the pool still held, and pauseVfs() is what
      lets go of its access handles so the next boot's worker can acquire them
-     (ADR-0020's one connection per origin). */
-  await openDriver?.close();
+     (ADR-0020's one connection per origin). Caught, because on the web the
+     failed boot has usually closed it already, and a closed driver refuses a
+     second close (ux-carpet 215) - the restore then ran on a worker of its
+     own and let the pool go itself (219). A refusal here is not the restore
+     failing. */
+  await openDriver?.close().catch(() => {});
   await closeActiveDriver();
   location.reload();
 }
