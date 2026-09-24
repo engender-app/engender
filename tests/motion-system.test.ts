@@ -983,6 +983,16 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(layout).toContain('blind.release()');
   });
 
+  /* ux-carpet 230. The blind and the rings are nested under the field's own
+     group, so their z-index only orders them inside it, and the field group
+     is what has to sit over the screen's. At auto it fell under the screen,
+     and a screen whose snapshot is opaque (the entry editor's .editor-bg)
+     hid the whole field for the length of Home to a new entry. */
+  it('paints the field group over the screen group, since the blind is nested inside it', () => {
+    const z = (prelude: string) => Number(declarations(ruleOf(app, prelude)?.body ?? '')['z-index']);
+    expect(z('::view-transition-group(field)')).toBeGreaterThan(z('::view-transition-group(screen)'));
+  });
+
   /* The bottom corners stay exact on every frame of the slide, which is
      what the clip buys: the block itself is never resized, so there is no
      frame in which a 175px snapshot is being squashed into 102. The group
