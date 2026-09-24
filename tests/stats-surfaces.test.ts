@@ -196,14 +196,15 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).not.toContain('metrics.map((mt) => mt.key)');
   });
 
-  it('reads entries and the scale that moved furthest off the one recap read', () => {
+  it('reads the facts off one query, so every row changes in the same flush', () => {
     expect(stats).toContain("import { recapDimChange } from '$lib/data/recapDisplay';");
-    expect(stats).toContain('let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);');
+    expect(stats).toMatch(/liveQuery\(async \(j\) => \{[\s\S]*j\.stats\.recap\(from, to\)[\s\S]*j\.stats\.dayAverages\(shown\.key, from, to\)[\s\S]*\}\)/);
+    expect(stats).toContain('let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);');
     expect(stats).toContain('{m.wrapped_scale_arc()}');
   });
 
   it('draws no facts under the floor, where the thin-body line already says why', () => {
-    expect(stats).toMatch(/\{#if recapQuery\.loading \|\| activeSeriesQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
+    expect(stats).toMatch(/\{#if factsQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
   });
 
   it('gates the two look-back teasers separately, the way Home did', () => {

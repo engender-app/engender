@@ -230,27 +230,30 @@
   let shown = $derived(shownMetric(metricChoices()));
 
   /* ---------------------------------------------------------------------
-     The recap, for three things at once (ADR-0056). `entryCount` is the
+     The span's facts, all of one read (ADR-0056). `entryCount` is the
      floor every summary panel on this door is held to - WRAPPED_ENTRY_FLOOR,
      the same bar a retrospective clears - and `biggestDimensionChange`
      feeds the span's facts (redesign ticket 05). One read answers both,
      and the tiles that hold to the floor are handed its answer rather than
-     asking again (ADR-0010). */
-  let recapQuery = liveQuery((j) => j.stats.recap(from, to));
-  let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
-  let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+     asking again (ADR-0010).
 
-  /* The span's facts (redesign ticket 05: "zero facts in the first
-     viewport"). Wrapped's own three-line shape, with one deliberate
-     difference: the second line is whichever scale the person has active,
-     so the door's first number is never a scale nobody keeps. The active
-     scale's average is one read of its own series here - the door no
-     longer draws every scale's standing, that card is the day-by-day
-     reading's now. */
-  let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);
-  let activeSeriesQuery = liveList((j) => j.stats.dayAverages(shown.key, from, to));
+     The active scale's average rides the same query rather than one of
+     its own (ux-carpet 234): the recap and the series used to be two live
+     queries, and on a span commit they answered a beat apart, so the
+     average row could start collapsing on its own and the card then close
+     over it mid-flight - the two rows read as sliding into each other
+     rather than the list closing from below. One query lands both answers
+     in one flush, so `enoughEntries`, the average and the scale arc all
+     change together and the card's own close is the one motion left. */
+  let factsQuery = liveQuery(async (j) => {
+    const [recap, series] = await Promise.all([j.stats.recap(from, to), j.stats.dayAverages(shown.key, from, to)]);
+    return { recap, series };
+  });
+  let entryCount = $derived(factsQuery.value?.recap.entryCount ?? 0);
+  let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+  let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);
   let activeAverage = $derived.by(() => {
-    const standing = metricStandings([{ key: shown.key, range: { min: shown.min, max: shown.max } }], () => activeSeriesQuery.rows)[0];
+    const standing = metricStandings([{ key: shown.key, range: { min: shown.min, max: shown.max } }], () => factsQuery.value?.series ?? [])[0];
     return standing && standing.value !== null ? nativeValue(shown.key, standing.value) : '';
   });
 
@@ -349,7 +352,7 @@
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
     <div class="screen-part" use:resize>
-    {#if recapQuery.loading || activeSeriesQuery.loading}
+    {#if factsQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
       <div data-lookback-facts transition:collapse>
@@ -435,7 +438,7 @@
          these two days. Under the floor the line says why there is nothing
          to open, in the words the range view uses for the same case. -->
     <div class="lookback-line">
-      {#if recapQuery.loading}
+      {#if factsQuery.loading}
         <span class="lookback-thin" aria-hidden="true"></span>
       {:else if enoughEntries}
         <a class="lookback-read"
@@ -454,7 +457,7 @@
       {/if}
     </div>
 
-    {#if !recapQuery.loading && !recapQuery.failed && !enoughEntries}
+    {#if !factsQuery.loading && !factsQuery.failed && !enoughEntries}
       <div transition:disclose>
         <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
       </div>
@@ -474,7 +477,7 @@
          and the tiles after it jumped a cell in one frame. The recap and
          the vocabulary mirror are the two reads the screen holds for them. -->
     <div class="screen-part" use:resize>
-    <ReadGroup answered={!recapQuery.loading && vocabulary.ready} count={2}>
+    <ReadGroup answered={!factsQuery.loading && vocabulary.ready} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
