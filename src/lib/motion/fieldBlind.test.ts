@@ -179,6 +179,18 @@ describe('the blind, carried across a navigation', () => {
     ]);
   });
 
+  /* ux-carpet 241: sun rings are lifted out of the field group so they paint
+     above the titles (*.field-part at 4) rather than being trapped in field at 3. */
+  it('leaves the sun rings in their own root group, while nesting the blind', () => {
+    const blind = el();
+    const rings = [el(), el()];
+    const { as } = fakeDocument([field({ height: 215, blind, rings })]);
+    carryBlind(as);
+    expect(blind.style['view-transition-group']).toBe('nearest');
+    expect(rings[0].style['view-transition-group']).toBeUndefined();
+    expect(rings[1].style['view-transition-group']).toBeUndefined();
+  });
+
   it('gives every name back when the transition is over, and takes its variables with it', () => {
     const before = el();
     const after = el();

@@ -942,25 +942,27 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    ring passing behind a title that is on its way out reads as the drawing
    being interrupted (Alicja, 2026-09-09, on Transition to Today). */
 ::view-transition-group(*.sun-ring) { z-index: 5; }
-/* The field, named only so the blind, its parts and the sun - all nested
-   under it via view-transition-group: nearest (fieldBlind.ts) - inherit an
-   ancestor to be clipped by. A promoted element's capture ignores ancestor
+/* The field, named only so the blind - nested under it via
+   view-transition-group: nearest (fieldBlind.ts) - inherits an ancestor
+   to be clipped by. A promoted element's capture ignores ancestor
    overflow: hidden by design (confirmed against the W3C spec and Chrome's
    own docs, which describe this exact symptom by name); nesting the
-   children's groups under the field's own and clipping THAT is Chrome's
+   blind under the field's own group and clipping THAT is Chrome's
    shipped answer, stable since 140. The field's own capture is hidden
    rather than left to crossfade - a second whole-field photograph is
    exactly the smear ticket 25 split this file apart to stop, and nothing
    here needs the field to be seen, only to contain.
 
-   Nesting moved the blind's and the rings' z-index inside this group, where
-   they only order the children against each other, so the group itself
-   needs the blind's old place over the screen. Without it the field fell
-   in at auto, under the screen's z-index 1: invisible on the doors, whose
-   screen snapshots are transparent where a field was, but the entry
-   editor paints an opaque .editor-bg across its whole snapshot, so Home to
-   a new entry had no header at all for the length of the transition and
-   the real one cut in when it ended (ux-carpet 230). */
+   Nesting moved the blind's z-index inside this group, where it only
+   orders against its siblings, so the group itself needs the blind's old
+   place over the screen. Without it the field fell in at auto, under the
+   screen's z-index 1: invisible on the doors, whose screen snapshots are
+   transparent where a field was, but the entry editor paints an opaque
+   .editor-bg across its whole snapshot, so Home to a new entry had no
+   header at all for the length of the transition and the real one cut in
+   when it ended (ux-carpet 230). The sun rings are lifted to root groups
+   at z-index 5 so they paint over the titles (*.field-part at 4) rather
+   than being trapped under the field group's z-index 3 (ux-carpet 241). */
 ::view-transition-group(field) { z-index: 3; }
 ::view-transition-old(field),
 ::view-transition-new(field) { opacity: 0; animation: none; }
