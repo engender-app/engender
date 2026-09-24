@@ -207,6 +207,27 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toMatch(/\{#if factsQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
   });
 
+  /* ux-carpet 234, item 2: the average and scale-arc rows used to gate their
+     own `transition:collapse` on the live `activeAverage`/`dimChange`, which
+     flips false in the same reactive flush as `enoughEntries` when a span
+     narrows under the floor - so a row's own collapse ran concurrently with
+     the card's, and the two read as sliding into each other. `closingFacts`
+     only updates while the card is staying open, so the rows show what they
+     last held for the whole of the card's own exit and never see their own
+     condition flip mid-collapse. */
+  it('freezes the two optional rows while the card itself is closing', () => {
+    expect(stats).toMatch(/\$effect\(\(\) => \{\s*if \(enoughEntries\) closingFacts = \{ activeAverage, dimChange \};\s*\}\);/);
+    expect(stats).toContain('{#if closingFacts.activeAverage}');
+    expect(stats).toContain('{#if closingFacts.dimChange}');
+    expect(stats).toContain('{@const dimChange = closingFacts.dimChange}');
+    /* The live derived values still drive `closingFacts` and the always-shown
+       Entries row, but the two conditionally-removed rows never read them
+       directly - that would put their `{#if}` back on the same flush as the
+       card's own. */
+    expect(stats).not.toMatch(/\{#if activeAverage\}/);
+    expect(stats).not.toMatch(/\{#if dimChange\}/);
+  });
+
   it('gates the two look-back teasers separately, the way Home did', () => {
     expect(stats).toMatch(/\{#if prefs\.wrappedEnabled\}\s*<WrappedHomeCard \/>/);
     expect(stats).toMatch(/\{#if prefs\.onThisDayEnabled\}\s*<OnThisDayHomeCard/);
