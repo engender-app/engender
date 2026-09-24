@@ -639,15 +639,20 @@ async function perform(effect: BootEffect): Promise<void> {
        rather than assumed from the failure: a copy is there only if this boot
        or an earlier one got as far as taking one, and a driver too broken to
        answer is a driver that cannot restore either. */
-    case 'check-pre-migration-copy':
-      dispatch({
-        type: 'pre-migration-copy-checked',
-        usable:
-          openFileOps === null
-            ? false
-            : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch(() => false)
-      });
+    case 'check-pre-migration-copy': {
+      const usable =
+        openFileOps === null
+          ? false
+          : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch(() => false);
+      /* Dropped if the failure screen is already gone (ux-carpet 222): a
+         "Try opening again" pressed while the check was still running has
+         moved the boot on, and the answer is about a failure that no longer
+         has a screen. Dispatched anyway, it was an invalid transition that
+         failed the retry's own boot. */
+      if (machine.boot.status !== 'error') return;
+      dispatch({ type: 'pre-migration-copy-checked', usable });
       return;
+    }
 
     case 'warn-persist-denied':
       // Raised here rather than from an $effect in +layout.svelte, where it
