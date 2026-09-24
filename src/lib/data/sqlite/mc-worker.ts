@@ -123,6 +123,17 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     await attach(args.path);
   },
 
+  /* The files and the key without the live database (ux-carpet 219): what
+     the copy check and the restore need on a worker of their own after a
+     failed boot, when the live file is the one that could not be migrated
+     and opening it is not the point. */
+  async target(args: { path: string; hexKey: string }) {
+    await attach(args.path);
+    databasePath = poolPath(args.path);
+    backupPath = `${databasePath}.pre-migration-backup`;
+    hexKey = args.hexKey;
+  },
+
   async open(args: { path: string; hexKey: string }) {
     const api = await attach(args.path);
     databasePath = poolPath(args.path);
