@@ -152,36 +152,7 @@ public class LongJournalBenchmarkTest {
     private static void logRecordingBlock(JSONArray measurements, JSONObject budgets, JSONObject budgetTable)
         throws Exception {
         Log.i(TAG, "--- android-budgets.json measurements block (5x baseline, 200ms floor; mounts exact on statements, +10% on bytes) ---");
-        StringBuilder sb = new StringBuilder("{\n");
-        sb.append(String.format("  \"measuredOn\": \"%s\",\n", measuredOn()));
-        sb.append(String.format("  \"fixture\": \"%s\",\n", budgets.getString("fixture")));
-        sb.append("  \"measurements\": {\n");
-        for (int i = 0; i < measurements.length(); i++) {
-            JSONObject m = measurements.getJSONObject(i);
-            String name = m.getString("name");
-            int baselineMs = (int) Math.round(m.getDouble("ms"));
-            int budgetMs = Math.max(200, baselineMs * 5);
-            int targetMs = budgetTable.has(name) ? budgetTable.getJSONObject(name).getInt("targetMs") : budgetMs;
-            sb.append(String.format("    \"%s\": {\"what\":\"%s\",\"baselineMs\":%d,\"budgetMs\":%d,\"targetMs\":%d",
-                name, m.getString("what"), baselineMs, budgetMs, targetMs));
-            /* The count half, for the four screen mounts that carry one.
-               Without this a device re-record would drop the numbers the
-               probe took, and the next run would fail them as unbudgeted -
-               mountBudgetsFor()'s rule in budgets.mjs, restated because a
-               Java test cannot import it. */
-            if (m.has("statements")) {
-                int statements = m.getInt("statements");
-                int bytes = m.getInt("bytes");
-                sb.append(String.format(
-                    ",\"statementBaseline\":%d,\"byteBaseline\":%d,\"statementBudget\":%d,\"byteBudget\":%d",
-                    statements, bytes, statements, (int) Math.ceil(bytes * 1.1)));
-            }
-            sb.append("}");
-            if (i < measurements.length() - 1) sb.append(",");
-            sb.append("\n");
-        }
-        sb.append("  }\n}");
-        Log.i(TAG, sb.toString());
+        Log.i(TAG, RecordingBlock.format(measurements, measuredOn(), budgets.getString("fixture"), budgetTable));
     }
 
     private static String measuredOn() {
