@@ -140,8 +140,12 @@ type Connection = ReturnType<typeof connectWorker>;
    deliberately: a page hiding for good has nothing to wait for an answer
    with, and one still open in another tab (`gone()` false, not yet asked to
    close otherwise) tolerates a second `close` later - the worker's own
-   handler is idempotent, `db` and `poolUtil` already null. */
-function releaseOnPageHide(): void {
+   handler is idempotent, `db` and `poolUtil` already null.
+
+   Exported only for its own test: nothing above this file calls it by
+   name, `window`'s own `pagehide` is what fires it, and the Node tier has
+   no `window` to dispatch one on. */
+export function releaseOnPageHide(): void {
   for (const connection of liveConnections) {
     if (!connection.gone()) connection.post('close').catch(() => {});
   }

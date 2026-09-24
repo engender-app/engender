@@ -2,7 +2,13 @@
    a stand-in Worker: what reaches the worker and when, not what SQLite does
    with it (the browser tier opens real databases). */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createConversionTarget, createEncryptedWebSqlite, prewarmJournalWorker, releasePrewarmedJournalWorker } from './mc-driver';
+import {
+  createConversionTarget,
+  createEncryptedWebSqlite,
+  prewarmJournalWorker,
+  releaseOnPageHide,
+  releasePrewarmedJournalWorker
+} from './mc-driver';
 
 type Posted = { id: number; op: string; args: Record<string, unknown> };
 
@@ -175,5 +181,49 @@ describe('a connection made while a recovery worker is running', () => {
     await check;
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(retry.posted.map((m) => m.op)).toEqual(['open']);
+  });
+});
+
+/* ux-carpet 243: a tab that reloads or navigates away leaves its own
+   worker's pool for the browser to reclaim from a worker it is about to
+   kill outright, which can race the next boot's own `attach()`. Posting a
+   `close` on this tab's own `pagehide` ahead of that is what narrows it. */
+describe('releasing every live connection on pagehide', () => {
+  it('posts close to a worker still holding the pool', () => {
+    void prewarmJournalWorker('journal.sqlite3');
+    const [worker] = FakeWorker.made;
+
+    releaseOnPageHide();
+
+    expect(worker.posted.map((m) => m.op)).toEqual(['attach', 'close']);
+    /* Fire-and-forget: the worker is left to answer in its own time, not
+       terminated by the tab that is on its way out either way. */
+    expect(worker.terminated).toBe(false);
+  });
+
+  it('reaches every connection this tab holds, not only the prewarmed one', () => {
+    void prewarmJournalWorker('journal.sqlite3');
+    createEncryptedWebSqlite('other.sqlite3', key);
+    expect(FakeWorker.made).toHaveLength(2);
+
+    releaseOnPageHide();
+
+    for (const worker of FakeWorker.made) {
+      expect(worker.posted.map((m) => m.op)).toEqual(expect.arrayContaining(['close']));
+    }
+  });
+
+  it('leaves a connection that is already closed alone', async () => {
+    const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await driver.close();
+    const [worker] = FakeWorker.made;
+    expect(worker.posted.map((m) => m.op)).toEqual(['open', 'close']);
+
+    releaseOnPageHide();
+
+    /* terminate() already dropped this connection from the tracked set
+       (mc-driver.ts), so there is nothing left here to post a second
+       close to. */
+    expect(worker.posted.map((m) => m.op)).toEqual(['open', 'close']);
   });
 });
