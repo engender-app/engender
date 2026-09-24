@@ -12,6 +12,8 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
+import { builtInsStamp } from './builtInsStamp';
+import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 export type { PhotoFileStore } from '../photos/photo-file-store';
 import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import type { ArchiveArea } from './archive';
@@ -388,8 +390,10 @@ export interface Journal {
   archive: ArchiveArea;
   /** Adds whatever built-in vocabulary is missing, by key, and touches
       nothing else - safe on every boot and again before ticket 14's
-      Replace import applies. */
-  reconcileBuiltIns(): Promise<void>;
+      Replace import applies. `unlessCurrent` is boot's: skip the work when
+      the journal was last reconciled against this build's catalogue
+      (builtInsStamp.ts, ticket 208). */
+  reconcileBuiltIns(options?: { unlessCurrent?: boolean }): Promise<void | NothingWritten>;
   /** Every journal row gone, in one operation the section registry orders
       (archiveSections.ts, phase 5 ticket 13). The same thing a Replace import
       does before it installs an archive's rows, which is why it is one
@@ -632,9 +636,16 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       'replace',
       'merge'
     ]),
-    reconcileBuiltIns: async () => {
+    reconcileBuiltIns: async (options) => {
+      const stamp = builtInsStamp();
+      /* One header read instead of a module fetch and a transaction: the
+         common boot, a journal already holding this build's catalogue. */
+      if (options?.unlessCurrent) {
+        const [row] = await driver.query<{ application_id: number }>('PRAGMA application_id');
+        if (row?.application_id === stamp) return NOTHING_WRITTEN;
+      }
       const { reconcileBuiltIns } = await import('./reconcile');
-      return reconcileBuiltIns(driver);
+      return reconcileBuiltIns(driver, stamp);
     },
     discardEverything: async () => {
       const { discardJournalRows } = await import('./restore');
