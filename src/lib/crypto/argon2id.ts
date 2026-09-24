@@ -3,7 +3,6 @@
    introduces no runtime network request (Notes: re-verify once wired in,
    README claims and runtime behavior have diverged before). */
 
-import { argon2id } from 'hash-wasm';
 import type { Argon2Params } from './params.ts';
 
 /* Argon2id runs in a worker where there is one (ux-carpet ticket 209): on
@@ -31,11 +30,20 @@ export function prewarmArgon2(): void {
   if (!prewarmed) prewarmed = argon2Worker();
 }
 
-function inThread(
+/* The page's own copy is imported when it is needed, not with this module
+   (ux-carpet ticket 217): hash-wasm is ~33 KB of the first-load graph when
+   imported statically, and the page only runs it where no worker can start.
+   The worker imports its own copy (argon2id.worker.ts), a chunk of its own.
+   A chunk that fails to load throws out of deriveKey as itself, not as a
+   refused secret, so an unlock screen reports a failure rather than "that
+   passphrase is not right"; there is no further fallback to offer, because
+   without hash-wasm there is no derivation at all. */
+async function inThread(
   password: string,
   salt: Uint8Array<ArrayBuffer>,
   params: Argon2Params
 ): Promise<Uint8Array<ArrayBuffer>> {
+  const { argon2id } = await import('hash-wasm');
   return argon2id({
     password,
     salt,
