@@ -56,7 +56,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { documentTargets } from '$lib/components/documentTargets.svelte';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import { isPdfDocument } from '$lib/data/journal/documents';
@@ -167,6 +167,45 @@
       stale = true;
     };
   });
+
+  /* The list waits for everything a row draws, not only the documents.
+     Each row's second line names what it is filed under, through
+     `targets`' own four reads, and the size line above the groups is its
+     own read; when either landed after the documents, it arrived in a row
+     already on screen, and the first group grew 11px in one frame under
+     the gate's fade (ux-carpet ticket 212, 1 of 15 cold loads). Latched,
+     like a read's own loading: a line that changes later is that row's own
+     change, not an arrival. */
+  let rowsSettled = $state(false);
+  $effect.pre(() => {
+    if (rowsSettled || documentsQuery.loading) return;
+    if (documentsQuery.rows.length > 0 && totalBytes === null) return;
+    const linking = documentsQuery.rows.some(
+      (d) =>
+        d.targetKind !== null &&
+        d.targetId !== null &&
+        targets.resolve({ kind: d.targetKind, id: d.targetId }).state === 'loading'
+    );
+    if (!linking) rowsSettled = true;
+  });
+  const documentsRead: LiveList<JournalDocument> = {
+    get rows() {
+      return documentsQuery.rows;
+    },
+    get loading() {
+      return !rowsSettled && !documentsQuery.failed;
+    },
+    get empty() {
+      return rowsSettled && documentsQuery.empty;
+    },
+    get failed() {
+      return documentsQuery.failed;
+    },
+    get stale() {
+      return documentsQuery.stale;
+    },
+    retry: () => documentsQuery.retry()
+  };
 </script>
 
 <div class="screen">
@@ -183,7 +222,7 @@
     {/snippet}
   </ScreenHeader>
 
-  <ReadGate read={documentsQuery} count={3}>
+  <ReadGate read={documentsRead} count={3}>
     {#snippet rows(documents)}
       {#if totalBytes !== null}
         <div class="screen-part" data-documents-present-reading>
