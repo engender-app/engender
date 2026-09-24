@@ -1503,6 +1503,11 @@ export const scrapeHrefExpression = (prefix) => `(async () => {
     sweep (ticket 139) measured a persona seed at ~266 entries in ~15 minutes
     on the phone - roughly one insert every 3 s through the worker - so the
     cap now clears a 40 minute jump and only bounds a genuinely wedged bar. */
+/*  Today drawn *and* the boot finished. The greeting alone renders while a
+    journal is still opening, so a walk that stopped at it could read a boot
+    that went on to fail as a success (ux-carpet 210 did, and 213 is why
+    Today no longer stays up under the failure notice). */
+const ON_TODAY_BOOTED = `(document.querySelector('[data-app-root]')?.dataset.boot === 'ready' && !!document.querySelector('[data-home-hello]'))`;
 const DEMO_BAR_IDLE = `for (let i = 0; i < 4800 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
 const AWAIT_DEMO_JUMP = `
   await sleep(50);
@@ -1580,8 +1585,8 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
   const finish = document.querySelector('[data-finish]');
   if (!finish) throw new Error('no finish control on the done step');
   finish.click();
-  for (let i = 0; i < 60 && !document.querySelector('[data-home-hello]'); i++) await sleep(500);
-  return !!document.querySelector('[data-home-hello]');
+  for (let i = 0; i < 60 && !(${ON_TODAY_BOOTED}); i++) await sleep(500);
+  return ${ON_TODAY_BOOTED};
 })()`;
 
 /** The demo bar's theme buttons, so a cold load reads the run's theme out
@@ -1648,8 +1653,8 @@ export const UNLOCK_PIN_EXPRESSION = (pin) => `(async () => {
     key.click();
     await sleep(140);
   }
-  for (let i = 0; i < 40 && !document.querySelector('[data-home-hello]'); i++) await sleep(250);
-  return !!document.querySelector('[data-home-hello]');
+  for (let i = 0; i < 40 && !(${ON_TODAY_BOOTED}); i++) await sleep(250);
+  return ${ON_TODAY_BOOTED};
 })()`;
 
 /* ---------- the hydration sweep's node-side helpers ----------
