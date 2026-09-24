@@ -183,7 +183,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('says why a span cannot draw, in the words the range view uses', () => {
-    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin" data-lookback-thin>\s*\{m\.wrapped_thin_body\(/);
+    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin"[^>]*data-lookback-thin[^>]*>\s*\{m\.wrapped_thin_body\(/);
   });
 
   /* Wrapped's second line is always mood; this one is deliberately not, so
@@ -196,14 +196,36 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).not.toContain('metrics.map((mt) => mt.key)');
   });
 
-  it('reads entries and the scale that moved furthest off the one recap read', () => {
+  it('reads the facts off one query, so every row changes in the same flush', () => {
     expect(stats).toContain("import { recapDimChange } from '$lib/data/recapDisplay';");
-    expect(stats).toContain('let dimChange = $derived(recapQuery.value ? recapDimChange(recapQuery.value) : null);');
+    expect(stats).toMatch(/liveQuery\(async \(j\) => \{[\s\S]*j\.stats\.recap\(from, to\)[\s\S]*j\.stats\.dayAverages\(shown\.key, from, to\)[\s\S]*\}\)/);
+    expect(stats).toContain('let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);');
     expect(stats).toContain('{m.wrapped_scale_arc()}');
   });
 
   it('draws no facts under the floor, where the thin-body line already says why', () => {
-    expect(stats).toMatch(/\{#if recapQuery\.loading \|\| activeSeriesQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
+    expect(stats).toMatch(/\{#if factsQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
+  });
+
+  /* ux-carpet 234, item 2: the average and scale-arc rows used to gate their
+     own `transition:collapse` on the live `activeAverage`/`dimChange`, which
+     flips false in the same reactive flush as `enoughEntries` when a span
+     narrows under the floor - so a row's own collapse ran concurrently with
+     the card's, and the two read as sliding into each other. `closingFacts`
+     only updates while the card is staying open, so the rows show what they
+     last held for the whole of the card's own exit and never see their own
+     condition flip mid-collapse. */
+  it('freezes the two optional rows while the card itself is closing', () => {
+    expect(stats).toMatch(/\$effect\(\(\) => \{\s*if \(enoughEntries\) closingFacts = \{ activeAverage, dimChange \};\s*\}\);/);
+    expect(stats).toContain('{#if closingFacts.activeAverage}');
+    expect(stats).toContain('{#if closingFacts.dimChange}');
+    expect(stats).toContain('{@const dimChange = closingFacts.dimChange}');
+    /* The live derived values still drive `closingFacts` and the always-shown
+       Entries row, but the two conditionally-removed rows never read them
+       directly - that would put their `{#if}` back on the same flush as the
+       card's own. */
+    expect(stats).not.toMatch(/\{#if activeAverage\}/);
+    expect(stats).not.toMatch(/\{#if dimChange\}/);
   });
 
   it('gates the two look-back teasers separately, the way Home did', () => {

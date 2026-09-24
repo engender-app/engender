@@ -515,7 +515,7 @@ export function samplerExpression(act, ms, names) {
       };
     };
     const STATE_CLS =
-      /^(is-active|is-selected|is-open|is-fan-open|is-checked|is-ticked|press|press-add|setup-paint-was|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
+      /^(is-active|is-selected|is-open|is-fan-open|is-checked|is-ticked|is-withdrawn|press|press-add|setup-paint-was|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
     const key = (el) => {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
