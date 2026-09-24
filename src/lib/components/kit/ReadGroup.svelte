@@ -64,8 +64,30 @@
   const group = provideReadGroup(() => answered);
   let members: HTMLDivElement;
 
+  /* A group whose members have all answered before it has painted once is
+     a warm revisit painting from the reads' last answers (ux-carpet 201):
+     the tab is coming back to what it showed a minute ago, not arriving. So
+     it shows in its first frame: the placeholder goes without its crossfade,
+     the members without their fade, and their own entrances are finished
+     rather than played. "Before it has painted" rather than "when it first
+     renders", because a member can answer a microtask after the group's
+     first render and still well before the browser draws anything. */
+  let painted = false;
+  $effect(() => {
+    requestAnimationFrame(() => setTimeout(() => (painted = true)));
+  });
+  let instant = $state(false);
+
   $effect(() => {
     if (group.shown || !group.answered) return;
+    if (!painted) {
+      for (const animation of members.getAnimations({ subtree: true })) {
+        if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
+      }
+      instant = true;
+      group.show();
+      return;
+    }
     let cancelled = false;
     requestAnimationFrame(async () => {
       const exits = members
@@ -85,11 +107,16 @@
 </script>
 
 <div class="read-group">
-  <div class="read-group-members" class:is-held={!group.shown} class:fades={fade} bind:this={members}>
+  <div
+    class="read-group-members"
+    class:is-held={!group.shown}
+    class:fades={fade && !instant}
+    bind:this={members}
+  >
     {@render children()}
   </div>
   {#if !group.shown}
-    <div class="read-group-wait" out:crossfade><Skeleton {variant} {count} /></div>
+    <div class="read-group-wait" out:crossfade={{ instant }}><Skeleton {variant} {count} /></div>
   {/if}
 </div>
 

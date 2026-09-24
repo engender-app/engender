@@ -23,6 +23,7 @@
    screen to render already has a vocabulary. */
 
 import { boot } from '../data/sqlite/boot';
+import { forgetLastResults } from '../data/live/lastResults';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
@@ -203,6 +204,9 @@ const bootCache = localStorageCache();
     unwinding all of that in the browser is a far bigger surface than
     starting the page again. */
 export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise<void> {
+  /* The reads' last answers are journal content held in the page
+     (lastResults.ts, ux-carpet 201); a reset takes them first. */
+  forgetLastResults();
   await wipeLocalData({
     closeDatabase: async () => {
       await openDriver?.close();

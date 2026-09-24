@@ -32,6 +32,7 @@ import { readWhatIsWaiting, WAITING_TABLES } from '../../src/lib/data/comingBack
 import { entrySearchFiltersOf } from '../../src/lib/data/savedQuestionQuery.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
+import { quickExit } from '../../src/lib/stores/lock.svelte.ts';
 
 const publish = (value: unknown) => {
   (window as unknown as { __liveReadsProbeResult: unknown }).__liveReadsProbeResult = value;
@@ -468,7 +469,39 @@ async function run() {
     until(() => stableRuns > stableRunsAfterUnrelatedRename, "the stable query to re-run after its own queryText changes")
   );
 
+  /* ux-carpet 201: a query asked again paints the answer it gave last time,
+     in the frame it is created, while nothing it read has been written -
+     and a lock takes every such answer away. One call site, mounted four
+     times the way a tab is left and revisited. */
+  const mountEntryCount = () => {
+    let read!: LiveQuery<number>;
+    const destroy = $effect.root(() => {
+      read = liveQuery(async (j) => (await j.entries.recentDays(30)).length);
+    });
+    return { read, destroy, loadingAtCreation: read.loading, valueAtCreation: read.value };
+  };
+  const firstVisit = mountEntryCount();
+  await until(() => !firstVisit.read.loading, 'the entry count to answer on its first visit');
+  firstVisit.destroy();
+  const revisit = mountEntryCount();
+  const revisitSettled = await reasonIfNotReached(until(() => !revisit.read.loading, 'the revisit to settle'));
+  revisit.destroy();
+  await journal.entries.upsertEntry({ epochDay: TODAY - 7, mood: 2 });
+  const afterWrite = mountEntryCount();
+  await until(() => !afterWrite.read.loading, 'the entry count to answer after a write');
+  afterWrite.destroy();
+  quickExit();
+  const afterLock = mountEntryCount();
+  await until(() => !afterLock.read.loading, 'the entry count to answer after a lock');
+  afterLock.destroy();
+
   publish({
+    lastResults: {
+      firstVisit: { loading: firstVisit.loadingAtCreation, value: firstVisit.valueAtCreation ?? null, answered: firstVisit.read.value ?? null },
+      revisit: { loading: revisit.loadingAtCreation, value: revisit.valueAtCreation ?? null, error: revisitSettled },
+      afterWrite: { loading: afterWrite.loadingAtCreation, value: afterWrite.valueAtCreation ?? null },
+      afterLock: { loading: afterLock.loadingAtCreation, value: afterLock.valueAtCreation ?? null }
+    },
     projection: { runsBefore: projectionRunsBefore, runsAfter: projectionRuns, error: projectionError },
     narrowed: {
       runsBefore: recapRunsBefore,
