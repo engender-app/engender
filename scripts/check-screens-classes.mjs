@@ -83,7 +83,16 @@ const SHEETS = [
       /* Sibling selector .screen-header + .kit-heading references ScreenHeader */
       'screen-header',
       /* direction-contract.test.ts asserts .kit-tile-note-text clamp in kit.css */
-      'kit-tile-note-text'
+      'kit-tile-note-text',
+      /* ReadReserve.svelte is the one consumer, but the rule that names them
+         is about the heading inside, not the reserve: a .kit-heading first in
+         a reserve body keeps its 40 unless the reserve is first on the screen
+         (ux-carpet 211). It sits beside kit.css's other first-heading rules,
+         at their unscoped specificity, so the cascade between them stays
+         readable in one place; a scoped copy in ReadReserve would win on
+         specificity alone and hide the interaction (ticket 229). */
+      'read-reserve',
+      'read-reserve-body'
     ])
   },
   {
