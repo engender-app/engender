@@ -37,7 +37,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
+  import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { COUNTEREVIDENCE_LIMIT, COUNTEREVIDENCE_PREVIEW } from '$lib/data/counterevidence';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';

@@ -24,7 +24,7 @@ import { normalize } from '../metricRange';
 import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from '../safeSpaceNudge';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
-import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
+import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtinTemplates';
 import { getRegionSomaticBreakdown, type RegionSomaticBreakdown } from './bodyMapQueries';
 import { bool, entryPresentationFilter } from './support';
 
