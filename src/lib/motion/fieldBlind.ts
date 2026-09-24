@@ -254,18 +254,22 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
   const height = scrolled ? 0 : field.getBoundingClientRect().height;
   /* Nested under the field's own group (`contain`, set below) rather than
      becoming an independent root-level group, only where that is what the
-     name is FOR: the blind and the sun's rings are each larger than what
-     is ever visible of them at rest, so their capture needs a clipping
-     ancestor or it escapes it (`FIELD_NAME`'s own comment). A field-part
-     has no such excess - it is exactly its own visible text or icon, named
-     only so it can fade on its own clock apart from its neighbour - and
-     nesting it added a second ancestor between it and the root for no
-     reason this bug ever needed, which is what carried the ghost: Home's
-     wordmark still fading out, visible through the incoming screen,
-     reported straight after this fix on a recording of Home to a new
-     entry (Alicja, 2026-09-10, round five). `nearest` finds whichever
-     named ancestor is closest, so callers that do want it never have to
-     know the field's own name or that it changed hands mid-navigation. */
+     name is FOR: the blind is larger than what is ever visible of it at rest,
+     so its capture needs a clipping ancestor or it escapes it (`FIELD_NAME`'s
+     own comment). A field-part has no such excess - it is exactly its own
+     visible text or icon, named only so it can fade on its own clock apart
+     from its neighbour - and nesting it added a second ancestor between it
+     and the root for no reason this bug ever needed, which is what carried
+     the ghost: Home's wordmark still fading out, visible through the
+     incoming screen, reported straight after this fix on a recording of
+     Home to a new entry (Alicja, 2026-09-10, round five).
+     The sun rings carry their own clip-path: inset(50% 50% 0 0) (components.css)
+     and are ordered above both the field and its parts (app.css z-index 5 > 4 > 3);
+     lifting them out of the field group keeps that ordering across view
+     transitions, where nesting them trapped them under the field group's
+     z-index 3 (ux-carpet 241). `nearest` finds whichever named ancestor is
+     closest, so callers that do want it never have to know the field's own
+     name or that it changed hands mid-navigation. */
   const take = (el: HTMLElement | null, as: string, nest = false) => {
     if (!el) return;
     el.style.viewTransitionName = as;
@@ -314,7 +318,7 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
   }
   field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`));
   if (!options.holdSun) {
-    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`, true));
+    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
   }
 
   return { height, named };
