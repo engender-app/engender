@@ -18,6 +18,7 @@
   open={ui.raisedManager === 'modes'}
   title={m.presentations_title()}
   onClose={() => (ui.raisedManager = null)}
+  globalTransitions
 >
   <PresentationsManager />
 </Sheet>
@@ -26,6 +27,7 @@
   open={ui.raisedManager === 'templates'}
   title={m.entry_templates_title()}
   onClose={() => (ui.raisedManager = null)}
+  globalTransitions
 >
   <EntryTemplatesManager />
 </Sheet>
