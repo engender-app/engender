@@ -163,7 +163,7 @@
     <div
       class="sheet-scrim-tint scrim-withdraw"
       data-sheet-tint
-      transition:scrimFade
+      transition:scrimFade|global
     ></div>
     <div
       class="sheet-drag"
@@ -183,8 +183,8 @@
         aria-label={title}
         tabindex="-1"
         data-sheet
-        in:sheetRise
-        out:sheetRise
+        in:sheetRise|global
+        out:sheetRise|global
         {@attach focusInitial}
         {@attach ownSheet}
       >
