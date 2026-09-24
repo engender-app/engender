@@ -946,8 +946,13 @@ export function crossfade(
     }
   }
 
+  /* `{ instant: true }` for a placeholder that was never painted: a warm
+     revisit replaces it in the flush that mounted it (ReadGroup, ux-carpet
+     201), and fading out something nobody saw would draw it for the first
+     time, over the content, on its way out. */
+  const instant = (params as { instant?: boolean } | undefined)?.instant === true;
   return {
-    duration: motionDuration('--dur-fast'),
+    duration: instant ? 0 : motionDuration('--dur-fast'),
     easing: EASE_OUT,
     css: (t) => `opacity: ${t}`
   };
