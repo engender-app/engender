@@ -25,14 +25,11 @@
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>]
-   From another built tree, start it with that tree as cwd (kit's preview
-   reads process.cwd()) and pass `--root .`. */
-import { preview } from 'vite';
+     node tests/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>] [--root <built tree>] */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage } from './browser-harness.mjs';
+import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
   FILL_EVERY_FEATURE_EXPRESSION,
@@ -48,7 +45,7 @@ const flag = (name, fallback) => {
 };
 const RUNS = Number(flag('runs', '3'));
 const THEME = flag('theme', 'light');
-const DUMP = flag('dump', '');
+const DUMP = flag('dump', '') && resolve(flag('dump', ''));
 /* The screens with a heading-led ReadGate (191) and the ones found with a
    late ungated block (193). `--routes` takes any list; every static route
    was swept this way on 2026-09-23. */
@@ -162,7 +159,7 @@ function analyse(samples) {
 }
 
 const browser = await launchChromium();
-const app = await preview({ root: resolve(flag('root', resolve(here, '..'))), preview: { port: 0 } });
+const app = await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: VIEWPORT_H }, deviceScaleFactor: 1 });
 const errors = [];

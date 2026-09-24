@@ -16,7 +16,12 @@ few kept files still name them as the source of a pattern:
 `git log --all -- tests/<name>.mjs` finds the last version.
 
 Most of these start their own Vite server or `vite preview`. Anything that
-says "demo build" serves `build/`, which has to be a `VITE_DEMO=1` build.
+says "demo build" serves `build/`, which has to be a `VITE_DEMO=1` build. A
+probe that takes `--root <built tree>` starts its preview through
+`previewBuild` in browser-harness.mjs, which changes into that tree first:
+SvelteKit's preview reads the built server from the working directory, so a
+`--root` alone used to serve the checkout the probe was started in (ticket
+226).
 
 ## Guards
 

@@ -31,11 +31,10 @@
        node /abs/path/to/tests/savebar-clearance-gallery.mjs \
          --tag before --root . --out /abs/path
 */
-import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, previewBuild } from './browser-harness.mjs';
 import { readFile } from 'node:fs/promises';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -73,7 +72,7 @@ const VIEWPORTS = [
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
-const app = await preview({ root, preview: { port: 0 } });
+const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const readings = [];
 const shots = [];

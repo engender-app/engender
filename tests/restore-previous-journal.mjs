@@ -30,10 +30,9 @@
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/restore-previous-journal.mjs [--root <built tree>] */
-import { preview } from 'vite';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, previewBuild } from './browser-harness.mjs';
 import { INIT_HIDE_DEMO_SCRIPT } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -42,7 +41,7 @@ const at = args.indexOf('--root');
 const root = resolve(at >= 0 ? args[at + 1] : resolve(here, '..'));
 
 const browser = await launchChromium();
-const app = await preview({ root, preview: { port: 0 } });
+const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 
 let failures = 0;
