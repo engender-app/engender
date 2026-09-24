@@ -34,10 +34,12 @@
    `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
    resolution, which needs a real scheduler to be seen re-running at all. */
 
+import { untrack } from 'svelte';
 import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
-import { bump, versionOf } from './tableVersions.svelte';
+import { bump, settledVersionOf, versionOf } from './tableVersions.svelte';
+import { callKey, forgetLastResults, recall, remember, sameAnswer } from './lastResults';
 
 export { onTablesWritten, batchWrites } from './tableVersions.svelte';
 
@@ -68,6 +70,9 @@ let wrapped: Journal | null = null;
     driver, and the tables do not exist until the migrations have run, which is
     what `journalIsOpen()` reports. */
 export function attachJournal(raw: Journal): Journal {
+  /* Answers read from another journal handle are not answers about this
+     one (lastResults.ts). */
+  forgetLastResults();
   wrapped = observeWrites(raw, bump);
   return wrapped;
 }
@@ -193,7 +198,7 @@ export interface LiveList<T> {
     Must be called while a component is initialising, like any `$effect`: the
     query lives and dies with the component that asked for it. */
 export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: TableName[]): LiveQuery<T> {
-  return query(null, run, seed ?? null);
+  return query(null, run, seed ?? null, callSite());
 }
 
 /** `liveQuery` for a read that answers with a list: the same query, seen
@@ -205,7 +210,7 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: Table
     not answered at all, but still counts as a successful empty result.
     `seed` is `liveQuery`'s own. */
 export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>, seed?: TableName[]): LiveList<T> {
-  return listOf(query(null, (journal) => run(journal).then((rows) => rows ?? []), seed ?? null));
+  return listOf(query(null, (journal) => run(journal).then((rows) => rows ?? []), seed ?? null, callSite()));
 }
 
 /** The list inside a wider answer, gated like any other list.
@@ -275,8 +280,24 @@ export function liveQueryWatchingOnly<T>(
   tables: TableName[],
   run: (journal: Journal) => Promise<T>
 ): LiveQuery<T> {
-  return query(tables, run, null);
+  return query(tables, run, null, callSite());
 }
+
+/** Where `liveQuery` or `liveList` was called from, as a stack frame: the
+    first half of a last-answer key (lastResults.ts). Taken two frames up -
+    past this function and the exported one that called it - in both stack
+    formats: V8 (Chromium, the Android WebView) opens with an "Error" line,
+    Gecko does not. Null where there is no stack to read, which only turns
+    the store off for that query. */
+function callSite(): string | null {
+  const lines = new Error().stack?.split('\n') ?? [];
+  if (lines[0]?.startsWith('Error')) lines.shift();
+  return lines[2]?.trim() || null;
+}
+
+let queriesMade = 0;
+const liveQueries = new Set<number>();
+const isLiveQuery = (instance: number) => liveQueries.has(instance);
 
 /** How long a query's first-ever attempt waits before retrying a rejection,
     once, before reporting `failed` (ticket 161) - long enough to cover "a
@@ -287,9 +308,24 @@ const FIRST_ATTEMPT_RETRY_DELAY_MS = 50;
 function query<T>(
   narrowedTo: TableName[] | null,
   run: (journal: Journal) => Promise<T>,
-  seed: TableName[] | null
+  seed: TableName[] | null,
+  site: string | null
 ): LiveQuery<T> {
-  let state = $state<ReadState<T>>(pending<T>());
+  /* A warm revisit paints the answer this query gave last time, if nothing
+     it read has been written since (lastResults.ts, ux-carpet 201). Asked
+     here, while the component initialises, rather than in the effect: a
+     value set by the effect lands a flush after the first render, and the
+     read's skeleton and its reserve's crossfade would already be under way.
+     The closure is run once against a journal that answers nothing, only to
+     learn what it asks for. */
+  const instance = ++queriesMade;
+  liveQueries.add(instance);
+  const asked = site && openedJournal ? recallFor(site, run, openedJournal) : null;
+  const recalled = asked?.value;
+  let state = $state<ReadState<T>>(recalled === undefined ? pending<T>() : landed(recalled as T));
+  /* The painted answer the first refresh compares against: equal, and the
+     refresh assigns nothing, so nothing on screen re-renders or moves. */
+  let painted: unknown = recalled;
   /* Only the newest run may write the result. Without this a fast re-run that
      overtakes a slow one - a search where "co" outruns "c" - would leave the
      older answer on screen for good. */
@@ -322,6 +358,10 @@ function query<T>(
     }
   };
 
+  $effect(() => () => {
+    liveQueries.delete(instance);
+  });
+
   $effect(() => {
     void discovered;
     void retries;
@@ -335,21 +375,44 @@ function query<T>(
        re-run - reports a rejection immediately, exactly as before. */
     const firstEverAttempt = mine === 1;
 
+    /* The versions this run starts from, and the key its synchronous calls
+       make: what the answer is stored under once it lands. */
+    let key: string | null = null;
+    let calls: (string | null)[] = [];
+    const startedAt = new Map<TableName, number>();
+
     const attempt = (): Promise<T> => {
       recording = true;
+      calls = [];
       let running: Promise<T>;
       try {
-        running = run(recordingJournal(ready, dependOn));
+        running = run(recordingJournal(ready, dependOn, calls));
       } catch (error) {
         running = Promise.reject(error);
       } finally {
         recording = false;
       }
+      key = site ? keyOf(site, calls) : null;
+      startedAt.clear();
+      for (const table of dependencies) startedAt.set(table, settledVersionOf(table));
       return running;
     };
 
     const settle = (result: T) => {
       if (mine !== latest) return;
+      /* A run that asked the journal nothing at all, before or after an
+         await, answered from what the closure already had - an early return
+         for a closed sheet or an empty selection - and is keyed as such. */
+      if (key === null && site && calls.length === 0) key = `${site}|${NO_CALLS}`;
+      if (key !== null && result !== undefined) {
+        /* Stamped with the start versions of every table the query now
+           knows it reads, including any discovered during this run. */
+        const stamp: [string, number][] = [...dependencies].map((table) => [table, startedAt.get(table) ?? -1]);
+        remember(key, result, stamp, instance, isLiveQuery);
+      }
+      const unchanged = painted !== undefined && sameAnswer(painted, result);
+      painted = undefined;
+      if (unchanged && !state.failed) return;
       state = landed(result);
     };
 
@@ -359,7 +422,25 @@ function query<T>(
       state = gaveUp(state);
     };
 
-    attempt().then(settle, (error) => {
+    const running = attempt();
+
+    /* Asked again with the first real run's key, when that differs from the
+       one asked at initialisation. A closure whose arguments come from state
+       an earlier `$effect` of the same component settles - Look back's plane
+       reading picks its two axes that way - saw none of it at
+       initialisation, returned early and asked for nothing. By this effect
+       the state is settled, and the browser has still not painted, so an
+       answer found now is still in the tab's first frame. */
+    if (firstEverAttempt && site && untrack(() => state.loading)) {
+      const now = key ?? (calls.length === 0 ? `${site}|${NO_CALLS}` : null);
+      const again = now !== null && now !== asked?.key ? recallKey(now) : undefined;
+      if (again !== undefined) {
+        state = landed(again as T);
+        painted = again;
+      }
+    }
+
+    running.then(settle, (error) => {
       if (!firstEverAttempt) return fail(error);
       /* A route visited for the first time this session can reject once on
          its table's first touch and recover a couple of frames later
@@ -401,7 +482,15 @@ function query<T>(
     A proxy rather than a wrapper built per area at boot, for the reason the
     facade above is one: the shape is the journal's own, and nothing here
     should have to be edited when an area gains a method. */
-function recordingJournal(ready: Journal, dependOn: (area: string, operation: string) => void): Journal {
+function recordingJournal(
+  ready: Journal,
+  dependOn: (area: string, operation: string) => void,
+  calls?: (string | null)[],
+  /* What a call answers with instead of the operation itself: the last-answer
+     lookup (recallFor) passes a promise that never settles, so the closure
+     stops at its first await having only said what it asks. */
+  answer?: () => Promise<never>
+): Journal {
   return new Proxy({} as Journal, {
     get(_target, areaName: string) {
       const area = ready[areaName as keyof Journal] as unknown as Operations;
@@ -417,13 +506,51 @@ function recordingJournal(ready: Journal, dependOn: (area: string, operation: st
             if (typeof implementation !== 'function') return implementation;
             return (...args: unknown[]) => {
               dependOn(areaName, operation);
-              return implementation.call(area, ...args);
+              calls?.push(callKey(areaName, operation, args));
+              return answer ? answer() : implementation.call(area, ...args);
             };
           }
         }
       );
     }
   });
+}
+
+/** The answer `run` gave last time, if it is still good (lastResults.ts).
+    `run` is called against a journal whose every operation records itself
+    and then never answers, so the closure stops at its first await and
+    everything it called before then is the key. Nothing reaches the
+    database. */
+function recallFor(
+  site: string,
+  run: (journal: Journal) => Promise<unknown>,
+  ready: Journal
+): { key: string | null; value: unknown } {
+  const calls: (string | null)[] = [];
+  try {
+    void run(recordingJournal(ready, () => {}, calls, () => new Promise(() => {}))).catch(() => {});
+  } catch {
+    return { key: null, value: undefined };
+  }
+  const key = calls.length === 0 ? `${site}|${NO_CALLS}` : keyOf(site, calls);
+  return { key, value: key === null ? undefined : recallKey(key) };
+}
+
+const recallKey = (key: string): unknown =>
+  recall(key, (table) => settledVersionOf(table as TableName), isLiveQuery);
+
+/** What a closure that calls no operation at all is keyed under. A closure
+    that calls one only after an await looks the same to the asking run
+    above, and it finds nothing here unless one of its own runs once
+    returned early without asking - a paint that its refresh then corrects.
+    The one case the key cannot tell apart; lastResults.ts says why the
+    others can. */
+const NO_CALLS = '(no calls)';
+
+/** The key for a run's synchronous calls, or null if there were none or one
+    of them could not be written down. */
+function keyOf(site: string, calls: (string | null)[]): string | null {
+  return calls.length > 0 && !calls.includes(null) ? `${site}|${calls.join('|')}` : null;
 }
 
 /** Calls `fill` with a query's first result and never again.

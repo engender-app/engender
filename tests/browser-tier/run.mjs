@@ -1425,6 +1425,28 @@ try {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
 
+// --- ux-carpet 201: a revisit paints the last answer, a lock forgets it ----
+try {
+  const live = await load('/live-reads.html', 'live-reads-probe');
+  if (live.error) throw new Error(live.error);
+  const { firstVisit, revisit, afterWrite, afterLock } = live.lastResults;
+
+  if (firstVisit.loading) ok('a query asked for the first time starts loading');
+  else fail('a query asked for the first time starts loading', `had ${firstVisit.value} before any read`);
+
+  if (!revisit.loading && revisit.value === firstVisit.answered && revisit.error === null)
+    ok('the same query asked again has its last answer in the frame it is created');
+  else fail('the same query asked again has its last answer in the frame it is created', JSON.stringify(revisit));
+
+  if (afterWrite.loading) ok('a write to a table the answer read takes it away');
+  else fail('a write to a table the answer read takes it away', `painted ${afterWrite.value}`);
+
+  if (afterLock.loading) ok('after a lock the first visit reads fresh');
+  else fail('after a lock the first visit reads fresh', `painted ${afterLock.value}`);
+} catch (e) {
+  fail('ux-carpet 201 last answers', e.message ?? String(e));
+}
+
 // --- Phase 8 audit ticket 14: a seeded query declares its tables on the
 // first pass, so it settles in one run rather than discovering a late read
 // and paying for a second ---------------------------------------------------

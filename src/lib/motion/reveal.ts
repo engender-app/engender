@@ -960,8 +960,13 @@ export function crossfade(
     if (data) data.leaving = '';
   }
 
+  /* `{ instant: true }` for a placeholder that was never painted: a warm
+     revisit replaces it in the flush that mounted it (ReadGroup, ux-carpet
+     201), and fading out something nobody saw would draw it for the first
+     time, over the content, on its way out. */
+  const instant = (params as { instant?: boolean } | undefined)?.instant === true;
   return {
-    duration: motionDuration('--dur-fast'),
+    duration: instant ? 0 : motionDuration('--dur-fast'),
     easing: EASE_OUT,
     css: (t) => `opacity: ${t}`
   };
@@ -1056,6 +1061,14 @@ export const resize: Action<HTMLElement> = (node) => {
   let lastHeight = node.getBoundingClientRect().height;
   let animating = false;
   let current: Animation | undefined;
+  /* A height the box reached before it was ever painted is where it starts,
+     not a change: nobody saw the height it was mounted at. A warm revisit
+     (ux-carpet 201) swaps a group's placeholder for its content in the
+     flush that mounts it, and travelling from the placeholder's height
+     moved every tile under the reading grid 850px across the tab's first
+     170ms. */
+  let painted = typeof requestAnimationFrame !== 'function';
+  if (!painted) requestAnimationFrame(() => setTimeout(() => (painted = true)));
 
   const animateTo = (oldHeight: number, newHeight: number) => {
     animating = true;
@@ -1121,6 +1134,7 @@ export const resize: Action<HTMLElement> = (node) => {
     const newHeight = node.getBoundingClientRect().height;
     const oldHeight = lastHeight;
     lastHeight = newHeight;
+    if (!painted) return;
     // Under a pixel is a rounding wobble, not a resize - animating one would
     // run a 240ms transition over nothing to look at.
     if (Math.abs(newHeight - oldHeight) < 1) return;

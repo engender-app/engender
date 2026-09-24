@@ -29,6 +29,7 @@ import { prefs } from '../data/prefs/store.svelte';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { isAndroid } from '../platform';
 import { ui } from './ui.svelte';
+import { forgetLastResults } from '../data/live/lastResults';
 
 export const lockState = $state({
   /** Set once the access mode's secret has been given, cleared on every lock. */
@@ -50,6 +51,10 @@ export function markUnlocked() {
 
 function lockNow() {
   lockState.unlocked = false;
+  /* A locked app keeps none of the journal in the page: the reads' last
+     answers go with the lock, so the first visit after unlocking reads
+     fresh (lastResults.ts, ux-carpet 201). */
+  forgetLastResults();
   /* Quick add is a layout-level sibling of the gate chain, not below it, so
      its own open flag is the only thing keeping it up. Locking is neither a
      navigation nor an Escape - the fan's two other ways down - and closing
