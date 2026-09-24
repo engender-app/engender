@@ -29,9 +29,11 @@
      at all is keyed by its call site alone (journal.svelte.ts, NO_CALLS).
      What the key cannot see is a variable the closure uses only after an
      await; two live instances of one call site that ask the same thing
-     would be told apart only by that. So a key written by two instances
-     alive at once is marked ambiguous and never handed out again (until the
-     next forget).
+     would be told apart only by that. So an answer is never handed to a new
+     instance while the instance that stored it is still alive - a revisit
+     is by definition the old screen gone and a new one asking - and a key
+     written by two instances alive at once is marked ambiguous and never
+     handed out again (until the next forget).
 
    Rune-free, so the Node tier tests it (lastResults.test.ts). */
 
@@ -70,11 +72,16 @@ export function remember(
 }
 
 /** The answer stored under `key`, if every table it was read over is still at
-    the version it was read at. `undefined` otherwise, including when the
-    stored answer was itself `undefined` - there is nothing to paint then. */
-export function recall(key: string, currentVersion: (table: string) => number): unknown {
+    the version it was read at and the instance that stored it is gone.
+    `undefined` otherwise, including when the stored answer was itself
+    `undefined` - there is nothing to paint then. */
+export function recall(
+  key: string,
+  currentVersion: (table: string) => number,
+  isAlive: (instance: number) => boolean
+): unknown {
   const entry = entries.get(key);
-  if (!entry) return undefined;
+  if (!entry || isAlive(entry.writer)) return undefined;
   if (entry.versions.some(([table, version]) => currentVersion(table) !== version)) {
     entries.delete(key);
     return undefined;

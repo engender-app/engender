@@ -465,7 +465,11 @@ function query<T>(
 function recordingJournal(
   ready: Journal,
   dependOn: (area: string, operation: string) => void,
-  calls?: (string | null)[]
+  calls?: (string | null)[],
+  /* What a call answers with instead of the operation itself: the last-answer
+     lookup (recallFor) passes a promise that never settles, so the closure
+     stops at its first await having only said what it asks. */
+  answer?: () => Promise<never>
 ): Journal {
   return new Proxy({} as Journal, {
     get(_target, areaName: string) {
@@ -483,7 +487,7 @@ function recordingJournal(
             return (...args: unknown[]) => {
               dependOn(areaName, operation);
               calls?.push(callKey(areaName, operation, args));
-              return implementation.call(area, ...args);
+              return answer ? answer() : implementation.call(area, ...args);
             };
           }
         }
@@ -495,34 +499,17 @@ function recordingJournal(
 /** The answer `run` gave last time, if it is still good (lastResults.ts).
     `run` is called against a journal whose every operation records itself
     and then never answers, so the closure stops at its first await and
-    everything it called before then is the key. */
+    everything it called before then is the key. Nothing reaches the
+    database. */
 function recallFor(site: string, run: (journal: Journal) => Promise<unknown>, ready: Journal): unknown {
   const calls: (string | null)[] = [];
-  const asking = new Proxy({} as Journal, {
-    get(_target, areaName: string) {
-      const area = ready[areaName as keyof Journal] as unknown as Operations;
-      return new Proxy(
-        {},
-        {
-          get(_areaTarget, operation: string) {
-            const implementation = area?.[operation];
-            if (typeof implementation !== 'function') return implementation;
-            return (...args: unknown[]) => {
-              calls.push(callKey(areaName, operation, args));
-              return new Promise(() => {});
-            };
-          }
-        }
-      );
-    }
-  });
   try {
-    void run(asking).catch(() => {});
+    void run(recordingJournal(ready, () => {}, calls, () => new Promise(() => {}))).catch(() => {});
   } catch {
     return undefined;
   }
   const key = calls.length === 0 ? `${site}|${NO_CALLS}` : keyOf(site, calls);
-  return key === null ? undefined : recall(key, (table) => settledVersionOf(table as TableName));
+  return key === null ? undefined : recall(key, (table) => settledVersionOf(table as TableName), isLiveQuery);
 }
 
 /** What a closure that calls no operation at all is keyed under. A closure

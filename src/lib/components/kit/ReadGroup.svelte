@@ -77,7 +77,6 @@
     requestAnimationFrame(() => setTimeout(() => (painted = true)));
   });
   let instant = $state(false);
-  const placeholderOut = (node: Element) => (instant ? { duration: 0 } : crossfade(node));
 
   $effect(() => {
     if (group.shown || !group.answered) return;
@@ -117,7 +116,7 @@
     {@render children()}
   </div>
   {#if !group.shown}
-    <div class="read-group-wait" out:placeholderOut><Skeleton {variant} {count} /></div>
+    <div class="read-group-wait" out:crossfade={{ instant }}><Skeleton {variant} {count} /></div>
   {/if}
 </div>
 

@@ -17,15 +17,15 @@ beforeEach(() => {
 
 test('an answer comes back while nothing it read has been written', () => {
   remember('home|entries.recentDays(5)', [1, 2], [['entry', 0]], 1, isAlive);
-  assert.deepEqual(recall('home|entries.recentDays(5)', current), [1, 2]);
+  assert.deepEqual(recall('home|entries.recentDays(5)', current, isAlive), [1, 2]);
 });
 
 test('a write to any table it read takes the answer away for good', () => {
   remember('k', 'old', [['entry', 0], ['tag', 0]], 1, isAlive);
   versions.tag = 1;
-  assert.equal(recall('k', current), undefined);
+  assert.equal(recall('k', current, isAlive), undefined);
   versions.tag = 0;
-  assert.equal(recall('k', current), undefined, 'dropped, not merely hidden');
+  assert.equal(recall('k', current, isAlive), undefined, 'dropped, not merely hidden');
 });
 
 test('after a lock the first visit reads fresh: nothing is held', () => {
@@ -33,8 +33,8 @@ test('after a lock the first visit reads fresh: nothing is held', () => {
   remember('b', 2, [], 1, isAlive);
   forgetLastResults();
   assert.equal(lastResultCount(), 0);
-  assert.equal(recall('a', current), undefined);
-  assert.equal(recall('b', current), undefined);
+  assert.equal(recall('a', current, isAlive), undefined);
+  assert.equal(recall('b', current, isAlive), undefined);
 });
 
 test('two live instances writing one key make it ambiguous; a later instance after the first is gone does not', () => {
@@ -42,9 +42,9 @@ test('two live instances writing one key make it ambiguous; a later instance aft
   alive.add(2);
   remember('tile|stats.dayAverages("mood",1,9)', 'for metric A', [], 1, isAlive);
   remember('tile|stats.dayAverages("mood",1,9)', 'for metric B', [], 2, isAlive);
-  assert.equal(recall('tile|stats.dayAverages("mood",1,9)', current), undefined);
+  assert.equal(recall('tile|stats.dayAverages("mood",1,9)', current, isAlive), undefined);
   remember('tile|stats.dayAverages("mood",1,9)', 'again', [], 1, isAlive);
-  assert.equal(recall('tile|stats.dayAverages("mood",1,9)', current), undefined, 'stays ambiguous');
+  assert.equal(recall('tile|stats.dayAverages("mood",1,9)', current, isAlive), undefined, 'stays ambiguous');
 
   alive.clear();
   alive.add(3);
@@ -52,15 +52,27 @@ test('two live instances writing one key make it ambiguous; a later instance aft
   alive.delete(3);
   alive.add(4);
   remember('rail|eras.getEras()', 'second visit', [], 4, isAlive);
-  assert.equal(recall('rail|eras.getEras()', current), 'second visit');
+  alive.delete(4);
+  assert.equal(recall('rail|eras.getEras()', current, isAlive), 'second visit');
+});
+
+test('an answer is never handed to a second instance while the one that stored it is alive', () => {
+  /* Two rows of one list, alive together, whose closures differ only after
+     an await: the second must not paint the first one's answer while it
+     mounts, before its own answer could mark the key ambiguous. */
+  alive.add(1);
+  remember('row|(no calls)', 'row one', [], 1, isAlive);
+  assert.equal(recall('row|(no calls)', current, isAlive), undefined);
+  alive.delete(1);
+  assert.equal(recall('row|(no calls)', current, isAlive), 'row one', 'a revisit, once the first is gone');
 });
 
 test('the least recently used answer goes first past the cap', () => {
   for (let i = 0; i < 400; i++) remember(`k${i}`, i, [], 1, isAlive);
-  recall('k0', current);
+  recall('k0', current, isAlive);
   remember('k400', 400, [], 1, isAlive);
-  assert.equal(recall('k0', current), 0);
-  assert.equal(recall('k1', current), undefined);
+  assert.equal(recall('k0', current, isAlive), 0);
+  assert.equal(recall('k1', current, isAlive), undefined);
   assert.equal(lastResultCount(), 400);
 });
 
