@@ -91,7 +91,27 @@ const SAMPLER = `new Promise((done) => {
    height from above, or at opacity 0.05 or less, it does not. */
 const painted = (box) => box != null && box.o > 0.05 && box.clipTop < box.h - 1;
 
-function findings(samples) {
+/* The samples the sampler took a frame apart. It samples in a timeout after
+   each animation frame, and under 4x CPU throttling that timeout sometimes
+   lands a frame late and the next one a few ms after it, so one step spans
+   two frames and the next is a copy of the same layout (ticket 224: a 12.7px
+   step 27ms after the sample before it, then an identical sample 4ms later,
+   read as a one-frame move and as the notice's first frame already 19px
+   open). A copy taken under half a frame after the sample before it is
+   dropped, and a sample over a frame and a half after the one before it is
+   marked, so the one-frame rules below do not judge a step they did not see
+   whole. The jump and vanish rules still apply across it. */
+function consecutive(samples) {
+  const kept = samples.filter(
+    (s, i) => i === 0 || s.at - samples[i - 1].at >= 8 || JSON.stringify(s.boxes) !== JSON.stringify(samples[i - 1].boxes)
+  );
+  const gaps = kept.slice(1).map((s, i) => s.at - kept[i].at).sort((a, b) => a - b);
+  const frame = gaps[Math.floor(gaps.length / 2)] ?? 1000 / 60;
+  return kept.map((s, i) => ({ ...s, afterGap: i > 0 && s.at - kept[i - 1].at > 1.5 * frame }));
+}
+
+function findings(raw) {
+  const samples = consecutive(raw);
   const out = [];
   const keys = new Set(samples.flatMap((s) => Object.keys(s.boxes)));
   for (const key of keys) {
@@ -108,12 +128,12 @@ function findings(samples) {
       let run = 1;
       for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
       for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
-      if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
+      if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || (run === 1 && !samples[i].afterGap))
         out.push(`${name} ${Math.round(d)}px in one frame at ${Math.round(samples[i].at)}ms (${run}-frame move)`);
     }
     const first = series.findIndex(Boolean);
     const f = series[first];
-    if (f?.notice && painted(f))
+    if (f?.notice && painted(f) && !samples[first].afterGap)
       out.push(`the notice's first frame painted ${Math.round(f.h - f.clipTop)}px at opacity ${f.o}`);
   }
   return out;
