@@ -106,7 +106,7 @@ test('a statement that fails on its own reports its own error', async () => {
 
 test('the two calls made with no driver open carry no number', async () => {
   const { deleteAndroidDatabase, androidJournalIsPlaintext } = await import('./android-driver.ts');
-  void deleteAndroidDatabase();
+  void deleteAndroidDatabase('journal');
   void androidJournalIsPlaintext('journal');
   await flush();
 
@@ -114,4 +114,15 @@ test('the two calls made with no driver open carry no number', async () => {
     ['deleteDatabase', undefined],
     ['isPlaintextDatabase', undefined]
   ]);
+});
+
+/* ux-carpet 210: the start-over wipe runs from a locked gate, in a process
+   where nothing has opened the journal, so the plugin has no open of its own
+   to learn the file from. It has to be told. */
+test('the start-over wipe names the database it deletes', async () => {
+  const { deleteAndroidDatabase } = await import('./android-driver.ts');
+  void deleteAndroidDatabase('engender.sqlite3');
+  await flush();
+
+  expect(sent.find((call) => call.method === 'deleteDatabase')?.options).toEqual({ name: 'engender.sqlite3' });
 });

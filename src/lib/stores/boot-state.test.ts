@@ -1,5 +1,11 @@
 import { expect, test } from 'vitest';
-import { bootStates, bootTransitions, midSessionLockApplies, needsOnboardingAccessMode } from './boot-state.ts';
+import {
+  bootStates,
+  bootTransitions,
+  journalIsUnreadable,
+  midSessionLockApplies,
+  needsOnboardingAccessMode
+} from './boot-state.ts';
 
 test('starts in booting with no payload state', () => {
   expect(bootStates.booting()).toMatchObject({
@@ -173,4 +179,19 @@ test('needsOnboardingAccessMode is true only for a first run with no keystore', 
   expect(
     needsOnboardingAccessMode(bootTransitions.toReady(booting, { journal: {} as never }))
   ).toBe(false);
+});
+
+/* ux-carpet 210: a journal the key cannot read never opens by retrying, so
+   the error screen has to know which failure this is to offer a way out. */
+test('names the failures where the key cannot read the journal', () => {
+  const failed = (message: string) => bootTransitions.toError(bootStates.booting(), message);
+  expect(
+    journalIsUnreadable(
+      failed('file is not a database (code 26): , while compiling: SELECT COUNT(*) FROM sqlite_schema;')
+    )
+  ).toBe(true);
+  expect(journalIsUnreadable(failed('SQLITE_NOTADB: file is not a database'))).toBe(true);
+  expect(journalIsUnreadable(failed('android-plaintext-journal'))).toBe(false);
+  expect(journalIsUnreadable(failed('database is locked'))).toBe(false);
+  expect(journalIsUnreadable(bootStates.booting())).toBe(false);
 });
