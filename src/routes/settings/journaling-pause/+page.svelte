@@ -6,6 +6,8 @@
      an explicit "resume" action (upsertPause with today as the end day),
      distinct from deleting the row outright, which erases that the pause
      ever happened rather than closing it out. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -62,78 +64,91 @@
   async function deletePause(id: string) {
     await journal.journalingPauses.deletePause(id);
   }
+
+  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  let pausesRevealed = $state(false);
+  $effect.pre(() => {
+    if (!pausesQuery.loading) pausesRevealed = true;
+  });
+  const pausesEstimate = readReserve('journaling-pause');
+  const pausesRemember = (px: number) => rememberReserve('journaling-pause', px);
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.journaling_pause_title()} back="/settings" subtitle={m.journaling_pause_intro()} />
 
-  <div class="kit-panel" data-kit-surface use:resize>
-    {#if current}
-      <p class="kit-row-title">
-        {m.journaling_pause_running_since({
-          day: fmtDay(current.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-        })}
-      </p>
-      <p class="muted small" style="margin:var(--space-2) 0 var(--space-3)">{m.journaling_pause_running_hint()}</p>
-      <button class="btn btn-soft" data-resume-pause onclick={resumeToday}>
-        <span>{m.journaling_pause_resume()}</span>
-      </button>
-    {:else if newPause}
-      <div class="cd-endpoints">
-        <Field label={m.journaling_pause_start_label()} id="pause-start">
-          {#snippet children(id)}
-            <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
-          {/snippet}
-        </Field>
-        <Field label={m.journaling_pause_end_label()} id="pause-end">
-          {#snippet children(id)}
-            <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
-          {/snippet}
-        </Field>
-      </div>
-      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
-        {m.journaling_pause_end_hint()}
-      </p>
-      <button
-        class="btn btn-primary"
-        data-confirm-pause
-        disabled={epochDayFromDateInputValue(newPause.start) === null}
-        onclick={startPause}
-      >
-        <span>{m.journaling_pause_start()}</span>
-      </button>
-    {:else}
-      <button
-        class="btn btn-primary"
-        data-new-pause
-        onclick={() => (newPause = { start: dateInputValueFromEpochDay(today), end: '' })}
-      >
-        <span>{m.journaling_pause_start()}</span>
-      </button>
-    {/if}
-  </div>
+  <!-- Held until the pauses have answered, then faded in (ux-carpet ticket
+       211): the history cut in at full opacity when they did, and the panel
+       above it answers from the same read. -->
+  <ReadReserve ready={pausesRevealed} estimate={pausesEstimate} onrest={pausesRemember}>
+    <div class="kit-panel" data-kit-surface use:resize>
+      {#if current}
+        <p class="kit-row-title">
+          {m.journaling_pause_running_since({
+            day: fmtDay(current.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+          })}
+        </p>
+        <p class="muted small" style="margin:var(--space-2) 0 var(--space-3)">{m.journaling_pause_running_hint()}</p>
+        <button class="btn btn-soft" data-resume-pause onclick={resumeToday}>
+          <span>{m.journaling_pause_resume()}</span>
+        </button>
+      {:else if newPause}
+        <div class="cd-endpoints">
+          <Field label={m.journaling_pause_start_label()} id="pause-start">
+            {#snippet children(id)}
+              <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
+            {/snippet}
+          </Field>
+          <Field label={m.journaling_pause_end_label()} id="pause-end">
+            {#snippet children(id)}
+              <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
+            {/snippet}
+          </Field>
+        </div>
+        <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
+          {m.journaling_pause_end_hint()}
+        </p>
+        <button
+          class="btn btn-primary"
+          data-confirm-pause
+          disabled={epochDayFromDateInputValue(newPause.start) === null}
+          onclick={startPause}
+        >
+          <span>{m.journaling_pause_start()}</span>
+        </button>
+      {:else}
+        <button
+          class="btn btn-primary"
+          data-new-pause
+          onclick={() => (newPause = { start: dateInputValueFromEpochDay(today), end: '' })}
+        >
+          <span>{m.journaling_pause_start()}</span>
+        </button>
+      {/if}
+    </div>
 
-  {#if history.length}
-    <SectionTitle text={m.journaling_pause_history_title()} />
-    <ListCard>
-      {#each history as pause (pause.id)}
-        <ListRow
-          static
-          title={`${fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })} ${
-            pause.endEpochDay === null
-              ? `· ${m.journaling_pause_ongoing()}`
-              : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`
-          }`}
-          action={{
-            icon: 'trash',
-            label: m.journaling_pause_delete_aria({
-              from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-            }),
-            onclick: () => deletePause(pause.id),
-            attrs: { 'data-delete-pause': pause.id }
-          }}
-        />
-      {/each}
-    </ListCard>
-  {/if}
+    {#if history.length}
+      <SectionTitle text={m.journaling_pause_history_title()} />
+      <ListCard>
+        {#each history as pause (pause.id)}
+          <ListRow
+            static
+            title={`${fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })} ${
+              pause.endEpochDay === null
+                ? `· ${m.journaling_pause_ongoing()}`
+                : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`
+            }`}
+            action={{
+              icon: 'trash',
+              label: m.journaling_pause_delete_aria({
+                from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+              }),
+              onclick: () => deletePause(pause.id),
+              attrs: { 'data-delete-pause': pause.id }
+            }}
+          />
+        {/each}
+      </ListCard>
+    {/if}
+  </ReadReserve>
 </div>

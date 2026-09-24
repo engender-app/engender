@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* The step-by-step checklist, on the surface kit (phase 5 UX ticket 25).
 
@@ -80,14 +82,13 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -297,6 +298,14 @@
     selectedGoal = null;
   }
 
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let roadmapRevealed = $state(false);
+  $effect.pre(() => {
+    if (!roadmapRevealed && loaded && vocabulary.ready) roadmapRevealed = true;
+  });
+  const roadmapEstimate = readReserve('roadmap');
+  const roadmapRemember = (px: number) => rememberReserve('roadmap', px);
 </script>
 
 <div class="screen">
@@ -338,9 +347,8 @@
     </div>
   {/if}
 
-  {#if !loaded}
-    <div out:crossfade><Skeleton variant="line" count={4} /></div>
-  {:else}
+  <!-- Held at last visit's height until the goals have answered, then faded in (ux-carpet ticket 211): the track control, panels and sources cut in at full opacity over the skeleton. -->
+  <ReadReserve ready={roadmapRevealed} estimate={roadmapEstimate} onrest={roadmapRemember}>
     <Segmented
       name={m.roadmap_track_switch_label()}
       key="roadmap-track"
@@ -514,7 +522,7 @@
     <p class="roadmap-sources muted small" data-roadmap-sources>
       {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
     </p>
-  {/if}
+  </ReadReserve>
 </div>
 
 <Sheet open={addTrack !== null} title={m.roadmap_new_goal()} onClose={() => (addTrack = null)}>
