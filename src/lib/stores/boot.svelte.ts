@@ -696,12 +696,14 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       activeSqlite?.requestPersistentStorage
         ? activeSqlite.requestPersistentStorage()
         : Promise.resolve(true),
-    // Step 3: built-ins reconcile on every boot, by key - not seed-if-empty,
-    // so a journal can never end up short of one (ADR-0002; ticket 14's
-    // Replace calls the same operation before an import applies). Then the
-    // mirror is filled from what that left behind (ADR-0004).
+    // Step 3: built-ins reconcile by key - not seed-if-empty, so a journal
+    // can never end up short of one (ADR-0002; ticket 14's Replace calls the
+    // same operation before an import applies). Skipped when the journal
+    // already holds this build's catalogue, which is one header read instead
+    // of a transaction and a module fetch (builtInsStamp.ts, ticket 208).
+    // Then the mirror is filled from what that left behind (ADR-0004).
     loadReferenceData: async () => {
-      await journal!.reconcileBuiltIns();
+      await journal!.reconcileBuiltIns({ unlessCurrent: true });
       await hydrateReference(journal!);
     },
     /* Step 4: after the database is open and migrated, so the rows it

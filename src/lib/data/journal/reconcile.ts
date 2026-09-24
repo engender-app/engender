@@ -32,8 +32,19 @@ async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<str
   return new Set(rows.map((r) => r.key));
 }
 
-export async function reconcileBuiltIns(driver: SqliteDriver): Promise<void> {
-  await driver.transaction(() => reconcileBuiltInsWithin(driver));
+/** With a `stamp`, also records in the journal header which catalogue it
+    now holds (builtInsStamp.ts, ticket 208), in the same transaction, so a
+    reconcile that fails part-way leaves the old stamp and the next boot
+    tries again. */
+export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): Promise<void> {
+  await driver.transaction(async () => {
+    await reconcileBuiltInsWithin(driver);
+    /* exec, not run: a PRAGMA takes no bound parameter, and Android's
+       run() goes through execSQL(sql, bindArgs) where setUserVersion
+       deliberately does not (SqliteConnection.java). The stamp is a number
+       this module computed, never anything typed. */
+    if (stamp !== undefined) await driver.exec(`PRAGMA application_id = ${Math.trunc(stamp)}`);
+  });
 }
 
 /** The same work without a transaction of its own, for the one caller that
