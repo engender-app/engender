@@ -60,6 +60,7 @@
   } from '$lib/data/lookBackSpan';
   import { spanLabel } from '$lib/data/spanLabel';
   import { recapDimChange } from '$lib/data/recapDisplay';
+  import type { RecapDimChange } from '$lib/data/recapDisplay';
   import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { metricStandings } from '$lib/data/statsCharts';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -257,6 +258,28 @@
     return standing && standing.value !== null ? nativeValue(shown.key, standing.value) : '';
   });
 
+  /* The two optional rows freeze their content the instant the card
+     itself decides to leave (ux-carpet 234, item 2). The fold above
+     (factsQuery) synced `activeAverage` and `dimChange` against each
+     other, but the same reactive flush that drops `entryCount` under
+     the floor also nulls both of them - so their own `{#if}`s saw that
+     same flip and started their own `transition:collapse` at the same
+     instant as the card's, one collapse nested inside the other, which
+     read as the rows sliding into each other rather than the card
+     closing as a block. `closingFacts` only updates while the card is
+     staying open, so once `enoughEntries` goes false the rows keep
+     showing whatever they last held and never see their own condition
+     flip - the card's own collapse is what plays. While the card holds,
+     a row's data genuinely emptying still updates here immediately, so
+     that row's own collapse still runs as before. */
+  let closingFacts = $state<{ activeAverage: string; dimChange: RecapDimChange | null }>({
+    activeAverage: '',
+    dimChange: null
+  });
+  $effect(() => {
+    if (enoughEntries) closingFacts = { activeAverage, dimChange };
+  });
+
   /* The on-this-day tile opens in place (phase 11 ticket 07, the audit's
      finding 8): the route it used to open was 844px holding one card and
      500px of nothing. The block discloses under the pair; the tile's own
@@ -360,14 +383,15 @@
           <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
             {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
           </ListRow>
-          {#if activeAverage}
+          {#if closingFacts.activeAverage}
             <div class="rows-divide" transition:collapse>
               <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
-                {#snippet trailing()}<b class="wrapped-figure-value">{activeAverage}</b>{/snippet}
+                {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
               </ListRow>
             </div>
           {/if}
-          {#if dimChange}
+          {#if closingFacts.dimChange}
+            {@const dimChange = closingFacts.dimChange}
             <div class="rows-divide" transition:collapse>
               <ListRow
                 static
