@@ -96,7 +96,8 @@ const SAMPLER = `new Promise((done) => {
    height from above, or at opacity 0.05 or less, it does not. */
 const painted = (box) => box != null && box.o > 0.05 && box.clipTop < box.h - 1;
 
-/* The samples the sampler took a frame apart. It samples in a timeout after
+/* Keeps the samples that are one frame apart and marks the ones that are
+   not. The sampler reads in a timeout after
    each animation frame, and under 4x CPU throttling that timeout sometimes
    lands a frame late and the next one a few ms after it, so one step spans
    two frames and the next is a copy of the same layout (ticket 224: a 12.7px
@@ -105,7 +106,10 @@ const painted = (box) => box != null && box.o > 0.05 && box.clipTop < box.h - 1;
    open). A copy taken under half a frame after the sample before it is
    dropped, and a sample over a frame and a half after the one before it is
    marked, so the one-frame rules below do not judge a step they did not see
-   whole. The jump and vanish rules still apply across it. */
+   whole. The jump and vanish rules still apply across it. What that leaves
+   unjudged, a 2-24px step straight after a gap, is printed under the run
+   rather than dropped, so a real mid-size move that lands on a throttling
+   hiccup is still in front of whoever reads the output. */
 function consecutive(samples) {
   const kept = samples.filter(
     (s, i) => i === 0 || s.at - samples[i - 1].at >= 8 || JSON.stringify(s.boxes) !== JSON.stringify(samples[i - 1].boxes)
@@ -115,7 +119,7 @@ function consecutive(samples) {
   return kept.map((s, i) => ({ ...s, afterGap: i > 0 && s.at - kept[i - 1].at > 1.5 * frame }));
 }
 
-function findings(raw) {
+function findings(raw, unjudged = []) {
   const samples = consecutive(raw);
   const out = [];
   const keys = new Set(samples.flatMap((s) => Object.keys(s.boxes)));
@@ -135,11 +139,13 @@ function findings(raw) {
       for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
       if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || (run === 1 && !samples[i].afterGap))
         out.push(`${name} ${Math.round(d)}px in one frame at ${Math.round(samples[i].at)}ms (${run}-frame move)`);
+      else if (run === 1)
+        unjudged.push(`${name} ${Math.round(d)}px at ${Math.round(samples[i].at)}ms, after a sampling gap`);
     }
     const first = series.findIndex(Boolean);
     const f = series[first];
-    if (f?.notice && painted(f) && !samples[first].afterGap)
-      out.push(`the notice's first frame painted ${Math.round(f.h - f.clipTop)}px at opacity ${f.o}`);
+    if (f?.notice && painted(f))
+      (samples[first].afterGap ? unjudged : out).push(`the notice's first frame painted ${Math.round(f.h - f.clipTop)}px at opacity ${f.o}`);
   }
   return out;
 }
@@ -161,13 +167,15 @@ for (let run = 1; run <= RUNS; run++) {
     const sampling = page.evaluate(SAMPLER);
     await page.fill('[data-hub-search]', to);
     const samples = await sampling;
-    const f = findings(samples);
+    const unjudged = [];
+    const f = findings(samples, unjudged);
     if (!had) f.push(`"${from}" matched nothing to begin with`);
     const shown = samples.some((s) => Object.values(s.boxes).some((b) => b.notice));
     if (!shown) f.push('the notice never arrived');
     if (f.length) failed = true;
     console.log(`More search, ${label}, run ${run}: ${f.length ? 'FAIL' : 'ok'}`);
     for (const line of f) console.log(`    ${line}`);
+    for (const line of unjudged) console.log(`    not judged: ${line}`);
   }
 }
 
