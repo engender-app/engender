@@ -45,7 +45,12 @@ const JUMP_PX = 24;
 const SAMPLE_MS = 1400;
 
 const browser = await launchChromium();
-const app = await preview({ root: resolve(flag('root', resolve(here, '..'))), preview: { port: 0 } });
+/* SvelteKit's preview finds the built server under the working directory,
+   not under Vite's root, so a --root without this served whatever tree the
+   probe was started in (ticket 224). */
+const root = resolve(flag('root', resolve(here, '..')));
+process.chdir(root);
+const app = await preview({ root, preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
