@@ -275,12 +275,18 @@ final class SqliteConnection {
      * <p>The connection goes first, because a file with an open handle on it
      * deletes on some filesystems and not on others, and a reset that half
      * worked is worse than one that failed.
+     *
+     * <p>The files are found by name, not through the last open. A reset is
+     * mostly asked for from a locked gate, and in a cold process nothing has
+     * opened the journal by then: going through the open's path, this used
+     * to delete nothing there, erase the key anyway, and leave the next
+     * setup minting a new key over the old ciphertext (ux-carpet 210).
      */
-    void deleteDatabaseFiles() throws IOException {
+    void deleteDatabaseFiles(Context context, String name) throws IOException {
         close();
-        if (databaseFile == null) return;
+        File live = context.getDatabasePath(name);
         for (String suffix : new String[] {"", "-wal", "-shm", "-journal", PRE_MIGRATION_SUFFIX}) {
-            File file = new File(databaseFile.getPath() + suffix);
+            File file = new File(live.getPath() + suffix);
             if (file.exists() && !file.delete()) throw new IOException("could not delete " + file);
         }
     }
