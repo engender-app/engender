@@ -116,6 +116,13 @@ async function attach(seedPath: string): Promise<Sqlite3Static> {
 const poolPath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
 
 const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
+  /* The module, the pool and the shim, ahead of the key (ux-carpet ticket
+     209): no database is opened and no key is taken. `open` below calls
+     the same attach and finds it done. */
+  async attach(args: { path: string }) {
+    await attach(args.path);
+  },
+
   async open(args: { path: string; hexKey: string }) {
     const api = await attach(args.path);
     databasePath = poolPath(args.path);
