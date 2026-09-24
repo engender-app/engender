@@ -267,8 +267,13 @@ public class SqlitePlugin extends Plugin {
     @PluginMethod
     public void deleteDatabase(PluginCall call) {
         worker.execute(() -> {
+            String name = call.getString("name");
+            if (name == null || name.isEmpty()) {
+                call.reject("deleteDatabase requires a database name");
+                return;
+            }
             try {
-                connection.deleteDatabaseFiles();
+                connection.deleteDatabaseFiles(getContext(), name);
                 call.resolve();
             } catch (Exception e) {
                 call.reject(message(e), e);

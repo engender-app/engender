@@ -60,7 +60,7 @@ interface SqliteBridge {
   copyDatabaseFile(options: Stamp): Promise<void>;
   restorePreMigrationCopy(options: Stamp): Promise<void>;
   cleanupPreMigrationCopy(options: Stamp): Promise<void>;
-  deleteDatabase(): Promise<void>;
+  deleteDatabase(options: { name: string }): Promise<void>;
   isPlaintextDatabase(options: { name: string }): Promise<{ plaintext: boolean }>;
   close(options: Stamp): Promise<void>;
 }
@@ -74,9 +74,14 @@ const Sqlite = registerPlugin<SqliteBridge>('Sqlite');
     Unnumbered, and safely so: the plugin holds one connection for the
     whole app, and the caller has already awaited the close that let go of
     it (data/reset.ts closes before it wipes). It still runs on the
-    plugin's one worker thread, behind anything already there. */
-export async function deleteAndroidDatabase(): Promise<void> {
-  await Sqlite.deleteDatabase();
+    plugin's one worker thread, behind anything already there.
+
+    Named, because a reset from a locked gate runs in a process where no
+    open has happened to tell the plugin which file is the journal. Without
+    the name it deleted nothing there and the key went anyway, so the next
+    setup met the old ciphertext under a new key (ux-carpet 210). */
+export async function deleteAndroidDatabase(databaseName: string): Promise<void> {
+  await Sqlite.deleteDatabase({ name: databaseName });
 }
 
 /** Whether app storage holds a journal from the pre-encryption Android build

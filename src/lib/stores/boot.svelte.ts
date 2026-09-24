@@ -26,6 +26,7 @@ import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
 import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
+import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
@@ -216,7 +217,7 @@ export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise
        database it cannot read. */
     wipePlatformStorage: isAndroid()
       ? async () => {
-          await deleteAndroidDatabase();
+          await deleteAndroidDatabase(JOURNAL_DATABASE);
           await androidKeystore.erase();
         }
       : undefined,
