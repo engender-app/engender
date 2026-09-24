@@ -351,11 +351,16 @@ body {
    a margin inside every card, list and chart on the screen.
 
    --space-5 to match the floor above it. */
-.screen > .screen-part > * {
+/* A reserve's body (ReadReserve.svelte) stands where the screen's own
+   children stood, so a screen part inside one is spaced the same
+   (ux-carpet ticket 205). */
+.screen > .screen-part > *,
+.read-reserve-body > .screen-part > * {
   margin-bottom: var(--space-5);
 }
 
-.screen > .screen-part > .kit-heading {
+.screen > .screen-part > .kit-heading,
+.read-reserve-body > .screen-part > .kit-heading {
   margin-bottom: var(--space-3);
 }
 
@@ -378,7 +383,8 @@ body {
    (the photo library's tab control, 20px low). The segmented control's wrap
    and a button are the inline-level rows a screen part holds; neither
    arrives or leaves under a transition. */
-.screen > .screen-part > :is(.segmented-wrap, .btn):last-child {
+.screen > .screen-part > :is(.segmented-wrap, .btn):last-child,
+.read-reserve-body > .screen-part > :is(.segmented-wrap, .btn):last-child {
   margin-bottom: 0;
 }
 

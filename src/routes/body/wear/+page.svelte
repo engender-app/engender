@@ -26,6 +26,8 @@
      (shiftStartToDay) - its time-of-day is never re-typed, so a session
      that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -73,7 +75,6 @@
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
@@ -471,6 +472,14 @@
   let trendHighlight = $derived(
     highlightRole ? { positions: [...highlightedAt], role: highlightRole } : undefined
   );
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let wearRevealed = $state(false);
+  $effect.pre(() => {
+    if (!wearRevealed && (!loading)) wearRevealed = true;
+  });
+  const wearEstimate = readReserve('wear');
+  const wearRemember = (px: number) => rememberReserve('wear', px);
 </script>
 
 <div class="screen">
@@ -482,10 +491,8 @@
     {/snippet}
   </ScreenHeader>
 
-  <div class="screen-part" use:resize>
-  {#if loading}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else}
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={wearRevealed} estimate={wearEstimate} onrest={wearRemember}>
       <!-- What is true now, before what was true before (rule 16): the week
            as a strip, and the session that is actually running under it. -->
       {#if earliest !== null}
@@ -674,8 +681,7 @@
 
     <!-- Saying you are done with this area (phase 8 features ticket 04). -->
     <AreaFinish group="wear" />
-  {/if}
-  </div>
+  </ReadReserve>
 
   <RecordSheet
     {record}

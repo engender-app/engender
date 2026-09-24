@@ -23,6 +23,8 @@
      episode with nothing else to update. `drug` only exists to break a
      tie when more than one episode is active at once for different drugs
      (regimenEpisode.ts). */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
   import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -65,7 +67,6 @@
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
@@ -386,6 +387,14 @@
   }
   /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
   let returnHref = $derived(careLaneReturnHref(page.url));
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let dosesRevealed = $state(false);
+  $effect.pre(() => {
+    if (!dosesRevealed && (!loading)) dosesRevealed = true;
+  });
+  const dosesEstimate = readReserve('doses');
+  const dosesRemember = (px: number) => rememberReserve('doses', px);
 </script>
 
 <div class="screen">
@@ -436,268 +445,269 @@
     </div>
   {/if}
 
-  {#if loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if view === 'log'}
-    {#if deepLinkedDoseUnavailable}
-      <div class="screen-part" data-dose-unavailable>
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={dosesRevealed} estimate={dosesEstimate} onrest={dosesRemember}>
+    {#if view === 'log'}
+      {#if deepLinkedDoseUnavailable}
+        <div class="screen-part" data-dose-unavailable>
+          <Notice
+            icon="info"
+            key="dose-unavailable"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
+            title={m.dose_unavailable_title()}
+            text={m.dose_unavailable_body()}
+          />
+        </div>
+      {/if}
+      {#if doses.length}
+        <div class="screen-part">
+          <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
+          <BatchedList
+            items={logRows}
+            key="doses"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
+            focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
+          >
+            {#snippet rows(shownRows)}
+              {#each shownRows as { dose, attribution, drug, offersSkip } (dose.id)}
+                {@const site = siteOf(dose)}
+                {@const sourceNote = sourceNoteOf(dose)}
+                <!-- Keyed on what the row says about itself, so correcting an
+                     auto-logged dose crossfades its words instead of cutting
+                     them (ADR-0078, and this ticket's standing motion clause).
+
+                     `out` only, which is what this primitive is: the replacing
+                     row is simply there, in flow, at the same height, and the
+                     one it replaced fades off underneath it from its own
+                     static position. An `in:crossfade` as well would take the
+                     arriving row out of flow for the length of the fade and
+                     every row below it would jump up and back - a yank, for a
+                     change of four words.
+
+                     `rows-divide` because the wrapper is now what the card
+                     sees between two rows, and the hairline rule matches
+                     adjacent siblings (kit.css). -->
+                {#key sourceNote}
+                  <div class="rows-divide" class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
+                  <ListRow
+                    key={dose.id}
+                    data-dose={dose.id}
+                    id={dose.id}
+                    icon="clock"
+                    title={doseRowTitle(drug, dose)}
+                    subtitle={[
+                      [
+                        whenOf(dose),
+                        site,
+                        isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
+                        sourceNote ? attributionLabel(attribution) : ''
+                      ]
+                        .filter(Boolean)
+                        .join(' · '),
+                      sourceNote
+                    ]}
+                    chevron={false}
+                    onclick={() => openEditor(dose)}
+                    action={offersSkip
+                      ? {
+                          /* The app's own word for the status this sets, not a
+                             sentence: a dose row already carries an amount, a
+                             route, a time, where it came from and which episode
+                             it is under, and a four-word button at 390px left
+                             the title wrapping one character to a line. The
+                             accessible name is the whole sentence, which is
+                             what a control read out of its row needs and what a
+                             control sitting in one does not. */
+                          text: statusLabel('skipped'),
+                          label: m.dose_from_schedule_skip_action(),
+                          attrs: { 'data-dose-skip': dose.id },
+                          onclick: () => skipAutoLoggedDose(dose)
+                        }
+                      : undefined}
+                  >
+                    {#snippet trailing()}
+                      <!-- The bookkeeping, at the end of the row rather than as
+                           two more lines under the dose: which episode the app
+                           attributed it to, whether it was taken as logged, and
+                           what a schedule had asked for. All three are about the
+                           record rather than about the dose.
+
+                           An auto-logged row says the first two on its second
+                           line instead, in one sentence with where it came from.
+                           Partly because "skipped" beside "skipped, was logged
+                           from your schedule" is the same word twice - and
+                           partly because that row carries a control at this
+                           trailing edge, and a 390px row cannot hold an icon, a
+                           dose, an episode name and a button. Measured: the
+                           title had 78px to wrap "100 mg · Oral" in. -->
+                      <span class="dose-trail">
+                        {#if dose.status !== 'taken' && !sourceNote}
+                          <span class="dose-status">{statusLabel(dose.status)}</span>
+                        {/if}
+                        {#if !sourceNote}
+                          <span>{attributionLabel(attribution)}</span>
+                        {/if}
+                        {#if dose.scheduled}
+                          <span>
+                            {m.dose_scheduled_legend()}: {dose.scheduled.dose}
+                            {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
+                          </span>
+                        {/if}
+                      </span>
+                    {/snippet}
+                  </ListRow>
+                  </div>
+                {/key}
+              {/each}
+            {/snippet}
+          </BatchedList>
+          {#if hasOlderDoses}
+            {@render earlierControl()}
+          {/if}
+        </div>
+      {:else}
+        <div class="screen-part">
+          <Notice
+            icon="clock"
+            key="doses-empty"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
+            title={m.doses_empty_title()}
+            text={m.doses_empty_body()}
+            action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
+          />
+          {#if hasOlderDoses}
+            {@render earlierControl()}
+          {/if}
+        </div>
+      {/if}
+
+      {#snippet earlierControl()}
+        <div class="doses-earlier-wrap">
+          <button class="btn btn-soft doses-earlier" data-doses-earlier onclick={loadEarlier}>
+            <span>{m.doses_earlier()}</span>
+          </button>
+        </div>
+      {/snippet}
+    {:else}
+      {#if activeDrugChoices.length > 1}
+        <!-- Only drawn while more than one regimen is active (ticket 15): with
+             at most one there is nothing to choose between, and the picker
+             would be a control with a single, forced answer.
+
+             Scoped to this tab alone, not to the Logged tab or the stock rows
+             above it: those already say which drug each row is about (a log
+             row's own trailing attribution, a stock row's own title), so
+             nothing there was actually broken by more than one regimen being
+             active. This tab was the one screen that had no single answer to
+             give at all - `adherence_multiple_episodes` used to say so
+             outright - which is the gap the ticket names. -->
+        <div class="screen-part">
+          <Segmented
+            name={m.adherence_drug_label()}
+            value={selectedRegimenDrug ?? ''}
+            options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
+            onChange={(v) => {
+              pickedRegimenDrug = v;
+              prefs.adherenceRegimenPick = v;
+            }}
+            key="doses-regimen"
+          />
+        </div>
+      {/if}
+      {#if scheduleView.reason === 'noEpisode'}
+        <!-- Either nothing is in effect to compare against, or the read did not
+             work. readGate.ts's rule for a screen that passes no failed snippet
+             is that the two share the empty state, and this is the schedule
+             view's: there is nothing to compare. -->
+        <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
+      {:else if scheduleView.reason === 'multipleEpisodes'}
+        <!-- Reachable only when two active episodes share one drug name
+             (ticket 15) - the picker above already resolves the ordinary
+             concurrent-regimens case to a single one. -->
+        <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
+      {:else if scheduleView.reason === 'noSchedule'}
         <Notice
           icon="info"
-          key="dose-unavailable"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
-          title={m.dose_unavailable_title()}
-          text={m.dose_unavailable_body()}
+          key="adherence-no-schedule"
+          text={m.adherence_no_schedule({ drug: scheduleView.activeEpisode.drug })}
         />
-      </div>
-    {/if}
-    {#if doses.length}
-      <div class="screen-part">
-        <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
-        <BatchedList
-          items={logRows}
-          key="doses"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
-          focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
-        >
-          {#snippet rows(shownRows)}
-            {#each shownRows as { dose, attribution, drug, offersSkip } (dose.id)}
-              {@const site = siteOf(dose)}
-              {@const sourceNote = sourceNoteOf(dose)}
-              <!-- Keyed on what the row says about itself, so correcting an
-                   auto-logged dose crossfades its words instead of cutting
-                   them (ADR-0078, and this ticket's standing motion clause).
-
-                   `out` only, which is what this primitive is: the replacing
-                   row is simply there, in flow, at the same height, and the
-                   one it replaced fades off underneath it from its own
-                   static position. An `in:crossfade` as well would take the
-                   arriving row out of flow for the length of the fade and
-                   every row below it would jump up and back - a yank, for a
-                   change of four words.
-
-                   `rows-divide` because the wrapper is now what the card
-                   sees between two rows, and the hairline rule matches
-                   adjacent siblings (kit.css). -->
-              {#key sourceNote}
-                <div class="rows-divide" class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
+      {:else}
+        <!-- Every remaining reason is `null`, which is the one that means there is
+             a comparison to show. Named rather than read through `scheduleView`
+             so the branch below says `comparison.rows` where it means them; not
+             `view`, which is the tab this screen is on. -->
+        {@const comparison = scheduleView}
+        <div class="screen-part">
+          <p class="muted small" style="margin:var(--space-3) 0">
+            {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
+          </p>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
+            {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
+              <!-- The linked slot's own day, where the comparison reaches it: a
+                   next dose for later than today has no row here yet - the
+                   comparison is a past-facing read - so the highlight only ever
+                   names a day that exists. -->
+              <div class="rows-divide" class:is-target-slot={String(row.slot.epochDay) === targetSlotDate}>
                 <ListRow
-                  key={dose.id}
-                  data-dose={dose.id}
-                  id={dose.id}
-                  icon="clock"
-                  title={doseRowTitle(drug, dose)}
+                  static
+                  data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
+                  title={fmtDayLong(row.slot.epochDay)}
                   subtitle={[
-                    [
-                      whenOf(dose),
-                      site,
-                      isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
-                      sourceNote ? attributionLabel(attribution) : ''
-                    ]
-                      .filter(Boolean)
-                      .join(' · '),
-                    sourceNote
+                    comparison.schedule.dosesPerDay > 1 &&
+                      m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
+                    row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
                   ]}
-                  chevron={false}
-                  onclick={() => openEditor(dose)}
-                  action={offersSkip
-                    ? {
-                        /* The app's own word for the status this sets, not a
-                           sentence: a dose row already carries an amount, a
-                           route, a time, where it came from and which episode
-                           it is under, and a four-word button at 390px left
-                           the title wrapping one character to a line. The
-                           accessible name is the whole sentence, which is
-                           what a control read out of its row needs and what a
-                           control sitting in one does not. */
-                        text: statusLabel('skipped'),
-                        label: m.dose_from_schedule_skip_action(),
-                        attrs: { 'data-dose-skip': dose.id },
-                        onclick: () => skipAutoLoggedDose(dose)
-                      }
-                    : undefined}
                 >
                   {#snippet trailing()}
-                    <!-- The bookkeeping, at the end of the row rather than as
-                         two more lines under the dose: which episode the app
-                         attributed it to, whether it was taken as logged, and
-                         what a schedule had asked for. All three are about the
-                         record rather than about the dose.
-
-                         An auto-logged row says the first two on its second
-                         line instead, in one sentence with where it came from.
-                         Partly because "skipped" beside "skipped, was logged
-                         from your schedule" is the same word twice - and
-                         partly because that row carries a control at this
-                         trailing edge, and a 390px row cannot hold an icon, a
-                         dose, an episode name and a button. Measured: the
-                         title had 78px to wrap "100 mg · Oral" in. -->
-                    <span class="dose-trail">
-                      {#if dose.status !== 'taken' && !sourceNote}
-                        <span class="dose-status">{statusLabel(dose.status)}</span>
-                      {/if}
-                      {#if !sourceNote}
-                        <span>{attributionLabel(attribution)}</span>
-                      {/if}
-                      {#if dose.scheduled}
-                        <span>
-                          {m.dose_scheduled_legend()}: {dose.scheduled.dose}
-                          {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
-                        </span>
-                      {/if}
-                    </span>
+                    {#if row.dose}
+                      {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
+                    {:else}
+                      {m.adherence_nothing_logged()}
+                    {/if}
                   {/snippet}
                 </ListRow>
-                </div>
-              {/key}
-            {/each}
-          {/snippet}
-        </BatchedList>
-        {#if hasOlderDoses}
-          {@render earlierControl()}
-        {/if}
-      </div>
-    {:else}
-      <div class="screen-part">
-        <Notice
-          icon="clock"
-          key="doses-empty"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
-          title={m.doses_empty_title()}
-          text={m.doses_empty_body()}
-          action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
-        />
-        {#if hasOlderDoses}
-          {@render earlierControl()}
-        {/if}
-      </div>
-    {/if}
-
-    {#snippet earlierControl()}
-      <div class="doses-earlier-wrap">
-        <button class="btn btn-soft doses-earlier" data-doses-earlier onclick={loadEarlier}>
-          <span>{m.doses_earlier()}</span>
-        </button>
-      </div>
-    {/snippet}
-  {:else}
-    {#if activeDrugChoices.length > 1}
-      <!-- Only drawn while more than one regimen is active (ticket 15): with
-           at most one there is nothing to choose between, and the picker
-           would be a control with a single, forced answer.
-
-           Scoped to this tab alone, not to the Logged tab or the stock rows
-           above it: those already say which drug each row is about (a log
-           row's own trailing attribution, a stock row's own title), so
-           nothing there was actually broken by more than one regimen being
-           active. This tab was the one screen that had no single answer to
-           give at all - `adherence_multiple_episodes` used to say so
-           outright - which is the gap the ticket names. -->
-      <div class="screen-part">
-        <Segmented
-          name={m.adherence_drug_label()}
-          value={selectedRegimenDrug ?? ''}
-          options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
-          onChange={(v) => {
-            pickedRegimenDrug = v;
-            prefs.adherenceRegimenPick = v;
-          }}
-          key="doses-regimen"
-        />
-      </div>
-    {/if}
-    {#if scheduleView.reason === 'noEpisode'}
-      <!-- Either nothing is in effect to compare against, or the read did not
-           work. readGate.ts's rule for a screen that passes no failed snippet
-           is that the two share the empty state, and this is the schedule
-           view's: there is nothing to compare. -->
-      <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
-    {:else if scheduleView.reason === 'multipleEpisodes'}
-      <!-- Reachable only when two active episodes share one drug name
-           (ticket 15) - the picker above already resolves the ordinary
-           concurrent-regimens case to a single one. -->
-      <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
-    {:else if scheduleView.reason === 'noSchedule'}
-      <Notice
-        icon="info"
-        key="adherence-no-schedule"
-        text={m.adherence_no_schedule({ drug: scheduleView.activeEpisode.drug })}
-      />
-    {:else}
-      <!-- Every remaining reason is `null`, which is the one that means there is
-           a comparison to show. Named rather than read through `scheduleView`
-           so the branch below says `comparison.rows` where it means them; not
-           `view`, which is the tab this screen is on. -->
-      {@const comparison = scheduleView}
-      <div class="screen-part">
-        <p class="muted small" style="margin:var(--space-3) 0">
-          {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
-        </p>
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-          {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-            <!-- The linked slot's own day, where the comparison reaches it: a
-                 next dose for later than today has no row here yet - the
-                 comparison is a past-facing read - so the highlight only ever
-                 names a day that exists. -->
-            <div class="rows-divide" class:is-target-slot={String(row.slot.epochDay) === targetSlotDate}>
-              <ListRow
-                static
-                data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
-                title={fmtDayLong(row.slot.epochDay)}
-                subtitle={[
-                  comparison.schedule.dosesPerDay > 1 &&
-                    m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
-                  row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
-                ]}
-              >
-                {#snippet trailing()}
-                  {#if row.dose}
-                    {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
-                  {:else}
-                    {m.adherence_nothing_logged()}
-                  {/if}
-                {/snippet}
-              </ListRow>
-            </div>
-          {/each}
-        </ListCard>
-
-        {#if comparison.pauses.length}
-          <SectionHeading text={m.adherence_paused_heading()} />
-          <p class="muted small">{m.adherence_paused_note()}</p>
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-            {#each comparison.pauses as pause (pause.id)}
-              <ListRow
-                static
-                data-pause={pause.id}
-                title={pause.endEpochDay === null
-                  ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
-                  : m.adherence_paused_range({
-                      from: fmtDayLong(pause.startEpochDay),
-                      to: fmtDayLong(pause.endEpochDay)
-                    })}
-                subtitle={pauseReasonLabel(pause.reason)}
-              />
+              </div>
             {/each}
           </ListCard>
-        {/if}
 
-        {#if comparison.comparison.unmatched.length}
-          <SectionHeading text={m.adherence_unmatched_heading()} />
-          <p class="muted small">{m.adherence_unmatched_note()}</p>
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-            {#each unmatchedRows as { dose, drug } (dose.id)}
-              <ListRow
-                static
-                data-unmatched={dose.id}
-                title={doseRowTitle(drug, dose)}
-                subtitle={whenOf(dose)}
-              />
-            {/each}
-          </ListCard>
-        {/if}
-      </div>
+          {#if comparison.pauses.length}
+            <SectionHeading text={m.adherence_paused_heading()} />
+            <p class="muted small">{m.adherence_paused_note()}</p>
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
+              {#each comparison.pauses as pause (pause.id)}
+                <ListRow
+                  static
+                  data-pause={pause.id}
+                  title={pause.endEpochDay === null
+                    ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
+                    : m.adherence_paused_range({
+                        from: fmtDayLong(pause.startEpochDay),
+                        to: fmtDayLong(pause.endEpochDay)
+                      })}
+                  subtitle={pauseReasonLabel(pause.reason)}
+                />
+              {/each}
+            </ListCard>
+          {/if}
+
+          {#if comparison.comparison.unmatched.length}
+            <SectionHeading text={m.adherence_unmatched_heading()} />
+            <p class="muted small">{m.adherence_unmatched_note()}</p>
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
+              {#each unmatchedRows as { dose, drug } (dose.id)}
+                <ListRow
+                  static
+                  data-unmatched={dose.id}
+                  title={doseRowTitle(drug, dose)}
+                  subtitle={whenOf(dose)}
+                />
+              {/each}
+            </ListCard>
+          {/if}
+        </div>
+      {/if}
     {/if}
-  {/if}
+  </ReadReserve>
 
   <Sheet
     open={editor !== null}
