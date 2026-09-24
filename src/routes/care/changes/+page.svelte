@@ -32,6 +32,8 @@
      with it, its gate unchanged. What did not move: the record itself, the
      literature bands, or the rule that no band is drawn for what somebody
      noticed rather than what the tables expect. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -55,7 +57,6 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -64,7 +65,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -193,6 +194,16 @@
      the same editor sheet and the same cycle block that used to live on
      /health/side-effects, moved here whole. */
   let effectsQuery = liveList((j) => j.sideEffects.getSideEffects());
+
+  /* Latched: a reserve must not put its placeholder back over the body. */
+  let bodyRevealed = $state(false);
+  $effect.pre(() => {
+    if (bodyRevealed || episodesQuery.loading || markersQuery.loading || effectsQuery.loading) return;
+    if (cycleShown && cycleEventsQuery.loading) return;
+    bodyRevealed = true;
+  });
+  const bodyEstimate = readReserve('care-changes');
+  const rememberBody = (px: number) => rememberReserve('care-changes', px);
   let effects = $derived(effectsQuery.rows);
 
   const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({
@@ -347,10 +358,12 @@
     {/snippet}
   </ScreenHeader>
 
-  <div class="screen-part" use:resize>
-  {#if episodesQuery.loading || markersQuery.loading}
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else}
+  <!-- Held at last visit's height until every read the body draws from has
+       answered, then faded in (ux-carpet ticket 205). It swapped from a
+       skeleton inside a resize wrapper: cut in at full opacity, and the
+       effects gate inside it could still be answering, its rows one wrapper
+       too deep for the screen's spacing. -->
+  <ReadReserve ready={bodyRevealed} estimate={bodyEstimate} onrest={rememberBody} data-changes-body>
     <!-- What is true now, before the records (DIRECTION.md rule 16): every
          change already marked, at the month it was noticed, on one line. -->
     <NoticedAxis
@@ -565,8 +578,7 @@
         />
       </ListCard>
     {/if}
-  {/if}
-  </div>
+  </ReadReserve>
 
   <!-- Hair progress, the one change that keeps its own screen (phase 9
        carpet ticket 16): a published scale and a camera behind it, so it

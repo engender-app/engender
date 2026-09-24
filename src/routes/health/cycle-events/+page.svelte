@@ -12,6 +12,8 @@
      https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans):
      no prediction of a next period, no fertility framing, no assumption
      that a regular cycle exists. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -31,7 +33,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import CycleEventChart from '$lib/components/CycleEventChart.svelte';
   import DayStrip from '$lib/components/DayStrip.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -42,7 +43,6 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -137,6 +137,14 @@
     remove: (id) => journal.cycleEvents.deleteCycleEvent(id),
     findById: (id) => events.find((event) => event.id === id)
   });
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let cycleEventsRevealed = $state(false);
+  $effect.pre(() => {
+    if (!cycleEventsRevealed && (!eventsQuery.loading && !episodesQuery.loading)) cycleEventsRevealed = true;
+  });
+  const cycleEventsEstimate = readReserve('cycle-events');
+  const cycleEventsRemember = (px: number) => rememberReserve('cycle-events', px);
 </script>
 
 <div class="screen">
@@ -152,116 +160,117 @@
        (phase 5 audit ticket 04): the gate branches on one read, and the rows
        here need the regimen episodes as well as the events, so drawing them
        the moment the events land would draw the chart without its bands. -->
-  {#if eventsQuery.loading || episodesQuery.loading}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
-  {:else if events.length}
-    <div class="screen-part">
-      <!-- What is true now, before what was true before (rule 16): the
-           week as a strip, and today under it at full size with the way to
-           log it on the row. Guarded on `earliest` the same way hair
-           removal's own strip is, even though this branch only runs once
-           `events.length` has already guaranteed it - one fewer thing to
-           re-derive if that guarantee ever moves. -->
-      {#if earliest !== null}
-        <DayStrip
-          {today}
-          markOf={(day) => markOf(day)}
-          labelOf={(day, mark) =>
-            m.strip_day_state({
-              day: fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' }),
-              state: dayKindsLabel(day) ?? m.adherence_nothing_logged()
-            })}
-          {earliest}
-          onPick={openEventFor}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
-          bind:weeksBack
-        />
-      {/if}
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-        <ListRow
-          key="cycle-events-today"
-          data-cycle-events-today
-          icon="calendar"
-          title={m.today()}
-          subtitle={fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' })}
-          onclick={() => openEventFor(today)}
-        >
-          {#snippet trailing()}
-            {dayKindsLabel(today) ?? m.adherence_nothing_logged()}
-          {/snippet}
-        </ListRow>
-      </ListCard>
-    </div>
-
-    <div class="screen-part">
-      {#if weekEvents.length === 0}
-        <!-- Its own words rather than a day's answer stretched over seven,
-             the same line dilation's and wear's empty week carry. -->
-        <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-      {:else}
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={cycleEventsRevealed} estimate={cycleEventsEstimate} onrest={cycleEventsRemember}>
+    {#if events.length}
+      <div class="screen-part">
+        <!-- What is true now, before what was true before (rule 16): the
+             week as a strip, and today under it at full size with the way to
+             log it on the row. Guarded on `earliest` the same way hair
+             removal's own strip is, even though this branch only runs once
+             `events.length` has already guaranteed it - one fewer thing to
+             re-derive if that guarantee ever moves. -->
+        {#if earliest !== null}
+          <DayStrip
+            {today}
+            markOf={(day) => markOf(day)}
+            labelOf={(day, mark) =>
+              m.strip_day_state({
+                day: fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' }),
+                state: dayKindsLabel(day) ?? m.adherence_nothing_logged()
+              })}
+            {earliest}
+            onPick={openEventFor}
+            role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
+            bind:weeksBack
+          />
+        {/if}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-          {#each weekEvents as event (event.id)}
-            <ListRow
-              key={event.id}
-              data-cycle-event={event.id}
-              icon="calendar"
-              title={cycleEventKindName(event.kind)}
-              subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-              chevron={false}
-              onclick={() => record.openEditor(event)}
-            />
-          {/each}
+          <ListRow
+            key="cycle-events-today"
+            data-cycle-events-today
+            icon="calendar"
+            title={m.today()}
+            subtitle={fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' })}
+            onclick={() => openEventFor(today)}
+          >
+            {#snippet trailing()}
+              {dayKindsLabel(today) ?? m.adherence_nothing_logged()}
+            {/snippet}
+          </ListRow>
         </ListCard>
-      {/if}
-    </div>
-
-    <div class="screen-part">
-      <SectionHeading text={m.cycle_event_history_title()}>
-        {#snippet action()}
-          {#if historyEnds}
-            <span class="muted small" data-cycle-event-history-range>{m.cycle_event_history_range(historyEnds)}</span>
-          {/if}
-        {/snippet}
-      </SectionHeading>
-      <!-- The chart is not in a card. It is the only thing in this area of
-           the screen, and a box drawn around the one thing on a screen is
-           what DIRECTION.md 2b names as making a screen read as generic -
-           the same call the calendar's month grid made. The endpoints sit
-           above it on the kit's filter line, because they say what the
-           chart is showing rather than entering a value. Moved under the
-           reading and the strip (ticket 56, rule 16: what is true now comes
-           first, and a chart against a chosen range is a record of before,
-           not now) - the same move ticket 44 made for wear's own trend. -->
-      <div class="kit-filter cd-endpoints">
-        <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
-          {#snippet children(id)}
-            <DatePicker max={dayRangeStartMax(endInput)} bind:value={startInput} {id} />
-          {/snippet}
-        </Field>
-        <Field label={m.cycle_event_range_end_label()} id="cycle-event-range-end">
-          {#snippet children(id)}
-            <DatePicker min={dayRangeEndMin(startInput)} bind:value={endInput} {id} />
-          {/snippet}
-        </Field>
       </div>
-      {#if range === null}
-        <p class="muted small">{m.cycle_event_range_required()}</p>
-      {:else}
-        <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
-      {/if}
-    </div>
-  {:else}
-    <div class="screen-part">
-      <Notice
-        icon="calendar"
-        key="cycle-events-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.cycle_event_empty_title()}
-        text={m.cycle_event_empty_body()}
-        action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-    </div>
-  {/if}
+
+      <div class="screen-part">
+        {#if weekEvents.length === 0}
+          <!-- Its own words rather than a day's answer stretched over seven,
+               the same line dilation's and wear's empty week carry. -->
+          <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+        {:else}
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            {#each weekEvents as event (event.id)}
+              <ListRow
+                key={event.id}
+                data-cycle-event={event.id}
+                icon="calendar"
+                title={cycleEventKindName(event.kind)}
+                subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                chevron={false}
+                onclick={() => record.openEditor(event)}
+              />
+            {/each}
+          </ListCard>
+        {/if}
+      </div>
+
+      <div class="screen-part">
+        <SectionHeading text={m.cycle_event_history_title()}>
+          {#snippet action()}
+            {#if historyEnds}
+              <span class="muted small" data-cycle-event-history-range>{m.cycle_event_history_range(historyEnds)}</span>
+            {/if}
+          {/snippet}
+        </SectionHeading>
+        <!-- The chart is not in a card. It is the only thing in this area of
+             the screen, and a box drawn around the one thing on a screen is
+             what DIRECTION.md 2b names as making a screen read as generic -
+             the same call the calendar's month grid made. The endpoints sit
+             above it on the kit's filter line, because they say what the
+             chart is showing rather than entering a value. Moved under the
+             reading and the strip (ticket 56, rule 16: what is true now comes
+             first, and a chart against a chosen range is a record of before,
+             not now) - the same move ticket 44 made for wear's own trend. -->
+        <div class="kit-filter cd-endpoints">
+          <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
+            {#snippet children(id)}
+              <DatePicker max={dayRangeStartMax(endInput)} bind:value={startInput} {id} />
+            {/snippet}
+          </Field>
+          <Field label={m.cycle_event_range_end_label()} id="cycle-event-range-end">
+            {#snippet children(id)}
+              <DatePicker min={dayRangeEndMin(startInput)} bind:value={endInput} {id} />
+            {/snippet}
+          </Field>
+        </div>
+        {#if range === null}
+          <p class="muted small">{m.cycle_event_range_required()}</p>
+        {:else}
+          <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
+        {/if}
+      </div>
+    {:else}
+      <div class="screen-part">
+        <Notice
+          icon="calendar"
+          key="cycle-events-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.cycle_event_empty_title()}
+          text={m.cycle_event_empty_body()}
+          action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
+    {/if}
+  </ReadReserve>
 
   <RecordSheet
     {record}

@@ -9,6 +9,8 @@
      screen. They do share a scale, though: a chart drawn to its own maximum
      would make one day's single tap as tall as another day's five, and the
      two are counts of the same kind of thing. */
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import type { TallyKind } from '$lib/data/types';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -21,8 +23,6 @@
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
@@ -154,6 +154,14 @@
     void run(kind, () => journal.tally.deleteEvent(latest.id));
   };
 
+
+  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  let tallyRevealed = $state(false);
+  $effect.pre(() => {
+    if (!tallyRevealed && (!misgenderedQuery.loading && !correctlyGenderedQuery.loading)) tallyRevealed = true;
+  });
+  const tallyEstimate = readReserve('tally');
+  const tallyRemember = (px: number) => rememberReserve('tally', px);
 </script>
 
 <div class="screen">
@@ -170,9 +178,8 @@
 
   <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
 
-  {#if misgenderedQuery.loading || correctlyGenderedQuery.loading}
-    <div out:crossfade><Skeleton variant="block" count={2} /></div>
-  {:else}
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
     <ChartCard heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
       <AreaChart
         scrubLabel={grainLabel(plottedMis.grain)}
@@ -249,7 +256,7 @@
         {m.tally_undo_correctly_gendered()}
       </button>
     </div>
-  {/if}
+  </ReadReserve>
 </div>
 
 <!-- The half of the action a sighted person watches the chart perform. Always
