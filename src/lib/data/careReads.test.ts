@@ -2,7 +2,11 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './journal/test-support';
 import { startOfDayTimestamp } from './epochDay';
-import { readCare } from './careReads';
+import { CARE_DOSE_TOTAL_WINDOW_DAYS, readCare } from './careReads';
+import { countingDriver } from './journal/test-support';
+import { openJournal } from './journal/journal';
+import { migratedDb } from './sqlite/test-support/migrated-db';
+import { fakeFileStore } from './photos/test-support/fake-file-store';
 
 const TODAY = 20000;
 
@@ -70,4 +74,47 @@ test('Care waits for totals and rejects the whole answer if totals fail', async 
   await assert.rejects(readCare({ ...journal, exposure: {
     getCounters: async () => { throw new Error('totals unavailable'); }
   } }, TODAY), /totals unavailable/);
+});
+
+test('Care reads only the totals window of the log when every lane has a dose in it (ticket 221)', async () => {
+  const doseReadsFrom: number[] = [];
+  const db = await migratedDb();
+  const counting = countingDriver(db, {
+    onQuery: (sql, params) => {
+      if (/FROM dose_event\s+WHERE timestamp >= \?/.test(sql)) doseReadsFrom.push(Number(params?.[0]));
+    }
+  });
+  const journal = openJournal(counting.driver, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    startEpochDay: TODAY - 800, endEpochDay: null, endReason: null
+  });
+  await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY - 700),
+    route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY - 2),
+    route: 'oral', dose: 2, doseUnit: 'mg' });
+  doseReadsFrom.length = 0;
+
+  const care = await readCare(journal, TODAY);
+  assert.equal(care.lanes[0].lastDoseEpochDay, TODAY - 2);
+  assert.ok(doseReadsFrom.length > 0);
+  assert.ok(
+    doseReadsFrom.every((from) => from >= startOfDayTimestamp(TODAY - CARE_DOSE_TOTAL_WINDOW_DAYS + 1)),
+    'no read reached back past the totals window'
+  );
+});
+
+test('a lane with nothing ever logged has no last dose, through the fallback (ticket 221)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await journal.regimen.upsertEpisode({
+    drug: 'spironolactone', ester: null, dose: 100, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    startEpochDay: TODAY, endEpochDay: null, endReason: null
+  });
+  await journal.doses.upsertSchedule({ episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
+  const care = await readCare(journal, TODAY);
+  assert.equal(care.lanes[0].lastDoseEpochDay, null);
+  assert.equal(care.lanes[0].lastDoseId, null);
+  assert.equal(care.lanes[0].nextDoseEpochDay, TODAY);
 });
