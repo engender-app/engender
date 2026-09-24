@@ -90,7 +90,7 @@
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -199,6 +199,16 @@
     handledEraOfferSpans = [...handledEraOfferSpans, handled];
     eraOfferSpan = null;
   };
+
+  /* The link and the "not enough entries" line share one slot in
+     `.lookback-line` (ux-carpet 234): narrowing the span on Look back can
+     cross `enoughEntries` several times a second while a drag is still
+     moving, and the two used to swap by cut - one at full opacity, gone the
+     frame the other took its place. `crossfade` (out-only, reveal.ts) lifts
+     the leaving one out of flow and fades it there; the arriving one still
+     needs its own fade in, which is what `fadeIn` is for
+     (ReadReserve.svelte's own copy of the same three lines). */
+  const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* Two epoch days to the journal, which never reads the clock for a
      domain answer: the span's own, and wrapped's default until the rail
@@ -347,15 +357,26 @@
           <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
             {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
           </ListRow>
+          <!-- No `transition:collapse` on these two rows (ux-carpet 234):
+               `activeAverage` and `dimChange` answer off two different
+               reads (`activeSeriesQuery`, `recapQuery`), so a fast drag on
+               the span rail can lose both within the same span of frames
+               but not the same tick - each row then ran its own local
+               collapse, and the two, closing at once, read as rows sliding
+               under each other rather than as one list closing. The card
+               itself already sits in a `use:resize` box (the `screen-part`
+               above), so the fix is to let that ONE mechanism carry the
+               height change: a row's own appearance or disappearance is
+               instant now, and the card's own height eases around it. -->
           {#if activeAverage}
-            <div class="rows-divide" transition:collapse>
+            <div class="rows-divide">
               <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
                 {#snippet trailing()}<b class="wrapped-figure-value">{activeAverage}</b>{/snippet}
               </ListRow>
             </div>
           {/if}
           {#if dimChange}
-            <div class="rows-divide" transition:collapse>
+            <div class="rows-divide">
               <ListRow
                 static
                 data-lookback-fact
@@ -428,11 +449,18 @@
       {#if recapQuery.loading}
         <span class="lookback-thin" aria-hidden="true"></span>
       {:else if enoughEntries}
-        <a class="lookback-read" data-lookback-read data-span-keep href={`/wrapped/range${spanRangeQuery(span)}`}>
+        <a
+          class="lookback-read"
+          data-lookback-read
+          data-span-keep
+          href={`/wrapped/range${spanRangeQuery(span)}`}
+          in:fadeIn
+          out:crossfade
+        >
           {m.lookback_read_span()}
         </a>
       {:else}
-        <span class="lookback-thin" data-lookback-thin>
+        <span class="lookback-thin" data-lookback-thin in:fadeIn out:crossfade>
           {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
         </span>
       {/if}
@@ -522,6 +550,7 @@
      `.kit-heading-action`): on a page whose colour is spent as blocks, an
      accent-coloured word is a fourth voice. */
   .lookback-line {
+    position: relative;
     display: flex;
     align-items: center;
     min-height: var(--touch-target);
