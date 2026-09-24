@@ -33,7 +33,7 @@ export function movingWindows(keyframes: { offset: number; value: string }[]): M
     const before = keyframes[i - 1];
     const here = keyframes[i];
     if (before.value === here.value) continue;
-    const last = windows.at(-1);
+    const last = windows[windows.length - 1];
     if (last && last.to >= before.offset) last.to = here.offset;
     else windows.push({ from: before.offset, to: here.offset });
   }
