@@ -51,6 +51,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
 | `measurements-sizes-jump-check` | the Measurements/Sizes jump moves focus and keeps an open editor's input |
+| `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
 | `search-filter-scope` | search says what its filter covers and what a saved question holds |
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
 
@@ -78,7 +79,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `more-search-nothing-found` | typed past its last area or record match, More's search collapses the last card and the "nothing found" notice arrives clipped, with nothing painted vanishing or jumping (a box clipped whole or transparent in both frames of a step is not counted, ticket 224) |
 | `documents-rows-settle` | the documents list's first group never changes height after it paints on a cold load (row link lines and the size line land with the list), at 4x CPU |
 | `tile-arrival-timing` | Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, and a revisit paints them in its first frame with no placeholder and nothing moving, on the web tier (the Android bridge is ADR-0089's device record, not this) |
-| `home-idle-raster` | Home at idle rasters nothing beyond a timer's tick: the flag sun's breath runs on the compositor, not the main thread |
+| `home-idle-raster` | Home at idle rasters nothing beyond a timer's tick, and wakes the main thread only while a mood face moves: the flag sun's breath runs on the compositor, and the faces pause their loops between moves |
 | `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today |
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
@@ -146,6 +147,7 @@ on this page ran green on 2026-09-23.
 | `gallery:savebar` | what the save bar covers, per screen and viewport, in minutes rather than the cohesion sweep's 25 |
 | `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
 | `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
+| `tab-bar-withdraw-crossfade` | the floating bar's withdrawal crossfade across three sheet scenes, per frame, for blur snaps and dropouts (ticket 232) |
 
 ## Helpers
 

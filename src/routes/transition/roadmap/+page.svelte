@@ -426,12 +426,15 @@
               aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
               onclick={() => toggleBuiltIn(goal.key)}
             >
+              <!-- Both glyphs stay in the markup and cross on opacity and a
+                   scale rather than being added and removed (ux-carpet
+                   ticket 236, the same fix appointment-prep's .ap-tick
+                   already carries): a glyph that appears in one frame is a
+                   yank in both directions, and which one shows is on the
+                   box's own classes. -->
               <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
-                {#if status === 'checked'}
-                  <Icon name="check" size={20} />
-                {:else if status === 'not-my-path'}
-                  <Icon name="x" size={16} />
-                {/if}
+                <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
+                <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
               </span>
               <span class="kit-row-text">
                 <span
@@ -439,7 +442,7 @@
                   class:roadmap-done={status === 'checked'}
                   class:roadmap-skip-text={status === 'not-my-path'}
                 >
-                  {roadmapGoalTitle(goal.key)}
+                  <span class="roadmap-strike-text">{roadmapGoalTitle(goal.key)}</span>
                 </span>
                 {#if roadmapGoalNote(goal.key)}
                   <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
@@ -473,11 +476,8 @@
                 class:roadmap-ticked={goal.status === 'checked'}
                 class:roadmap-skip={goal.status === 'not-my-path'}
               >
-                {#if goal.status === 'checked'}
-                  <Icon name="check" size={20} />
-                {:else if goal.status === 'not-my-path'}
-                  <Icon name="x" size={16} />
-                {/if}
+                <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
+                <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
               </span>
               <span class="kit-row-text">
                 <span
@@ -485,7 +485,7 @@
                   class:roadmap-done={goal.status === 'checked'}
                   class:roadmap-skip-text={goal.status === 'not-my-path'}
                 >
-                  {goal.text}
+                  <span class="roadmap-strike-text">{goal.text}</span>
                 </span>
               </span>
             </button>
@@ -572,11 +572,8 @@
         class:roadmap-ticked={selectedStatus === 'checked'}
         class:roadmap-skip={selectedStatus === 'not-my-path'}
       >
-        {#if selectedStatus === 'checked'}
-          <Icon name="check" size={20} />
-        {:else if selectedStatus === 'not-my-path'}
-          <Icon name="x" size={16} />
-        {/if}
+        <span class="roadmap-tick" class:roadmap-tick-shown={selectedStatus === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
+        <span class="roadmap-tick" class:roadmap-tick-shown={selectedStatus === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
       </span>
       <span class="kit-row-text"><span class="kit-row-title">{stateLabel(selectedStatus)}</span></span>
     </div>
@@ -671,8 +668,13 @@
   }
 
   /* An empty square until it is ticked, so a row reads as a checkbox
-     rather than as a link into somewhere. */
+     rather than as a link into somewhere. The border and the colour cross
+     on --dur-fast (ux-carpet ticket 236, matching appointment-prep's
+     .ap-box): the square is not the control - the row is - so what answers
+     the tap is the tick landing rather than a press depth, and a colour
+     change is the feedback reduced motion keeps. */
   .roadmap-box {
+    position: relative;
     border: 2px solid var(--outline);
     border-radius: var(--r-block);
     width: 28px;
@@ -681,6 +683,9 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+    transition:
+      border-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
   }
 
   .roadmap-ticked {
@@ -696,16 +701,70 @@
     color: var(--text-2);
   }
 
+  /* Both glyphs sit stacked on the box's centre (position: absolute, the
+     box itself is the positioning parent) and cross on opacity and a
+     scale from that centre - transform and opacity, the two properties
+     the performance contract admits without a named material. Which one
+     is shown is `.roadmap-tick-shown`, not mounting/unmounting the icon:
+     see the markup comment above. */
+  .roadmap-tick {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.4);
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+
+  .roadmap-tick-shown {
+    opacity: 1;
+    transform: scale(1);
+  }
+
   .add-icon {
     border-style: dashed;
     color: var(--text-2);
   }
 
   /* Struck through rather than hidden or moved: the list is the procedure,
-     and a done step still says what the next one follows from. */
+     and a done step still says what the next one follows from. The line
+     itself is drawn rather than declared (ux-carpet ticket 236): a native
+     text-decoration has no "from" state a transition can start from, so it
+     cut into place with the box's own fill. `.roadmap-strike-text` gives
+     the line something sized to the words rather than the row's own
+     column to travel across, `scaleX` from its left edge over the same
+     --dur-fast the box's fill uses. Left undone for a title that wraps to
+     a second line - rare (a custom goal's own words) and a straight line
+     through the middle of two lines still reads as struck, just not per
+     line the way the native property would. */
   .roadmap-done {
-    text-decoration: line-through;
     color: var(--text-2);
+  }
+
+  .roadmap-strike-text {
+    position: relative;
+    display: inline-block;
+  }
+
+  .roadmap-strike-text::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .roadmap-done .roadmap-strike-text::after {
+    transform: scaleX(1);
   }
 
   /* Muted, not struck through: unlike a done step, a not-my-path one was
