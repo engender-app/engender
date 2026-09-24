@@ -53,8 +53,17 @@ interface BootDeps {
 export function isDatabaseLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
+  /* "Access Handles cannot be created" (ux-carpet 243) is the web driver's
+     own version of the same fact the rest of this pattern already covers:
+     something else still has the file. It shows up when a tab that just
+     navigated away or reloaded held the OPFS SAH pool a worker of this tab's
+     own is now trying to acquire, and the browser has not yet let go of the
+     old worker's access handles - a race `mc-driver.ts`'s `pagehide` release
+     narrows but cannot close, since nothing here can await another page's
+     teardown. A moment is what it needs, the same as a locked SQLite file
+     needing another connection's transaction to end. */
   const pattern =
-    /database is locked|\bcode 5\b|sqlite_busy|database table is locked|SQLiteDatabaseLockedException|SQLiteBusyException|\bbusy\b/i;
+    /database is locked|\bcode 5\b|sqlite_busy|database table is locked|SQLiteDatabaseLockedException|SQLiteBusyException|\bbusy\b|Access Handles cannot be created/i;
   if (pattern.test(message)) return true;
   if (error instanceof Error && error.cause) {
     const causeMsg = error.cause instanceof Error ? error.cause.message : String(error.cause);
