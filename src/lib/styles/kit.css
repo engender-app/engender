@@ -200,6 +200,13 @@
   margin-top: var(--space-4);
 }
 
+/* A reserve's body is not a screen of its own: a heading first in it is
+   first on the screen only when the reserve is (ux-carpet ticket 211: the
+   appointments' later visits lost their 40 under the blocks above). */
+.read-reserve:not(:first-child) > .read-reserve-body > .kit-heading:first-child {
+  margin-top: var(--space-8);
+}
+
 .kit-heading h2 {
   font-family: var(--font-display);
   font-weight: var(--weight-display);
