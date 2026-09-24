@@ -58,10 +58,7 @@
      VITE_DEMO=1 npm run build
      node tests/cohesion-sweep-gallery.mjs
    `--out <dir>` names where the audit lands. To sweep another checkout -
-   main's tip, for a before column - run it from *that* checkout's directory
-   and hand it the same path as --root: vite's preview server resolves
-   .svelte-kit/output relative to the cwd whatever root it is given, so
-   --root on its own silently sweeps this build twice under two tags.
+   main's tip, for a before column - hand its path as --root.
 
    `--prove` runs one extra route first with seven marks - an undersized
    button, a covered button and a tonal ground, which have to be found, and
@@ -90,13 +87,12 @@
    forcing `isAndroid()` itself sends boot at the Android SQLite driver and
    the app never becomes ready, and a query parameter that forced the branch
    would be a backdoor shipped to production for the sake of a reading. */
-import { preview } from 'vite';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, previewBuild } from './browser-harness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -335,7 +331,7 @@ if (PIN_ANDROID) {
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
-let app = await preview({ root, preview: { port: 0 } });
+let app = await previewBuild(root);
 let base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
 const audit = [];

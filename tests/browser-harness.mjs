@@ -6,8 +6,11 @@
    drives Chromium against stays with that script - a probe-page server, a
    built-app preview server and a real dev server are different enough not
    to share. `fillDate` joined the same way (redesign ticket 17), once the
-   walkthrough and a gallery script both needed it. */
+   walkthrough and a gallery script both needed it. `previewBuild` is the
+   one exception to that: every probe that takes `--root` needs the same
+   chdir, and twelve copies of it had already gone wrong (ticket 226). */
 import { chromium } from 'playwright-core';
+import { preview } from 'vite';
 import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
@@ -168,4 +171,18 @@ export function createReporter() {
   };
 
   return { ok, fail, finish, block };
+}
+
+/** A `vite preview` server over the built app in `root`.
+
+    SvelteKit's preview adapter reads the built server from the working
+    directory, not from the root Vite is handed, so a probe given `--root
+    <other tree>` but started anywhere else served the tree it was started
+    in and compared a build with itself (tickets 224 and 226). This changes
+    into `root` first. Resolve any output path the caller takes before
+    calling it. Without `--root` the root is the checkout the probe runs in
+    and the change is a no-op. */
+export function previewBuild(root) {
+  process.chdir(root);
+  return preview({ root, preview: { port: 0 } });
 }

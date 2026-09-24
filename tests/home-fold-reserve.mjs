@@ -24,11 +24,10 @@
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/home-fold-reserve.mjs [--runs 3] [--theme light|dark] [--root <built tree>] */
-import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage } from './browser-harness.mjs';
+import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
   FILL_EVERY_FEATURE_EXPRESSION,
@@ -45,7 +44,7 @@ const flag = (name, fallback) => {
 const RUNS = Number(flag('runs', '3'));
 const THEME = flag('theme', 'light');
 /* `--dump <dir>` writes every run's frames as JSON, for reading a finding. */
-const DUMP = flag('dump', '');
+const DUMP = flag('dump', '') && resolve(flag('dump', ''));
 /* The hydration sweep's own teleport floor is 24px; a resize at --dur-med
    covering a few hundred pixels moves well under that per frame at its
    steepest, and a one-frame arrival moves hundreds. */
@@ -110,7 +109,7 @@ const SAMPLER = `(() => {
 })()`;
 
 const browser = await launchChromium();
-const app = await preview({ root: resolve(flag('root', resolve(here, '..'))), preview: { port: 0 } });
+const app = await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 const errors = [];
