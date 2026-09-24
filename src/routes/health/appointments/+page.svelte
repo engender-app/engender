@@ -55,7 +55,7 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
   import type { Appointment, ChecklistItem } from '$lib/data/types';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -120,6 +120,45 @@
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
+
+  /* The visit summary above and the prep checklist below each gate on their
+     own read (ReadGate), and the two don't always land in the same tick: on
+     a cold load, whichever answers second grows its own block in a frame
+     after the first one has already eased into its resting height - the
+     block between them (its heading, its screen part, its list) rode the
+     first read's settle up a few px, then the checklist's own growth shoved
+     it and everything after it back down, a direction reversal (ux-carpet
+     ticket 238). Neither ReadGate sees the other's read, so `gateTogether`
+     holds each one at "loading" until both have answered - one combined
+     resize instead of two, a frame apart. Latched like `visitsRevealed`
+     further down: once both have answered once, a later refetch of
+     either (stale, not loading) must not put either placeholder back. */
+  let visitAndPrepAnswered = $state(false);
+  $effect.pre(() => {
+    if (!appointmentsQuery.loading && !checklistQuery.loading) visitAndPrepAnswered = true;
+  });
+  function gateTogether<T>(list: LiveList<T>): LiveList<T> {
+    return {
+      get rows() {
+        return list.rows;
+      },
+      get loading() {
+        return !visitAndPrepAnswered || list.loading;
+      },
+      get empty() {
+        return list.empty;
+      },
+      get failed() {
+        return list.failed;
+      },
+      get stale() {
+        return list.stale;
+      },
+      retry: () => list.retry()
+    };
+  }
+  const gatedAppointmentsQuery = gateTogether(appointmentsQuery);
+  const gatedChecklistQuery = gateTogether(checklistQuery);
 
   const titleOf = (appointment: Appointment) =>
     appointment.kind ??
@@ -276,7 +315,7 @@
        A block rather than a row, because the gap is the reading and a row
        would put it in a subtitle beside the address. It opens the editor, so
        the one record on the screen is still the one you change. -->
-  <ReadGate read={appointmentsQuery} variant="block" count={1}>
+  <ReadGate read={gatedAppointmentsQuery} variant="block" count={1}>
     {#snippet rows()}
       {#if nextVisit}
         <!-- `collapse` as well as the clip in the stylesheet, which is
@@ -331,7 +370,7 @@
     {/snippet}
   </SectionHeading>
 
-  <ReadGate read={checklistQuery} variant="line" count={3}>
+  <ReadGate read={gatedChecklistQuery} variant="line" count={3}>
     {#snippet rows()}
       <ListCard role={roleAt(activeFlag.roles, 1)}>
         <!-- Hand-rolled rather than ListRow (ticket 16): two trailing
