@@ -183,7 +183,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('says why a span cannot draw, in the words the range view uses', () => {
-    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin" data-lookback-thin>\s*\{m\.wrapped_thin_body\(/);
+    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin"[^>]*data-lookback-thin[^>]*>\s*\{m\.wrapped_thin_body\(/);
   });
 
   /* Wrapped's second line is always mood; this one is deliberately not, so
