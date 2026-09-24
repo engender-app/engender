@@ -983,11 +983,6 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(layout).toContain('blind.release()');
   });
 
-  /* The bottom corners stay exact on every frame of the slide, which is
-     what the clip buys: the block itself is never resized, so there is no
-     frame in which a 175px snapshot is being squashed into 102. The group
-     is pinned for the same reason - a tween of the box is a scale of the
-     picture inside it. */
   /* ux-carpet 230. The blind and the rings are nested under the field's own
      group, so their z-index only orders them inside it, and the field group
      is what has to sit over the screen's. At auto it fell under the screen,
@@ -998,6 +993,11 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(z('::view-transition-group(field)')).toBeGreaterThan(z('::view-transition-group(screen)'));
   });
 
+  /* The bottom corners stay exact on every frame of the slide, which is
+     what the clip buys: the block itself is never resized, so there is no
+     frame in which a 175px snapshot is being squashed into 102. The group
+     is pinned for the same reason - a tween of the box is a scale of the
+     picture inside it. */
   it('slides the blind on one clip, at one size, with its corners in the clip', () => {
     expect(declarations(ruleOf(app, '::view-transition-group(blind)')?.body ?? '').animation).toBe(
       'none'
