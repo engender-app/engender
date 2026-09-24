@@ -16,6 +16,13 @@
      clipped from above (memory: a collapse arrival animates clip, not
      height), so its first frame must be clipped whole or transparent.
 
+   The first two count only what was painted. A box clipped whole or
+   transparent in both frames of a step can change place without anyone
+   seeing it, and getBoundingClientRect ignores clip-path: the notice
+   sometimes mounts a frame before the count line's disclose pushes the
+   results down, and rode that 12.7px step while still clipped to nothing,
+   which failed about one records flow in ten at 4x CPU (ticket 224).
+
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/more-search-nothing-found.mjs [--runs 3] [--root <built tree>] */
@@ -80,6 +87,10 @@ const SAMPLER = `new Promise((done) => {
   requestAnimationFrame(() => setTimeout(tick, 0));
 })`;
 
+/* Painted: some of the box shows. Clipped to within a pixel of its whole
+   height from above, or at opacity 0.05 or less, it does not. */
+const painted = (box) => box != null && box.o > 0.05 && box.clipTop < box.h - 1;
+
 function findings(samples) {
   const out = [];
   const keys = new Set(samples.flatMap((s) => Object.keys(s.boxes)));
@@ -89,10 +100,11 @@ function findings(samples) {
     const top = (i) => series[i]?.top ?? null;
     const step = (i) => (i > 0 && i < series.length && top(i) != null && top(i - 1) != null ? top(i) - top(i - 1) : 0);
     for (let i = 1; i < series.length; i++) {
-      if (series[i - 1] && !series[i] && series[i - 1].h > 2 && series[i - 1].o > 0.05)
+      if (painted(series[i - 1]) && !series[i] && series[i - 1].h > 2)
         out.push(`${name} vanished at ${Math.round(samples[i].at)}ms, ${series[i - 1].h}px tall at opacity ${series[i - 1].o}`);
       const d = step(i);
       if (Math.abs(d) < STEP_PX || Math.min(top(i), top(i - 1)) > 844) continue;
+      if (!painted(series[i - 1]) && !painted(series[i])) continue;
       let run = 1;
       for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
       for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
@@ -101,7 +113,7 @@ function findings(samples) {
     }
     const first = series.findIndex(Boolean);
     const f = series[first];
-    if (f?.notice && f.o > 0.05 && f.clipTop < f.h - 1)
+    if (f?.notice && painted(f))
       out.push(`the notice's first frame painted ${Math.round(f.h - f.clipTop)}px at opacity ${f.o}`);
   }
   return out;
