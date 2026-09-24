@@ -438,8 +438,7 @@
       {#if recapQuery.loading}
         <span class="lookback-thin" aria-hidden="true"></span>
       {:else if enoughEntries}
-        <a
-          class="lookback-read"
+        <a class="lookback-read"
           data-lookback-read
           data-span-keep
           href={`/wrapped/range${spanRangeQuery(span)}`}
@@ -449,7 +448,7 @@
           {m.lookback_read_span()}
         </a>
       {:else}
-        <span class="lookback-thin" data-lookback-thin in:fadeIn out:crossfade>
+        <span class="lookback-thin" in:fadeIn out:crossfade data-lookback-thin>
           {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
         </span>
       {/if}
