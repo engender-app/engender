@@ -16,6 +16,13 @@
      clipped from above (memory: a collapse arrival animates clip, not
      height), so its first frame must be clipped whole or transparent.
 
+   The first two count only what was painted. A box clipped whole or
+   transparent in both frames of a step can change place without anyone
+   seeing it, and getBoundingClientRect ignores clip-path: the notice
+   sometimes mounts a frame before the count line's disclose pushes the
+   results down, and rode that 12.7px step while still clipped to nothing,
+   which failed about one records flow in ten at 4x CPU (ticket 224).
+
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/more-search-nothing-found.mjs [--runs 3] [--root <built tree>] */
@@ -38,7 +45,12 @@ const JUMP_PX = 24;
 const SAMPLE_MS = 1400;
 
 const browser = await launchChromium();
-const app = await preview({ root: resolve(flag('root', resolve(here, '..'))), preview: { port: 0 } });
+/* SvelteKit's preview finds the built server under the working directory,
+   not under Vite's root, so a --root without this served whatever tree the
+   probe was started in (ticket 224). */
+const root = resolve(flag('root', resolve(here, '..')));
+process.chdir(root);
+const app = await preview({ root, preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
@@ -80,7 +92,35 @@ const SAMPLER = `new Promise((done) => {
   requestAnimationFrame(() => setTimeout(tick, 0));
 })`;
 
-function findings(samples) {
+/* Painted: some of the box shows. Clipped to within a pixel of its whole
+   height from above, or at opacity 0.05 or less, it does not. */
+const painted = (box) => box != null && box.o > 0.05 && box.clipTop < box.h - 1;
+
+/* Keeps the samples that are one frame apart and marks the ones that are
+   not. The sampler reads in a timeout after
+   each animation frame, and under 4x CPU throttling that timeout sometimes
+   lands a frame late and the next one a few ms after it, so one step spans
+   two frames and the next is a copy of the same layout (ticket 224: a 12.7px
+   step 27ms after the sample before it, then an identical sample 4ms later,
+   read as a one-frame move and as the notice's first frame already 19px
+   open). A copy taken under half a frame after the sample before it is
+   dropped, and a sample over a frame and a half after the one before it is
+   marked, so the one-frame rules below do not judge a step they did not see
+   whole. The jump and vanish rules still apply across it. What that leaves
+   unjudged, a 2-24px step straight after a gap, is printed under the run
+   rather than dropped, so a real mid-size move that lands on a throttling
+   hiccup is still in front of whoever reads the output. */
+function consecutive(samples) {
+  const kept = samples.filter(
+    (s, i) => i === 0 || s.at - samples[i - 1].at >= 8 || JSON.stringify(s.boxes) !== JSON.stringify(samples[i - 1].boxes)
+  );
+  const gaps = kept.slice(1).map((s, i) => s.at - kept[i].at).sort((a, b) => a - b);
+  const frame = gaps[Math.floor(gaps.length / 2)] ?? 1000 / 60;
+  return kept.map((s, i) => ({ ...s, afterGap: i > 0 && s.at - kept[i - 1].at > 1.5 * frame }));
+}
+
+function findings(raw, unjudged = []) {
+  const samples = consecutive(raw);
   const out = [];
   const keys = new Set(samples.flatMap((s) => Object.keys(s.boxes)));
   for (const key of keys) {
@@ -89,20 +129,23 @@ function findings(samples) {
     const top = (i) => series[i]?.top ?? null;
     const step = (i) => (i > 0 && i < series.length && top(i) != null && top(i - 1) != null ? top(i) - top(i - 1) : 0);
     for (let i = 1; i < series.length; i++) {
-      if (series[i - 1] && !series[i] && series[i - 1].h > 2 && series[i - 1].o > 0.05)
+      if (painted(series[i - 1]) && !series[i] && series[i - 1].h > 2)
         out.push(`${name} vanished at ${Math.round(samples[i].at)}ms, ${series[i - 1].h}px tall at opacity ${series[i - 1].o}`);
       const d = step(i);
       if (Math.abs(d) < STEP_PX || Math.min(top(i), top(i - 1)) > 844) continue;
+      if (!painted(series[i - 1]) && !painted(series[i])) continue;
       let run = 1;
       for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
       for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
-      if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
+      if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || (run === 1 && !samples[i].afterGap))
         out.push(`${name} ${Math.round(d)}px in one frame at ${Math.round(samples[i].at)}ms (${run}-frame move)`);
+      else if (run === 1)
+        unjudged.push(`${name} ${Math.round(d)}px at ${Math.round(samples[i].at)}ms, after a sampling gap`);
     }
     const first = series.findIndex(Boolean);
     const f = series[first];
-    if (f?.notice && f.o > 0.05 && f.clipTop < f.h - 1)
-      out.push(`the notice's first frame painted ${Math.round(f.h - f.clipTop)}px at opacity ${f.o}`);
+    if (f?.notice && painted(f))
+      (samples[first].afterGap ? unjudged : out).push(`the notice's first frame painted ${Math.round(f.h - f.clipTop)}px at opacity ${f.o}`);
   }
   return out;
 }
@@ -124,13 +167,15 @@ for (let run = 1; run <= RUNS; run++) {
     const sampling = page.evaluate(SAMPLER);
     await page.fill('[data-hub-search]', to);
     const samples = await sampling;
-    const f = findings(samples);
+    const unjudged = [];
+    const f = findings(samples, unjudged);
     if (!had) f.push(`"${from}" matched nothing to begin with`);
     const shown = samples.some((s) => Object.values(s.boxes).some((b) => b.notice));
     if (!shown) f.push('the notice never arrived');
     if (f.length) failed = true;
     console.log(`More search, ${label}, run ${run}: ${f.length ? 'FAIL' : 'ok'}`);
     for (const line of f) console.log(`    ${line}`);
+    for (const line of unjudged) console.log(`    not judged: ${line}`);
   }
 }
 
