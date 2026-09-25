@@ -9,7 +9,11 @@ import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal, type Journal } from './journal.ts';
-import { JOURNAL_BOOK_DEFAULT_INCLUSION, type JournalBookInclusion } from './journalBook.ts';
+import {
+  JOURNAL_BOOK_DEFAULT_INCLUSION,
+  journalBookCounts,
+  type JournalBookInclusion
+} from './journalBook.ts';
 
 const shot = (full: string, thumb: string) => ({
   full: new Uint8Array([...full].map((c) => c.charCodeAt(0))),
@@ -158,4 +162,53 @@ test('a trashed entry stays out of the book', async () => {
   const book = await journal.journalBook.getBook(20_000, 20_010, JOURNAL_BOOK_DEFAULT_INCLUSION);
 
   assert.deepEqual(book.entries, []);
+});
+
+/* The summary line the screen shows instead of the whole document (phase 12
+   final-audit ticket 20). Counted off the assembled book rather than asked
+   for separately, which is the only way the line and the pages can never
+   disagree. */
+
+test('the counts are the book\'s own entries, their photos and its milestones', async () => {
+  const journal = await journalWithFiles();
+  await journal.entries.upsertEntry({
+    epochDay: 20_001,
+    mood: 3,
+    note: 'two pictures',
+    attachPhotos: [shot('one-full', 'one-thumb'), shot('two-full', 'two-thumb')]
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 20_002,
+    mood: 3,
+    note: 'one picture',
+    attachPhotos: [shot('three-full', 'three-thumb')]
+  });
+  await journal.milestones.upsertMilestone({ name: 'first appointment', epochDay: 20_003 });
+
+  const book = await journal.journalBook.getBook(20_000, 20_010, JOURNAL_BOOK_DEFAULT_INCLUSION);
+
+  assert.deepEqual(journalBookCounts(book), { entries: 2, photos: 3, milestones: 1 });
+});
+
+test('a part left unticked counts nothing, because the book never carried it', async () => {
+  const journal = await journalWithFiles();
+  await journal.entries.upsertEntry({
+    epochDay: 20_001,
+    mood: 3,
+    note: 'has a picture',
+    attachPhotos: [shot('full-bytes', 'thumb-bytes')]
+  });
+  await journal.milestones.upsertMilestone({ name: 'first appointment', epochDay: 20_003 });
+
+  const noPhotos = await journal.journalBook.getBook(20_000, 20_010, {
+    ...JOURNAL_BOOK_DEFAULT_INCLUSION,
+    photos: false
+  });
+  assert.deepEqual(journalBookCounts(noPhotos), { entries: 1, photos: 0, milestones: 1 });
+
+  const noEntries = await journal.journalBook.getBook(20_000, 20_010, {
+    ...JOURNAL_BOOK_DEFAULT_INCLUSION,
+    entries: false
+  });
+  assert.deepEqual(journalBookCounts(noEntries), { entries: 0, photos: 0, milestones: 1 });
 });
