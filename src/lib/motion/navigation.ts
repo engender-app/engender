@@ -23,6 +23,7 @@
 import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
 
+import { isAndroid } from '../platform';
 import { travelSettle } from './blindSettle';
 import { PART_TRAVEL } from './fieldBlind';
 import {
@@ -208,6 +209,11 @@ function sheetTravel(node: Element): number {
   return Math.max(rect.height, (frame?.bottom ?? rect.bottom) - rect.top);
 }
 
+/** Let Android prepare the scrim and sheet layer before panel travel. */
+export function sheetEntranceDelay(): number {
+  return isAndroid() ? Math.round(motionDuration('--dur-fast') / 2) : 0;
+}
+
 /**
  * Tier 2, sheets: up from below the bottom edge, and back down past it,
  * travelling the sheet's own height. Sized off the node rather than out of a
@@ -243,10 +249,17 @@ export function sheetRise(
   options: { direction?: Direction } = {}
 ): TransitionConfig {
   const travel = sheetTravel(node);
-  return tier2((_t, u) => `transform: translateY(${travel * u}px)`, undefined, {
+  const transition = tier2((_t, u) => `transform: translateY(${travel * u}px)`, undefined, {
     duration: '--dur-slow',
     easing: travelSettle(travel, { closes: options.direction === 'out' })
   });
+  /* The Android WebView needs a few painted frames to prepare the full-screen
+     withdrawal blur and the sheet layer. Starting their animations together
+     skipped most of the first rise on a fresh route. Svelte holds the sheet
+     at its off-screen keyframe during this delay. */
+  const delay = options.direction === 'in' ? sheetEntranceDelay() : 0;
+  if (delay) transition.delay = delay;
+  return transition;
 }
 
 /**
