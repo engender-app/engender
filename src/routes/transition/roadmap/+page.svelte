@@ -89,7 +89,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { disclose } from '$lib/motion/reveal';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -131,7 +131,8 @@
     if (loaded && activeTrack === null && whereYouAre) activeTrack = whereYouAre.track;
   });
   let shownTrack = $derived(activeTrack ?? whereYouAre?.track ?? sections[0].track);
-  const fadeCount = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
+  const fadeCount = (_node: Element) =>
+    fadeOnly(Math.max(motionDuration('--dur-fast'), crossfadeDuration()));
 
   /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset
      reorders each track's built-in goals, matching ones first. Custom
