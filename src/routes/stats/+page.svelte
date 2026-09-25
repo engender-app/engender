@@ -184,6 +184,7 @@
     railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
   );
   const pickSpan = (next: Span) => {
+    if (enoughEntries) factsExited = false;
     span = next;
     live = next;
     setLastLookBackSpan(next);
@@ -195,6 +196,10 @@
      person dragged settles, one offer to turn it into an era, on this
      surface and nowhere else. Plain component state, gone on reload. */
   let eraOfferSpan = $state<Span | null>(null);
+  /* An offer for a thinner span waits until the old facts have finished
+     closing. The read's span also has to match: liveQuery keeps its last
+     answer visible while the new one runs. */
+  let factsExited = $state(true);
   let handledEraOfferSpans = $state<Span[]>([]);
   const settleEraOffer = (handled: Span) => {
     handledEraOfferSpans = [...handledEraOfferSpans, handled];
@@ -247,9 +252,13 @@
      in one flush, so `enoughEntries`, the average and the scale arc all
      change together and the card's own close is the one motion left. */
   let factsQuery = liveQuery(async (j) => {
+    const readSpan = { start: from, end: to };
     const [recap, series] = await Promise.all([j.stats.recap(from, to), j.stats.dayAverages(shown.key, from, to)]);
-    return { recap, series };
+    return { recap, series, readSpan };
   });
+  let factsCurrent = $derived(
+    factsQuery.value?.readSpan.start === from && factsQuery.value?.readSpan.end === to
+  );
   let entryCount = $derived(factsQuery.value?.recap.entryCount ?? 0);
   let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
   let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);
@@ -374,11 +383,11 @@
          here shares; under it the thin-body line below says why there is
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
-    <div class="screen-part" use:resize>
+    <div class="screen-part">
     {#if factsQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
-      <div data-lookback-facts transition:collapse>
+      <div data-lookback-facts transition:collapse onoutrostart={() => (factsExited = false)} onoutroend={() => (factsExited = true)}>
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
           <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
             {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
@@ -417,7 +426,7 @@
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, here and
          nowhere else. `disclose` opens and gives back its own height. -->
-    {#if eraOfferSpan}
+    {#if eraOfferSpan && factsCurrent && (enoughEntries || factsExited)}
       {@const offerSpan = eraOfferSpan}
       <div class="era-offer" data-era-offer role="group" aria-labelledby="era-offer-title" transition:disclose>
         <div class="era-offer-said">

@@ -204,7 +204,8 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('draws no facts under the floor, where the thin-body line already says why', () => {
-    expect(stats).toMatch(/\{#if factsQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}\s*<div data-lookback-facts transition:collapse>\s*<ListCard/);
+    expect(stats).toMatch(/\{#if factsQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}/);
+    expect(stats).toContain('<div data-lookback-facts transition:collapse');
   });
 
   /* ux-carpet 234, item 2: the average and scale-arc rows used to gate their
