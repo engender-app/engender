@@ -364,7 +364,6 @@
         key="milestones-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.ms_none()}
-        text={m.ms_intro()}
         action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
       />
     {/if}
