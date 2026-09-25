@@ -84,7 +84,17 @@
      node tests/yank-sweep.mjs --prove
    `--scenes a,b` narrows the run; `--out <dir>` names where the report and
    the frames of any yank land; `--themes light,dark` runs each scene under
-   more than the default light theme. */
+   more than the default light theme.
+
+   `--gate` exits non-zero if any style yank is found across the scenes run
+   (ticket 244): CI has no other check that a sheet or other local
+   transition actually plays, and 242's own regression - every ordinary
+   sheet's rise and scrim fade skipped for 34 sheets - passed every guard
+   in the suite silently. Render findings don't gate: the scrim's own
+   withdrawal blur fading in for the first time reads as a "dropout" to the
+   pixel detector on every sheet that has ever been checked this way
+   (tickets 149, 231, phase-12 152), a named false-positive family rather
+   than something a real fix could clear. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -135,6 +145,8 @@ const profiles = flag('profiles', 'persona,empty')
 const passes = Number(flag('passes', '3'));
 /** Injects four defects, so the detector can be seen to find them. */
 const prove = args.includes('--prove');
+/** Exits non-zero on any style yank across the scenes run (ticket 244). */
+const gate = args.includes('--gate');
 
 const SCENES = scenesFor({ prove, only });
 
@@ -308,6 +320,10 @@ if (prove) {
   } else {
     console.log('proof: all six injected yanks were reported and the camera saw them. The sweep can fail.');
   }
+}
+if (gate && total > 0) {
+  console.error(`gate FAILED: ${total} style yank(s) across the scenes run - see the report above.`);
+  process.exitCode = 1;
 }
 if (errors.length) {
   console.error(`${errors.length} page error(s):`);
