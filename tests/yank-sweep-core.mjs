@@ -353,13 +353,17 @@ export function scenesFor({ prove = false, only = [] } = {}) {
     whatever is being looked at. A navigation needs no exemption at all now
     that it is read off the pseudos rather than off the tree.
 
+    `.letter-main-btn` is replaced by a non-button reading surface while
+    its card unfolds; the card's blind paints the change, and the cast
+    shows no cut. The button's DOM departure is not a visible exit.
+
     `.sun-ring` (ticket 150) is FlagSun's per-stripe ring, redrawn rather
     than recoloured when a flag is picked - the flipbook that shape replaced
     already showed two flag colours mixed in sRGB spending 200ms as a muddy
     tan, on the one step whose whole subject is colour (FlagSun.svelte,
     onboarding's setup-paint comment), so a colour transition here is the
     wrong fix, not a missing one. */
-export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\|/;
+export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\||\.letter-main-btn\./;
 
 /** The six deliberately wrong marks. All sit among real neighbours: the
     jump slides smoothly before it teleports, the cut fades part of the way
@@ -375,6 +379,7 @@ export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\|/;
 export const INJECT_PROOF_EXPRESSION =
   (() => {
     const root = document.querySelector('[data-app-root]');
+    for (const old of root.querySelectorAll('[class^="yank-proof-"]')) old.remove();
     const make = (cls) => {
       const el = document.createElement('div');
       el.className = cls;
@@ -407,9 +412,9 @@ export const INJECT_PROOF_EXPRESSION =
         /* Eight frames at the resting 24px, one frame a window-tall 520 -
            the field-blind's own shape, on a mark built to have it. */
         bloat.style.height = frame === 9 ? '520px' : '24px';
-        /* Eight frames at resting #888, then sudden flip to #e00 and stays -
+        /* Eight frames at resting #888, then sudden flip to #000 and stays -
            the redesign-07 colour defect shape. */
-        colour.style.background = frame <= 8 ? '#888' : '#e00';
+        colour.style.background = frame <= 8 ? '#888' : '#000';
         /* Eight frames at resting 0px, one frame displaced 200px, then returned. */
         thereAndBack.style.translate = frame === 8 ? '0 200px' : '0 0px';
         /* Absent for five frames, then appears at full opacity and holds. */
@@ -521,6 +526,7 @@ export function samplerExpression(act, ms, names) {
     const key = (el) => {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
+      const letter = el.closest?.('[data-letter]')?.getAttribute('data-letter');
       const scope =
         el.getAttribute?.('data-swatch') ??
         el.getAttribute?.('data-mood-swatch') ??
@@ -535,10 +541,12 @@ export function samplerExpression(act, ms, names) {
         el.closest?.('[data-goal]')?.getAttribute('data-goal') ??
         el.closest?.('[data-track]')?.getAttribute('data-track') ??
         el.closest?.('[data-list-row]')?.getAttribute('data-list-row') ??
+        letter ??
         '';
       /* The text is what tells one row of a list from the next, trimmed
          so a count ticking up does not make a mark into a new mark. */
-      const text = (el.textContent ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
+      const text = letter && el.tagName === 'BUTTON'
+        ? '' : (el.textContent ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
       return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
     /* The browser's own answer to "is a transition running", for the
@@ -567,6 +575,25 @@ export function samplerExpression(act, ms, names) {
       if (startViewTransition) document.startViewTransition = startViewTransition;
     };
 
+    const clipBox = (box, style) => {
+      const raw = /^inset\(([^)]+)\)/.exec(style.clipPath)?.[1];
+      if (!raw) return box;
+      const parts = raw.split(/\s+/);
+      const values = [parts[0], parts[1] ?? parts[0], parts[2] ?? parts[0], parts[3] ?? parts[1] ?? parts[0]];
+      const px = (value, size) => value.endsWith('%') ? parseFloat(value) * size / 100 : parseFloat(value);
+      if (values.some((value) => !Number.isFinite(parseFloat(value)))) return box;
+      return {
+        left: box.left + px(values[3], box.width),
+        top: box.top + px(values[0], box.height),
+        right: box.right - px(values[1], box.width),
+        bottom: box.bottom - px(values[2], box.height)
+      };
+    };
+    const intersection = (a, b) => ({
+      left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
+      right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom)
+    });
+
     const frames = [];
     const t0 = performance.now();
     /* The gesture starts on the second frame, not before the first. A
@@ -593,16 +620,47 @@ export function samplerExpression(act, ms, names) {
     };
     let started = false;
     return await new Promise((done) => {
-      const tick = () => {
+      /* Change a hidden sentinel in rAF. ResizeObserver reads after the app's
+         resize actions and before paint, so intermediate layout never enters
+         the report. The sentinel changes only once per frame. */
+      const sentinel = document.createElement('div');
+      sentinel.style.cssText = 'position:fixed;visibility:hidden;width:1px;height:1px;pointer-events:none';
+      document.body.append(sentinel);
+      let width = 1;
+      let pending = false;
+      const observer = new ResizeObserver(() => {
+        if (!pending) return;
+        pending = false;
         const now = performance.now() - t0;
         const live = document.querySelector('[data-app-root]') ?? root;
         const rows = {};
         if (live) {
+          const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+          const ancestorClips = new WeakMap();
           for (const el of live.querySelectorAll('*')) {
             const cs = getComputedStyle(el);
             if (cs.display === 'none') continue;
             const box = el.getBoundingClientRect();
-            if (!box.width && !box.height) continue;
+            if (!box.width || !box.height) continue;
+            let visibleBox = intersection(clipBox(box, cs), viewport);
+            if (visibleBox.right > visibleBox.left && visibleBox.bottom > visibleBox.top) {
+              for (let up = el.parentElement; up && up !== live; up = up.parentElement) {
+                let clip = ancestorClips.get(up);
+                if (clip === undefined) {
+                  const style = getComputedStyle(up);
+                  const ancestorBox = up.getBoundingClientRect();
+                  const clipsOverflow = /(hidden|clip|scroll|auto)/.test(`${style.overflowX} ${style.overflowY}`);
+                  clip = style.clipPath !== 'none'
+                    ? clipBox(ancestorBox, style)
+                    : clipsOverflow ? ancestorBox : null;
+                  ancestorClips.set(up, clip);
+                }
+                if (clip) visibleBox = intersection(visibleBox, clip);
+                if (visibleBox.right <= visibleBox.left || visibleBox.bottom <= visibleBox.top) break;
+              }
+            }
+            const visibleArea = Math.max(0, visibleBox.right - visibleBox.left) * Math.max(0, visibleBox.bottom - visibleBox.top);
+            const visibility = Math.min(1, visibleArea / (box.width * box.height));
             /* A box that draws nothing of its own is not something a
                person can see teleport or vanish - what they see are the
                painted things inside it - and it is keyed by the text of
@@ -648,7 +706,7 @@ export function samplerExpression(act, ms, names) {
                the own value reported all six of a dismissed notice's
                marks as vanishing, when what had happened is that their
                box faded first and took them with it. */
-            let o = Number(cs.opacity);
+            let o = Number(cs.opacity) * visibility;
             for (let up = el.parentElement; up && up !== live; up = up.parentElement)
               o *= Number(getComputedStyle(up).opacity);
             const borderVisible =
@@ -661,6 +719,9 @@ export function samplerExpression(act, ms, names) {
               w: Math.round(box.width * 10) / 10,
               h: Math.round(box.height * 10) / 10,
               o: Math.round(o * 1000) / 1000,
+              c: Math.round(visibility * 1000) / 1000,
+              v: visibleArea > 0,
+              leaving: !!el.closest('[data-leaving]'),
               bg: cs.backgroundColor,
               fg: cs.color,
               ...(borderVisible ? { bc: cs.borderTopColor } : {})
@@ -680,9 +741,16 @@ export function samplerExpression(act, ms, names) {
         }
         if (now < ms) requestAnimationFrame(tick);
         else {
+          observer.disconnect();
+          sentinel.remove();
           restore();
           done(frames);
         }
+      });
+      observer.observe(sentinel);
+      const tick = () => {
+        pending = true;
+        sentinel.style.width = `${++width % 2 + 1}px`;
       };
       requestAnimationFrame(tick);
     });
@@ -723,6 +791,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
     const run = frames.map((f, i) => ({ i, at: f.at, row: f[instrument][k] ?? null }));
     const present = run.filter((r) => r.row);
     if (present.length < 2) continue;
+    if (instrument === 'rows' && !present.some((r) => r.row.v !== false)) continue;
 
     /* The per-frame movement of this mark, over the frames where it is in
        the tree on both sides. Normalized to nominal 16ms frames so a dropped
@@ -732,6 +801,9 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const a = run[i - 1].row;
       const b = run[i].row;
       if (!a || !b) continue;
+      if (instrument === 'rows' && (a.v === false || b.v === false)) continue;
+      if (a.c !== undefined && b.c < a.c) continue;
+      if (b.leaving && (!a.leaving || b.o < a.o)) continue;
       const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const d = Math.hypot(b.x - a.x, b.y - a.y);
@@ -847,6 +919,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const a = run[i - 1].row;
       const b = run[i].row;
       if (!a || a.o < VISIBLE) continue;
+      if (instrument === 'rows' && (a.v === false || b?.v === false)) continue;
       const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const dropPerFrame = (a.o - (b ? b.o : 0)) / steps;
@@ -1845,18 +1918,23 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
  *  yank field the calling report shape carries (`styleYanks` for the
  *  device and hydration reports, `yanks` for the gesture desktop). */
 export function missingProofYanks(report, { checkArrival = true } = {}) {
-  const scene = report.find((r) => r.scene === PROOF.scene);
-  const yanks = scene?.styleYanks ?? scene?.yanks ?? [];
-  const got = (mark, kind) =>
-    yanks.some(
-      (y) => y.mark.startsWith(mark) && (y.kind === kind || (kind === 'colour' && y.kind === 'color'))
-    );
-  return [
-    got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
-    got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
-    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`,
-    got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`,
-    got(PROOF.thereAndBack, 'there-and-back') ? null : `a there-and-back jump on ${PROOF.thereAndBack}`,
-    checkArrival && !got(PROOF.arrival, 'arrival') ? `an unannounced arrival on ${PROOF.arrival}` : null
-  ].filter(Boolean);
+  const scenes = report.filter((r) => r.scene === PROOF.scene);
+  if (!scenes.length) return ['the proof scene'];
+  return scenes.flatMap((scene) => {
+    const yanks = scene.styleYanks ?? scene.yanks ?? [];
+    const got = (mark, kind) =>
+      yanks.some(
+        (y) => y.mark.startsWith(mark) && (y.kind === kind || (kind === 'colour' && y.kind === 'color'))
+      );
+    const missing = [
+      got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
+      got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
+      got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`,
+      got(PROOF.colour, 'colour') ? null : `a colour yank on ${PROOF.colour}`,
+      got(PROOF.thereAndBack, 'there-and-back') ? null : `a there-and-back jump on ${PROOF.thereAndBack}`,
+      checkArrival && !got(PROOF.arrival, 'arrival') ? `an unannounced arrival on ${PROOF.arrival}` : null
+    ].filter(Boolean);
+    const label = [scene.profile, scene.theme, scene.pass && `pass ${scene.pass}`].filter(Boolean).join(' ');
+    return missing.map((item) => label ? `${label}: ${item}` : item);
+  });
 }
