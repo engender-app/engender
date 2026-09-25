@@ -27,9 +27,7 @@
      past the recovery cutoff drops the block and the strip: its phases are
      still on the rail, but the number belongs to a reading that is still
      live, and an operation four hundred days ago has none. What it keeps
-     instead is exactly what it said before - the date, the day count and
-     `Permanent record` - because ticket 52 holds the archived wording to
-     mean what it already meant. That density difference is what lets
+     instead is the date and the day count. That density difference is what lets
      several running procedures fit at once, which the screen's own intro
      promises.
 
@@ -119,8 +117,7 @@
   /* The date line, and only the date once the reading is a number above it:
      the grey subtitle running "3 Aug 2025 · 42 days since surgery" is the
      duplication this ticket is named for. An archived card has no number,
-     so it keeps the whole of the sentence it said before, `Permanent
-     record` included. */
+     so it keeps the day count beside the date. */
   let dateDetail = $derived.by(() => {
     /* Nothing, rather than `no date set` under a block that has just said
        `No date yet` in forty-point type. */
