@@ -144,7 +144,6 @@
         key="tryouts-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.running)}
         title={m.tryout_none()}
-        text={m.tryout_intro()}
         action={{ label: m.tryout_add(), primary: true, href: '/transition/tryouts/new' }}
       />
     {/snippet}
