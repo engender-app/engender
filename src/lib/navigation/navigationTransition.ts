@@ -6,6 +6,7 @@ import type { OnNavigate } from '@sveltejs/kit';
 import { ui } from '$lib/stores/ui.svelte';
 import { closeEntryContainer } from '$lib/motion/container.svelte';
 import { carryBlind } from '$lib/motion/fieldBlind';
+import { takePaletteSunFade } from '$lib/motion/paletteChange';
 import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
 import { markScreenArrival } from '$lib/motion/screenArrival';
 import { chromeTabOrigin } from './chrome-tab-origin';
@@ -108,6 +109,10 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      the screen slid past it. Computed first because the pattern is what
      says whether this navigation is the transform. */
   if (pattern !== 'container') closeEntryContainer();
+  const paletteSunFade = takePaletteSunFade(
+    navigation.from?.url.pathname ?? null,
+    navigation.to.url.pathname
+  );
   if (!document.startViewTransition || pattern === 'none') return;
 
   /* The field is a blind over the content (redesign ticket 28): named
@@ -128,6 +133,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
 
   return new Promise((resolve) => {
     document.documentElement.dataset.nav = pattern;
+    if (paletteSunFade) document.documentElement.dataset.paletteSunFade = '';
     if (shortBlindHold) document.documentElement.dataset.blindHold = 'short';
     const transition = document.startViewTransition(async () => {
       resolve();
@@ -178,6 +184,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
       .catch(() => {})
       .finally(() => {
         delete document.documentElement.dataset.nav;
+        delete document.documentElement.dataset.paletteSunFade;
         delete document.documentElement.dataset.blindHold;
         blind.release();
       });
