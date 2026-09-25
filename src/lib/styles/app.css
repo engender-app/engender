@@ -1506,3 +1506,50 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   border-radius: var(--r-block);
 }
 .icon-btn.is-outlined:hover { outline-color: var(--outline); }
+/* A Settings palette pick changes every token at once. Reveal the new
+   document from left to right, while the selected swatch's outline moves. */
+html[data-palette-transition] .palette-selection-ring {
+  view-transition-name: palette-ring;
+}
+
+html[data-palette-transition]::view-transition-old(root),
+html[data-palette-transition]::view-transition-old(screen),
+html[data-palette-transition]::view-transition-old(nav) { animation: none; }
+html[data-palette-transition]::view-transition-new(root),
+html[data-palette-transition]::view-transition-new(screen),
+html[data-palette-transition]::view-transition-new(nav) {
+  animation: palette-swipe var(--dur-slow) var(--ease-in-out) both;
+}
+@keyframes palette-swipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0); }
+}
+html[data-palette-transition]::view-transition-group(palette-ring) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-in-out);
+  z-index: 4;
+}
+@keyframes palette-fade { from { opacity: 0; } to { opacity: 1; } }
+
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(root),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(screen),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(nav),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-new(root),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-new(screen),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-new(nav) {
+  animation: palette-fade var(--dur-crossfade) linear both;
+}
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(root),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(screen),
+html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(nav) {
+  animation-direction: reverse;
+}
+
+/* Settings has no sun to carry into Today. After a palette pick, the new
+   flag fades in over the arriving field instead of opening ring by ring. */
+html[data-palette-sun-fade]::view-transition-new(*.sun-ring) {
+  animation: palette-fade var(--dur-slow) linear both;
+}
+html[data-palette-sun-fade][data-a11y-motion='reduce']::view-transition-new(*.sun-ring) {
+  animation-duration: var(--dur-crossfade);
+}
