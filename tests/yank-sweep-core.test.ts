@@ -54,6 +54,47 @@ describe('findYanks', () => {
     );
   });
 
+  it('ignores motion that stays outside the viewport', () => {
+    const frames = [
+      frame(mark({ y: 4800, v: false }), 0),
+      frame(mark({ y: 4800, v: false }), 16),
+      frame(mark({ y: 5000, v: false }), 32),
+      frame(mark({ y: 5000, v: false }), 48)
+    ];
+    expect(findYanks(frames, 'rows')).toEqual([]);
+  });
+
+  it('does not report a box moving from view to below the viewport', () => {
+    const frames = [
+      frame(mark({ y: 700, v: true, o: 1 }), 0),
+      frame(mark({ y: 700, v: true, o: 1 }), 16),
+      frame(mark({ y: 5000, v: false, o: 0 }), 32),
+      frame(mark({ y: 5000, v: false, o: 0 }), 48)
+    ];
+    expect(findYanks(frames, 'rows')).toEqual([]);
+  });
+
+  it('ignores a crossfade leaver layout jump while it fades', () => {
+    const frames = [
+      frame(mark({ leaving: false, o: 1 }), 0),
+      frame(mark({ leaving: true, o: 1, y: 220 }), 16),
+      frame(mark({ leaving: true, o: 0.7, y: 220 }), 32),
+      frame(mark({ leaving: true, o: 0.4, y: 220 }), 48),
+      frame(mark({ leaving: true, o: 0.1, y: 220 }), 64)
+    ];
+    expect(findYanks(frames, 'rows').filter((y) => y.kind === 'teleport')).toEqual([]);
+  });
+
+  it('still reports a visible mark jumping without a fade', () => {
+    const frames = [
+      frame(mark({ v: true, leaving: true }), 0),
+      frame(mark({ v: true, leaving: true }), 16),
+      frame(mark({ v: true, leaving: true, y: 220 }), 32),
+      frame(mark({ v: true, leaving: true, y: 220 }), 48)
+    ];
+    expect(findYanks(frames, 'rows')).toContainEqual(expect.objectContaining({ kind: 'teleport' }));
+  });
+
   it('does not report a mark that slides, however fast', () => {
     /* 30px per frame, well over TELEPORT_PX, but every neighbour moves the
        same 30px: a slide, not a spike. */
@@ -694,6 +735,15 @@ describe('colour distance arithmetic (ticket 136)', () => {
       const missing = missingProofYanks(report);
       expect(missing).toContainEqual(expect.stringContaining('there-and-back'));
       expect(missing).toContainEqual(expect.stringContaining('arrival'));
+    });
+
+    it('checks each proof pass, not only the first', () => {
+      const report = [
+        { scene: PROOF.scene, profile: 'persona', theme: 'light', pass: 1, yanks: allSix },
+        { scene: PROOF.scene, profile: 'persona', theme: 'light', pass: 2, yanks: [] }
+      ];
+      expect(missingProofYanks(report)).toContainEqual(expect.stringContaining('pass 2: a 200px jump'));
+      expect(missingProofYanks(report).some((item) => item.includes('pass 1'))).toBe(false);
     });
 
     it('does not check arrival when checkArrival is false (hydration window)', () => {
