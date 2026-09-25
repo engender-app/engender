@@ -18,7 +18,16 @@
      an ancestor block being created, so only `|global` plays it. That one
      sheet still holds its outro across a navigation away from it; ticket
      231's fix takes priority there and nothing in 242 asked for both at
-     once. */
+     once.
+
+     Ticket 244: a local transition plays only when its own nearest block
+     is the one being created/destroyed. `{#if globalTransitions}` split
+     *inside* `{#if open}` (242's first shape) put that inner block, not
+     `{#if open}`, in the way for every ordinary sheet - opening created
+     `{#if open}` first and the inner block as a side effect, so the local
+     intro never fired, and closing was the mirror. The split has to sit
+     outside `{#if open}` instead, so each branch's own `{#if open}` is
+     still the nearest block its local directives see. */
   let {
     open = $bindable(false),
     title = '',
@@ -174,41 +183,33 @@
 
 </script>
 
-{#if open}
-  <div
-    class="sheet-scrim"
-    role="presentation"
-    data-sheet-scrim
-    onclick={(e) => {
-      if (e.target === e.currentTarget) close();
-    }}
-    {@attach lockBackground}
-  >
-    {#if globalTransitions}
+{#if globalTransitions}
+  {#if open}
+    <div
+      class="sheet-scrim"
+      role="presentation"
+      data-sheet-scrim
+      onclick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+      {@attach lockBackground}
+    >
       <div
         class="sheet-scrim-tint scrim-withdraw"
         data-sheet-tint
         transition:scrimFade|global
       ></div>
-    {:else}
       <div
-        class="sheet-scrim-tint scrim-withdraw"
-        data-sheet-tint
-        transition:scrimFade
-      ></div>
-    {/if}
-    <div
-      class="sheet-drag"
-      role="presentation"
-      data-sheet-drag
-      class:is-dragging={dragging}
-      style:transform={dragY ? `translateY(${dragY}px)` : undefined}
-      onpointerdown={dragStart}
-      onpointermove={dragMove}
-      onpointerup={dragEnd}
-      onpointercancel={dragEnd}
-    >
-      {#if globalTransitions}
+        class="sheet-drag"
+        role="presentation"
+        data-sheet-drag
+        class:is-dragging={dragging}
+        style:transform={dragY ? `translateY(${dragY}px)` : undefined}
+        onpointerdown={dragStart}
+        onpointermove={dragMove}
+        onpointerup={dragEnd}
+        onpointercancel={dragEnd}
+      >
         <div
           class="sheet"
           role="dialog"
@@ -224,7 +225,36 @@
           <div class="sheet-handle"></div>
           {@render children()}
         </div>
-      {:else}
+      </div>
+    </div>
+  {/if}
+{:else}
+  {#if open}
+    <div
+      class="sheet-scrim"
+      role="presentation"
+      data-sheet-scrim
+      onclick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+      {@attach lockBackground}
+    >
+      <div
+        class="sheet-scrim-tint scrim-withdraw"
+        data-sheet-tint
+        transition:scrimFade
+      ></div>
+      <div
+        class="sheet-drag"
+        role="presentation"
+        data-sheet-drag
+        class:is-dragging={dragging}
+        style:transform={dragY ? `translateY(${dragY}px)` : undefined}
+        onpointerdown={dragStart}
+        onpointermove={dragMove}
+        onpointerup={dragEnd}
+        onpointercancel={dragEnd}
+      >
         <div
           class="sheet"
           role="dialog"
@@ -240,9 +270,9 @@
           <div class="sheet-handle"></div>
           {@render children()}
         </div>
-      {/if}
+      </div>
     </div>
-  </div>
+  {/if}
 {/if}
 
 <style>
