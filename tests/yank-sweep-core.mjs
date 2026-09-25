@@ -545,8 +545,14 @@ export function samplerExpression(act, ms, names) {
         '';
       /* The text is what tells one row of a list from the next, trimmed
          so a count ticking up does not make a mark into a new mark. */
+      /* SectionHeading's action can change while its named section stays
+         put. Key the painted rule by its h2; sample the action's own marks
+         separately so a count fade is not reported as a heading swap. */
+      const words = el.hasAttribute('data-section-heading')
+        ? el.querySelector('h2')?.textContent
+        : el.textContent;
       const text = letter && el.tagName === 'BUTTON'
-        ? '' : (el.textContent ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
+        ? '' : (words ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
       return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
     /* The browser's own answer to "is a transition running", for the
