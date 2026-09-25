@@ -109,9 +109,11 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      the screen slid past it. Computed first because the pattern is what
      says whether this navigation is the transform. */
   if (pattern !== 'container') closeEntryContainer();
+  const paletteSunFade = takePaletteSunFade(
+    navigation.from?.url.pathname ?? null,
+    navigation.to.url.pathname
+  );
   if (!document.startViewTransition || pattern === 'none') return;
-
-  const paletteSunFade = navigation.to.url.pathname === '/' && takePaletteSunFade();
 
   /* The field is a blind over the content (redesign ticket 28): named
      before the old side is captured, handed to the incoming screen after

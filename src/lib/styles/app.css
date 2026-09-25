@@ -1544,6 +1544,22 @@ html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(sc
 html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(nav) {
   animation-direction: reverse;
 }
+@media (prefers-reduced-motion: reduce) {
+  html[data-palette-transition]::view-transition-old(root),
+  html[data-palette-transition]::view-transition-old(screen),
+  html[data-palette-transition]::view-transition-old(nav),
+  html[data-palette-transition]::view-transition-new(root),
+  html[data-palette-transition]::view-transition-new(screen),
+  html[data-palette-transition]::view-transition-new(nav) {
+    animation: palette-fade var(--dur-crossfade) linear both;
+    animation-duration: var(--dur-crossfade) !important;
+  }
+  html[data-palette-transition]::view-transition-old(root),
+  html[data-palette-transition]::view-transition-old(screen),
+  html[data-palette-transition]::view-transition-old(nav) {
+    animation-direction: reverse;
+  }
+}
 
 /* Settings has no sun to carry into Today. After a palette pick, the new
    flag fades in over the arriving field instead of opening ring by ring. */

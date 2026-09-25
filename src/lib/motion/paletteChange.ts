@@ -3,9 +3,9 @@ import { tick } from 'svelte';
 let latestChange = 0;
 let sunFadePending = false;
 
-/** The next arrival on Today answers a palette pick with a fading sun. */
-export function takePaletteSunFade(): boolean {
-  const pending = sunFadePending;
+/** A return from Settings to Today answers a palette pick with a fading sun. */
+export function takePaletteSunFade(from: string | null, to: string): boolean {
+  const pending = sunFadePending && from === '/settings' && to === '/';
   sunFadePending = false;
   return pending;
 }
