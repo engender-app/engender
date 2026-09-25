@@ -37,6 +37,8 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { changePalette } from '$lib/motion/paletteChange';
+  import { paletteRing } from '$lib/motion/paletteRing';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
   const PALETTES: [string, () => string][] = [
@@ -89,7 +91,7 @@
   }
 
   function pickPalette(key: string) {
-    prefs.palette = key;
+    if (prefs.palette !== key) changePalette(() => { prefs.palette = key; });
   }
 
   function pickMoodPreset(key: string) {
@@ -141,7 +143,8 @@
   <ListCard>
     <div class="settings-pad">
       <p class="field-label" style="margin-bottom:var(--space-3)">{m.colour_palette()}</p>
-      <div class="palette-grid" role="radiogroup" use:rovingRadio aria-label={m.colour_palette()}>
+      <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-label={m.colour_palette()}>
+        <span class="palette-selection-ring" aria-hidden="true"></span>
         {#each PALETTES as [key, label] (key)}
           <button
             class="palette-swatch press"
