@@ -294,6 +294,8 @@ const SCENES = [
   { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
   { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
   { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
+  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', is: 'the dose editor sheet opening' },
+  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet opening' },
   { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
   /* Ticket 09 (ADR-0084): the stock editor stopped being its own screen,
      so opening it is no longer one `at`/`act` step from a cold load - it

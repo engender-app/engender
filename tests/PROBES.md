@@ -62,6 +62,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `date-picker-check` | the calendar's targets are 48px, and it works by keyboard, at 200% and inside a sheet |
 | `sheet-focus-check` | a sheet takes focus and gives it back, on appointment, lab and dose screens |
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
+| `yank-sweep --scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate` (ticket 244) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |
 | `tryout-form-check` | what a screen reader is handed for the tryout form's fields |
 | `media-transport-check` | both players' transports work by keyboard, speak their position, go full screen and run offline |
 | `care-lane-labels` | three Care lanes' captions do not collide at 390px in Polish |
