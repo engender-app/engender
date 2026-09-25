@@ -138,6 +138,8 @@ export interface LiveQuery<T> {
       screen is one round trip old, not absent, and replacing a list with a
       placeholder on every save would be worse than the wait it reports. */
   readonly loading: boolean;
+  /** True while the latest run is in flight, including its first retry. Adapters may omit it. */
+  readonly running?: boolean;
   /** True when the most recent run rejected. */
   readonly failed: boolean;
   /** The last result remains visible after a refresh failure. */
@@ -323,6 +325,7 @@ function query<T>(
   const asked = site && openedJournal ? recallFor(site, run, openedJournal) : null;
   const recalled = asked?.value;
   let state = $state<ReadState<T>>(recalled === undefined ? pending<T>() : landed(recalled as T));
+  let inFlight = $state(false);
   /* The painted answer the first refresh compares against: equal, and the
      refresh assigns nothing, so nothing on screen re-renders or moves. */
   let painted: unknown = recalled;
@@ -370,6 +373,7 @@ function query<T>(
     if (!ready) return; // still booting; this re-runs when the database opens
 
     const mine = ++latest;
+    inFlight = true;
     /* Only a query's very first attempt in its whole lifetime gets the grace
        below: every later run - an explicit retry(), a write-triggered
        re-run - reports a rejection immediately, exactly as before. */
@@ -400,6 +404,7 @@ function query<T>(
 
     const settle = (result: T) => {
       if (mine !== latest) return;
+      inFlight = false;
       /* A run that asked the journal nothing at all, before or after an
          await, answered from what the closure already had - an early return
          for a closed sheet or an empty selection - and is keyed as such. */
@@ -418,6 +423,7 @@ function query<T>(
 
     const fail = (error: unknown) => {
       if (mine !== latest) return;
+      inFlight = false;
       console.error('a journal query failed', error);
       state = gaveUp(state);
     };
@@ -462,6 +468,9 @@ function query<T>(
     },
     get loading() {
       return state.loading;
+    },
+    get running() {
+      return inFlight;
     },
     get failed() {
       return state.failed;

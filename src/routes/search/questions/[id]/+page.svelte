@@ -26,7 +26,7 @@
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
   import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -35,7 +35,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -96,42 +96,52 @@
      unrelated rename - the probe's "ignores an unrelated rename" check is
      what would catch that regression. */
   let searchSignature = $derived(question ? JSON.stringify([question.queryText, entrySearchFiltersOf(question)]) : null);
-  let stableSearch = $state<{ queryText: string; filters: ReturnType<typeof entrySearchFiltersOf> } | null>(null);
+  let stableSearch = $state<{ signature: string; queryText: string; filters: ReturnType<typeof entrySearchFiltersOf> } | null>(null);
   let lastSearchSignature: string | null = null;
   $effect(() => {
     const signature = searchSignature;
     if (signature === lastSearchSignature) return;
     lastSearchSignature = signature;
-    stableSearch = question ? { queryText: question.queryText, filters: entrySearchFiltersOf(question) } : null;
+    stableSearch = question && signature ? { signature, queryText: question.queryText, filters: entrySearchFiltersOf(question) } : null;
   });
 
   const NOTHING_ASKED = { hits: [], total: 0 };
+  let searchAttempt = $state<typeof stableSearch>(null);
   let search = liveQuery((j) => {
-    if (!stableSearch) return Promise.resolve(NOTHING_ASKED);
-    const { queryText, filters } = stableSearch;
+    const criteria = stableSearch;
+    searchAttempt = criteria;
+    if (!criteria) return Promise.resolve(null);
+    const { queryText, filters } = criteria;
     const limit = PAGE * pages;
     const matchingTagIds = tagIdsMatching(queryText, vocabulary.tags);
     return Promise.all([
       j.entries.searchEntries(queryText, matchingTagIds, filters, limit),
       j.entries.countSearchMatches(queryText, matchingTagIds, filters)
-    ]).then(([hits, total]) => ({ hits, total }));
+    ]).then(([hits, total]) => ({ criteria, hits, total }));
   });
 
   const NOTHING_ELSEWHERE = { hits: [], total: 0 };
+  let elsewhereAttempt = $state<typeof stableSearch>(null);
   let elsewhere = liveQuery((j) => {
-    const typed = stableSearch?.queryText.trim();
-    if (!stableSearch || !typed) return Promise.resolve(NOTHING_ELSEWHERE);
+    const criteria = stableSearch;
+    elsewhereAttempt = criteria;
+    if (!criteria) return Promise.resolve(null);
+    const typed = criteria.queryText.trim();
+    if (!typed) return Promise.resolve({ criteria, ...NOTHING_ELSEWHERE });
     const limit = PAGE * hitPages;
     return j.textSearch.search({
       query: typed,
       today: todayEpochDay(),
-      startEpochDay: stableSearch.filters.startEpochDay ?? null,
-      endEpochDay: stableSearch.filters.endEpochDay ?? null,
+      startEpochDay: criteria.filters.startEpochDay ?? null,
+      endEpochDay: criteria.filters.endEpochDay ?? null,
       limit
-    });
+    }).then((result) => ({ criteria, ...result }));
   });
 
-  let results = $derived(search.value ?? NOTHING_ASKED);
+  let results = $derived.by(() => {
+    const value = search.value;
+    return value?.criteria === stableSearch ? value : NOTHING_ASKED;
+  });
   let hits = $derived(results.hits);
   let total = $derived(results.total);
   let groups = $derived(entryDayGroups(hits));
@@ -145,13 +155,28 @@
   let marginNotesRead = liveQuery((j) => j.marginNotes.forEntries(entryIds));
   let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
 
-  let elsewhereResults = $derived(elsewhere.value ?? NOTHING_ELSEWHERE);
+  let elsewhereResults = $derived.by(() => {
+    const value = elsewhere.value;
+    return value?.criteria === stableSearch ? value : NOTHING_ELSEWHERE;
+  });
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, stableSearch?.queryText.trim() ?? ''));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
   let foundTotal = $derived(total + elsewhereResults.total);
   let loading = $derived(search.loading || elsewhere.loading);
   let foundNothing = $derived(hits.length === 0 && hitRows.length === 0);
+  /* Reads retain old values and failures during a new run. Wait for both
+     attempts to use this question's criteria before showing an answer. */
+  let resultsReady = $derived(
+    !!stableSearch && stableSearch.signature === searchSignature &&
+    searchAttempt === stableSearch && elsewhereAttempt === stableSearch &&
+    (search.value?.criteria === stableSearch || (search.failed && !search.running)) &&
+    (elsewhere.value?.criteria === stableSearch || (elsewhere.failed && !elsewhere.running)) && !loading
+  );
+  let revealedCriteria = $state<typeof stableSearch>(null);
+  $effect.pre(() => {
+    if (resultsReady) revealedCriteria = stableSearch;
+  });
 
   let role = $derived(roleAt(activeFlag.roles, 0));
   let hitsRole = $derived(roleAt(activeFlag.roles, 1));
@@ -228,9 +253,15 @@
     <p class="search-hint">{m.search_filters_date_scope()}</p>
 
     <div aria-live="polite">
-      {#if loading}
-        <div out:crossfade><Skeleton variant="card" count={3} /></div>
-      {:else if !foundNothing}
+      {#key searchSignature}
+      <ReadReserve ready={!!stableSearch && (resultsReady || revealedCriteria === stableSearch)} estimate={240}>
+      {#if search.failed || elsewhere.failed}
+        <Notice
+          title={m.read_failed()}
+          action={{ label: m.read_retry(), onclick: () => { search.retry(); elsewhere.retry(); } }}
+        />
+      {/if}
+      {#if !foundNothing}
         <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 
         {#if hitRows.length}
@@ -282,9 +313,11 @@
             <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
           </button>
         {/if}
-      {:else}
+      {:else if !search.failed && !elsewhere.failed}
         <Notice icon="bookmark" key="saved-question-none" title={m.no_results()} text={m.saved_question_no_results()} />
       {/if}
+      </ReadReserve>
+      {/key}
     </div>
 
     <Sheet bind:open={renamingOpen} title={m.saved_question_edit_sheet()}>
