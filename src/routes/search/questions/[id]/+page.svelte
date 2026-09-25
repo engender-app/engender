@@ -262,7 +262,9 @@
         />
       {/if}
       {#if !foundNothing}
-        <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
+        {#if hitRows.length}
+          <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
+        {/if}
 
         {#if hitRows.length}
           <SectionHeading text={m.search_entries_heading()} />
@@ -343,6 +345,7 @@
       open={deleteOpen}
       title={m.saved_question_delete_sheet()}
       question={m.saved_question_delete_q({ name: question.name })}
+      hint={m.saved_question_delete_hint()}
       confirmLabel={m.saved_question_delete()}
       cancelLabel={m.keep_it()}
       confirmAttrs={{ 'data-confirm-delete-saved-question': '' }}
@@ -351,7 +354,7 @@
     />
   {:else if !questionsQuery.loading}
     <ScreenHeader title={m.saved_questions_title()} back="/search/questions" />
-    <Notice icon="bookmark" key="saved-question-gone" title={m.saved_question_gone_title()} text={m.saved_question_gone_body()} />
+    <Notice icon="bookmark" key="saved-question-gone" title={m.saved_question_gone_title()} text={m.saved_question_gone_body()} action={{ label: m.search(), href: '/search' }} />
   {/if}
 </div>
 
