@@ -28,6 +28,7 @@ afterEach(() => {
   const g = globalThis as Record<string, unknown>;
   delete g.document;
   delete g.getComputedStyle;
+  delete g.window;
 });
 
 const node = {} as Element;
@@ -188,6 +189,19 @@ describe('sheet rise', () => {
     for (const direction of ['in', 'out'] as const) {
       expect(sheetRise(sheetNode(300, 800), {}, { direction }).duration).toBe(380);
     }
+  });
+
+  it('holds only the Android entrance below the edge before travel', () => {
+    stubDocument(TOKENS);
+    const g = globalThis as Record<string, unknown>;
+    g.window = { Capacitor: { getPlatform: () => 'android' } };
+    expect(sheetRise(sheetNode(300, 800), {}, { direction: 'in' }).delay).toBe(75);
+    expect(sheetRise(sheetNode(300, 800), {}, { direction: 'out' }).delay).toBeUndefined();
+    stubDocument(TOKENS, true);
+    expect(sheetRise(sheetNode(300, 800), {}, { direction: 'in' }).delay).toBeUndefined();
+    g.window = { Capacitor: { getPlatform: () => 'web' } };
+    stubDocument(TOKENS);
+    expect(sheetRise(sheetNode(300, 800), {}, { direction: 'in' }).delay).toBeUndefined();
   });
 
   it('crossfades with no transform at all under reduced motion', () => {

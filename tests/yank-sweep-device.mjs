@@ -42,8 +42,9 @@
     `--themes light,dark` (both, by default), `--out <dir>` names the report
     directory, `--compare <report.json>` reads a desktop sweep report and
     prints the two side by side, `--prove` injects the three wrong marks and
-    fails unless the style arithmetic and the camera both catch them, and
-    `--dump` writes every scene's style frames as JSON alongside the report.
+    fails unless the style arithmetic and the camera both catch them,
+    `--dump` writes every scene's style frames as JSON, and
+    `--cast-scenes a,b` saves all compositor frames for named scenes.
 
     `--hydration` (ticket 108) swaps the gesture scene table for the full
     screen inventory and walks it cold in both database profiles: the
@@ -146,6 +147,7 @@ const comparePath = flag(
 );
 const prove = args.includes('--prove');
 const dump = args.includes('--dump');
+const castScenes = flag('cast-scenes', '').split(',').filter(Boolean);
 const SCENES = hydration ? hydrationScreensFor({ prove, only }) : scenesFor({ prove, only });
 
 const adb = (...a) => execFileSync('adb', ['-s', serial, ...a], { encoding: 'utf8' });
@@ -930,6 +932,13 @@ if (hydration) {
                 `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
                 JSON.stringify(result.frames, null, 1)
               );
+            if (castScenes.includes(scene.name)) {
+              const castDir = `${outDir}/${scene.name}-${profile}-${theme}-p${pass}`;
+              await mkdir(castDir, { recursive: true });
+              const cast = [...result.cast].sort((a, b) => a.at - b.at);
+              for (const [index, frame] of cast.entries())
+                await writeFile(`${castDir}/${String(index).padStart(3, '0')}-${Math.round(frame.at - cast[0].at)}ms.png`, Buffer.from(frame.data, 'base64'));
+            }
             report.push({
               scene: scene.name,
               profile,

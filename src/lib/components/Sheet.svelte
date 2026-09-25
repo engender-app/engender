@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { sheetRise, scrimFade } from '$lib/motion/navigation';
+  import { sheetEntranceDelay, sheetRise, scrimFade } from '$lib/motion/navigation';
+  import { isReducedMotion } from '$lib/motion/tokens';
   import { firstFocusable, lockBackground, registerOverlay } from './overlayLock';
 
   /* Ticket 242: `|global` is a compile-time modifier, so it cannot be
@@ -155,8 +156,9 @@
     /* `in:` and `out:` run independently. If opening is interrupted, Svelte
        can remove the transition before `introend`; reduced-motion engines
        have also differed on zero-duration transition events. The fallback
-       runs after the normal 380ms entrance, never during its layout setup. */
-    fallback = setTimeout(applyFocus, 450);
+       stays past the 380ms rise plus half of `--dur-fast` on Android, or past the
+       reduced-motion crossfade. */
+    fallback = setTimeout(applyFocus, isReducedMotion() ? 200 : 450 + sheetEntranceDelay());
     return () => {
       node.removeEventListener('introend', applyFocus);
       if (fallback) clearTimeout(fallback);
