@@ -89,6 +89,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { disclose } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -130,6 +131,7 @@
     if (loaded && activeTrack === null && whereYouAre) activeTrack = whereYouAre.track;
   });
   let shownTrack = $derived(activeTrack ?? whereYouAre?.track ?? sections[0].track);
+  const fadeCount = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset
      reorders each track's built-in goals, matching ones first. Custom
@@ -373,6 +375,7 @@
              the whole track, and a row inside the list would read as one
              more step to take. -->
         {#snippet action()}
+          {@const stepsLeft = roadmapStepsLeft(section, (key) => statuses[key] ?? 'unchecked')}
           <!-- No `aria-pressed`. The label itself changes, so a toggle state
                on top of it announces the same fact twice ("Put it back,
                pressed"); a toggle button earns aria-pressed when its label
@@ -380,7 +383,9 @@
                the state for the stylesheet and the tests instead. -->
           <div class="roadmap-track-meta">
             <span class="roadmap-track-steps" data-roadmap-track-steps={track}>
-              {m.roadmap_track_steps_left({ n: roadmapStepsLeft(section, (key) => statuses[key] ?? 'unchecked') })}
+              {#key stepsLeft}
+                <span transition:fadeCount>{m.roadmap_track_steps_left({ n: stepsLeft })}</span>
+              {/key}
             </span>
             <button
               class="roadmap-track-btn"
@@ -823,9 +828,14 @@
   }
 
   .roadmap-track-steps {
+    display: grid;
     color: var(--text-2);
     font-size: var(--text-sm);
     white-space: nowrap;
+  }
+
+  .roadmap-track-steps > span {
+    grid-area: 1 / 1;
   }
 
   /* Put back is the way out of a state rather than a second action, so it
