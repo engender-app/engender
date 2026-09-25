@@ -27,7 +27,15 @@
      `{#if open}` first and the inner block as a side effect, so the local
      intro never fired, and closing was the mirror. The split has to sit
      outside `{#if open}` instead, so each branch's own `{#if open}` is
-     still the nearest block its local directives see. */
+     still the nearest block its local directives see.
+
+     The scrim/drag wrapper (attachments, drag handlers, the click-to-close
+     scrim) is identical either way and lives once in the `sheetBody`
+     snippet below; only the two transition-bearing elements - the tint
+     and the sheet panel itself - stay duplicated per branch, since
+     `{@render}` isn't a control-flow block and so doesn't touch a local
+     transition's nearest-block search the way nesting another `{#if}`
+     around either element would. */
   let {
     open = $bindable(false),
     title = '',
@@ -183,95 +191,80 @@
 
 </script>
 
+{#snippet sheetBody(tint: Snippet, panel: Snippet)}
+  <div
+    class="sheet-scrim"
+    role="presentation"
+    data-sheet-scrim
+    onclick={(e) => {
+      if (e.target === e.currentTarget) close();
+    }}
+    {@attach lockBackground}
+  >
+    {@render tint()}
+    <div
+      class="sheet-drag"
+      role="presentation"
+      data-sheet-drag
+      class:is-dragging={dragging}
+      style:transform={dragY ? `translateY(${dragY}px)` : undefined}
+      onpointerdown={dragStart}
+      onpointermove={dragMove}
+      onpointerup={dragEnd}
+      onpointercancel={dragEnd}
+    >
+      {@render panel()}
+    </div>
+  </div>
+{/snippet}
+
 {#if globalTransitions}
   {#if open}
-    <div
-      class="sheet-scrim"
-      role="presentation"
-      data-sheet-scrim
-      onclick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-      {@attach lockBackground}
-    >
+    {#snippet tintGlobal()}
+      <div class="sheet-scrim-tint scrim-withdraw" data-sheet-tint transition:scrimFade|global></div>
+    {/snippet}
+    {#snippet panelGlobal()}
       <div
-        class="sheet-scrim-tint scrim-withdraw"
-        data-sheet-tint
-        transition:scrimFade|global
-      ></div>
-      <div
-        class="sheet-drag"
-        role="presentation"
-        data-sheet-drag
-        class:is-dragging={dragging}
-        style:transform={dragY ? `translateY(${dragY}px)` : undefined}
-        onpointerdown={dragStart}
-        onpointermove={dragMove}
-        onpointerup={dragEnd}
-        onpointercancel={dragEnd}
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabindex="-1"
+        data-sheet
+        in:sheetRise|global
+        out:sheetRise|global
+        {@attach focusInitial}
+        {@attach ownSheet}
       >
-        <div
-          class="sheet"
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          tabindex="-1"
-          data-sheet
-          in:sheetRise|global
-          out:sheetRise|global
-          {@attach focusInitial}
-          {@attach ownSheet}
-        >
-          <div class="sheet-handle"></div>
-          {@render children()}
-        </div>
+        <div class="sheet-handle"></div>
+        {@render children()}
       </div>
-    </div>
+    {/snippet}
+    {@render sheetBody(tintGlobal, panelGlobal)}
   {/if}
 {:else}
   {#if open}
-    <div
-      class="sheet-scrim"
-      role="presentation"
-      data-sheet-scrim
-      onclick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-      {@attach lockBackground}
-    >
+    {#snippet tintLocal()}
+      <div class="sheet-scrim-tint scrim-withdraw" data-sheet-tint transition:scrimFade></div>
+    {/snippet}
+    {#snippet panelLocal()}
       <div
-        class="sheet-scrim-tint scrim-withdraw"
-        data-sheet-tint
-        transition:scrimFade
-      ></div>
-      <div
-        class="sheet-drag"
-        role="presentation"
-        data-sheet-drag
-        class:is-dragging={dragging}
-        style:transform={dragY ? `translateY(${dragY}px)` : undefined}
-        onpointerdown={dragStart}
-        onpointermove={dragMove}
-        onpointerup={dragEnd}
-        onpointercancel={dragEnd}
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabindex="-1"
+        data-sheet
+        in:sheetRise
+        out:sheetRise
+        {@attach focusInitial}
+        {@attach ownSheet}
       >
-        <div
-          class="sheet"
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          tabindex="-1"
-          data-sheet
-          in:sheetRise
-          out:sheetRise
-          {@attach focusInitial}
-          {@attach ownSheet}
-        >
-          <div class="sheet-handle"></div>
-          {@render children()}
-        </div>
+        <div class="sheet-handle"></div>
+        {@render children()}
       </div>
-    </div>
+    {/snippet}
+    {@render sheetBody(tintLocal, panelLocal)}
   {/if}
 {/if}
 
