@@ -235,7 +235,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.compare_title()} subtitle={m.compare_sub()} screen="compare" back="/stats" />
+  <ScreenHeader title={m.compare_title()} screen="compare" back="/stats" />
 
   <!-- One snippet for the four fields. A date is a row of a list here, not
        a text box: the label on the left, the date in the display face on the
