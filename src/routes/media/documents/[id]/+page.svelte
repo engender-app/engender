@@ -63,6 +63,7 @@
   import { DOCUMENT_TARGET_ICON, documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
   import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
+  import { tick } from 'svelte';
   import { EASE_OUT_CSS, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -135,6 +136,7 @@
      path a second decrypt of its bytes for the same reason. */
   let fileName = $derived(stored?.fileName);
   let pageUrl = $state<string | null>(null);
+  let thumbnail = $state<HTMLImageElement | null>(null);
 
   $effect(() => {
     if (!fileName) return;
@@ -233,8 +235,12 @@
     return () => {
       stale = true;
       opened?.close();
+      sheetAnimation?.cancel();
+      sheetAnimation = null;
+      canvas?.style.removeProperty('opacity');
       pages = null;
       pageDrawn = false;
+      thumbnailReplaced = false;
       pageFailed = false;
       unreadable = false;
       shownPage = 0;
@@ -256,6 +262,7 @@
   let canvas = $state<HTMLCanvasElement | null>(null);
   let frameWidth = $state(0);
   let pageDrawn = $state(false);
+  let thumbnailReplaced = $state(false);
   let pageFailed = $state(false);
 
   const RENDER_STEP = 64;
@@ -291,12 +298,14 @@
         target.getContext('2d')?.drawImage(bitmap, 0, 0);
         bitmap.close();
         const arrived = number !== shownPage;
+        const from = !shownPage && thumbnail ? thumbnail.getBoundingClientRect() : null;
         shownPage = number;
+        if (arrived) target.style.opacity = '0';
         pageDrawn = true;
         pageFailed = false;
         // A re-render at a new size is the same page again, and animating
         // it would make a rotation or a keyboard opening look like a turn.
-        if (arrived) sheetArrives(target);
+        if (arrived) void sheetArrives(target, from, number);
       },
       (error) => {
         if (stale) return;
@@ -327,39 +336,35 @@
      zero under reduced motion, where `motionDuration` returns 0. */
   let shownPage = 0;
   let turnedBy = 0;
+  let sheetAnimation: Animation | null = null;
 
-  function sheetArrives(target: HTMLCanvasElement) {
+  async function sheetArrives(target: HTMLCanvasElement, from: DOMRect | null, number: number) {
+    await tick();
+    if (shownPage !== number || !pageDrawn) return;
+    sheetAnimation?.cancel();
+    sheetAnimation = null;
     const duration = motionDuration('--dur-med');
     const travel = turnedBy === 0 ? 0 : motionDistance('--motion-distance-sm') * turnedBy;
     turnedBy = 0;
-    if (duration === 0) return;
-    /* The class that displays this canvas and the fade arrive in the same
-       task, but a busy compositor can paint the newly displayed canvas
-       before it applies a running animation - measured on the hydration
-       sweep as three frames of full-opacity white paper over a dark
-       screen, a fifth of the screen, recurring every run (ticket 240).
-       The inline opacity lands with the same style update as the class,
-       so the canvas's first painted frame is already transparent; the
-       animation takes it from there.
-
-       `fill: 'forwards'`, released only once `.finished` resolves
-       (ReadReserve's own fix, ux-carpet ticket 233, same race): without
-       `fill`, `.animate()` reverts its effect the instant it completes -
-       natively, on the compositor, independent of the main thread - which
-       would hand the canvas back to the inline `opacity: 0` set above
-       rather than to CSS (no rule sets one, so the resting value is 1),
-       invisible again until the *JS* `.finished` handler gets to run on a
-       thread busy with everything else this screen has just started
-       reading. That is the same flash this fix removes, just moved to the
-       end of it. Cancelling after `.finished` is safe because by then the
-       plain CSS is already the animation's own end state. */
-    target.style.opacity = '0';
+    if (duration === 0) {
+      target.style.opacity = '';
+      thumbnailReplaced = true;
+      return;
+    }
+    const to = target.getBoundingClientRect();
+    const start = from
+      ? `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`
+      : `translateX(${travel}px)`;
     const fade = target.animate(
-      [{ opacity: 0, transform: `translateX(${travel}px)` }, { opacity: 1, transform: 'none' }],
+      [{ opacity: 0, transform: start }, { opacity: 1, transform: 'none' }],
       { duration, easing: EASE_OUT_CSS, fill: 'forwards' }
     );
+    sheetAnimation = fade;
     const release = () => {
+      if (sheetAnimation !== fade) return;
       target.style.opacity = '';
+      thumbnailReplaced = true;
+      sheetAnimation = null;
       fade.cancel();
     };
     fade.finished.then(release, release);
@@ -434,7 +439,7 @@
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <div class="screen-part stack-3 doc-identity" data-document-identity>
+    <div class="screen-part stack-3 doc-identity" data-document-identity in:crossfade>
       <h2>{stored.title}</h2>
       <p class="muted">
         <time datetime={dateInputValueFromEpochDay(stored.epochDay)}>
@@ -466,6 +471,7 @@
          not be drawn at all is left with. -->
     <div
       class="screen-part doc-page"
+      in:crossfade
       style="--doc-sheet-height: {SHEET_VIEWPORT_SHARE * 100}vh; --doc-zoom-width: {frameWidth * 2}px"
       bind:clientWidth={frameWidth}
     >
@@ -496,31 +502,18 @@
                too. -->
           {m.document_page_alt({ title: stored.title })}
         </canvas>
-        <!-- Not the thumbnail when a page failed: that thumbnail is page
-             one, and page one under a line about page five is a worse
-             answer than the empty sheet.
-
-             One `{#if}` rather than the nested pair this used to be
-             (`{#if !pageDrawn}{#if pageUrl}...{/if}{/if}`): an `out:`
-             transition only reliably plays when the block whose own
-             condition flipped is the one carrying it, and `pageDrawn`
-             flipping true changed the *outer* block's condition while the
-             inner one's (`pageUrl`) had not - the image left at full
-             opacity with no transitional frame at all, measured on the
-             hydration sweep as the sheet's whole box flashing (ticket
-             240). The canvas above already fades itself in once a page
-             draws (`sheetArrives`); this is what pairs a fade for the
-             thing it replaces. Taken out of flow and behind (see
-             `crossfade`'s own doc), so it fades where the canvas can
-             already be seen through it rather than blocking it for its
-             own last frames. -->
-        {#if !pageDrawn && pageUrl && !pageFailed}
+        <!-- Keep the import thumbnail behind the first rendered page until
+             the canvas is opaque. Once drawing starts it leaves the layout,
+             so the canvas can take its full size without moving the image.
+             A failed later page never shows page one's thumbnail. -->
+        {#if !thumbnailReplaced && pageUrl && !pageFailed}
           <img
             class="doc-page-image"
+            class:replacing={pageDrawn}
             data-document-page
             src={pageUrl}
             alt={m.document_page_alt({ title: stored.title })}
-            out:crossfade
+            bind:this={thumbnail}
           />
         {:else if !pageDrawn}
           <div class="doc-page-empty" out:crossfade><Icon name="documents" size={28} /></div>
@@ -580,7 +573,7 @@
     </div>
 
     {#if isPdf}
-      <div class="screen-part stack-3">
+      <div class="screen-part stack-3" in:crossfade>
         {#if unreadable}
           <p class="muted small" data-document-unreadable>{m.document_pdf_unreadable()}</p>
         {:else if pageFailed}
@@ -595,7 +588,7 @@
       </div>
     {/if}
 
-    <div>
+    <div in:crossfade>
       <Field label={m.document_title_label()} id="document-title">
         {#snippet children(id)}
           <input class="input" {id} name="document-title" bind:value={draft.title} />
@@ -757,6 +750,13 @@
     height: auto;
   }
 
+  .doc-page-image.replacing {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
   /* The sheet and its pager as one column, which is what keeps the
      control the width of the page rather than the width of the screen.
      The gap is tight on purpose: the pager belongs to the page above it,
@@ -771,6 +771,7 @@
   }
 
   .doc-reader {
+    position: relative;
     max-height: var(--doc-sheet-height);
     overflow: auto;
   }
@@ -807,10 +808,13 @@
     display: none;
     width: auto;
     height: auto;
+    transform-origin: top left;
   }
 
   .doc-page-canvas.drawn {
     display: block;
+    position: relative;
+    z-index: 1;
   }
 
   /* The pager reads as one control rather than three: the count is what

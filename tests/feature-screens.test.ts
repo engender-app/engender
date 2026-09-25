@@ -374,9 +374,14 @@ describe('what the worker is still fetching', () => {
         expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
         expect(markupOf.get(route), route).toMatch(/out:crossfade/);
       }
-      expect(markupOf.get(route), `${route} fades its content in on top of the navigation`).not.toMatch(
-        /in:crossfade/
-      );
+      // Ticket 246 gives document detail an entrance after its cold-load skeleton.
+      if (route === 'media/documents/[id]') {
+        expect(markupOf.get(route), route).toMatch(/in:crossfade/);
+      } else {
+        expect(markupOf.get(route), `${route} fades its content in on top of the navigation`).not.toMatch(
+          /in:crossfade/
+        );
+      }
     }
   });
 
