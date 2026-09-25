@@ -370,7 +370,7 @@
             ? m.labs_ocr_missing_date()
             : m.labs_ocr_invalid_date()
       : ocrState.tag === 'save-failed'
-        ? m.labs_ocr_failed()
+        ? m.labs_ocr_save_failed()
         : ''
   );
 
