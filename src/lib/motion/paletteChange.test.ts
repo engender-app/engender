@@ -6,8 +6,8 @@ describe('palette change', () => {
     let palette = 'trans';
     changePalette(() => { palette = 'nonbinary'; }, { startViewTransition: undefined } as unknown as Document);
     expect(palette).toBe('nonbinary');
-    expect(takePaletteSunFade()).toBe(true);
-    expect(takePaletteSunFade()).toBe(false);
+    expect(takePaletteSunFade('/settings', '/')).toBe(true);
+    expect(takePaletteSunFade('/settings', '/')).toBe(false);
   });
 
   it('keeps the capture active until the transition finishes', async () => {
@@ -29,11 +29,17 @@ describe('palette change', () => {
     expect(palette).toBe('trans');
     await update!();
     expect(palette).toBe('nonbinary');
-    expect(takePaletteSunFade()).toBe(true);
+    expect(takePaletteSunFade('/settings', '/')).toBe(true);
     finish();
     await finished;
     await Promise.resolve();
     await Promise.resolve();
     expect('paletteTransition' in root.dataset).toBe(false);
+  });
+
+  it('drops the sun fade when leaving Settings for another screen', () => {
+    changePalette(() => {}, { startViewTransition: undefined } as unknown as Document);
+    expect(takePaletteSunFade('/settings', '/calendar')).toBe(false);
+    expect(takePaletteSunFade('/calendar', '/')).toBe(false);
   });
 });
