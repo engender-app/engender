@@ -116,7 +116,7 @@
 
 <header class="wrapped-head">
   <h2 class="wrapped-title" data-wrapped-title>{title}</h2>
-  <p class="wrapped-sub">{subtitle}</p>
+  {#if subtitle}<p class="wrapped-sub">{subtitle}</p>{/if}
 </header>
 
 <!-- The figures. A list rather than a row of small tiles, so a figure can

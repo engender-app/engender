@@ -278,7 +278,7 @@
 
   let subtitle = $derived.by(() => {
     // The row above already carries the two dates.
-    if (isRange) return range ? m.recap_open_range() : noRangeReason;
+    if (isRange) return range ? '' : noRangeReason;
     if (!period) return '';
     if (period.cadence === 'week') {
       return m.wrapped_week_range({
@@ -344,7 +344,7 @@
       aria-live="polite"
     />
   {:else if !cadence && !isRange}
-    <Notice icon="info" key="wrapped-unknown" title={m.wrapped_unknown_title()} text={m.wrapped_unknown_body()} />
+    <Notice icon="info" key="wrapped-unknown" title={m.wrapped_unknown_title()} text={m.wrapped_unknown_body()} action={{ label: m.nav_lookback(), href: '/stats' }} />
   {:else}
     {#if isRange}
       <!-- Which range is on screen, as the one row that changes it. A filter

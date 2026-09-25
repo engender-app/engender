@@ -559,7 +559,9 @@
     {:else if loading}
       <div out:crossfade><Skeleton variant="card" count={3} /></div>
     {:else if !foundNothing}
-      <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
+      {#if hitRows.length || (starredOnly && starredPhotos.length)}
+        <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
+      {/if}
 
       {#if starredOnly && starredPhotos.length}
         <!-- Ported from the old /search/starred (ticket 18): the same grid,

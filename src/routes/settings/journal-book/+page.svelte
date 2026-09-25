@@ -304,7 +304,6 @@
   <div class="no-print">
     <SectionTitle text={m.journal_book_include_title()} />
     <div data-book-inclusion style="margin-bottom:var(--space-4)">
-      <p class="muted small" style="margin-bottom:var(--space-3)">{m.journal_book_include_note()}</p>
       <ListCard>
         {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
           <ListRow static key={key} data-inclusion={key} title={journalBookPartName(key)}>
