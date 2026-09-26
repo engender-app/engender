@@ -144,7 +144,7 @@
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.notif_title()} back="/settings" subtitle={m.notif_sub()} />
+  <ScreenHeader title={m.notif_title()} back="/settings" />
 
   {#if isWeb}
     <!-- The in-app/phone distinction first, where the list it governs can
@@ -254,7 +254,6 @@
               {/snippet}
             </Field>
           </div>
-          <p class="muted small quiet-note">{m.notif_quiet_held()}</p>
         </div>
       {/if}
     </ListCard>
@@ -316,9 +315,5 @@
        row past the viewport. */
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-3);
-  }
-
-  .quiet-note {
-    margin: var(--space-3) 0 0;
   }
 </style>
