@@ -262,20 +262,22 @@
     factsQuery.value?.readSpan.start === from && factsQuery.value?.readSpan.end === to
   );
 
+  /* Both this door's late reads share one "answered" condition (the
+     ReadGroup below already gated on it): `vocabulary.ready` closes the
+     gap ticket 152 named here - `shown` reads the vocabulary mirror for
+     the active scale, and a cold boot can settle `factsQuery` before
+     that mirror fills, so the average and scale-arc rows would arrive a
+     beat after the entries row with nothing gating that second pop. */
+  let factsAnswered = $derived(!factsQuery.loading && vocabulary.ready);
+
   /* Held at last visit's height until the read answers, then faded in
      (ux-carpet ticket 255): a cold load drew the facts at full opacity the
      frame the read resolved, and nothing reserved their room, so the quick
      picks below shoved down 94-184px in that one frame. Latched: a reserve
-     must not put its placeholder back once the read has answered once.
-     Waits on `vocabulary.ready` too, the same gap ticket 152 named this
-     door for: `shown` (below) reads the vocabulary mirror for the active
-     scale, and a cold boot can settle `factsQuery` before that mirror
-     fills, so the average and scale-arc rows arrived a beat after the
-     entries row with nothing gating that second pop - the ReadGroup below
-     already waits on both for the same reason. */
+     must not put its placeholder back once the read has answered once. */
   let factsRevealed = $state(false);
   $effect.pre(() => {
-    if (!factsQuery.loading && vocabulary.ready) factsRevealed = true;
+    if (factsAnswered) factsRevealed = true;
   });
   const factsEstimate = readReserve('lookback-facts');
   const factsRemember = (px: number) => rememberReserve('lookback-facts', px);
@@ -538,7 +540,7 @@
          and the tiles after it jumped a cell in one frame. The recap and
          the vocabulary mirror are the two reads the screen holds for them. -->
     <div class="screen-part" use:resize>
-    <ReadGroup answered={!factsQuery.loading && vocabulary.ready} count={2}>
+    <ReadGroup answered={factsAnswered} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />

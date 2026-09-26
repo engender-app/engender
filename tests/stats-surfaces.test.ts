@@ -216,7 +216,9 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   it('holds the facts\' room and fades the read in, rather than popping at full opacity', () => {
     expect(stats).toContain("import ReadReserve from '$lib/components/kit/ReadReserve.svelte';");
     expect(stats).toContain("import { readReserve, rememberReserve } from '$lib/data/homeReserve';");
-    expect(stats).toMatch(/let factsRevealed = \$state\(false\);\s*\$effect\.pre\(\(\) => \{\s*if \(!factsQuery\.loading && vocabulary\.ready\) factsRevealed = true;\s*\}\);/);
+    expect(stats).toContain('let factsAnswered = $derived(!factsQuery.loading && vocabulary.ready);');
+    expect(stats).toMatch(/let factsRevealed = \$state\(false\);\s*\$effect\.pre\(\(\) => \{\s*if \(factsAnswered\) factsRevealed = true;\s*\}\);/);
+    expect(stats).toContain('<ReadGroup answered={factsAnswered} count={2}>');
     expect(stats).toContain("readReserve('lookback-facts')");
     expect(stats).toContain("rememberReserve('lookback-facts'");
     expect(stats).toMatch(/<ReadReserve ready=\{factsRevealed\} estimate=\{factsEstimate\} onrest=\{factsRemember\}>[\s\S]*<div data-lookback-facts transition:collapse/);
