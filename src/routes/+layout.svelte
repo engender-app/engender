@@ -235,7 +235,8 @@
        not the blank, because quick exit is a moment and an install is not:
        what a launcher calls this app should change when someone asks for a
        disguise, not for as long as a tab is held blank. */
-    document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${chrome.manifest}`);
+    const manifest = getLocale() === 'pl' ? chrome.manifest.replace('.webmanifest', '-pl.webmanifest') : chrome.manifest;
+    document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${manifest}`);
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
