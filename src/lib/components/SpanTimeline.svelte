@@ -116,7 +116,8 @@
     type SpanHandle
   } from '$lib/data/lookBackSpan';
   import { countUp } from '$lib/motion/countUp';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfade } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
   import type { Era, Milestone } from '$lib/data/types';
   import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
@@ -304,7 +305,16 @@
      starts, not when the write lands. */
   let hintGone = $state(false);
   let showHint = $derived(!hintSeen && !hintGone);
-  const hintFade = (_node: Element) => fadeOnly(motionDuration('--dur-med'));
+  /* Crossfade date and day count together. The leaving text leaves flow so
+     two long ranges cannot wrap the line. Skip the first mount's fade. */
+  let dateFirstRun = true;
+  const dateFadeIn = (node: Element) => {
+    if (dateFirstRun) {
+      dateFirstRun = false;
+      return;
+    }
+    node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: motionDuration('--dur-fast'), easing: EASE_OUT_CSS });
+  };
   function answerHint() {
     if (hintGone || hintSeen) return;
     hintGone = true;
@@ -360,6 +370,12 @@
   let hintX = $derived(
     Math.min(railWidth - hintWidth / 2, Math.max(hintWidth / 2, (startX + endX) / 2))
   );
+  /* Keep the hint at its last painted position when a milestone tap moves
+     both handles. It fades there instead of jumping to the new midpoint. */
+  let hintXAtDismiss = $state(0);
+  $effect(() => {
+    if (showHint) hintXAtDismiss = hintX;
+  });
   /* The clip that lifts the span out of the history: the far edge of the
      end handle's day, so a one-day span is still a visible stretch. */
   let clipRight = $derived(Math.max(0, railWidth - Math.min(railWidth, endX + Math.max(2, pxPerDayAt(live.end)))));
@@ -381,7 +397,10 @@
     live = next;
     onLive?.(next);
   };
+  /* A tap moves the span without dragging a handle. Dismiss the hint here
+     too, before the handles move. */
   const commit = (next: Span) => {
+    answerHint();
     settle(next);
     onChange(next);
   };
@@ -502,7 +521,7 @@
   data-span-end={live.end}
   style:--tl-start="{startX}px"
   style:--tl-end="{endX}px"
-  style:--tl-hint-x="{hintX}px"
+  style:--tl-hint-x="{hintXAtDismiss}px"
   style:--tl-clip-right="{clipRight}px"
   style:--tl-has-regimen={hasRow('regimen')}
   style:--tl-has-tryout={hasRow('tryout')}
@@ -685,22 +704,20 @@
          first move of either. Not a control and not announced: the handles
          already carry their own names, and a slider that read out "drag the
          ends" every time it took focus would be worse than silent. -->
-    {#if showHint}
-      <span
-        class="span-tl-hint"
-        bind:clientWidth={hintWidth}
-        data-span-hint
-        aria-hidden="true"
-        transition:hintFade>{m.lookback_drag_hint()}</span
-      >
-    {/if}
+    <span
+      class="span-tl-hint"
+      class:is-hidden={!showHint}
+      bind:clientWidth={hintWidth}
+      data-span-hint
+      aria-hidden="true">{m.lookback_drag_hint()}</span
+    >
   </div>
 
   <!-- What the rail is showing, against the handles rather than two
        elements away under the title (DIRECTION.md rule 7's own "say it
        once, where it is true"). -->
   <p class="span-tl-state" data-span-state-line>
-    {spanDates}<span class="span-tl-days">{`, ${m.n_days({ n: shownDays })}`}</span>
+    {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
 
   {#if legend.length}
@@ -1123,6 +1140,10 @@
     white-space: nowrap;
     pointer-events: none;
     z-index: 4;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+  .span-tl-hint.is-hidden {
+    opacity: 0;
   }
 
   /* The span, written once, directly under the rail. */
@@ -1131,7 +1152,7 @@
     font-size: var(--text-sm);
     color: var(--text-2);
   }
-  .span-tl-days {
+  .span-tl-reading {
     font-variant-numeric: tabular-nums;
   }
 

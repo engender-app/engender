@@ -92,7 +92,8 @@
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
+  import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -186,7 +187,6 @@
     railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
   );
   const pickSpan = (next: Span) => {
-    if (enoughEntries) factsExited = false;
     span = next;
     live = next;
     setLastLookBackSpan(next);
@@ -198,14 +198,43 @@
      person dragged settles, one offer to turn it into an era, on this
      surface and nowhere else. Plain component state, gone on reload. */
   let eraOfferSpan = $state<Span | null>(null);
-  /* An offer for a thinner span waits until the old facts have finished
-     closing. The read's span also has to match: liveQuery keeps its last
-     answer visible while the new one runs. */
-  let factsExited = $state(true);
   let handledEraOfferSpans = $state<Span[]>([]);
   const settleEraOffer = (handled: Span) => {
     handledEraOfferSpans = [...handledEraOfferSpans, handled];
     eraOfferSpan = null;
+  };
+
+  /* The offer moves several rows below it. The softer existing curve keeps
+     its first frame from moving those rows 43px at once. */
+  const discloseOffer = (node: Element) => ({ ...disclose(node), easing: bezier(EASE_OUT_SOFT_POINTS) });
+
+  /* Keep words invisible while the box opens. The clip alone exposed the
+     title at full opacity over quick picks before room existed for it. */
+  const fadeOfferIn = (node: HTMLElement) => {
+    const content = Array.from(node.children) as HTMLElement[];
+    for (const el of content) el.style.opacity = '0';
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+    let revealed = false;
+    const reveal = () => {
+      if (revealed) return;
+      revealed = true;
+      if (fallback) clearTimeout(fallback);
+      const duration = motionDuration('--dur-med');
+      for (const el of content) {
+        el.style.opacity = '';
+        if (duration > 0) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+      }
+    };
+    node.addEventListener('introend', reveal, { once: true });
+    /* An interrupted intro may skip introend. Reduced motion needs no wait. */
+    if (isReducedMotion()) reveal();
+    else fallback = setTimeout(reveal, motionDuration('--dur-med') + 50);
+    return {
+      destroy() {
+        node.removeEventListener('introend', reveal);
+        if (fallback) clearTimeout(fallback);
+      }
+    };
   };
 
   /* The link and the "not enough entries" line share one slot in
@@ -416,7 +445,7 @@
     <ReadReserve ready={factsRevealed} estimate={factsEstimate} onrest={factsRemember}>
       {#if enoughEntries}
         <div class="screen-part">
-        <div data-lookback-facts transition:collapse onoutrostart={() => (factsExited = false)} onoutroend={() => (factsExited = true)}>
+        <div data-lookback-facts transition:collapse>
           <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
             <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
               {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
@@ -456,9 +485,9 @@
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, here and
          nowhere else. `disclose` opens and gives back its own height. -->
-    {#if eraOfferSpan && factsCurrent && (enoughEntries || factsExited)}
+    {#if eraOfferSpan && factsCurrent}
       {@const offerSpan = eraOfferSpan}
-      <div class="era-offer" data-era-offer role="group" aria-labelledby="era-offer-title" transition:disclose>
+      <div class="era-offer" data-era-offer role="group" aria-labelledby="era-offer-title" transition:discloseOffer use:fadeOfferIn>
         <div class="era-offer-said">
           <span class="kit-row-ico"><Icon name="columns" size={22} /></span>
           <span class="kit-row-text">
