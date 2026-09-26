@@ -81,6 +81,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import ReadingGrid from '$lib/components/kit/ReadingGrid.svelte';
   import ReadGroup from '$lib/components/kit/ReadGroup.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import DayByDayReading from '$lib/components/readings/DayByDayReading.svelte';
   import PlaneReading from '$lib/components/readings/PlaneReading.svelte';
   import DaysReading from '$lib/components/readings/DaysReading.svelte';
@@ -95,6 +96,7 @@
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
+  import { readReserve, rememberReserve } from '$lib/data/homeReserve';
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -259,6 +261,24 @@
   let factsCurrent = $derived(
     factsQuery.value?.readSpan.start === from && factsQuery.value?.readSpan.end === to
   );
+
+  /* Held at last visit's height until the read answers, then faded in
+     (ux-carpet ticket 255): a cold load drew the facts at full opacity the
+     frame the read resolved, and nothing reserved their room, so the quick
+     picks below shoved down 94-184px in that one frame. Latched: a reserve
+     must not put its placeholder back once the read has answered once.
+     Waits on `vocabulary.ready` too, the same gap ticket 152 named this
+     door for: `shown` (below) reads the vocabulary mirror for the active
+     scale, and a cold boot can settle `factsQuery` before that mirror
+     fills, so the average and scale-arc rows arrived a beat after the
+     entries row with nothing gating that second pop - the ReadGroup below
+     already waits on both for the same reason. */
+  let factsRevealed = $state(false);
+  $effect.pre(() => {
+    if (!factsQuery.loading && vocabulary.ready) factsRevealed = true;
+  });
+  const factsEstimate = readReserve('lookback-facts');
+  const factsRemember = (px: number) => rememberReserve('lookback-facts', px);
   let entryCount = $derived(factsQuery.value?.recap.entryCount ?? 0);
   let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
   let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);
@@ -285,7 +305,15 @@
     activeAverage: '',
     dimChange: null
   });
-  $effect(() => {
+  /* `.pre`, so the card's first mount (ux-carpet 255) sees `closingFacts`
+     already carrying the two optional rows rather than adding them a tick
+     later: a plain `$effect` runs after the DOM commit that flips
+     `enoughEntries`, so the Entries row painted alone and the average and
+     scale-arc rows arrived in a second, ungated pop once this effect
+     caught up. The guard is what protects the closing case (above), not
+     which queue the effect runs in - a change here still sees the same
+     `enoughEntries` this flush, before or after paint. */
+  $effect.pre(() => {
     if (enoughEntries) closingFacts = { activeAverage, dimChange };
   });
 
@@ -383,45 +411,45 @@
          here shares; under it the thin-body line below says why there is
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
-    <div class="screen-part">
-    {#if factsQuery.loading}
-      <div out:crossfade><Skeleton variant="line" count={3} /></div>
-    {:else if enoughEntries}
-      <div data-lookback-facts transition:collapse onoutrostart={() => (factsExited = false)} onoutroend={() => (factsExited = true)}>
-        <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
-          <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
-            {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
-          </ListRow>
-          {#if closingFacts.activeAverage}
-            <div class="rows-divide" transition:collapse>
-              <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
-                {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
-              </ListRow>
-            </div>
-          {/if}
-          {#if closingFacts.dimChange}
-            {@const dimChange = closingFacts.dimChange}
-            <div class="rows-divide" transition:collapse>
-              <ListRow
-                static
-                data-lookback-fact
-                title={m.wrapped_scale_arc()}
-                subtitle={m.wrapped_scale_arc_body({
-                  name: dimChange.name,
-                  from: String(Math.round(dimChange.from)),
-                  to: String(Math.round(dimChange.to))
-                })}
-              >
-                {#snippet trailing()}
-                  <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
-                {/snippet}
-              </ListRow>
-            </div>
-          {/if}
-        </ListCard>
+    <ReadReserve ready={factsRevealed} estimate={factsEstimate} onrest={factsRemember}>
+      <div class="screen-part">
+      {#if enoughEntries}
+        <div data-lookback-facts transition:collapse onoutrostart={() => (factsExited = false)} onoutroend={() => (factsExited = true)}>
+          <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
+            <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
+              {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
+            </ListRow>
+            {#if closingFacts.activeAverage}
+              <div class="rows-divide" transition:collapse>
+                <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
+                  {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
+                </ListRow>
+              </div>
+            {/if}
+            {#if closingFacts.dimChange}
+              {@const dimChange = closingFacts.dimChange}
+              <div class="rows-divide" transition:collapse>
+                <ListRow
+                  static
+                  data-lookback-fact
+                  title={m.wrapped_scale_arc()}
+                  subtitle={m.wrapped_scale_arc_body({
+                    name: dimChange.name,
+                    from: String(Math.round(dimChange.from)),
+                    to: String(Math.round(dimChange.to))
+                  })}
+                >
+                  {#snippet trailing()}
+                    <b class="wrapped-figure-value">{signedValue(dimChange.change, (n) => String(Math.round(n)))}</b>
+                  {/snippet}
+                </ListRow>
+              </div>
+            {/if}
+          </ListCard>
+        </div>
+      {/if}
       </div>
-    {/if}
-    </div>
+    </ReadReserve>
 
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, here and
