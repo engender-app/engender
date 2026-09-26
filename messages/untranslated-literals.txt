@@ -7,5 +7,3 @@
 # Phase 0 and phase 1 left these behind, and tickets 19 and 23 work them
 # down. Files the ratchet does not read at all are named in the script,
 # under UNSCANNED, each with the reason it is not a screen's copy.
-
-2 src/routes/settings/export/+page.svelte

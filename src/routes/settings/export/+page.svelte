@@ -789,15 +789,8 @@
   {#if running === 'encrypted'}
     <Progress run={exportProgress} label={exportLabel} handle="export" />
   {/if}
-  <p class="muted small">
-    <Icon name="key" size={13} /> {m.exp_crypto_note()}
-  </p>
 
   {#if android}
-    <!-- Mockup only: no password prompt or export trigger exists yet, so
-         there's nothing here to attach ticket 12's "warning before any
-         encrypted export" to. Its real Android implementation must show
-         the same warning the manual export sheet above does, once. -->
     <!-- The card had been the only thing saying where this area began, and
          it follows another area rather than the screen's own header, so
          unboxed it needs the heading (rule 4, and the entry editor's
@@ -839,9 +832,6 @@
       <Progress run={autoProgress} label={autoLabel} handle="auto-export" />
     {/if}
 
-    <p class="muted small">
-      {m.exp_auto_note({ folder: autoDestination ?? m.exp_auto_destination_missing() })}
-    </p>
     <p class="muted small">
       {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
     </p>
@@ -930,8 +920,8 @@
   <SectionHeading text={m.plain_section()} />
   <p class="small" style="margin-bottom:var(--space-3)">{m.plain_body()}</p>
   <div class="spread">
-    <button class="btn btn-soft" data-plain="csv" disabled={running !== null} onclick={() => (plainSheet = 'csv')}><span>CSV</span></button>
-    <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>JSON</span></button>
+    <button class="btn btn-soft" data-plain="csv" disabled={running !== null} onclick={() => (plainSheet = 'csv')}><span>{m.plain_csv()}</span></button>
+    <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>{m.plain_json()}</span></button>
   </div>
 
   <Sheet open={exportWarningOpen} title={m.exp_warning_sheet()} onClose={() => (exportWarningOpen = false)}>
@@ -939,7 +929,6 @@
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
       <Icon name="alert" size={20} />
       <div class="notice-body">
-        <span class="notice-title">{m.exp_warning_notice_title()}</span>
         {m.exp_warning_body()}
       </div>
     </div>

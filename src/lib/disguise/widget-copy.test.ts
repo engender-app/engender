@@ -6,10 +6,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const GIVEAWAYS = /mood|misgender|doubt|journal/i;
+const GIVEAWAYS = /mood|misgender|doubt|journal|nastr[oó]j|płci|wątpliwo|dziennik|bezpieczn/i;
 
-describe('widget picker descriptions', () => {
-  const xml = readFileSync('android/app/src/main/res/values/strings.xml', 'utf8');
+describe.each(['values', 'values-pl'])('widget picker descriptions (%s)', (locale) => {
+  const xml = readFileSync(`android/app/src/main/res/${locale}/strings.xml`, 'utf8');
   const descriptions = [...xml.matchAll(/name="widget_\w+_description">([^<]+)</g)].map((m) => m[1]);
 
   it('finds all three widget descriptions', () => {

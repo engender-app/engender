@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_quick_log_description">Wybierz jedną z pięciu ocen, aby otworzyć wpis.</string>
+    <string name="widget_tally_description">Zapisz jedną z dwóch opcji.</string>
+    <string name="widget_doubt_description">Otwórz miejsce do pisania.</string>
+</resources>
