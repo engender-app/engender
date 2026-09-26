@@ -1,22 +1,18 @@
 # Privacy policy
 
-Last updated: 2026-09-17
+Last updated: 2026-09-26
 
-This policy describes what is true for enGender as shipped. Each surface is
-covered from the day it is published, and not before.
+This policy covers the web app, Android releases and files you export or share.
 
 ## Scope
 
-enGender has separate surfaces with different observers:
+The policy applies to:
 
 - The hosted web app at `app.engender.dev`, once hosting is published.
 - Distribution channels for Android releases (Google Play, F-Droid, direct APK)
   once Android builds are published.
 - Whatever destination you choose for an encrypted backup or an unencrypted
   export you share off the device.
-
-One sentence cannot describe all three safely, so this policy keeps them
-separate.
 
 ## Hosted web app
 
@@ -43,12 +39,14 @@ PIN, biometric and device-bound modes depend on keys held in that specific
 browser profile. Clearing site storage, resetting the browser profile or
 losing the device makes that local journal copy unreadable.
 
-You can also mint an optional 25-character recovery key. A recovery key wraps
+You can also make an optional 25-character recovery key. A recovery key wraps
 the local journal key on that device so you can unlock if a passphrase, PIN or
 biometric authenticator is lost. It opens the journal only on the device and
 browser profile that still holds it; it cannot move data to a new device or
-decrypt an export. The recovery key is shown once and never stored off the
-device.
+decrypt an export. The app shows the recovery key once and stores only a sealed
+copy of the journal key. Keep the recovery key on paper or in a password manager on another
+device. Anyone with it and the journal data can read the journal. It cannot
+restore deleted data.
 
 ## Android store delivery
 
@@ -60,13 +58,14 @@ The Android app does not request the `INTERNET` permission. Inside the app,
 journal content stays on the device. It opens no network sockets and sends no
 journal data to any server during normal use.
 
-The permissions it does request cover three purposes:
+The app requests these permissions:
 
 - `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED`,
   so a reminder or the daily check-in can notify you, fire at the time you
   chose instead of a batched system window, and still fire after the device
   restarts.
-- `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes.
+- `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes, voice practice
+  and video sound.
 - `CAMERA`, for video notes. A still photo instead opens the system camera
   app, which needs no permission from this app.
 
@@ -74,9 +73,11 @@ Reminder and check-in notifications show only a generic label by default,
 even on a locked screen; a setting under Notifications turns that off and
 shows the real title instead.
 
-Copying the recovery key on Android puts it on a clipboard entry marked
-sensitive and kept out of the keyboard's own clipboard history; the app
-removes it again after one minute.
+Copying the recovery key on Android marks the clipboard entry as sensitive,
+asking the keyboard to exclude it from clipboard history. The app clears the
+key after one minute, or when you return if you left before then. It does not
+clear anything copied afterwards. In a browser, the app does not clear the
+clipboard.
 
 The local Android journal opens through one of four access modes:
 
@@ -84,8 +85,7 @@ The local Android journal opens through one of four access modes:
   screen lock or platform biometric prompt.
 - Unlocked access, encrypted at rest with SQLCipher through Android Keystore
   without an in-app unlock prompt.
-- A four-digit PIN, combined with a hardware-backed binding key in Android
-  Keystore.
+- A four-digit PIN, combined with a binding key in Android Keystore.
 - A typed passphrase, derived with Argon2id.
 
 Device-bound, unlocked and PIN modes rely on keys stored inside Android
@@ -96,7 +96,8 @@ data if the device or its storage is gone.
 
 ## Backups, exports and shared files
 
-When you export or share files, you choose where they go.
+When you export or share files, you choose where they go. Other apps handle
+shared files and external links and may use the network.
 
 If you save a file to a cloud drive or document provider, that provider can
 observe file metadata such as the filename, timestamp, size and account
@@ -129,16 +130,10 @@ Anyone who receives an unencrypted file or printout can read the information it
 contains. The app asks for confirmation or explicit action before producing
 plaintext files.
 
-## What this project does not claim
+## Lost keys and passwords
 
-- Not that the hosted web app makes no network requests. The browser must fetch
-  application files to run and update.
-- Not that distribution channels collect nothing under their own terms.
-- Not that a forgotten passphrase, lost PIN, lost device key, missing recovery
-  key or forgotten backup password can be recovered by the maintainer. None of
-  them can.
-- Not that unencrypted exports remain confidential once handed to another app,
-  person or cloud service.
+The maintainer cannot recover a forgotten passphrase, PIN or backup password,
+or a lost device key or recovery key.
 
 ## Support and security boundaries
 
