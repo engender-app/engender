@@ -499,7 +499,6 @@
   <Sheet open={playing !== null} title={m.ph_video_title()} onClose={() => viewPhoto(null)}>
     {#if playing}
       <h3>{m.ph_video_title()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.ph_video_grid_hint()}</p>
       <VideoNotePlayer fileName={playing.fileName} />
       <a class="btn btn-soft press" data-photo-owner href={ownerHref}>{m.photo_open_owner()}</a>
     {/if}

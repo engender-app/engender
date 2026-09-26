@@ -22,6 +22,7 @@
    the built-ins are reconciled and the mirror filled at step 3, so the first
    screen to render already has a vocabulary. */
 
+import { m } from '$lib/paraglide/messages';
 import { boot } from '../data/sqlite/boot';
 import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
 import { prewarmArgon2 } from '../crypto/argon2id';
@@ -662,9 +663,7 @@ async function perform(effect: BootEffect): Promise<void> {
       // writing, so it re-ran itself until Svelte gave up with
       // effect_update_depth_exceeded. It never fired while opening the
       // database was failing outright, which is how it stayed hidden.
-      toast(
-        "This browser didn't grant persistent storage. Export backups regularly so nothing is lost to storage pressure."
-      );
+      toast(m.boot_storage_not_persistent());
       return;
 
     default:
