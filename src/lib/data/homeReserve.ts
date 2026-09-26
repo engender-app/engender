@@ -38,6 +38,7 @@ export type ReserveSlot =
   | 'roadmap'
   | 'body-map'
   | 'appointments-visits'
+  | 'lookback-facts'
   | `hosted-${string}`;
 
 const HOME_SLOTS: readonly string[] = ['above', 'below', 'pinned'];
