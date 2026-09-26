@@ -91,7 +91,7 @@ try {
   await page.getByRole('button', { name: 'Fit page', exact: true }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get('zoom'), '2', 'owner return restores enlargement');
   assert.equal(downloads, 0, 'reading and following owners never export a file');
-  await page.getByText('This copies the file out of the app’s encryption.', { exact: true }).waitFor();
+  await page.getByText('The shared or saved copy is not encrypted. Anyone who gets it can read it.', { exact: true }).waitFor();
   const download = page.waitForEvent('download');
   await page.locator('[data-export-document]').click();
   assert.deepEqual(new Uint8Array(await readFile(await (await download).path())), pdf, 'export preserves original PDF bytes');
