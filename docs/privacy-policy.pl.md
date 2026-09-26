@@ -2,135 +2,130 @@
 
 Ostatnia aktualizacja: 26 września 2026
 
-Ta polityka opisuje aplikację webową, wydania na Androida oraz pliki, które
-eksportujesz lub udostępniasz.
-
 ## Czego to dotyczy
 
 Polityka dotyczy:
 
-- aplikacja webowa pod adresem `app.engender.dev`, kiedy hosting ruszy,
-- kanały dystrybucji wydań na Androida (Google Play, F-Droid, plik APK do
-  pobrania), kiedy te wydania się pojawią,
-- miejsce zapisu, do którego trafia zaszyfrowana kopia zapasowa albo plik
-  udostępniony poza urządzenie.
+- aplikacji w przeglądarce pod adresem `app.engender.dev`, gdy zostanie opublikowana,
+- kanałów dystrybucji Androida (Google Play, F-Droid, bezpośrednio pobrany
+  plik APK), gdy wydania się pojawią,
+- wybranego przez ciebie miejsca zapisu zaszyfrowanej kopii zapasowej lub
+  niezaszyfrowanego pliku udostępnionego poza urządzeniem.
 
 ## Aplikacja webowa
 
-Serwer, który wysyła aplikację do przeglądarki, widzi przy pobraniu i przy
-aktualizacji to samo, co widzi każdy serwer WWW:
+Przy pobraniu lub aktualizacji aplikacji serwer widzi standardowe dane żądania:
 
 - adres IP,
-- godzinę zapytania,
-- ścieżki i rozmiary pobranych plików,
+- czas żądania,
+- ścieżki żądanych plików i ich rozmiary,
 - nagłówki User-Agent i Referer wysłane przez przeglądarkę.
 
-Serwer nie dostaje kont użytkowników, identyfikatorów profilu, telemetrii ani
-treści dziennika. Dane dziennika zostają w pamięci przeglądarki, na urządzeniu.
+Serwer nie dostaje kont użytkowników, identyfikatorów profilu, danych
+analitycznych ani treści dziennika. Treść dziennika jest zapisana w pamięci
+przeglądarki na twoim urządzeniu.
 
-Na samym urządzeniu lokalny dziennik otwiera się w jednym z czterech trybów:
+Lokalny dziennik otwiera się na jeden z czterech sposobów:
 
-- hasłem do dziennika, przetwarzanym przez Argon2id,
+- hasłem do dziennika, z którego Argon2id wyprowadza klucz,
 - czterocyfrowym kodem PIN, połączonym z kluczem powiązanym z profilem
   przeglądarki,
 - biometrią w obsługiwanych przeglądarkach przez rozszerzenie WebAuthn PRF
   (Touch ID, Windows Hello lub blokada urządzenia),
-- kluczem lokalnym zapisanym w pamięci przeglądarki, otwierającym dziennik bez
-  dodatkowego pytania.
+- kluczem zapisanym w profilu przeglądarki, który otwiera dziennik bez pytania
+  o hasło.
 
-Tryb PIN, biometria i klucz lokalny zależą od danych trzymanych w tym konkretnym
-profilu przeglądarki. Wyczyszczenie danych witryny, reset profilu albo utrata
-urządzenia sprawia, że tej lokalnej kopii nie da się już odczytać.
+PIN, biometria i tryb z kluczem lokalnym zależą od kluczy w konkretnym
+profilu przeglądarki. Po wyczyszczeniu danych witryny, zresetowaniu profilu
+lub utracie urządzenia tej lokalnej kopii dziennika nie da się już odczytać.
 
-Można też utworzyć opcjonalny 25-znakowy klucz odzyskiwania. Taki klucz pozwala
-otworzyć dziennik na tym urządzeniu, jeśli zapomnisz hasła, kodu PIN albo
-zawiedzie biometria. Działa tylko na urządzeniu i profilu, na którym dziennik
-fizycznie się znajduje; nie pozwala przenieść danych na nowy sprzęt ani
-odszyfrować kopii zapasowej. Aplikacja pokazuje klucz odzyskiwania tylko raz
-i zapisuje jedynie zaszyfrowaną kopię klucza dziennika. Klucz odzyskiwania przechowuj na papierze
-lub w menedżerze haseł na innym urządzeniu. Każdy, kto ma go razem z danymi
-dziennika, może je odczytać. Klucz nie przywróci usuniętych danych.
+Możesz też utworzyć 25-znakowy klucz odzyskiwania. Pozwala otworzyć dziennik
+na tym urządzeniu, gdy utracisz hasło, PIN lub dostęp biometryczny. Działa
+tylko tam, gdzie nadal są dane dziennika i jego profil przeglądarki. Nie
+przenosi danych na nowe urządzenie ani nie odszyfrowuje eksportu. Aplikacja
+pokazuje go raz i zapisuje tylko zaszyfrowaną kopię klucza dziennika.
+Przechowuj klucz odzyskiwania na papierze lub w menedżerze haseł na innym
+urządzeniu. Każdy, kto ma ten klucz i dane dziennika, może je odczytać.
+Klucz nie przywróci usuniętych danych.
 
 ## Wydania na Androida
 
-Wydania na Androida rozchodzą się przez sklepy i katalogi, które mają własną
-telemetrię i własne konta. Operator takiego kanału widzi instalację
-i aktualizację na zasadach ze swojego regulaminu, nie z tego dokumentu.
+Kanały dystrybucji aplikacji na Androida mają własne zasady zbierania danych i obsługi
+kont. Ich operatorzy widzą instalacje i aktualizacje na swoich zasadach.
 
-Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. W samej aplikacji
-dane zostają na urządzeniu. Przy zwykłym używaniu aplikacja nie otwiera połączeń
-sieciowych i nie wysyła wpisów na żaden serwer.
+Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. Treść dziennika
+pozostaje na urządzeniu. Podczas zwykłego używania aplikacja nie otwiera
+połączeń sieciowych ani nie wysyła treści dziennika na serwer.
 
 Aplikacja prosi o następujące uprawnienia:
 
 - `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` i `RECEIVE_BOOT_COMPLETED`,
-  dzięki nim przypomnienie albo codzienne pytanie może się pokazać, odezwać
-  się o wybranej przez ciebie porze zamiast w zbiorczym oknie systemu
-  i zadziałać także po restarcie urządzenia.
+  aby przypomnienie lub codzienne pytanie mogło się wyświetlić o wybranej
+  godzinie, zamiast w zbiorczym oknie systemu, także po restarcie urządzenia.
 - `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS`, do notatek głosowych, ćwiczeń
   głosu i dźwięku wideo.
-- `CAMERA`, do notatek wideo. Samo zdjęcie robi za to systemowa aplikacja
-  aparatu, bez żadnego uprawnienia po stronie tej aplikacji.
+- `CAMERA`, do notatek wideo. Zdjęcie robi aplikacja aparatu w systemie,
+  bez uprawnienia `CAMERA` dla engender.
 
 Przypomnienia i codzienne pytanie domyślnie pokazują tylko ogólny tytuł,
 nawet na zablokowanym ekranie; ustawienie w sekcji Powiadomienia wyłącza to
 i pokazuje prawdziwy tytuł.
 
-Na Androidzie aplikacja oznacza skopiowany klucz odzyskiwania jako wrażliwy,
-prosząc klawiaturę o pominięcie go w historii schowka. Usuwa klucz po minucie
-lub po powrocie, jeśli wcześniej opuścisz aplikację. Nie usuwa treści
-skopiowanej później. W przeglądarce aplikacja nie czyści schowka.
+Na Androidzie aplikacja oznacza skopiowany klucz odzyskiwania jako wrażliwy.
+To prośba do klawiatury, by nie zapisywała go w historii schowka. Po minucie
+aplikacja usuwa klucz ze schowka. Jeśli wcześniej opuścisz aplikację, zrobi
+to po powrocie. Nie usuwa niczego skopiowanego później. W przeglądarce
+aplikacja nie czyści schowka.
 
-Lokalny dziennik na Androidzie otwiera się w jednym z czterech trybów:
+Lokalny dziennik na Androidzie otwiera się na jeden z czterech sposobów:
 
 - kluczem chronionym przez Android Keystore i blokadę ekranu lub biometrię
   systemową,
-- w trybie bez pytania o odblokowanie, gdzie dziennik jest szyfrowany w spoczynku
-  przez SQLCipher i klucz z Android Keystore,
+- bez pytania o odblokowanie; dane są zaszyfrowane na urządzeniu przez
+  SQLCipher z kluczem z Android Keystore,
 - czterocyfrowym kodem PIN, połączonym z kluczem wiążącym w Android Keystore,
-- hasłem do dziennika, przetwarzanym przez Argon2id.
+- hasłem do dziennika, z którego Argon2id wyprowadza klucz.
 
-Tryby powiązane ze sprzętem (biometria, tryb bez pytania i PIN) opierają się na
-kluczach w Android Keystore, których nie da się skopiować z telefonu. Utrata
-urządzenia albo skasowanie danych aplikacji niszczy tę lokalną kopię. Opcjonalny
-klucz odzyskiwania może otworzyć dziennik na tym samym telefonie przy utracie
-danych logowania, ale nie pomoże, jeśli urządzenie przepadło.
+Tryb z blokadą urządzenia, tryb bez pytania i PIN korzystają z kluczy
+Android Keystore, których nie da się skopiować z telefonu. Po utracie
+urządzenia lub wyczyszczeniu danych aplikacji tej lokalnej kopii dziennika
+nie da się odczytać. Klucz odzyskiwania może otworzyć dziennik na tym samym
+telefonie, gdy zawiedzie zwykłe odblokowanie. Nie przywróci danych, jeśli
+urządzenie lub jego pamięć przepadną.
 
 ## Kopie zapasowe, eksporty i udostępniane pliki
 
-Przy zapisie i udostępnianiu plików miejsce docelowe wybierasz ty. Udostępniane
-pliki i linki zewnętrzne obsługują inne aplikacje, które mogą korzystać z sieci.
+Wybierasz, dokąd zapisać lub udostępnić plik. Udostępnione pliki i linki
+zewnętrzne obsługują inne aplikacje, które mogą korzystać z sieci.
 
-Jeśli plik trafi na dysk w chmurze albo do dostawcy dokumentów, ten dostawca
-zobaczy metadane pliku: nazwę, rozmiar, datę zapisu i wpisy w logach dostępu do
-konta.
+Jeśli zapiszesz plik w chmurze lub u dostawcy dokumentów, dostawca może
+widzieć jego nazwę, czas zapisu, rozmiar i dzienniki dostępu do konta.
 
 ### Zaszyfrowane kopie zapasowe
 
-Zaszyfrowana kopia zapasowa (`.ttbackup`), eksportowana ręcznie albo tworzona
-przez automatyczną kopię na Androidzie, jest zabezpieczona szyfrem AES-GCM
-i wybranym przez ciebie hasłem do kopii. Bez tego hasła nikt nie odczyta
-zawartości pliku.
+Kopia zapasowa (`.ttbackup`), eksportowana ręcznie lub automatycznie na
+Androidzie, jest szyfrowana algorytmem AES-GCM przy użyciu wybranego przez
+ciebie hasła. Bez tego hasła nikt nie odczyta zawartości pliku.
 
-### Świadomie jawne eksporty
+### Pliki bez szyfrowania
 
-Inne pliki opuszczają aplikację w formie jawnej, ponieważ służą do czytania,
-druku albo przekazania komuś innemu:
+Pozostałe eksporty nie są szyfrowane, bo służą do czytania, druku lub
+udostępniania:
 
-- zwykły eksport danych do formatu CSV lub JSON z poziomu ustawień,
+- pliki CSV i JSON eksportowane w Ustawieniach,
 - pamiątkowa książka dziennika przygotowana do druku lub zapisu do PDF,
-- zestawienie dla lekarza przygotowane do przekazania zespołowi medycznemu
-  (dawki leków, pomiary, wyniki badań, objawy i notatki),
+- zestawienie dla lekarza ze schematami dawkowania, pomiarami, wynikami badań
+  i notatkami,
 - kolaże zdjęć i filmy poklatkowe eksportowane z galerii zdjęć,
-- pamiątkowe karty podsumowań (wrapped) udostępniane jako obrazy,
+- karty podsumowań udostępniane jako obrazy,
 - pliki PDF zapisane wcześniej w dokumentach, eksportowane z powrotem do pamięci
   urządzenia,
-- pojedyncze pliki kalendarza (`.ics`) z terminami wizyt, operacji lub dat
-  związanych z tranzycją.
+- pojedyncze pliki kalendarza (`.ics`) z terminami wizyt, operacji lub
+  kamieni milowych.
 
-Każdy, kto dostanie taki plik lub wydruk, może przeczytać zawarte w nim dane.
-Aplikacja prosi o potwierdzenie lub wyraźne działanie przed wygenerowaniem
-niezaszyfrowanego pliku.
+Każdy, kto dostanie taki plik lub wydruk, może odczytać zawarte w nim dane.
+Przed utworzeniem niezaszyfrowanego pliku aplikacja prosi o potwierdzenie
+lub wymaga wyraźnego działania.
 
 ## Utracone klucze i hasła
 
