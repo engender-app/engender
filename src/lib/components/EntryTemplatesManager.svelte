@@ -60,9 +60,22 @@
      `settled` holds the reveal back one frame past mount, on the same
      rAF-then-timeout the guard itself waits on, so the swap this div's
      ResizeObserver sees always lands after the guard has opened - never
-     before it, whichever way the data and the mount happen to race. */
-  let settled = $state(false);
+     before it, whichever way the data and the mount happen to race.
+
+     Ticket 254: the sheet hosting this component now holds its own open
+     state until `vocabulary.ready` (VocabularyManagerSheets.svelte), since
+     its rise measures this component's rendered height the instant it
+     mounts - a skeleton mid-mount, held open by the frame this delays past,
+     used to leave that rise targeting a heading-and-three-lines height, with
+     the real row list arriving mid-rise reading as a second, much larger
+     jump on top of it. So by the time this component exists at all, the
+     data behind `templates` is already there; `settled` only still needs
+     its own frame when it wasn't (defensively, should a future caller mount
+     this sheet without waiting on readiness), which is why it starts however
+     ready already found things rather than always false. */
+  let settled = $state(vocabulary.ready);
   $effect(() => {
+    if (settled) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const raf = requestAnimationFrame(() => {
       timer = setTimeout(() => (settled = true));
