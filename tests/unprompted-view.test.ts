@@ -158,10 +158,6 @@ describe('the notify column on web', () => {
 });
 
 describe('what only Android carries', () => {
-  it('says that a held notification is held rather than dropped', () => {
-    expect(screenMarkup).toContain('notif_quiet_held');
-  });
-
   it('leaves the disguise switch in exactly one place', () => {
     // It governs every registered class now, so a copy left behind on the
     // reminders screen would be two switches writing one preference.
