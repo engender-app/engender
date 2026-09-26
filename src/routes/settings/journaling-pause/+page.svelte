@@ -88,7 +88,6 @@
             day: fmtDay(current.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
           })}
         </p>
-        <p class="muted small" style="margin:var(--space-2) 0 var(--space-3)">{m.journaling_pause_running_hint()}</p>
         <button class="btn btn-soft" data-resume-pause onclick={resumeToday}>
           <span>{m.journaling_pause_resume()}</span>
         </button>
