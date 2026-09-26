@@ -30,4 +30,7 @@
 
     <string name="widget_doubt_title">Log a doubt</string>
     <string name="widget_doubt_description">Open a space to write.</string>
+    <string name="backup_failure_channel">Backups</string>
+    <string name="backup_failure_description">Scheduled backup failures that need a new destination or retry.</string>
+    <string name="backup_failure_title">Scheduled backup failed</string>
 </resources>
