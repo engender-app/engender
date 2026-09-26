@@ -51,7 +51,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.settings_security_row()} back="/settings" subtitle={m.security_intro()} />
+  <ScreenHeader title={m.settings_security_row()} back="/settings" />
 
   <div data-security-list use:resize>
     <ListCard>
