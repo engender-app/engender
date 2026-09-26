@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "engender",
+  "short_name": "engender",
+  "description": "Dziennik jest zapisany na tym urządzeniu. Bez konta i serwera.",
+  "lang": "pl",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F8FB",
+  "theme_color": "#F4F8FB",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [{ "name": "Nowy wpis", "short_name": "Nowy wpis", "url": "/entry/new/today" }]
+}

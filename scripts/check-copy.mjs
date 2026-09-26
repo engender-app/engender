@@ -26,7 +26,7 @@
       gotowa"), so this check only flags a short, named list of forms already
       found addressing the reader rather than every feminine adjective ending.
 
-   4. No catalogue key sits with no caller. The other direction - a key the
+   4. No catalogue key sits with no shipped caller. The other direction - a key the
       source calls and no catalogue has - is already a type error, since
       paraglide generates one function per key; `npm run check` catches that
       one. A key the catalogue has and nothing calls is invisible to every
@@ -34,9 +34,8 @@
       clusters: ticket 16's kit contract orphaned twelve `*_row_aria` keys at
       once when `ListRow`/`RecordSheet` started deriving a row's accessible
       name from `title` instead. There is no dynamic `m[...]` or
-      `messages[...]` access anywhere in `src/`, `tests/` or `scripts/`, so
-      reading `m.<key>`/`messages.<key>` as plain text out of every
-      `.svelte`/`.ts`/`.js` file under those three directories is a sound
+      `messages[...]` access in `src/`, so reading `m.<key>`/`messages.<key>`
+      as plain text out of shipped `.svelte`/`.ts`/`.js` files is a sound
       scan - not an approximation of one - and needs no new parser: a
       built-in's wording can be reached only through
       `src/lib/data/vocabulary/vocabulary.ts` (ADR-0024) and still read as
@@ -295,7 +294,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     .split('\n')
     .filter((file) => file.endsWith('.svelte') && !UNSCANNED.has(file));
 
-  const refFiles = execFileSync('git', ['ls-files', 'src', 'tests', 'scripts'], { encoding: 'utf8' })
+  const refFiles = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
     .trim()
     .split('\n')
     .filter((file) => /\.(svelte|ts|js)$/.test(file));

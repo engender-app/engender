@@ -2,7 +2,7 @@
   "id": "/",
   "name": "engender",
   "short_name": "engender",
-  "description": "Track your transition day by day. The journal stays on this device: no account, no server.",
+  "description": "Your journal is stored on this device. No account or server.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
