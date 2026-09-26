@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="widget_quick_log_title">Jak się czujesz?</string>
     <string name="widget_quick_log_description">Wybierz jedną z pięciu ocen, aby otworzyć wpis.</string>
+    <string-array name="widget_mood_names">
+        <item>Okropnie</item>
+        <item>Źle</item>
+        <item>Tak sobie</item>
+        <item>Dobrze</item>
+        <item>Świetnie</item>
+    </string-array>
+    <string name="widget_tally_title">Zapisz moment</string>
     <string name="widget_tally_description">Zapisz jedną z dwóch opcji.</string>
-    <string name="widget_doubt_description">Otwórz miejsce do pisania.</string>
+    <string-array name="widget_tally_labels">
+        <item>Misgenderowanie</item>
+        <item>Właściwe formy</item>
+    </string-array>
+    <string name="widget_doubt_title">Zapisz wątpliwość</string>
+    <string name="widget_doubt_description">Otwórz miejsce na wpis.</string>
+    <string name="backup_failure_channel">Kopie zapasowe</string>
+    <string name="backup_failure_description">Nieudane zaplanowane kopie, które wymagają zmiany folderu lub ponownej próby.</string>
+    <string name="backup_failure_title">Zaplanowana kopia się nie udała</string>
 </resources>
