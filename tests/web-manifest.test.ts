@@ -21,6 +21,8 @@ const exists = (path: string) => existsSync(fileURLToPath(new URL(path, root)));
 
 const manifest = JSON.parse(read('static/manifest.webmanifest'));
 const disguised = JSON.parse(read('static/manifest-notes.webmanifest'));
+const polish = JSON.parse(read('static/manifest-pl.webmanifest'));
+const disguisedPolish = JSON.parse(read('static/manifest-notes-pl.webmanifest'));
 
 describe('the web app manifest', () => {
   it('names the app and installs it as a standalone window', () => {
@@ -71,6 +73,18 @@ describe('the web app manifest', () => {
     expect(exists('src/routes/entry/new/[day]/+page.svelte')).toBe(true);
     expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain("=== 'today'");
   });
+
+  it('keeps install text and shortcut destination paired across languages', () => {
+    expect(manifest.lang).toBe('en');
+    expect(polish.lang).toBe('pl');
+    expect(polish.description).toBe('Dziennik jest zapisany na tym urządzeniu. Bez konta i serwera.');
+    expect(polish.shortcuts[0].name).toBe('Nowy wpis');
+    expect(polish.shortcuts[0].url).toBe(manifest.shortcuts[0].url);
+    for (const key of ['id', 'name', 'start_url', 'scope', 'display', 'theme_color', 'background_color']) {
+      expect(polish[key], key).toEqual(manifest[key]);
+    }
+    expect(polish.icons).toEqual(manifest.icons);
+  });
 });
 
 /* The disguised install (ticket 25, F24). An installed app has no tab strip,
@@ -87,6 +101,10 @@ describe('the disguised manifest', () => {
     // No shortcuts at all rather than renamed ones: a long-press menu is one
     // more surface to keep neutral, and the disguise loses nothing without it.
     expect(disguised.shortcuts).toBeUndefined();
+    expect(disguisedPolish.lang).toBe('pl');
+    expect(disguisedPolish.name).toBe('Notes');
+    expect(disguisedPolish.description).toBe('Miejsce na notatki.');
+    expect(disguisedPolish.shortcuts).toBeUndefined();
   });
 
   it('is the same app renamed, not a second app to install', () => {
@@ -137,6 +155,9 @@ describe('the disguised manifest', () => {
        app-html-chrome.test.ts. All that is left for a source read is that
        the layout takes its href from that rule rather than deciding again
        on its own. */
-    expect(read('src/routes/+layout.svelte')).toContain('`${assets}/${chrome.manifest}`');
+    expect(read('src/routes/+layout.svelte')).toContain('`${assets}/${manifest}`');
+    expect(appHtml).toContain("localStorage.getItem('PARAGLIDE_LOCALE')");
+    expect(appHtml).toContain("manifest.href.replace('.webmanifest', '-pl.webmanifest')");
+    expect(read('src/routes/+layout.svelte')).toContain("getLocale() === 'pl'");
   });
 });
