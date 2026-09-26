@@ -2,8 +2,8 @@
   "id": "/",
   "name": "engender",
   "short_name": "engender",
-  "description": "Your journal is stored on this device. No account or server.",
-  "lang": "en",
+  "description": "Dziennik jest zapisany na tym urządzeniu. Bez konta i serwera.",
+  "lang": "pl",
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
@@ -14,5 +14,5 @@
     { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
-  "shortcuts": [{ "name": "New entry", "short_name": "New entry", "url": "/entry/new/today" }]
+  "shortcuts": [{ "name": "Nowy wpis", "short_name": "Nowy wpis", "url": "/entry/new/today" }]
 }

@@ -77,9 +77,14 @@
           'favicon-trans.svg',
           'favicon-' + (boot.disguise ? 'notes' : boot.palette || 'trans') + '.svg'
         );
+        const manifest = document.querySelector('link[rel="manifest"]');
         if (boot.disguise) {
-          const manifest = document.querySelector('link[rel="manifest"]');
           manifest.href = manifest.href.replace('manifest.webmanifest', 'manifest-notes.webmanifest');
+        }
+        const savedLocale = localStorage.getItem('PARAGLIDE_LOCALE');
+        const locale = savedLocale === 'en' || savedLocale === 'pl' ? savedLocale : navigator.language;
+        if (locale.toLowerCase().startsWith('pl')) {
+          manifest.href = manifest.href.replace('.webmanifest', '-pl.webmanifest');
         }
       } catch {
         /* no mirror yet, or storage is unavailable */
