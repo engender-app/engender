@@ -204,7 +204,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('draws no facts under the floor, where the thin-body line already says why', () => {
-    expect(stats).toMatch(/\{#if enoughEntries\}\s*<div data-lookback-facts transition:collapse/);
+    expect(stats).toMatch(/\{#if enoughEntries\}\s*<div class="screen-part">\s*<div data-lookback-facts transition:collapse/);
   });
 
   /* ux-carpet ticket 255: the facts answered within the screen's own arrival
@@ -221,7 +221,15 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toContain('<ReadGroup answered={factsAnswered} count={2}>');
     expect(stats).toContain("readReserve('lookback-facts')");
     expect(stats).toContain("rememberReserve('lookback-facts'");
-    expect(stats).toMatch(/<ReadReserve ready=\{factsRevealed\} estimate=\{factsEstimate\} onrest=\{factsRemember\}>[\s\S]*<div data-lookback-facts transition:collapse/);
+    expect(stats).toMatch(/<ReadReserve ready=\{factsRevealed\} estimate=\{factsEstimate\} onrest=\{factsRemember\}>\s*\{#if enoughEntries\}/);
+    /* The `{#if}` must gate ReadReserve's only child, not just its content:
+       a permanent wrapper div rendered whether or not there are facts to
+       show would always give `.read-reserve-body` an element child, so
+       ReadReserve's own `:has(> .read-reserve-body > :global(*))` check
+       (ReadReserve.svelte) could never read "empty" - the screen would
+       lose its default bottom margin below the reserve in exactly the
+       no-facts case this ticket says should stay untouched. */
+    expect(stats).not.toMatch(/<ReadReserve ready=\{factsRevealed\}[^>]*>\s*<div class="screen-part">\s*\{#if enoughEntries\}/);
   });
 
   /* ux-carpet 234, item 2: the average and scale-arc rows used to gate their
