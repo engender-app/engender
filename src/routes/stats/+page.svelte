@@ -414,8 +414,8 @@
          nothing to open, so this draws nothing rather than a second "not
          enough" message for the same span. -->
     <ReadReserve ready={factsRevealed} estimate={factsEstimate} onrest={factsRemember}>
-      <div class="screen-part">
       {#if enoughEntries}
+        <div class="screen-part">
         <div data-lookback-facts transition:collapse onoutrostart={() => (factsExited = false)} onoutroend={() => (factsExited = true)}>
           <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
             <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
@@ -449,8 +449,8 @@
             {/if}
           </ListCard>
         </div>
+        </div>
       {/if}
-      </div>
     </ReadReserve>
 
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
