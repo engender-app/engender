@@ -161,7 +161,6 @@
       </div>
       <div class="hr"></div>
       <p class="field-label" style="margin-bottom:var(--space-3)">{m.mood_colours()}</p>
-      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.mood_colours_note()}</p>
       <div class="mood-preset-grid" role="radiogroup" use:rovingRadio aria-label={m.mood_colours()}>
         {#each MOOD_PRESETS as [key, label] (key)}
           <button
@@ -300,7 +299,7 @@
            work on web the same as always, so this row is an ordinary
            chevron row on both platforms - only the notify column is
            Android-only, inside the screen it opens. -->
-      <ListRow key="notifications" icon="zap" title={m.notif_title()} subtitle={m.notif_sub()} href="/settings/notifications" />
+      <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
@@ -478,7 +477,6 @@
 
   <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
     <h3>{m.home_cal_colour()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.metric_note()}</p>
     <!-- Hand-written rather than a ListRow (ticket 18): this is a
          mutually-exclusive pick, and ListRow's `checked` draws
          Check.svelte's box, which that component documents as

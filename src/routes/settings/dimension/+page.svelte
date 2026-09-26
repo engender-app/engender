@@ -84,7 +84,6 @@
   </Field>
 
   <SectionHeading text={m.cd_preview()} />
-  <p class="muted small" style="margin-bottom:var(--space-3)">{m.cd_preview_note()}</p>
   {#key `${previewDim.name}|${previewDim.low}|${previewDim.high}|${max}`}
     <DimensionSlider dim={previewDim} value={Math.round(max * 0.6)} onInput={() => {}} />
   {/key}
