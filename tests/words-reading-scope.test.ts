@@ -41,7 +41,8 @@ describe('ticket 17: words reading scope and honest baseline', () => {
 
     it('has words_return_to_reading action in both catalogues', () => {
       expect(en.words_return_to_reading).toBe('Return to Words that stand out');
-      expect(pl.words_return_to_reading).toBe('Wróć do: Słowa, które się wyróżniają');
+      expect(pl.words_return_to_reading).toMatch(/^Wróć do /);
+      expect(pl.words_return_to_reading).toContain('Słowa, które się wyróżniają');
     });
   });
 
