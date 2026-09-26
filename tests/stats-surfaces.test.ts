@@ -204,8 +204,22 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('draws no facts under the floor, where the thin-body line already says why', () => {
-    expect(stats).toMatch(/\{#if factsQuery\.loading\}\s*<div out:crossfade><Skeleton variant="line" count=\{3\} \/><\/div>\s*\{:else if enoughEntries\}/);
-    expect(stats).toContain('<div data-lookback-facts transition:collapse');
+    expect(stats).toMatch(/\{#if enoughEntries\}\s*<div data-lookback-facts transition:collapse/);
+  });
+
+  /* ux-carpet ticket 255: the facts answered within the screen's own arrival
+     window and popped in at full opacity, shoving the quick picks below by
+     94-184px in one frame - nothing held their room. `ReadReserve` is the
+     standing fix for a late-arriving block (ticket 183/193/205/211): hold
+     last visit's height, fade the answer in over it, let any guess error
+     travel rather than jump. */
+  it('holds the facts\' room and fades the read in, rather than popping at full opacity', () => {
+    expect(stats).toContain("import ReadReserve from '$lib/components/kit/ReadReserve.svelte';");
+    expect(stats).toContain("import { readReserve, rememberReserve } from '$lib/data/homeReserve';");
+    expect(stats).toMatch(/let factsRevealed = \$state\(false\);\s*\$effect\.pre\(\(\) => \{\s*if \(!factsQuery\.loading && vocabulary\.ready\) factsRevealed = true;\s*\}\);/);
+    expect(stats).toContain("readReserve('lookback-facts')");
+    expect(stats).toContain("rememberReserve('lookback-facts'");
+    expect(stats).toMatch(/<ReadReserve ready=\{factsRevealed\} estimate=\{factsEstimate\} onrest=\{factsRemember\}>[\s\S]*<div data-lookback-facts transition:collapse/);
   });
 
   /* ux-carpet 234, item 2: the average and scale-arc rows used to gate their
@@ -217,7 +231,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
      last held for the whole of the card's own exit and never see their own
      condition flip mid-collapse. */
   it('freezes the two optional rows while the card itself is closing', () => {
-    expect(stats).toMatch(/\$effect\(\(\) => \{\s*if \(enoughEntries\) closingFacts = \{ activeAverage, dimChange \};\s*\}\);/);
+    expect(stats).toMatch(/\$effect\.pre\(\(\) => \{\s*if \(enoughEntries\) closingFacts = \{ activeAverage, dimChange \};\s*\}\);/);
     expect(stats).toContain('{#if closingFacts.activeAverage}');
     expect(stats).toContain('{#if closingFacts.dimChange}');
     expect(stats).toContain('{@const dimChange = closingFacts.dimChange}');
