@@ -43,6 +43,8 @@ import javax.crypto.spec.GCMParameterSpec;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
+import dev.engender.app.R;
+
 /**
  * Android side of scheduled encrypted backup destination management: a SAF
  * tree the person picks, verified writes into it, and the wrapped backup
@@ -71,9 +73,6 @@ public class AutoExportPlugin extends Plugin {
     private static final String PASSWORD_CIPHER = "AES/GCM/NoPadding";
 
     private static final String FAILURE_CHANNEL = "backup_failures";
-    /* Only reached when the JS side sends nothing, which it does not: the
-       localized name and body come from messages/*.json. */
-    private static final String FAILURE_CHANNEL_FALLBACK_NAME = "Backups";
     private static final int FAILURE_NOTIFICATION_ID = 1601;
 
     /** The archive profile, pinned here rather than read off the
@@ -349,11 +348,11 @@ public class AutoExportPlugin extends Plugin {
                 call.resolve();
                 return;
             }
-            ensureFailureChannel(call.getString("channelName", FAILURE_CHANNEL_FALLBACK_NAME));
+            ensureFailureChannel(call.getString("channelName", getContext().getString(R.string.backup_failure_channel)));
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(getContext(), FAILURE_CHANNEL)
                     .setSmallIcon(android.R.drawable.stat_notify_error)
-                    .setContentTitle(call.getString("title", "Scheduled backup failed"))
+                    .setContentTitle(call.getString("title", getContext().getString(R.string.backup_failure_title)))
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setAutoCancel(true)
                     .setVisibility(NotificationCompat.VISIBILITY_PRIVATE);
@@ -513,10 +512,10 @@ public class AutoExportPlugin extends Plugin {
         if (manager == null) return;
         NotificationChannel created = new NotificationChannel(
             FAILURE_CHANNEL,
-            channelName == null || channelName.isEmpty() ? FAILURE_CHANNEL_FALLBACK_NAME : channelName,
+            channelName == null || channelName.isEmpty() ? getContext().getString(R.string.backup_failure_channel) : channelName,
             NotificationManager.IMPORTANCE_DEFAULT
         );
-        created.setDescription("Scheduled backup failures that need a new destination or retry.");
+        created.setDescription(getContext().getString(R.string.backup_failure_description));
         manager.createNotificationChannel(created);
     }
 
