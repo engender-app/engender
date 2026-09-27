@@ -1037,6 +1037,20 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(slide[1].decls['clip-path']).toContain('var(--blind-to');
   });
 
+  it('translates the full blind when one side is scrolled', () => {
+    const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(blind)")?.body ?? '');
+    const enter = declarations(ruleOf(app, "html[data-blind-scroll='enter']::view-transition-new(blind)")?.body ?? '');
+    expect(exit['animation-name']).toBe('blind-scroll-out');
+    expect(enter['animation-name']).toBe('blind-scroll-in');
+    expect(exit['clip-path']).toContain('var(--blind-from)');
+    expect(enter['clip-path']).toContain('var(--blind-to)');
+    for (const name of ['blind-scroll-out', 'blind-scroll-in']) {
+      const motion = frames(keyframesOf(app, name)!.body);
+      expect(motion).toHaveLength(2);
+      expect(motion.map((frame) => Object.keys(frame.decls))).toEqual([['translate'], ['translate']]);
+    }
+  });
+
   /* No frame carries two of the field's contents: the outgoing element
      spends --dur-fast, the incoming one waits exactly that long before it
      starts, and both travel 12-16px rather than sliding between two

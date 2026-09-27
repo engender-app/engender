@@ -36,7 +36,7 @@
    stacking context, and a field that stayed one would trap every z-index
    inside its screen. */
 
-import { blindSettle } from './blindSettle';
+import { blindSettle, EASE_OUT_SOFT_VAR } from './blindSettle';
 
 /* Every box that measures a field, so the blind is one object across every
    navigation the app makes. Setup's own field was missing from this list
@@ -127,6 +127,7 @@ export interface BlindCarry {
 
 interface Side {
   height: number;
+  scrolled: boolean;
   named: HTMLElement[];
 }
 
@@ -170,6 +171,12 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
       )) {
         root.style.setProperty(property, value);
       }
+      if (after.scrolled && before.height > 0) root.dataset.blindScroll = 'exit';
+      else if (before.scrolled && after.height > 0) root.dataset.blindScroll = 'enter';
+      else delete root.dataset.blindScroll;
+      /* An edge may overshoot above the window when closing to nothing.
+         A whole field travelling into or out of view must stay monotonic. */
+      if (root.dataset.blindScroll) root.style.setProperty('--blind-ease', EASE_OUT_SOFT_VAR);
       current = carry;
     },
     release() {
@@ -177,6 +184,7 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
       if (after) release(after);
       if (current !== carry) return;
       current = null;
+      delete root.dataset.blindScroll;
       for (const property of VARIABLES) root.style.removeProperty(property);
     }
   };
@@ -238,20 +246,15 @@ export function blindVariables({
 function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions = {}): Side {
   const fields = [...doc.querySelectorAll<HTMLElement>(FIELD)];
   const field = skip ? fields.find((el) => !skip.named.includes(el)) : fields[0];
-  if (!field) return { height: 0, named: [] };
+  if (!field) return { height: 0, scrolled: false, named: [] };
 
-  const named: HTMLElement[] = [field];
-  /* A screen that is scrolled has no field where the blind can be: the
-     field scrolls away with the page, so its blind sits that far above the
-     window, and the group holds one box for both sides. Named, it dragged
-     the whole blind off-screen and the field simply vanished for the length
-     of the navigation - a deep push out of a scrolled hub and back is the
-     everyday way to hit it, and it is what Alicja saw on deep-back (round
-     one). So a scrolled side contributes nothing and the other side's blind
-     closes to nothing, which is what that screen actually shows. Measured
-     after the scroll is restored, which is why swap() runs last. */
+  /* A scrolled field is already above the window. Naming its blind or
+     printed parts would pull their off-screen captures into the transition.
+     The visible side instead travels by its full height (app.css). */
   const scrolled = (doc.querySelector(REGION)?.scrollTop ?? 0) > 1;
-  const height = scrolled ? 0 : field.getBoundingClientRect().height;
+  if (scrolled) return { height: 0, scrolled: true, named: [] };
+  const named: HTMLElement[] = [field];
+  const height = field.getBoundingClientRect().height;
   /* Nested under the field's own group (`contain`, set below) rather than
      becoming an independent root-level group, only where that is what the
      name is FOR: the blind is larger than what is ever visible of it at rest,
@@ -321,7 +324,7 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
     field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
   }
 
-  return { height, named };
+  return { height, scrolled: false, named };
 }
 
 function release(side: Side) {
