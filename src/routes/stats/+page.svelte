@@ -187,17 +187,22 @@
     railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
   );
   const pickSpan = (next: Span) => {
+    if (enoughEntries) factsExited = false;
     span = next;
     live = next;
     setLastLookBackSpan(next);
     const isExistingEra = existingEraSpans.some((era) => era.start === next.start && era.end === next.end);
-    eraOfferSpan = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
+    const nextOffer = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
+    if (!nextOffer || eraOfferSpan?.start !== nextOffer.start || eraOfferSpan.end !== nextOffer.end) offerOpened = false;
+    eraOfferSpan = nextOffer;
   };
 
   /* The "name this stretch" offer (redesign ticket 48): once a span the
      person dragged settles, one offer to turn it into an era, on this
      surface and nowhere else. Plain component state, gone on reload. */
   let eraOfferSpan = $state<Span | null>(null);
+  let factsExited = $state(true);
+  let offerOpened = $state(false);
   let handledEraOfferSpans = $state<Span[]>([]);
   const settleEraOffer = (handled: Span) => {
     handledEraOfferSpans = [...handledEraOfferSpans, handled];
@@ -208,30 +213,22 @@
      its first frame from moving those rows 43px at once. */
   const discloseOffer = (node: Element) => ({ ...disclose(node), easing: bezier(EASE_OUT_SOFT_POINTS) });
 
-  /* Keep words invisible while the box opens. The clip alone exposed the
-     title at full opacity over quick picks before room existed for it. */
-  const fadeOfferIn = (node: HTMLElement) => {
-    const content = Array.from(node.children) as HTMLElement[];
-    for (const el of content) el.style.opacity = '0';
+  /* Facts and offer move together. For a thin span, wait for old facts to
+     leave; for a full span, facts stay. Words wait for the room in both. */
+  const markOfferOpened = (node: HTMLElement, selected: Span) => {
     let fallback: ReturnType<typeof setTimeout> | undefined;
-    let revealed = false;
-    const reveal = () => {
-      if (revealed) return;
-      revealed = true;
+    const opened = () => {
+      if (eraOfferSpan !== selected || offerOpened) return;
+      offerOpened = true;
       if (fallback) clearTimeout(fallback);
-      const duration = motionDuration('--dur-med');
-      for (const el of content) {
-        el.style.opacity = '';
-        if (duration > 0) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
-      }
     };
-    node.addEventListener('introend', reveal, { once: true });
+    node.addEventListener('introend', opened, { once: true });
     /* An interrupted intro may skip introend. Reduced motion needs no wait. */
-    if (isReducedMotion()) reveal();
-    else fallback = setTimeout(reveal, motionDuration('--dur-med') + 50);
+    if (isReducedMotion()) opened();
+    else fallback = setTimeout(opened, motionDuration('--dur-med') + 50);
     return {
       destroy() {
-        node.removeEventListener('introend', reveal);
+        node.removeEventListener('introend', opened);
         if (fallback) clearTimeout(fallback);
       }
     };
@@ -312,6 +309,7 @@
   const factsRemember = (px: number) => rememberReserve('lookback-facts', px);
   let entryCount = $derived(factsQuery.value?.recap.entryCount ?? 0);
   let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+  let offerContentReady = $derived(offerOpened && (enoughEntries || factsExited));
   let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);
   let activeAverage = $derived.by(() => {
     const standing = metricStandings([{ key: shown.key, range: { min: shown.min, max: shown.max } }], () => factsQuery.value?.series ?? [])[0];
@@ -445,7 +443,7 @@
     <ReadReserve ready={factsRevealed} estimate={factsEstimate} onrest={factsRemember}>
       {#if enoughEntries}
         <div class="screen-part">
-        <div data-lookback-facts transition:collapse>
+        <div data-lookback-facts transition:collapse onoutrostart={() => (factsExited = false)} onoutroend={() => (factsExited = true)}>
           <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
             <ListRow static data-lookback-fact title={m.wrapped_stat_entries()}>
               {#snippet trailing()}<b class="wrapped-figure-value">{entryCount}</b>{/snippet}
@@ -487,7 +485,8 @@
          nowhere else. `disclose` opens and gives back its own height. -->
     {#if eraOfferSpan && factsCurrent}
       {@const offerSpan = eraOfferSpan}
-      <div class="era-offer" data-era-offer role="group" aria-labelledby="era-offer-title" transition:discloseOffer use:fadeOfferIn>
+      {#key `${offerSpan.start}:${offerSpan.end}`}
+      <div class="era-offer" class:is-ready={offerContentReady} data-era-offer role="group" aria-labelledby="era-offer-title" inert={!offerContentReady} transition:discloseOffer|global use:markOfferOpened={offerSpan}>
         <div class="era-offer-said">
           <span class="kit-row-ico"><Icon name="columns" size={22} /></span>
           <span class="kit-row-text">
@@ -510,6 +509,7 @@
           </button>
         </div>
       </div>
+      {/key}
     {/if}
 
     <!-- The three completed cadences at their own routes, one tap each, in
@@ -677,6 +677,15 @@
      surface the person just drove, not in the app's generic voice. */
   .era-offer {
     padding: var(--space-2) 0;
+  }
+
+  .era-offer > * {
+    opacity: 0;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+
+  .era-offer.is-ready > * {
+    opacity: 1;
   }
 
   .era-offer-said {
