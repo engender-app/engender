@@ -340,13 +340,13 @@ const SCENES = [
   }
 ];
 
-/** The scenes a run covers: the table above, with the proof scene prepended
- *  when the run is out to show the sweep can fail, narrowed to `only`. */
+/** The scenes a run covers: the table above, narrowed to `only`, with the
+ *  proof scene always prepended when the run is out to show it can fail. */
 export function scenesFor({ prove = false, only = [] } = {}) {
-  const scenes = prove
-    ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'six marks built to be wrong, so the arithmetic can be seen to catch them' }, ...SCENES]
-    : SCENES;
-  return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
+  const scenes = only.length ? SCENES.filter((s) => only.includes(s.name)) : SCENES;
+  return prove
+    ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'six marks built to be wrong, so the arithmetic can be seen to catch them' }, ...scenes]
+    : scenes;
 }
 
 /** Furniture rather than the app: the demo bar and a toast are injected over
@@ -1572,14 +1572,13 @@ export const HYDRATION_NEEDS = {
   document: { list: '/media/documents', prefix: '/media/documents/' }
 };
 
-/** The hydration scenes a run covers: the table above, with the proof
- *  scene prepended when the run is out to show the sweep can fail,
- *  narrowed to `only`. */
+/** The hydration scenes a run covers: the table above, narrowed to `only`,
+ *  with the proof scene always prepended when proving. */
 export function hydrationScreensFor({ prove = false, only = [] } = {}) {
-  const scenes = prove
-    ? [{ name: PROOF.scene, at: '/', is: 'five marks built to be wrong, so the arithmetic can be seen to catch them' }, ...HYDRATION_SCENES]
-    : HYDRATION_SCENES;
-  return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
+  const scenes = only.length ? HYDRATION_SCENES.filter((s) => only.includes(s.name)) : HYDRATION_SCENES;
+  return prove
+    ? [{ name: PROOF.scene, at: '/', is: 'five marks built to be wrong, so the arithmetic can be seen to catch them' }, ...scenes]
+    : scenes;
 }
 
 /** The id of the first record a list screen shows, per its HYDRATION_NEEDS
