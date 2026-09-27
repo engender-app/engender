@@ -25,13 +25,14 @@ const el = (): Styled => ({ style: makeStyle() });
     its blind, the elements painted on it, and the sun's rings. */
 function field({
   height = 0,
+  top = 0,
   blind = el() as Styled | null,
   parts = [] as Styled[],
   rings = [] as Styled[]
 } = {}) {
   return {
     style: makeStyle(),
-    getBoundingClientRect: () => ({ height }),
+    getBoundingClientRect: () => ({ height, top }),
     querySelector: () => blind,
     querySelectorAll: (selector: string) => (selector.includes('field-part') ? parts : rings)
   };
@@ -39,7 +40,7 @@ function field({
 
 /** A document whose field list can be swapped out under the carry, which is
     what a navigation does to it. */
-function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0) {
+function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0, regionTop = 0) {
   const root = {
     dataset: {} as Record<string, string>,
     style: {
@@ -52,7 +53,7 @@ function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0) {
       }
     }
   };
-  const doc = { fields, root, region: { scrollTop } };
+  const doc = { fields, root, region: { scrollTop, getBoundingClientRect: () => ({ top: regionTop }) } };
   return {
     doc,
     as: {
@@ -115,7 +116,7 @@ describe('the blind, carried across a navigation', () => {
 
   it('moves a visible field out intact when arriving on a scrolled screen', () => {
     const blind = el();
-    const { doc, as } = fakeDocument([field({ height: 215, blind })]);
+    const { doc, as } = fakeDocument([field({ height: 215, top: 59, blind })], 0, 20);
     const carry = carryBlind(as)!;
     const scrolledBlind = el();
     const scrolledPart = el();
@@ -125,6 +126,7 @@ describe('the blind, carried across a navigation', () => {
     expect(doc.root.dataset.blindScroll).toBe('exit');
     expect(doc.root.style.props.get('--blind-to')).toBe('0px');
     expect(doc.root.style.props.get('--blind-from')).toBe('215px');
+    expect(doc.root.style.props.get('--blind-delta')).toBe('254px');
     expect(doc.root.style.props.get('--blind-ease')).toBe('var(--ease-out-soft)');
     expect(scrolledBlind.style.viewTransitionName).toBeUndefined();
     expect(scrolledPart.style.viewTransitionName).toBeUndefined();
@@ -134,15 +136,16 @@ describe('the blind, carried across a navigation', () => {
 
   it('moves a visible field down intact when leaving a scrolled screen', () => {
     const scrolledBlind = el();
-    const { doc, as } = fakeDocument([field({ height: 199, blind: scrolledBlind })], 1200);
+    const { doc, as } = fakeDocument([field({ height: 199, blind: scrolledBlind })], 1200, 20);
     const carry = carryBlind(as)!;
     const arrivingBlind = el();
-    doc.fields = [field({ height: 215, blind: arrivingBlind })];
+    doc.fields = [field({ height: 215, top: 59, blind: arrivingBlind })];
     doc.region.scrollTop = 0;
     carry.swap();
     expect(doc.root.dataset.blindScroll).toBe('enter');
     expect(doc.root.style.props.get('--blind-from')).toBe('0px');
     expect(doc.root.style.props.get('--blind-to')).toBe('215px');
+    expect(doc.root.style.props.get('--blind-delta')).toBe('-254px');
     expect(doc.root.style.props.get('--blind-ease')).toBe('var(--ease-out-soft)');
     expect(scrolledBlind.style.viewTransitionName).toBeUndefined();
     expect(arrivingBlind.style.viewTransitionName).toBe('blind');

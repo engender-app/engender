@@ -982,6 +982,10 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 /* A restored scroll position puts one field above the window. Keep the
    visible side's clip at its full height and move that whole side out or in.
    Naming the scrolled side would place the shared blind group off-screen. */
+/* The field group's usual overflow clip starts below the status bar. During
+   this travel the blind's own fixed clip contains its paint, so the group
+   can let it cross that inset before it leaves the window. */
+html[data-blind-scroll]::view-transition-group-children(field) { overflow: visible; }
 html[data-blind-scroll='exit']::view-transition-old(blind) {
   clip-path: inset(0 0 calc(100vh - var(--blind-from)) 0 round 0 0 var(--r-block) var(--r-block));
   animation-name: blind-scroll-out;
@@ -992,10 +996,10 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
 }
 @keyframes blind-scroll-out {
   from { translate: 0 0; }
-  to { translate: 0 calc(-1 * var(--blind-from)); }
+  to { translate: 0 calc(-1 * var(--blind-delta)); }
 }
 @keyframes blind-scroll-in {
-  from { translate: 0 calc(-1 * var(--blind-to)); }
+  from { translate: 0 var(--blind-delta); }
   to { translate: 0 0; }
 }
 
