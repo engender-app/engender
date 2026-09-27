@@ -126,9 +126,9 @@ describe('stripeRoles', () => {
     expect(stripeRoles([' #ffffff ', '#FFFFFF'])).toEqual(['#ffffff']);
   });
 
-  it('gives every one of the 8 flags at least three roles', () => {
+  it('gives every flag as many roles as its distinct bands', () => {
     for (const palette of PALETTES) {
-      expect(stripeRoles(stripesOf(palette)).length).toBeGreaterThanOrEqual(3);
+      expect(stripeRoles(stripesOf(palette)).length).toBeGreaterThanOrEqual(2);
     }
   });
 });

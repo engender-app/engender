@@ -1,4 +1,4 @@
-/* The eight built-in palettes' keys, in the order the app presents them
+/* The built-in palettes' keys, in the order the app presents them
    (ticket 06): every gallery script and node-tier test that needs to
    iterate "every palette" declared this same array by hand, independently -
    12 copies, nothing keeping them in the same order. Plain and dependency-
@@ -12,5 +12,13 @@ export const PALETTES = [
   'lesbian',
   'pansexual',
   'rainbow',
-  'agender'
+  'agender',
+  'gaymen',
+  'genderqueer',
+  'intersex',
+  'asexual',
+  'demiboy',
+  'demigirl',
+  'trigender',
+  'polish'
 ];

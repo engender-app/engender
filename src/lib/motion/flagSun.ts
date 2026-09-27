@@ -50,7 +50,7 @@ export function sunRings(stripes: string[], dark: boolean): SunRing[] {
 /** `--motif-stripes`'s value is a bare comma list of colours, read via
     getComputedStyle rather than duplicated in a parallel TS table - the
     same token every other palette-aware surface in the app reads, so a
-    ninth palette needs no second place taught its stripes. */
+    new palette needs no second place taught its stripes. */
 export function parseMotifStripes(value: string): string[] {
   return value
     .split(',')
