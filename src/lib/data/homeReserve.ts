@@ -35,6 +35,8 @@ export type ReserveSlot =
   | 'journaling-pause'
   | 'recovery-key'
   | 'reminders'
+  | 'reminders-check-in'
+  | 'reminders-permission'
   | 'roadmap'
   | 'body-map'
   | 'appointments-visits'
