@@ -5,7 +5,7 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { resolveReminderOrigin } from '$lib/data/provenance';
   import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { prefs, preferencesAttached } from '$lib/data/prefs/store.svelte';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -25,6 +25,7 @@
 
   let reminders = liveList((j) => j.reminders.getReminders());
   let status = $state<AndroidReminderStatus>({ notifications: 'not-required', exactAlarms: 'not-required' });
+  let statusReady = $state(false);
 
   // Web's one write (ADR-0063): a reminder that can never ring on this
   // device still needs a cancel path, and this is it.
@@ -39,6 +40,8 @@
       status = await androidReminders.getStatus();
     } catch (error) {
       console.error('Could not read Android reminder status', error);
+    } finally {
+      statusReady = true;
     }
   }
 
@@ -79,6 +82,10 @@
   });
   const remindersEstimate = readReserve('reminders');
   const remindersRemember = (px: number) => rememberReserve('reminders', px);
+  const checkInEstimate = readReserve('reminders-check-in');
+  const checkInRemember = (px: number) => rememberReserve('reminders-check-in', px);
+  const permissionEstimate = readReserve('reminders-permission');
+  const permissionRemember = (px: number) => rememberReserve('reminders-permission', px);
 </script>
 
 <div class="screen" data-screen>
@@ -148,21 +155,22 @@
          has no treatment for, and one the row's own title makes in words.
          The shape is the disguise sheet's, settled on carpet 29: `.spread`
          rows in a stack, no ground, no edge, no separators. -->
-    <div class="stack-3" data-checkin>
-      <div class="spread">
-        <span class="kit-row-text">
-          <span class="kit-row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
-          <span class="kit-row-sub">{m.checkin_sub()}</span>
-        </span>
-        <Switch
-          checked={prefs.checkInEnabled}
-          label={m.checkin_title()}
-          onChange={(v) => {
-            prefs.checkInEnabled = v;
-          }}
-        />
-      </div>
-      {#if prefs.checkInEnabled}
+    <ReadReserve ready={preferencesAttached()} estimate={checkInEstimate} onrest={checkInRemember} data-checkin>
+      <div class="stack-3">
+        <div class="spread">
+          <span class="kit-row-text">
+            <span class="kit-row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
+            <span class="kit-row-sub">{m.checkin_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.checkInEnabled}
+            label={m.checkin_title()}
+            onChange={(v) => {
+              prefs.checkInEnabled = v;
+            }}
+          />
+        </div>
+        {#if prefs.checkInEnabled}
         <!-- What the switch above turns on, opening its own height rather
              than arriving at full size (rule 10, and it is the group's own
              edge that used to hold these two rows together). `disclose` is
@@ -203,47 +211,52 @@
             />
           </div>
         </div>
-      {/if}
-    </div>
+        {/if}
+      </div>
+    </ReadReserve>
 
-    {#if status.notifications === 'denied' || status.exactAlarms === 'denied'}
-      <div class="notice notice-warning">
-        <Icon name="alert" size={20} />
-        <div class="notice-body">
-          <span class="notice-title">{m.rem_capabilities_title()}</span>
-          {m.rem_capabilities_body()}
-          <div class="spread" style="margin-top:var(--space-2);gap:var(--space-2)">
-            {#if status.notifications === 'denied'}
-              <button class="btn btn-soft" onclick={requestNotifications}>{m.rem_allow_notifications()}</button>
-            {/if}
-            {#if status.exactAlarms === 'denied'}
-              <button class="btn btn-soft" onclick={requestExactAlarms}>{m.rem_allow_exact_alarms()}</button>
-            {/if}
+    <ReadReserve ready={statusReady} estimate={permissionEstimate} onrest={permissionRemember}>
+      {#if status.notifications === 'denied' || status.exactAlarms === 'denied'}
+        <div class="notice notice-warning">
+          <Icon name="alert" size={20} />
+          <div class="notice-body">
+            <span class="notice-title">{m.rem_capabilities_title()}</span>
+            {m.rem_capabilities_body()}
+            <div class="spread" style="margin-top:var(--space-2);gap:var(--space-2)">
+              {#if status.notifications === 'denied'}
+                <button class="btn btn-soft" onclick={requestNotifications}>{m.rem_allow_notifications()}</button>
+              {/if}
+              {#if status.exactAlarms === 'denied'}
+                <button class="btn btn-soft" onclick={requestExactAlarms}>{m.rem_allow_exact_alarms()}</button>
+              {/if}
+            </div>
           </div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </ReadReserve>
 
-    <ListCard>
-      {#each reminders.rows as r (r.id)}
-        <!-- A navigable title beside an independent Switch, and ListRow has
-             no shape for that: `href` makes the whole row the link, which
-             would toggle the switch by navigating past it; `action` renders
-             one icon button, not a Switch (ticket 18). -->
-        {@const origin = resolveReminderOrigin(r)}
-        <div class="kit-row" data-list-row={r.id}>
-          <span class="kit-row-ico"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
-          <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
-            <span class="kit-row-title">{r.title}</span>
-            <span class="kit-row-sub">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
-            {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
-          </a>
-          <span class="kit-row-trail">
-            <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
-          </span>
-        </div>
-      {/each}
-    </ListCard>
+    <ReadReserve ready={remindersRevealed} estimate={remindersEstimate} onrest={remindersRemember}>
+      <ListCard>
+        {#each reminders.rows as r (r.id)}
+          <!-- A navigable title beside an independent Switch, and ListRow has
+               no shape for that: `href` makes the whole row the link, which
+               would toggle the switch by navigating past it; `action` renders
+               one icon button, not a Switch (ticket 18). -->
+          {@const origin = resolveReminderOrigin(r)}
+          <div class="kit-row" data-list-row={r.id}>
+            <span class="kit-row-ico"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
+            <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
+              <span class="kit-row-title">{r.title}</span>
+              <span class="kit-row-sub">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
+              {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
+            </a>
+            <span class="kit-row-trail">
+              <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
+            </span>
+          </div>
+        {/each}
+      </ListCard>
+    </ReadReserve>
 
     <div class="notice notice-info">
       <Icon name="info" size={20} />
