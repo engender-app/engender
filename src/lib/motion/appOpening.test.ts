@@ -24,7 +24,7 @@ function fakeDocument({ present = true } = {}) {
   const blind = el();
   const field = {
     ...el(),
-    getBoundingClientRect: () => ({ height: 78 }),
+    getBoundingClientRect: () => ({ height: 78, top: 0 }),
     querySelector: () => blind,
     querySelectorAll: () => []
   };
@@ -46,7 +46,7 @@ function fakeDocument({ present = true } = {}) {
   const doc = {
     documentElement: root,
     querySelectorAll: () => [field],
-    querySelector: () => ({ scrollTop: 0 }),
+    querySelector: () => ({ scrollTop: 0, getBoundingClientRect: () => ({ top: 0 }) }),
     ...(present
       ? {
           startViewTransition(update: () => Promise<void>) {
