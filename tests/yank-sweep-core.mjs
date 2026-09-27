@@ -363,6 +363,9 @@ export function scenesFor({ prove = false, only = [] } = {}) {
     tan, on the one step whose whole subject is colour (FlagSun.svelte,
     onboarding's setup-paint comment), so a colour transition here is the
     wrong fix, not a missing one. */
+/* Ticket 259's clipped arrivals, scrolling sheets and faded skeleton moves
+   are filtered in findYanks, where their frame state can be checked. A
+   mark-name exemption here would also hide real defects on those marks. */
 export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\||\.letter-main-btn\./;
 
 /** The six deliberately wrong marks. All sit among real neighbours: the
@@ -407,8 +410,10 @@ export const INJECT_PROOF_EXPRESSION =
         frame++;
         /* Eight frames of a smooth 6px slide, then 200px in one. */
         jump.style.translate = `0 ${frame <= 8 ? frame * 6 : 8 * 6 + 200}px`;
-        /* Four frames fading to 0.6, then straight to nothing. */
-        cut.style.opacity = frame <= 4 ? String(1 - frame * 0.1) : frame === 5 ? '0' : '0';
+        /* Three one-frame cuts give a 30Hz device cast three chances to
+           sample a 60Hz defect within one pass. */
+        const cutFrame = ((frame - 1) % 14) + 1;
+        cut.style.opacity = cutFrame <= 4 ? String(1 - cutFrame * 0.1) : '0';
         /* Eight frames at the resting 24px, one frame a window-tall 520 -
            the field-blind's own shape, on a mark built to have it. */
         bloat.style.height = frame === 9 ? '520px' : '24px';
@@ -419,7 +424,7 @@ export const INJECT_PROOF_EXPRESSION =
         thereAndBack.style.translate = frame === 8 ? '0 200px' : '0 0px';
         /* Absent for five frames, then appears at full opacity and holds. */
         if (frame === 6) arrival.style.display = 'block';
-        if (frame < 14) requestAnimationFrame(tick);
+        if (frame < 42) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     };
@@ -721,6 +726,8 @@ export function samplerExpression(act, ms, names) {
               cs.borderTopWidth !== '0px' &&
               cs.borderTopStyle !== 'none' &&
               !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.borderTopColor);
+            let scrollY = window.scrollY;
+            for (let up = el.parentElement; up; up = up.parentElement) scrollY += up.scrollTop;
             rows[k] = {
               x: Math.round(box.x * 10) / 10,
               y: Math.round(box.y * 10) / 10,
@@ -730,6 +737,8 @@ export function samplerExpression(act, ms, names) {
               c: Math.round(visibility * 1000) / 1000,
               v: visibleArea > 0,
               leaving: !!el.closest('[data-leaving]'),
+              /* Viewport movement caused by scroll is not mark motion. */
+              sy: scrollY,
               bg: cs.backgroundColor,
               fg: cs.color,
               ...(borderVisible ? { bc: cs.borderTopColor } : {})
@@ -811,10 +820,15 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       if (!a || !b) continue;
       if (instrument === 'rows' && (a.v === false || b.v === false)) continue;
       if (a.c !== undefined && b.c < a.c) continue;
+      /* Crossfade placeholders can move when lifted out of flow, but
+         their measured jump happens after paint is under 10% opacity. */
+      if (a.leaving && b.leaving && Math.max(a.o, b.o) < 0.1) continue;
       if (b.leaving && (!a.leaving || b.o < a.o)) continue;
       const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const d = Math.hypot(b.x - a.x, b.y - a.y);
+      if (Math.abs(b.y - a.y + (b.sy ?? 0) - (a.sy ?? 0)) < teleportPx &&
+          Math.abs((b.sy ?? 0) - (a.sy ?? 0)) >= teleportPx) continue;
       deltas.push({ i, d, dNorm: d / steps, steps, at: run[i].at });
     }
 
@@ -1001,7 +1015,11 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         const risePerFrame = (b.o - (a ? a.o : 0)) / steps;
 
         const treeForm = !a;
-        const opacityStepForm = a && a.o < VISIBLE && risePerFrame >= 0.35;
+        /* A clipped mark can rise from 0.375 to 1 while its own paint stays
+           fully opaque. That is a reveal, not an opacity arrival. */
+        const clippedReveal = a && a.c > 0 && b.c > 0 && a.c < 1 &&
+          Math.abs(a.o / a.c - b.o / b.c) < 0.1;
+        const opacityStepForm = a && !clippedReveal && a.o < VISIBLE && risePerFrame >= 0.35;
 
         if (treeForm || opacityStepForm) {
           const holds = run[i + 1]?.row?.o >= VISIBLE && run[i + 2]?.row?.o >= VISIBLE;
@@ -1811,7 +1829,7 @@ export function findHydrationYanks(frames) {
  *  evidence triples its findings name. The timestamp in the filename is
  *  the cast's own clock, so a PNG and the finding it belongs to cannot
  *  come apart - and both transports name them identically. */
-export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP, { allowThin = false } = {}) {
+export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP, { allowThin = false, readyFrame = null } = {}) {
   /* Three seconds of 60fps is 180 frames; in practice Chromium produces
      between 12 and 120 over a cold load or a sheet opening, but
      sometimes the new document's blank, the screen, and then nothing at all
@@ -1824,13 +1842,19 @@ export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_
      showing the gap, so a load with no frames between the old screen and
      the new one is positive evidence that there was none, not a failure to
      check - and whether the screen arrived at all is already proved by the
-     selector each scene waits for before any of this runs. What is left to
-     refuse is a camera that recorded nothing of the change: one frame, or
-     none. In gesture sweeps, static clicks or no-ops legitimately produce 1
-     frame with no repaint. */
+     selector each scene waits for before any of this runs. A one-frame cast
+     passes only when its painted frame matches a second cast started after
+     the ready selector. Otherwise it might show the previous screen. */
   if (cast.length < 2) {
-    if (allowThin && cast.length === 1) return { cast: 1, findings: [] };
-    throw new Error(`only ${cast.length} screencast frames`);
+    if (cast.length === 1) {
+      const first = decodePng(Buffer.from(cast[0].data, 'base64'));
+      const painted = grayFrame(first);
+      const ready = readyFrame && decodePng(Buffer.from(readyFrame, 'base64'));
+      const matchesReady = ready && ready.width === first.width && ready.height === first.height &&
+        diffMask(painted, grayFrame(ready)).frac <= 0.02;
+      if (!isBlankGray(painted) && (allowThin || matchesReady)) return { cast: 1, findings: [] };
+    }
+    throw new Error(`only ${cast.length} screencast frames${cast.length ? ' (first frame does not match the ready screen)' : ''}`);
   }
   const decoded = cast.map((f) => {
     const png = decodePng(Buffer.from(f.data, 'base64'));
@@ -1906,7 +1930,7 @@ export function describeHydrationRun(name, dom, render) {
  *  rather than by type. */
 export async function pushHydrationRun(report, outDir, { name, is, profile, theme, result, href = null, dump = false }) {
   const dom = findHydrationYanks(result.frames);
-  const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`);
+  const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`, EVIDENCE_CAP, { readyFrame: result.readyFrame });
   if (dump || dom.yanks.length)
     await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
   const entry = {

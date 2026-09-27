@@ -120,7 +120,17 @@ await page.addInitScript(STUB_PERSIST_SCRIPT);
 
 /* ---------- the camera, desktop edition ---------- */
 
-const screencast = (fn) => captureScreencast(page, fn);
+const screencast = async (fn) => {
+  const result = await captureScreencast(page, fn);
+  if (result.cast?.length === 1) {
+    result.readyFrame = await captureScreencast(page, async (frames) => {
+      for (let i = 0; i < 40 && !frames.length; i++) await page.waitForTimeout(50);
+      if (!frames.length) throw new Error('ready screen produced no screencast frame');
+      return frames[0].data;
+    });
+  }
+  return result;
+};
 
 /* ---------- the page, driven ---------- */
 
