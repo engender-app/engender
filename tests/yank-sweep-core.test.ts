@@ -26,6 +26,7 @@ import {
   isBlankGray,
   missingProofYanks,
   parseCssColor,
+  readRenderYanks,
   replySlices,
   scenesFor,
   scrapeIdExpression
@@ -38,6 +39,16 @@ const mark = (over = {}) => ({ x: 10, y: 20, w: 100, h: 24, o: 1, ...over });
 /** `n` frames of the same resting mark - the stillness a spike is read
  *  against. */
 const still = (n, over) => Array.from({ length: n }, (_, i) => frame(mark(over), i * 16));
+
+describe('readRenderYanks', () => {
+  it('accepts one painted frame and rejects blank or empty casts', async () => {
+    const painted = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVQI12NgYGD4//8/AAYBAv4Kby8eAAAAAElFTkSuQmCC';
+    const blank = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR7sAAAAASUVORK5CYII=';
+    await expect(readRenderYanks([{ data: painted, at: 0 }], '/tmp', 'static', 'light')).resolves.toEqual({ cast: 1, findings: [] });
+    await expect(readRenderYanks([{ data: blank, at: 0 }], '/tmp', 'blank', 'light')).rejects.toThrow('only 1 screencast frames');
+    await expect(readRenderYanks([], '/tmp', 'missing', 'light')).rejects.toThrow('only 0 screencast frames');
+  });
+});
 
 describe('findYanks', () => {
   it('reports a mark that teleports between two still frames', () => {
@@ -83,6 +94,30 @@ describe('findYanks', () => {
       frame(mark({ leaving: true, o: 0.1, y: 220 }), 64)
     ];
     expect(findYanks(frames, 'rows').filter((y) => y.kind === 'teleport')).toEqual([]);
+  });
+
+  it('does not read a scroll as mark teleportation', () => {
+    const frames = [frame(mark({ y: 300, sy: 0 }), 0), frame(mark({ y: 76, sy: 224 }), 16), frame(mark({ y: 76, sy: 224 }), 32)];
+    expect(findYanks(frames, 'rows').filter((y) => y.kind === 'teleport')).toEqual([]);
+  });
+
+  it('ignores a nearly invisible crossfade skeleton moving out of flow', () => {
+    const frames = [
+      frame(mark({ y: 124, o: 0, leaving: true }), 0),
+      frame(mark({ y: 638, o: 0.053, leaving: true }), 16),
+      frame(mark({ y: 643, o: 0.017, leaving: true }), 32)
+    ];
+    expect(findYanks(frames, 'rows').filter((y) => y.kind === 'teleport')).toEqual([]);
+  });
+
+  it('does not read a clipped reveal as an opacity arrival', () => {
+    const frames = [
+      frame(mark({ o: 0.375, c: 0.375 }), 0),
+      frame(mark({ o: 1, c: 1 }), 16),
+      frame(mark({ o: 1, c: 1 }), 32),
+      frame(mark({ o: 1, c: 1 }), 48)
+    ];
+    expect(findYanks(frames, 'rows').filter((y) => y.kind === 'arrival')).toEqual([]);
   });
 
   it('still reports a visible mark jumping without a fade', () => {
