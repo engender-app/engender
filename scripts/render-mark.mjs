@@ -17,11 +17,11 @@
    output is tracked, and the only two things that change it are a palette
    being added and the geometry being edited on purpose - both moments
    somebody is already at a keyboard. tests/mark-assets.test.ts is what
-   fails if the run was forgotten, so a ninth palette cannot ship
+   fails if the run was forgotten, so a new palette cannot ship
    half-iconned.
 
    Stripes are read out of src/lib/theme/palettes.css rather than copied, so
-   a ninth palette needs nothing taught here. */
+   a new palette needs nothing taught here. */
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -68,8 +68,8 @@ const write = (path, text) => writeFileSync(path, text.endsWith('\n') ? text : t
    which is the only arrangement where "always black" is true. mark.ts's
    MARK_SAFE_TILE carries the arithmetic.
 
-   A vector drawable rather than a PNG per density: the drawing is five to
-   seven circles, and eight palettes times five densities is forty files to
+   A vector drawable rather than a PNG per density: the drawing is two to
+   seven circles, and sixteen palettes times five densities is eighty files to
    keep in step for nothing. */
 const CANVAS = 108;
 const n2 = (value) => value.toFixed(2);

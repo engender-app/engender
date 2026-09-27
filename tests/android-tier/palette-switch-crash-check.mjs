@@ -39,6 +39,7 @@
      JAVA_HOME=~/.sdkman/candidates/java/21.0.12-tem android/gradlew -p android :app:assembleDebug
 */
 import { execFileSync } from 'node:child_process';
+import { PALETTES } from '../palettes.mjs';
 
 const serial = process.argv[2];
 if (!serial) throw new Error('pass the device serial, e.g. emulator-5554');
@@ -46,8 +47,6 @@ const PKG = 'dev.engender.app';
 const APK =
   process.argv[3] ??
   new URL('../../android/app/build/outputs/apk/debug/app-debug.apk', import.meta.url).pathname;
-
-const PALETTES = ['trans', 'nonbinary', 'genderfluid', 'bisexual', 'lesbian', 'pansexual', 'rainbow', 'agender'];
 
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
