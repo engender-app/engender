@@ -166,7 +166,7 @@
 </script>
 
 {#if action}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel()} {...rest}>
+  <div class="kit-tile is-split" data-tile-action data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel()} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
