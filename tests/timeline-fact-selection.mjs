@@ -20,7 +20,7 @@
    - the range handles still move the span, which the audit asked to be left
      alone.
 
-   Run on its own with `npm run test:timeline-facts`; part of the
+   Run on its own with `node tests/timeline-fact-selection.mjs`; part of the
    browser tier's own run. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
@@ -28,6 +28,12 @@ import { createServer } from 'vite';
 import { launchChromium, settlePage } from './browser-harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
+const DISPLAY_MATRIX = [
+  [PHONE, 'light'],
+  [PHONE, 'dark'],
+  [{ width: 1280, height: 900 }, 'light'],
+  [{ width: 1280, height: 900 }, 'dark']
+];
 /* What 200% zoom leaves of a 390px phone (tests/field-gallery.mjs's own
    convention). */
 const ZOOMED = { width: 195, height: 422 };
@@ -398,6 +404,164 @@ try {
     (was) => Number(document.querySelector('[data-span-timeline]').dataset.spanStart) < was,
     before
   );
+
+  /* Coincident dates are valid (one-day history or a collapsed span). The
+     grips must remain visually and interactively distinct at every layout. */
+  for (const [viewport, theme] of DISPLAY_MATRIX) {
+    await page.setViewportSize(viewport);
+    await settlePage(page, base, '/stats', theme);
+    assert.ok(await page.locator('.span-tl-year').count() >= 2, `${viewport.width}px ${theme}: years-long rail keeps year labels`);
+    await page.waitForSelector('[data-span-handle="start"]');
+    await page.locator('[data-span-handle="end"]').focus();
+    await page.keyboard.press('End');
+    await page.locator('[data-span-handle="start"]').focus();
+    await page.keyboard.press('End');
+    await page.waitForFunction(() => {
+      const rail = document.querySelector('[data-span-timeline]');
+      return rail?.dataset.spanStart === rail?.dataset.spanEnd;
+    });
+    const controls = await page.evaluate(() =>
+      ['start', 'end'].map((handle) => {
+        const el = document.querySelector(`[data-span-handle="${handle}"]`);
+        const box = el.getBoundingClientRect();
+        return { handle, x: box.x + box.width / 2, y: box.y + box.height / 2, label: el.getAttribute('aria-label') };
+      })
+    );
+    assert.ok(Math.abs(controls[1].x - controls[0].x) >= 13.5, `${viewport.width}px ${theme}: coincident grips stay apart`);
+    assert.notEqual(controls[0].label, controls[1].label, `${viewport.width}px ${theme}: each handle keeps own accessible name`);
+    for (const control of controls) {
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset?.spanHandle, control);
+      assert.equal(hit, control.handle, `${viewport.width}px ${theme}: ${control.handle} grip owns its target`);
+    }
+  }
+
+  /* Replace demo rows with a one-day history. Public repository methods
+     keep this isolated browser fixture inside normal journal invariants. */
+  const oneDay = await page.evaluate(async () => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    const today = (await import('/src/lib/data/epochDay.ts')).todayEpochDay();
+    const entries = await j.entries.recentDays(await j.entries.countDistinctDays());
+    for (const entry of entries) await j.entries.deleteEntry(entry.id);
+    for (const era of await j.eras.getEras()) await j.eras.deleteEra(era.id);
+    for (const milestone of await j.milestones.getMilestones()) await j.milestones.deleteMilestone(milestone.id);
+    await j.entries.upsertEntry({ epochDay: today, mood: 4, note: 'One day' });
+    const eraId = await j.eras.upsertEra({ name: 'One day era', startEpochDay: today, endEpochDay: today });
+    return { today, eraId };
+  });
+  for (const [viewport, theme] of DISPLAY_MATRIX) {
+    await page.setViewportSize(viewport);
+    await settlePage(page, base, '/stats', theme);
+    await page.waitForFunction((today) => document.querySelector('[data-span-timeline]')?.dataset.railStart === String(today), oneDay.today);
+    const rail = await page.evaluate(() => {
+      const root = document.querySelector('[data-span-timeline]');
+      const journal = root.querySelector('.span-tl-low .span-tl-journal');
+      const era = root.querySelector('.span-tl-low .span-tl-band:not(.span-tl-journal)');
+      const handles = [...root.querySelectorAll('[data-span-handle]')].map((el) => {
+        const box = el.getBoundingClientRect();
+        return {
+          handle: el.dataset.spanHandle,
+          x: box.x + box.width / 2,
+          y: box.y + box.height / 2,
+          label: el.getAttribute('aria-label'),
+          role: el.getAttribute('role'),
+          valueText: el.getAttribute('aria-valuetext')
+        };
+      });
+      return {
+        start: Number(root.dataset.spanStart),
+        end: Number(root.dataset.spanEnd),
+        journalWidth: journal?.getBoundingClientRect().width ?? 0,
+        eraWidth: era?.getBoundingClientRect().width ?? 0,
+        handles
+      };
+    });
+    assert.equal(rail.start, oneDay.today, `${viewport.width}px ${theme}: one-day history starts on entry`);
+    assert.equal(rail.end, oneDay.today, `${viewport.width}px ${theme}: one-day history ends today`);
+    assert.ok(rail.journalWidth >= 2.5, `${viewport.width}px ${theme}: journal band visible`);
+    assert.ok(rail.eraWidth >= 2.5, `${viewport.width}px ${theme}: era band visible`);
+    assert.ok(Math.abs(rail.handles[1].x - rail.handles[0].x) >= 13.5, `${viewport.width}px ${theme}: handles distinct`);
+    assert.notEqual(rail.handles[0].label, rail.handles[1].label, `${viewport.width}px ${theme}: sliders separately labeled`);
+    assert.ok(rail.handles.every((handle) => handle.role === 'slider' && handle.label && handle.valueText), `${viewport.width}px ${theme}: sliders expose accessible names and dates`);
+    for (const control of rail.handles) {
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset?.spanHandle, control);
+      assert.equal(hit, control.handle, `${viewport.width}px ${theme}: ${control.handle} owns handle target`);
+    }
+    assert.match(
+      await page.locator('[data-span-state-line]').innerText(),
+      /\d{1,2}\s+\p{L}+.*\d{1,2}\s+\p{L}+/u,
+      `${viewport.width}px ${theme}: one-day range prints readable dates`
+    );
+  }
+
+  /* No era leaves journal band and span controls usable. */
+  await page.evaluate(async ({ eraId }) => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    await j.eras.deleteEra(eraId);
+  }, oneDay);
+  await page.waitForFunction(() => !document.querySelector('.span-tl-low .span-tl-band:not(.span-tl-journal)'));
+  for (const [viewport, theme] of DISPLAY_MATRIX) {
+    await page.setViewportSize(viewport);
+    await settlePage(page, base, '/stats', theme);
+    await page.waitForFunction(() => !document.querySelector('.span-tl-low .span-tl-band:not(.span-tl-journal)'));
+    assert.ok(await page.locator('.span-tl-low .span-tl-journal').count(), `${viewport.width}px ${theme}: no-era journal still draws its band`);
+  }
+
+  /* Short history with open-start, closed and open-end eras. */
+  await page.evaluate(async ({ today }) => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    await j.entries.upsertEntry({ epochDay: today - 60, mood: 4, note: 'A short history start' });
+    await j.eras.upsertEra({ name: 'Before', startEpochDay: null, endEpochDay: today - 45 });
+    await j.eras.upsertEra({ name: 'Middle', startEpochDay: today - 44, endEpochDay: today - 15 });
+    await j.eras.upsertEra({ name: 'Now', startEpochDay: today - 14, endEpochDay: null });
+  }, oneDay);
+  for (const [viewport, theme] of DISPLAY_MATRIX) {
+    await page.setViewportSize(viewport);
+    await settlePage(page, base, '/stats', theme);
+    await page.waitForFunction(() => document.querySelectorAll('.span-tl-low .span-tl-band:not(.span-tl-journal)').length === 3);
+    const shortHistory = await page.evaluate(() => ({
+      widths: [...document.querySelectorAll('.span-tl-low .span-tl-band:not(.span-tl-journal)')].map((band) => band.getBoundingClientRect().width),
+      handles: [...document.querySelectorAll('[data-span-handle]')].map((handle) => {
+        const box = handle.getBoundingClientRect();
+        return { x: box.x + box.width / 2, label: handle.getAttribute('aria-label') };
+      })
+    }));
+    assert.ok(shortHistory.widths.every((width) => width >= 2.5), `${viewport.width}px ${theme}: all short-history eras remain visible`);
+    assert.equal(await page.locator('.span-tl-era.is-open-start').count(), 1, `${viewport.width}px ${theme}: open-start era drawn`);
+    assert.equal(await page.locator('.span-tl-era.is-open-end').count(), 1, `${viewport.width}px ${theme}: open-end era drawn`);
+    assert.ok(Math.abs(shortHistory.handles[1].x - shortHistory.handles[0].x) >= 13.5, `${viewport.width}px ${theme}: short-history controls stay apart`);
+    assert.notEqual(shortHistory.handles[0].label, shortHistory.handles[1].label, `${viewport.width}px ${theme}: short-history controls retain labels`);
+    assert.match(await page.locator('[data-span-state-line]').innerText(), /\d{1,2}\s+\p{L}+.*\d{1,2}\s+\p{L}+/u, `${viewport.width}px ${theme}: short-history dates readable`);
+  }
+
+  /* A dated era alone still owns a rail when entries are absent. */
+  await page.evaluate(async ({ today }) => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    const entries = await j.entries.recentDays(await j.entries.countDistinctDays());
+    for (const entry of entries) await j.entries.deleteEntry(entry.id);
+  }, oneDay);
+  for (const [viewport, theme] of DISPLAY_MATRIX) {
+    await page.setViewportSize(viewport);
+    await settlePage(page, base, '/stats', theme);
+    await page.waitForFunction(() => !document.querySelector('[data-span-timeline] .span-tl-journal'));
+    const datedOnly = await page.evaluate(() => ({
+      rail: Boolean(document.querySelector('[data-span-timeline]')),
+      journalBand: Boolean(document.querySelector('[data-span-timeline] .span-tl-journal')),
+      eraBands: [...document.querySelectorAll('.span-tl-low .span-tl-band:not(.span-tl-journal)')].map((band) => band.getBoundingClientRect().width)
+    }));
+    assert.equal(datedOnly.rail, true, `${viewport.width}px ${theme}: dated records keep rail present without entries`);
+    assert.equal(datedOnly.journalBand, false, `${viewport.width}px ${theme}: empty journal has no journal band`);
+    assert.ok(datedOnly.eraBands.length >= 1 && datedOnly.eraBands.every((width) => width >= 2.5), `${viewport.width}px ${theme}: dated era remains visible without entries`);
+  }
+
+  /* With no entries, eras or milestones, Look back states why no scale exists. */
+  await page.evaluate(async () => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    for (const era of await j.eras.getEras()) await j.eras.deleteEra(era.id);
+    for (const milestone of await j.milestones.getMilestones()) await j.milestones.deleteMilestone(milestone.id);
+  });
+  await page.goto(`${base}/stats`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-notice="lookback-empty"]');
+  assert.equal(await page.locator('[data-span-timeline]').count(), 0, 'empty history shows clear state instead of empty rail');
 
   assert.equal(errors.length, 0, `errors: ${errors.join(', ')}`);
   console.log('PASS Timeline facts: care captions at the floor, lane jumps, rail targets that own only what they draw, and the fact list');
