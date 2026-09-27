@@ -75,7 +75,9 @@ const SAMPLER = `(() => {
     let id = ids.get(el);
     if (id == null) {
       const cls = [...el.classList].filter((c) => !c.startsWith('s-') && !c.startsWith('svelte-')).slice(0, 2).join('.');
-      const data = [...el.attributes].map((a) => a.name).find((a) => a.startsWith('data-') && a !== 'data-kit-surface');
+      const data = el.hasAttribute('data-protocol')
+        ? 'data-protocol'
+        : [...el.attributes].map((a) => a.name).find((a) => a.startsWith('data-') && a !== 'data-kit-surface');
       id = (next++) + ':' + el.tagName.toLowerCase() + (cls ? '.' + cls : '') + (data ? '[' + data + ']' : '');
       ids.set(el, id);
     }
@@ -163,7 +165,7 @@ function analyse(samples) {
    A smooth 40px journey still fails even though the generic teleport rule
    deliberately allows travel during other screen changes. */
 function measurementNoticeTravel(samples) {
-  const key = Object.keys(samples.at(-1)?.boxes ?? {}).find((name) => name.includes('.kit-notice[data-notice]'));
+  const key = Object.keys(samples.at(-1)?.boxes ?? {}).find((name) => name.includes('.kit-notice[data-protocol]'));
   if (!key) return ['measuring notice never appeared'];
   const tops = samples
     .filter((frame) => frame.at < 500 && (frame.ops[key] ?? 0) >= 0.1)

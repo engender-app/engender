@@ -439,8 +439,8 @@
        under it, every size that changed. Both readings sit here rather than
        each above its own list - the size lines used to sit on top of the
        log that repeats the same two records as rows. -->
-  <ReadReserve ready={nowRevealed} estimate={reserveNow} onrest={rememberNow} data-measurements-now>
-    <div id="measurements-picker">
+  <ReadReserve id="measurements-picker" ready={nowRevealed} estimate={reserveNow} onrest={rememberNow} data-measurements-now>
+    <div>
       <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (pickedType = v)} />
     </div>
     {#if span}

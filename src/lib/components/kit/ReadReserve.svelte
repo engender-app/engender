@@ -47,6 +47,7 @@
     estimate: number;
     onrest?: (px: number) => void;
     children: Snippet;
+    id?: string;
     [attr: `data-${string}`]: unknown;
   } = $props();
 
