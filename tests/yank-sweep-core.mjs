@@ -1829,7 +1829,7 @@ export function findHydrationYanks(frames) {
  *  evidence triples its findings name. The timestamp in the filename is
  *  the cast's own clock, so a PNG and the finding it belongs to cannot
  *  come apart - and both transports name them identically. */
-export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP) {
+export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP, { allowThin = false, readyFrame = null } = {}) {
   /* Three seconds of 60fps is 180 frames; in practice Chromium produces
      between 12 and 120 over a cold load or a sheet opening, but
      sometimes the new document's blank, the screen, and then nothing at all
@@ -1843,14 +1843,18 @@ export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_
      the new one is positive evidence that there was none, not a failure to
      check - and whether the screen arrived at all is already proved by the
      selector each scene waits for before any of this runs. A one-frame cast
-     can be complete when the first frame already shows the settled screen.
-     Only zero frames means the camera recorded nothing. */
+     passes only when its painted frame matches a second cast started after
+     the ready selector. Otherwise it might show the previous screen. */
   if (cast.length < 2) {
     if (cast.length === 1) {
-      const painted = grayFrame(decodePng(Buffer.from(cast[0].data, 'base64')));
-      if (!isBlankGray(painted)) return { cast: 1, findings: [] };
+      const first = decodePng(Buffer.from(cast[0].data, 'base64'));
+      const painted = grayFrame(first);
+      const ready = readyFrame && decodePng(Buffer.from(readyFrame, 'base64'));
+      const matchesReady = ready && ready.width === first.width && ready.height === first.height &&
+        diffMask(painted, grayFrame(ready)).frac <= 0.02;
+      if (!isBlankGray(painted) && (allowThin || matchesReady)) return { cast: 1, findings: [] };
     }
-    throw new Error(`only ${cast.length} screencast frames`);
+    throw new Error(`only ${cast.length} screencast frames${cast.length ? ' (first frame does not match the ready screen)' : ''}`);
   }
   const decoded = cast.map((f) => {
     const png = decodePng(Buffer.from(f.data, 'base64'));
@@ -1926,7 +1930,7 @@ export function describeHydrationRun(name, dom, render) {
  *  rather than by type. */
 export async function pushHydrationRun(report, outDir, { name, is, profile, theme, result, href = null, dump = false }) {
   const dom = findHydrationYanks(result.frames);
-  const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`);
+  const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`, EVIDENCE_CAP, { readyFrame: result.readyFrame });
   if (dump || dom.yanks.length)
     await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
   const entry = {
