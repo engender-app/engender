@@ -69,6 +69,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   let shown = $state(vocabulary.randomTemplates(3));
   let picking = $state(false);
@@ -78,9 +79,18 @@
   let milestoneListOpen = $state(false);
 
   function openPicker() {
-    shown = vocabulary.randomTemplates(3);
+    if (picking) shuffleSuggestions();
+    else shown = vocabulary.randomTemplates(3);
     picking = true;
   }
+
+  function shuffleSuggestions() {
+    const next = vocabulary.randomTemplates(3);
+    const remaining = next.filter((tp) => !shown.some((current) => current.key === tp.key));
+    shown = shown.map((current) => next.find((tp) => tp.key === current.key) ?? remaining.shift()!);
+  }
+
+  const suggestionFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
   /* A milestone shows one photo, so `photo` is whatever it will end up with -
      the stored row, a picked replacement, or none - and `storedPhotoId`
       remembers what was there when the editor opened, so Save can describe
@@ -372,7 +382,7 @@
   <Sheet open={picking} title={m.ms_add_heading()} onClose={() => (picking = false)}>
     <div class="spread" style="margin-bottom:var(--space-3)">
       <h3>{m.ms_add_heading()}</h3>
-      <button class="icon-btn press" data-shuffle aria-label={m.ms_shuffle()} onclick={() => (shown = vocabulary.randomTemplates(3))}>
+      <button class="icon-btn press" data-shuffle aria-label={m.ms_shuffle()} onclick={shuffleSuggestions}>
         <Icon name="shuffle" size={20} />
       </button>
     </div>
@@ -385,11 +395,17 @@
         subtitle={m.ms_own_sub()}
         onclick={() => openEditor(null, null)}
       />
-      {#each shown as tp (tp.key)}
-        <ListRow key={tp.key} data-template={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
+      {#each shown as tp, i (i)}
+        <div class="template-slot rows-divide">
+          {#key tp.key}
+            <div class="template-suggestion" in:suggestionFade out:suggestionFade>
+              <ListRow key={tp.key} data-template={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
+            </div>
+          {/key}
+        </div>
       {/each}
     </ListCard>
-  </Sheet>
+</Sheet>
 
   <!-- The heading used to be a third thing: the sheet was labelled "A
        milestone" while the heading below it said the name being typed. It
@@ -541,6 +557,14 @@
 </div>
 
 <style>
+  .template-slot {
+    display: grid;
+  }
+
+  .template-suggestion {
+    grid-area: 1 / 1;
+  }
+
   .ms-photo {
     flex: 0 0 auto;
     width: 36px;
