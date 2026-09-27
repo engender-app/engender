@@ -1038,6 +1038,7 @@ describe('ticket 28: the field is a blind over the content', () => {
   });
 
   it('translates the full blind when one side is scrolled', () => {
+    expect(declarations(ruleOf(app, 'html[data-blind-scroll]::view-transition-group-children(field)')?.body ?? '').overflow).toBe('visible');
     const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(blind)")?.body ?? '');
     const enter = declarations(ruleOf(app, "html[data-blind-scroll='enter']::view-transition-new(blind)")?.body ?? '');
     expect(exit['animation-name']).toBe('blind-scroll-out');
@@ -1048,6 +1049,7 @@ describe('ticket 28: the field is a blind over the content', () => {
       const motion = frames(keyframesOf(app, name)!.body);
       expect(motion).toHaveLength(2);
       expect(motion.map((frame) => Object.keys(frame.decls))).toEqual([['translate'], ['translate']]);
+      expect(motion[name.endsWith('out') ? 1 : 0].decls.translate).toContain('var(--blind-delta)');
     }
   });
 
