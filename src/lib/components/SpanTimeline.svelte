@@ -253,7 +253,8 @@
 
   /* The span as the finger has it, which is the settled span whenever no
      finger holds a handle. */
-  let live = $state<Span>({ start: 0, end: 0 });
+  const initialSpan = () => span;
+  let live = $state<Span>({ ...initialSpan() });
   let dragging = $state<SpanHandle | null>(null);
   /* Set on the first move after a handle is taken, not on the take: a tap
      on a grip is a take and a release with no move between, and it has to
@@ -492,8 +493,9 @@
      reads its own state and re-runs itself, and so a count interrupted
      halfway carries on from the number on screen rather than from the one
      it was heading for. */
-  let shownDays = $state(0);
-  let lastShown = 0;
+  const initialDays = initialSpan().end - initialSpan().start + 1;
+  let shownDays = $state(initialDays);
+  let lastShown = initialDays;
   $effect(() => {
     const days = live.end - live.start + 1;
     const held = dragging !== null;
