@@ -488,7 +488,7 @@ async function settle(path, theme) {
 /** Collect compositor frames while `fn` runs. Returns the frames with
  *  their timestamps, decoded lazily by the caller - only frames a finding
  *  names are ever decoded twice (as PNG files, for the evidence triple). */
-async function screencast(fn) {
+async function recordScreencast(fn) {
   const frames = [];
   /* A cast belongs to the connection it starts on: acks and teardown must
      not chase the global through a re-attach, because a frame the old
@@ -524,6 +524,18 @@ async function screencast(fn) {
     await c.send('Page.stopScreencast', {}, 2000).catch(() => {});
     c.offEvent(handler);
   }
+}
+
+async function screencast(fn) {
+  const result = await recordScreencast(fn);
+  if (result.cast?.length === 1) {
+    result.readyFrame = await recordScreencast(async (frames) => {
+      for (let i = 0; i < 40 && !frames.length; i++) await sleep(50);
+      if (!frames.length) throw new Error('ready screen produced no screencast frame');
+      return frames[0].data;
+    });
+  }
+  return result;
 }
 
 /* ---------- the render detector ---------- */
@@ -636,7 +648,9 @@ let evidenceCount = 0;
 const profileKey = 'yank-sweep-profile';
 const markProfile = (profile) => ev(`localStorage.setItem(${JSON.stringify(profileKey)}, ${JSON.stringify(profile)}); true;`);
 async function requirePersona() {
-  const persona = await ev(`localStorage.getItem(${JSON.stringify(profileKey)}) === 'persona' && localStorage.getItem('engender-has-entries') === '1'`);
+  const persona = await ev(`localStorage.getItem(${JSON.stringify(profileKey)}) === 'persona' &&
+    localStorage.getItem('engender-has-entries') === '1' &&
+    !!document.querySelector('[data-home-hello]')?.textContent?.includes('Alice')`);
   if (!persona) throw new Error('--skip-seed needs a journal seeded as persona by a previous device sweep');
 }
 

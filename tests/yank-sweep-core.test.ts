@@ -44,7 +44,8 @@ describe('readRenderYanks', () => {
   it('accepts one painted frame and rejects blank or empty casts', async () => {
     const painted = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVQI12NgYGD4//8/AAYBAv4Kby8eAAAAAElFTkSuQmCC';
     const blank = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR7sAAAAASUVORK5CYII=';
-    await expect(readRenderYanks([{ data: painted, at: 0 }], '/tmp', 'static', 'light')).resolves.toEqual({ cast: 1, findings: [] });
+    await expect(readRenderYanks([{ data: painted, at: 0 }], '/tmp', 'static', 'light', undefined, { readyFrame: painted })).resolves.toEqual({ cast: 1, findings: [] });
+    await expect(readRenderYanks([{ data: painted, at: 0 }], '/tmp', 'old', 'light', undefined, { readyFrame: blank })).rejects.toThrow('first frame does not match the ready screen');
     await expect(readRenderYanks([{ data: blank, at: 0 }], '/tmp', 'blank', 'light')).rejects.toThrow('only 1 screencast frames');
     await expect(readRenderYanks([], '/tmp', 'missing', 'light')).rejects.toThrow('only 0 screencast frames');
   });
