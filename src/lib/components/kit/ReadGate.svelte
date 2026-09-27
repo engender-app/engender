@@ -52,15 +52,32 @@
      mounts on a warm answer has nothing to cross from. */
   let part = $state<HTMLElement>();
   let wasLoading: boolean | undefined;
+  let revealVersion = 0;
+  /* Hide the answer before Svelte inserts it. Android can paint one frame
+     before a new Web Animation starts, exposing content through the skeleton. */
+  $effect.pre(() => {
+    if (wasLoading === true && branch !== 'loading' && part) {
+      part.dataset.gateRevealing = '';
+      revealVersion += 1;
+    }
+  });
   $effect(() => {
     const loading = branch === 'loading';
     if (wasLoading === true && !loading && part) {
       const duration = motionDuration('--dur-fast');
       if (duration > 0) {
+        const version = revealVersion;
+        const revealedPart = part;
+        const animations: Animation[] = [];
         for (const child of part.children) {
           if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
-          child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+          animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
         }
+        void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
+          if (version === revealVersion) delete revealedPart.dataset.gateRevealing;
+        });
+      } else {
+        delete part.dataset.gateRevealing;
       }
     }
     wasLoading = loading;
@@ -101,3 +118,9 @@
     {/if}
   {/if}
 </div>
+
+<style>
+  :global(.screen-part[data-gate-revealing] > :not([data-gate-skeleton])) {
+    opacity: 0;
+  }
+</style>
