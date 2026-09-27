@@ -57,10 +57,9 @@
     table, thresholds and profile expressions are the shared core's, so
     the phone and the desktop cannot drift.
 
-    The frames of any pixel finding are written as PNGs next to the report,
-    named <scene>-<theme>-p<pass>-<index>{a,b,c}.png - the frame before, the
-    finding, and the frame after. That triple is the evidence a person
-    actually looks at; the detector exists to say which triples exist. */
+    Selected pixel findings have PNGs next to the report,
+    named <scene>-<profile>-<theme>-p<pass>-<index>-f<finding>{a,b,c}.png.
+    Each report finding names its saved triple or explains its omission. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -108,6 +107,7 @@ import {
   yesterdayEpochDay
 } from './yank-sweep-core.mjs';
 import { decodePng, grayFrame } from './png-decode.mjs';
+import { createDeviceEvidenceWriter } from './device-evidence.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -644,7 +644,7 @@ if (boot !== 'open' && boot !== 'pin') {
 console.log(`boot: ${boot}`);
 
 const report = [];
-let evidenceCount = 0;
+const writeEvidence = createDeviceEvidenceWriter(outDir, SCENES.map((scene) => scene.name), EVIDENCE_CAP);
 const profileKey = 'yank-sweep-profile';
 const markProfile = (profile) => ev(`localStorage.setItem(${JSON.stringify(profileKey)}, ${JSON.stringify(profile)}); true;`);
 async function requirePersona() {
@@ -958,10 +958,11 @@ if (hydration) {
                these have no pixel yanks to analyze. */
             let findings = [];
             let motion = [];
+            let castIndices = [];
             if (result.cast.length >= 3) {
-              const decoded = result.cast.map((f) => {
+              const decoded = result.cast.map((f, index) => {
                 const png = decodePng(Buffer.from(f.data, 'base64'));
-                return { png, gray: grayFrame(png), at: f.at };
+                return { png, gray: grayFrame(png), at: f.at, index };
               });
               const sizes = new Map();
               for (const d of decoded) {
@@ -980,6 +981,7 @@ if (hydration) {
               const uniform = decoded.filter((d) => d.png.width === width && d.png.height === height);
 
               if (uniform.length >= 3) {
+                castIndices = uniform.map((frame) => frame.index);
                 const res = findPixelYanks(
                   uniform.map((d) => d.gray),
                   width,
@@ -991,25 +993,7 @@ if (hydration) {
               }
             }
 
-            for (const finding of findings) {
-              if (evidenceCount >= EVIDENCE_CAP) break;
-              evidenceCount++;
-              const i = finding.frame;
-              const endI = finding.toFrame !== undefined ? finding.toFrame + 1 : i + 1;
-              /* The evidence triple: the frame before, the finding, the frame
-                 after. That is the pair-by-pair story a person checks the
-                 detector's arithmetic against. */
-              for (const [suffix, index] of [
-                ['a', i - 1],
-                ['b', i],
-                ['c', endI]
-              ])
-                if (result.cast[index])
-                  await writeFile(
-                    `${outDir}/${scene.name}-${profile}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
-                    Buffer.from(result.cast[index].data, 'base64')
-                  );
-            }
+            await writeEvidence({ scene: scene.name, profile, theme, pass }, findings, result.cast, castIndices);
 
             if (dump)
               await writeFile(
