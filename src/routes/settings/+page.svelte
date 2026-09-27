@@ -139,328 +139,340 @@
        for it to point at. -->
   <ScreenHeader title={m.nav_settings()} back="/" chrome />
 
-  <SectionHeading text={m.settings_appearance()} />
-  <ListCard>
-    <div class="settings-pad">
-      <p class="field-label" style="margin-bottom:var(--space-3)">{m.colour_palette()}</p>
-      <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-label={m.colour_palette()}>
-        <span class="palette-selection-ring" aria-hidden="true"></span>
-        {#each PALETTES as [key, label] (key)}
-          <button
-            class="palette-swatch press"
-            class:is-active={prefs.palette === key}
-            role="radio"
-            aria-checked={prefs.palette === key}
-            data-palette-pick={key}
-            onclick={() => pickPalette(key)}
-          >
-            <span class="swatch-preview" data-swatch={key}></span>
-            <span class="swatch-name">{label()}</span>
-          </button>
-        {/each}
-      </div>
-      <div class="hr"></div>
-      <p class="field-label" style="margin-bottom:var(--space-3)">{m.mood_colours()}</p>
-      <div class="mood-preset-grid" role="radiogroup" use:rovingRadio aria-label={m.mood_colours()}>
-        {#each MOOD_PRESETS as [key, label] (key)}
-          <button
-            class="palette-swatch press"
-            class:is-active={prefs.moodPreset === key}
-            role="radio"
-            aria-checked={prefs.moodPreset === key}
-            data-mood-preset-pick={key}
-            onclick={() => pickMoodPreset(key)}
-          >
-            <span class="swatch-preview" data-mood-swatch={key}></span>
-            <span class="swatch-name">{label()}</span>
-          </button>
-        {/each}
-      </div>
-      <div class="hr"></div>
-      <div class="pref-row">
-        <span class="kit-row-title">{m.theme()}</span>
-        <Segmented
-          name={m.theme()}
-          options={[
-            { value: 'system', label: m.theme_system() },
-            { value: 'light', label: m.theme_light() },
-            { value: 'dark', label: m.theme_dark() },
-          ]}
-          value={prefs.theme}
-          onChange={(v) => {
-            prefs.theme = v as typeof prefs.theme;
-          }}
-        />
-      </div>
-      <div class="pref-row">
-        <span class="kit-row-title">{m.language()}</span>
-        <Segmented
-          name={m.language()}
-          options={[
-            { value: 'system', label: m.theme_system() },
-            { value: 'en', label: 'English' },
-            { value: 'pl', label: 'Polski' },
-          ]}
-          value={prefs.language}
-          onChange={setLanguage}
-        />
-      </div>
-      <div class="hr"></div>
-      <p class="field-label" style="margin-bottom:var(--space-3)">{m.settings_accessibility_pack()}</p>
-      <div class="pref-row">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.a11y_text_size_boost()}</span>
-          <span class="kit-row-sub">{m.a11y_text_size_boost_sub()}</span>
-        </span>
-        <Switch
-          checked={prefs.a11yTextSizeBoost}
-          label={m.a11y_text_size_boost()}
-          onChange={(v) => {
-            prefs.a11yTextSizeBoost = v;
-          }}
-        />
-      </div>
-      <div class="pref-row">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.a11y_legibility_boost()}</span>
-          <span class="kit-row-sub">{m.a11y_legibility_boost_sub()}</span>
-        </span>
-        <Switch
-          checked={prefs.a11yLegibilityBoost}
-          label={m.a11y_legibility_boost()}
-          onChange={(v) => {
-            prefs.a11yLegibilityBoost = v;
-          }}
-        />
-      </div>
-      <div class="pref-row">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.a11y_motion_reduce_override()}</span>
-          <span class="kit-row-sub">{m.a11y_motion_reduce_override_sub()}</span>
-        </span>
-        <Switch
-          checked={prefs.a11yMotionReduce}
-          label={m.a11y_motion_reduce_override()}
-          onChange={(v) => {
-            prefs.a11yMotionReduce = v;
-          }}
-        />
-      </div>
-    </div>
-  </ListCard>
-
-  <SectionHeading text={m.settings_tracking()} />
-  <!-- Tracking is several cards, not one: the navigable rows, cycle
-       tracking, the unit picker, tag groups and the metric picker each want
-       a different shape (DIRECTION.md 2b), but sitting flush against each
-       other with no heading between them read as one accidental slab
-       rather than several deliberate ones (Alicja, on the live build).
-       The four unprompted-prompt toggles that used to sit here, under no
-       heading of their own, are on /settings/notifications since phase 11
-       ticket 04: all four are the app speaking up without being asked,
-       which is what that screen is about.
-       .stack-3 (components.css) already gives a run of siblings a gap
-       between each - reused rather than a one-off margin per card. -->
-  <div class="stack-3" data-settings-list>
+  <details class="settings-section">
+    <SectionHeading text={m.settings_appearance()} collapsible />
     <ListCard>
-      <ListRow
-        key="scales"
-        icon="heart"
-        title={m.gender_scales()}
-        subtitle={tickedNames || m.scales_none_ticked()}
-        chevron={false}
-        onclick={() => (scalesSheet = true)}
-      >
-        <!-- SH-103: chevronDown ("opens in place") rather than chevronRight
-             ("navigates away"), so a sheet-opening row no longer looks
-             identical to the href rows around it. -->
-        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-      </ListRow>
-      <ListRow key="dimension" icon="stats" title={m.custom_dimension()} subtitle={m.custom_dimension_sub()} href="/settings/dimension" />
-      <ListRow
-        key="reminders"
-        icon="bell"
-        title={m.reminders()}
-        subtitle={isWeb
-          ? m.reminders_web_sub()
-          : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
-        href="/settings/reminders"
-        chevron={false}
-      >
-        {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
-      </ListRow>
-      <!-- One screen over the unprompted registry (phase 6 tickets 02 and
-           04, merged onto one screen and one row by deepening ticket 09):
-           "stop putting things on my home screen" and "stop buzzing my
-           phone" are two questions about the same list, so they get two
-           toggle columns rather than two rows here. `zap` rather than a
-           second bell: the row above is already the bell, and two identical
-           icons on adjacent rows read as one row drawn twice. Live tiles
-           work on web the same as always, so this row is an ordinary
-           chevron row on both platforms - only the notify column is
-           Android-only, inside the screen it opens. -->
-      <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
-      <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
-      <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
-      <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
-      <!-- Modes and entry templates, beside body regions and affirmations
-           rather than hosted off the hub (redesign ticket 51, ADR-0084):
-           both are reference areas, spent on the entry editor's chips and
-           never read on their own screen for their own sake, which is the
-           same kind of thing this card is already full of. -->
-      <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/settings/entry-templates" />
-      <ListRow key="presentations" icon="palette" title={m.presentations_title()} subtitle={m.hub_sub_presentations()} href="/settings/presentations" />
-      <!-- The words the Look back reading skips (redesign ticket 62,
-           ADR-0084). The third reference area on this card and the one that
-           made the ADR's open question a decision: a skipped word is spent
-           on that reading and never read here for its own sake, so it is
-           managed here and takes no hub row. -->
-      <ListRow key="words" icon="note" title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} href="/settings/words" />
-      <!-- Eras (redesign ticket 16, ADR-0084): spent on seven other screens
-           and created on exactly one, which is this card's own test. The
-           milestone rail is the one place left under Transition that draws
-           one, as a band rather than a row. -->
-      <ListRow key="eras" icon="columns" title={m.eras_title()} subtitle={m.hub_sub_eras()} href="/settings/eras" />
-    </ListCard>
-
-    <!-- ADR-0043: the manual way into cycle tracking, for someone no
-         testosterone regimen already surfaces it for. A card of its own
-         rather than a row squeezed into the nudges card above - the two
-         cards next to it are each one row too, and this has nothing to do
-         with the entry editor the nudges pair configures. Like every
-         visibility rule this ticket added, the switch only decides whether
-         navigation names cycle tracking; turning it off touches no record
-         and no deep link. -->
-    <ListCard>
-      <div class="kit-row" data-cycle-tracking-toggle>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
-          <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.cycleTrackingEnabled}
-            label={m.cycle_tracking_toggle_title()}
+      <div class="settings-pad">
+        <details class="settings-picker">
+          <summary><span>{m.colour_palette()}</span><strong>{PALETTES.find(([key]) => key === prefs.palette)?.[1]()}</strong></summary>
+          <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-label={m.colour_palette()}>
+            <span class="palette-selection-ring" aria-hidden="true"></span>
+            {#each PALETTES as [key, label] (key)}
+              <button
+                class="palette-swatch press"
+                class:is-active={prefs.palette === key}
+                role="radio"
+                aria-checked={prefs.palette === key}
+                data-palette-pick={key}
+                onclick={() => pickPalette(key)}
+              >
+                <span class="swatch-preview" data-swatch={key}></span>
+                <span class="swatch-name">{label()}</span>
+              </button>
+            {/each}
+          </div>
+        </details>
+        <details class="settings-picker">
+          <summary><span>{m.mood_colours()}</span><strong>{MOOD_PRESETS.find(([key]) => key === prefs.moodPreset)?.[1]()}</strong></summary>
+          <div class="mood-preset-grid" role="radiogroup" use:rovingRadio aria-label={m.mood_colours()}>
+            {#each MOOD_PRESETS as [key, label] (key)}
+              <button
+                class="palette-swatch press"
+                class:is-active={prefs.moodPreset === key}
+                role="radio"
+                aria-checked={prefs.moodPreset === key}
+                data-mood-preset-pick={key}
+                onclick={() => pickMoodPreset(key)}
+              >
+                <span class="swatch-preview" data-mood-swatch={key}></span>
+                <span class="swatch-name">{label()}</span>
+              </button>
+            {/each}
+          </div>
+        </details>
+        <div class="hr"></div>
+        <div class="pref-row">
+          <span class="kit-row-title">{m.theme()}</span>
+          <Segmented
+            name={m.theme()}
+            options={[
+              { value: 'system', label: m.theme_system() },
+              { value: 'light', label: m.theme_light() },
+              { value: 'dark', label: m.theme_dark() },
+            ]}
+            value={prefs.theme}
             onChange={(v) => {
-              prefs.cycleTrackingEnabled = v;
+              prefs.theme = v as typeof prefs.theme;
             }}
           />
-        </span>
-      </div>
-    </ListCard>
-
-    <ListCard>
-      <div class="kit-row settings-unit-row" style="cursor:default">
-        <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
-          <span class="kit-row-sub">{m.settings_measurement_unit_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
+        </div>
+        <div class="pref-row">
+          <span class="kit-row-title">{m.language()}</span>
           <Segmented
-            name={m.settings_measurement_unit_title()}
-            key="measurement-unit"
-            compact
+            name={m.language()}
             options={[
-              { value: 'cm', label: m.measurement_unit_cm() },
-              { value: 'in', label: m.measurement_unit_in() }
+              { value: 'system', label: m.theme_system() },
+              { value: 'en', label: 'English' },
+              { value: 'pl', label: 'Polski' },
             ]}
-            value={prefs.measurementUnit}
-            onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
+            value={prefs.language}
+            onChange={setLanguage}
           />
-        </span>
+        </div>
+        <div class="hr"></div>
+        <p class="field-label" style="margin-bottom:var(--space-3)">{m.settings_accessibility_pack()}</p>
+        <div class="pref-row">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.a11y_text_size_boost()}</span>
+            <span class="kit-row-sub">{m.a11y_text_size_boost_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.a11yTextSizeBoost}
+            label={m.a11y_text_size_boost()}
+            onChange={(v) => {
+              prefs.a11yTextSizeBoost = v;
+            }}
+          />
+        </div>
+        <div class="pref-row">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.a11y_legibility_boost()}</span>
+            <span class="kit-row-sub">{m.a11y_legibility_boost_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.a11yLegibilityBoost}
+            label={m.a11y_legibility_boost()}
+            onChange={(v) => {
+              prefs.a11yLegibilityBoost = v;
+            }}
+          />
+        </div>
+        <div class="pref-row">
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.a11y_motion_reduce_override()}</span>
+            <span class="kit-row-sub">{m.a11y_motion_reduce_override_sub()}</span>
+          </span>
+          <Switch
+            checked={prefs.a11yMotionReduce}
+            label={m.a11y_motion_reduce_override()}
+            onChange={(v) => {
+              prefs.a11yMotionReduce = v;
+            }}
+          />
+        </div>
       </div>
     </ListCard>
+  </details>
 
-    <ListCard>
-      <div class="kit-row" style="cursor:default">
-        <span class="kit-row-ico"><Icon name="tag" size={22} /></span>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.tag_groups()}</span>
-          <span class="kit-row-sub">{m.tag_groups_sub()}</span>
-        </span>
-      </div>
-      <div class="taggroup-toggles">
-        {#each vocabulary.tagGroups as g (g.key)}
-          <div class="spread taggroup-row">
-            <span>{g.name}</span>
-            <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
+  <details class="settings-section" open>
+    <SectionHeading text={m.settings_tracking()} collapsible />
+    <!-- Tracking is several cards, not one: the navigable rows, cycle
+         tracking, the unit picker, tag groups and the metric picker each want
+         a different shape (DIRECTION.md 2b), but sitting flush against each
+         other with no heading between them read as one accidental slab
+         rather than several deliberate ones (Alicja, on the live build).
+         The four unprompted-prompt toggles that used to sit here, under no
+         heading of their own, are on /settings/notifications since phase 11
+         ticket 04: all four are the app speaking up without being asked,
+         which is what that screen is about.
+         .stack-3 (components.css) already gives a run of siblings a gap
+         between each - reused rather than a one-off margin per card. -->
+    <div class="stack-3" data-settings-list>
+      <ListCard>
+        <ListRow
+          key="scales"
+          icon="heart"
+          title={m.gender_scales()}
+          subtitle={tickedNames || m.scales_none_ticked()}
+          chevron={false}
+          onclick={() => (scalesSheet = true)}
+        >
+          <!-- SH-103: chevronDown ("opens in place") rather than chevronRight
+               ("navigates away"), so a sheet-opening row no longer looks
+               identical to the href rows around it. -->
+          {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+        </ListRow>
+        <ListRow key="dimension" icon="stats" title={m.custom_dimension()} subtitle={m.custom_dimension_sub()} href="/settings/dimension" />
+        <ListRow
+          key="reminders"
+          icon="bell"
+          title={m.reminders()}
+          subtitle={isWeb
+            ? m.reminders_web_sub()
+            : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
+          href="/settings/reminders"
+          chevron={false}
+        >
+          {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
+        </ListRow>
+        <!-- One screen over the unprompted registry (phase 6 tickets 02 and
+             04, merged onto one screen and one row by deepening ticket 09):
+             "stop putting things on my home screen" and "stop buzzing my
+             phone" are two questions about the same list, so they get two
+             toggle columns rather than two rows here. `zap` rather than a
+             second bell: the row above is already the bell, and two identical
+             icons on adjacent rows read as one row drawn twice. Live tiles
+             work on web the same as always, so this row is an ordinary
+             chevron row on both platforms - only the notify column is
+             Android-only, inside the screen it opens. -->
+        <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
+        <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
+        <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
+        <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
+        <!-- Modes and entry templates, beside body regions and affirmations
+             rather than hosted off the hub (redesign ticket 51, ADR-0084):
+             both are reference areas, spent on the entry editor's chips and
+             never read on their own screen for their own sake, which is the
+             same kind of thing this card is already full of. -->
+        <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/settings/entry-templates" />
+        <ListRow key="presentations" icon="palette" title={m.presentations_title()} subtitle={m.hub_sub_presentations()} href="/settings/presentations" />
+        <!-- The words the Look back reading skips (redesign ticket 62,
+             ADR-0084). The third reference area on this card and the one that
+             made the ADR's open question a decision: a skipped word is spent
+             on that reading and never read here for its own sake, so it is
+             managed here and takes no hub row. -->
+        <ListRow key="words" icon="note" title={m.words_ignored_title()} subtitle={m.words_ignored_sub()} href="/settings/words" />
+        <!-- Eras (redesign ticket 16, ADR-0084): spent on seven other screens
+             and created on exactly one, which is this card's own test. The
+             milestone rail is the one place left under Transition that draws
+             one, as a band rather than a row. -->
+        <ListRow key="eras" icon="columns" title={m.eras_title()} subtitle={m.hub_sub_eras()} href="/settings/eras" />
+      </ListCard>
+
+      <!-- ADR-0043: the manual way into cycle tracking, for someone no
+           testosterone regimen already surfaces it for. A card of its own
+           rather than a row squeezed into the nudges card above - the two
+           cards next to it are each one row too, and this has nothing to do
+           with the entry editor the nudges pair configures. Like every
+           visibility rule this ticket added, the switch only decides whether
+           navigation names cycle tracking; turning it off touches no record
+           and no deep link. -->
+      <ListCard>
+        <div class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={prefs.cycleTrackingEnabled}
+              label={m.cycle_tracking_toggle_title()}
+              onChange={(v) => {
+                prefs.cycleTrackingEnabled = v;
+              }}
+            />
+          </span>
+        </div>
+      </ListCard>
+
+      <ListCard>
+        <div class="kit-row settings-unit-row" style="cursor:default">
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
+            <span class="kit-row-sub">{m.settings_measurement_unit_sub()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Segmented
+              name={m.settings_measurement_unit_title()}
+              key="measurement-unit"
+              compact
+              options={[
+                { value: 'cm', label: m.measurement_unit_cm() },
+                { value: 'in', label: m.measurement_unit_in() }
+              ]}
+              value={prefs.measurementUnit}
+              onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
+            />
+          </span>
+        </div>
+      </ListCard>
+
+      <ListCard>
+        <details class="taggroup-details">
+          <summary class="kit-row">
+            <span class="kit-row-ico"><Icon name="tag" size={22} /></span>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{m.tag_groups()}</span>
+              <span class="kit-row-sub">{m.tag_groups_sub()}</span>
+            </span>
+            <Icon name="chevronDown" size={20} />
+          </summary>
+          <div class="taggroup-toggles">
+            {#each vocabulary.tagGroups as g (g.key)}
+              <div class="spread taggroup-row">
+                <span>{g.name}</span>
+                <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
+              </div>
+            {/each}
+            <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
           </div>
-        {/each}
-        <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
-      </div>
-    </ListCard>
+        </details>
+      </ListCard>
 
+      <ListCard>
+        <ListRow
+          key="metric"
+          icon="palette"
+          title={m.home_cal_colour()}
+          subtitle={`${m.coloured_by()} ${metricName}`}
+          chevron={false}
+          onclick={() => (metricSheet = true)}
+        >
+          {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+        </ListRow>
+      </ListCard>
+    </div>
+  </details>
+
+  <details class="settings-section">
+    <SectionHeading text={m.settings_privacy()} collapsible />
     <ListCard>
+      <ListRow key="security" icon="shield" title={m.settings_security_row()} subtitle={m.settings_security_sub()} href="/settings/security" />
+      <!-- Beside security rather than under notifications (phase 10 redesign
+           ticket 31): the list is the no-network claim made concrete, which is
+           a privacy question, and setup's step promises this row is here. -->
       <ListRow
-        key="metric"
-        icon="palette"
-        title={m.home_cal_colour()}
-        subtitle={`${m.coloured_by()} ${metricName}`}
+        key="permissions"
+        icon="key"
+        title={m.settings_permissions_row()}
+        subtitle={m.settings_permissions_sub()}
+        href="/settings/permissions"
+      />
+      <ListRow
+        key="disguise"
+        icon="shield"
+        title={m.disguise_row()}
+        subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
         chevron={false}
-        onclick={() => (metricSheet = true)}
+        onclick={() => (disguiseSheet = true)}
+      >
+        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+      </ListRow>
+      <ListRow
+        key="export"
+        icon="download"
+        title={m.export_import()}
+        subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
+        href="/settings/export"
+      />
+      <ListRow key="journal-book" icon="book" title={m.journal_book_row()} subtitle={m.journal_book_row_sub()} href="/settings/journal-book" />
+      <ListRow key="trash" icon="trash" title={m.trash_title()} subtitle={m.trash_row_sub()} href="/settings/trash" />
+      <ListRow
+        key="about"
+        icon="info"
+        title={m.about()}
+        subtitle={m.settings_about_sub()}
+        chevron={false}
+        onclick={() => (aboutSheet = true)}
       >
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>
-  </div>
 
-  <SectionHeading text={m.settings_privacy()} />
-  <ListCard>
-    <ListRow key="security" icon="shield" title={m.settings_security_row()} subtitle={m.settings_security_sub()} href="/settings/security" />
-    <!-- Beside security rather than under notifications (phase 10 redesign
-         ticket 31): the list is the no-network claim made concrete, which is
-         a privacy question, and setup's step promises this row is here. -->
-    <ListRow
-      key="permissions"
-      icon="key"
-      title={m.settings_permissions_row()}
-      subtitle={m.settings_permissions_sub()}
-      href="/settings/permissions"
-    />
-    <ListRow
-      key="disguise"
-      icon="shield"
-      title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
-      chevron={false}
-      onclick={() => (disguiseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow
-      key="export"
-      icon="download"
-      title={m.export_import()}
-      subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
-      href="/settings/export"
-    />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} subtitle={m.journal_book_row_sub()} href="/settings/journal-book" />
-    <ListRow key="trash" icon="trash" title={m.trash_title()} subtitle={m.trash_row_sub()} href="/settings/trash" />
-    <ListRow
-      key="about"
-      icon="info"
-      title={m.about()}
-      subtitle={m.settings_about_sub()}
-      chevron={false}
-      onclick={() => (aboutSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-  </ListCard>
-
-  <!-- Its own row, not folded into the About sheet (ticket ux/06): an ask
-       for support reads differently from a licence notice. -->
-  <ListCard>
-    <ListRow
-      key="kofi"
-      icon="heart"
-      title={m.kofi_row()}
-      subtitle={KOFI_URL ? m.kofi_row_sub() : m.kofi_coming_soon()}
-      static={!KOFI_URL}
-      {...(KOFI_URL ? { href: KOFI_URL, target: '_blank', rel: 'noreferrer' } : {})}
-    />
-  </ListCard>
+    <!-- Its own row, not folded into the About sheet (ticket ux/06): an ask
+         for support reads differently from a licence notice. -->
+    <ListCard>
+      <ListRow
+        key="kofi"
+        icon="heart"
+        title={m.kofi_row()}
+        subtitle={KOFI_URL ? m.kofi_row_sub() : m.kofi_coming_soon()}
+        static={!KOFI_URL}
+        {...(KOFI_URL ? { href: KOFI_URL, target: '_blank', rel: 'noreferrer' } : {})}
+      />
+    </ListCard>
+  </details>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
     <span translate="no">{m.app_name()}</span> · {m.footer_note()}
@@ -620,5 +632,91 @@
 
   .pref-row:last-child {
     margin-bottom: 0;
+  }
+
+  .settings-picker {
+    border-bottom: 1px solid var(--outline);
+    margin-bottom: var(--space-3);
+  }
+
+  .settings-picker summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+    cursor: pointer;
+    font-size: var(--text-sm);
+  }
+
+  .settings-picker summary strong {
+    color: var(--text-2);
+    font-weight: 400;
+  }
+
+  .settings-picker .palette-grid,
+  .settings-picker .mood-preset-grid {
+    padding-bottom: var(--space-3);
+  }
+
+  .palette-selection-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    box-sizing: border-box;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 1;
+  }
+
+  .palette-selection-ring:global(.is-placed) {
+    opacity: 1;
+    transition: transform var(--dur-slow) var(--ease-in-out);
+  }
+
+  :global(html[data-palette-transition]) .palette-selection-ring {
+    transition: none;
+  }
+
+  :global(.palette-grid:has(.palette-selection-ring.is-placed) .palette-swatch.is-active .swatch-preview) {
+    outline: none;
+  }
+
+  .settings-section > :global(summary) {
+    cursor: pointer;
+    min-height: var(--touch-target);
+    align-items: center;
+    list-style: none;
+  }
+
+  .settings-section > :global(summary::-webkit-details-marker) {
+    display: none;
+  }
+
+  .settings-section > :global(summary h2) {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .settings-section[open] > :global(summary svg) {
+    transform: rotate(180deg);
+  }
+
+  .taggroup-details summary {
+    list-style: none;
+  }
+
+  .taggroup-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .taggroup-details[open] summary > :global(svg) {
+    transform: rotate(180deg);
   }
 </style>

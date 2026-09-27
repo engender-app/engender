@@ -2225,7 +2225,7 @@
   "notif_quiet_from": "From",
   "notif_quiet_to": "Until",
   "notif_web_title": "Phone notifications need the Android app",
-  "notif_web_body": "These switches control notices inside the app. Phone notifications work only in the Android app.",
+  "notif_web_body": "These switches control notices inside the app.",
   "tile_wear_title": "Wear timer",
   "tile_wear_sub": "Shows how long the current wear session has been running.",
   "tile_dose_title": "Dose panel",
