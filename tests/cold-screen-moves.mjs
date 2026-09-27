@@ -64,6 +64,7 @@ const STEP_PX = Number(flag('step', '4'));
 const ARRIVALS = args.includes('--arrivals');
 const TRAVEL_FRAMES = 4;
 const SAMPLE_MS = 1600;
+const VIEWPORT_W = Number(flag('width', '390'));
 const VIEWPORT_H = 844;
 
 const SAMPLER = `(() => {
@@ -95,7 +96,7 @@ const SAMPLER = `(() => {
   const tick = () => {
     const at = performance.now() - t0;
     const row = { at, vt, boxes: {}, ops: {} };
-    for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *, .read-reserve-body > *')) {
+    for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *, .read-reserve-body > *, .read-reserve-body > .screen-part > [data-protocol]')) {
       if (el.hasAttribute('data-gate-skeleton') || el.hasAttribute('data-read-reserve-hold')) continue;
       const box = el.getBoundingClientRect();
       /* Kept below the fold too, so a travel that leaves the viewport
@@ -158,10 +159,25 @@ function analyse(samples) {
   return findings;
 }
 
+/* Ticket 262: the protocol notice must first appear at its resting place.
+   A smooth 40px journey still fails even though the generic teleport rule
+   deliberately allows travel during other screen changes. */
+function measurementNoticeTravel(samples) {
+  const key = Object.keys(samples.at(-1)?.boxes ?? {}).find((name) => name.includes('.kit-notice[data-notice]'));
+  if (!key) return ['measuring notice never appeared'];
+  const tops = samples
+    .filter((frame) => frame.at < 500 && (frame.ops[key] ?? 0) >= 0.1)
+    .map((frame) => frame.boxes[key])
+    .filter((top) => top != null);
+  if (!tops.length) return ['measuring notice was not visible during cold load'];
+  const travel = Math.max(...tops) - Math.min(...tops);
+  return travel > 3 ? [`measuring notice traveled ${Math.round(travel)}px after appearing`] : [];
+}
+
 const browser = await launchChromium();
 const app = await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = `http://localhost:${app.httpServer.address().port}`;
-const page = await browser.newPage({ viewport: { width: 390, height: VIEWPORT_H }, deviceScaleFactor: 1 });
+const page = await browser.newPage({ viewport: { width: VIEWPORT_W, height: VIEWPORT_H }, deviceScaleFactor: 1 });
 const errors = [];
 page.on('pageerror', (err) => errors.push(String(err)));
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
@@ -178,11 +194,13 @@ await page.addInitScript(SAMPLER);
 let failed = false;
 for (const route of ROUTES) {
   for (let run = 1; run <= RUNS; run++) {
-    /* Visit once first so anything remembered from a visit (a reserve's
-       height) is what a returning person has, then load cold. */
-    await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
-    await page.waitForTimeout(800);
+    /* The first measurements run keeps the fresh persona's empty reserve;
+       later runs and other screens exercise a remembered height. */
+    if (route !== '/body/measurements' || run > 1) {
+      await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
+      await page.waitForTimeout(800);
+    }
     await page.goto(`${base}${route}`, { waitUntil: 'commit' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
     await page.waitForTimeout(SAMPLE_MS + 300);
@@ -191,7 +209,10 @@ for (const route of ROUTES) {
       await mkdir(DUMP, { recursive: true });
       await writeFile(`${DUMP}/${THEME}${route.replaceAll('/', '_')}-${run}.json`, JSON.stringify(samples));
     }
-    const findings = analyse(samples);
+    const findings = [
+      ...analyse(samples),
+      ...(route === '/body/measurements' ? measurementNoticeTravel(samples) : [])
+    ];
     if (findings.length) failed = true;
     console.log(`[${THEME}] ${route} run ${run}: ${findings.length ? 'FAIL' : 'ok'} - ${samples.length} frames`);
     for (const f of findings) console.log(`    ${f}`);
