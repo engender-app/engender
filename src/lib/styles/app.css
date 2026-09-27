@@ -979,6 +979,25 @@ html[data-nav='fade-through']::view-transition-new(screen) {
     clip-path: inset(0 0 calc(100vh - var(--blind-to, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
   }
 }
+/* A restored scroll position puts one field above the window. Keep the
+   visible side's clip at its full height and move that whole side out or in.
+   Naming the scrolled side would place the shared blind group off-screen. */
+html[data-blind-scroll='exit']::view-transition-old(blind) {
+  clip-path: inset(0 0 calc(100vh - var(--blind-from)) 0 round 0 0 var(--r-block) var(--r-block));
+  animation-name: blind-scroll-out;
+}
+html[data-blind-scroll='enter']::view-transition-new(blind) {
+  clip-path: inset(0 0 calc(100vh - var(--blind-to)) 0 round 0 0 var(--r-block) var(--r-block));
+  animation-name: blind-scroll-in;
+}
+@keyframes blind-scroll-out {
+  from { translate: 0 0; }
+  to { translate: 0 calc(-1 * var(--blind-from)); }
+}
+@keyframes blind-scroll-in {
+  from { translate: 0 calc(-1 * var(--blind-to)); }
+  to { translate: 0 0; }
+}
 
 /* What is painted on the field is printed on it, and rides with it (Alicja,
    round one, 2026-09-09: "make it so that the content on top of the field -

@@ -41,6 +41,7 @@ function field({
     what a navigation does to it. */
 function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0) {
   const root = {
+    dataset: {} as Record<string, string>,
     style: {
       props: new Map<string, string>(),
       setProperty(name: string, value: string) {
@@ -112,19 +113,39 @@ describe('the blind, carried across a navigation', () => {
     expect(blind.style.viewTransitionName).toBeUndefined();
   });
 
-  /* A scrolled screen's field is that far above the window, and the group
-     holds one box for both sides - so naming it took the whole blind
-     off-screen and the field vanished for the length of the navigation
-     (Alicja, round one, on deep-back). */
-  it('leaves a scrolled screen out, so the blind closes to what that screen shows', () => {
+  it('moves a visible field out intact when arriving on a scrolled screen', () => {
     const blind = el();
     const { doc, as } = fakeDocument([field({ height: 215, blind })]);
     const carry = carryBlind(as)!;
-    doc.fields = [field({ height: 199 })];
+    const scrolledBlind = el();
+    const scrolledPart = el();
+    doc.fields = [field({ height: 199, blind: scrolledBlind, parts: [scrolledPart] })];
     doc.region.scrollTop = 1200;
     carry.swap();
+    expect(doc.root.dataset.blindScroll).toBe('exit');
     expect(doc.root.style.props.get('--blind-to')).toBe('0px');
     expect(doc.root.style.props.get('--blind-from')).toBe('215px');
+    expect(doc.root.style.props.get('--blind-ease')).toBe('var(--ease-out-soft)');
+    expect(scrolledBlind.style.viewTransitionName).toBeUndefined();
+    expect(scrolledPart.style.viewTransitionName).toBeUndefined();
+    carry.release();
+    expect(doc.root.dataset.blindScroll).toBeUndefined();
+  });
+
+  it('moves a visible field down intact when leaving a scrolled screen', () => {
+    const scrolledBlind = el();
+    const { doc, as } = fakeDocument([field({ height: 199, blind: scrolledBlind })], 1200);
+    const carry = carryBlind(as)!;
+    const arrivingBlind = el();
+    doc.fields = [field({ height: 215, blind: arrivingBlind })];
+    doc.region.scrollTop = 0;
+    carry.swap();
+    expect(doc.root.dataset.blindScroll).toBe('enter');
+    expect(doc.root.style.props.get('--blind-from')).toBe('0px');
+    expect(doc.root.style.props.get('--blind-to')).toBe('215px');
+    expect(doc.root.style.props.get('--blind-ease')).toBe('var(--ease-out-soft)');
+    expect(scrolledBlind.style.viewTransitionName).toBeUndefined();
+    expect(arrivingBlind.style.viewTransitionName).toBe('blind');
   });
 
   it('reads a screen with no field as the blind closed to nothing', () => {
