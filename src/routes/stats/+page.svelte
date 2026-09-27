@@ -92,7 +92,8 @@
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
+  import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
@@ -191,21 +192,46 @@
     live = next;
     setLastLookBackSpan(next);
     const isExistingEra = existingEraSpans.some((era) => era.start === next.start && era.end === next.end);
-    eraOfferSpan = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
+    const nextOffer = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
+    if (!nextOffer || eraOfferSpan?.start !== nextOffer.start || eraOfferSpan.end !== nextOffer.end) offerOpened = false;
+    eraOfferSpan = nextOffer;
   };
 
   /* The "name this stretch" offer (redesign ticket 48): once a span the
      person dragged settles, one offer to turn it into an era, on this
      surface and nowhere else. Plain component state, gone on reload. */
   let eraOfferSpan = $state<Span | null>(null);
-  /* An offer for a thinner span waits until the old facts have finished
-     closing. The read's span also has to match: liveQuery keeps its last
-     answer visible while the new one runs. */
   let factsExited = $state(true);
+  let offerOpened = $state(false);
   let handledEraOfferSpans = $state<Span[]>([]);
   const settleEraOffer = (handled: Span) => {
     handledEraOfferSpans = [...handledEraOfferSpans, handled];
     eraOfferSpan = null;
+  };
+
+  /* The offer moves several rows below it. The softer existing curve keeps
+     its first frame from moving those rows 43px at once. */
+  const discloseOffer = (node: Element) => ({ ...disclose(node), easing: bezier(EASE_OUT_SOFT_POINTS) });
+
+  /* Facts and offer move together. For a thin span, wait for old facts to
+     leave; for a full span, facts stay. Words wait for the room in both. */
+  const markOfferOpened = (node: HTMLElement, selected: Span) => {
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+    const opened = () => {
+      if (eraOfferSpan !== selected || offerOpened) return;
+      offerOpened = true;
+      if (fallback) clearTimeout(fallback);
+    };
+    node.addEventListener('introend', opened, { once: true });
+    /* An interrupted intro may skip introend. Reduced motion needs no wait. */
+    if (isReducedMotion()) opened();
+    else fallback = setTimeout(opened, motionDuration('--dur-med') + 50);
+    return {
+      destroy() {
+        node.removeEventListener('introend', opened);
+        if (fallback) clearTimeout(fallback);
+      }
+    };
   };
 
   /* The link and the "not enough entries" line share one slot in
@@ -283,6 +309,7 @@
   const factsRemember = (px: number) => rememberReserve('lookback-facts', px);
   let entryCount = $derived(factsQuery.value?.recap.entryCount ?? 0);
   let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+  let offerContentReady = $derived(offerOpened && (enoughEntries || factsExited));
   let dimChange = $derived(factsQuery.value ? recapDimChange(factsQuery.value.recap) : null);
   let activeAverage = $derived.by(() => {
     const standing = metricStandings([{ key: shown.key, range: { min: shown.min, max: shown.max } }], () => factsQuery.value?.series ?? [])[0];
@@ -456,9 +483,10 @@
     <!-- "Name this stretch" (redesign ticket 48): a person who has just
          dragged out a span is offered the chance to name it, here and
          nowhere else. `disclose` opens and gives back its own height. -->
-    {#if eraOfferSpan && factsCurrent && (enoughEntries || factsExited)}
+    {#if eraOfferSpan && factsCurrent}
       {@const offerSpan = eraOfferSpan}
-      <div class="era-offer" data-era-offer role="group" aria-labelledby="era-offer-title" transition:disclose>
+      {#key `${offerSpan.start}:${offerSpan.end}`}
+      <div class="era-offer" class:is-ready={offerContentReady} data-era-offer role="group" aria-labelledby="era-offer-title" inert={!offerContentReady} transition:discloseOffer|global use:markOfferOpened={offerSpan}>
         <div class="era-offer-said">
           <span class="kit-row-ico"><Icon name="columns" size={22} /></span>
           <span class="kit-row-text">
@@ -481,6 +509,7 @@
           </button>
         </div>
       </div>
+      {/key}
     {/if}
 
     <!-- The three completed cadences at their own routes, one tap each, in
@@ -648,6 +677,15 @@
      surface the person just drove, not in the app's generic voice. */
   .era-offer {
     padding: var(--space-2) 0;
+  }
+
+  .era-offer > * {
+    opacity: 0;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+
+  .era-offer.is-ready > * {
+    opacity: 1;
   }
 
   .era-offer-said {

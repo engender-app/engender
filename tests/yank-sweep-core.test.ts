@@ -147,6 +147,16 @@ describe('findYanks', () => {
     expect(findYanks(frames, 'rows')).toEqual([]);
   });
 
+  it('does not report a smooth mark leaving the viewport as an opacity cut', () => {
+    const frames = [
+      frame(mark({ y: 790, o: 1, c: 1, v: true }), 0),
+      frame(mark({ y: 812, o: 0.5, c: 0.5, v: true }), 16),
+      frame(mark({ y: 834, o: 0.01, c: 0.01, v: true }), 32),
+      frame(mark({ y: 856, o: 0, c: 0, v: false }), 48)
+    ];
+    expect(findYanks(frames, 'rows')).toEqual([]);
+  });
+
   it('reports a mark absent for two mid-gesture frames and back', () => {
     const frames = [...still(5), frame(null, 80), frame(null, 96), ...still(3)];
     expect(findYanks(frames, 'rows')).toContainEqual(

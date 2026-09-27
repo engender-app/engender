@@ -168,8 +168,23 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   it('shows the drag hint once per journal and lets the first move answer it', () => {
     expect(stats).toContain('hintSeen={prefs.spanRailHintDismissed}');
     expect(stats).toContain('onHintSeen={() => (prefs.spanRailHintDismissed = true)}');
-    expect(timeline).toContain('{#if showHint}');
-    expect((timeline.match(/answerHint\(\);/g) ?? []).length).toBe(2);
+    expect(timeline).toContain('class:is-hidden={!showHint}');
+    /* A milestone tap commits without touching a handle. */
+    expect((timeline.match(/answerHint\(\);/g) ?? []).length).toBe(3);
+  });
+
+  it('freezes the hint at its last position instead of tracking the handles while it fades', () => {
+    expect(timeline).toMatch(/let hintXAtDismiss = \$state\(0\);\s*\$effect\(\(\) => \{\s*if \(showHint\) hintXAtDismiss = hintX;\s*\}\);/);
+    expect(timeline).toContain('style:--tl-hint-x="{hintXAtDismiss}px"');
+    expect(timeline).not.toContain('style:--tl-hint-x="{hintX}px"');
+  });
+
+  it('crossfades the written span instead of cutting it, with the day count riding along', () => {
+    expect(timeline).toContain("import { crossfade } from '$lib/motion/reveal';");
+    expect(timeline).toMatch(
+      /\{#key spanDates\}<span class="span-tl-reading" out:crossfade use:dateFadeIn>\{spanDates\}\{`, \$\{m\.n_days\(\{ n: shownDays \}\)\}`\}/
+    );
+    expect(timeline).not.toMatch(/transition:dateFade/);
   });
 
   it('reaches the three cadence routes one tap each, as links', () => {

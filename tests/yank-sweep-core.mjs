@@ -550,7 +550,9 @@ export function samplerExpression(act, ms, names) {
          separately so a count fade is not reported as a heading swap. */
       const words = el.hasAttribute('data-section-heading')
         ? el.querySelector('h2')?.textContent
-        : el.textContent;
+        : el.hasAttribute('data-reading-grid')
+          ? el.getAttribute('aria-label')
+          : el.textContent;
       const text = letter && el.tagName === 'BUTTON'
         ? '' : (words ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
       return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
@@ -929,7 +931,12 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const dropPerFrame = (a.o - (b ? b.o : 0)) / steps;
-      if (b && b.o <= GONE && dropPerFrame >= 0.35)
+      /* A mark sliding through the viewport edge can lose almost all its
+         visible area in one frame while its own opacity stays at 1. */
+      const paintDropPerFrame = b
+        ? (a.o / (a.c || 1) - b.o / (b.c || 1)) / steps
+        : dropPerFrame;
+      if (b && b.o <= GONE && dropPerFrame >= 0.35 && paintDropPerFrame >= 0.35)
         yanks.push({
           kind: 'vanish',
           mark: k,
