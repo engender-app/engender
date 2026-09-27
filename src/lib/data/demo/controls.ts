@@ -10,13 +10,24 @@
    are invalidated by the writes themselves - a jump does not need to tell the
    UI it happened. */
 
-import { batchWrites, journal } from '../live/journal.svelte';
+import { batchWrites, journal, onTablesWritten } from '../live/journal.svelte';
 import { prefs } from '../prefs/store.svelte';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
 import { seedFullFixture } from './fullFixture';
 import { seedReturnGap } from './returnGap';
+
+/* The device sweep records which demo profile it prepared. Any journal
+   write outside that preparation makes the record stale. The sweep stamps
+   it again only after its own seed has finished. */
+onTablesWritten((tables) => {
+  if (!document.querySelector('[data-app-root][data-boot="ready"]')) return;
+  /* Boot auto-logs due doses after it marks the journal ready. Those
+     expected rows do not turn the seeded persona into another profile. */
+  if (tables.every((table) => table === 'dose')) return;
+  try { localStorage.removeItem('yank-sweep-profile'); } catch {}
+});
 
 /* The shape all three jumps share. Defaults first, then the seed: without
    the defaults a palette or a disguise toggle a reviewer flipped would
