@@ -165,7 +165,8 @@ async function attach() {
   for (let i = 0; i < 60; i++) {
     await sleep(1000);
     const unix = adb('shell', 'cat', '/proc/net/unix');
-    const socket = /webview_devtools_remote_\d+/.exec(unix)?.[0];
+    const appPid = pid();
+    const socket = appPid && new RegExp(`webview_devtools_remote_${appPid}\\b`).exec(unix)?.[0];
     if (!socket) continue;
     try {
       adb('forward', 'tcp:9333', `localabstract:${socket}`);
@@ -435,6 +436,17 @@ const firstRunExpression = (target) => `(async () => {
 
 async function settle(path, theme) {
   await sleep(400);
+  /* A sheet can survive the preceding pass. Its scrim intercepts the next
+     tap, so close it before positioning another scene. */
+  if (await ev(`!!document.querySelector('[data-sheet-scrim]')`)) {
+    await ev(`document.querySelector('[data-sheet-scrim]').click(); true;`);
+    await ev(`(async () => {
+      for (let i = 0; i < 30 && document.querySelector('[data-sheet-scrim]'); i++)
+        await new Promise((r) => setTimeout(r, 100));
+      if (document.querySelector('[data-sheet-scrim]')) throw new Error('sheet did not close');
+      return true;
+    })()`);
+  }
   if (await ev(`!!document.querySelector('[data-leave-setup]')`)) {
     await ev(`document.querySelector('[data-leave-setup]').click(); true;`);
     await ev(waitForExpression('[data-home-hello]', 30000, '/'));
@@ -559,7 +571,7 @@ const preBoot = await ev(`(async () => {
   return 'still-booting';
 })()`);
 if (preBoot !== 'open') console.log('boot: the app was still starting; reloading anyway');
-await ev(`try { localStorage.clear(); } catch {} location.assign('/'); true;`);
+await ev(`if (!${skipSeed}) { try { localStorage.clear(); } catch {} } location.assign('/'); true;`);
 await sleep(1500);
 /* No pathname pin here: after the clear the first-run gate can send the
    fresh load straight to /onboarding, and boot's business is only that
@@ -621,6 +633,53 @@ console.log(`boot: ${boot}`);
 
 const report = [];
 let evidenceCount = 0;
+const profileKey = 'yank-sweep-profile';
+const markProfile = (profile) => ev(`localStorage.setItem(${JSON.stringify(profileKey)}, ${JSON.stringify(profile)}); true;`);
+async function requirePersona() {
+  const persona = await ev(`localStorage.getItem(${JSON.stringify(profileKey)}) === 'persona' && localStorage.getItem('engender-has-entries') === '1'`);
+  if (!persona) throw new Error('--skip-seed needs a journal seeded as persona by a previous device sweep');
+}
+
+/* The list omits the current mode. Read its stable row keys instead of
+   translated copy, then restore that mode after the lock-gate scene. */
+async function accessMode() {
+  await settle('/settings/access-mode', themes[0]);
+  return ev(`(() => {
+    const modes = ['device-bound', 'unlocked', 'pin', 'passphrase'];
+    const absent = modes.filter((mode) => !document.querySelector('[data-access-modes] [data-list-row="' + mode + '"]'));
+    if (absent.length !== 1) throw new Error('cannot identify current access mode');
+    return absent[0];
+  })()`);
+}
+
+async function restoreAccessMode(mode) {
+  if ((await accessMode()) === mode) return;
+  if (mode === 'pin') {
+    await ev(LOCK_SETUP_EXPRESSION(PIN));
+    if ((await accessMode()) !== 'pin') throw new Error('failed to restore PIN access mode');
+    return;
+  }
+  await ev(`document.querySelector('[data-access-modes] [data-list-row="${mode}"]').click(); true;`);
+  await ev(waitForExpression('[data-access-submit]', 10000));
+  await ev(`document.querySelector('[data-access-submit]').click(); true;`);
+  await ev(`(async () => {
+    for (let i = 0; i < 300; i++) {
+      if (location.pathname === '/settings/security' || document.querySelector('[data-recovery-offer]')) return true;
+      const error = document.querySelector('[data-access-status]')?.textContent?.trim();
+      if (error) throw new Error('access mode change failed: ' + error);
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error('access mode change did not finish');
+  })()`);
+  if (await ev(`!!document.querySelector('[data-recovery-offer]')`))
+    await ev(`location.assign('/settings/security'); true;`);
+  await settle('/settings/access-mode', themes[0]);
+  if ((await accessMode()) !== mode) throw new Error(`failed to restore ${mode} access mode`);
+}
+
+const originalAccessMode = await accessMode();
+if (originalAccessMode === 'passphrase' && (profiles.includes('empty') || SCENES.some((s) => s.setup === 'pin')))
+  throw new Error('sweep cannot restore a passphrase after profile or lock-gate setup; use a throwaway unlocked or PIN journal');
 
 /* ---------- the hydration run (ticket 108) ---------- */
 
@@ -634,7 +693,11 @@ async function hydrationCold(href) {
   return screencast(async (cast) => {
     await paintBlankSentinel(ev, sleep);
     await ev(`location.assign(${JSON.stringify(href)}); true;`);
-    await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
+    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, pathname));
+    if (await ev(`!!document.querySelector('[data-pin-pad]')`)) {
+      await ev(UNLOCK_PIN_EXPRESSION(PIN));
+      await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
+    }
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
     return { cast: dropLeadingBlankFrames([...cast]), frames };
   });
@@ -699,12 +762,14 @@ async function hydrationScenes() {
     await settle('/', themes[0]);
     if (profile === 'persona') {
       if (skipSeed) {
-        console.log('[persona] skip-seed: trusting the journal as it stands');
+        await requirePersona();
+        console.log('[persona] skip-seed: using previously seeded persona');
       } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
       } else {
         await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
+        await markProfile('persona');
       }
       await sleep(1500);
     } else {
@@ -740,6 +805,7 @@ async function hydrationScenes() {
         console.error('the first run never finished; stopping this profile');
         continue;
       }
+      await markProfile('empty');
     }
 
     for (const theme of themes) {
@@ -793,7 +859,7 @@ async function hydrationScenes() {
       await settle('/', themes[0]);
       await ev(DEMO_THEME_EXPRESSION(themes[0]));
       await settle('/settings/access-mode', themes[0]);
-      await ev(LOCK_SETUP_EXPRESSION(PIN));
+      if ((await accessMode()) !== 'pin') await ev(LOCK_SETUP_EXPRESSION(PIN));
       const result = await screencast(async (cast) => {
         await paintBlankSentinel(ev, sleep);
         await ev(`location.assign('/'); true;`);
@@ -818,6 +884,7 @@ async function hydrationScenes() {
 
 /* ---------- the gesture run (ticket 100) ---------- */
 
+try {
 if (hydration) {
   await hydrationScenes();
 } else {
@@ -825,12 +892,14 @@ if (hydration) {
     if (profile === 'persona') {
       await settle('/', themes[0]);
       if (skipSeed) {
-        console.log('[persona] skip-seed: trusting the journal as it stands');
+        await requirePersona();
+        console.log('[persona] skip-seed: using previously seeded persona');
       } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
       } else {
         await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
+        await markProfile('persona');
       }
       await sleep(1500);
     } else {
@@ -840,6 +909,7 @@ if (hydration) {
         console.error('the first run never finished; stopping this profile');
         continue;
       }
+      await markProfile('empty');
       await sleep(1500);
     }
 
@@ -971,6 +1041,9 @@ if (hydration) {
       }
     }
   }
+}
+} finally {
+  await restoreAccessMode(originalAccessMode);
 }
 
 await writeFile(
