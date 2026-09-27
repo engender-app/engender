@@ -572,9 +572,8 @@
   </Sheet>
 
   <Sheet bind:open={aboutSheet} title={m.about()}>
-    <h3>{m.about()}</h3>
-    <div class="stack-3">
-      <div style="display:flex;align-items:center;gap:var(--space-3)">
+    <div class="about-content">
+      <header class="about-identity">
         <!-- The icon, in the flag this person picked: the white tile and
              its black edge, because what this row is showing is the app's
              own icon beside its own name and version, and the tile's edge is
@@ -583,27 +582,42 @@
              disguise, which is Mark's own answer - what is left is the name
              in type, which is what every surface carrying the mark falls
              back to (ADR-0014). -->
-        <Mark size={48} crop="tile" />
-        <p class="small" style="margin:0">
-          <span translate="no">{m.app_name()}</span>
-          <span class="muted">· {m.version()} <span translate="no" data-app-version>{__APP_VERSION__}</span></span>
-        </p>
-      </div>
-      <p class="small">{m.about_license()}</p>
-      <p class="small">
+        <Mark size={64} crop="tile" />
+        <div class="about-identity-copy">
+          <h2 translate="no">{m.app_name()}</h2>
+          <p class="about-version">
+            {m.version()}
+            <span translate="no" data-app-version>{__APP_VERSION__}</span>
+          </p>
+        </div>
+      </header>
+
+      <p class="about-license">{m.about_license()}</p>
+
+      <section class="about-privacy">
+        <Icon name="shield" size={22} />
+        <div class="about-privacy-copy">
         <!-- Platform copy (UI/UX ticket 09): the no-requests claim is
              Android's, bought by holding no internet permission. The web
              app is itself something the browser downloads, so its sentence
              is about what is sent rather than what is fetched. -->
-        <strong>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</strong>
-        {isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}
-      </p>
-      <p class="small">{m.about_attribution()}</p>
-      <p class="small">
-        <a class="section-aside" href={SITE_URL} target="_blank" rel="noreferrer">{m.about_site_link()}</a>
-        ·
-        <a class="section-aside" href={guideUrl} target="_blank" rel="noreferrer">{m.about_guide_link()}</a>
-      </p>
+          <h3>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</h3>
+          <p>{isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}</p>
+        </div>
+      </section>
+
+      <p class="about-attribution">{m.about_attribution()}</p>
+
+      <nav class="about-links">
+        <a href={SITE_URL} target="_blank" rel="noreferrer">
+          <Icon name="globe" size={20} />
+          <span>{m.about_site_link()}</span>
+        </a>
+        <a href={guideUrl} target="_blank" rel="noreferrer">
+          <Icon name="book" size={20} />
+          <span>{m.about_guide_link()}</span>
+        </a>
+      </nav>
     </div>
   </Sheet>
 </div>
@@ -623,5 +637,118 @@
 
   .pref-row:last-child {
     margin-bottom: 0;
+  }
+
+  .about-content {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .about-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    background: color-mix(in oklab, var(--accent) 9%, var(--surface));
+  }
+
+  .about-identity-copy {
+    min-width: 0;
+  }
+
+  .about-identity h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-display);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  .about-version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    margin: var(--space-2) 0 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+  }
+
+  [data-app-version] {
+    padding: 2px var(--space-2);
+    border-radius: var(--r-block);
+    background: var(--surface-2);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .about-license,
+  .about-attribution {
+    margin: 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .about-privacy {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+
+  .about-privacy-copy {
+    color: var(--text);
+  }
+
+  .about-privacy h3 {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: var(--weight-display);
+    line-height: 1.35;
+  }
+
+  .about-privacy p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .about-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .about-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    color: var(--accent);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .about-links a:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
   }
 </style>
