@@ -107,25 +107,27 @@
       {/each}
     </div>
 
-    <SectionHeading text={m.affirmations_builtin_heading()} />
-    <div class="managed-tags">
-      {#each builtIns as a (a.id)}
-        <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
-          <span class="managed-label">{a.text}</span>
-          {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
-          <span class="managed-actions">
-            <button
-              class="icon-btn"
-              data-affirmation-hide={a.id}
-              aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
-              onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
-            >
-              <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
-            </button>
-          </span>
-        </div>
-      {/each}
-    </div>
+    <details class="managed-group">
+      <summary>{m.affirmations_builtin_heading()}</summary>
+      <div class="managed-tags">
+        {#each builtIns as a (a.id)}
+          <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
+            <span class="managed-label">{a.text}</span>
+            {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
+            <span class="managed-actions">
+              <button
+                class="icon-btn"
+                data-affirmation-hide={a.id}
+                aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
+                onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
+              >
+                <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
+              </button>
+            </span>
+          </div>
+        {/each}
+      </div>
+    </details>
   </ReadReserve>
 
   <Sheet bind:open={addOpen} title={m.affirmations_new_sheet()}>

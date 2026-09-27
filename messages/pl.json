@@ -2270,7 +2270,7 @@
   "notif_quiet_from": "Od",
   "notif_quiet_to": "Do",
   "notif_web_title": "Powiadomienia na telefon wymagają aplikacji na Androida",
-  "notif_web_body": "Te przełączniki sterują komunikatami wewnątrz aplikacji. Powiadomienia na telefonie działają tylko w aplikacji na Androida.",
+  "notif_web_body": "Te przełączniki sterują komunikatami wewnątrz aplikacji.",
   "tile_wear_title": "Timer noszenia",
   "tile_wear_sub": "Pokazuje, jak długo trwa rozpoczęta sesja noszenia.",
   "tile_dose_title": "Panel dawek",
