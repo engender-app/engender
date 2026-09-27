@@ -181,7 +181,7 @@ export const HEAT_STEPS = [0, 22, 45, 70, 100];
     hand. palettes.css pairs every --heat-N with an --on-heat-N, tuned per
     palette and sometimes per theme, because a ramp from the page's own
     surface up to a saturated colour crosses the lightness band where
-    neither --text nor its opposite clears 4.5:1. That table is eight
+    neither --text nor its opposite clears 4.5:1. That table is sixteen
     palettes times two themes; a role-hued ramp is that times however many
     stripes the flag has, which is not a table anybody keeps in step.
 
@@ -208,7 +208,7 @@ function heatInk(fill: string, text: string): string {
   return contrast('#FFFFFF', fill) >= contrast('#000000', fill) ? '#FFFFFF' : '#000000';
 }
 
-/** Below this a stripe is a shade rather than a colour. The eight flags'
+/** Below this a stripe is a shade rather than a colour. The flags'
     white, black, near-black and mid-grey bands all sit under it; every hue
     any of them carries sits well above. */
 const ACHROMATIC = 0.02;
@@ -333,7 +333,7 @@ export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefin
     reason is the ordering above.
 
     The week strip takes role 0, the only index guaranteed to be a colour
-    on all 8 palettes, because it is the one area on that screen where the
+    on all palettes, because it is the one area on that screen where the
     stripe is a value rather than a decoration: on trans, whose flag yields
     three roles for four areas, reading order handed the strip the white
     band, and a heat ramp from white into a white page is not a ramp.
@@ -436,15 +436,16 @@ function readStripes(doc: Document): string[] {
 }
 
 /** The colour a door's field wears, and the ink on it (phase 10 direction,
-    rule 3): the flag's second colour - the first inner band of
-    `--motif-stripes` that is a colour and differs from the outermost band -
+    rule 3): the first later chromatic band of `--motif-stripes` that
+    differs from the outermost band, preferring an inner band -
     so bisexual's doubled outer stop is skipped by colour rather than by
     index, and the whole flag stays drawn in the sun with no band stolen. Two
     flags name their own band: the six-stripe rainbow takes its blue rather
     than its orange (Alicja, 2026-09-07, round two), and bisexual takes its
     dark blue rather than its purple (Alicja, 2026-09-07, on ticket 23's
-    renders). A flag with no such band falls back to its first colour, then
-    to its first stripe; none of the eight needs either.
+    renders). Where no inner band is chromatic, the first later colour
+    becomes the field. A flag with no such band falls back to its first
+    colour, then to its first stripe.
 
     The ink is the dark theme's near-black or white, whichever measures
     higher on the hex. Only large text may sit on the field: nonbinary's
@@ -469,6 +470,7 @@ export function flagField(stripes: string[], palette?: string): FlagField | unde
   const hex =
     (palette && FIELD_NAMED_BAND[palette]) ||
     inner.find((s) => isColour(s) && s.toUpperCase() !== outer) ||
+    bands.slice(1).find((s) => isColour(s) && s.toUpperCase() !== outer) ||
     bands.find(isColour) ||
     bands[0];
   const ink = contrast('#101820', hex) >= contrast('#FFFFFF', hex) ? '#101820' : '#FFFFFF';

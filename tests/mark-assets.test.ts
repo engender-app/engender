@@ -34,8 +34,8 @@ const DEFAULT_PALETTE = 'trans';
 const capitalised = (flag: string) => flag[0].toUpperCase() + flag.slice(1);
 
 describe('the mark is generated for every palette the app ships', () => {
-  it('finds all 8 palettes - the parser has drifted otherwise', () => {
-    expect(palettes).toHaveLength(8);
+  it('finds all 16 palettes - the parser has drifted otherwise', () => {
+    expect(palettes).toHaveLength(16);
     expect(palettes).toContain(DEFAULT_PALETTE);
   });
 

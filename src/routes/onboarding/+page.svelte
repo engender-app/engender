@@ -97,7 +97,15 @@
     ['lesbian', m.palette_lesbian],
     ['pansexual', m.palette_pansexual],
     ['rainbow', m.palette_rainbow],
-    ['agender', m.palette_agender]
+    ['agender', m.palette_agender],
+    ['gaymen', m.palette_gaymen],
+    ['genderqueer', m.palette_genderqueer],
+    ['intersex', m.palette_intersex],
+    ['asexual', m.palette_asexual],
+    ['demiboy', m.palette_demiboy],
+    ['demigirl', m.palette_demigirl],
+    ['trigender', m.palette_trigender],
+    ['polish', m.palette_polish]
   ];
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
