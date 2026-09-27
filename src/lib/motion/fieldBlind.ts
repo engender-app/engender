@@ -127,6 +127,7 @@ export interface BlindCarry {
 
 interface Side {
   height: number;
+  scrollTravel: number;
   scrolled: boolean;
   named: HTMLElement[];
 }
@@ -171,9 +172,13 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
       )) {
         root.style.setProperty(property, value);
       }
-      if (after.scrolled && before.height > 0) root.dataset.blindScroll = 'exit';
-      else if (before.scrolled && after.height > 0) root.dataset.blindScroll = 'enter';
-      else delete root.dataset.blindScroll;
+      if (after.scrolled && before.height > 0) {
+        root.dataset.blindScroll = 'exit';
+        root.style.setProperty('--blind-delta', `${before.scrollTravel}px`);
+      } else if (before.scrolled && after.height > 0) {
+        root.dataset.blindScroll = 'enter';
+        root.style.setProperty('--blind-delta', `${-after.scrollTravel}px`);
+      } else delete root.dataset.blindScroll;
       /* An edge may overshoot above the window when closing to nothing.
          A whole field travelling into or out of view must stay monotonic. */
       if (root.dataset.blindScroll) root.style.setProperty('--blind-ease', EASE_OUT_SOFT_VAR);
@@ -246,15 +251,20 @@ export function blindVariables({
 function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions = {}): Side {
   const fields = [...doc.querySelectorAll<HTMLElement>(FIELD)];
   const field = skip ? fields.find((el) => !skip.named.includes(el)) : fields[0];
-  if (!field) return { height: 0, scrolled: false, named: [] };
+  if (!field) return { height: 0, scrollTravel: 0, scrolled: false, named: [] };
 
   /* A scrolled field is already above the window. Naming its blind or
      printed parts would pull their off-screen captures into the transition.
      The visible side instead travels by its full height (app.css). */
-  const scrolled = (doc.querySelector(REGION)?.scrollTop ?? 0) > 1;
-  if (scrolled) return { height: 0, scrolled: true, named: [] };
+  const region = doc.querySelector<HTMLElement>(REGION);
+  const scrolled = (region?.scrollTop ?? 0) > 1;
+  if (scrolled) return { height: 0, scrollTravel: 0, scrolled: true, named: [] };
   const named: HTMLElement[] = [field];
-  const height = field.getBoundingClientRect().height;
+  const box = field.getBoundingClientRect();
+  const height = box.height;
+  /* The field starts below the status bar; its bottom must reach the scroll
+     viewport's top before the outgoing capture disappears. */
+  const scrollTravel = height + Math.max(0, box.top - (region?.getBoundingClientRect().top ?? 0));
   /* Nested under the field's own group (`contain`, set below) rather than
      becoming an independent root-level group, only where that is what the
      name is FOR: the blind is larger than what is ever visible of it at rest,
@@ -324,7 +334,7 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
     field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
   }
 
-  return { height, scrolled: false, named };
+  return { height, scrollTravel, scrolled: false, named };
 }
 
 function release(side: Side) {
