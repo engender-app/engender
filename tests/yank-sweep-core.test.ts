@@ -568,6 +568,13 @@ describe('scenesFor', () => {
   it('narrows to the named scenes', () => {
     expect(scenesFor({ only: ['mood-pick'] }).map((s) => s.name)).toEqual(['mood-pick']);
   });
+
+  it('keeps the proof scene when narrowing a proof run', () => {
+    expect(scenesFor({ prove: true, only: ['mood-pick'] }).map((s) => s.name)).toEqual([
+      'proof-injected-yanks',
+      'mood-pick'
+    ]);
+  });
 });
 
 describe('the hydration floor (ticket 108)', () => {
@@ -672,6 +679,13 @@ describe('hydrationScreensFor (ticket 108)', () => {
     expect(names).not.toContain('proof-injected-yanks');
     expect(hydrationScreensFor({ prove: true }).map((s) => s.name)[0]).toBe('proof-injected-yanks');
     expect(hydrationScreensFor({ only: ['stats'] }).map((s) => s.name)).toEqual(['stats']);
+  });
+
+  it('keeps the proof scene when narrowing a proof run', () => {
+    expect(hydrationScreensFor({ prove: true, only: ['stats'] }).map((s) => s.name)).toEqual([
+      'proof-injected-yanks',
+      'stats'
+    ]);
   });
 
   it('names every needs token it uses in HYDRATION_NEEDS', () => {
