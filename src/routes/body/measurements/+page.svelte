@@ -87,8 +87,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
-  import Skeleton from '$lib/components/Skeleton.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { isReducedMotion } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -276,21 +275,25 @@
   );
   let changes = $derived(sizeChanges(sizeRecords));
 
-  /* The span and the size changes answer out of both reads and the type
-     picker, and on a cold open they landed ~200ms after the screen painted
-     without them: inside the 240ms arrival window, where `disclose` stands
-     down on purpose, so the block arrived at full height in one frame and
-     pushed the protocol notice and the chart 89px (ux-carpet ticket 193).
-     They hold their room instead, at the height they rested at last time,
-     and fade in once all three have answered - Home's reserve (ticket 183).
-     Latched: a type switch re-asks the measurements read, and that change
-     is `disclose`'s, not a second arrival. */
+  /* The picker, readings, notice and chart share one cold-arrival reserve.
+     Holding only the readings (ticket 193) left the notice visible while
+     the picker grew, so it still moved during hydration (ticket 262).
+     A type switch after arrival keeps its own disclose transition. */
   let nowRevealed = $state(false);
+  let afterArrival = $state(false);
   $effect.pre(() => {
     if (nowRevealed || !vocabulary.ready || measurementsQuery.loading || sizesQuery.loading) return;
     nowRevealed = true;
   });
-  const reserveNow = readReserve('measurements-now');
+  $effect(() => {
+    if (!nowRevealed) return;
+    /* Let the first rendered readings take their full height immediately. */
+    const id = requestAnimationFrame(() => (afterArrival = true));
+    return () => cancelAnimationFrame(id);
+  });
+  /* A first visit has no stored height; 500px keeps Sizes below the fold
+     until this section answers. Later visits use its measured height. */
+  const reserveNow = readReserve('measurements-now') || 500;
   const rememberNow = (px: number) => rememberReserve('measurements-now', px);
 
   const size = recordEditor<SizeRecord, { id?: string; date: string; category: string; size: string; brand: string; fitNote: string }>({
@@ -431,26 +434,17 @@
       key="measurement-sections"
     />
   </div>
-  <!-- Gated on the vocabulary mirror (ticket 170, the same gap ticket 152
-       closed on four other screens): a cold navigation straight here paints
-       before the mirror fills, and the picker drew as an empty track that
-       then popped to its full height and shoved everything under it down. -->
-  <div id="measurements-picker" use:resize>
-    {#if !vocabulary.ready}
-      <div out:crossfade><Skeleton variant="line" count={1} /></div>
-    {:else}
-      <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (pickedType = v)} />
-    {/if}
-  </div>
-
   <!-- What is true now, before anything explains how to measure or lists
        what was measured (audit item 8): the span for the picked type and,
        under it, every size that changed. Both readings sit here rather than
        each above its own list - the size lines used to sit on top of the
        log that repeats the same two records as rows. -->
-  <ReadReserve ready={nowRevealed} estimate={reserveNow} onrest={rememberNow} data-measurements-now>
+  <ReadReserve id="measurements-picker" ready={nowRevealed} estimate={reserveNow} onrest={rememberNow} data-measurements-now>
+    <div>
+      <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (pickedType = v)} />
+    </div>
     {#if span}
-      <dl class="span" data-measurement-span transition:disclose>
+      <dl class="span" data-measurement-span transition:disclose={{ skip: !afterArrival }}>
         <div><dt>{m.measurement_span_start()}</dt><dd>{fmtValue(span.start)}</dd></div>
         <div><dt>{m.measurement_span_current()}</dt><dd>{fmtValue(span.current)}</dd></div>
         <div><dt>{m.measurement_span_change()}</dt><dd>{fmtChange(span.change)}</dd></div>
@@ -458,7 +452,7 @@
     {/if}
 
     {#if changes.length}
-      <div class="changes" data-size-changes transition:disclose>
+      <div class="changes" data-size-changes transition:disclose={{ skip: !afterArrival }}>
         {#each changes as change (sizeLabelKey(change.category, change.brand))}
           <p class="change">
             <span class="change-of">{change.brand} · {garmentCategoryName(change.category)}</span>
@@ -474,8 +468,6 @@
         {/each}
       </div>
     {/if}
-  </ReadReserve>
-
   {#if !prefs.measurementProtocolDismissed && PROTOCOL[type]}
     <div class="screen-part">
       <Notice
@@ -542,6 +534,7 @@
       />
     {/snippet}
   </ReadGate>
+  </ReadReserve>
 
   <SectionHeading id="sizes-log" text={m.size_log()}>
     {#snippet action()}

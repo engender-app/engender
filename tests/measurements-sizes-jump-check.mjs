@@ -107,6 +107,12 @@ try {
 
   await page.screenshot({ path: `${outDir}/01-arrival.png` });
 
+  // Scrolling changes the active pill after the cold reserve reveals its picker.
+  await page.evaluate(() => document.getElementById('sizes-log').scrollIntoView({ block: 'start', behavior: 'instant' }));
+  await page.waitForFunction(() => document.querySelector('[data-measurements-jump] [data-segment="sizes"]')?.getAttribute('aria-checked') === 'true');
+  await page.evaluate(() => document.getElementById('measurements-picker').scrollIntoView({ block: 'start', behavior: 'instant' }));
+  await page.waitForFunction(() => document.querySelector('[data-measurements-jump] [data-segment="measurements"]')?.getAttribute('aria-checked') === 'true');
+
   // Pick the hips dimension and open an editor with an unsaved value;
   // the date field arrives prefilled with today
   await page.locator('[data-segment="hips"]').click();
