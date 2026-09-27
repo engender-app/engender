@@ -229,7 +229,7 @@ src/
 └── lib/
     ├── components/      # MoodPicker, DimensionSlider, TagPicker, EntryCard,
     │                    # HeatMap, LineChart, RiveSlot, Sheet, DemoBar, …
-    ├── theme/           # binding design tokens: 8 flag palettes × light/dark
+    ├── theme/           # binding design tokens: 16 flag palettes × light/dark
     ├── styles/          # app shell + component + screen CSS (token-driven)
     ├── data/
     │   ├── repositories/  # PRD repository interfaces (demo implementation)

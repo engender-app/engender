@@ -27,9 +27,9 @@ Regenerate with:
 - `jpg/<flag>-tile-512.jpg` - for anything that will only take a jpeg. The tile
   is white and opaque, so nothing is lost.
 
-Eight flags: trans, nonbinary, genderfluid, bisexual, lesbian, pansexual,
-rainbow, agender. Trans is the default and the one the app ships installed
-with.
+Sixteen flags: trans, nonbinary, genderfluid, bisexual, lesbian,
+pansexual, rainbow, agender, gay men, genderqueer, intersex, asexual,
+demiboy, demigirl, trigender and Polish. Trans is the default install icon.
 
 These files are the source of the mark, not a copy of it: nothing here is
 drawn by hand, and editing one of them is the wrong move. Change the numbers in

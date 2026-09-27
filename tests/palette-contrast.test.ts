@@ -137,7 +137,7 @@ function onHeatRamp(palette: string, theme: (typeof THEMES)[number]) {
 }
 
 describe('palette contrast coverage', () => {
-  it('declares all eight palettes and both themes', () => {
+  it('declares all 16 palettes and both themes', () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
         expect(() => tokenMap(palette, theme)).not.toThrow();
@@ -329,6 +329,21 @@ describe('palette contrast coverage', () => {
      --heat-N fill; heat-N is a color-mix() ramp rather than a literal, so
      this replicates the browser's OKLab mixing to check the real rendered
      colour rather than the token's source formula. */
+  it('keeps focus rings visible on every main surface', () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const ring = colorMixOklab(t.accent, 70, t.text);
+        for (const surface of ['bg', 'surface', 'surface-2']) {
+          expect(
+            contrast(ring, t[surface]),
+            `${palette}/${theme}: focus ring ${ring} on ${surface} ${t[surface]}`
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
   it('keeps every heat-map ramp step readable by its on-heat text token', () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
@@ -367,15 +382,23 @@ describe('the field and the fills (phase 10)', () => {
     lesbian: ['#FF9A56', '#101820', 8.53],
     pansexual: ['#FFD800', '#101820', 12.85],
     rainbow: ['#004CFF', '#FFFFFF', 6.04],
-    agender: ['#B9F484', '#101820', 13.92]
+    agender: ['#B9F484', '#101820', 13.92],
+    gaymen: ['#26CEAA', '#101820', 8.94],
+    genderqueer: ['#4A8123', '#FFFFFF', 4.71],
+    intersex: ['#FFD800', '#101820', 12.85],
+    asexual: ['#800080', '#FFFFFF', 9.42],
+    demiboy: ['#9DD7EA', '#101820', 11.37],
+    demigirl: ['#F3B5CD', '#101820', 10.48],
+    trigender: ['#B57EDC', '#101820', 5.95],
+    polish: ['#DC143C', '#FFFFFF', 4.99]
   };
 
-  it("takes the field from the flag's inner bands, never its outermost, and inks it to 3:1", () => {
+  it("takes the field from a later band, never its outermost, and inks it to 3:1", () => {
     for (const palette of PALETTES) {
       const field = flagField(stripesOf(palette), palette)!;
       const stripes = stripesOf(palette).map((s) => s.toUpperCase());
       expect(field.hex.toUpperCase(), palette).not.toBe(stripes[0]);
-      expect(stripes.slice(1, -1), `${palette}: the field is one of the flag's inner bands`).toContain(
+      expect(stripes.slice(1), `${palette}: the field comes after the outer band`).toContain(
         field.hex.toUpperCase()
       );
       expect(field.ratio, `${palette}: ${field.ink} on ${field.hex}`).toBeGreaterThanOrEqual(3);
@@ -468,7 +491,7 @@ describe('the field and the fills (phase 10)', () => {
       for (const theme of THEMES) {
         const t = tokenMap(palette, theme);
         const roles = flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']]);
-        expect(roles.length).toBeGreaterThanOrEqual(3);
+        expect(roles.length).toBeGreaterThanOrEqual(2);
         for (const role of roles) {
           const ink = role.heat[role.heat.length - 1].ink;
           const ratio = contrast(ink, role.stripe);

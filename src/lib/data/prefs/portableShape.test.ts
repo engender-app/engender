@@ -84,6 +84,7 @@ describe('a valid archive', () => {
     expect(portableValueForKey('theme', 'dark')).toBe('dark');
     expect(portableValueForKey('language', 'pl')).toBe('pl');
     expect(portableValueForKey('palette', 'genderfluid')).toBe('genderfluid');
+    expect(portablePreferencePatch({ palette: 'polish' })).toEqual({ palette: 'polish' });
     expect(portableValueForKey('moodPreset', 'plum')).toBe('plum');
     expect(portableValueForKey('checkInTime', '07:05')).toBe('07:05');
     expect(portableValueForKey('measurementUnit', 'in')).toBe('in');

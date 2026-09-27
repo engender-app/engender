@@ -43,6 +43,15 @@ test('a written preference survives reopening the database', async () => {
   expect(second.openedEmpty()).toBe(false);
 });
 
+test('a newly added flag palette survives reopening', async () => {
+  const driver = await migratedDb();
+  const prefs = await openPreferences(driver);
+  await prefs.set('palette', 'polish');
+
+  const reopened = await openPreferences(driver);
+  expect(reopened.get('palette')).toBe('polish');
+});
+
 test('writing the same key twice updates the row rather than failing on the primary key', async () => {
   const driver = await migratedDb();
   const prefs = await openPreferences(driver);

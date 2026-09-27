@@ -52,8 +52,8 @@ describe('ringRadii', () => {
 });
 
 describe('sunRings', () => {
-  it('finds all 8 palettes to test against - the parser has drifted otherwise', () => {
-    expect(Object.keys(palettes)).toHaveLength(8);
+  it('finds all 16 palettes to test against - the parser has drifted otherwise', () => {
+    expect(Object.keys(palettes)).toHaveLength(16);
   });
 
   it('makes one ring per stripe, in the flag\'s own order, for every palette in both themes', () => {
@@ -98,6 +98,13 @@ describe('sunRings', () => {
     });
   });
 
+  it('draws intersex purple outside yellow and Polish with two bands', () => {
+    expect(palettes.intersex).toEqual(['#7902AA', '#FFD800']);
+    expect(sunRings(palettes.intersex, false).map((ring) => ring.color)).toEqual(palettes.intersex);
+    expect(palettes.polish).toEqual(['#FFFFFF', '#DC143C']);
+    expect(sunRings(palettes.polish, false)).toHaveLength(2);
+  });
+
   it("bisexual's doubled stops give two adjacent same-colour rings, its 2:1:2 for free", () => {
     const rings = sunRings(palettes.bisexual, false);
     expect(rings.map((r) => r.color)).toEqual(['#D60270', '#D60270', '#9B4F96', '#0038A8', '#0038A8']);
@@ -117,7 +124,7 @@ describe('the flag is the flag', () => {
      so the assertion is "the sun draws what palettes.css says" and cannot
      drift from the flags the app actually ships. */
   for (const theme of [true, false]) {
-    it(`draws every stripe of all 8 palettes at its exact hex, ${theme ? 'dark' : 'light'}`, () => {
+    it(`draws every stripe of all 16 palettes at its exact hex, ${theme ? 'dark' : 'light'}`, () => {
       for (const [name, stripes] of Object.entries(palettes)) {
         const drawn = sunRings(stripes, theme).map((ring) => ring.color);
         expect(drawn, name).toEqual(stripes);

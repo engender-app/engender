@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { MEASURE } from './contrast-walk.mjs';
+import { PALETTES as ALL_PALETTES } from './palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -34,10 +35,7 @@ const flag = (name, fallback) => {
   const at = argv.indexOf(`--${name}`);
   return at >= 0 ? argv[at + 1] : fallback;
 };
-const PALETTES = flag(
-  'palettes',
-  'trans,nonbinary,genderfluid,bisexual,lesbian,pansexual,rainbow,agender'
-).split(',');
+const PALETTES = flag('palettes', ALL_PALETTES.join(',')).split(',');
 const THEMES = flag('themes', 'light,dark').split(',');
 const ORDER = SETUP_STEPS;
 

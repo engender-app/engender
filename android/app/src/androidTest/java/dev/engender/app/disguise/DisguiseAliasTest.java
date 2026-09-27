@@ -23,7 +23,7 @@ import java.util.List;
  * Ticket 15's first acceptance box and ticket 50's, on a device: the
  * launcher alias PackageManager actually reads, not a preference this app
  * merely believes it set. {@link DisguiseAlias#apply} is what MainActivity's
- * manifest split (an LAUNCHER-less MainActivity behind nine aliases) turns
+ * manifest split (an LAUNCHER-less MainActivity behind seventeen aliases) turns
  * the disguise and the flag on and off through - proved here directly, with
  * {@code DONT_KILL_APP} so the test process survives its own assertions.
  */
@@ -82,13 +82,13 @@ public class DisguiseAliasTest {
         assertTrue(isEnabled(DisguiseAlias.DISGUISED));
     }
 
-    /** Ticket 50. The whole set, not a pair: nine aliases, and the invariant
+    /** Ticket 50. The whole set, not a pair: seventeen aliases, and the invariant
         that matters is that the launcher can never show two of this app or
         none of it. */
     @Test
     public void exactlyOneAliasIsEverEnabled() {
         List<String> aliases = DisguiseAlias.aliases(context);
-        assertEquals(9, aliases.size());
+        assertEquals(17, aliases.size());
 
         for (String alias : aliases) {
             /* LauncherDisguised answers to no palette, so asking for its
