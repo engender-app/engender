@@ -955,6 +955,7 @@ a.kit-entry:active {
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: stretch;
+  container: kit-tiles / inline-size;
 }
 
 .kit-tiles > * {
@@ -1120,7 +1121,9 @@ a.kit-entry:active {
    overlap. */
 .kit-tile.is-split {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* The action keeps its own width; the main column may shrink below its
+     long drug name so the full-width note stays inside the tile. */
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: 'main act' 'note note';
   /* The main row takes whatever height the tile has over its content, so
      the foot stays on the bottom edge rather than floating up the block
@@ -1141,6 +1144,43 @@ a.kit-entry:active {
   border-radius: var(--r-block);
   overflow: hidden;
   color: var(--role-fill-ink);
+}
+
+/* Stacked by default so browsers without container queries still show the
+   full drug name. Narrow two-up tiles give the value the card's side padding
+   too; the taller row stretches both tiles to match. */
+.kit-tiles:not([data-rows]) > .kit-tile.is-split[data-tile-action] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto;
+  grid-template-areas: 'main' 'act' 'note';
+}
+
+.kit-tiles:not([data-rows]) > .kit-tile.is-split[data-tile-action] .kit-tile-value {
+  max-width: calc(100% + var(--space-4));
+  margin-right: calc(-1 * var(--space-4));
+  overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.kit-tiles:not([data-rows]) > .kit-tile.is-split[data-tile-action] > .kit-tile-act {
+  justify-self: start;
+  align-self: start;
+}
+
+/* Above 620px the drug value has room beside its action again. Container
+   sizing keeps this true in a narrow window inside the desktop shell too. */
+@container kit-tiles (min-width: 621px) {
+  .kit-tiles:not([data-rows]) > .kit-tile.is-split[data-tile-action] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: 'main act' 'note note';
+  }
+
+  .kit-tiles:not([data-rows]) > .kit-tile.is-split[data-tile-action] > .kit-tile-act {
+    justify-self: stretch;
+    align-self: center;
+  }
 }
 
 .kit-tile.is-split > .kit-tile-main { grid-area: main; }
