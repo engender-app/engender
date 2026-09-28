@@ -141,6 +141,8 @@
   "prev_month": "Previous month",
   "prev_year": "Previous year",
   "cal_jump_month": "Jump to month",
+  "cal_jump_this_month": "This month",
+  "cal_jump_has_entries": "has entries",
   "cal_open_month": "Show month",
   "cal_close_month": "Hide month",
   "next_month": "Next month",
