@@ -34,10 +34,11 @@ const redirect = read('src/routes/settings/live-tiles/+page.ts');
 const editor = read('src/lib/components/TodayEditor.svelte');
 
 describe('what the merged screen is built from', () => {
-  it('draws one row per kind from the registry, not from hand-written markup', () => {
+  it('draws relevant registry kinds, not hand-written rows', () => {
     expect(screen).toContain("from '$lib/unprompted/registry'");
     expect(screen).toMatch(/const ROWS = UNPROMPTED_ROWS\.filter\(\(row\) => !isLiveTileKind\(row\.key\)\)/);
-    expect(screenMarkup).toContain('{#each ROWS as row (row.key)}');
+    expect(screenMarkup).toContain('{#each visibleRows as row (row.key)}');
+    expect(screen).toContain('isWeb ? ROWS.filter((row) => row.surface) : ROWS');
     // One {#each} over the registry, and one over the four prompts.
     expect(screenMarkup.match(/\{#each\b/g)?.length).toBe(2);
     expect(screenMarkup.match(/<RegistryRow/g)?.length).toBe(1);
@@ -141,7 +142,7 @@ describe('the notify column on web', () => {
        distance, and an explanation after another section was the audit's
        finding. */
     const notice = screenMarkup.indexOf('key="notifications-web"');
-    const rows = screenMarkup.indexOf('{#each ROWS as row (row.key)}');
+    const rows = screenMarkup.indexOf('{#each visibleRows as row (row.key)}');
     expect(notice).toBeGreaterThanOrEqual(0);
     expect(notice).toBeLessThan(rows);
   });

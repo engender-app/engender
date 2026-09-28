@@ -61,25 +61,27 @@
       {/each}
     </div>
 
-    <SectionHeading text={m.body_regions_builtin_heading()} />
-    <div class="managed-tags">
-      {#each builtIns as r (r.id)}
-        <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
-          <span class="managed-label">{r.name}</span>
-          {#if r.hidden}<span class="muted small">{m.body_regions_hidden()}</span>{/if}
-          <span class="managed-actions">
-            <button
-              class="icon-btn"
-              data-region-hide={r.id}
-              aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
-              onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
-            >
-              <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
-            </button>
-          </span>
-        </div>
-      {/each}
-    </div>
+    <details class="managed-group">
+      <summary>{m.body_regions_builtin_heading()}</summary>
+      <div class="managed-tags">
+        {#each builtIns as r (r.id)}
+          <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
+            <span class="managed-label">{r.name}</span>
+            {#if r.hidden}<span class="muted small">{m.body_regions_hidden()}</span>{/if}
+            <span class="managed-actions">
+              <button
+                class="icon-btn"
+                data-region-hide={r.id}
+                aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
+                onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
+              >
+                <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
+              </button>
+            </span>
+          </div>
+        {/each}
+      </div>
+    </details>
   </ReadReserve>
 
   <Sheet bind:open={addOpen} title={m.body_regions_new_sheet()}>
