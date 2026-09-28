@@ -267,7 +267,13 @@ try {
   // 9. And Back returns to the map, where it was left.
   await page.goBack();
   await page.waitForFunction(() => !location.hash);
-  await page.waitForTimeout(400);
+  /* Back eases to the map now (ticket 278), so wait for it to arrive. */
+  await page
+    .waitForFunction((y) => {
+      const el = document.querySelector('[data-app-scroll-region]');
+      return Math.abs((el ? el.scrollTop : window.scrollY) - y) <= 8;
+    }, beforeJump)
+    .catch(() => {});
   const afterBack = await scrollTop();
   assert.ok(
     Math.abs(afterBack - beforeJump) <= 8,

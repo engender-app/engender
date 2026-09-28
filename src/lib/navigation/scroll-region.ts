@@ -20,7 +20,7 @@
    no notion of direction at all.
 */
 
-import { scrollBehavior } from '$lib/motion/tokens';
+import { scrollBehavior } from '../motion/tokens';
 
 const positions = new Map<string, number>();
 

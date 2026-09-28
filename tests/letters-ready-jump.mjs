@@ -109,6 +109,11 @@ try {
   // Verify browser back restores previous position
   await page.goBack();
   await page.waitForFunction(() => !window.location.hash);
+  /* Back eases to the remembered position now (ticket 278), so wait for it. */
+  await page.waitForFunction(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    return (region ? region.scrollTop : window.scrollY) <= 50;
+  });
   const returnedScroll = await getScroll();
   assert.ok(returnedScroll <= initialScroll + 50, 'Back restores list position at waiting section');
 
