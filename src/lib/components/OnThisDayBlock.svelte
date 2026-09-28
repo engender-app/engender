@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { scrollBehavior } from '$lib/motion/tokens';
   /* On this day, as a block (phase 11 ticket 07): however many of the three
      lookbacks - a month, six months, a year - clear the good-day bar today,
      each as its heading, the whole day one tap away, the day's entries, its
@@ -106,7 +107,7 @@
 
   $effect(() => {
     if (!days.length || !scrollTo) return;
-    document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ block: 'start' });
+    document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 
   /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */

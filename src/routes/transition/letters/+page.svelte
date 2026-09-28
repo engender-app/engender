@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { scrollBehavior } from '$lib/motion/tokens';
   /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
      redesign ticket 45).
 
@@ -186,7 +187,7 @@
       if (!location.hash && waitingScroll !== null) {
         const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
         if (region) {
-          region.scrollTop = waitingScroll;
+          region.scrollTo({ top: waitingScroll, behavior: scrollBehavior() });
         }
         waitingScroll = null;
       }

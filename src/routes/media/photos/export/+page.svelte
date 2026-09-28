@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { scrollBehavior } from '$lib/motion/tokens';
   /* The progress-photo journey export, on the surface kit (phase 5 UX
      ticket 25).
 
@@ -183,8 +184,7 @@
   /* The grid above can be several screens tall, so a finished export off the
      bottom of it reads as nothing having happened. */
   function reveal(node: HTMLElement) {
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    node.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+    node.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
   }
 
   async function make() {

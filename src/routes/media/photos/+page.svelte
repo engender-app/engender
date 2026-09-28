@@ -69,7 +69,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
-  import { isReducedMotion } from '$lib/motion/tokens';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -283,7 +283,7 @@
     }
     await tick();
     gridEl?.querySelector(`[data-photo-key="${id}"]`)?.scrollIntoView({
-      behavior: isReducedMotion() ? 'auto' : 'smooth',
+      behavior: scrollBehavior(),
       block: 'start'
     });
   }

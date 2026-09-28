@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { scrollBehavior } from '$lib/motion/tokens';
   /* One voice screen, three tabs (phase 8 features ticket 09).
 
      Recording a benchmark and reading benchmarks back were two routes and
@@ -151,7 +152,7 @@
     const key = metricSheetKey;
     if (!key) return;
     const sheetEl = document.querySelector('[data-sheet]');
-    const scrollToSection = () => document.getElementById(key)?.scrollIntoView({ block: 'start' });
+    const scrollToSection = () => document.getElementById(key)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     if (!sheetEl) {
       requestAnimationFrame(scrollToSection);
       return;

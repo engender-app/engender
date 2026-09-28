@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { scrollBehavior } from '$lib/motion/tokens';
   /* One body region's dysphoria and euphoria over time (phase 5 UX ticket
      23's rebuild) and multi-track somatic breakdown inspector (deepening
      ticket 08).
@@ -205,7 +206,7 @@
     const onPop = () => {
       if (location.hash || mapScroll === null) return;
       const el = scrollRegion();
-      if (el) el.scrollTop = mapScroll;
+      if (el) el.scrollTo({ top: mapScroll, behavior: scrollBehavior() });
       mapScroll = null;
     };
     window.addEventListener('popstate', onPop);
