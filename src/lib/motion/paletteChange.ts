@@ -1,7 +1,13 @@
 import { tick } from 'svelte';
 
 let latestChange = 0;
+type Appearance = 'palette' | 'theme';
+const pending: Partial<Record<Appearance, () => void>> = {};
 let sunFadePending = false;
+
+export function isAppearancePending(kind: Appearance): boolean {
+  return pending[kind] !== undefined;
+}
 
 /** A return from Settings to Today answers a palette pick with a fading sun. */
 export function takePaletteSunFade(from: string | null, to: string): boolean {
@@ -10,24 +16,51 @@ export function takePaletteSunFade(from: string | null, to: string): boolean {
   return pending;
 }
 
-/** Capture both palette states so the new colours can sweep over the old. */
-export function changePalette(commit: () => void, doc: Document = document): void {
+/** Capture both appearances so the new colours can sweep over the old. */
+function changeAppearance(commit: () => void, kind: Appearance, doc: Document): void {
+  pending[kind] = commit;
+  const change = ++latestChange;
+  function applyPending() {
+    for (const choice of ['palette', 'theme'] as const) {
+      const apply = pending[choice];
+      delete pending[choice];
+      apply?.();
+    }
+  }
   if (!doc.startViewTransition) {
-    commit();
-    sunFadePending = true;
+    if (doc.documentElement) {
+      delete doc.documentElement.dataset.appearanceTransition;
+      delete doc.documentElement.dataset.paletteTransition;
+    }
+    applyPending();
     return;
   }
 
-  const change = ++latestChange;
   const root = doc.documentElement;
-  root.dataset.paletteTransition = '';
+  root.dataset.appearanceTransition = '';
+  if (pending.palette) root.dataset.paletteTransition = '';
+  else delete root.dataset.paletteTransition;
   const transition = doc.startViewTransition(async () => {
     if (change !== latestChange) return;
-    commit();
-    sunFadePending = true;
+    applyPending();
     await tick();
   });
   void transition.finished.catch(() => {}).finally(() => {
-    if (change === latestChange) delete root.dataset.paletteTransition;
+    if (change === latestChange) {
+      applyPending();
+      delete root.dataset.appearanceTransition;
+      delete root.dataset.paletteTransition;
+    }
   });
+}
+
+export function changePalette(commit: () => void, doc: Document = document): void {
+  changeAppearance(() => {
+    commit();
+    sunFadePending = true;
+  }, 'palette', doc);
+}
+
+export function changeTheme(commit: () => void, doc: Document = document): void {
+  changeAppearance(commit, 'theme', doc);
 }
