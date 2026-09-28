@@ -418,6 +418,21 @@ describe('tier 3, a panel giving its space back', () => {
     expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(380);
   });
 
+  it('animates an action-triggered tile exit during screen arrival', () => {
+    stubDocument();
+    markScreenArrival();
+    const tile = panel({ beside: [[0, 100]] }) as HTMLElement;
+    let marked = true;
+    tile.hasAttribute = (name) => name === 'data-intentional-tile-exit' && marked;
+    tile.removeAttribute = (name) => {
+      if (name === 'data-intentional-tile-exit') marked = false;
+    };
+
+    expect(collapse(tile, undefined, { direction: 'out' }).duration).toBe(380);
+    expect(marked).toBe(false);
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(0);
+  });
+
   /* A dismissal the fold fills in the same tick is a swap rather than a
      collapse: the grid keeps every slot it had, so there is no space to give
      back and nothing for the neighbours to do. The leaving tile goes at once
