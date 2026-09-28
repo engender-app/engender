@@ -59,8 +59,7 @@ const FLATPICKR_LIBRARY = /^flatpickr(\/|$)/;
     imports it. */
 const LOADERS = [
   'src/lib/components/DatePicker.svelte',
-  'src/lib/components/flatpickrLocale.ts',
-  'src/routes/calendar/+page.svelte'
+  'src/lib/components/flatpickrLocale.ts'
 ];
 
 /** Of those, the ones that are not components. A `.ts` module is the shape
@@ -158,6 +157,15 @@ test('no module a first visit runs reaches flatpickr', () => {
     .map((chain) => chain.join(' -> '));
 
   expect(reached).toEqual([]);
+});
+
+/* The Journal's month jump was flatpickr inline until ticket 281 gave it a
+   month picker of its own. Nothing on that route picks a day, so nothing
+   there should bring the library back. */
+test('the Journal route does not reach flatpickr', () => {
+  const chain = reach(sources()).get('src/routes/calendar/+page.svelte');
+
+  expect(chain?.join(' -> ')).toBeUndefined();
 });
 
 test('flatpickr is imported by the date picker and by nothing else', () => {
