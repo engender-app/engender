@@ -2,6 +2,7 @@
 export function paletteRing(grid: HTMLElement) {
   const ring = grid.querySelector<HTMLElement>('.palette-selection-ring');
   if (!ring) return;
+  let visible = false;
 
   function place() {
     if (!ring) return;
@@ -9,8 +10,14 @@ export function paletteRing(grid: HTMLElement) {
     if (!preview) return;
     const gridBox = grid.getBoundingClientRect();
     const box = preview.getBoundingClientRect();
+    if (!gridBox.width || !box.width) {
+      visible = false;
+      return;
+    }
+    ring.style.transition = visible ? '' : 'none';
     ring.style.transform = `translate(${box.left - gridBox.left - 4}px, ${box.top - gridBox.top - 4}px)`;
     ring.classList.add('is-placed');
+    visible = true;
   }
 
   place();

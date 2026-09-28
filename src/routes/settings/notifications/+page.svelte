@@ -65,6 +65,7 @@
   const ROWS = UNPROMPTED_ROWS.filter((row) => !isLiveTileKind(row.key));
 
   let isWeb = $derived(!isAndroid());
+  let visibleRows = $derived(isWeb ? ROWS.filter((row) => row.surface) : ROWS);
 
   /* Every producer here posts through the same POST_NOTIFICATIONS
      permission, so one status/request pair covers the whole list. */
@@ -161,7 +162,7 @@
   {/if}
 
   <ListCard>
-    {#each ROWS as row (row.key)}
+    {#each visibleRows as row (row.key)}
       <RegistryRow
         key={row.key}
         title={row.title()}
@@ -256,9 +257,7 @@
           </div>
         </div>
       {/if}
-    </ListCard>
-
-    <ListCard>
+      <div class="settings-divider"></div>
       <div class="kit-row" data-hide-titles>
         <span class="kit-row-text">
           <span class="kit-row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
@@ -315,5 +314,9 @@
        row past the viewport. */
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-3);
+  }
+
+  .settings-divider {
+    border-top: 1px solid var(--outline);
   }
 </style>

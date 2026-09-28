@@ -4,10 +4,10 @@
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { discloseWidth } from '$lib/motion/reveal';
@@ -53,42 +53,43 @@
   <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
   {#snippet groupSection(g: TagGroup)}
-    <SectionHeading text={g.builtIn ? g.name : `${g.name} · ${m.custom_suffix()}`}>
-      {#snippet action()}
-        <button class="icon-btn" aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
-          <Icon name="plus" size={20} />
+    <details class="managed-group" open={!g.builtIn}>
+      <summary>{g.name}{#if !g.builtIn} · {m.custom_suffix()}{/if}</summary>
+      <div class="tag-group-action">
+        <button class="btn btn-soft" aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
+          <Icon name="plus" size={20} /><span>{m.tags_new_tag()}</span>
         </button>
-      {/snippet}
-    </SectionHeading>
-    <div class="managed-tags">
-      {#each g.tags as tg, i (tg.id)}
-        <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
-          <span class="managed-label">{tg.label}</span>
-          {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
-          <span class="managed-actions">
-            <button class="icon-btn" data-up aria-label={m.tags_move_up({ label: tg.label })} disabled={i === 0}
-              onclick={() => moveUp(g, i)}>
-              <Icon name="chevronLeft" size={16} />
-            </button>
-            <button class="icon-btn" aria-label={m.tags_rename_aria({ label: tg.label })}
-              onclick={() => (renameTarget = { id: tg.id, label: tg.label })}>
-              <Icon name="pencil" size={16} />
-            </button>
-            {#if tg.builtIn}
-              <button class="icon-btn" data-tag-hide={tg.id} aria-label={tg.hidden ? m.tags_show_aria({ label: tg.label }) : m.tags_hide_aria({ label: tg.label })}
-                onclick={() => journal.tags.setTagHidden(tg.id, !tg.hidden)}>
-                <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
+      </div>
+      <div class="managed-tags">
+        {#each g.tags as tg, i (tg.id)}
+          <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
+            <span class="managed-label">{tg.label}</span>
+            {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
+            <span class="managed-actions">
+              <button class="icon-btn" data-up aria-label={m.tags_move_up({ label: tg.label })} disabled={i === 0}
+                onclick={() => moveUp(g, i)}>
+                <Icon name="chevronLeft" size={16} />
               </button>
-            {:else}
-              <button class="icon-btn" data-del aria-label={m.tags_delete_aria({ label: tg.label })}
-                onclick={() => record.askToDelete({ id: tg.id, label: tg.label })}>
-                <Icon name="trash" size={16} />
+              <button class="icon-btn" aria-label={m.tags_rename_aria({ label: tg.label })}
+                onclick={() => (renameTarget = { id: tg.id, label: tg.label })}>
+                <Icon name="pencil" size={16} />
               </button>
-            {/if}
-          </span>
-        </div>
-      {/each}
-    </div>
+              {#if tg.builtIn}
+                <button class="icon-btn" data-tag-hide={tg.id} aria-label={tg.hidden ? m.tags_show_aria({ label: tg.label }) : m.tags_hide_aria({ label: tg.label })}
+                  onclick={() => journal.tags.setTagHidden(tg.id, !tg.hidden)}>
+                  <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
+                </button>
+              {:else}
+                <button class="icon-btn" data-del aria-label={m.tags_delete_aria({ label: tg.label })}
+                  onclick={() => record.askToDelete({ id: tg.id, label: tg.label })}>
+                  <Icon name="trash" size={16} />
+                </button>
+              {/if}
+            </span>
+          </div>
+        {/each}
+      </div>
+    </details>
   {/snippet}
 
   <!-- Your own groups and the way to make one come before the built-in
@@ -110,6 +111,7 @@
   <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
     <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>
       {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
+      <SectionHeading text={m.affirmations_builtin_heading()} />
       {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
     </ReadReserve>
   </div>
@@ -178,3 +180,9 @@
     >
   </Sheet>
 </div>
+
+<style>
+  .tag-group-action {
+    margin: 0 0 var(--space-2);
+  }
+</style>
