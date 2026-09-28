@@ -298,7 +298,7 @@
     </ListCard>
   </div>
 
-  <SectionHeading text={m.settings_reminders_group()} />
+  <SectionHeading text={m.settings_reminders()} />
   <!-- The app speaking up, and the words it uses when it does. -->
   <ListCard>
     <ListRow

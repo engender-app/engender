@@ -63,7 +63,7 @@ describe('what Settings is built from', () => {
   });
 
   it('names five areas and keeps every one of them open (ticket 277)', () => {
-    for (const key of ['settings_appearance', 'settings_tracking', 'settings_reminders_group', 'settings_lists', 'settings_privacy']) {
+    for (const key of ['settings_appearance', 'settings_tracking', 'settings_reminders', 'settings_lists', 'settings_privacy']) {
       expect(withoutScript).toContain(`<SectionHeading text={m.${key}()} />`);
     }
     /* Ticket 268 folded the areas and the pickers into <details>; this one
