@@ -106,10 +106,10 @@
       holding = false;
     };
     window.addEventListener('pointerup', release);
-    window.addEventListener('pointercancel', release);
+    window.addEventListener('pointercancel', cancelDrag);
     return () => {
       window.removeEventListener('pointerup', release);
-      window.removeEventListener('pointercancel', release);
+      window.removeEventListener('pointercancel', cancelDrag);
     };
   });
 
@@ -120,6 +120,19 @@
   function onFocus(event: FocusEvent) {
     const el = event.currentTarget;
     if (el instanceof HTMLElement && el.matches(':focus-visible')) holding = true;
+  }
+
+  /* Melt clears its private drag flag on window pointerup, but not on
+     pointercancel. A cancelled touch otherwise leaves this slider following
+     every later pointermove. Treat cancellation as a release for Melt. */
+  function cancelDrag(event: PointerEvent) {
+    if (!pressing) return;
+    window.dispatchEvent(new PointerEvent('pointerup', {
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+    }));
+    pressing = false;
+    holding = false;
   }
 </script>
 
@@ -133,6 +146,7 @@
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}
   onpointerdowncapture={() => { pressing = true; holding = true; }}
+  onpointercancel={cancelDrag}
   onfocus={onFocus}
   onblur={() => { if (!pressing) holding = false; }}
   onpointerup={() => { if (value == null) onInput(slider.value); }}
