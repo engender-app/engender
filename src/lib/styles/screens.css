@@ -608,10 +608,10 @@
    static swatch regardless of the app's active theme - the same convention
    the flag swatches above use, so a preset still reads as "this one" after
    a theme switch. */
-[data-mood-swatch="amber"] { background: linear-gradient(90deg, #EAE7E1, #E0D6C4, #DAC39A, #D5AB61, #CD9027); }
-[data-mood-swatch="teal"] { background: linear-gradient(90deg, #E0E9EA, #C2DCE0, #94CFD7, #4DC0D0, #24ABBC); }
-[data-mood-swatch="plum"] { background: linear-gradient(90deg, #ECE5ED, #E5D1E7, #E0B9E5, #DD9AE4, #D975E5); }
-[data-mood-swatch="moss"] { background: linear-gradient(90deg, #E3E9E0, #C8DEBE, #A1D389, #66C835, #51B022); }
+[data-mood-swatch="amber"] { background: linear-gradient(90deg, #F1D2F7, #F6B4D5, #F898A0, #EE835A, #C8801D); }
+[data-mood-swatch="teal"] { background: linear-gradient(90deg, #DBD3F9, #AABCF3, #60A5DF, #1C8EAB, #157475); }
+[data-mood-swatch="plum"] { background: linear-gradient(90deg, #BCE5FD, #9CBFF6, #9694E3, #9A65BF, #9A3289); }
+[data-mood-swatch="moss"] { background: linear-gradient(90deg, #FDD5B7, #D9B97C, #A7A347, #619129, #147645); }
 
 .manage-tags-link {
   display: inline-flex; align-items: center; gap: 4px;

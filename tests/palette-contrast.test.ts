@@ -368,6 +368,20 @@ describe('palette contrast coverage', () => {
     }
   });
 
+  /* Settings previews each preset as a strip of its light-theme steps
+     (screens.css). Those five were hand-copied and nothing held them to the
+     ramp, so they still showed ADR-0025's single-hue ramps through the whole
+     of ADR-0077; ticket 279 found them and this keeps them in step. */
+  it("previews each preset in Settings with that preset's own light ramp", () => {
+    const screensCss = readFileSync('src/lib/styles/screens.css', 'utf8');
+    for (const preset of MOOD_PRESETS) {
+      const rule = new RegExp(String.raw`\[data-mood-swatch="${preset}"\]\s*\{([^}]*)\}`).exec(screensCss)?.[1];
+      expect(rule, `no Settings swatch for ${preset}`).toBeTruthy();
+      const shown = [...rule!.matchAll(/#[0-9A-Fa-f]{6}/g)].map(([hex]) => hex.toUpperCase());
+      expect(shown, `${preset}'s Settings swatch`).toEqual(moodRamp(preset, 'light').map((hex) => hex.toUpperCase()));
+    }
+  });
+
   /* The one hue pair the app may not draw, ADR-0012 and palettes.css's own
      header rule: red to green is the judgment scale, and mood is the metric
      most likely to be handed one by a well-meaning edit. Both ends are
