@@ -789,11 +789,10 @@
                   />
                 </div>
               {:else if step === 'flag'}
-                <!-- A flag is a block of its own stripes (rule 13): the
-                     bands drawn the way the sun draws them, two across, the
-                     name under it on the page. The chosen one takes the
-                     section rule's 3px as a frame; nothing tints, and
-                     nothing fills behind the name. -->
+                <!-- A flag is a block of its own stripes (rule 13), drawn
+                     by screens.css's .palette-grid the same way Settings
+                     draws it: four across, the name under it on the page,
+                     the chosen one framed in the section rule's 3px. -->
                 <div class="palette-grid setup-flags" role="radiogroup" use:rovingRadio aria-label={m.colour_palette()}>
                   {#each PALETTES as [key, label] (key)}
                     <button
@@ -1412,93 +1411,16 @@
   .setup-answers :global(.kit-list > *:nth-child(n + 7)) {
     --row-index: 6;
   }
-  /* Two flags across, so a row of the grid is a pair and the pair arrives
+  /* Four flags across, so a row of the grid is four and the four arrive
      together. */
-  .setup-flags .palette-swatch:nth-child(3),
-  .setup-flags .palette-swatch:nth-child(4) {
+  .setup-flags .palette-swatch:nth-child(n + 5) {
     --row-index: 1;
   }
-  .setup-flags .palette-swatch:nth-child(5),
-  .setup-flags .palette-swatch:nth-child(6) {
+  .setup-flags .palette-swatch:nth-child(n + 9) {
     --row-index: 2;
   }
-  .setup-flags .palette-swatch:nth-child(n + 7) {
+  .setup-flags .palette-swatch:nth-child(n + 13) {
     --row-index: 3;
-  }
-
-  /* ---------- the answers, drawn as rule 13 has them ---------- */
-
-  /* A flag is a block of its own stripes: the bands drawn the way the sun
-     draws them, 56 tall, the one radius, a 1px edge, two across, the name
-     under it on the page at 15/600. Nothing tints and nothing fills behind
-     the name (rule 13), which is what the shared picker in Settings does
-     and the reason both classes are named here: .palette-grid's four
-     columns and .palette-swatch's fill are declared in screens.css and
-     would otherwise win the tie on source order. */
-  .palette-grid.setup-flags {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-4) var(--space-3);
-  }
-  .setup-flags .palette-swatch {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-    padding: 0;
-    border: 0;
-    background: none;
-  }
-  .setup-flags .palette-swatch:hover,
-  .setup-flags .palette-swatch.is-active {
-    background: none;
-  }
-  .setup-flags .swatch-preview {
-    width: 100%;
-    height: 56px;
-    border-radius: var(--r-block);
-    border: 1px solid var(--outline);
-    box-sizing: border-box;
-  }
-  /* The tap's answer, at the size of the block that took it (rule 13's
-     bloom, re-examined by this ticket). What stood here was a ring of
-     --accent-soft opening out past the tile over 700ms: a tint, which rule
-     13 now forbids behind a flag, and a movement that had to be watched for
-     to be seen.
-
-     What answers instead is the mark landing: the section rule's 3px in
-     --text closes in from 6px outside the block onto its own edge. It is
-     the one movement a chosen frame can make - a frame cannot draw in from
-     a side the way a rule does - and it is the same 3px the rest of the
-     phase uses to say "this one". Drawn as an outline so the block's box
-     never changes and nothing beside it moves; offset inward at rest so the
-     frame sits on the block rather than around it.
-
-     The block being left plays the same transition backwards for nothing,
-     which is the whole reason it is a transition and not an animation. */
-  .setup-flags .swatch-preview {
-    outline: 3px solid transparent;
-    outline-offset: 6px;
-    transition-property: outline-color, outline-offset;
-    transition-duration: var(--dur-med);
-    transition-timing-function: var(--ease-out);
-  }
-  .setup-flags .palette-swatch.is-active .swatch-preview {
-    outline-color: var(--text);
-    outline-offset: -3px;
-  }
-  .setup-flags .swatch-name {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text);
-    text-align: left;
-    max-width: none;
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    line-height: 1.3;
-  }
-  .setup-flags .palette-swatch.is-active .swatch-name {
-    color: var(--text);
   }
 
   /* A typed answer sits on the rule: the display face at 28 on a 3px --text

@@ -32,11 +32,13 @@ describe('ticket 17: words reading scope and honest baseline', () => {
       expect(pl.words_scope_mode).toContain('cały dziennik');
     });
 
-    it('names Words that stand out and journal notes preservation in words_ignored_sub', () => {
-      expect(en.words_ignored_sub).toContain('Words that stand out');
-      expect(en.words_ignored_sub).toContain('journal notes');
-      expect(pl.words_ignored_sub).toContain('Słowa, które się wyróżniają');
-      expect(pl.words_ignored_sub).toContain('notatkach dziennika');
+    /* The Settings row said this until ticket 277 cut the hub's explanatory
+       subtitles; the screen the row opens says it in its own subtitle. */
+    it('names Words that stand out and journal notes preservation in words_ignored_screen_sub', () => {
+      expect(en.words_ignored_screen_sub).toContain('Words that stand out');
+      expect(en.words_ignored_screen_sub).toContain('journal notes');
+      expect(pl.words_ignored_screen_sub).toContain('Słowa, które się wyróżniają');
+      expect(pl.words_ignored_screen_sub).toContain('Notatki w dzienniku');
     });
 
     it('has words_return_to_reading action in both catalogues', () => {
