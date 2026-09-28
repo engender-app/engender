@@ -757,7 +757,15 @@ export function collapse(
       collapse(node, params, each)) as unknown as TransitionConfig;
   }
   if (isReducedMotion() || params?.skip) return { duration: 0 };
-  if (stillArriving()) return { duration: 0 };
+  /* A tile action can intentionally remove its own tile while Home is still
+     settling. That is a dismissal, not read-driven displacement. */
+  if (stillArriving()) {
+    const element = node as HTMLElement;
+    if (options?.direction !== 'out' || !element.hasAttribute('data-intentional-tile-exit')) {
+      return { duration: 0 };
+    }
+    element.removeAttribute('data-intentional-tile-exit');
+  }
   /* A panel arriving on a settled screen does not wait its turn in the
      grid's stagger (kit.css, --tile-index): the stagger is for a grid
      arriving together, and the third tile out of the fold sat as a blank

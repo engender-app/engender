@@ -92,6 +92,13 @@
     [attribute: string]: unknown;
   } = $props();
 
+  function runTileAction(event: MouseEvent) {
+    const tile = (event.currentTarget as HTMLElement).closest('.kit-tile');
+    tile?.setAttribute('data-intentional-tile-exit', '');
+    action?.onclick?.(event);
+    if (tile) requestAnimationFrame(() => tile.removeAttribute('data-intentional-tile-exit'));
+  }
+
   /* Phase 9 carpet ticket 04: a tile joins and leaves its grid through the
      one panel primitive, so a pair standing side by side gives its space
      back along the row and the same pair stacked below the floor gives it
@@ -193,7 +200,7 @@
         type="button"
         class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
         aria-label={action.label}
-        onclick={(e) => action?.onclick?.(e)}
+        onclick={runTileAction}
         {...action.attrs}
       >
         {#if action.icon}<Icon name={action.icon} size={16} />{/if}
