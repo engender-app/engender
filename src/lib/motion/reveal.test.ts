@@ -316,7 +316,11 @@ describe('tier 3, a panel giving its space back', () => {
       getBoundingClientRect: () => rect,
       /* `collapse` takes a panel out of the flow for one measurement, so a
          stub needs somewhere to put that. */
-      style: { display: '' }
+      style: { display: '' },
+      /* Every test in this block models an actual grid tile - the only kind
+         `markSlotReplacement`'s swap window is ever measured for - unless a
+         test overrides this to say otherwise. */
+      hasAttribute: (name: string) => name === 'data-live-tile'
     } as unknown as Element;
     (node as { parentElement?: unknown }).parentElement = {
       children: [
@@ -460,6 +464,29 @@ describe('tier 3, a panel giving its space back', () => {
     expect(arriving.duration).toBe(380);
     expect(frame(arriving.css!, 0)).toBe('opacity: 0');
     expect(frame(arriving.css!, 1)).toBe('opacity: 1');
+  });
+
+  /* Bug: Home's today tier wraps its one tile in its own
+     `{#if todayTiles.length > 0}` div, which shares this primitive - and,
+     briefly, shared the fold's swap window too, whenever the tier's only
+     tile left in the same tick as an unrelated fold promotion elsewhere in
+     the grid. `dissolveAt` pinned the wrapper `position: fixed`, so the
+     tier's row never gave its height back and the agenda under it snapped
+     up before the wrapper's own 380ms fade had even started - only the
+     tile floating on top of it, fading, said anything was happening.
+     `markSlotReplacement`'s one producer (+page.svelte) only ever measures
+     a `data-live-tile`-marked element leaving; a wrapper around one still
+     owes its own column a real collapse regardless of what the grid inside
+     it is doing. */
+  it('still collapses a non-tile wrapper even while a fold swap is active', () => {
+    stubDocument();
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
+    const wrapper = panel() as HTMLElement;
+    wrapper.hasAttribute = () => false;
+    const { css, duration } = collapse(wrapper, undefined, { direction: 'out' });
+    expect(duration).toBe(380);
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 0)).not.toContain('position: fixed');
   });
 
   /* And the panel taking the slot over travels out of whatever the screen
