@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* Home's flag sun (ticket 19, DIRECTION.md's tier 0): the active flag as
-     one concentric ring per stripe, centred on the screen's top right
+  /* The flag sun (ticket 19, DIRECTION.md's tier 0): the active flag as
+     one concentric ring per stripe, centred on its field's top right
      corner. Replaces PrideAurora, a blurred wash of the same stripes shown
      on ten screens, which is deleted rather than restyled (ADR-0035).
 
@@ -16,9 +16,10 @@
 
      The entrance is still a plain CSS animation on mount, which is what
      makes it play once per visit and never on a reactive update within one.
-     A palette change while Home is open redraws the rings in the new
-     flag's colours without replaying it - the rings are keyed by index, so
-     they keep their elements. */
+     A palette or theme change while mounted updates the rings without
+     replaying it - the rings are keyed by index, so they keep their
+     elements. Settings remounts the component when the resolved theme
+     changes to replay the entrance there. */
   import { sunRings } from '$lib/motion/flagSun';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
 

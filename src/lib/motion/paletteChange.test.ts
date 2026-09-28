@@ -1,20 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { changePalette, changeTheme, isAppearancePending, takePaletteSunFade } from './paletteChange';
+import { changePalette, changeTheme, isAppearancePending } from './paletteChange';
 
 describe('palette change', () => {
   it('saves immediately when view transitions are unavailable', () => {
     let palette = 'trans';
     changePalette(() => { palette = 'nonbinary'; }, { startViewTransition: undefined } as unknown as Document);
     expect(palette).toBe('nonbinary');
-    expect(takePaletteSunFade('/settings', '/')).toBe(true);
-    expect(takePaletteSunFade('/settings', '/')).toBe(false);
   });
 
   it('saves theme choices without view transitions', () => {
     let theme = 'system';
     changeTheme(() => { theme = 'dark'; }, { startViewTransition: undefined } as unknown as Document);
     expect(theme).toBe('dark');
-    expect(takePaletteSunFade('/settings', '/')).toBe(false);
   });
 
   it('clears an active reveal if view transitions become unavailable', () => {
@@ -68,7 +65,6 @@ describe('palette change', () => {
     expect(palette).toBe('trans');
     await update!();
     expect(palette).toBe('nonbinary');
-    expect(takePaletteSunFade('/settings', '/')).toBe(true);
     finish();
     await finished;
     await Promise.resolve();
@@ -152,9 +148,4 @@ describe('palette change', () => {
     expect(isAppearancePending('palette')).toBe(false);
   });
 
-  it('drops the sun fade when leaving Settings for another screen', () => {
-    changePalette(() => {}, { startViewTransition: undefined } as unknown as Document);
-    expect(takePaletteSunFade('/settings', '/calendar')).toBe(false);
-    expect(takePaletteSunFade('/calendar', '/')).toBe(false);
-  });
 });
