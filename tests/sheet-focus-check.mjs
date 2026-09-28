@@ -70,9 +70,15 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   await openSheet(page, '/health/appointments');
   let active = await activeState(page);
-  if (active.id === 'appointment-date' && active.visible && active.type !== 'hidden')
-    ok('appointment sheet announces itself and focuses its visible date control');
-  else fail('appointment sheet announces itself and focuses its visible date control', JSON.stringify(active));
+  /* Not the date field: it's a real, typeable `type="text"` input (flatpickr's
+     altInput, opened by a click/keydown handler rather than made readonly),
+     so focusing it the instant the sheet appears would raise the on-screen
+     keyboard before anyone asked to type anything. The sheet itself takes
+     focus instead (Sheet.svelte's `opensKeyboard` gate); Tab still reaches
+     the date field first, below. */
+  if (active.id === '' && active.inSheet && active.visible)
+    ok('appointment sheet announces itself without opening the keyboard on its date field');
+  else fail('appointment sheet announces itself without opening the keyboard on its date field', JSON.stringify(active));
 
   const dialogName = await page.locator('[data-sheet]').getAttribute('aria-label');
   if (dialogName?.trim()) ok('appointment sheet has a non-empty accessible dialog name');
@@ -91,8 +97,12 @@ await block('ticket 04 sheet focus', 13, async () => {
       .filter((node) => node.getClientRects().length > 0).length
   );
   let stayedInSheet = true;
-  const visited = new Set(['INPUT:appointment-date:appointment-date:']);
-  for (let i = 0; i < sheetTargets - 1; i++) {
+  /* Empty rather than pre-seeded with the date field: initial focus sits on
+     the sheet itself now (above), a position outside every descendant
+     target, so all `sheetTargets` of them are still unvisited and it takes
+     that many Tabs - not `sheetTargets - 1` - to reach them all once. */
+  const visited = new Set();
+  for (let i = 0; i < sheetTargets; i++) {
     await page.keyboard.press('Tab');
     const state = await activeState(page);
     stayedInSheet &&= state.inSheet && state.visible && state.type !== 'hidden';
