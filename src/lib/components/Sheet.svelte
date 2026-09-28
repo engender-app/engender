@@ -130,6 +130,27 @@
     }
   }
 
+  /* Never a text field: focusing one opens the on-screen keyboard the
+     instant a sheet appears, before anyone has asked to type anything -
+     the whole screen shoves up to make room for it. The sheet itself still
+     takes focus in that case, which keeps the rest of the contract below
+     (the label is read out, Tab walks in from the top) without summoning
+     a keyboard nobody asked for. Readonly is excluded because a readonly
+     field never raises one regardless of type, not because of anything
+     about DatePicker specifically: its flatpickr instance is lazy, built
+     only on the field's own first click or ArrowDown (DatePicker.svelte),
+     so at introend the appointment sheet's date field is still a plain,
+     uninitialised, non-readonly text input - correctly caught here and
+     sent to the sheet instead, same as any other text field would be. */
+  const NON_TEXT_INPUT_TYPES = ['checkbox', 'radio', 'range', 'color', 'file', 'button', 'submit', 'reset', 'image'];
+  function opensKeyboard(el: HTMLElement): boolean {
+    if (el instanceof HTMLInputElement) {
+      return !el.readOnly && !NON_TEXT_INPUT_TYPES.includes(el.type);
+    }
+    if (el instanceof HTMLTextAreaElement) return !el.readOnly;
+    return el.matches('[contenteditable="true"]');
+  }
+
   /* Focus the field a sheet exists to fill; otherwise the sheet itself,
      which is where a dialog's focus belongs anyway - the label is read out
      and Tab walks in from the top. Never the first button: on the sheets
@@ -149,7 +170,8 @@
       if (fallback) clearTimeout(fallback);
       if (!sheetEl || !sheetEl.isConnected) return;
       if (sheetEl.contains(document.activeElement)) return;
-      (firstFocusable(node) ?? node).focus({ preventScroll: true });
+      const target = firstFocusable(node);
+      (target && !opensKeyboard(target) ? target : node).focus({ preventScroll: true });
     };
 
     node.addEventListener('introend', applyFocus, { once: true });
