@@ -3708,8 +3708,22 @@ try {
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
 
+  /* Built-in groups render behind a closed <details> now (ticket 272), so
+     the hide button has no box until its group's own summary opens it -
+     same as a person would have to tap it first. Hiding used to close the
+     group right back up: the write reruns the query that supplies each
+     group's data, and `open` was reapplied from that data on every render
+     instead of tracking the person's own toggle. The check after the click
+     is that regression's own seam - it fails on the code before this
+     ticket's fix and passes after. */
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
+  const groupStillOpen = await page
+    .locator('[data-tag-hide="dt-existential"]')
+    .locator('xpath=ancestor::details[1]')
+    .evaluate((el) => el.open);
+  if (!groupStillOpen) throw new Error('hiding a tag closed its own still-open group');
 
   const tomorrow = await page.evaluate(() => {
     const d = new Date();
@@ -3723,6 +3737,7 @@ try {
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
