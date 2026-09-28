@@ -29,7 +29,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { changePalette } from '$lib/motion/paletteChange';
+  import { changePalette, changeTheme } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
@@ -205,7 +205,7 @@
           ]}
           value={prefs.theme}
           onChange={(v) => {
-            prefs.theme = v as typeof prefs.theme;
+            if (prefs.theme !== v) changeTheme(() => { prefs.theme = v as typeof prefs.theme; });
           }}
         />
       </span>

@@ -1529,23 +1529,22 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   border-radius: var(--r-block);
 }
 .icon-btn.is-outlined:hover { outline-color: var(--outline); }
-/* A Settings palette pick changes every token at once. Reveal the new
-   document from left to right, while the selected swatch's outline moves. */
+/* A Settings appearance pick changes every token at once. Reveal the new
+   document on a diagonal, while a palette pick moves its swatch outline. */
 html[data-palette-transition] .palette-selection-ring {
   view-transition-name: palette-ring;
 }
 
-html[data-palette-transition]::view-transition-old(root),
-html[data-palette-transition]::view-transition-old(screen),
-html[data-palette-transition]::view-transition-old(nav) { animation: none; }
-html[data-palette-transition]::view-transition-new(root),
-html[data-palette-transition]::view-transition-new(screen),
-html[data-palette-transition]::view-transition-new(nav) {
-  animation: palette-swipe var(--dur-slow) var(--ease-in-out) both;
+/* One root snapshot keeps the edge continuous across the screen and nav. */
+html[data-appearance-transition] .app-column,
+html[data-appearance-transition] .app-nav { view-transition-name: none; }
+html[data-appearance-transition]::view-transition-old(root) { animation: none; }
+html[data-appearance-transition]::view-transition-new(root) {
+  animation: appearance-swipe var(--dur-slow) var(--ease-in-out) both;
 }
-@keyframes palette-swipe {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0); }
+@keyframes appearance-swipe {
+  from { clip-path: polygon(0 0, -100vh 0, 0 100%, 0 100%); }
+  to { clip-path: polygon(0 0, 100vw 0, calc(100vw + 100vh) 100%, 0 100%); }
 }
 html[data-palette-transition]::view-transition-group(palette-ring) {
   animation-duration: var(--dur-slow);
@@ -1554,32 +1553,20 @@ html[data-palette-transition]::view-transition-group(palette-ring) {
 }
 @keyframes palette-fade { from { opacity: 0; } to { opacity: 1; } }
 
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(root),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(nav),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-new(root),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-new(screen),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-new(nav) {
+html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-old(root),
+html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-new(root) {
   animation: palette-fade var(--dur-crossfade) linear both;
 }
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(root),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-palette-transition][data-a11y-motion='reduce']::view-transition-old(nav) {
+html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-old(root) {
   animation-direction: reverse;
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-palette-transition]::view-transition-old(root),
-  html[data-palette-transition]::view-transition-old(screen),
-  html[data-palette-transition]::view-transition-old(nav),
-  html[data-palette-transition]::view-transition-new(root),
-  html[data-palette-transition]::view-transition-new(screen),
-  html[data-palette-transition]::view-transition-new(nav) {
+  html[data-appearance-transition]::view-transition-old(root),
+  html[data-appearance-transition]::view-transition-new(root) {
     animation: palette-fade var(--dur-crossfade) linear both;
     animation-duration: var(--dur-crossfade) !important;
   }
-  html[data-palette-transition]::view-transition-old(root),
-  html[data-palette-transition]::view-transition-old(screen),
-  html[data-palette-transition]::view-transition-old(nav) {
+  html[data-appearance-transition]::view-transition-old(root) {
     animation-direction: reverse;
   }
 }
