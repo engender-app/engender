@@ -34,6 +34,15 @@
   let customGroups = $derived(vocabulary.tagGroups.filter((g) => !g.builtIn));
   let builtInGroups = $derived(vocabulary.tagGroups.filter((g) => g.builtIn));
 
+  /* A group's `open` used to read straight off `!g.builtIn`. That looks
+     like a one-time default but is not: `g` is a fresh object every time
+     the tag list re-queries (any hide/show write does this), so the
+     expression re-runs and writes the DOM property again, closing a
+     built-in group right back up the moment its own hide button is used
+     inside it (ticket 272). Tracked here instead, seeded from the same
+     default and updated only by the element's own toggle. */
+  let openGroups = $state<Record<string, boolean>>({});
+
   let addTarget = $state<string | null>(null);
   let newLabel = $state('');
   let groupSheet = $state(false);
@@ -53,7 +62,11 @@
   <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
   {#snippet groupSection(g: TagGroup)}
-    <details class="managed-group" open={!g.builtIn}>
+    <details
+      class="managed-group"
+      open={openGroups[g.key] ?? !g.builtIn}
+      ontoggle={(e) => (openGroups[g.key] = e.currentTarget.open)}
+    >
       <summary>{g.name}{#if !g.builtIn} · {m.custom_suffix()}{/if}</summary>
       <div class="tag-group-action">
         <button class="btn btn-soft" aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>

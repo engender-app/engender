@@ -3708,7 +3708,11 @@ try {
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
 
+  /* Built-in groups render behind a closed <details> now (ticket 272), so
+     the hide button has no box until its group's own summary opens it -
+     same as a person would have to tap it first. */
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
 
   const tomorrow = await page.evaluate(() => {
@@ -3723,6 +3727,7 @@ try {
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
