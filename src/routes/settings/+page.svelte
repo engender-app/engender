@@ -247,7 +247,6 @@
              identical to the href rows around it. -->
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <ListRow key="dimension" icon="stats" title={m.custom_dimension()} href="/settings/dimension" />
       <ListRow
         key="metric"
         icon="palette"
