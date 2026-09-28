@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* One body region's dysphoria and euphoria over time (phase 5 UX ticket
      23's rebuild) and multi-track somatic breakdown inspector (deepening
      ticket 08).
@@ -28,6 +27,7 @@
      just dragged. A direct visit with no query still gets a window - the
      door's own default of the last thirty days - rather than an empty
      screen. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';

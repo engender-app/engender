@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* One voice screen, three tabs (phase 8 features ticket 09).
 
      Recording a benchmark and reading benchmarks back were two routes and
@@ -37,6 +36,7 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';

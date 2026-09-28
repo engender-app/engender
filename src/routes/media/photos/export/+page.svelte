@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* The progress-photo journey export, on the surface kit (phase 5 UX
      ticket 25).
 
@@ -10,6 +9,7 @@
      screen worth looking at, was boxed at the same weight as the two
      controls above it. It sits on the page now at the width of the screen,
      which is also the width the collage was made at. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
