@@ -1,4 +1,4 @@
-/** One outline follows the selected Settings swatch across both grid axes. */
+/** One frame follows the selected Settings flag across both grid axes, sized to the flag's block. */
 export function paletteRing(grid: HTMLElement) {
   const ring = grid.querySelector<HTMLElement>('.palette-selection-ring');
   if (!ring) return;
@@ -15,7 +15,9 @@ export function paletteRing(grid: HTMLElement) {
       return;
     }
     ring.style.transition = visible ? '' : 'none';
-    ring.style.transform = `translate(${box.left - gridBox.left - 4}px, ${box.top - gridBox.top - 4}px)`;
+    ring.style.width = `${box.width}px`;
+    ring.style.height = `${box.height}px`;
+    ring.style.transform = `translate(${box.left - gridBox.left}px, ${box.top - gridBox.top}px)`;
     ring.classList.add('is-placed');
     visible = true;
   }

@@ -1102,3 +1102,13 @@
     </div>
   </Sheet>
 </div>
+
+<style>
+  /* From components.css once Settings stopped drawing one (ticket 277):
+     this screen is the only reader left. */
+  .hr {
+    border: none;
+    border-top: 1px solid var(--hairline);
+    margin: var(--space-4) 0;
+  }
+</style>

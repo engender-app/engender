@@ -2763,7 +2763,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
    poorly placed, centered"). The pair only ever means a row. */
 .field.spread { flex-direction: row; }
 .stack-3 > * + * { margin-top: var(--space-3); }
-.hr { border: none; border-top: 1px solid var(--hairline); margin: var(--space-4) 0; }
 
 /* ---------- desktop adaptation (container query on .app-viewport) ---------- */
 @container app (min-width: 1024px) {

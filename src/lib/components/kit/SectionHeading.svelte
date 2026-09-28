@@ -7,13 +7,11 @@
      screen tickets pass a message key's value and the kit ships no wording
      of its own. */
   import type { Snippet } from 'svelte';
-  import Icon from '$lib/components/Icon.svelte';
 
   let {
     text,
     id,
     focusable = false,
-    collapsible = false,
     action
   }: {
     text: string;
@@ -24,8 +22,6 @@
     id?: string;
     /** Lets a same-page link move keyboard focus onto the named area. */
     focusable?: boolean;
-    /** Render as the summary for a containing details element. */
-    collapsible?: boolean;
     /** A control for the area as a whole, right-aligned on the heading's own
         line: a link out of it, an add button, or a state the whole area
         carries (the roadmap's "not my path" per track). Not a row's control
@@ -37,18 +33,11 @@
   } = $props();
 </script>
 
-{#if collapsible}
-  <summary class="kit-heading" data-section-heading>
-    <span role="heading" aria-level="2">{text}</span>
-    <Icon name="chevronDown" size={20} />
-  </summary>
-{:else}
-  <div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
-    {#if focusable}
-      <h2 {id} tabindex="-1">{text}</h2>
-    {:else}
-      <h2>{text}</h2>
-    {/if}
-    {#if action}{@render action()}{/if}
-  </div>
-{/if}
+<div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
+  {#if focusable}
+    <h2 {id} tabindex="-1">{text}</h2>
+  {:else}
+    <h2>{text}</h2>
+  {/if}
+  {#if action}{@render action()}{/if}
+</div>
