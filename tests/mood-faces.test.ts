@@ -195,17 +195,61 @@ describe('the five mood faces', () => {
   });
 });
 
+/* Ticket 279 (ADR-0091): a face is drawn in its own step's ink, not in the
+   palette's --text, because the deep end of a ramp is too dark for a dark
+   ink. The component hands the step's ink over as --face-ink the same way it
+   hands the fill over as --face-mood, and every rule that paints the eyes or
+   the mouth reads that. A rule reaching for --text again would put a dark
+   face back on a deep fill, and nothing else would notice. */
+describe('the face draws in its own step\'s ink', () => {
+  const rulesFor = (selector: RegExp) =>
+    [...componentsCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, sel]) => selector.test(sel))
+      .map(([, sel, body]) => ({ sel: sel.trim(), body }));
+
+  it('hands each face its step\'s ink', () => {
+    const component = readFileSync(join(process.cwd(), 'src/lib/components/MoodFace.svelte'), 'utf8');
+    expect(component).toContain('`--face-ink: var(--mood-${step}-ink)`');
+  });
+
+  it('paints the eyes and the mouth in --face-ink and never in --text', () => {
+    const rules = rulesFor(/\.mood-face-(eye|mouth)\b/);
+    const painted = rules.filter(({ body }) => /(^|[;\s])(fill|stroke)\s*:(?!\s*none)/.test(body));
+    expect(painted.length).toBeGreaterThan(0);
+    for (const { sel, body } of painted) {
+      expect(body, `${sel} paints the face in something other than --face-ink`).not.toMatch(/var\(--text\)/);
+      expect(body, `${sel} paints the face without --face-ink`).toMatch(/var\(--face-ink\)/);
+    }
+  });
+
+  /* A step's ink changes with the theme and the preset, and on a Journal
+     cell whose day gains an entry. A face that swapped its colour in one
+     frame would be a yank, so the ink crossfades on the same curve the
+     block's fill already takes. */
+  it('crossfades the ink rather than swapping it', () => {
+    for (const { sel, body } of rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/)) {
+      expect(body, `${sel} has no transition on the ink`).toMatch(
+        /transition:[^;]*\bfill var\(--dur-med\) var\(--ease-out\)[^;]*\bstroke var\(--dur-med\) var\(--ease-out\)/
+      );
+    }
+  });
+});
+
 /* Redesign ticket 19's invariant: the mood icons are byte-identical to
    ticket 27's drawing (ADR-0077), measured against that drawing rather than
    against whatever shipped before it. The ticket builds motion around the
    faces and touches neither file; a hash is the only assertion that can
    tell "unchanged" from "changed in a way every other test still passes".
    A ticket that redraws the face on purpose updates the two hashes here in
-   the same commit and says so. */
+   the same commit and says so.
+
+   Ticket 279 moved MoodFace.svelte's hash and not the drawing: one line hands
+   the face its step's ink as --face-ink (ADR-0091). moodFace.ts, which is
+   the drawing, is still ticket 27's byte for byte. */
 describe("the drawing is ticket 27's, byte for byte", () => {
   const PINNED: Record<string, string> = {
     'src/lib/components/moodFace.ts': '017aee0fa552cac1d3bcf09a146fbe8c85410e9d2b2019586a6a78a8de8885b2',
-    'src/lib/components/MoodFace.svelte': 'c48eab556a82ce8de021e4972c84c5812074379ce4157a1fe512c1c5c702a32a'
+    'src/lib/components/MoodFace.svelte': 'be3a3e8197fd78aa454019a2524b16bb0373c775acdb5bac8ddc51d5b3e17b73'
   };
   for (const [file, sha256] of Object.entries(PINNED)) {
     it(`${file} is unchanged since redesign ticket 27 (6b78081a)`, () => {
