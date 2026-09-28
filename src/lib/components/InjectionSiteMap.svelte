@@ -188,11 +188,16 @@
   /* The box, the frame and the dot are all injectionSiteMap.ts's numbers,
      set on the element rather than written here: its test spaces the dots
      against the size the map renders at, and a second copy of that size in
-     a <style> block is a copy that can disagree with it. */
+     a <style> block is a copy that can disagree with it. The sheet's side
+     padding would shrink the map to 280px on a 320px phone, leaving its
+     fixed-size touch targets overlapping. Use that padding to hold the
+     map's 320px width. The inline max-width caps it on larger screens. */
   .site-map {
     position: relative;
-    width: 100%;
-    margin: 0 auto var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% + var(--space-5) + var(--space-5));
+    margin: 0 0 var(--space-2);
   }
   .site-map-body {
     width: 100%;
