@@ -121,6 +121,7 @@
   import type { Era, Milestone } from '$lib/data/types';
   import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
+  import { distinctHandlePositions, visibleSegment } from './spanTimelineGeometry';
 
   let {
     railStart,
@@ -363,6 +364,14 @@
 
   let startX = $derived(x(live.start));
   let endX = $derived(x(live.end));
+  /* Two dates can share one pixel on a one-day rail. Keep slider grips and
+     their opposing hit areas apart, while their values stay on the real
+     dates. */
+  let handleXs = $derived(distinctHandlePositions(startX, endX, railWidth));
+  /* Equal-day events still need a visible mark on the scale. Grow only the
+     drawing; date values and selection ranges remain exact. */
+  const segment = (from: number, to: number) =>
+    visibleSegment(x(from), x(to), railWidth);
   /* Between the two handles, and held inside the rail by its own half-width
      so a span sitting at either end does not push the line off the screen -
      which is what the default span, the last thirty days against today's
@@ -521,8 +530,9 @@
   data-rail-start={railStart}
   data-span-start={live.start}
   data-span-end={live.end}
-  style:--tl-start="{startX}px"
-  style:--tl-end="{endX}px"
+  style:--tl-start="{handleXs.start}px"
+  style:--tl-end="{handleXs.end}px"
+  style:--tl-span-start="{startX}px"
   style:--tl-hint-x="{hintXAtDismiss}px"
   style:--tl-clip-right="{clipRight}px"
   style:--tl-has-regimen={hasRow('regimen')}
@@ -558,13 +568,15 @@
          no eras still has a body, and the eras lie over it. -->
     <div class="span-tl-low" aria-hidden="true">
       {#if firstEntryDay !== null}
-        <span class="span-tl-band span-tl-journal" style:left="{railPosition(firstEntryDay, railStart, today) * 100}%" style:width="{(1 - railPosition(firstEntryDay, railStart, today)) * 100}%"></span>
+        {@const journal = segment(firstEntryDay, today)}
+        <span class="span-tl-band span-tl-journal" style:left="{journal.left}%" style:width="{journal.width}%"></span>
       {/if}
       {#each bands as band, i (band.id)}
+        {@const shape = segment(band.start, band.end)}
         <span
           class="span-tl-band"
-          style:left="{railPosition(band.start, railStart, today) * 100}%"
-          style:width="{(railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)) * 100}%"
+          style:left="{shape.left}%"
+          style:width="{shape.width}%"
           {...roleAttrs(bandRole(i))}
         ></span>
       {/each}
@@ -576,11 +588,13 @@
          the layer under this one. -->
     <div class="span-tl-full" aria-hidden="true">
       {#if firstEntryDay !== null}
-        <span class="span-tl-band span-tl-journal" style:left="{railPosition(firstEntryDay, railStart, today) * 100}%" style:width="{(1 - railPosition(firstEntryDay, railStart, today)) * 100}%"></span>
+        {@const journal = segment(firstEntryDay, today)}
+        <span class="span-tl-band span-tl-journal" style:left="{journal.left}%" style:width="{journal.width}%"></span>
       {/if}
       {#each bands as band, i (band.id)}
-        {@const left = railPosition(band.start, railStart, today) * railWidth}
-        {@const right = railPosition(band.end, railStart, today) * railWidth}
+        {@const shape = segment(band.start, band.end)}
+        {@const left = shape.leftPx}
+        {@const right = left + shape.widthPx}
         {@const shownFrom = Math.max(left, startX)}
         {@const shownTo = Math.min(right, railWidth - clipRight)}
         <!-- The name sits at the left edge of the part of the band the clip
@@ -607,11 +621,12 @@
          Pointing anywhere in an era's column selects the era whole. -->
     <div class="span-tl-targets">
       {#each bands as band (band.id)}
+        {@const shape = segment(band.start, band.end)}
         <button
           type="button"
           class="span-tl-era-target"
-          style:left="{railPosition(band.start, railStart, today) * 100}%"
-          style:width="{(railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)) * 100}%"
+          style:left="{shape.left}%"
+          style:width="{shape.width}%"
           data-span-era={band.id}
           data-no-press
           aria-label={m.lookback_era_aria({ name: band.name })}
@@ -624,13 +639,14 @@
          control. Drawn and tapped by the same element, unlike the eras -
          nothing clips these, so the drawing can carry the target. -->
     {#each history as band (band.id)}
+      {@const shape = segment(band.start, band.end)}
       <button
         type="button"
         class="span-tl-hband"
         class:is-open-start={band.openStart}
         class:is-open-end={band.openEnd}
-        style:left="{railPosition(band.start, railStart, today) * 100}%"
-        style:width="{(railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)) * 100}%"
+        style:left="{shape.left}%"
+        style:width="{shape.width}%"
         data-span-band={band.kind}
         data-no-press
         aria-label={m.lookback_band_aria({
@@ -854,11 +870,11 @@
   .span-tl-full {
     border-top: 3px solid var(--text);
     border-bottom: 3px solid var(--text);
-    clip-path: inset(calc(100% - var(--rest-h)) var(--tl-clip-right) 0 var(--tl-start));
+    clip-path: inset(calc(100% - var(--rest-h)) var(--tl-clip-right) 0 var(--tl-span-start));
     transition: clip-path var(--dur-med) var(--ease-out);
   }
   .is-active .span-tl-full {
-    clip-path: inset(0 var(--tl-clip-right) 0 var(--tl-start));
+    clip-path: inset(0 var(--tl-clip-right) 0 var(--tl-span-start));
   }
 
   .span-tl-full .span-tl-band {
