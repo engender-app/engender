@@ -4,6 +4,14 @@ Research checked 2026-09-28. This is a source review, not a successful device
 test. The failed [probe](README.md) does not establish that a separate install
 is necessary.
 
+The later native app test settled the no-`INTERNET` permission constraint:
+TCP and UDP socket creation both failed with `EPERM` on the target phone.
+The HTTP and native WebRTC paths below require those sockets. A temporary
+debug build with `INTERNET` granted opened both socket types, and its WebView
+exchanged encrypted test strings with the deployed PC browser over a private
+IPv4 WebRTC route. See the README for the remaining pairing and offline
+gaps. Neither path is approved for production under the current spec.
+
 ## First approach to prove
 
 The existing Android app can contain a small HTTP server. The PC keeps using
