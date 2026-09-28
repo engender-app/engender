@@ -6,7 +6,7 @@
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { isReducedMotion } from '$lib/motion/tokens';
+  import { scrollBehavior } from '$lib/motion/tokens';
   /* Staging against a published scale, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
 
@@ -222,7 +222,7 @@
       const el = document.getElementById('hair-photos');
       if (!el) return;
       el.scrollIntoView({
-        behavior: isReducedMotion() ? 'auto' : 'smooth',
+        behavior: scrollBehavior(),
         block: 'start'
       });
       const focusTarget = el.querySelector<HTMLElement>('h2') ?? el;
@@ -232,13 +232,13 @@
       if (savedStagingScrollY !== null) {
         window.scrollTo({
           top: savedStagingScrollY,
-          behavior: isReducedMotion() ? 'auto' : 'smooth'
+          behavior: scrollBehavior()
         });
       } else {
         const el = document.getElementById('hair-staging');
         if (el) {
           el.scrollIntoView({
-            behavior: isReducedMotion() ? 'auto' : 'smooth',
+            behavior: scrollBehavior(),
             block: 'start'
           });
         }

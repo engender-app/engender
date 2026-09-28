@@ -36,6 +36,7 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
@@ -151,7 +152,7 @@
     const key = metricSheetKey;
     if (!key) return;
     const sheetEl = document.querySelector('[data-sheet]');
-    const scrollToSection = () => document.getElementById(key)?.scrollIntoView({ block: 'start' });
+    const scrollToSection = () => document.getElementById(key)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     if (!sheetEl) {
       requestAnimationFrame(scrollToSection);
       return;

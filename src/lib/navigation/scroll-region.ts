@@ -20,6 +20,10 @@
    no notion of direction at all.
 */
 
+/* Relative, not `$lib`: the node-tier vitest loads this module and does not
+   resolve the alias. */
+import { scrollBehavior } from '../motion/tokens';
+
 const positions = new Map<string, number>();
 
 /* How far a screen's batched lists had been grown when it was left (phase 8
@@ -71,10 +75,28 @@ export function restoreScroll(path: string): void {
   if (!el) return;
 
   const wanted = positions.get(path) ?? 0;
-  el.scrollTop = wanted;
-  /* The top is always reachable, so a screen being sent there is done. */
-  if (wanted === 0 || el.scrollTop === wanted) return;
+  const reachable = () => el.scrollHeight - el.clientHeight >= wanted;
+  const travel = () => el.scrollTo({ top: wanted, behavior: scrollBehavior() });
+  /* Once the position can be reached it is travelled to, eased, exactly once.
+     The loop below must not be the thing that animates: a smooth scroll in
+     flight moves `scrollTop` every frame, which the loop would read as a
+     finger and abandon, or fight by re-issuing the jump (ticket 278). */
+  /* A screen opening at the top is a reset, not a jump: the region still
+     holds the last screen's offset, and easing from it would slide every
+     fresh screen up on arrival. So the top is instant. */
+  if (wanted === 0) {
+    el.scrollTop = 0;
+    return;
+  }
+  if (reachable()) {
+    travel();
+    return;
+  }
 
+  /* Not reachable yet: the rows are still arriving. Hold the region at the
+     end of what exists, instantly and without a visible move, and ease the
+     rest once the layout has grown to it. */
+  el.scrollTop = wanted;
   let applied = el.scrollTop;
   let frames = 0;
   const settle = () => {
@@ -82,9 +104,12 @@ export function restoreScroll(path: string): void {
     /* Moved by something that is not this - a finger, a wheel, a key. The
        person is reading; the number is theirs now. */
     if (el.scrollTop !== applied) return;
+    if (reachable()) {
+      travel();
+      return;
+    }
     el.scrollTop = wanted;
     applied = el.scrollTop;
-    if (applied === wanted) return;
     requestAnimationFrame(settle);
   };
   requestAnimationFrame(settle);
@@ -150,13 +175,17 @@ export function scrollToHash(hash: string = location.hash): void {
   const region = el.closest<HTMLElement>('[data-app-scroll-region]');
   let last: number | null = null;
   let frames = 0;
+  const startedAt = region?.scrollTop ?? 0;
   const settle = () => {
     /* Gone between the frames - a range edit, a superseded query - and
        nothing to honour. The hash stays for the next run to try. */
     if (!el.isConnected) return;
+    /* Somebody scrolled while the list was still shaping itself: that
+       number is theirs now, and an eased jump would fight their finger. */
+    if (region && region.scrollTop !== startedAt) return;
     const height = region?.scrollHeight ?? document.documentElement.scrollHeight;
     if (height === last || frames++ > 30) {
-      el.scrollIntoView({ block: 'center' });
+      el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
       history.replaceState(history.state, '', location.pathname + location.search);
       return;
     }

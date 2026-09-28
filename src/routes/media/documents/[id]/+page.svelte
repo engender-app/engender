@@ -64,7 +64,7 @@
   import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { tick } from 'svelte';
-  import { EASE_OUT_CSS, motionDistance, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, motionDistance, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -109,7 +109,7 @@
     const url = new URL(page.url);
     if (enlarged) url.searchParams.delete('zoom');
     else url.searchParams.set('zoom', '2');
-    reader?.scrollTo(0, 0);
+    reader?.scrollTo({ top: 0, left: 0, behavior: scrollBehavior() });
     void replaceRoute(url, { noScroll: true, keepFocus: true });
   }
 
@@ -375,7 +375,7 @@
     const next = pageNumber + by;
     if (next < 1 || next > pages.pageCount) return;
     turnedBy = by;
-    reader?.scrollTo(0, 0);
+    reader?.scrollTo({ top: 0, left: 0, behavior: scrollBehavior() });
     const url = new URL(page.url);
     url.searchParams.set('page', String(next));
     void replaceRoute(url, { noScroll: true, keepFocus: true });

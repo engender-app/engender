@@ -18,7 +18,7 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
-  import { isReducedMotion } from '$lib/motion/tokens';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
@@ -438,7 +438,7 @@
     const rowRoom = chipRowEl.getBoundingClientRect().top - regionBox.top - 8;
     const travel = Math.min(overflow, rowRoom);
     if (travel <= 0) return;
-    region.scrollBy({ top: travel, behavior: isReducedMotion() ? 'auto' : 'smooth' });
+    region.scrollBy({ top: travel, behavior: scrollBehavior() });
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */

@@ -31,6 +31,7 @@
      space still has its way down: the row points at `#opened`, so a person
      arriving from their worst day lands on what is open rather than on
      what is still sealed. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
@@ -186,7 +187,7 @@
       if (!location.hash && waitingScroll !== null) {
         const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
         if (region) {
-          region.scrollTop = waitingScroll;
+          region.scrollTo({ top: waitingScroll, behavior: scrollBehavior() });
         }
         waitingScroll = null;
       }

@@ -88,7 +88,7 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { disclose } from '$lib/motion/reveal';
-  import { isReducedMotion } from '$lib/motion/tokens';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -369,7 +369,7 @@
   function jumpToSection(section: string) {
     activeSection = section === 'sizes' ? 'sizes' : 'measurements';
     const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
-    const motion = isReducedMotion() ? 'auto' : 'smooth';
+    const motion = scrollBehavior();
     if (activeSection === 'sizes') {
       savedReadingScroll = region?.scrollTop ?? null;
       const el = document.getElementById('sizes-log');
