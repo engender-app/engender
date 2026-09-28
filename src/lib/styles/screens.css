@@ -546,6 +546,12 @@
 .settings-unit-row { flex-wrap: wrap; row-gap: var(--space-2); }
 .settings-unit-row .kit-row-text { min-width: max-content; }
 .settings-unit-row .kit-row-trail { margin-left: auto; }
+@container app (max-width: 359px) {
+  .settings-sun-header { --sun-scale: 0.82; }
+}
+@container app (max-width: 239px) {
+  .settings-sun-header { --sun-scale: 0.45; }
+}
 .palette-swatch {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
