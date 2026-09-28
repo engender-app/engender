@@ -231,30 +231,65 @@
        at all. */
     if (track) track.scrollLeft = nearestScrollLeft(track, target);
     if (!track) return;
-    const box = {
-      x: target.offsetLeft,
-      y: target.offsetTop,
-      w: target.offsetWidth,
-      h: target.offsetHeight
+    /* Named rather than inlined twice: the first-placement branch below
+       measures again, a frame later, against whichever of `target`/`track`
+       is current then - which is the same shape, at a different time, not a
+       second thing to keep in sync with this one. */
+    const measure = (segment: HTMLElement, host: HTMLElement) => {
+      const box = {
+        x: segment.offsetLeft,
+        y: segment.offsetTop,
+        w: segment.offsetWidth,
+        h: segment.offsetHeight
+      };
+      /* The insets are measured against the track's padding box, which is
+         what both `offsetLeft` and `left`/`right` resolve against - so a
+         scrolled track needs no correction, and a segment past its fold
+         gives a negative `right`, correctly. */
+      return { box, at: insets(box, { w: host.clientWidth, h: host.clientHeight }) };
     };
+    const { box, at } = measure(target, track);
     /* boxesMatch rather than exact equality, which is what this measurement
        used to use: a track that reflows by a third of a pixel is the same
        place, and replaying the travel on every resize tick would turn a
        moment into a loop. indicator.ts's own note on that floor. */
     if (pill.shown && boxesMatch(pill.box, box)) return;
-    /* The insets are measured against the track's padding box, which is what
-       both `offsetLeft` and `left`/`right` resolve against - so a scrolled
-       track needs no correction, and a segment past its fold gives a
-       negative `right`, correctly. */
-    const at = insets(box, { w: track.clientWidth, h: track.clientHeight });
     /* The control does not slide into its own initial state, it starts
        there: the first placement moves neither edge (PLACE), so what shows
        is the pill fading in on its segment rather than across the whole
        track. A later re-measure that is not a slide keeps both edges on the
-       leading clock, so the shape moves as one piece. */
+       leading clock, so the shape moves as one piece.
+
+       Held for a real painted frame rather than written here: a control
+       mounted from a `{#if loading}Skeleton{:else}...{/if}` swap (the
+       tryout edit screen's kind picker, ticket 274) runs this effect in the
+       same tick the control itself is created, before the browser has ever
+       painted `.segment-pill`'s resting `opacity: 0`. A transition needs an
+       earlier painted frame to fade from; with none, the browser skips
+       straight to `is-shown`'s opacity and the pill arrives fully lit
+       instead of fading in. A bare `requestAnimationFrame` only guarantees
+       running *before* the next paint, not after one - `reveal.ts`'s
+       `resize` action already fought this exact race (`let painted = ...;
+       requestAnimationFrame(() => setTimeout(() => (painted = true)))`),
+       so this holds the same shape rather than the weaker single rAF
+       `overlayLock.ts` gets away with for a class that is already present.
+       The box is re-measured then too, against whichever `target`/`track`
+       are current by that point, rather than reused from this tick: a
+       control created the same tick as its neighbour's swap is also the
+       one whose own layout is least likely to have settled yet. */
     if (!pill.shown) {
-      pill = { box, at, shown: true, near: PLACE, far: PLACE };
-      return;
+      const settledTarget = target;
+      const settledTrack = track;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const frame = requestAnimationFrame(() => {
+        timer = setTimeout(() => {
+          pill = { ...measure(settledTarget, settledTrack), shown: true, near: PLACE, far: PLACE };
+        });
+      });
+      return () => {
+        cancelAnimationFrame(frame);
+        clearTimeout(timer);
+      };
     }
     pill = { box, at, shown: true, ...schedules(travel(pill.box, box, 'x')) };
   });
