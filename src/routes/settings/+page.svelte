@@ -280,6 +280,10 @@
         <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
         <span class="kit-row-text">
           <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+          <!-- The one explanatory line the hub keeps: without it an off
+               switch next to a cycle area that still shows reads as broken
+               (ADR-0043's automatic half). -->
+          <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
         </span>
         <span class="kit-row-trail">
           <Switch
