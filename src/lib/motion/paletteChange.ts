@@ -1,8 +1,13 @@
 import { tick } from 'svelte';
 
 let latestChange = 0;
-const latestKindChange = { palette: 0, theme: 0 };
+type Appearance = 'palette' | 'theme';
+const pending: Partial<Record<Appearance, () => void>> = {};
 let sunFadePending = false;
+
+export function isAppearancePending(kind: Appearance): boolean {
+  return pending[kind] !== undefined;
+}
 
 /** A return from Settings to Today answers a palette pick with a fading sun. */
 export function takePaletteSunFade(from: string | null, to: string): boolean {
@@ -12,29 +17,37 @@ export function takePaletteSunFade(from: string | null, to: string): boolean {
 }
 
 /** Capture both appearances so the new colours can sweep over the old. */
-function changeAppearance(commit: () => void, kind: 'palette' | 'theme', doc: Document): void {
+function changeAppearance(commit: () => void, kind: Appearance, doc: Document): void {
+  pending[kind] = commit;
   const change = ++latestChange;
-  latestKindChange[kind] = change;
+  function applyPending() {
+    for (const choice of ['palette', 'theme'] as const) {
+      const apply = pending[choice];
+      delete pending[choice];
+      apply?.();
+    }
+  }
   if (!doc.startViewTransition) {
     if (doc.documentElement) {
       delete doc.documentElement.dataset.appearanceTransition;
       delete doc.documentElement.dataset.paletteTransition;
     }
-    commit();
+    applyPending();
     return;
   }
 
   const root = doc.documentElement;
   root.dataset.appearanceTransition = '';
-  if (kind === 'palette') root.dataset.paletteTransition = '';
+  if (pending.palette) root.dataset.paletteTransition = '';
   else delete root.dataset.paletteTransition;
   const transition = doc.startViewTransition(async () => {
-    if (change !== latestKindChange[kind]) return;
-    commit();
+    if (change !== latestChange) return;
+    applyPending();
     await tick();
   });
   void transition.finished.catch(() => {}).finally(() => {
     if (change === latestChange) {
+      applyPending();
       delete root.dataset.appearanceTransition;
       delete root.dataset.paletteTransition;
     }
