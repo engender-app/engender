@@ -478,6 +478,59 @@ try {
       throw new Error(`dragging the second slider moved the first: ${afterFirst[0]} became ${both[0]}`);
     }
     if (both[0] === both[1]) throw new Error(`both sliders read ${both[0]}, so they are locked together`);
+
+    /* Stay on the same fresh editor. No wait between release and the next
+       scale, unlike the slower drag above. Each release must hold through
+       later pointer movement with no button down. */
+    for (let i = 0; i < 20; i++) {
+      const active = i % 2;
+      const target = (Math.floor(i / 2) + active + 1) % 2 ? 0.8 : 0.2;
+      const slider = page.locator('[data-slider]').nth(active);
+      await slider.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+      const box = await slider.boundingBox();
+      const y = box.y + box.height / 2;
+      const before = await values();
+      await page.mouse.move(box.x + box.width * (1 - target), y);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * target, y);
+      await page.mouse.up();
+      const after = await values();
+      if (after[active] === before[active] || after[1 - active] !== before[1 - active]) {
+        throw new Error(`rapid drag ${i} changed wrong scales: ${before} became ${after}`);
+      }
+      await page.mouse.move(box.x + 10, box.y - 30);
+      await page.mouse.move(box.x + box.width - 10, box.y - 30);
+      const released = await values();
+      if (JSON.stringify(released) !== JSON.stringify(after)) {
+        throw new Error(`rapid drag ${i} followed released pointer: ${after} became ${released}`);
+      }
+    }
+  }
+  /* Android can cancel a touch before pointerup. A cancelled Melt drag used
+     to keep its window pointermove listener armed, so later movement on
+     another scale changed this released one too. */
+  const firstSlider = page.locator('[data-slider]').first();
+  await firstSlider.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    node.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 269, pointerType: 'touch',
+      clientX: box.x + box.width * 0.2, clientY: box.y + box.height / 2
+    }));
+  });
+  const beforeCancel = await values();
+  await firstSlider.evaluate((node) => node.dispatchEvent(new PointerEvent('pointercancel', {
+    bubbles: true, pointerId: 269, pointerType: 'touch'
+  })));
+  await firstSlider.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 270, pointerType: 'touch',
+      clientX: box.x + box.width * 0.8, clientY: box.y + box.height / 2
+    }));
+  });
+  const afterCancel = await values();
+  if (afterCancel[0] !== beforeCancel[0]) {
+    throw new Error(`a cancelled slider followed another touch: ${beforeCancel} became ${afterCancel}`);
   }
   ok('a released slider stays put, and two sliders keep their own values');
 } catch (e) { fail('sliders do not lock together', e); }
