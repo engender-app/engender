@@ -23,8 +23,18 @@ describe('Sheet initial focus contract', () => {
   });
 
   it('passes preventScroll: true on initial focus and tab trap invocations', () => {
-    expect(sheetFile).toContain('(firstFocusable(node) ?? node).focus({ preventScroll: true })');
+    expect(sheetFile).toContain('(target && !opensKeyboard(target) ? target : node).focus({ preventScroll: true })');
     expect(overlayLockFile).toContain('target.focus({ preventScroll: true })');
+  });
+
+  it('never sends initial focus to a field that would open the keyboard', () => {
+    // Focusing a text field the instant a sheet appears pops the on-screen
+    // keyboard before anyone has asked to type anything - the sheet itself
+    // takes focus instead in that case. Readonly is excluded: a DatePicker's
+    // altInput is a readonly text input and never raises the keyboard, so
+    // the appointment sheet's date field must still be eligible.
+    expect(sheetFile).toContain('function opensKeyboard(');
+    expect(sheetFile).toContain('!el.readOnly');
   });
 
   it('intercepts tab navigation before introend settles', () => {
