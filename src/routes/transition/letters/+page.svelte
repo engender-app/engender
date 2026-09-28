@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
      redesign ticket 45).
 
@@ -32,6 +31,7 @@
      space still has its way down: the row points at `#opened`, so a person
      arriving from their worst day lands on what is open rather than on
      what is still sealed. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* On this day, as a block (phase 11 ticket 07): however many of the three
      lookbacks - a month, six months, a year - clear the good-day bar today,
      each as its heading, the whole day one tap away, the day's entries, its
@@ -19,6 +18,7 @@
      that turning on-this-day off stops the reads themselves. Up to three
      good-day checks, up to three per-day entry reads, and the one letters
      read, all bounded by the day or by the letters read's own limit. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';

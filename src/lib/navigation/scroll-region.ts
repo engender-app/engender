@@ -20,6 +20,8 @@
    no notion of direction at all.
 */
 
+/* Relative, not `$lib`: the node-tier vitest loads this module and does not
+   resolve the alias. */
 import { scrollBehavior } from '../motion/tokens';
 
 const positions = new Map<string, number>();
@@ -74,12 +76,20 @@ export function restoreScroll(path: string): void {
 
   const wanted = positions.get(path) ?? 0;
   const reachable = () => el.scrollHeight - el.clientHeight >= wanted;
+  const travel = () => el.scrollTo({ top: wanted, behavior: scrollBehavior() });
   /* Once the position can be reached it is travelled to, eased, exactly once.
      The loop below must not be the thing that animates: a smooth scroll in
      flight moves `scrollTop` every frame, which the loop would read as a
      finger and abandon, or fight by re-issuing the jump (ticket 278). */
-  if (wanted === 0 || reachable()) {
-    el.scrollTo({ top: wanted, behavior: scrollBehavior() });
+  /* A screen opening at the top is a reset, not a jump: the region still
+     holds the last screen's offset, and easing from it would slide every
+     fresh screen up on arrival. So the top is instant. */
+  if (wanted === 0) {
+    el.scrollTop = 0;
+    return;
+  }
+  if (reachable()) {
+    travel();
     return;
   }
 
@@ -95,7 +105,7 @@ export function restoreScroll(path: string): void {
        person is reading; the number is theirs now. */
     if (el.scrollTop !== applied) return;
     if (reachable()) {
-      el.scrollTo({ top: wanted, behavior: scrollBehavior() });
+      travel();
       return;
     }
     el.scrollTop = wanted;
@@ -165,10 +175,14 @@ export function scrollToHash(hash: string = location.hash): void {
   const region = el.closest<HTMLElement>('[data-app-scroll-region]');
   let last: number | null = null;
   let frames = 0;
+  const startedAt = region?.scrollTop ?? 0;
   const settle = () => {
     /* Gone between the frames - a range edit, a superseded query - and
        nothing to honour. The hash stays for the next run to try. */
     if (!el.isConnected) return;
+    /* Somebody scrolled while the list was still shaping itself: that
+       number is theirs now, and an eased jump would fight their finger. */
+    if (region && region.scrollTop !== startedAt) return;
     const height = region?.scrollHeight ?? document.documentElement.scrollHeight;
     if (height === last || frames++ > 30) {
       el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
