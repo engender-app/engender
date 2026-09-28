@@ -85,6 +85,7 @@
     [
       `--face-size: ${length}`,
       `--face-mood: var(--mood-${step})`,
+      `--face-ink: var(--mood-${step}-ink)`,
       `--look-cycle: ${glance.cycle}s`,
       `--look-delay: ${glance.delay}s`,
       `--look-dir: ${glance.direction}`,

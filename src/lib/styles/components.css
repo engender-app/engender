@@ -1156,9 +1156,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   touch-action: none;
 }
 /* One face for every surface (phase 5 ticket 31): the picker's 44px, quick
-   add's 34, a chip's 26, a day card's 22. The size arrives as --face-size and
-   the mood's own colour as --face-mood, both set by the component, so a
-   surface asks for a size rather than getting a rule of its own here. */
+   add's 34, a chip's 26, a day card's 22. The size arrives as --face-size,
+   the mood's own colour as --face-mood and the ink drawn on it as
+   --face-ink, all set by the component, so a surface asks for a size rather
+   than getting a rule of its own here. */
 /* ---------- why these two are registered ----------
 
    An unregistered custom property has no type, so it substitutes at
@@ -1259,13 +1260,19 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
    the whole face is one drawing at one weight (moodFace.ts says why the ends
    of the ramp are the two that differ). */
+/* In the step's own ink rather than the palette's --text (ticket 279,
+   ADR-0091): the deep end of a ramp is too dark for a dark ink, so each step
+   says what it is drawn in. A theme or preset change moves the ink, and so
+   does a Journal cell whose day changes step, so it crossfades on the
+   block's own curve instead of swapping in a frame. */
 .mood-face-eye {
-  fill: var(--text); opacity: 0.75;
+  fill: var(--face-ink); opacity: 0.75;
   transform-box: fill-box; transform-origin: center;
+  transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
 .mood-face-eye.is-lids {
   fill: none;
-  stroke: var(--text); stroke-width: 1.9; stroke-linecap: round;
+  stroke: var(--face-ink); stroke-width: 1.9; stroke-linecap: round;
 }
 /* ---------- the eyes ----------
 
@@ -1345,7 +1352,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   .mood-face.is-alive .mood-face-eye { animation: none; }
   .mood-face.is-alive .mood-face-look { animation: none; }
 }
-.mood-face-mouth { stroke: var(--text); stroke-width: 1.9; stroke-linecap: round; fill: none; opacity: 0.75; }
+.mood-face-mouth {
+  stroke: var(--face-ink); stroke-width: 1.9; stroke-linecap: round; fill: none; opacity: 0.75;
+  transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
+}
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
    already failed: 1px of the app's darkest line disappears against a
    coloured fill on the dark theme, at full strength, and the dimming rules
