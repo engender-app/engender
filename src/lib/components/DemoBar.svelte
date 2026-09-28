@@ -84,11 +84,18 @@
     else goto(v);
   }
 
+  /* A reviewer wants the real chrome, not a strip of dev controls sitting on
+     top of it - "hidden" is plain local state, not a preference, so it never
+     survives a reload: the bar is back the moment a cold boot remounts this
+     component, the same way every other control on it resets. */
+  let hidden = $state(false);
+
   /* Both classes exist for this component: one makes room for the bar, the
      other constrains the app to a phone frame. They were toggled from
      +layout.svelte, which is the last thing outside the demo module that
      read the frame state. */
   $effect(() => {
+    if (hidden) return;
     document.body.classList.add('has-demo-bar');
     return () => document.body.classList.remove('has-demo-bar');
   });
@@ -121,6 +128,7 @@
   });
 </script>
 
+{#if !hidden}
 <div class="demo-bar" data-demo-busy={busy ? '' : null}>
   <span class="demo-title">Demo controls · R7</span>
   <div class="demo-group" role="group" aria-label="Theme">
@@ -212,7 +220,10 @@
       {#each JUMPS as [href, label] (href)}<option value={href}>{label}</option>{/each}
     </select>
   </div>
+  <!-- Reload to get it back - see the `hidden` declaration above. -->
+  <button class="demo-btn" data-hide-demo-bar onclick={() => (hidden = true)}>Hide this bar</button>
 </div>
+{/if}
 
 <style>
   /* Lived in styles/app.css, which ships. Here it belongs to the component,
