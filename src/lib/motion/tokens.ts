@@ -47,6 +47,13 @@ export function isReducedMotion(doc: MotionDocument | undefined = currentDocumen
   return doc?.documentElement.dataset.a11yMotion === 'reduce';
 }
 
+/** The `behavior` for a programmatic scroll: eased, or instant under reduced
+    motion. One place, so a scroll jump cannot teleport in a single frame
+    without the motion setting having been asked (ticket 278). */
+export function scrollBehavior(): 'auto' | 'smooth' {
+  return isReducedMotion() ? 'auto' : 'smooth';
+}
+
 function readCssNumber(token: string, fallback: number): number {
   if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') return fallback;
   const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();

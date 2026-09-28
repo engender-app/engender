@@ -18,6 +18,7 @@
      that turning on-this-day off stops the reads themselves. Up to three
      good-day checks, up to three per-day entry reads, and the one letters
      read, all bounded by the day or by the letters read's own limit. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -106,7 +107,7 @@
 
   $effect(() => {
     if (!days.length || !scrollTo) return;
-    document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ block: 'start' });
+    document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 
   /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */

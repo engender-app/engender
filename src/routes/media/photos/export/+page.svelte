@@ -9,6 +9,7 @@
      screen worth looking at, was boxed at the same weight as the two
      controls above it. It sits on the page now at the width of the screen,
      which is also the width the collage was made at. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
@@ -183,8 +184,7 @@
   /* The grid above can be several screens tall, so a finished export off the
      bottom of it reads as nothing having happened. */
   function reveal(node: HTMLElement) {
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    node.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+    node.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
   }
 
   async function make() {

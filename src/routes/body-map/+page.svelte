@@ -27,6 +27,7 @@
      just dragged. A direct visit with no query still gets a window - the
      door's own default of the last thirty days - rather than an empty
      screen. */
+  import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -205,7 +206,7 @@
     const onPop = () => {
       if (location.hash || mapScroll === null) return;
       const el = scrollRegion();
-      if (el) el.scrollTop = mapScroll;
+      if (el) el.scrollTo({ top: mapScroll, behavior: scrollBehavior() });
       mapScroll = null;
     };
     window.addEventListener('popstate', onPop);
