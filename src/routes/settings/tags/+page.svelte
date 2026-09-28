@@ -53,7 +53,7 @@
   <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
   {#snippet groupSection(g: TagGroup)}
-    <details class="managed-group" open={!g.builtIn}>
+    <details class="managed-group" data-managed-group={g.key} open={!g.builtIn}>
       <summary>{g.name}{#if !g.builtIn} · {m.custom_suffix()}{/if}</summary>
       <div class="tag-group-action">
         <button class="btn btn-soft" aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>

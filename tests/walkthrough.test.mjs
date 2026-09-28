@@ -1985,7 +1985,7 @@ try {
   await page.locator('#imp-pass').fill('walkthrough');
   await page.locator('[data-import]').click();
   await page.waitForFunction(
-    () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Merged')),
+    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Archive imported|Archiwum zaimportowane/.test(t.textContent)),
     null,
     { timeout: 120000 }
   );
@@ -2243,12 +2243,11 @@ try {
     }
   }
   /* The closer is platform copy (UI/UX ticket 09): the web build must not
-     borrow Android's no-internet-permission promise, and must instead own
-     the browser's own truth - downloads the app, fetches the lab scanner's
-     engine once, sends nothing written. Both sentences carry "sent
-     anywhere", which is the part both platforms may claim. */
+     borrow Android's no-internet-permission promise. It says journal
+     content is processed on this device while exports and links can use
+     other services. */
   const closer = await page.locator('[data-no-internet]').textContent();
-  if (!/sent anywhere|wysyłane/.test(closer)) {
+  if (!/processed on this device|przetwarzana na tym urządzeniu/.test(closer)) {
     throw new Error('the web closer does not state where written data goes: ' + closer);
   }
   if (/internet permission|uprawnienia do internetu/.test(closer)) {
@@ -2522,7 +2521,7 @@ try {
     try {
       await run();
     } catch (error) {
-      throw new Error(`${what}: ${String(error.message ?? error).split('\n')[0]}`);
+      throw new Error(`${what} at ${page.url()}: ${String(error.message ?? error).split('\n')[0]}`);
     }
   };
 
@@ -2534,6 +2533,9 @@ try {
     await page.selectOption('#demo-jump', 'first-run');
     await waitingFor('the welcome after the first-run jump', () =>
       page.waitForSelector('[data-restore-start]')
+    );
+    await waitingFor('the first-run journal clear', () =>
+      page.waitForSelector('[data-demo-busy]', { state: 'detached', timeout: 60000 })
     );
   };
   await emptyFirstRun();
@@ -3078,7 +3080,7 @@ try {
 } catch (e) { fail('reminders web', e); }
 });
 
-/* 15b. the web editor names its preview as saved schedule and promises no
+/* 15b. the web editor names its schedule preview and promises no
    ring, and the list's Export/import handoff comes back (ticket 13). The
    handoff lives on the list's notice; the editor is reached by direct
    visit, which is exactly the path the audit took. */
@@ -3087,14 +3089,14 @@ try {
   await page.goto(BASE + '/settings/reminders/new', { waitUntil: 'networkidle' });
   await booted();
   const editor = await page.textContent('[data-screen]');
-  if (!editor.includes('Saved schedule')) throw new Error('the web editor does not name the preview as saved schedule');
+  if (!editor.includes('Schedule preview')) throw new Error('the web editor does not name the schedule preview');
   if (editor.includes('Exact alarms survive reboots')) throw new Error('the web editor promises Android alarm delivery');
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
   await page.locator('[data-notice="reminders-web"] [data-notice-action]').click();
   await page.waitForFunction(() => location.pathname === '/settings/export');
   await page.goBack();
   await page.waitForFunction(() => location.pathname === '/settings/reminders');
-  ok('web reminders: saved-schedule editor, no reboot promise, export handoff returns');
+  ok('web reminders: schedule preview, no reboot promise, export handoff returns');
 } catch (e) { fail('web reminder editor', e); }
 });
 
@@ -3190,6 +3192,7 @@ try {
   await page.waitForSelector('[data-tag="g-soc-eu"]:has-text("social euphoria")'); // text-under-test: the English label
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
 
@@ -3202,6 +3205,10 @@ try {
   if (await page.locator('[data-tag="g-soc-eu"]', { hasText: 'social euphoria' }).count()) { // text-under-test: the stale English label
     throw new Error('English label survived the language switch');
   }
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="language"]').click();
+  await page.locator('[data-segment="en"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today', null, { timeout: 8000 });
   ok('built-in tags follow the language, so they were seeded as keys');
 } catch (e) { fail('vocabulary localization', e); }
 });
@@ -3217,6 +3224,7 @@ try {
      and the PIN shape is covered where the mode is changed, above. */
   await fresh('/settings');
   await page.getByRole('button', { name: /Disguise/i }).click();
+  const undisguisedPalette = await page.evaluate(() => document.documentElement.dataset.palette);
 
   /* Disguise owns the whole tab, icon included: the title alone still leaves
      a trans flag in the tab strip. Toggled back off afterwards so the flows
@@ -3277,8 +3285,10 @@ try {
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'engender', null, { timeout: 8000 });
-  // Per-palette since ticket 50, and this walk never leaves the default flag.
-  if (!/\/favicon-trans\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
+  // Earlier flows can restore another palette. The icon follows that palette.
+  if (await favicon() !== `/favicon-${undisguisedPalette}.svg`) {
+    throw new Error('tab icon after undisguising: ' + (await favicon()));
+  }
   if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
@@ -3592,7 +3602,7 @@ try {
   await fresh('/wrapped/month/share');
   await page.waitForSelector('[data-empty-preview]');
   const emptyPreview = await page.locator('[data-empty-preview]').innerText();
-  if (!/fill this preview|wypełnić podgląd/i.test(emptyPreview)) {
+  if (!/Choose what to include|Wybierz zawartość/i.test(emptyPreview)) {
     throw new Error('the empty share preview does not explain what to do');
   }
   if (await page.locator('[data-share]').count()) throw new Error('an empty share preview can share automatically');
@@ -3708,8 +3718,13 @@ try {
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
 
+  const toggleExistential = async () => {
+    const group = page.locator('[data-managed-group="dysphoria_type"]');
+    if ((await group.getAttribute('open')) === null) await group.locator('summary').click();
+    await group.locator('[data-tag-hide="dt-existential"]').click();
+  };
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').click();
+  await toggleExistential();
 
   const tomorrow = await page.evaluate(() => {
     const d = new Date();
@@ -3723,7 +3738,7 @@ try {
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').click();
+  await toggleExistential();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
 } catch (e) { fail('typed dysphoria and euphoria logging', e); }
@@ -4436,7 +4451,7 @@ try {
   /* Same platform copy as the setup step (UI/UX ticket 09): the permanent
      home of the list owes the same web truth, not the Android promise. */
   const settingsCloser = await page.locator('[data-no-internet]').textContent();
-  if (!/sent anywhere|wysyłane/.test(settingsCloser)) {
+  if (!/processed on this device|przetwarzana na tym urządzeniu/.test(settingsCloser)) {
     throw new Error('the settings closer does not state where written data goes: ' + settingsCloser);
   }
   if (/internet permission|uprawnienia do internetu/.test(settingsCloser)) {
@@ -5679,8 +5694,9 @@ try {
    six of the twelve sites are the only seed with a rotation behind them -
    which is also what makes the never-used half of the map checkable here.
 
-   The viewport is narrowed for this flow alone and put back afterwards:
-   every other flow in this file reads a 440px screen. */
+   A 320px viewport leaves only 280px inside the sheet's padding. The map
+   reaches into that padding to keep its 320px layout width and the gap
+   between targets. Put the 440px viewport back afterwards. */
 await flow('injection map recency', async () => {
 try {
   await page.setViewportSize({ width: 320, height: 844 });
@@ -7662,6 +7678,14 @@ try {
   await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-photo-key]');
+
+  // The grid paints 30 cells first. Load the rest before comparing it with
+  // the total above it or checking every source in the seeded journal.
+  while (await page.locator('[data-photo-grid-more]').count()) {
+    const before = await page.locator('[data-photo-key]').count();
+    await page.locator('[data-photo-grid-more]').dispatchEvent('click');
+    await page.waitForFunction((count) => document.querySelectorAll('[data-photo-key]').length > count, before);
+  }
 
   const sourcesOn = async () =>
     page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));

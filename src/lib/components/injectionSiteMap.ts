@@ -30,10 +30,9 @@ export const MAP_VIEW = { width: FIGURE_BOX.width, height: 135 } as const;
 
 /** The figure's box in CSS px, and the px each figure unit is drawn at.
 
-    320px is as wide as the map goes: the dose sheet gives its content a
-    350px column on a 390px phone, and a 360px phone - the narrowest this
-    app is built for - gives exactly 320, so the spacing the test holds is
-    the spacing that phone draws rather than one only a large phone gets. */
+    320px is as wide as the map goes. The sheet gives its content 350px on
+    a 390px phone; on a 320px phone it has only 280px, so the map uses the
+    sheet's side padding to keep this width and its touch-target spacing. */
 export const MAP_WIDTH = 320;
 /* MAP_SCALE and MAP_HEIGHT stay exported only for their own test (AU-09
    test-only review); the component takes the box from MAP_WIDTH and
