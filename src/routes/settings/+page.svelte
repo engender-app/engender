@@ -697,13 +697,6 @@
     display: none;
   }
 
-  .settings-section > :global(summary h2) {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
   .settings-section[open] > :global(summary svg) {
     transform: rotate(180deg);
   }
