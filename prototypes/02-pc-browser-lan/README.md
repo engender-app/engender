@@ -1,9 +1,36 @@
 # PC browser LAN transport probe
 
-**Decision, 2026-09-28: defer PC browser sync.** This probe did not establish
-an authenticated, encrypted Android connection from the deployed PC app. Do
-not add browser sync, a hosted signaling service, or a broader network policy
-on this evidence.
+**Status, 2026-09-28: ticket 02 reopened for another transport proof.** This
+probe did not establish an authenticated, encrypted Android connection from
+the deployed PC app. It tested Vanadium rather than the native Android app
+and does not establish that extra software is required. See
+[the transport research](RESEARCH.md) for options omitted from this trial.
+Browser sync remains unproven; production network policy must wait for proof.
+
+## PC check after reopening
+
+`probe-local-http.mjs` loaded the deployed HTTPS app in Fedora Chromium
+153.0.8010.52 and asked it to fetch a fixed string from a listener on the
+PC's own LAN address. The real response header blocked the fetch at
+`connect-src 'self'`; the listener received zero requests. In a second run,
+the script replaced only that CSP header in the browser and granted Chrome's
+local network permission. The fetch returned `local-only probe`, and the
+listener received one request. The script checks both results and exits with
+an error if either changes.
+
+```sh
+node prototypes/02-pc-browser-lan/probe-local-http.mjs 192.168.0.74
+```
+
+Use the PC's current LAN IPv4 address in place of `192.168.0.74`. The script
+starts and stops its own listener. The second run is a controlled browser
+check, not the deployed policy: Playwright grants the permission without a
+human prompt, and no Android device participates. It establishes that this
+Chromium build can reach a private HTTP address from the app's HTTPS origin
+when policy and permission allow it. It does not establish a product pairing
+flow, encrypted messages, an offline route to Android, or reconnect. The
+Android app still lacks `INTERNET` permission and a listener. No production
+policy changed for this check.
 
 ## What ran
 
@@ -78,7 +105,7 @@ peer. No reconnect procedure was demonstrated. A browser cannot listen for
 an incoming LAN connection through the current app surface; this prototype
 did not find a helper-free signaling path.
 
-Ticket 04 should keep PC sync deferred until a new proof uses the deployed
+Ticket 04 must treat PC sync as unproven until a new proof uses the deployed
 HTTPS app in the target PC browser and the real Android app, with internet
 disconnected on both devices. That proof must show QR-bound peer identity,
 encrypted transfer, selected local candidate addresses, and reconnection
