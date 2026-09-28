@@ -410,23 +410,25 @@ export const INJECT_PROOF_EXPRESSION =
       let frame = 0;
       const tick = () => {
         frame++;
+        /* The device's full-tree sampler can read fewer frames than the
+           compositor casts. Repeat each wrong shape so a dropped DOM
+           sample does not make the proof depend on one lucky frame. */
+        const phase = ((frame - 1) % 14) + 1;
         /* Eight frames of a smooth 6px slide, then 200px in one. */
-        jump.style.translate = `0 ${frame <= 8 ? frame * 6 : 8 * 6 + 200}px`;
-        /* Three one-frame cuts give a 30Hz device cast three chances to
-           sample a 60Hz defect within one pass. */
-        const cutFrame = ((frame - 1) % 14) + 1;
-        cut.style.opacity = cutFrame <= 4 ? String(1 - cutFrame * 0.1) : '0';
+        jump.style.translate = `0 ${phase <= 8 ? phase * 6 : 8 * 6 + 200}px`;
+        /* Fade partway, then cut to zero in one frame and hold there. */
+        cut.style.opacity = phase <= 4 ? String(1 - phase * 0.04) : '0';
         /* Eight frames at the resting 24px, one frame a window-tall 520 -
            the field-blind's own shape, on a mark built to have it. */
-        bloat.style.height = frame === 9 ? '520px' : '24px';
+        bloat.style.height = phase === 9 ? '520px' : '24px';
         /* Eight frames at resting #888, then sudden flip to #000 and stays -
            the redesign-07 colour defect shape. */
-        colour.style.background = frame <= 8 ? '#888' : '#000';
+        colour.style.background = phase <= 8 ? '#888' : '#000';
         /* Eight frames at resting 0px, one frame displaced 200px, then returned. */
-        thereAndBack.style.translate = frame === 8 ? '0 200px' : '0 0px';
+        thereAndBack.style.translate = phase === 8 ? '0 200px' : '0 0px';
         /* Absent for five frames, then appears at full opacity and holds. */
-        if (frame === 6) arrival.style.display = 'block';
-        if (frame < 42) requestAnimationFrame(tick);
+        arrival.style.display = phase <= 5 ? 'none' : 'block';
+        if (frame < 84) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     };
@@ -1972,7 +1974,7 @@ export function missingProofYanks(report, { checkArrival = true } = {}) {
       got(PROOF.thereAndBack, 'there-and-back') ? null : `a there-and-back jump on ${PROOF.thereAndBack}`,
       checkArrival && !got(PROOF.arrival, 'arrival') ? `an unannounced arrival on ${PROOF.arrival}` : null
     ].filter(Boolean);
-    const label = [scene.profile, scene.theme, scene.pass && `pass ${scene.pass}`].filter(Boolean).join(' ');
+    const label = [scene.scene, scene.profile, scene.theme, scene.pass && `pass ${scene.pass}`].filter(Boolean).join(' ');
     return missing.map((item) => label ? `${label}: ${item}` : item);
   });
 }
