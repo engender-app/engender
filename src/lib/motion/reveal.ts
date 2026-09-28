@@ -788,7 +788,7 @@ export function collapse(
      rest of the 380ms. The wrapper isn't one of the grid's tiles and was
      never who the swap was measured for; it still owes the column below it
      a real collapse. */
-  if (replacingSlot() && (node as HTMLElement).hasAttribute?.('data-live-tile')) {
+  if (replacingSlot() && (node as HTMLElement).hasAttribute('data-live-tile')) {
     if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
     /* The screen measures the slot before the DOM changes; without one there
        is nothing to pin the panel to and the cut is the honest fallback. */
