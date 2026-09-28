@@ -29,7 +29,6 @@ screen-gate
 search-chips
 search-filter-dates
 search-filter-label
-settings-pad
 settings-unit-row
 share-note
 share-preview

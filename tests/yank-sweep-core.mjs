@@ -282,8 +282,10 @@ const SCENES = [
 
   /* Settings screens (ticket 108): swatches, switchers, switches and modals */
   { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },
-  { name: 'settings-mood-preset', at: '/settings', act: '[data-mood-preset-pick="teal"]', is: 'picking a mood preset swatch' },
-  { name: 'settings-theme-switcher', at: '/settings', act: '.pref-row [data-segment="dark"]', is: 'switching theme segmented control' },
+  { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', is: 'the mood colours sheet opening' },
+  { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', is: 'the accessibility sheet opening' },
+  { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', is: 'the tag groups sheet opening' },
+  { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', is: 'switching theme segmented control' },
   { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', is: 'toggling a settings switch' },
   { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', is: 'switching measurement unit segmented control' },
   { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', is: 'the gender scales checklist sheet opening' },
