@@ -773,7 +773,22 @@ export function collapse(
      tiles-unfold frames 1 to 9). Inline, so the grid's own nth-child rule
      is overridden for this one element and nothing else. */
   if (options?.direction === 'in') (node as HTMLElement).style?.setProperty?.('--tile-index', '0');
-  if (replacingSlot()) {
+  /* Gated on `data-live-tile`, the same marker `markSlotReplacement`'s only
+     producer (+page.svelte's `$effect.pre`) reads the leaving tile's box
+     through: the swap is a fact about one keyed member of `shownTiles`
+     changing places with another, not about whatever else happens to call
+     `collapse` in the same 50ms window. Home's own tier wrapper - the
+     `{#if todayTiles.length > 0}` div around a lone tier's tiles - shares
+     the primitive and was going through this branch too whenever the tile
+     inside it happened to leave during an unrelated fold promotion
+     elsewhere in the grid: `dissolveAt` takes it out of flow with
+     `position: fixed`, so the tier's own row never shrank and the agenda
+     below it snapped up to fill the space in the frame the tile left,
+     while the tile (also pinned, also fading) hung on top of it for the
+     rest of the 380ms. The wrapper isn't one of the grid's tiles and was
+     never who the swap was measured for; it still owes the column below it
+     a real collapse. */
+  if (replacingSlot() && (node as HTMLElement).hasAttribute?.('data-live-tile')) {
     if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
     /* The screen measures the slot before the DOM changes; without one there
        is nothing to pin the panel to and the cut is the honest fallback. */
