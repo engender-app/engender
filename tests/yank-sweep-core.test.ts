@@ -804,6 +804,7 @@ describe('colour distance arithmetic (ticket 136)', () => {
       ];
       expect(missingProofYanks(report)).toContainEqual(expect.stringContaining('pass 2: a 200px jump'));
       expect(missingProofYanks(report).some((item) => item.includes('pass 1'))).toBe(false);
+      expect(missingProofYanks(report)[0]).toContain(`${PROOF.scene} persona light pass 2:`);
     });
 
     it('does not check arrival when checkArrival is false (hydration window)', () => {
