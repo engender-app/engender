@@ -67,6 +67,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `media-transport-check` | both players' transports work by keyboard, speak their position, go full screen and run offline |
 | `care-lane-labels` | three Care lanes' captions do not collide at 390px in Polish |
 | `care-cold-load-yank` | Care's cold load at 1x and 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail, what it answers with fades in, and the nav pill never paints wider than its tab |
+| `wear-tile-close-yank` | stopping the Home wear-timer tile collapses its own tier's row rather than snapping the agenda up under a still-visible ghost, even when an unrelated fold promotion lands the same tick |
 | `day-cold-load-yank` | The day view's cold load at 4x CPU: margin notes and dose drug names land with the day's records, never after |
 | `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
