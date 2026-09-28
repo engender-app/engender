@@ -3,17 +3,9 @@ import { tick } from 'svelte';
 let latestChange = 0;
 type Appearance = 'palette' | 'theme';
 const pending: Partial<Record<Appearance, () => void>> = {};
-let sunFadePending = false;
 
 export function isAppearancePending(kind: Appearance): boolean {
   return pending[kind] !== undefined;
-}
-
-/** A return from Settings to Today answers a palette pick with a fading sun. */
-export function takePaletteSunFade(from: string | null, to: string): boolean {
-  const pending = sunFadePending && from === '/settings' && to === '/';
-  sunFadePending = false;
-  return pending;
 }
 
 /** Capture both appearances so the new colours can sweep over the old. */
@@ -55,10 +47,7 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
 }
 
 export function changePalette(commit: () => void, doc: Document = document): void {
-  changeAppearance(() => {
-    commit();
-    sunFadePending = true;
-  }, 'palette', doc);
+  changeAppearance(commit, 'palette', doc);
 }
 
 export function changeTheme(commit: () => void, doc: Document = document): void {

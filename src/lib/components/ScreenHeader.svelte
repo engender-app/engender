@@ -82,6 +82,7 @@
     chrome = false,
     class: klass = '',
     actions,
+    blindContent,
     field
   }: {
     title: string;
@@ -97,6 +98,8 @@
     chrome?: boolean;
     class?: string;
     actions?: Snippet;
+    /** Decoration painted inside the field's clipping blind. */
+    blindContent?: Snippet;
     /** What this door puts on the field under the title's line (rule 7). */
     field?: Snippet;
   } = $props();
@@ -153,7 +156,7 @@
          the box that measures it so the two can move on different clocks
          during a navigation. Decoration and nothing else - what it paints
          at rest is exactly the field, since the field clips it. -->
-    <div class="field-blind" data-field-blind aria-hidden="true"></div>
+    <div class="field-blind" data-field-blind aria-hidden="true">{@render blindContent?.()}</div>
     <div class="screen-header-row" class:has-back-actions={!!back && !!actions}>
       {#if typeof back === 'string'}
         <a

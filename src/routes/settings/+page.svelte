@@ -20,6 +20,7 @@
   import Mark from '$lib/components/Mark.svelte';
   import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import FlagSun from '$lib/components/FlagSun.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -31,6 +32,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { changePalette, changeTheme, isAppearancePending } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
   const PALETTES: [string, () => string][] = [
@@ -158,7 +160,13 @@
        reaches here. On the 1024px shell the control is dropped by
        components.css: from a fifth row at the rail's foot there is nothing
        for it to point at. -->
-  <ScreenHeader title={m.nav_settings()} back="/" chrome />
+  <ScreenHeader title={m.nav_settings()} back="/" chrome class="settings-sun-header">
+    {#snippet blindContent()}
+      {#if !prefs.disguise}
+        {#key activeFlag.dark}<FlagSun />{/key}
+      {/if}
+    {/snippet}
+  </ScreenHeader>
 
   <!-- Five named areas, every one open (ticket 277). They were three
        accordions, which hid most of the screen behind a tap and still ran
