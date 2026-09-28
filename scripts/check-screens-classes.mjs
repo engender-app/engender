@@ -103,6 +103,9 @@ const SHEETS = [
          .muted`/`.icon.muted`/`.icon.is-starred` read a class every icon
          carries via a template literal, not a .svelte class= attribute. */
       'icon',
+      /* SectionTitle renders caller-owned aside snippets. Their links need
+         this global selector because scoped component CSS cannot reach them. */
+      'section-aside',
       /* DatePicker.svelte never sets flatpickr's `altInputClass` option, so
          the library falls back to its own default - the visible field it
          creates at runtime carries `form-control` (and, in `.inline`
