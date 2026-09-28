@@ -207,7 +207,8 @@
   margin-top: var(--space-8);
 }
 
-.kit-heading h2 {
+.kit-heading h2,
+.kit-heading [role="heading"] {
   font-family: var(--font-display);
   font-weight: var(--weight-display);
   font-size: var(--text-2xl);

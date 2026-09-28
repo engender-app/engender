@@ -38,7 +38,10 @@
 </script>
 
 {#if collapsible}
-  <summary class="kit-heading" data-section-heading><h2>{text}<Icon name="chevronDown" size={20} /></h2></summary>
+  <summary class="kit-heading" data-section-heading>
+    <span role="heading" aria-level="2">{text}</span>
+    <Icon name="chevronDown" size={20} />
+  </summary>
 {:else}
   <div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
     {#if focusable}
