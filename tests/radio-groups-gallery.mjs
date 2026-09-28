@@ -90,7 +90,7 @@ try {
     await checkRadioGroup(page, page.locator('.mood-preset-grid'));
     await page.locator('[data-mood-preset-pick="teal"]').click();
     await page.keyboard.press('Escape');
-    await page.locator('.pref-row [data-segment="light"]').click();
+    await page.locator('[data-segmented="theme"] [data-segment="light"]').click();
     await shot(`settings-${language}-390`);
     for (const width of [320, 390, 430, 1280]) {
       await page.setViewportSize({ width, height: 844 });

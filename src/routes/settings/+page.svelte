@@ -3,12 +3,9 @@
   /* Settings, on the surface kit (phase 5 ticket 24), in five open areas
      since ticket 277.
 
-     Appearance's flags and theme segments have no row shape to them, so
-     they sit in one ListCard's padded slot (.settings-pad) above that
-     card's rows rather than being forced through ListRow. The rows that
-     carry a Switch or a Segmented instead of a chevron stay hand-written in
-     the kit's own row classes (ticket 16: `.kit-row.is-static` also drops
-     the row's cursor and its :active wash). */
+     The rows that carry a Switch or a Segmented instead of a chevron stay
+     hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
+     also drops the row's cursor and its :active wash). */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
@@ -170,32 +167,37 @@
        than one control opens as a sheet from a row of its own, so the hub
        is a list of names and what each is set to. -->
   <SectionHeading text={m.settings_appearance()} />
+  <!-- On the page rather than in a card, and with no dropdown in front of
+       it: a flag is a block of its own (rule 13), the grid is the one setup
+       draws (screens.css), and the card's padding left each flag too narrow
+       for its name. The frame travels between flags (paletteRing). -->
+  <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-label={m.colour_palette()}>
+    <span class="palette-selection-ring" aria-hidden="true"></span>
+    {#each PALETTES as [key, label] (key)}
+      <button
+        class="palette-swatch press"
+        class:is-active={prefs.palette === key}
+        role="radio"
+        aria-checked={prefs.palette === key}
+        data-palette-pick={key}
+        onclick={() => pickPalette(key)}
+      >
+        <span class="swatch-preview" data-swatch={key}></span>
+        <span class="swatch-name">{label()}</span>
+      </button>
+    {/each}
+  </div>
   <ListCard>
-    <div class="settings-pad">
-      <!-- Inline, with no dropdown in front of it: the flags are what this
-           card is for, and setup draws the same grid (screens.css). The
-           frame travels between flags rather than jumping (paletteRing). -->
-      <p class="field-label" id="settings-palette-label">{m.colour_palette()}</p>
-      <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-labelledby="settings-palette-label">
-        <span class="palette-selection-ring" aria-hidden="true"></span>
-        {#each PALETTES as [key, label] (key)}
-          <button
-            class="palette-swatch press"
-            class:is-active={prefs.palette === key}
-            role="radio"
-            aria-checked={prefs.palette === key}
-            data-palette-pick={key}
-            onclick={() => pickPalette(key)}
-          >
-            <span class="swatch-preview" data-swatch={key}></span>
-            <span class="swatch-name">{label()}</span>
-          </button>
-        {/each}
-      </div>
-      <div class="pref-row">
+    <div class="kit-row settings-unit-row" style="cursor:default">
+      <span class="kit-row-ico"><Icon name="sun" size={22} /></span>
+      <span class="kit-row-text">
         <span class="kit-row-title">{m.theme()}</span>
+      </span>
+      <span class="kit-row-trail">
         <Segmented
           name={m.theme()}
+          key="theme"
+          compact
           options={[
             { value: 'system', label: m.theme_system() },
             { value: 'light', label: m.theme_light() },
@@ -206,7 +208,7 @@
             prefs.theme = v as typeof prefs.theme;
           }}
         />
-      </div>
+      </span>
     </div>
     <ListRow key="mood-colours" icon="sparkle" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
@@ -623,22 +625,6 @@
 </div>
 
 <style>
-  /* Moved out of screens.css by phase 8 UX ticket 01: deleting the
-     streak-goal screen left this screen its only consumer, and the ratchet's
-     rule is that a class one file reads belongs in that file's own block,
-     where an unused rule is a compiler warning rather than dead text. */
-  .pref-row {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
-
-  .pref-row:last-child {
-    margin-bottom: 0;
-  }
-
   .about-content {
     display: grid;
     gap: var(--space-4);
@@ -750,14 +736,6 @@
   .about-links a:focus-visible {
     outline: 3px solid var(--accent);
     outline-offset: 2px;
-  }
-
-  .settings-pad .field-label {
-    margin-bottom: var(--space-3);
-  }
-
-  .settings-pad .palette-grid {
-    margin-bottom: var(--space-5);
   }
 
   /* The frame that travels between flags: the chosen block's own 3px
