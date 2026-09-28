@@ -626,6 +626,17 @@
   font-weight: var(--weight-bold);
 }
 .managed-tags { display: flex; flex-direction: column; }
+/* `display: flex` above is an author declaration, which beats the UA
+   stylesheet's `details:not([open]) > *:not(summary) { display: none; }`
+   regardless of specificity (ticket 272): a closed group's rows kept a real
+   layout box and painted nothing, but Chromium still treats that subtree as
+   skipped for animation purposes, so a transition running inside froze at
+   its start value and snapped to the end one only once its clock finished -
+   never interpolating. Restoring the native hide for a closed group fixes
+   both: nothing to query while collapsed, and a real transition once a
+   person actually opens it (verified: smooth 150ms ramp with the group open,
+   frozen-then-snap with it closed). */
+.managed-group:not([open]) .managed-tags { display: none; }
 .managed-tag {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) 0;
