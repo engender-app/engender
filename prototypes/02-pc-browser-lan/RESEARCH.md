@@ -10,7 +10,7 @@ The HTTP and native WebRTC paths below require those sockets. A temporary
 debug build with `INTERNET` granted opened both socket types, and its WebView
 exchanged encrypted test strings with the deployed PC browser over a private
 IPv4 WebRTC route. See the README for the remaining pairing and offline
-gaps. Neither path is approved for production under the current spec.
+gaps. Neither path is approved for production before the remaining proof.
 
 ## First approach to prove
 

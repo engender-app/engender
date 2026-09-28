@@ -113,7 +113,7 @@ try {
   }
   await pcPage.evaluate((description) => window.__lanProbe.peer.setRemoteDescription(description), answer);
   if (tamperFingerprint) {
-    await new Promise((resolve) => setTimeout(resolve, 8000));
+    await pcPage.waitForFunction(() => window.__lanProbe.peer.connectionState === 'failed', null, { timeout: 15000 });
   } else {
     await pcPage.waitForFunction(() => window.__lanProbe.received.includes('Android reply'), null, { timeout: 30000 });
   }
@@ -131,6 +131,8 @@ try {
   };
   console.log(JSON.stringify(result, null, 2));
   if (tamperFingerprint) {
+    assert.equal(result.pc.connection, 'failed');
+    assert.equal(result.android.connection, 'failed');
     assert.deepEqual(result.pc.received, []);
     assert.deepEqual(result.android.received, []);
   } else {

@@ -1,12 +1,11 @@
 # PC browser LAN transport probe
 
-**Decision, 2026-09-28: defer PC browser implementation.** Without Android
-`INTERNET` permission, the app could not open TCP or UDP sockets on the target
-phone. With that permission granted in a temporary debug build, the deployed
-HTTPS PC app and native app WebView exchanged encrypted test strings over a
-private IPv4 WebRTC route. This settles the socket and browser transport
-questions, but not QR-bound pairing or the required internet-disconnected
-run. No production permission or CSP changed. Earlier browser trials and
+**Decision, 2026-09-28: keep PC browser implementation deferred pending
+pairing and offline proof.** Without Android `INTERNET` permission, the app
+could not open TCP or UDP sockets on the target phone. With that permission
+granted in a temporary debug build, the deployed HTTPS PC app and native app
+WebView exchanged encrypted test strings over a private IPv4 WebRTC route.
+No production permission or CSP changed. Earlier browser trials and
 [transport research](RESEARCH.md) remain below as context.
 
 ## With Network permission
@@ -199,6 +198,7 @@ an incoming LAN connection through the current app surface; this prototype
 did not find a helper-free signaling path.
 
 The permission check above supersedes this earlier trial's possible paths.
-Android-to-Android and PC-to-Android LAN socket transport both fail under
-the required no-`INTERNET` manifest. Ticket 04 must carry this deferral;
-browser CSP must not be widened for speculative peer traffic.
+Android-to-Android and PC-to-Android LAN sockets both fail when the app omits
+`INTERNET`. With permission granted, PC-to-Android WebRTC transfer works in
+the lab, but the pairing and offline gates remain open. Ticket 04 must carry
+those limits; browser CSP must not be widened for speculative peer traffic.
