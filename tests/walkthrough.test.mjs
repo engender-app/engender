@@ -1735,6 +1735,7 @@ try {
      to teal; the default is teal now (phase 5 ticket 31), and leaving the
      target alone would have had it clicking the preset it already had - the
      flow would pass whether or not the control worked. */
+  await page.locator('[data-list-row="mood-colours"]').click(); // a sheet since ticket 277
   await page.locator('[data-mood-preset-pick="plum"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.moodPreset === 'plum');
   await page.reload({ waitUntil: 'networkidle' });
@@ -1750,6 +1751,7 @@ try {
 await flow('language', async () => {
 try {
   await fresh('/settings');
+  await page.locator('[data-list-row="language"]').click(); // a sheet since ticket 277
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
@@ -1760,7 +1762,8 @@ try {
 await flow('accessibility tuning', async () => {
 try {
   await fresh('/settings');
-  await page.getByRole('switch', { name: 'Text size boost' }).click();
+  await page.locator('[data-list-row="accessibility"]').click(); // a sheet since ticket 277
+  await page.getByRole('switch', { name: 'Larger text' }).click();
   await page.waitForFunction(() => document.documentElement.dataset.a11yTextSize === 'boost');
 
   await page.goto(BASE + '/search', { waitUntil: 'networkidle' });

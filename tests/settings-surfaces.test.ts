@@ -62,10 +62,24 @@ describe('what Settings is built from', () => {
     expect(header).toContain('back="/"');
   });
 
-  it('keeps all three hand-written sections', () => {
-    for (const key of ['settings_appearance', 'settings_tracking', 'settings_privacy']) {
-      expect(withoutScript).toContain(`m.${key}()`);
+  it('names five areas and keeps every one of them open (ticket 277)', () => {
+    for (const key of ['settings_appearance', 'settings_tracking', 'settings_reminders_group', 'settings_lists', 'settings_privacy']) {
+      expect(withoutScript).toContain(`<SectionHeading text={m.${key}()} />`);
     }
+    /* Ticket 268 folded the areas and the pickers into <details>; this one
+       asked for nothing on the hub to need expanding. Detail controls open
+       as sheets from a row of their own instead. */
+    expect(outsideSheets).not.toContain('<details');
+    for (const row of ['mood-colours', 'language', 'accessibility', 'tag-groups']) {
+      expect(outsideSheets).toContain(`key="${row}"`);
+    }
+  });
+
+  it('draws the flag picker inline, not behind a dropdown or a sheet', () => {
+    const grid = outsideSheets.indexOf('class="palette-grid"');
+    expect(grid).toBeGreaterThan(-1);
+    expect(outsideSheets.indexOf('data-palette-pick')).toBeGreaterThan(grid);
+    expect(settings.replace(/<script[\s\S]*?<\/script>/g, '').match(/<Sheet\b[\s\S]*?<\/Sheet>/g)?.join('')).not.toContain('data-palette-pick');
   });
 
   it('previews all 16 gender palettes and all 4 mood presets', () => {
@@ -109,6 +123,32 @@ describe('what Settings is built from', () => {
     expect(withoutScript).not.toContain('href="/settings/live-tiles"');
     for (const gone of ['data-wrapped-toggle', 'data-wrapped-notify-toggle', 'data-on-this-day-toggle', 'data-on-this-day-notify-toggle']) {
       expect(settings).not.toContain(gone);
+    }
+  });
+
+  it('draws every flag swatch in its own stripes (ticket 277)', () => {
+    /* Eight palettes arrived with only their theme blocks, so setup and
+       Settings drew them as empty outlines. The stripes are already
+       palettes.css's --motif-stripes; the swatch has to repeat them in
+       order, a doubled stop (bisexual's 2:1:2) counting once. Intersex is
+       a ring on a field rather than bands, so it only has to carry both
+       colours. */
+    const themes = read('src/lib/theme/palettes.css');
+    const screens = read('src/lib/styles/screens.css');
+    const hex = (h: string) => {
+      const v = h.toUpperCase();
+      return v.length === 4 ? '#' + [...v.slice(1)].map((c) => c + c).join('') : v;
+    };
+    const dedupe = (list: string[]) => list.filter((c, i) => c !== list[i - 1]);
+    for (const palette of PALETTES) {
+      const motif = new RegExp(String.raw`\[data-palette="${palette}"\]\s*\{\s*--motif-stripes:([^;]+);`).exec(themes)?.[1];
+      expect(motif, palette).toBeTruthy();
+      const stripes = dedupe(motif!.split(',').map((c) => hex(c.trim())));
+      const rule = new RegExp(String.raw`\[data-swatch="${palette}"\]\s*\{([^}]+)\}`).exec(screens)?.[1];
+      expect(rule, `no swatch for ${palette}`).toBeTruthy();
+      const drawn = dedupe([...rule!.matchAll(/#[0-9a-fA-F]{3,6}\b/g)].map((mm) => hex(mm[0])));
+      if (palette === 'intersex') expect(new Set(drawn)).toEqual(new Set(stripes));
+      else expect(drawn, palette).toEqual(stripes);
     }
   });
 

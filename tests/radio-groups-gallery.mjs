@@ -78,12 +78,19 @@ try {
 
   for (const language of ['en', 'pl']) {
     await open('/settings');
+    /* Language and mood colours open as sheets from their rows (ticket
+       277); the flags stay on the hub. A language change reloads, so the
+       hub is opened again after it. */
+    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${language}"]`).click();
-    await page.waitForSelector(`[data-segment="${language}"][aria-checked="true"]`);
-    for (const group of await page.locator('.palette-grid, .mood-preset-grid').all()) await checkRadioGroup(page, group);
+    await open('/settings');
+    await checkRadioGroup(page, page.locator('.palette-grid'));
     await page.locator('[data-palette-pick="trans"]').click();
+    await page.locator('[data-list-row="mood-colours"]').click();
+    await checkRadioGroup(page, page.locator('.mood-preset-grid'));
     await page.locator('[data-mood-preset-pick="teal"]').click();
-    await page.locator('[data-segment="light"]').click();
+    await page.keyboard.press('Escape');
+    await page.locator('.pref-row [data-segment="light"]').click();
     await shot(`settings-${language}-390`);
     for (const width of [320, 390, 430, 1280]) {
       await page.setViewportSize({ width, height: 844 });
