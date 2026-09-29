@@ -64,8 +64,8 @@ for (const side of ['a', 'b']) {
     ({at, click|back|eval}), so t=0 is the frame the first one fires on and
     the recorded run is the measured one. Returned as a string so a Playwright
     evaluate and a devtools socket can both run it. */
-export function samplerExpression(steps, ms) {
-  const fn = async (steps, ms, names) => {
+export function samplerExpression(steps, ms, edgeOffset = 0) {
+  const fn = async (steps, ms, names, edgeOffset) => {
     const html = document.documentElement;
     const gcs = (pseudo) => getComputedStyle(html, pseudo);
     const num = (v) => {
@@ -104,6 +104,10 @@ export function samplerExpression(steps, ms) {
         const eo = edgeOf('old');
         const en = edgeOf('new');
         let edge = eo === null ? en : en === null ? eo : Math.max(eo, en);
+        /* The blind's edge is measured from the top of its own group, which on
+           a phone starts below the status bar inset; the parts are placed from
+           the viewport. Callers on such a screen pass the field's top. */
+        if (edge !== null) edge += edgeOffset;
         /* What is painted is the blind's clip cut again by the field's own
            group, which nests it and clips its children at its own animated
            box (app.css). Two animations on one edge: the smaller of them is
@@ -210,7 +214,7 @@ export function samplerExpression(steps, ms) {
       requestAnimationFrame(tick);
     });
   };
-  return `(${fn.toString()})(${JSON.stringify(steps)}, ${ms}, ${JSON.stringify(PART_NAMES)})`;
+  return `(${fn.toString()})(${JSON.stringify(steps)}, ${ms}, ${JSON.stringify(PART_NAMES)}, ${JSON.stringify(edgeOffset)})`;
 }
 
 /** Overspill and teleports in one list of edge-relative rows. `series` is
@@ -321,7 +325,7 @@ export function findHeightJumps(series) {
     frame. `top`..`bottom` bounds the rows read, which is how a frame that is
     mostly page stays cheap. Returns the count and how far below the field
     the lowest one is. */
-export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
+export function offFieldInk(png, { top = 0, bottom = png.height, scale = 1 } = {}) {
   const { width, height, channels, pixels } = png;
   const lastBlue = new Int32Array(width).fill(-1);
   const end = Math.min(bottom, height);
@@ -354,7 +358,7 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
     for (let x = 0; x < width; x++) {
       if (!isInk((y * width + x) * channels)) continue;
       const below = y - lastBlue[x];
-      if (below > 2) {
+      if (below > 2 * scale) {
         count++;
         if (below > deepest) {
           deepest = below;
@@ -373,9 +377,9 @@ export function readInk(cast, epoch, options = {}) {
   for (const shot of cast) {
     const png = decodePng(Buffer.from(shot.data, 'base64'));
     const read = offFieldInk(png, options);
-    frames.push({ at: Math.round(shot.ts - epoch), ...read });
+    frames.push({ at: Math.round(shot.ts - epoch), ...read, deepest: Math.round(read.deepest / (options.scale ?? 1)) });
   }
-  const bad = frames.filter((f) => f.count >= INK_PIXELS);
+  const bad = frames.filter((f) => f.count >= INK_PIXELS * (options.scale ?? 1) ** 2);
   return {
     frames: frames.length,
     bad: bad.length,

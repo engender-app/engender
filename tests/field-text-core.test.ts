@@ -139,6 +139,13 @@ describe('offFieldInk', () => {
     expect(offFieldInk(frameOf(40, 60, 40, [[10, 30]])).count).toBeLessThan(INK_PIXELS);
   });
 
+  it('leaves out a column with no blue in it, a ring band crossing the field', () => {
+    const f = frameOf(40, 60, 40, []);
+    for (let y = 0; y < 60; y++) for (let x = 16; x < 24; x++) f.pixels.set([255, 255, 255], (y * 40 + x) * 3);
+    for (let y = 30; y < 36; y++) for (let x = 16; x < 24; x++) f.pixels.set([0, 255, 0], (y * 40 + x) * 3);
+    expect(offFieldInk(f).count).toBeLessThan(INK_PIXELS);
+  });
+
   it('counts ink below the field and says how far below', () => {
     const r = offFieldInk(frameOf(40, 60, 30, [[30, 45]]));
     expect(r.count).toBeGreaterThanOrEqual(INK_PIXELS);
