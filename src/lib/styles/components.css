@@ -1264,9 +1264,11 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    ADR-0091): the deep end of a ramp is too dark for a dark ink, so each step
    says what it is drawn in. A theme or preset change moves the ink, and so
    does a Journal cell whose day changes step, so it crossfades on the
-   block's own curve instead of swapping in a frame. */
+   block's own curve instead of swapping in a frame. Solid rather than the
+   0.75 it used to sit at: the 4.5:1 is proven for the ink itself, and 75%
+   of it over the fill came to 2.49:1 at worst. */
 .mood-face-eye {
-  fill: var(--face-ink); opacity: 0.75;
+  fill: var(--face-ink);
   transform-box: fill-box; transform-origin: center;
   transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
@@ -1353,7 +1355,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   .mood-face.is-alive .mood-face-look { animation: none; }
 }
 .mood-face-mouth {
-  stroke: var(--face-ink); stroke-width: 1.9; stroke-linecap: round; fill: none; opacity: 0.75;
+  stroke: var(--face-ink); stroke-width: 1.9; stroke-linecap: round; fill: none;
   transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
@@ -1388,8 +1390,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
 .mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
 .mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
-.mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 0.75; }
-.mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 0.75; }
+.mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 1; }
+.mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 1; }
 /* Hover joins the magnifier's answer rather than replacing it - tier 4's
    "no hover-dependent motion" is about inventing motion for hover, not
    about a hover pointer being denied the response a finger gets. */
