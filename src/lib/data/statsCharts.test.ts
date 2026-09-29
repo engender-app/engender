@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DayAverage } from './journal/stats';
 import { MOOD_RANGE } from './metricRange';
-import { MAX_STACK_CARDS, coveredGround, dayShape, metricStandings, moodDistribution, seriesAverage } from './statsCharts';
+import { coveredGround, dayShape, metricStandings, moodDistribution, seriesAverage } from './statsCharts';
 import { heatLevel, moodStep } from './metricRange';
 
 const days = (...values: number[]): DayAverage[] =>
@@ -97,28 +97,35 @@ describe('what a day is drawn as on the calendar', () => {
     expect(dayShape(day(2, 5), moodStep)).toEqual({ kind: 'split', first: 2, last: 5 });
   });
 
-  it('stacks a day of two readings that landed on the same step', () => {
+  it('leaves a day whole when its readings all landed on one step', () => {
     // Nothing to draw an edge between: both halves would be one colour, and
     // a split with no visible edge reads as a day that said one thing.
-    expect(dayShape(day(4, 4), moodStep)).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(4, 4), moodStep)).toEqual({ kind: 'one' });
+    expect(dayShape(day(4, 4, 4, 4), moodStep)).toEqual({ kind: 'one' });
     // Two different values inside one step is the same case.
-    expect(dayShape(day(30, 44), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(30, 44), onRamp(FEMININITY))).toEqual({ kind: 'one' });
     // And on mood, "the same step" is Daylio's "the same mood": 3.6 and 4.2
-    // are one face, so the day stacks rather than splitting.
-    expect(dayShape(day(3.6, 4.2), moodStep)).toEqual({ kind: 'stack', cards: 2 });
+    // are one face, so the day stays whole rather than splitting.
+    expect(dayShape(day(3.6, 4.2), moodStep)).toEqual({ kind: 'one' });
   });
 
-  it('stacks a day of three or more readings however far apart they were', () => {
-    // Four bands at 46px is a texture rather than four readings.
-    expect(dayShape(day(1, 3, 5), moodStep)).toEqual({ kind: 'stack', cards: 3 });
-    expect(dayShape(day(10, 40, 60, 90), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 4 });
+  it('splits a day of three or more readings on its first and last', () => {
+    /* Ticket 280: the split replaces the stack. Whatever happened in the
+       middle, the two halves are the day's two ends in time, which is what
+       the two-reading split already drew. */
+    expect(dayShape(day(1, 3, 5), moodStep)).toEqual({ kind: 'split', first: 1, last: 5 });
+    expect(dayShape(day(2, 3, 4, 5), moodStep)).toEqual({ kind: 'split', first: 2, last: 5 });
+    expect(dayShape(day(90, 10, 40, 60), onRamp(FEMININITY))).toEqual({ kind: 'split', first: 4, last: 3 });
+    // The middle does not have to be on either end's step.
+    expect(dayShape(day(5, 1, 1, 1, 2), moodStep)).toEqual({ kind: 'split', first: 5, last: 2 });
   });
 
-  it('stops the deck where it stops being countable', () => {
-    expect(dayShape(day(1, 2, 3, 4, 5, 4, 3, 2, 1), moodStep)).toEqual({
-      kind: 'stack',
-      cards: MAX_STACK_CARDS
-    });
+  it('leaves a dip whole when the day ended on the step it started on', () => {
+    /* Good, awful, good: the first and last are one face, so a split would
+       have no edge to draw. The dip is the Day screen's to show; a second
+       split rule for the grid was ruled out (ticket 280). */
+    expect(dayShape(day(5, 1, 5), moodStep)).toEqual({ kind: 'one' });
+    expect(dayShape(day(80, 10, 20, 85), onRamp(FEMININITY))).toEqual({ kind: 'one' });
   });
 
   it('splits the ends of either scale, in that scale\'s own steps', () => {
@@ -147,8 +154,8 @@ describe('whether a day covered ground at all', () => {
 
   it('says yes for a difference too small to draw an edge for', () => {
     /* The words and the drawing part company here on purpose: two readings
-       two points apart share a step, so the cell stacks rather than splits,
-       and /stats still prints "from 50 to 52". */
+       two points apart share a step, so the cell stays whole rather than
+       splitting, and /stats still prints "from 50 to 52". */
     expect(coveredGround({ low: 50, high: 52 })).toBe(true);
   });
 });
