@@ -1087,7 +1087,11 @@ describe('ticket 28: the field is a blind over the content', () => {
       'field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both'
     );
     for (const name of ['field-part-out', 'field-part-in']) {
-      const [frame] = frames(keyframesOf(app, name)!.body);
+      /* The leave also names where it starts from opacity-wise, for a
+         navigation that interrupts another (ticket 285), so its moving frame
+         is the last one and the arrival's is still the first. */
+      const [first, last] = frames(keyframesOf(app, name)!.body);
+      const frame = name.endsWith('-out') ? last : first;
       expect(Object.keys(frame.decls).sort()).toEqual(['opacity', 'transform']);
       /* The direction is the blind's, published per navigation, so the two
          travel the way the edge is going rather than always downwards. */
@@ -1122,7 +1126,12 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
     /* The ride ends where the element rests, both ways round. */
     expect(frames(keyframesOf(app, 'blind-follow')!.body).at(-1)!.decls.translate).toBe('0 0');
-    expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe('0 0');
+    /* And the leave starts where the photograph was taken - at rest, or as
+       far from it as the edge was when a navigation interrupted another
+       (ticket 285). */
+    expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe(
+      '0 var(--blind-lead-from, 0px)'
+    );
   });
 
   /* The content under the blind travels with its bottom edge, on the
@@ -1236,16 +1245,19 @@ describe('ticket 28: the field is a blind over the content', () => {
     );
     expect(old.length, 'the outgoing contents, both paths').toBe(2);
     expect(fresh.length, 'the incoming contents, both paths').toBe(2);
+    /* The contents keep their ride with the edge (ticket 285): the edge is
+       cut at 1ms, and a part that kept only its fade stood where it was
+       printed, fading over the page below an edge that had already gone. */
     for (const rule of old) {
       const d = declarations(rule.body);
-      expect(d['animation-name']).toBe('screen-fade-away');
-      expect(d['animation-duration']).toBe('var(--dur-crossfade) !important');
+      expect(d['animation-name']).toBe('screen-fade-away, blind-lead');
+      expect(d['animation-duration']).toBe('var(--dur-crossfade), var(--dur-slow) !important');
     }
     for (const rule of fresh) {
       const d = declarations(rule.body);
-      expect(d['animation-name']).toBe('screen-crossfade');
+      expect(d['animation-name']).toBe('screen-crossfade, blind-follow');
       expect(d['animation-delay'], 'the incoming half waits for the outgoing one').toBe(
-        'var(--dur-crossfade)'
+        'var(--dur-crossfade), 0s'
       );
       expect(d['animation-fill-mode'], 'held at its first frame through the wait').toBe('both');
     }
