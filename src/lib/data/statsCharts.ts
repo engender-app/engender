@@ -11,7 +11,7 @@
    The shape a calendar cell takes (phase 6 unprompted ticket 11) is here
    for the same reason, though the calendar is not the stats screen: which
    step each of a day's readings landed on is the same unit problem the bars
-   have, and the rule between split, stack and neither is the half of that
+   have, and the rule between split and whole is the half of that
    cell a test can hold.
 
    Nothing here names anything and nothing here formats anything: a metric's
@@ -99,13 +99,6 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
   return [...counts].map(([step, count]) => ({ step, count }));
 }
 
-/** How many cards a stack ever draws, however many entries the day holds.
-    Past this the deck stops being countable and starts being a texture, and
-    the exact number is read out on the cell rather than counted off it. */
-/* MAX_STACK_CARDS stays exported only for its own test (AU-09 test-only
-   review). */
-export const MAX_STACK_CARDS = 4;
-
 /** What a day's cell is drawn as, once the day's own entries are known
     (phase 6 unprompted ticket 11, CONTEXT: Spread).
 
@@ -118,44 +111,37 @@ export const MAX_STACK_CARDS = 4;
     came first - and it is now hers to make, so the entry says so. Nothing
     else changed with it: the words beside the cell are still the day's
     lowest and highest, which have no order at all. */
-export type DayShape =
-  | { kind: 'one' }
-  | { kind: 'split'; first: number; last: number }
-  | { kind: 'stack'; cards: number };
+export type DayShape = { kind: 'one' } | { kind: 'split'; first: number; last: number };
 
 /** How a day that carried the metric is drawn, or null for a day that
     carried none of it.
 
-    Three shapes, and the rule between them is the one a person can state:
-    a day of two readings that landed on different steps is **split** down
-    the middle, one half per reading, earliest on the left; a day whose readings all landed on the
-    same step has no edge to draw, so it **stacks** instead; and a day of
-    three or more readings always stacks, because four bands at 36px is a
-    texture rather than four readings.
+    Two shapes, and the rule between them is the one a person can state: a
+    day whose first and last readings landed on different steps is **split**
+    down the middle, first on the left and last on the right, however many
+    readings sat between them; anything else stays **whole**. That covers a
+    day of one reading, a day whose readings all shared a step, and a day
+    that dipped and came back (good, awful, good), whose two ends are one
+    face. The dip is the Day screen's to show (ticket 280, which also retired
+    the stack a same-step day used to draw: an offset card peeking out on the
+    left read as a rendering glitch). How many readings a day held is the
+    cell's pip, and HeatMap draws it from the day's own count.
 
     `stepOf` is what a step means on the metric being drawn, and the caller
     owns it because the two answers are different systems: a gender
     dimension resolves through the heat ramp's four levels, and mood
     resolves to one of its own five faces (ADR-0025). Daylio's rule is
     "two of the same mood", and this is that rule wherever the app has a
-    notion of the same.
-
-    A stack says how many, not how much. That is the honest claim: the deck
-    is countable and the day's two ends are read out in words beside it. */
+    notion of the same. */
 export function dayShape(
   spread: DaySpread | undefined,
   stepOf: (value: number) => number
 ): DayShape | null {
   if (!spread) return null;
   if (spread.count <= 1) return { kind: 'one' };
-  /* Whether to split is a question about size and which side is a question
-     about time, so the two ends are read twice from two pairs. At two
-     readings they are the same pair either way round, which is why the
-     condition below can be written on the chronological one. */
   const first = stepOf(spread.first);
   const last = stepOf(spread.last);
-  if (spread.count === 2 && first !== last) return { kind: 'split', first, last };
-  return { kind: 'stack', cards: Math.min(spread.count, MAX_STACK_CARDS) };
+  return first !== last ? { kind: 'split', first, last } : { kind: 'one' };
 }
 
 /** Whether a day ran between two different values at all (CONTEXT: Spread).
