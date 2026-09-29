@@ -47,6 +47,7 @@ export interface PreferenceValues {
   metricDimension: string | null;
   theme: 'system' | 'light' | 'dark';
   palette: string;
+  launcherIconShape: 'current' | 'round';
   /** Mood's own fixed 5-step scale (ADR-0025), independent of `palette` -
       selectable on its own so a mood dot never has to double as a gender
       colour. */
@@ -475,6 +476,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   metricDimension: null,
   theme: 'system',
   palette: 'trans',
+  launcherIconShape: 'current',
   moodPreset: 'teal',
   language: 'system',
   a11yTextSizeBoost: false,
@@ -558,6 +560,7 @@ export const PORTABLE_KEYS = [
   'metricKind',
   'metricDimension',
   'palette',
+  'launcherIconShape',
   'moodPreset',
   'theme',
   'language',

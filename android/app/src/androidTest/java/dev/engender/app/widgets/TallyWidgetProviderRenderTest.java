@@ -33,12 +33,12 @@ public class TallyWidgetProviderRenderTest {
     @Before
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE, "current");
     }
 
     @After
     public void tearDown() {
-        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE, "current");
     }
 
     @Test
@@ -52,7 +52,7 @@ public class TallyWidgetProviderRenderTest {
 
     @Test
     public void disguisedHidesTheHeaderAndDropsTheLabels() {
-        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
 
         View widget = inflate();
 

@@ -354,6 +354,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       quietHoursEnd: '07:00',
       disguise: false,
       palette: 'trans',
+      launcherIconShape: 'current',
       quickExit: false,
       allowScreenCapture: false
     },
@@ -504,7 +505,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
-    expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans' });
+    expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
     expect(deps.androidQuickExit.setEnabled).toHaveBeenCalledWith({ enabled: false });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
   });
@@ -521,7 +522,19 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
 
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({
       disguised: false,
-      palette: 'nonbinary'
+      palette: 'nonbinary',
+      shape: 'current'
+    });
+  });
+
+  test('sends round shape with the selected palette', async () => {
+    const deps = makeDeps({ prefs: { ...makeDeps().prefs, palette: 'nonbinary', launcherIconShape: 'round' } });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({
+      disguised: false,
+      palette: 'nonbinary',
+      shape: 'round'
     });
   });
 

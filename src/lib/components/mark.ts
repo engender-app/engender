@@ -63,6 +63,9 @@ export const MARK_MONO_RINGS = 4;
     What it costs, and it is the trade: the sun is half the size it is on the
     tile whose own corner it is anchored to, with white around it. */
 export const MARK_SAFE_TILE = 50;
+/** Round launcher crop: inside the circle, so even a seven-band sun shows its centre. */
+export const ROUND_SUN_CENTER = 75;
+export const ROUND_SUN_R = 85;
 
 /** What shape the mark is cropped to. Every one of them has an edge:
     Alicja, 2026-09-21, and it is the whole rule - *"THE STROKE IS AN
@@ -78,10 +81,13 @@ export const MARK_SAFE_TILE = 50;
     `round` is the same under a circle crop, with the edge following the
     circle - a square outline under a round mask would lose its corners.
 
+    `launcher-round` moves and shrinks the sun within that circle so all
+    flag bands remain visible on circular Android launchers.
+
     `bleed` is a mask's canvas rather than a crop of its own: the ground runs
     to all four corners, because a mask cuts its shape out of whatever it is
     given, and the tile sits in the middle at `MARK_SAFE_TILE`. */
-export type MarkCrop = 'tile' | 'round' | 'bleed';
+export type MarkCrop = 'tile' | 'round' | 'launcher-round' | 'bleed';
 
 export interface MarkOptions {
   /** One ink and four rings, drawn as outlines, the edge included: the
@@ -125,15 +131,17 @@ function escapeAttr(value: string): string {
 /** The rings, outermost first. Each radius is pulled in by half a seam
     because the stroke straddles the boundary, so the outermost ring's black
     edge lands exactly on the sun's outside rather than half outside it. */
-function ringMarkup(stripes: string[], ink: string | undefined): string {
+function ringMarkup(stripes: string[], ink: string | undefined, launcherRound = false): string {
   const n = ink ? MARK_MONO_RINGS : stripes.length;
-  return ringRadii(n, MARK_R)
+  return ringRadii(n, launcherRound ? ROUND_SUN_R : MARK_R)
     .map((radius, i) => {
       const r = (radius - MARK_SEAM / 2).toFixed(2);
       const paint = ink
         ? `fill="none" stroke="${ink}"`
         : `fill="${hexColor(stripes[i])}" stroke="#000"`;
-      return `<circle cx="${MARK_R}" cy="0" r="${r}" ${paint} stroke-width="${MARK_SEAM}"/>`;
+      const x = launcherRound ? ROUND_SUN_CENTER : MARK_R;
+      const y = launcherRound ? MARK_R - ROUND_SUN_CENTER : 0;
+      return `<circle cx="${x}" cy="${y}" r="${r}" ${paint} stroke-width="${MARK_SEAM}"/>`;
     })
     .join('');
 }
@@ -214,10 +222,10 @@ export function markSvg(
   /* In one ink, the tile's edge is that ink too: the mark on paper is one
      colour and the square around it is part of the mark, not a frame drawn
      in a second one. */
-  const { clip, edge } = cropMarkup(crop, ink ?? '#000');
+  const { clip, edge } = cropMarkup(crop === 'launcher-round' ? 'round' : crop, ink ?? '#000');
   const fill = ground === undefined ? (ink ? null : MARK_TILE) : ground;
   const paper = fill === null ? '' : `<rect width="100" height="100" fill="${fill}"/>`;
-  const drawing = `${paper}${ringMarkup(stripes, ink)}`;
+  const drawing = `${paper}${ringMarkup(stripes, ink, crop === 'launcher-round')}`;
   /* The crop's own name is right for a file, which holds one mark. A screen
      can hold more than one element, so Mark.svelte mints its own. */
   const clipId = id ?? `mark-${crop}`;
