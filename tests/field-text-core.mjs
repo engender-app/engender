@@ -328,7 +328,10 @@ export function offFieldInk(png, { top = 0, bottom = png.height, scale = 1 } = {
       const lo = Math.min(pixels[i], pixels[i + 1], pixels[i + 2]);
       if (hi - lo > 40 && !isBlue(i) && !isInk(i)) seen++;
     }
-    if (seen >= 8 * scale) sun[x] = 1;
+    /* A ring's white band has no colour to count, so a column with no blue
+       anywhere in the read is left out as well: there is no field edge in it
+       to measure a word by. */
+    if (seen >= 8 * scale || lastBlue[x] < 0) sun[x] = 1;
   }
   let count = 0;
   let deepest = 0;
