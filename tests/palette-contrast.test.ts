@@ -586,7 +586,7 @@ describe('the field and the fills (phase 10)', () => {
      not only the two indices Home happens to use. The ink is the one
      roles.ts computes for the heat ramp's deepest step, which is the stripe
      undiluted. The day bar was the other thing written this way until
-     ux-carpet ticket 282; its ground is the surface now, below. */
+     ux-carpet ticket 282; it is a block of ink now, below. */
   it('keeps small text in the fill ink readable on every stripe of every flag, both themes', () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
@@ -605,22 +605,18 @@ describe('the field and the fills (phase 10)', () => {
     }
   });
 
-  /* The day bar's 13px date in --text and its aside in --text-2, on
-     --surface (ux-carpet ticket 282). 13px is small text whatever its
-     weight, so both answer to 4.5:1 - the body-text test above holds
-     --text-2 only to 3:1, which is not enough here. The stripe beside them
-     is a mark and owes no ratio. */
-  it("keeps the day bar's date and aside readable on the surface in every palette and theme", () => {
+  /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date
+     and aside are --bg on --text. 13px is small text whatever its weight,
+     so the pair answers to 4.5:1. */
+  it("keeps the day bar's date readable on its ink in every palette and theme", () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
         const t = tokenMap(palette, theme);
-        for (const ink of ['text', 'text-2']) {
-          const ratio = contrast(t[ink], t.surface);
-          expect(
-            ratio,
-            `${palette}/${theme}: ${ink} (${t[ink]}) on surface (${t.surface}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
-          ).toBeGreaterThanOrEqual(4.5);
-        }
+        const ratio = contrast(t.bg, t.text);
+        expect(
+          ratio,
+          `${palette}/${theme}: bg (${t.bg}) on text (${t.text}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
+        ).toBeGreaterThanOrEqual(4.5);
       }
     }
   });

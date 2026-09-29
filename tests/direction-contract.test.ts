@@ -558,15 +558,15 @@ describe('rule 4: surfaces are flush, block or ink', () => {
   });
 
   /* Ux-carpet ticket 282: a run of stripe-filled bars down the Journal read
-     like a different app, so the day bar is the surface with the stripe as
-     its leading edge. The role still reaches it - the stripe is the only
-     place it does. */
-  it("makes a day's date bar the surface with a 4px leading stripe", () => {
+     like a different app, and a leading stripe on a surface read as a
+     generated-UI default, so the day bar is a block of ink with no edge and
+     no role colour at all. */
+  it("makes a day's date bar a block of ink, with no stripe and no edge", () => {
     const body = ruleFor(kit, '.kit-day-bar')?.body ?? '';
-    expect(body).toMatch(/background:\s*var\(--surface\)/);
-    expect(body).toMatch(/color:\s*var\(--text\)/);
-    expect(body).toMatch(/border-inline-start:\s*4px solid var\(--role-draw\)/);
-    expect(body).not.toMatch(/background:\s*var\(--role|--role-fill-ink|--role-tint/);
+    expect(body).toMatch(/background:\s*var\(--text\)/);
+    expect(body).toMatch(/color:\s*var\(--bg\)/);
+    expect(body).not.toMatch(/--role|border(-(top|right|bottom|left|inline|block)[a-z-]*)?:/);
+    expect(ruleFor(kit, '.kit-day-aside')?.body ?? '').not.toMatch(/color:/);
   });
 
   it("sets the notice's mark as a 40px square of ink", () => {

@@ -1,8 +1,7 @@
 <script lang="ts">
-  /* Entries grouped under a date bar edged with the area's own flag
-     stripe, which is what makes a run of days read as one part of a screen
-     instead of as a stack of identical cards. The bar itself is the
-     surface (ux-carpet ticket 282, kit.css).
+  /* Entries grouped under a date bar of ink (ux-carpet ticket 282,
+     kit.css). The role still goes on the section, where the entries' tags
+     and marks inherit it; the bar itself carries no colour of its own.
 
      The date arrives formatted. Dates are formatted against the active
      locale in $lib/data/dates, and a component that took an epoch day and

@@ -696,9 +696,8 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 
 /* ---------- day card ----------
 
-   Entries grouped under a date bar marked with the section's own stripe,
-   which is what makes a run of days read as one area of the screen rather
-   than as a stack of identical cards.
+   Entries grouped under a date bar of ink, which is what makes a run of
+   days read as one list of days rather than as one unbroken column.
 
    Inside, the day is a timeline: a hairline runs down the entries and each
    mood sits on it, with the time beside the mark. The shape of a day -
@@ -713,25 +712,27 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   position: relative;
 }
 
-/* The date bar is the page's own surface with the stripe as a 4px leading
-   edge (ux-carpet ticket 282). It was a block of the stripe (rule 3), and a
-   run of days is the longest column of blocks the app draws: under the
-   Journal's month that was a stack of light-blue bars on the trans page,
-   and it read like a different app. The stripe still says which area a day
-   belongs to, and the role still follows the area, so the order of colours
-   is what it was; it is only no longer the ground the date sits on. The
-   date and the aside are in the surface's own inks, which
-   tests/palette-contrast.test.ts holds to 4.5:1 at this 13px on every
-   palette in both themes. */
+/* The date bar is a block of ink (rule 4's third treatment): --text as the
+   ground, --bg as the type, no edge (ux-carpet ticket 282). It was a block
+   of the stripe, and a run of days is the longest column of blocks the app
+   draws: under the Journal's month that was a stack of light-blue bars on
+   the trans page, and it read like a different app. A surface bar with the
+   stripe as a 4px leading edge came next and read as a generated-UI
+   default (Alicja, 2026-09-29: "the left accent is a typical AI tell"),
+   and the plain surface with its outline did not stand out from the page.
+   Ink stands out in every palette and both themes, and it carries no
+   role: the area's colour stays on the tags and the mood marks under the
+   bar. The border the other blocks draw inside themselves is left off,
+   since ink on the page already has the page's full contrast as its edge.
+   tests/palette-contrast.test.ts holds --bg on --text to 4.5:1 at this
+   13px on every palette in both themes. */
 .kit-day-bar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 10px 14px 10px 11px;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--outline);
-  border-inline-start: 4px solid var(--role-draw);
+  padding: 11px 15px;
+  background: var(--text);
+  color: var(--bg);
   border-radius: var(--r-block);
   font-size: 0.8125rem;
   font-weight: var(--weight-bold);
@@ -740,7 +741,6 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 
 .kit-day-aside {
   margin-left: auto;
-  color: var(--text-2);
   font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
 }
