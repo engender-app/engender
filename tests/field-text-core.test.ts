@@ -54,6 +54,14 @@ describe('findGeometry', () => {
     expect(r.teleports).toEqual([]);
   });
 
+  it('does not call a thing anchored to the top corner a teleport because the edge moved', () => {
+    const r = findGeometry([
+      row(0, 130, [{ n: 'sun-b-0', bottom: 40, mid: 0, op: 1 }]),
+      row(16, 160, [{ n: 'sun-b-0', bottom: 45, mid: 0, op: 1 }])
+    ]);
+    expect(r.teleports).toEqual([]);
+  });
+
   it('flags a part that appears or vanishes in a single frame', () => {
     const r = findGeometry([row(0, 200, [part('fp-b-0', 150, 0)]), row(16, 200, [part('fp-b-0', 150, 1)])]);
     expect(r.pops).toEqual([{ name: 'fp-b-0', at: 16, from: 0, to: 1 }]);
@@ -68,20 +76,30 @@ describe('findGeometry', () => {
 });
 
 describe('findHeightJumps', () => {
-  it('flags a field that changes height between two frames', () => {
+  it('flags a field that changes height by more than a move could in one frame', () => {
     const r = findHeightJumps([{ t: 0, height: 128 }, { t: 16, height: 128 }, { t: 32, height: 163 }]);
     expect(r).toEqual([{ at: 32, from: 128, to: 163, jump: 35 }]);
+  });
+
+  it('flags a small change with stillness on both sides', () => {
+    const r = findHeightJumps([128, 128, 132, 132, 132].map((height, i) => ({ t: i * 16, height })));
+    expect(r).toEqual([{ at: 32, from: 128, to: 132, jump: 4 }]);
+  });
+
+  it('passes the same 35px travelled over an ease-out', () => {
+    const heights = [128, 137, 147, 154, 159, 161, 162, 163, 163];
+    expect(findHeightJumps(heights.map((height, i) => ({ t: i * 16, height })))).toEqual([]);
   });
 });
 
 describe('offFieldInk', () => {
-  /** A frame `w` by `h`: blue down to row `fieldEnd`, white below, with red
+  /** A frame `w` by `h`: blue down to row `fieldEnd`, white below, with green
       painted over the rows `ink` names. */
   const frameOf = (w, h, fieldEnd, ink) => {
     const pixels = new Uint8Array(w * h * 3).fill(255);
     const set = (x, y, rgb) => pixels.set(rgb, (y * w + x) * 3);
     for (let y = 0; y < fieldEnd; y++) for (let x = 0; x < w; x++) set(x, y, [0, 0, 255]);
-    for (const [y0, y1] of ink) for (let y = y0; y < y1; y++) for (let x = 10; x < 30; x++) set(x, y, [255, 0, 0]);
+    for (const [y0, y1] of ink) for (let y = y0; y < y1; y++) for (let x = 10; x < 30; x++) set(x, y, [0, 255, 0]);
     return { width: w, height: h, channels: 3, pixels };
   };
 

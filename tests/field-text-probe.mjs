@@ -17,19 +17,21 @@
 
    Two instruments (field-text-core.mjs says why): a per-frame geometry
    sampler, and the pixels of the screencast with the field forced pure blue
-   and its ink pure red, which is the authority on what was painted.
+   and its ink pure green, which is the authority on what was painted.
 
    Run: node tests/field-text-probe.mjs [--widths 390,1440] [--only text]
         [--runs 3] [--json file] [--frames dir] [--report]
    Needs a demo build on disk (VITE_DEMO=1 npm run build); it serves build/.
    Exits 1 on any finding unless --report is given, which prints the same
    table for a before/after record. */
-import { preview } from 'vite';
+import { createServer, preview } from 'vite';
+import { realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
+import { JUMP_FIRST_RUN_EXPRESSION } from './yank-sweep-core.mjs';
 import {
   PROBE_CSS,
   findGeometry,
@@ -52,6 +54,10 @@ const RUNS = Number(opt('runs', '1'));
 const JSON_OUT = opt('json', '');
 const FRAMES = opt('frames', '');
 const REPORT = argv.includes('--report');
+/* Real colours instead of the forced blue and green, for a flipbook a person
+   reads; the pixel instrument has nothing to read there and is skipped. */
+const NATURAL = argv.includes('--natural');
+const THEME = opt('theme', '');
 
 const HEIGHT = { 390: 844, 1440: 900 };
 const ROUTE = { home: '/', calendar: '/calendar', stats: '/stats', settings: '/more' };
@@ -136,18 +142,29 @@ async function pageFor(width, { reduced = false, fresh = false, tag = '' } = {})
     deviceScaleFactor: 1,
     reducedMotion: reduced ? 'reduce' : 'no-preference'
   });
-  await context.addInitScript((css) => {
-    document.addEventListener('DOMContentLoaded', () => {
-      const style = document.createElement('style');
-      style.textContent = css;
-      document.head.append(style);
-    });
-  }, PROBE_CSS);
+  await context.addInitScript(
+    ({ css, natural }) => {
+      document.addEventListener('DOMContentLoaded', () => {
+        const style = document.createElement('style');
+        style.textContent = natural ? '.demo-bar { display: none !important; } [data-toast] { display: none !important; }' : css;
+        document.head.append(style);
+      });
+    },
+    { css: PROBE_CSS, natural: NATURAL }
+  );
   const page = await context.newPage();
   page.on('pageerror', (e) => console.error('page error:', e.message));
   const cdp = await context.newCDPSession(page);
   const held = { context, page, cdp };
   contexts.set(key, held);
+  /* The default palette in the theme asked for, through the real controls:
+     a goto resets a hand-set data-theme, the stored preference survives it. */
+  if (THEME && !fresh) {
+    await boot(page, '/settings');
+    await page.locator('[data-palette-pick="trans"]').click();
+    await page.locator(`[data-segment="${THEME}"]`).click();
+    await page.waitForFunction((want) => document.documentElement.dataset.theme === want, THEME);
+  }
   return held;
 }
 
@@ -215,8 +232,10 @@ function analyse({ epoch, rows, cast }, { step = false, still = false } = {}) {
     ? rows.filter((r) => r.step).map((r) => ({ t: r.t, edge: r.step.edge, parts: r.step.parts }))
     : rows.filter((r) => r.edge !== undefined);
   const geometry = findGeometry(series, { persist: step ? 2 : 1 });
-  const ink = readInk(cast, epoch, { top: 0, bottom: 520 });
-  const jumps = findHeightJumps(rows.filter((r) => r.field && r.edge === undefined && !r.nav).map((r) => ({ t: r.t, height: r.field.height })), 1);
+  const ink = NATURAL
+    ? { frames: 0, bad: 0, worst: { deepest: 0, at: 0 }, first: null }
+    : readInk(cast, epoch, { top: 0, bottom: 520 });
+  const jumps = findHeightJumps(rows.filter((r) => r.field && r.edge === undefined && !r.nav).map((r) => ({ t: r.t, height: r.field.height })));
   /* A navigation swaps the screen under the transition, so the real field's
      height changes when the outgoing one is removed: only a scene with no
      navigation in it reads the field's own height. */
@@ -278,7 +297,11 @@ try {
         await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
         await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
         await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-        await page.waitForSelector('[data-next]');
+        await page.waitForSelector('[data-app-root][data-boot="ready"]');
+        /* A fresh profile boots into the demo persona; the demo bar's own
+           jump is the way into the first run. */
+        await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
+        await page.waitForSelector('[data-next]', { timeout: 90000 });
         const wait = (ms) => page.waitForTimeout(ms);
         const sequence = [];
         for (const step of SETUP_STEPS) {
@@ -308,7 +331,10 @@ try {
             continue;
           }
           const scene = { name: `setup ${locale} ${item.label}`, ms: 900, steps: [{ at: 0, click: item.click }] };
-          if (ONLY && !scene.name.includes(ONLY) && ONLY !== 'setup') continue;
+          if (ONLY && !scene.name.includes(ONLY) && ONLY !== 'setup') {
+            await page.locator(item.click).click();
+            continue;
+          }
           const m = await measure(held, scene);
           const r = analyse(m, { step: true });
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
@@ -331,6 +357,42 @@ try {
           log(width, scene.name, 0, r);
           if (failed(r)) await keep(scene.name, width, 0, m);
         } else console.log(`skip ${width} setup ${locale} finish - no [data-finish]`);
+      }
+    }
+
+    /* ---- a gate changing its own title, on the fixture page ---- */
+    if (!ONLY || ONLY.startsWith('gate')) {
+      const fixture = await createServer({
+        configFile: 'tests/browser-tier/browser-tier.vite.config.ts',
+        server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } }
+      });
+      await fixture.listen();
+      try {
+        const held = await pageFor(width, { fresh: true, tag: 'gate' });
+        const { page } = held;
+        await page.goto(`http://localhost:${fixture.config.server.port}/gates.html`, { waitUntil: 'networkidle' });
+        await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
+        await page.selectOption('select[aria-label="Scene"]', 'access-choice');
+        await page.waitForSelector('[data-gate-field]');
+        for (const gesture of [
+          { label: 'choose a mode', click: '[data-list-row="pin"]' },
+          { label: 'continue to the pad', click: '[data-access-continue]' },
+          { label: 'back to the list', click: '[data-gate-back], [data-access-back]' }
+        ]) {
+          await page.waitForTimeout(900);
+          if (!(await page.locator(gesture.click).count())) {
+            console.log(`skip ${width} gate ${gesture.label} - no ${gesture.click}`);
+            continue;
+          }
+          const scene = { name: `gate ${gesture.label}`, ms: 900, steps: [{ at: 0, click: gesture.click.split(', ')[0] }] };
+          const m = await measure(held, scene);
+          const r = analyse(m, { step: true });
+          results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
+          log(width, scene.name, 0, r);
+          if (failed(r)) await keep(scene.name, width, 0, m);
+        }
+      } finally {
+        await fixture.close();
       }
     }
 
@@ -357,7 +419,7 @@ try {
           await page.goto(`${base}${ROUTE[A]}`, { waitUntil: 'domcontentloaded' });
           await page.waitForTimeout(3200);
           const series = await page.evaluate(() => window.__field);
-          const jumps = findHeightJumps(series, 1);
+          const jumps = findHeightJumps(series);
           const r = { geometry: { overspill: [], teleports: [], pops: [] }, ink: { bad: 0, frames: 0, worst: { deepest: 0, at: 0 } }, jumps };
           const name = `cold ${locale} ${A} field height`;
           results.push({ width, name, run: 0, ...r });

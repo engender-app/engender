@@ -16,7 +16,7 @@
    is discounted; two in a row are real.
 
    The pixels are the authority. The probe paints the field pure blue and its
-   ink pure red (the two custom properties, forced with !important), so a red
+   ink pure green (the two custom properties, forced with !important), so a green
    pixel below the last blue pixel of its own column is ink painted over the
    page rather than over the field. That cannot be a layout artefact: it is
    what the composited frame showed. */
@@ -35,13 +35,13 @@ export const TELEPORT_PX = 6;
 export const POP = 0.5;
 /** Visible enough to count. */
 export const SEEN = 0.05;
-/** Red pixels below the field's own bottom, in one frame, before it is a
+/** Ink pixels below the field's own bottom, in one frame, before it is a
     finding. A glyph's antialiased fringe can leave a pixel or two. */
 export const INK_PIXELS = 6;
 
 /** The forced colours the pixel instrument reads. */
 export const FIELD_RGB = '#0000ff';
-export const INK_RGB = '#ff0000';
+export const INK_RGB = '#00ff00';
 export const PROBE_CSS = `html { --field: ${FIELD_RGB} !important; --field-ink: ${INK_RGB} !important; } .demo-bar { display: none !important; } [data-toast] { display: none !important; }`;
 
 /** Every name fieldBlind.ts hands out. Twelve parts a side is more than any
@@ -153,10 +153,24 @@ export function samplerExpression(steps, ms) {
             const e = num(getComputedStyle(host).getPropertyValue('--blind-edge'));
             row.step = {
               edge: Math.round((paint.getBoundingClientRect().top + (e ?? 0)) * 10) / 10,
-              parts: [...field.querySelectorAll('[data-field-part]')].map((el, i) => {
-                const r = el.getBoundingClientRect();
+              parts: [...field.querySelectorAll('[data-field-part]')].map((el) => {
+                /* The words' own extent where there are words: a heading in a
+                   one-cell grid is stretched to the tallest thing in the
+                   cell, and a box that is taller than its text is not text
+                   painted lower. */
+                let r = el.getBoundingClientRect();
+                if (el.textContent?.trim()) {
+                  const range = document.createRange();
+                  range.selectNodeContents(el);
+                  const words = range.getBoundingClientRect();
+                  if (words.height > 0) r = words;
+                }
+                /* A stable name per element, not per position: a keyed
+                   heading leaves the DOM as its successor arrives, and the
+                   index of the survivor changes under it. */
+                el.__fieldPartId ??= (globalThis.__fieldPartIds = (globalThis.__fieldPartIds ?? 0) + 1);
                 return {
-                  n: (el.dataset.setupQuestion !== undefined ? 'question' : el.className.split(' ')[0] || 'part') + ':' + i,
+                  n: (el.className.split(' ')[0] || 'part') + '#' + el.__fieldPartId,
                   top: Math.round(r.top * 10) / 10,
                   bottom: Math.round(r.bottom * 10) / 10,
                   op: Math.round(Number(getComputedStyle(el).opacity) * 100) / 100
@@ -207,11 +221,18 @@ export function findGeometry(series, { persist = 1 } = {}) {
         if (!q) continue;
         if (Math.abs(p.op - q.op) > POP) pops.push({ name: p.n, at: row.t, from: q.op, to: p.op });
         if (p.op > SEEN && q.op > SEEN) {
-          /* The centre, so a ring scaling about its own middle is not a
-             ring moving. */
-          const now = row.edge - (p.mid ?? p.bottom);
-          const was = prev.edge - (q.mid ?? q.bottom);
-          if (Math.abs(now - was) > TELEPORT_PX)
+          /* Two frames of reference, because the field moves in exactly one
+             way: its bottom edge travels and its top stays. A thing printed
+             near the edge rides it and holds still against the edge; a thing
+             anchored to the top corner - the sun - holds still against the
+             window. Either is glued. A teleport is a jump that neither
+             explains, and it is read on the centre so a ring scaling about
+             its own middle is not a ring moving. */
+          const mid = p.mid ?? p.bottom;
+          const midWas = q.mid ?? q.bottom;
+          const now = row.edge - mid;
+          const was = prev.edge - midWas;
+          if (Math.min(Math.abs(now - was), Math.abs(mid - midWas)) > TELEPORT_PX)
             teleports.push({ name: p.n, at: row.t, jump: Math.round((now - was) * 10) / 10 });
         }
       }
@@ -221,18 +242,25 @@ export function findGeometry(series, { persist = 1 } = {}) {
   return { overspill: [...overspill.values()], teleports, pops };
 }
 
-/** The door field's height at rest: a jump between two frames with nothing
-    animating is a yank on the field itself. */
-export function findHeightJumps(series, floor = 1) {
+/** A change of the field's own height that is a jump rather than a move.
+    The box animating to its new height is fine and starts fast: an ease-out
+    spends about a quarter of the distance in its first frame. So a step under
+    JUMP_PX is a jump only if it stands alone - nothing moving on either side
+    of it - and a step over it always is. */
+export const JUMP_PX = 12;
+export function findHeightJumps(series) {
   const out = [];
+  const d = (i) => (i > 0 && i < series.length ? series[i].height - series[i - 1].height : 0);
   for (let i = 1; i < series.length; i++) {
-    const d = series[i].height - series[i - 1].height;
-    if (Math.abs(d) >= floor) out.push({ at: series[i].t, from: series[i - 1].height, to: series[i].height, jump: Math.round(d * 10) / 10 });
+    const step = d(i);
+    const alone = Math.abs(step) >= 1 && Math.abs(d(i - 1)) < 0.5 && Math.abs(d(i + 1)) < 0.5;
+    if (Math.abs(step) >= JUMP_PX || alone)
+      out.push({ at: series[i].t, from: series[i - 1].height, to: series[i].height, jump: Math.round(step * 10) / 10 });
   }
   return out;
 }
 
-/** Red pixels below the last blue pixel of their column, in one decoded
+/** Ink pixels (pure green) below the last blue pixel of their column, in one decoded
     frame. `top`..`bottom` bounds the rows read, which is how a frame that is
     mostly page stays cheap. Returns the count and how far below the field
     the lowest one is. */
@@ -241,7 +269,7 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
   const lastBlue = new Int32Array(width).fill(-1);
   const end = Math.min(bottom, height);
   const isBlue = (i) => pixels[i + 2] > 170 && pixels[i] < 70 && pixels[i + 1] < 70;
-  const isRed = (i) => pixels[i] > 170 && pixels[i + 1] < 70 && pixels[i + 2] < 70;
+  const isInk = (i) => pixels[i + 1] > 170 && pixels[i] < 70 && pixels[i + 2] < 70;
   for (let y = top; y < end; y++) {
     for (let x = 0; x < width; x++) {
       if (isBlue((y * width + x) * channels)) lastBlue[x] = y;
@@ -252,7 +280,7 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
   let deepestAt = null;
   for (let y = top; y < end; y++) {
     for (let x = 0; x < width; x++) {
-      if (!isRed((y * width + x) * channels)) continue;
+      if (!isInk((y * width + x) * channels)) continue;
       const below = y - lastBlue[x];
       if (below > 2) {
         count++;
