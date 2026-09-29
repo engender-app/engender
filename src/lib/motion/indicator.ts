@@ -149,3 +149,17 @@ export function schedules(direction: -1 | 0 | 1): { near: Schedule; far: Schedul
     far: lead === 'near' ? TRAIL : LEAD
   };
 }
+
+/** The clocks for a pill crossing a grid rather than a row (ticket 281's
+    month picker): each axis is a row of its own, so each pair of insets
+    takes `schedules` for the way the pill went along that axis. A move
+    straight down keeps left and right together, and a diagonal leads with
+    the two edges facing the destination. */
+export function gridSchedules(
+  from: Box,
+  to: Box
+): { left: Schedule; right: Schedule; top: Schedule; bottom: Schedule } {
+  const x = schedules(travel(from, to, 'x'));
+  const y = schedules(travel(from, to, 'y'));
+  return { left: x.near, right: x.far, top: y.near, bottom: y.far };
+}
