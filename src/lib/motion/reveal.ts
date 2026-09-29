@@ -1093,13 +1093,33 @@ export const resize: Action<HTMLElement> = (node) => {
   let painted = typeof requestAnimationFrame !== 'function';
   if (!painted) requestAnimationFrame(() => setTimeout(() => (painted = true)));
 
+  /* The tallest the box can be with its bottom edge still in the viewport.
+     A travel is only worth watching while its edge is on screen, and the
+     ease-out spends its first frame on the whole distance: the Journal's
+     "Earlier entries" grew the gate by 972px, and 280px of that in the
+     first frame took the button off the screen and painted the next day
+     whole (ux-carpet ticket 282). So the animation runs between the two
+     heights as the viewport sees them, and whatever lies past its bottom
+     lands there unseen when the animation lets go. */
+  const onScreen = (height: number) => {
+    const top = node.getBoundingClientRect().top;
+    if (typeof innerHeight !== 'number' || !Number.isFinite(top)) return height;
+    return Math.min(height, Math.max(0, innerHeight - top));
+  };
+
   const animateTo = (oldHeight: number, newHeight: number) => {
+    const from = onScreen(oldHeight);
+    const to = onScreen(newHeight);
+    if (Math.abs(to - from) < 1) {
+      lastHeight = newHeight;
+      return;
+    }
     animating = true;
     const restoreOverflow = node.style.overflow;
     node.style.overflow = 'clip';
     const duration = motionDuration('--dur-med');
     current = node.animate(
-      [{ height: `${oldHeight}px` }, { height: `${newHeight}px` }],
+      [{ height: `${from}px` }, { height: `${to}px` }],
       { duration, easing: EASE_OUT_CSS }
     );
     /* A box that empties, or fills from empty, also loses or gains its own

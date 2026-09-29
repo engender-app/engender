@@ -519,12 +519,6 @@ describe('the field and the fills (phase 10)', () => {
     expect(flagField([])).toBeUndefined();
   });
 
-  /* Small text on a fill: a day bar's 13px date and a tag's 12px label sit
-     on --role-draw in --role-fill-ink, and a day card can be handed any
-     role index (on-this-day colours each year in turn), so every stripe of
-     every flag has to carry that ink at 4.5:1 on both themes - not only the
-     two indices Home happens to use. The ink is the one roles.ts computes
-     for the heat ramp's deepest step, which is the stripe undiluted. */
   /* The voice figure's own two claims (redesign ticket 42).
 
      The pitch value sits on a block of the stripe at 19px bold, which is
@@ -586,6 +580,13 @@ describe('the field and the fills (phase 10)', () => {
     }
   });
 
+  /* Small text on a fill: a tag's 12px label sits on --role-draw in
+     --role-fill-ink, and a tag can be handed any role index, so every
+     stripe of every flag has to carry that ink at 4.5:1 on both themes -
+     not only the two indices Home happens to use. The ink is the one
+     roles.ts computes for the heat ramp's deepest step, which is the stripe
+     undiluted. The day bar was the other thing written this way until
+     ux-carpet ticket 282; it is a block of ink now, below. */
   it('keeps small text in the fill ink readable on every stripe of every flag, both themes', () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
@@ -600,6 +601,22 @@ describe('the field and the fills (phase 10)', () => {
             `${palette}/${theme}: ${ink} on ${role.stripe} has ${ratio.toFixed(2)}:1`
           ).toBeGreaterThanOrEqual(4.5);
         }
+      }
+    }
+  });
+
+  /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date
+     and aside are --bg on --text. 13px is small text whatever its weight,
+     so the pair answers to 4.5:1. */
+  it("keeps the day bar's date readable on its ink in every palette and theme", () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const ratio = contrast(t.bg, t.text);
+        expect(
+          ratio,
+          `${palette}/${theme}: bg (${t.bg}) on text (${t.text}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
+        ).toBeGreaterThanOrEqual(4.5);
       }
     }
   });

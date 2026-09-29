@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boxesMatch, insets, leadingEdge, PLACE, travel, type Box } from './indicator';
+import { boxesMatch, gridSchedules, insets, LEAD, leadingEdge, PLACE, TRAIL, travel, type Box } from './indicator';
 
 const box = (x: number, y: number, w: number, h: number): Box => ({ x, y, w, h });
 
@@ -105,5 +105,26 @@ describe('PLACE', () => {
   it('moves the edges in no time at all', () => {
     expect(parseFloat(PLACE.dur)).toBe(0);
     expect(parseFloat(PLACE.delay)).toBe(0);
+  });
+});
+
+/* A grid of peers rather than a row (ticket 281's month picker): the pill
+   can go sideways, down, or both at once, so each axis gets its own pair of
+   clocks and leads with whichever of its edges faces the destination. */
+describe('gridSchedules', () => {
+  it('leads with the right and bottom edges going down and across', () => {
+    const s = gridSchedules(box(0, 0, 80, 56), box(88, 64, 80, 56));
+    expect(s.right).toEqual(LEAD);
+    expect(s.left).toEqual(TRAIL);
+    expect(s.bottom).toEqual(LEAD);
+    expect(s.top).toEqual(TRAIL);
+  });
+
+  it('keeps an axis the pill did not travel on as one piece', () => {
+    const s = gridSchedules(box(88, 0, 80, 56), box(0, 0, 80, 56));
+    expect(s.left).toEqual(LEAD);
+    expect(s.right).toEqual(TRAIL);
+    expect(s.top).toEqual(LEAD);
+    expect(s.bottom).toEqual(LEAD);
   });
 });

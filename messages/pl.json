@@ -143,6 +143,8 @@
   "prev_month": "Poprzedni miesiąc",
   "prev_year": "Poprzedni rok",
   "cal_jump_month": "Przejdź do miesiąca",
+  "cal_jump_this_month": "Ten miesiąc",
+  "cal_jump_has_entries": "są wpisy",
   "cal_open_month": "Pokaż miesiąc",
   "cal_close_month": "Ukryj miesiąc",
   "next_month": "Następny miesiąc",

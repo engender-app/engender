@@ -2809,18 +2809,17 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 }
 
 
-/* ---------- flatpickr (DatePicker, the calendar's month jump) ----------
+/* ---------- flatpickr (DatePicker) ----------
    flatpickr draws its own widget, and unthemed it is a white box with blue
    accents wearing this app like a costume. Everything it paints maps onto
    the tokens: surfaces, ink, the accent for the day under the finger and
    the one picked, the app's own radius and type. One stylesheet here for
-   every picker in the app - the popups and the calendar sheet's inline
-   grid are the same widget. */
+   every picker in the app. The Journal's month jump was the one inline
+   grid, and it is a month picker of its own now (MonthJump.svelte). */
 /* The container rule is doubled up on its parent selector because
    flatpickr's own stylesheet paints the same box white with the same
    specificity, and import order would decide the winner. */
-body > .flatpickr-calendar,
-.flatpickr-calendar.inline {
+body > .flatpickr-calendar {
   font-family: inherit;
   background: var(--surface);
   /* A line rather than a shadow, which is the trade the sheet already made
@@ -2831,11 +2830,6 @@ body > .flatpickr-calendar,
      a list. */
   border: 1px solid var(--outline);
   border-radius: var(--r-block);
-}
-.flatpickr-calendar.inline {
-  width: 100%;
-  max-width: 340px;
-  box-shadow: none;
 }
 .flatpickr-calendar .flatpickr-months {
   margin-bottom: var(--space-2);

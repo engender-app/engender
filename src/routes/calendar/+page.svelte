@@ -17,11 +17,13 @@
      Ticket 18: "Recent entries" no longer stops at five days and a strip
      underneath repeating the same week. It grows five days at a tap
      ("Earlier entries", the same limit-growing control search's own
-     "show N more" already used - ADR-0069), with a month heading falling
-     out of the dates themselves wherever the month changes
-     (recentEntries.ts's `recentDayHeadings`). The top strip stays exactly
-     what it was: the affordance that opens the month, not a second reading
-     of the same seven days.
+     "show N more" already used - ADR-0069), with the months falling out of
+     the dates themselves (recentEntries.ts's `recentDayMonths`): the first
+     day's month is the heading's own sub-line and every later change of
+     month is a small divider, so there is one heading above the first day
+     rather than two stacked on each other (ux-carpet ticket 282). The top
+     strip stays exactly what it was: the affordance that opens the month,
+     not a second reading of the same seven days.
 
      The header is ticket 23's field, and DIRECTION.md rule 7 says what this
      door puts on it: the month at the section-heading size and those two
@@ -61,11 +63,9 @@
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthYear, fmtTime } from '$lib/data/dates';
-    import flatpickr from 'flatpickr';
-  import 'flatpickr/dist/flatpickr.min.css';
-  import { pickerLocale } from '$lib/components/flatpickrLocale';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
+  import MonthJump from '$lib/components/MonthJump.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -76,7 +76,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { entryDayGroups, entryMarks, recentDayHeadings } from '$lib/data/recentEntries';
+  import { entryDayGroups, entryMarks, recentDayMonths } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import {
@@ -87,7 +87,7 @@
     isReducedMotion,
     motionDuration
   } from '$lib/motion/tokens';
-  import { maskHeight } from '$lib/motion/reveal';
+  import { maskHeight, resize } from '$lib/motion/reveal';
   import { regroupSteps, type CellBox, type CellStep } from '$lib/motion/regroup';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, roleAt, type Role } from '$lib/theme/roles';
@@ -153,7 +153,7 @@
   let recentDaysLimit = $state(RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
   let dayGroups = $derived(entryDayGroups(recent.rows));
-  let headedDayGroups = $derived(recentDayHeadings(dayGroups));
+  let recentMonths = $derived(recentDayMonths(dayGroups));
 
   /* How many more days exist to grow into, read off the journal's own
      count of days that hold anything rather than guessed from whether the
@@ -381,15 +381,13 @@
   /* Item 11: a year is twelve taps of the chevron away, which is the whole
      of the reason nobody lands on last August on purpose. The month label
      itself is the way in - it already says where you are, so it is the thing
-     that offers to move you - and the sheet it opens is flatpickr doing the
-     thing it has already solved: a month grid with its own dropdown month
-     selector, slide animation and locale. The year stepper above it is the
-     one jump flatpickr does not give you, and the month transition's
-     direction follows whichever of the two moved, so arriving at a picked
-     month still slides the way it went. */
+     that offers to move you - and the sheet it opens is a year and its
+     twelve months (MonthJump.svelte, ticket 281; it was flatpickr's day
+     grid until then). The month transition's direction follows whichever
+     moved, the year or the pick, so arriving at a picked month still slides
+     the way it went. A pick closes the sheet in the same step, so the label
+     slides while the sheet is on its way down. */
   let jumpOpen = $state(false);
-  let jumpInput = $state<HTMLInputElement | undefined>();
-  let picker: flatpickr.Instance | null = null;
 
   function move(deltaMonths: number, close: boolean) {
     const total = year * 12 + month + deltaMonths;
@@ -402,41 +400,10 @@
   }
 
   function jumpTo(y: number, mo: number) {
-    move(y * 12 + mo - (year * 12 + month), true);
+    const delta = y * 12 + mo - (year * 12 + month);
+    if (delta === 0) jumpOpen = false;
+    else move(delta, true);
   }
-
-  function mountPicker(node: HTMLInputElement) {
-    jumpInput = node;
-    picker = flatpickr(node, {
-      inline: true,
-      defaultDate: new Date(year, month, 1),
-      disableMobile: true,
-      monthSelectorType: 'static',
-      locale: pickerLocale(),
-      /* Browsing inside the picker - its arrows, its month dropdown - walks
-         the heat map along live, the sheet staying open for more. Committing
-         is a day tap or the year stepper, which close it. */
-      onMonthChange: (_dates, _str, inst) => {
-        move(inst.currentYear * 12 + inst.currentMonth - (year * 12 + month), false);
-      },
-      onChange: (dates) => {
-        if (dates[0]) jumpTo(dates[0].getFullYear(), dates[0].getMonth());
-      }
-    });
-    return {
-      destroy() {
-        picker?.destroy();
-        picker = null;
-      }
-    };
-  }
-
-  /* Reopen on the month the heat map is showing, not the one the picker was
-     last left on - the label above the sheet is the promise of what it
-     opens onto. */
-  $effect(() => {
-    if (jumpOpen && picker) picker.jumpToDate(new Date(year, month, 1), false);
-  });
 </script>
 
 <div class="screen">
@@ -528,18 +495,25 @@
        list are two more of day one's four placeholders" (phase 8 UX ticket
        01). Day one gets the notice under the field and nothing else. -->
   {#if hasEntries}
-    <SectionHeading text={m.recent_entries()} />
+    <!-- The sub-line's room is held from the first frame, empty until the
+         read answers, so the month fading in moves nothing under it. -->
+    <SectionHeading
+      text={m.recent_entries()}
+      sub={recentMonths.month ? fmtMonthYear(recentMonths.month.year, recentMonths.month.month) : ''}
+    />
   {/if}
   <div class="cal-swap">
     <ReadGate read={recent} variant="card" count={3}>
       {#snippet rows()}
         <div class="cal-days">
-          {#each headedDayGroups as group (group.epochDay)}
-            {#if group.monthHeading}
-              <!-- Falls out of the dates themselves (recentDayHeadings), not
-                   inserted per screen: reads "August" the first time an
+          {#each recentMonths.groups as group (group.epochDay)}
+            {#if group.monthDivider}
+              <!-- Falls out of the dates themselves (recentDayMonths), not
+                   inserted per screen: reads "August 2026" the first time an
                    August day appears scrolling down from today. -->
-              <SectionHeading text={fmtMonthYear(group.monthHeading.year, group.monthHeading.month)} />
+              <h3 class="cal-month-divider" data-cal-month-divider>
+                {fmtMonthYear(group.monthDivider.year, group.monthDivider.month)}
+              </h3>
             {/if}
             <DayCard
               key={String(group.epochDay)}
@@ -561,11 +535,6 @@
               {/each}
             </DayCard>
           {/each}
-          {#if moreDaysRemaining > 0}
-            <button class="btn btn-soft" data-recent-days-more onclick={() => (recentDaysLimit += RECENT_DAYS_STEP)}>
-              <span>{m.list_more_days({ count: Math.min(RECENT_DAYS_STEP, moreDaysRemaining) })}</span>
-            </button>
-          {/if}
         </div>
       {/snippet}
       {#snippet empty()}
@@ -585,23 +554,23 @@
       {/snippet}
     </ReadGate>
   </div>
+  <!-- Outside the gate, so the gate's own height travel (`resize`, on its
+       wrapper) is what reveals the days a tap adds: they are uncovered by
+       its clip from the bottom of the last day down, the days already on
+       screen stay where they are, and this control rides the clip's edge
+       instead of vanishing under it until the travel ends. Its own box
+       travels the same way when the day count answers late or runs out. -->
+  <div class="cal-more" use:resize>
+    {#if moreDaysRemaining > 0}
+      <button class="btn btn-soft" data-recent-days-more onclick={() => (recentDaysLimit += RECENT_DAYS_STEP)}>
+        <span>{m.list_more_days({ count: Math.min(RECENT_DAYS_STEP, moreDaysRemaining) })}</span>
+      </button>
+    {/if}
+  </div>
 </div>
 
 <Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
-  <div class="cal-jump">
-    <div class="cal-jump-year">
-      <button class="icon-btn" aria-label={m.prev_year()} onclick={() => move(-12, false)}>
-        <Icon name="chevronLeft" size={22} />
-      </button>
-      <strong>{year}</strong>
-      <button class="icon-btn" aria-label={m.next_year()} onclick={() => move(12, false)}>
-        <Icon name="chevronRight" size={22} />
-      </button>
-    </div>
-    <!-- The visible input flatpickr dresses up is not here: inline mode
-         draws the whole calendar, and its own container carries it. -->
-    <input class="cal-jump-input" type="text" use:mountPicker />
-  </div>
+  <MonthJump {year} {month} onYear={(delta) => move(delta * 12, false)} onPick={jumpTo} />
 </Sheet>
 
 <style>
@@ -734,20 +703,26 @@
   .cal-swap > * { grid-area: 1 / 1; }
   .cal-days { display: grid; gap: var(--space-3); align-content: start; }
 
-  .cal-jump-year {
+  /* A later month, at the caption size with a hairline to the edge: it
+     marks where the list crosses into another month without being another
+     named area of the screen, which a second section heading said it was. */
+  .cal-month-divider {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-3);
+    gap: var(--space-3);
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .cal-month-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--hairline);
   }
 
-  .cal-jump-year strong {
-    font-family: var(--font-display);
-    font-weight: var(--weight-display);
-    font-size: var(--text-lg);
-  }
-
-  .cal-jump-input {
-    display: none;
-  }
+  .cal-more { display: grid; }
 </style>

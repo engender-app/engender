@@ -15,27 +15,38 @@
    Two halves rather than one bidirectional transition because they are two
    elements: `{#key}` mounts the new face while the old one is still
    leaving, and each needs its own travel. Both run on --dur-med, the
-   routine state-change duration, on --ease-out. Under reduced motion
-   `motionDuration` answers 0 and the face cuts, which is tier 3's
-   substitute - the block still says what changed. */
-import type { TransitionConfig } from 'svelte/transition';
-import { EASE_OUT, motionDuration } from './tokens';
+   routine state-change duration, on --ease-out.
 
-/** The new face, rising in from under the block's bottom edge. */
-export function drumIn(_node: Element): TransitionConfig {
+   A stepper's numeral goes both ways (ticket 281, the month picker's
+   year), so `dir` says which: 1, the default, is the value going up and
+   the faces rising; -1 is the value going down and the faces falling, the
+   new one dropping in from above. Under reduced motion the faces do not
+   travel and fade instead, which is tier 3's substitute: the block still
+   says what changed, and says it as a change rather than a cut. */
+import type { TransitionConfig } from 'svelte/transition';
+import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from './tokens';
+
+type Turn = { dir?: 1 | -1 };
+
+/** The new face, rising in from under the block's bottom edge (or dropping
+    in over its top edge, turning the other way). */
+export function drumIn(_node: Element, { dir = 1 }: Turn = {}): TransitionConfig {
+  if (isReducedMotion()) return fadeOnly(crossfadeDuration());
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
-    css: (t, u) => `translate: 0 ${round(u * 100)}%`
+    css: (t, u) => `translate: 0 ${round(dir * u * 100)}%`
   };
 }
 
-/** The old face, rising out through the block's top edge. */
-export function drumOut(_node: Element): TransitionConfig {
+/** The old face, rising out through the block's top edge (or falling out
+    through its bottom one). */
+export function drumOut(_node: Element, { dir = 1 }: Turn = {}): TransitionConfig {
+  if (isReducedMotion()) return fadeOnly(crossfadeDuration());
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
-    css: (t, u) => `translate: 0 ${round(-u * 100)}%`
+    css: (t, u) => `translate: 0 ${round(-dir * u * 100)}%`
   };
 }
 
