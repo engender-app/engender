@@ -61,6 +61,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
+  import { hubIconMaskImage } from '$lib/components/hubIconMasks';
   import { readRowForward } from '$lib/data/rowForwardReads';
   import type { RowForwardMap } from '$lib/data/rowForward';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
@@ -435,6 +436,7 @@
             <ListRow
               key={row.spec.key}
               icon={row.spec.icon}
+              maskImage={hubIconMaskImage(row.spec.icon)}
               title={hubRowTitle(row.spec.key)}
               subtitle={hubRowLine(row.spec.key, row.line, today, nowMs)}
               href={row.spec.href}

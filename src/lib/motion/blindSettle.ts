@@ -131,8 +131,12 @@ export function settleCurve(peak: number, base: Bezier): (t: number) => number {
   const curve = bezier(base);
   if (peak <= 0) return curve;
   const sum = (height: number, t: number) => curve(t) + height * Math.sin(Math.PI * t);
+  const samples = Array.from({ length: 201 }, (_, i) => {
+    const t = i / 200;
+    return [curve(t), Math.sin(Math.PI * t)] as const;
+  });
   const highest = (height: number) =>
-    Math.max(...Array.from({ length: 201 }, (_, i) => sum(height, i / 200)));
+    Math.max(...samples.map(([value, sine]) => value + height * sine));
 
   let low = 0;
   let high = 1;
