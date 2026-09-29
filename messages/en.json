@@ -147,8 +147,7 @@
   "cal_close_month": "Hide month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Deeper colour means a higher {metric}. Split cells show two different readings; stacks show multiple entries. Tap a day to see its entries or planned events.",
-  "legend_none": "no entry",
+  "heat_hint": "A split day shows its first and last reading, and the dots under a date count its entries.",
   "entries_this_day": [
     {
       "declarations": [

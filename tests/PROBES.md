@@ -133,6 +133,7 @@ build. Output goes to `.claude/` unless the script takes a directory.
 | `gallery:noticed-axis-motion` | the changes axis between frames, the numbers `NoticedAxis.svelte` cites |
 | `gallery:return-motion` | the return moment's five movements |
 | `gallery:restore` | setup's restore step and the welcome's new foot |
+| `gallery:journal-month` | the Journal's open month; `--motion` records month change, metric switch and strip to grid, with a per-frame yank count per scene |
 | `gallery:flipbook` | not a gallery: turns a directory of screencast frames into one JSON bundle for a review page |
 
 ### Sweeps and measurements (demo build)
