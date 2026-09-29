@@ -35,6 +35,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   metricKind: (v) => v === 'mood' || v === 'dimension',
   metricDimension: (v) => v === null || typeof v === 'string',
   palette: (v) => typeof v === 'string' && SLUG_SHAPE.test(v),
+  launcherIconShape: (v) => v === 'current' || v === 'round',
   moodPreset: (v) => typeof v === 'string' && SLUG_SHAPE.test(v),
   theme: (v) => v === 'system' || v === 'light' || v === 'dark',
   language: (v) => v === 'system' || v === 'en' || v === 'pl',

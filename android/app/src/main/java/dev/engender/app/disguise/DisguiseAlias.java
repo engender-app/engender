@@ -14,19 +14,19 @@ import java.util.Locale;
  * Which launcher activity-alias (AndroidManifest.xml) is the one Android
  * shows in the launcher and the recents list. Exactly one is ever enabled.
  *
- * <p>There is one alias per flag as well as the disguised one (ticket 50),
- * because the icon on a home screen follows the palette the person picked.
+ * <p>There are current and round aliases per flag, plus the disguised one.
+ * The icon follows the palette and shape the person picked.
  * The disguised alias outranks every flag: someone who has turned disguise
  * on has said the app must not announce itself, and a flag is exactly an
  * announcement. So a palette change while disguised is recorded nowhere
  * here and simply waits - the preference is the record, and the shell hands
- * this class both values on every sync, so the right flag lands the moment
+ * this class all three values on every sync, so the right flag lands the moment
  * disguise comes off.
  *
  * <p>The aliases are enumerated off the manifest rather than listed here, so
  * a ninth palette is a generator run and a manifest entry and nothing in
  * this file. What is computed here is only the name: {@code Launcher} plus
- * the palette, capitalised, with the default palette answering to
+ * the palette, capitalised, with Round appended for round artwork. The default answers to
  * {@code LauncherDefault} - it has no alias of its own, so an install that
  * never changes its flag never flips an alias at all.
  *
@@ -52,11 +52,12 @@ public final class DisguiseAlias {
     /** The alias a given identity wants. Unknown palettes fall back to the
         default rather than to nothing: a name no alias answers to would
         leave every alias disabled and the app absent from the launcher. */
-    public static String aliasFor(Context context, boolean disguised, String palette) {
+    public static String aliasFor(Context context, boolean disguised, String palette, String shape) {
         if (disguised) return DISGUISED;
-        if (palette == null || palette.isEmpty() || palette.equals(DEFAULT_PALETTE)) return DEFAULT;
-        String wanted = PREFIX + palette.substring(0, 1).toUpperCase(Locale.ROOT) + palette.substring(1);
-        return aliases(context).contains(wanted) ? wanted : DEFAULT;
+        String suffix = "round".equals(shape) ? "Round" : "";
+        if (palette == null || palette.isEmpty() || palette.equals(DEFAULT_PALETTE)) return DEFAULT + suffix;
+        String wanted = PREFIX + palette.substring(0, 1).toUpperCase(Locale.ROOT) + palette.substring(1) + suffix;
+        return aliases(context).contains(wanted) ? wanted : DEFAULT + suffix;
     }
 
     /**
@@ -64,9 +65,9 @@ public final class DisguiseAlias {
      *
      * @return whether the enabled alias actually changed.
      */
-    public static boolean apply(Context context, boolean disguised, String palette) {
+    public static boolean apply(Context context, boolean disguised, String palette, String shape) {
         PackageManager pm = context.getPackageManager();
-        String wanted = aliasFor(context, disguised, palette);
+        String wanted = aliasFor(context, disguised, palette, shape);
         if (wanted.equals(enabledAlias(pm, context))) return false;
 
         for (String alias : aliases(context)) setEnabled(pm, context, alias, alias.equals(wanted));

@@ -224,6 +224,31 @@
         />
       </span>
     </div>
+    {#if isAndroid()}
+      <div class="kit-row settings-unit-row" data-launcher-icon-shape>
+        <span class="kit-row-ico settings-icon-preview">
+          {#if prefs.disguise}
+            <img src="/icons/icon-notes.svg" alt="" width="32" height="32" />
+          {:else}
+            <Mark size={32} crop={prefs.launcherIconShape === 'round' ? 'launcher-round' : 'tile'} />
+          {/if}
+        </span>
+        <span class="kit-row-text"><span class="kit-row-title">{m.settings_app_icon()}</span></span>
+        <span class="kit-row-trail">
+          <Segmented
+            name={m.settings_app_icon()}
+            key="launcher-icon-shape"
+            compact
+            options={[
+              { value: 'current', label: m.settings_icon_current() },
+              { value: 'round', label: m.settings_icon_round() }
+            ]}
+            value={prefs.launcherIconShape}
+            onChange={(shape) => { prefs.launcherIconShape = shape as typeof prefs.launcherIconShape; }}
+          />
+        </span>
+      </div>
+    {/if}
     <ListRow key="mood-colours" icon="sparkle" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
@@ -656,6 +681,10 @@
 </div>
 
 <style>
+  .settings-icon-preview {
+    background: transparent;
+    border: 0;
+  }
   .about-content {
     display: grid;
     gap: var(--space-4);

@@ -22,11 +22,9 @@
      Read off the preference, the same belt-and-braces check Home makes on
      the sun.
 
-     The crop. `tile` everywhere the app draws one, because there is no
-     variant of the mark without its square - "THE STROKE IS AN INTEGRAL
-     PART OF THE LOGO! THERE IS NO LOGO WITHOUT THE STROKE!" (Alicja,
-     2026-09-21). `mono` is the same drawing in one ink and with no ground,
-     the edge included, which is what paper takes.
+     The crop. `tile` is the app's mark; `launcher-round` previews the
+     Android round choice in Settings. Both keep a black edge. `mono`
+     draws in one ink for paper.
 
      It does not move, on any surface. There is no entrance, no hover and no
      view-transition name here, and mark.test.ts reads this file to keep it
