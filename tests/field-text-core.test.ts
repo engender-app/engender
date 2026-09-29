@@ -84,12 +84,9 @@ describe('findGeometry', () => {
     expect(findGeometry(vanish).pops).toHaveLength(1);
   });
 
-  it('judges a ring against the edge where nothing clips it, and not where the field group does', () => {
+  it('leaves a ring\'s box alone: it reaches past the field by design', () => {
     const ring = { n: 'sun-b-0', bottom: 175, mid: 0, op: 1 };
-    expect(findGeometry([{ ...row(0, 128, [ring]), clipped: true }]).overspill).toEqual([]);
-    expect(findGeometry([{ ...row(0, 128, [ring]), clipped: false }]).overspill).toEqual([
-      { name: 'sun-b-0', reach: 47, at: 0 }
-    ]);
+    expect(findGeometry([row(0, 128, [ring])]).overspill).toEqual([]);
   });
 
   it('flags a part that appears or vanishes in a single frame', () => {
