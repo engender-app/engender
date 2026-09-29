@@ -87,7 +87,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { HEAT_STEPS, type Role } from '$lib/theme/roles';
   import { EASE_OUT_CSS, crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
-  import { maskHeight } from '$lib/motion/reveal';
+  import { disclose, maskHeight } from '$lib/motion/reveal';
 
   let {
     year,
@@ -549,11 +549,17 @@
        from every day, so a scale under them is the app explaining itself to
        its reader - which is the call the year grid already made, and
        Alicja's on 2026-08-25. No "no entry" swatch either, since ticket 280:
-       a day with nothing logged has no box to show a swatch of. -->
+       a day with nothing logged has no box to show a swatch of.
+
+       Disclosed rather than inserted, because it is the one thing a metric
+       switch adds to or takes from the height of the screen: mounted in one
+       frame, the key and the chips under it jumped a row. -->
   {#if !view.isMood}
     <div
       class="cal-legend"
       data-cal-legend
+      data-cal-sits-out
+      transition:disclose
       aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
     >
       <span class="cal-legend-end">{legend.low}</span>
@@ -569,7 +575,7 @@
        swatch that read as a checkbox, over a border on every cell; the cells
        have no border now, so an era is named here and only here - a dot in
        its colour, the same mark the highlight chip puts on a day. -->
-  <p class="cal-key" data-cal-key>
+  <p class="cal-key" data-cal-key data-cal-sits-out>
     {#each eraLegend as e (e.name)}
       <span class="cal-key-era" data-cal-era-legend>
         <span class="cal-key-dot" style="background:{e.mark}"></span>{e.name}
@@ -602,23 +608,23 @@
          item 7, "the faces... should fade in, not appear in 1 frame").
          Mood only, which is a rule (ADR-0012, F15): `is-on` is where it is
          kept, and it is never on for a gender dimension. -->
-    <span class="cal-face" class:is-on={isMood && !split && c.step > 0} data-hm-cell-face
+    <span class="cal-face" class:is-on={isMood && !split && c.step > 0} data-hm-cell-face data-cal-sits-out
       ><MoodFace step={c.step || 1} size="100%" disc={false} /></span
     >
-    <span class="cal-face is-earlier" class:is-on={isMood && !!split}
+    <span class="cal-face is-earlier" class:is-on={isMood && !!split} data-cal-sits-out
       ><MoodFace step={split?.first ?? (c.step || 1)} size="100%" disc={false} /></span
     >
-    <span class="cal-face is-later" class:is-on={isMood && !!split}
+    <span class="cal-face is-later" class:is-on={isMood && !!split} data-cal-sits-out
       ><MoodFace step={split?.last ?? (c.step || 1)} size="100%" disc={false} /></span
     >
     <!-- Centred: a future cell carries no fill or face for a corner mark to
          sit clear of, and the centre is the one place on this cell nothing
          else ever draws (ADR-0067: heat and a mark are mutually exclusive by
          construction). -->
-    <span class="cal-mark" class:is-on={c.hasMark} data-hm-cell-mark-dot={c.hasMark ? '' : undefined}></span>
+    <span class="cal-mark" class:is-on={c.hasMark} data-cal-sits-out data-hm-cell-mark-dot={c.hasMark ? '' : undefined}></span>
     <!-- The presentation chip's mark (ticket 17, ADR-0048): a corner dot of
          its own, because the outline already carries today. -->
-    <span class="cal-highlight" class:is-on={!!c.highlightMark} data-hm-cell-highlight={c.highlightMark ? '' : undefined}
+    <span class="cal-highlight" class:is-on={!!c.highlightMark} data-cal-sits-out data-hm-cell-highlight={c.highlightMark ? '' : undefined}
       style={c.highlightMark ? `background:${c.highlightMark}` : undefined}></span>
   </span>
   <span class="cal-date" data-cal-date={c.epochDay}>
@@ -795,7 +801,9 @@
      month, they sit the travel out: gone in the frame of the tap, and back
      over a beat once the cells have landed (ticket 99 item 7 round 2 - a
      shorter delay rode the tail of the travel and read as a pop). Closing,
-     they are gone at once. */
+     the screen fades them where they stand before the days fold
+     (`data-cal-sits-out`, the calendar's toggleMonth), so by the time the
+     strip's layout squashes them there is nothing left to see. */
   .cal-grid.is-opening .cal-face,
   .cal-grid.is-opening .cal-mark,
   .cal-grid.is-opening .cal-highlight {

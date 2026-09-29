@@ -315,17 +315,54 @@
     );
   }
 
-  function toggleMonth() {
+  /* Closing, the faces and dots go first. A face is laid out in its cell,
+     and the frame after the tap the cell is a 7px bar scaled back up to the
+     size it was, so a face still showing in it is squashed into a sliver -
+     a different drawing from one frame to the next (ticket 280). So they
+     fade where they stand, unscaled, and the days fold once they are gone.
+     The key and the chips under the grid go in the same beat: the strip has
+     neither, and they used to be gone in the frame of the tap while the
+     panel was still its full height around the space they had left.
+     Opening is the same beat the other way round, and HeatMap owns it: the
+     days unfold first and the faces come back after. */
+  let folding = false;
+
+  function fadeWhatSitsOut(body: HTMLElement): Promise<Animation[]> {
+    const shown = [
+      ...body.querySelectorAll<HTMLElement>('[data-cal-sits-out], [data-presentation-highlight-row]')
+    ].filter(
+      (node) => Number(getComputedStyle(node).opacity) > 0
+    );
+    const fades = shown.map((node) =>
+      node.animate([{ opacity: getComputedStyle(node).opacity }, { opacity: 0 }], {
+        duration: motionDuration('--dur-fast'),
+        easing: EASE_OUT_CSS,
+        fill: 'forwards'
+      })
+    );
+    return Promise.all(fades.map((fade) => fade.finished)).then(() => fades, () => fades);
+  }
+
+  async function toggleMonth() {
     const body = monthBody;
     if (!body || isReducedMotion()) {
       monthOpen = !monthOpen;
       return;
+    }
+    if (folding) return;
+    let faded: Animation[] = [];
+    if (monthOpen) {
+      folding = true;
+      faded = await fadeWhatSitsOut(body);
+      folding = false;
     }
     const swatches = boxesOf('data-cal-cell');
     const dates = boxesOf('data-cal-date');
     const from = body.getBoundingClientRect().height;
     monthOpen = !monthOpen;
     flushSync();
+    // The strip holds them at 0 on its own now, with no transition to run.
+    for (const fade of faded) fade.cancel();
     const duration = motionDuration('--dur-slow');
     /* The panel gives or takes its own height while the cells travel inside
        it, so nothing under the month arrives at its new place in the frame
