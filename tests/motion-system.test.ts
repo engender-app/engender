@@ -1035,11 +1035,28 @@ describe('ticket 28: the field is a blind over the content', () => {
     const slide = frames(keyframesOf(app, 'blind-slide')!.body);
     expect(slide.length, 'one curve from one height to another, not a phase list').toBe(2);
     for (const frame of slide) {
-      expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual(['clip-path']);
+      /* The clip, and `outline-offset`, which moves nothing and is there so
+         the animation cannot be composited: a clip-path-only animation is run
+         on the compositor in Chromium, which draws --blind-ease's linear() as
+         a straight ramp while the text riding the edge keeps the curve
+         (ticket 285). */
+      expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual([
+        'clip-path',
+        'outline-offset'
+      ]);
       expect(frame.decls['clip-path']).toMatch(/round 0 0 var\(--r-block\) var\(--r-block\)\)$/);
     }
     expect(slide[0].decls['clip-path']).toContain('var(--blind-from');
     expect(slide[1].decls['clip-path']).toContain('var(--blind-to');
+  });
+
+  /* One edge, one clock (ticket 285): what is painted is the smaller of the
+     blind's clip and the field group's own box, which the browser animates on
+     its default 0.25s ease unless told otherwise. */
+  it('animates the field group on the blind\'s own duration and curve', () => {
+    const group = declarations(ruleOf(app, '::view-transition-group(field)')?.body ?? '');
+    expect(group['animation-duration']).toBe('var(--blind-dur, var(--dur-slow))');
+    expect(group['animation-timing-function']).toBe('var(--blind-ease, var(--ease-out))');
   });
 
   it('translates the full blind when one side is scrolled', () => {

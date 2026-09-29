@@ -963,7 +963,24 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    when it ended (ux-carpet 230). The sun rings are lifted to root groups
    at z-index 5 so they paint over the titles (*.field-part at 4) rather
    than being trapped under the field group's z-index 3 (ux-carpet 241). */
-::view-transition-group(field) { z-index: 3; }
+::view-transition-group(field) {
+  z-index: 3;
+  /* One edge, one clock (ticket 285). The field's group is what clips the
+     blind - `group-children(field)` below cuts everything nested in it at
+     the group's own box - and the browser animates that box from the old
+     field's height to the new one's on its own default: 0.25s, plain ease.
+     The blind's clip, and everything printed on it, ride --dur-slow on
+     --blind-ease. What was painted was the smaller of the two, so an opening
+     field showed the slow start of the default while the text rode the fast
+     start of the settle: the search box sat 34px lower than the blue it was
+     printed on, over the page, on Transition to Today at 40ms, and a closing
+     field did the reverse by 14px. Handing the group the blind's own
+     duration and curve makes the two clips one edge. Reduced motion has
+     --dur-slow at 1ms, so the box cuts with the blind instead of sliding
+     for a quarter of a second under it. */
+  animation-duration: var(--blind-dur, var(--dur-slow));
+  animation-timing-function: var(--blind-ease, var(--ease-out));
+}
 ::view-transition-old(field),
 ::view-transition-new(field) { opacity: 0; animation: none; }
 ::view-transition-group-children(field) { overflow: clip; }
@@ -971,12 +988,26 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 ::view-transition-new(blind) {
   animation: blind-slide var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
+/* `outline-offset` is here for one reason (ticket 285): it cannot be
+   composited, so it keeps this animation on the main thread. Chromium runs a
+   clip-path-only animation on the compositor, and there --blind-ease's
+   linear() is lost and the edge is drawn as a straight 380ms ramp - measured
+   on screencast frames of Transition to Today, 3.5px a frame from first
+   frame to last, while the same animation read off getComputedStyle went 16px
+   in its first frame, swelled to 5px past its mark and came back. The type
+   riding the edge is a `translate`, which does keep the curve, so the words
+   ran up to 30px ahead of the blue they were printed on and stood on the page
+   below it for a fifth of a second. On the main thread the edge is drawn on
+   the curve it was written on. The offset changes by a hundredth of a pixel
+   on an element with no outline. */
 @keyframes blind-slide {
   from {
     clip-path: inset(0 0 calc(100vh - var(--blind-from, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+    outline-offset: 0px;
   }
   to {
     clip-path: inset(0 0 calc(100vh - var(--blind-to, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+    outline-offset: 0.01px;
   }
 }
 /* A restored scroll position puts one field above the window. Keep the
