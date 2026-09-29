@@ -4235,6 +4235,14 @@ try {
 await flow('journal book', async () => {
 try {
   await fresh('/settings/journal-book');
+  /* Earlier reset and import flows can leave this shared journal empty.
+     The print check needs enough entries to span more than one page. */
+  await page.click('[data-reset-demo]');
+  await page.waitForSelector('[data-demo-busy]', { timeout: 5000 });
+  await page.waitForSelector('[data-demo-busy]', { state: 'detached', timeout: 60000 });
+  await page.goto(BASE + '/settings/journal-book', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-book-preview-toggle]').click();
   await page.waitForSelector('[data-book-entry]');
   /* By part, not by position: the picker's order is a list in journalBook.ts
      and gripping nth() would silently assert the wrong switch the day that
@@ -4254,6 +4262,8 @@ try {
   await part('entries').click();
   await page.waitForSelector('[data-book-entry]');
 
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await page.waitForFunction(() => document.querySelectorAll('[data-book-entry]').length > 25);
   await page.emulateMedia({ media: 'print' });
   if (await page.locator('[data-book-inclusion]').isVisible()) throw new Error('the inclusion picker prints');
   if (await page.locator('[data-app-nav]').isVisible()) throw new Error('the navigation bar prints');
