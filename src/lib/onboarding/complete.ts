@@ -20,9 +20,9 @@
    Capacitor. */
 
 export interface SetupCompletion {
-  /** Every answer setup has been holding, `onboarded` among them. Whatever
-      the route's own guards decide gets written; this only decides when. */
-  writeAnswers: () => void;
+  /** Every answer setup has been holding, `onboarded` among them. An area
+      visibility write must settle before setup leaves. */
+  writeAnswers: () => void | Promise<void>;
   /** Resolves once `writeAnswers`' writes are in SQLite rather than in
       flight. On web this is a formality. On Android it is the difference
       between a finished install and a lost one. */
@@ -43,11 +43,10 @@ export interface SetupCompletion {
 }
 
 export async function completeSetup(completion: SetupCompletion): Promise<void> {
-  completion.writeAnswers();
+  await completion.writeAnswers();
 
-  /* Nothing to race, so nothing to wait for. A first run that leaves
-     disguise alone should not pay a round trip to SQLite for the sake of a
-     branch it never takes. */
+  /* The area write has landed. Preferences need a flush before disguise can
+     kill the Android process; without disguise, the normal write path runs. */
   if (completion.disguise) {
     /* Whatever happens in here, the person gets out of setup. They pressed
        the last button of a first run, and a failure to write one

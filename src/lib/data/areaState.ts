@@ -82,6 +82,13 @@ export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
     reverse a one-directional rule through the back door. */
 export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 
+/** Until SQLite answers, keep the opt-in body module out of navigation and
+    prompts. An empty fallback would briefly show it on a cold load. */
+export const AREA_STATES_BEFORE_READ: AreaStates = {
+  measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
+  sizeRecords: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
+};
+
 /** The areas a person can declare finished: the original nine approved area
     by area by Alicja on 2026-09-03, plus `voicePracticeTakes` (phase 8
     features ticket 10), which that ticket posed as an open choice rather

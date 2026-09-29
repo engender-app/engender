@@ -12,8 +12,21 @@ export function intlLocale(): string {
   return getLocale() === 'pl' ? 'pl-PL' : 'en-GB';
 }
 
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatter(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const locale = intlLocale();
+  const key = JSON.stringify([locale, Object.entries(opts).sort(([a], [b]) => a.localeCompare(b))]);
+  let result = formatters.get(key);
+  if (!result) {
+    result = new Intl.DateTimeFormat(locale, opts);
+    formatters.set(key, result);
+  }
+  return result;
+}
+
 export function fmtDay(epochDay: number, opts: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(intlLocale(), opts).format(localDateFromEpochDay(epochDay));
+  return formatter(opts).format(localDateFromEpochDay(epochDay));
 }
 
 /** The two ends of a chart's range, written so they cannot read backwards.
@@ -37,15 +50,15 @@ export function fmtRangeEnds(fromEpochDay: number, toEpochDay: number): { from: 
 }
 
 export function fmtTime(ts: number): string {
-  return new Intl.DateTimeFormat(intlLocale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
+  return formatter({ hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
 }
 
 export function fmtMonthName(year: number, month: number): string {
-  return new Intl.DateTimeFormat(intlLocale(), { month: 'long' }).format(new Date(year, month, 1));
+  return formatter({ month: 'long' }).format(new Date(year, month, 1));
 }
 
 export function fmtMonthYear(year: number, month: number): string {
-  return new Intl.DateTimeFormat(intlLocale(), { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
+  return formatter({ month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
 }
 
 /** The largest one or two units of a CalendarDuration, in words: "2 years",

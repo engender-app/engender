@@ -10,7 +10,10 @@
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { areasHidden } from '$lib/data/areaState';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
@@ -64,6 +67,15 @@
      count of the enabled ones - which only the Android build displays at all. */
   let reminders = liveList((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
+  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
+  let measurementsOn = $derived(
+    measurementStates.value !== undefined && !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
+  );
+  let genitalEffectsOn = $derived(
+    vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+  );
 
   let scalesSheet = $state(false);
 
@@ -218,6 +230,31 @@
         />
       </span>
     </div>
+    {#if isAndroid()}
+      <div class="kit-row settings-unit-row" data-launcher-icon-shape>
+        <span class="kit-row-ico settings-icon-preview">
+          {#if prefs.disguise}
+            <img src="/icons/icon-notes.svg" alt="" width="32" height="32" />
+          {:else}
+            <Mark size={32} crop={prefs.launcherIconShape === 'round' ? 'launcher-round' : 'tile'} />
+          {/if}
+        </span>
+        <span class="kit-row-text"><span class="kit-row-title">{m.settings_app_icon()}</span></span>
+        <span class="kit-row-trail">
+          <Segmented
+            name={m.settings_app_icon()}
+            key="launcher-icon-shape"
+            compact
+            options={[
+              { value: 'current', label: m.settings_icon_current() },
+              { value: 'round', label: m.settings_icon_round() }
+            ]}
+            value={prefs.launcherIconShape}
+            onChange={(shape) => { prefs.launcherIconShape = shape as typeof prefs.launcherIconShape; }}
+          />
+        </span>
+      </div>
+    {/if}
     <ListRow key="mood-colours" icon="sparkle" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
@@ -260,49 +297,78 @@
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <div class="kit-row settings-unit-row" style="cursor:default">
-        <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Segmented
-            name={m.settings_measurement_unit_title()}
-            key="measurement-unit"
-            compact
-            options={[
-              { value: 'cm', label: m.measurement_unit_cm() },
-              { value: 'in', label: m.measurement_unit_in() }
-            ]}
-            value={prefs.measurementUnit}
-            onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
-          />
-        </span>
-      </div>
-      <!-- ADR-0043: the manual way into cycle tracking, for someone no
-           testosterone regimen already surfaces it for. The switch only
-           decides whether navigation names cycle tracking; turning it off
-           touches no record and no deep link. -->
-      <div class="kit-row" data-cycle-tracking-toggle>
-        <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
-          <!-- The one explanatory line the hub keeps: without it an off
-               switch next to a cycle area that still shows reads as broken
-               (ADR-0043's automatic half). -->
-          <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.cycleTrackingEnabled}
-            label={m.cycle_tracking_toggle_title()}
-            onChange={(v) => {
-              prefs.cycleTrackingEnabled = v;
-            }}
-          />
-        </span>
-      </div>
     </ListCard>
+    <h3 class="field-label" id="settings-features-title">{m.features_to_show()}</h3>
+    <p class="muted small">{m.features_to_show_sub()}</p>
+    <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
+      <ListCard>
+        <div class="kit-row" data-measurements-toggle>
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={measurementsOn}
+              disabled={measurementStates.value === undefined}
+              label={m.measurements_and_sizes()}
+              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-genital-effects-toggle>
+          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={genitalEffectsOn}
+              label={m.feature_genital_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            {#if prefs.cycleTrackingChoice === null}
+              <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+            {/if}
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={cycleShown}
+              disabled={prefs.cycleTrackingChoice === null && cycleEpisodes.value === undefined}
+              label={m.cycle_tracking_toggle_title()}
+              onChange={(v) => {
+                prefs.cycleTrackingChoice = v;
+              }}
+            />
+          </span>
+        </div>
+      </ListCard>
+    </div>
+    {#if measurementsOn}
+      <ListCard>
+        <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Segmented
+              name={m.settings_measurement_unit_title()}
+              key="measurement-unit"
+              compact
+              options={[
+                { value: 'cm', label: m.measurement_unit_cm() },
+                { value: 'in', label: m.measurement_unit_in() }
+              ]}
+              value={prefs.measurementUnit}
+              onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
+            />
+          </span>
+        </div>
+      </ListCard>
+    {/if}
   </div>
 
   <SectionHeading text={m.settings_reminders()} />
@@ -636,6 +702,10 @@
 </div>
 
 <style>
+  .settings-icon-preview {
+    background: transparent;
+    border: 0;
+  }
   .about-content {
     display: grid;
     gap: var(--space-4);

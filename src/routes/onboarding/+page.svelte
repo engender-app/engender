@@ -57,6 +57,7 @@
     stepBefore,
     stepIndex,
     sunGrowth,
+    measurementsHiddenOnSetup,
     type OnboardingStep
   } from '$lib/onboarding/steps';
   import type { PickedArchive } from '$lib/data/archive/pick';
@@ -72,6 +73,11 @@
   import { wipe } from '$lib/motion/reveal';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '$lib/data/pinnedRows';
+  import { AREA_GROUPS } from '$lib/data/areaGroups';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { areasHidden } from '$lib/data/areaState';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { hubRow, hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -137,7 +143,21 @@
      whatever it answered last time, not the app's own default. */
   let areas = $state<string[] | null>(null);
   let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
-  let previewPins = $derived(defaultPins(tickedAreas));
+  let measurementsChoice = $state<boolean | null>(null);
+  let genitalEffectsChoice = $state<boolean | null>(null);
+  let cycleChoice = $state<boolean | null>(null);
+  let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleChoice ?? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
+  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let measurementsShown = $derived(
+    measurementsChoice ?? (prefs.onboarded && measurementStates.value !== undefined
+      ? !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
+      : false)
+  );
+  let genitalEffectsShown = $derived(
+    genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+  );
+  let previewPins = $derived(defaultPins(tickedAreas).filter((key) => key !== 'measurements' || measurementsShown));
 
   function toggleArea(key: string) {
     areas = tickedAreas.includes(key)
@@ -238,6 +258,8 @@
      screen's own `data-import-error` so the suite grips a kind rather than a
      sentence in one language. */
   let archiveErrorKind = $state<RestoreFailureKind | ''>('');
+  let setupBusy = $state(false);
+  let setupError = $state('');
   const archiveProgress = createProgress();
 
   /* One flow for everybody (ADR-0079): setup does not vary by disguise,
@@ -365,6 +387,10 @@
      journal already, which is the fact every later step reads. */
   function beginRestore() {
     restoring = true;
+    areas = null;
+    measurementsChoice = null;
+    genitalEffectsChoice = null;
+    cycleChoice = null;
     archiveError = '';
     archiveErrorKind = '';
     go('restore');
@@ -445,7 +471,12 @@
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
-    else if (step === 'areas') areas = null;
+    else if (step === 'areas') {
+      areas = null;
+      measurementsChoice = null;
+      genitalEffectsChoice = null;
+      cycleChoice = null;
+    }
     else if (step === 'lock') lockOnLeave = false;
     /* The permissions step is not in this list, and that is the whole of
        what skipping it does (ticket 31). Its answers live in the OS rather
@@ -469,69 +500,64 @@
      to route an early leave through its own PIN screen before that was one
      choice made in the security module rather than two. */
   async function complete() {
-    /* The archive goes in here and nowhere else (ticket 36), and ahead of
-       everything below it.
-
-       This is the one moment in a restored first run when the journal both
-       exists and is open: the access mode step made the key a step or two
-       ago, and until it did there was nothing on this device to write into.
-       Ahead of `writeAnswers` because a Replace installs the archive's own
-       portable preferences (ADR-0003) and anything setup settled on this
-       device has to land on top of them - and ahead of the disguise for the
-       harder reason complete.ts gives, that applying the disguise closes the
-       app on Android, so a restore sequenced after it would be a restore
-       that never ran.
-
-       Outside completeSetup rather than as a fifth thing inside it, which
-       its own docblock rules out: it sequences four things and knows nothing
-       about journals. A failure here says so and stays put rather than
-       marking the first run done over a journal that is still empty. */
-    if (restoring && archiveReady) {
-      if (archiveBusy) return;
-      archiveBusy = true;
-      archiveError = '';
-      archiveErrorKind = '';
-      archiveProgress.start();
-      const result = await runRestore(picked, archivePass, 'replace', (progress: RestoreProgress) =>
-        archiveProgress.report(progress.done, progress.total)
-      );
-      archiveBusy = false;
-      if (!result.ok) {
-        archiveProgress.abandon();
-        archiveErrorKind = result.kind;
-        archiveError = importFailureMessage(result.kind);
-        return;
+    if (setupBusy) return;
+    setupBusy = true;
+    setupError = '';
+    const wasOnboarded = prefs.onboarded;
+    try {
+      /* Restore precedes setup answers. A restored archive supplies its own
+         visibility unless this setup explicitly changed the area list. */
+      if (restoring && archiveReady) {
+        if (archiveBusy) return;
+        archiveBusy = true;
+        archiveError = '';
+        archiveErrorKind = '';
+        archiveProgress.start();
+        const result = await runRestore(picked, archivePass, 'replace', (progress: RestoreProgress) =>
+          archiveProgress.report(progress.done, progress.total)
+        );
+        archiveBusy = false;
+        if (!result.ok) {
+          archiveProgress.abandon();
+          archiveErrorKind = result.kind;
+          archiveError = importFailureMessage(result.kind);
+          return;
+        }
+        await archiveProgress.finish();
       }
-      await archiveProgress.finish();
-    }
 
-    /* The order is onboarding/complete.ts's, and it is there rather than
-       here because the disguise makes it load-bearing: applying it closes
-       the app on Android, so every other answer has to be in SQLite first
-       or a first run that ends in a disguise ends in nothing. */
-    void completeSetup({
-      writeAnswers() {
-        /* Guarded like the other four, and for the same reason: skipping a
-           step leaves the stored value alone rather than overwriting it
-           with nothing. An empty field wrote an empty name, so skipping the
-           name step erased one that was already there - which a first run
-           never has, and a first run reached a second time does. Clearing a
-           name is Settings' job, where the field is the stored value rather
-           than a draft of it. */
-        if (name.trim()) prefs.name = name.trim();
-        if (scales) prefs.activeScales = scales;
-        if (areas) prefs.onboardingAreas = areas;
-        if (lockOnLeave) prefs.lockOnLeave = true;
-        prefs.onboarded = true;
-      },
-      flushWrites: flushPreferences,
-      disguise,
-      /* Durably, and only here: everywhere else in the app a preference is
-         assigned and the screen carries on, but this assignment is what
-         makes the launcher alias flip and the process die. */
-      turnOnDisguise: () => setPreferenceDurably('disguise', true),
-      leaveSetup: () => void goto(onboardingDestination())
-    });
+      /* The area state must land before `onboarded`, and all answers before
+         disguise can close the Android process. */
+      await completeSetup({
+        async writeAnswers() {
+          const hidden = measurementsHiddenOnSetup(measurementsChoice, wasOnboarded, restoring && archiveReady);
+          if (hidden !== null) await journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, hidden);
+          if (genitalEffectsChoice !== null) {
+            await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice);
+          }
+          if (!restoring && !wasOnboarded) prefs.cycleTrackingChoice = cycleChoice ?? false;
+          else if (cycleChoice !== null) prefs.cycleTrackingChoice = cycleChoice;
+          /* New journals store the three pre-ticked areas, preserving older
+             journals whose null answer meant four default pins. */
+          if (name.trim()) prefs.name = name.trim();
+          if (scales) prefs.activeScales = scales;
+          if (areas) prefs.onboardingAreas = areas;
+          else if (!wasOnboarded && !restoring) prefs.onboardingAreas = [...DEFAULT_ONBOARDING_AREAS];
+          if (lockOnLeave) prefs.lockOnLeave = true;
+          prefs.onboarded = true;
+        },
+        flushWrites: flushPreferences,
+        disguise,
+        turnOnDisguise: () => setPreferenceDurably('disguise', true),
+        leaveSetup: () => void goto(onboardingDestination())
+      });
+    } catch (error) {
+      archiveBusy = false;
+      console.error('Could not finish setup', error);
+      setupError = m.ob_setup_save_failed();
+    } finally {
+      setupBusy = false;
+    }
   }
 
   /* "Leave setup", from any step before the finish. Detours through the
@@ -816,6 +842,7 @@
                      back to. -->
                 <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
               {:else if step === 'areas'}
+                <p class="setup-caption" id="setup-pins-title">{m.ob_today_pins_title()}</p>
                 <!-- The hub's own groups and rows, ticked rather than tapped
                      through - the flag step and the scales step both already
                      solved "a list you tick" on this screen, so this is that
@@ -862,7 +889,7 @@
                   </ListCard>
                 </div>
 
-                <div class="setup-areas">
+                <div class="setup-areas" role="group" aria-labelledby="setup-pins-title">
                   {#each sections as section (section.key)}
                     <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
                     <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
@@ -884,6 +911,33 @@
                       {/each}
                     </ListCard>
                   {/each}
+                </div>
+                <div data-setup-feature-visibility role="group" aria-labelledby="setup-features-title">
+                  <p class="setup-caption" id="setup-features-title">{m.features_to_show()}</p>
+                  <p class="muted small">{m.features_to_show_sub()}</p>
+                  <ListCard>
+                    <ListRow
+                      key="feature-measurements"
+                      title={m.measurements_and_sizes()}
+                      checked={measurementsShown}
+                      chevron={false}
+                      onclick={() => (measurementsChoice = !measurementsShown)}
+                    />
+                    <ListRow
+                      key="feature-genital-effects"
+                      title={m.feature_genital_effects()}
+                      checked={genitalEffectsShown}
+                      chevron={false}
+                      onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
+                    />
+                    <ListRow
+                      key="feature-cycle-tracking"
+                      title={m.cycle_tracking_toggle_title()}
+                      checked={cycleShown}
+                      chevron={false}
+                      onclick={() => (cycleChoice = !cycleShown)}
+                    />
+                  </ListCard>
                 </div>
               {:else if step === 'lock'}
                 {#if awaitingAccessMode}
@@ -1009,6 +1063,7 @@
          hairline, and it does not move between steps (rule 12) - it is
          outside the box that rides the edge for exactly that reason. -->
     <div class="setup-foot" data-setup-foot>
+      {#if setupError}<p class="setup-status" role="alert">{setupError}</p>{/if}
       {#if awaitingAccessMode}
         <!-- The module above carries its own submit action, and there is no
              other way past it (ticket 54, matching AccessModeSetup's own
@@ -1026,7 +1081,7 @@
           class:is-filling={archiveBusy && archiveProgress.fraction !== null}
           style={`--fill:${(archiveProgress.fraction ?? 0) * 100}%`}
           data-finish
-          disabled={archiveBusy}
+          disabled={archiveBusy || setupBusy}
           onclick={complete}
         >
           <span>

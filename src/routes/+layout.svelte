@@ -391,6 +391,7 @@
        list that reaches the native side purely to be looked at: the
        launcher icon follows the flag (ticket 50). */
     const palette = prefs.palette;
+    const launcherIconShape = prefs.launcherIconShape;
     const quickExit = prefs.quickExit;
     const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready || !isAndroid()) return;
@@ -432,6 +433,7 @@
             quietHoursEnd,
             disguise,
             palette,
+            launcherIconShape,
             quickExit,
             allowScreenCapture
           },

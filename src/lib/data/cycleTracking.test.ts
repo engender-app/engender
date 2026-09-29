@@ -56,17 +56,29 @@ describe('testosteroneActive', () => {
 });
 
 describe('cycleTrackingVisible', () => {
+  it('lets an explicit choice win with and without testosterone', () => {
+    for (const episodes of [[], [episode({})]]) {
+      expect(cycleTrackingVisible(episodes, NOON, false, true)).toBe(true);
+      expect(cycleTrackingVisible(episodes, NOON, false, false)).toBe(false);
+    }
+  });
+
+  it('keeps the old automatic rule when no choice exists', () => {
+    expect(cycleTrackingVisible([], NOON, false, null)).toBe(false);
+    expect(cycleTrackingVisible([episode({})], NOON, false, null)).toBe(true);
+    expect(cycleTrackingVisible([], NOON, true, null)).toBe(true);
+  });
   it('is false by default: no testosterone, no opt-in, no cycle tracking anywhere', () => {
-    expect(cycleTrackingVisible([], NOON, false)).toBe(false);
-    expect(cycleTrackingVisible([episode({ drug: 'Estradiol valerate' })], NOON, false)).toBe(false);
+    expect(cycleTrackingVisible([], NOON, false, null)).toBe(false);
+    expect(cycleTrackingVisible([episode({ drug: 'Estradiol valerate' })], NOON, false, null)).toBe(false);
   });
 
   it('is true through the preference alone, whatever the regimen says', () => {
-    expect(cycleTrackingVisible([], NOON, true)).toBe(true);
-    expect(cycleTrackingVisible([episode({ drug: 'Estradiol valerate' })], NOON, true)).toBe(true);
+    expect(cycleTrackingVisible([], NOON, true, null)).toBe(true);
+    expect(cycleTrackingVisible([episode({ drug: 'Estradiol valerate' })], NOON, true, null)).toBe(true);
   });
 
   it('is true through an active testosterone episode alone, whatever the preference says', () => {
-    expect(cycleTrackingVisible([episode({})], NOON, false)).toBe(true);
+    expect(cycleTrackingVisible([episode({})], NOON, false, null)).toBe(true);
   });
 });

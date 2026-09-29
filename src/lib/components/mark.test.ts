@@ -25,6 +25,8 @@ import {
   MARK_TILE,
   MARK_SAFE_TILE,
   MARK_TILE_RADIUS,
+  ROUND_SUN_CENTER,
+  ROUND_SUN_R,
   markSvg
 } from './mark.ts';
 import { parseMotifStripes, ringRadii } from '../motion/flagSun.ts';
@@ -45,6 +47,19 @@ function palettes(): Record<string, string[]> {
 
 const flags = palettes();
 const circles = (svg: string) => [...svg.matchAll(/<circle[^>]*>/g)].map((m) => m[0]);
+
+describe('round launcher artwork', () => {
+  it('shows inner and outer bands inside the circular crop for every flag', () => {
+    const distanceFromCentre = Math.hypot(ROUND_SUN_CENTER - 50, MARK_R - ROUND_SUN_CENTER - 50);
+    for (const [name, stripes] of Object.entries(flags)) {
+      const svg = markSvg(stripes, 'launcher-round', 512);
+      const bands = circles(svg).filter((circle) => circle.includes('cx="75"') && circle.includes('cy="25"'));
+      expect(bands, name).toHaveLength(stripes.length);
+      expect(distanceFromCentre).toBeLessThan(45);
+      expect(distanceFromCentre + 50).toBeGreaterThan(ROUND_SUN_R * (stripes.length - 1) / stripes.length + 5);
+    }
+  });
+});
 
 describe("the mark's signed-off numbers", () => {
   it('is the geometry Alicja picked: R 100, centre 0, seam 3, tile radius 15', () => {

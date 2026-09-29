@@ -29,29 +29,24 @@
    does for the hub. */
 
 import { HUB_ROWS, rowHidden, rowLine, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
+import { AREA_STATES_BEFORE_READ } from './areaState';
 import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from './journal/dayAhead';
 import type { PreferenceValues } from './prefs/catalogue';
 
-/** The set somebody who skipped onboarding's question meets, and the set the
-    question itself arrives pre-ticked with - one list, so that skipping
-    leaves the stored default alone in the way every other onboarding step
-    already means it (`onboarding/steps.ts`).
+/** The set a new journal sees pre-ticked in setup. New journals store it
+    explicitly even when the question is skipped, so older journals whose
+    `onboardingAreas` is null keep their former four-pin default.
 
     It is the one central guess in this module, and it is confined to a
-    person who has not answered. Four rows: the transition's dated points,
-    the body, the medication, and what is being tried out. Three of the four
-    report a reading of their own, so day two says something. `care` is the
-    fourth and never reports one - it fronts four medication surfaces and no
-    archive section, so its line is a sentence about what is behind it - and
-    it is here anyway, because a person on HRT meeting no way to their doses
-    on the front page is the thing this default is for. Somebody
-    self-managing removes it; somebody who does not measure removes
-    measurements. That removal is the feature.
+    person who has not answered. Three rows: the transition's dated points,
+    medication, and what is being tried out. Measurements is available in
+    setup, but starts off because it can be triggering.
 
     Typed `readonly HubRowKey[]` rather than left as strings so a row renamed
-    out from under it is a compile error rather than four rows that quietly
+    out from under it is a compile error rather than rows that quietly
     resolve to nothing. */
-export const DEFAULT_ONBOARDING_AREAS = ['measurements', 'care', 'milestones', 'tryouts'] as const satisfies readonly HubRowKey[];
+export const DEFAULT_ONBOARDING_AREAS = ['care', 'milestones', 'tryouts'] as const satisfies readonly HubRowKey[];
+const LEGACY_UNANSWERED_AREAS = ['measurements', ...DEFAULT_ONBOARDING_AREAS] as const satisfies readonly HubRowKey[];
 
 /** What the person has stored about their front page.
 
@@ -77,8 +72,8 @@ export type AgendaSwitches = Pick<PreferenceValues, 'agendaKinds'>;
     does, which is what stops the app having two opinions about one area. */
 export type PinnedRow = DrawnRow;
 
-/** The default set: what onboarding chose, or the pre-ticked answer where it
-    was never asked.
+/** The default set: what onboarding chose, or the old four-row answer where
+    it was never stored. New setup stores its three-row default explicitly.
 
     In registry order rather than in the order somebody ticked a list of
     checkboxes, which is an artefact of reading down a page rather than an
@@ -94,7 +89,7 @@ export function defaultPins(
   onboardingAreas: readonly string[] | null,
   rows: readonly HubRow[] = HUB_ROWS
 ): HubRowKey[] {
-  const chosen = new Set<string>(onboardingAreas ?? DEFAULT_ONBOARDING_AREAS);
+  const chosen = new Set<string>(onboardingAreas ?? LEGACY_UNANSWERED_AREAS);
   return rows.filter((row) => chosen.has(row.key)).map((row) => row.key);
 }
 
@@ -159,7 +154,7 @@ export function fallbackReading(todayEpochDay: number): HubReading {
   return {
     todayEpochDay,
     lastWrites: {},
-    states: {},
+    states: AREA_STATES_BEFORE_READ,
     forward: {},
     voiceMemoLastWriteEpochDay: null
   };
