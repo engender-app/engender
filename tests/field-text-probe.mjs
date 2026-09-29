@@ -504,6 +504,7 @@ try {
       }
       if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'pin gate unlock'.includes(o) || o.startsWith('pin'))) {
         try {
+          await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
           for (let run = 0; run < Math.max(RUNS, 1); run++) {
             await boot(page, '/settings/access-mode');
             await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
@@ -524,23 +525,25 @@ try {
             if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, run, m);
             await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 }).catch(() => {});
             await page.waitForTimeout(1500);
-            /* And out: back to unlocked through the access-mode screen. */
-            await page.evaluate(`(async () => { const s = (ms) => new Promise((r) => setTimeout(r, ms));
-              for (let i = 0; i < 40 && !document.querySelector('[data-app-root][data-boot="ready"]'); i++) await s(250);
-              return true; })()`);
-            await page.evaluate(`history.pushState({}, '', '/settings/access-mode'); dispatchEvent(new PopStateEvent('popstate')); true`);
+            /* And out: back to unlocked through the real controls - the tab
+               bar's Today, the gear, Security, then the access-mode list. A
+               reload would land on the gate again. */
+            await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 });
             await page.waitForTimeout(1500);
-            if (!(await page.locator('[data-access-modes]').count())) {
-              const link = page.locator('a[href="/more"], [data-nav-item="settings"]').first();
-              await link.click();
-              await page.waitForTimeout(800);
-              await page.locator('a[href="/settings/access-mode"]').first().click();
-              await page.waitForSelector('[data-access-modes]');
-            }
+            await page.locator('[data-nav-item="home"]').click();
+            await page.waitForSelector('[data-home-gear]');
+            await page.waitForTimeout(800);
+            await page.locator('[data-home-gear]').click();
+            await page.locator('a[href="/settings/security"]').first().click();
+            await page.locator('a[href="/settings/access-mode"]').first().click();
+            await page.waitForSelector('[data-access-modes]');
             await page.locator('[data-access-modes] [data-list-row="unlocked"]').click();
             await page.waitForSelector('[data-access-submit]');
             await page.locator('[data-access-submit]').click();
             await page.waitForTimeout(2500);
+            await page.goto(`${base}/`, { waitUntil: IDLE });
+            if (!(await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 }).catch(() => null)))
+              throw new Error('the journal is still behind a gate after switching back to unlocked');
           }
         } catch (err) {
           console.log('pin gate unlock ERROR: ' + String(err).slice(0, 300));
