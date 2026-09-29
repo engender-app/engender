@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type { Entry } from './types.ts';
-import { entryDayGroups, entryMarks, recentDayHeadings } from './recentEntries.ts';
+import { entryDayGroups, entryMarks, recentDayMonths } from './recentEntries.ts';
 import { epochDayFromLocalDate } from './epochDay.ts';
 
 /** Only the three fields the grouping reads. */
@@ -24,27 +24,38 @@ test('is empty for an empty read', () => {
   assert.deepEqual(entryDayGroups([]), []);
 });
 
-test('a heading opens the first day, and again wherever the month changes', () => {
+test('the first day names the list\'s month, and a divider falls wherever the month changes after it', () => {
   const aug31 = epochDayFromLocalDate(new Date(2026, 7, 31));
   const aug15 = epochDayFromLocalDate(new Date(2026, 7, 15));
   const jul20 = epochDayFromLocalDate(new Date(2026, 6, 20));
-  const groups = entryDayGroups([entry(1, aug31), entry(2, aug15), entry(3, jul20)]);
-  const headed = recentDayHeadings(groups);
+  const headed = recentDayMonths(entryDayGroups([entry(1, aug31), entry(2, aug15), entry(3, jul20)]));
+  // August is the heading's sub-line, not a divider over its own first day:
+  // one heading above the first day (ux-carpet ticket 282).
+  assert.deepEqual(headed.month, { year: 2026, month: 7 });
   assert.deepEqual(
-    headed.map((g) => [g.epochDay, g.monthHeading]),
+    headed.groups.map((g) => [g.epochDay, g.monthDivider]),
     [
-      [aug31, { year: 2026, month: 7 }],
+      [aug31, undefined],
       [aug15, undefined],
       [jul20, { year: 2026, month: 6 }]
     ]
   );
 });
 
-test('is empty for an empty read, and grouping is untouched by the headings', () => {
-  assert.deepEqual(recentDayHeadings([]), []);
+test('a year boundary is a month change like any other', () => {
+  const jan2 = epochDayFromLocalDate(new Date(2027, 0, 2));
+  const dec30 = epochDayFromLocalDate(new Date(2026, 11, 30));
+  const headed = recentDayMonths(entryDayGroups([entry(1, jan2), entry(2, dec30)]));
+  assert.deepEqual(headed.month, { year: 2027, month: 0 });
+  assert.deepEqual(headed.groups[1].monthDivider, { year: 2026, month: 11 });
+});
+
+test('is empty for an empty read, with no month to name, and grouping is untouched', () => {
+  assert.deepEqual(recentDayMonths([]), { month: undefined, groups: [] });
   const groups = entryDayGroups([entry(1, epochDayFromLocalDate(new Date(2026, 7, 1)))]);
-  const [headed] = recentDayHeadings(groups);
-  assert.deepEqual(headed.entries, groups[0].entries);
+  const headed = recentDayMonths(groups);
+  assert.deepEqual(headed.groups[0].entries, groups[0].entries);
+  assert.equal(headed.groups[0].monthDivider, undefined);
 });
 
 test('growing the limit only appends - nothing already drawn repaginates (ADR-0069)', () => {
@@ -57,15 +68,17 @@ test('growing the limit only appends - nothing already drawn repaginates (ADR-00
     ...first,
     ...[31, 30, 29, 28, 27].map((d) => entry(d, epochDayFromLocalDate(new Date(2026, 6, d))))
   ];
-  const before = recentDayHeadings(entryDayGroups(first));
-  const after = recentDayHeadings(entryDayGroups(grown));
-  // The first five days' headings are byte-identical whether ten days are
-  // in hand or five - a tap grows what is drawn, it does not redraw it.
-  assert.deepEqual(after.slice(0, before.length), before);
-  // And growing past a month boundary still opens exactly one new heading,
-  // on the first day of the new month rather than on every day inside it.
+  const before = recentDayMonths(entryDayGroups(first));
+  const after = recentDayMonths(entryDayGroups(grown));
+  // The heading's month and the first five days are byte-identical whether
+  // ten days are in hand or five - a tap grows what is drawn, it does not
+  // redraw it.
+  assert.deepEqual(after.month, before.month);
+  assert.deepEqual(after.groups.slice(0, before.groups.length), before.groups);
+  // And growing past a month boundary opens exactly one divider, on the
+  // first day of the new month rather than on every day inside it.
   assert.deepEqual(
-    after.slice(before.length).map((g) => g.monthHeading),
+    after.groups.slice(before.groups.length).map((g) => g.monthDivider),
     [{ year: 2026, month: 6 }, undefined, undefined, undefined, undefined]
   );
 });

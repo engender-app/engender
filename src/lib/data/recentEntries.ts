@@ -41,28 +41,47 @@ export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
   return groups;
 }
 
-export interface EntryDayGroupWithHeading extends EntryDayGroup {
-  /** Set when this day falls in a different month than the day before it in
-      the list - or this is the first day at all - so a heading can fall out
-      of the dates themselves rather than being inserted by a caller who
-      already knows which month it is (ticket 18: the Journal door's
-      "Earlier entries" run). `undefined` everywhere else. */
-  monthHeading?: { year: number; month: number };
+export interface YearMonth {
+  year: number;
+  month: number;
 }
 
-/** `groups`, newest first as `entryDayGroups` already returns them, each
-    day marked with a month heading exactly where the month it falls in
-    differs from the day before it - which, read newest to oldest, is the
-    first day of that month somebody scrolling down reaches. */
-export function recentDayHeadings(groups: EntryDayGroup[]): EntryDayGroupWithHeading[] {
+export interface EntryDayGroupWithDivider extends EntryDayGroup {
+  /** Set when this day falls in a different month than the day before it in
+      the list, so a divider falls out of the dates themselves rather than
+      being inserted by a caller who already knows which month it is (ticket
+      18: the Journal door's "Earlier entries" run). Never set on the first
+      day: that month is the list's own, `RecentDayMonths.month`. */
+  monthDivider?: YearMonth;
+}
+
+export interface RecentDayMonths {
+  /** The first day's month, which the list's heading carries as its
+      sub-line (ux-carpet ticket 282: one heading above the first day, not a
+      month heading directly under the section heading). `undefined` for an
+      empty list. */
+  month?: YearMonth;
+  groups: EntryDayGroupWithDivider[];
+}
+
+/** `groups`, newest first as `entryDayGroups` already returns them, with the
+    first day's month pulled out for the heading and every later day marked
+    with a divider exactly where its month differs from the day before it -
+    which, read newest to oldest, is the first day of that month somebody
+    scrolling down reaches. */
+export function recentDayMonths(groups: EntryDayGroup[]): RecentDayMonths {
+  let month: YearMonth | undefined;
   let previousKey: string | null = null;
-  return groups.map((group) => {
+  const withDividers = groups.map((group, i) => {
     const date = localDateFromEpochDay(group.epochDay);
-    const key = `${date.getFullYear()}-${date.getMonth()}`;
-    const monthHeading = key === previousKey ? undefined : { year: date.getFullYear(), month: date.getMonth() };
+    const here = { year: date.getFullYear(), month: date.getMonth() };
+    const key = `${here.year}-${here.month}`;
+    if (i === 0) month = here;
+    const monthDivider = i === 0 || key === previousKey ? undefined : here;
     previousKey = key;
-    return { ...group, monthHeading };
+    return { ...group, monthDivider };
   });
+  return { month, groups: withDividers };
 }
 
 /** Icon names for the media an entry carries, in the order a row draws them.
