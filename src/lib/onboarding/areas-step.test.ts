@@ -3,11 +3,24 @@ import { readFileSync } from 'node:fs';
 import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '../data/pinnedRows';
 import { HUB_ROWS, hubSections } from '../data/hubRows';
 import { completeSetup, type SetupCompletion } from './complete';
+import { measurementsHiddenOnSetup } from './steps';
 
 describe('onboarding areas step and Today pins', () => {
-  it('preserves default pins when setup areas choice is skipped', () => {
+  it('keeps the previous default pins for older journals without a setup answer', () => {
     const pins = defaultPins(null);
-    expect(pins).toEqual([...DEFAULT_ONBOARDING_AREAS]);
+    expect(pins).toEqual(['measurements', ...DEFAULT_ONBOARDING_AREAS]);
+  });
+
+  it('turns measurements off for a new journal unless explicitly selected', () => {
+    expect(measurementsHiddenOnSetup(null, false, false)).toBe(true);
+    expect(measurementsHiddenOnSetup(['care'], false, false)).toBe(true);
+    expect(measurementsHiddenOnSetup(['care', 'measurements'], false, false)).toBe(false);
+  });
+
+  it('preserves an existing or restored journal when the setup choice is skipped', () => {
+    expect(measurementsHiddenOnSetup(null, true, false)).toBeNull();
+    expect(measurementsHiddenOnSetup(null, false, true)).toBeNull();
+    expect(measurementsHiddenOnSetup(['measurements'], false, true)).toBe(false);
   });
 
   it('pins exactly the chosen area when one area is selected', () => {
@@ -41,12 +54,12 @@ describe('onboarding areas step and Today pins', () => {
     const pl = JSON.parse(readFileSync('messages/pl.json', 'utf8'));
 
     expect(en.ob_areas_title.toLowerCase()).toContain('pin');
-    expect(en.ob_areas_body).toContain('front page');
+    expect(en.ob_areas_body).toContain('Measurements and sizes stay off');
     expect(en.ob_areas_body).toContain('Transition');
     expect(en.ob_areas_body).toContain('Today');
 
     expect(pl.ob_areas_title.toLowerCase()).toContain('przypiąć');
-    expect(pl.ob_areas_body).toContain('stronę główną');
+    expect(pl.ob_areas_body).toContain('Pomiary i rozmiary pozostaną wyłączone');
     expect(pl.ob_areas_body).toContain('Tranzycji');
     expect(pl.ob_areas_body).toContain('Dziś');
 
@@ -63,6 +76,7 @@ describe('onboarding areas step and Today pins', () => {
       const completion: SetupCompletion = {
         writeAnswers: () => {
           if (chosenAreas) prefs.onboardingAreas = chosenAreas;
+          else if (!initialPrefs.onboarded) prefs.onboardingAreas = [...DEFAULT_ONBOARDING_AREAS];
           prefs.onboarded = true;
         },
         flushWrites: async () => {},
@@ -75,11 +89,11 @@ describe('onboarding areas step and Today pins', () => {
       return completeSetup(completion).then(() => ({ prefs, finished }));
     }
 
-    // Skip keeps default pins and leaves prefs.onboardingAreas unset
+    // A new journal stores its three-item default when this step is skipped.
     const skipped = await runFinish(null);
     expect(skipped.finished).toBe(true);
     expect(skipped.prefs.onboarded).toBe(true);
-    expect(skipped.prefs.onboardingAreas).toBeUndefined();
+    expect(skipped.prefs.onboardingAreas).toEqual([...DEFAULT_ONBOARDING_AREAS]);
     expect(defaultPins(skipped.prefs.onboardingAreas ?? null)).toEqual([...DEFAULT_ONBOARDING_AREAS]);
 
     // Select one writes the chosen area and resolves pins
