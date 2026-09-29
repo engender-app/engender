@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf } from '../src/lib/theme/colour';
-import { flagField, flagRoles } from '../src/lib/theme/roles';
+import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -41,6 +41,14 @@ function moodPresetTokenMap(preset: string, theme: (typeof THEMES)[number]) {
     out[match[1]] = match[2];
   }
   return out;
+}
+
+/** What a step's face is drawn in: `var(--text)`, or a literal hex. */
+function moodInk(preset: string, theme: (typeof THEMES)[number], step: number) {
+  const block = blockBody(String.raw`\[data-mood-preset="${preset}"\]\[data-theme="${theme}"\]`);
+  const raw = rawDeclaration(block, `mood-${step}-ink`);
+  if (!raw) throw new Error(`${preset}/${theme} declares no --mood-${step}-ink`);
+  return raw;
 }
 
 /** A preset's five steps, in order, for a theme. */
@@ -177,24 +185,51 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* COL-001/ADR-0025: mood is drawn as a face (eyes, mouth) in --text on top
-     of a --mood-N fill, so it carries the same 4.5:1 promise the rest of the
-     token layer does. The scale is fixed per preset+theme rather than
-     derived from the palette, but the promise still has to hold against
-     every palette's own --text - hence the full cross product. */
-  it('keeps every mood-preset x palette x theme combination at 4.5:1 or better', () => {
+  /* COL-001/ADR-0025: mood is drawn as a face (eyes, mouth) on top of a
+     --mood-N fill, so it carries the same 4.5:1 promise the rest of the token
+     layer does. Since ticket 279 (ADR-0091) the face is drawn in the step's
+     own --mood-N-ink rather than always in --text, which is what lets the
+     deep end of a ramp be deep. The fills are fixed per preset+theme while
+     --text is the palette's, so the promise is checked against every
+     palette's own --text - hence the full cross product. */
+  it('keeps every face on every mood step at 4.5:1 against its own fill', () => {
     for (const preset of MOOD_PRESETS) {
       for (const theme of THEMES) {
         const mood = moodPresetTokenMap(preset, theme);
-        for (const palette of PALETTES) {
-          const text = tokenMap(palette, theme).text;
-          for (let step = 1; step <= 5; step++) {
-            const ratio = contrast(mood[`mood-${step}`], text);
+        for (let step = 1; step <= 5; step++) {
+          const declared = moodInk(preset, theme, step);
+          for (const palette of PALETTES) {
+            const text = tokenMap(palette, theme).text;
+            const ink = declared === 'var(--text)' ? text : declared;
+            const ratio = contrast(mood[`mood-${step}`], ink);
             expect(
               ratio,
-              `${preset}/${theme} mood-${step} vs ${palette}'s --text has ${ratio.toFixed(2)}:1, needs 4.5:1`
+              `${preset}/${theme} mood-${step} draws its face in ${declared} (${ink} on ${palette}), ${ratio.toFixed(2)}:1, needs 4.5:1`
             ).toBeGreaterThanOrEqual(4.5);
           }
+        }
+      }
+    }
+  });
+
+  /* The ink is picked the way roles.ts picks a heat cell's (heatInk): the
+     theme's own text wherever it clears the floor, and otherwise whichever of
+     black and white contrasts more. The one difference is that a mood fill is
+     a literal per preset and theme while --text is per palette, so --text is
+     kept only where it clears on all sixteen - a step that would need black
+     in one palette takes black in all of them rather than growing a table. */
+  it("picks each step's ink by roles.ts's heat-cell rule, held across every palette", () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const mood = moodPresetTokenMap(preset, theme);
+        for (let step = 1; step <= 5; step++) {
+          const fill = mood[`mood-${step}`];
+          const texts = PALETTES.map((palette) => tokenMap(palette, theme).text);
+          const everywhere = texts.every((text) => heatInk(fill, text) === text);
+          const expected = everywhere
+            ? 'var(--text)'
+            : heatInk(fill, texts.find((text) => heatInk(fill, text) !== text)!);
+          expect(moodInk(preset, theme, step), `${preset}/${theme} mood-${step}-ink on ${fill}`).toBe(expected);
         }
       }
     }
@@ -208,9 +243,8 @@ describe('palette contrast coverage', () => {
      Hue distance is where the two-hue reading comes from; monotone travel is
      what keeps it a gradient rather than a wander through a third hue the
      ends do not sit either side of; and rising chroma is the "how much"
-     channel mood keeps whichever way the hue goes - in the dark theme it is
-     the only one it has, because the luminance ceiling there is what stops
-     the ramp descending (ADR-0077's band). */
+     channel mood keeps whichever way the hue goes, alongside the lightness
+     each theme steps through (ADR-0091). */
   it('runs every mood preset between two hues at least 60 degrees apart', () => {
     for (const preset of MOOD_PRESETS) {
       for (const theme of THEMES) {
@@ -245,13 +279,13 @@ describe('palette contrast coverage', () => {
   });
 
   /* "How much" is the other half of the ramp's job, and with the hue moving
-     it cannot be read off lightness alone: the light theme descends as it
-     saturates, and the dark theme cannot descend at all (its band is a
-     ceiling, and a gold at the bottom of it is a brown), so it holds one
-     lightness and spends chroma. What both have to be is five colours a
-     person can tell apart, which is one measurement rather than two rules -
-     the OKLab distance between neighbours. 0.031 is the smallest the shipped
-     ramps have, on teal dark's first pair. */
+     it cannot be read off one channel alone. What the five steps have to be
+     is five colours a person can tell apart, which is one measurement: the
+     OKLab distance between neighbours. ADR-0077's ramps had 0.031 at their
+     closest and read as three near-identical blues on teal light's steps 2
+     to 4, the complaint ticket 279 answers. 0.07 is the floor since then
+     (ADR-0091); the closest pair shipped is amber light's, at 0.074, where
+     the hue swings 25 to 30 degrees a step and the lightness only 0.06. */
   it('keeps every neighbouring pair of steps a visibly different colour', () => {
     for (const preset of MOOD_PRESETS) {
       for (const theme of THEMES) {
@@ -263,7 +297,59 @@ describe('palette contrast coverage', () => {
             `${preset}/${theme} steps ${step} and ${step + 1} are ${gap.toFixed(
               3
             )} apart in OKLab (${ramp[step - 1]} and ${ramp[step]})`
-          ).toBeGreaterThanOrEqual(0.025);
+          ).toBeGreaterThanOrEqual(0.07);
+        }
+      }
+    }
+  });
+
+  /* The spacing is in lightness first, and the direction is the theme's: the
+     light ramp deepens as the mood rises and the dark one brightens, so the
+     top of either is the step furthest from the page it sits on. Checked as
+     a direction and a minimum step, not as one fixed series, because each
+     preset's lightness is placed where its own hues hold their chroma - a
+     gold has none left at the bottom of the light theme, so amber's light
+     ramp descends less far than teal's. */
+  it("spaces the five steps in lightness, in the theme's direction", () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const lightness = moodRamp(preset, theme).map(lightnessOf);
+        const sign = theme === 'light' ? -1 : 1;
+        for (let step = 1; step < 5; step++) {
+          const rise = (lightness[step] - lightness[step - 1]) * sign;
+          expect(
+            rise,
+            `${preset}/${theme} moves ${rise.toFixed(3)} in OKLab lightness from step ${step} to ${step + 1}`
+          ).toBeGreaterThanOrEqual(0.055);
+        }
+      }
+    }
+  });
+
+  /* The day someone logged as awful must not be the one they cannot see
+     (ADR-0077's reason for starting the light ramp at 0.90): --mood-1 is
+     drawn as a bar and a calendar cell with no ink and no outline, straight
+     on the page. Ticket 279 retuned the ramps and was held to keep that
+     separation, so each preset's step 1 is measured against the one it
+     replaced, on every palette's own --bg. */
+  it('keeps step 1 at least as far from every page as ADR-0077 had it', () => {
+    const ADR_0077_STEP_1: Record<string, Record<(typeof THEMES)[number], string>> = {
+      amber: { light: '#EFD3F5', dark: '#6F5B73' },
+      teal: { light: '#E0D8FF', dark: '#655E7D' },
+      plum: { light: '#BCE5FE', dark: '#47687C' },
+      moss: { light: '#FAD6BA', dark: '#795D46' }
+    };
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const [first] = moodRamp(preset, theme);
+        for (const palette of PALETTES) {
+          const bg = tokenMap(palette, theme).bg;
+          const before = oklabDistance(ADR_0077_STEP_1[preset][theme], bg);
+          const after = oklabDistance(first, bg);
+          expect(
+            after,
+            `${preset}/${theme} step 1 ${first} is ${after.toFixed(3)} from ${palette}'s --bg, was ${before.toFixed(3)}`
+          ).toBeGreaterThanOrEqual(before - 0.0005);
         }
       }
     }
@@ -279,6 +365,20 @@ describe('palette contrast coverage', () => {
           `${preset}/${theme} only gains ${ratio.toFixed(2)}x chroma from step 1 to step 5`
         ).toBeGreaterThanOrEqual(1.5);
       }
+    }
+  });
+
+  /* Settings previews each preset as a strip of its light-theme steps
+     (screens.css). Those five were hand-copied and nothing held them to the
+     ramp, so they still showed ADR-0025's single-hue ramps through the whole
+     of ADR-0077; ticket 279 found them and this keeps them in step. */
+  it("previews each preset in Settings with that preset's own light ramp", () => {
+    const screensCss = readFileSync('src/lib/styles/screens.css', 'utf8');
+    for (const preset of MOOD_PRESETS) {
+      const rule = new RegExp(String.raw`\[data-mood-swatch="${preset}"\]\s*\{([^}]*)\}`).exec(screensCss)?.[1];
+      expect(rule, `no Settings swatch for ${preset}`).toBeTruthy();
+      const shown = [...rule!.matchAll(/#[0-9A-Fa-f]{6}/g)].map(([hex]) => hex.toUpperCase());
+      expect(shown, `${preset}'s Settings swatch`).toEqual(moodRamp(preset, 'light').map((hex) => hex.toUpperCase()));
     }
   });
 

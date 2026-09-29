@@ -195,17 +195,101 @@ describe('the five mood faces', () => {
   });
 });
 
+/* Ticket 279 (ADR-0091): a face is drawn in its own step's ink, not in the
+   palette's --text, because the deep end of a ramp is too dark for a dark
+   ink. The component hands the step's ink over as --face-ink the same way it
+   hands the fill over as --face-mood, and every rule that paints the eyes or
+   the mouth reads that. A rule reaching for --text again would put a dark
+   face back on a deep fill, and nothing else would notice. */
+describe('the face draws in its own step\'s ink', () => {
+  const rulesFor = (selector: RegExp) =>
+    [...componentsCss.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, sel]) => selector.test(sel))
+      .map(([, sel, body]) => ({ sel: sel.trim(), body }));
+
+  it('hands each face its step\'s ink', () => {
+    const component = readFileSync(join(process.cwd(), 'src/lib/components/MoodFace.svelte'), 'utf8');
+    expect(component).toContain('`--face-ink: var(--mood-${step}-ink)`');
+  });
+
+  it('paints the eyes and the mouth in --face-ink and never in --text', () => {
+    const rules = rulesFor(/\.mood-face-(eye|mouth)\b/);
+    const painted = rules.filter(({ body }) => /(^|[;\s])(fill|stroke)\s*:(?!\s*none)/.test(body));
+    expect(painted.length).toBeGreaterThan(0);
+    for (const { sel, body } of painted) {
+      expect(body, `${sel} paints the face in something other than --face-ink`).not.toMatch(/var\(--text\)/);
+      expect(body, `${sel} paints the face without --face-ink`).toMatch(/var\(--face-ink\)/);
+    }
+  });
+
+  /* The 4.5:1 the palette test proves is for the ink at full strength. The
+     features used to sit at 0.75 opacity, which blended them toward the
+     fill: measured on the composite, the worst face was 2.60:1 before ticket
+     279 and 2.49:1 on its new ramps. A resting face draws its ink solid; only
+     the picker's unchosen faces, which are dimmed on purpose, go lighter. */
+  it('draws a resting face in its ink at full strength', () => {
+    const own = rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/);
+    expect(own.length).toBe(2);
+    for (const { sel, body } of own) {
+      expect(body, `${sel} sets its own opacity`).not.toMatch(/(?:^|[;\s])opacity:/);
+    }
+  });
+
+  /* The picker's unchosen faces sit back, and they used to do it in parts:
+     the block's fill at 0.55 over the page and the features at 0.41 over
+     that. With a dark ink on a pale fill the two fades roughly cancelled;
+     with ticket 279's white ink on a deep fill they compound, because the
+     fill fading toward a light page is the fill fading toward the ink.
+     Computed for teal on trans, the worst unchosen face went from 2.16:1 on
+     main to 1.48:1 (light step 5) and 1.64:1 (dark step 2). Dimming the face
+     as one object keeps ink and fill moving together: 2.13:1 at worst, and
+     every dark-theme face better than main.
+
+     The border is why it was ever done in parts (ce91bdc6): 1px of the
+     outline at 55% vanished on the dark theme. So the unchosen block draws
+     its edge at 35% of --text, which comes back to --outline's 19% once the
+     face's own 0.55 is applied, and the fade is on the face's opacity, which
+     .mood-face already transitions. */
+  it('dims an unchosen face as one object, with a border that survives it', () => {
+    expect(componentsCss).not.toMatch(/\.mood-face-disc\s*\{[^}]*fill-opacity/);
+    expect(componentsCss).not.toMatch(/\.mood-btn[^{]*\.mood-face-(eye|mouth)\s*\{[^}]*opacity/);
+    const dim = rulesFor(/^\s*\.mood-btn:not\(\.is-selected\) \.mood-face\s*$/);
+    expect(dim.map((r) => r.body.trim())).toEqual(['opacity: 0.55;']);
+    const edge = rulesFor(/^\s*\.mood-btn:not\(\.is-selected\) \.mood-face-disc\s*$/);
+    const alpha = /color-mix\(in oklab, var\(--text\) (\d+)%, transparent\)/.exec(edge[0]?.body ?? '')?.[1];
+    expect(Number(alpha) * 0.55).toBeCloseTo(19, 0);
+  });
+
+  /* A step's ink changes with the theme and the preset, and on a Journal
+     cell whose day gains an entry. A face that swapped its colour in one
+     frame would be a yank, so the ink crossfades on the same curve the
+     block's fill already takes. */
+  it('crossfades the ink rather than swapping it', () => {
+    const own = rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/);
+    expect(own.length).toBe(2);
+    for (const { sel, body } of own) {
+      expect(body, `${sel} has no transition on the ink`).toMatch(
+        /transition:[^;]*\bfill var\(--dur-med\) var\(--ease-out\)[^;]*\bstroke var\(--dur-med\) var\(--ease-out\)/
+      );
+    }
+  });
+});
+
 /* Redesign ticket 19's invariant: the mood icons are byte-identical to
    ticket 27's drawing (ADR-0077), measured against that drawing rather than
    against whatever shipped before it. The ticket builds motion around the
    faces and touches neither file; a hash is the only assertion that can
    tell "unchanged" from "changed in a way every other test still passes".
    A ticket that redraws the face on purpose updates the two hashes here in
-   the same commit and says so. */
+   the same commit and says so.
+
+   Ticket 279 moved MoodFace.svelte's hash and not the drawing: one line hands
+   the face its step's ink as --face-ink (ADR-0091). moodFace.ts, which is
+   the drawing, is still ticket 27's byte for byte. */
 describe("the drawing is ticket 27's, byte for byte", () => {
   const PINNED: Record<string, string> = {
     'src/lib/components/moodFace.ts': '017aee0fa552cac1d3bcf09a146fbe8c85410e9d2b2019586a6a78a8de8885b2',
-    'src/lib/components/MoodFace.svelte': 'c48eab556a82ce8de021e4972c84c5812074379ce4157a1fe512c1c5c702a32a'
+    'src/lib/components/MoodFace.svelte': 'be3a3e8197fd78aa454019a2524b16bb0373c775acdb5bac8ddc51d5b3e17b73'
   };
   for (const [file, sha256] of Object.entries(PINNED)) {
     it(`${file} is unchanged since redesign ticket 27 (6b78081a)`, () => {
