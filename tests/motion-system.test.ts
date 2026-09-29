@@ -275,6 +275,11 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: "the pill crossing the set is already the response; scaling the label too answers the same touch twice"
   },
   {
+    file: 'src/lib/components/MonthJump.svelte',
+    count: 1,
+    reason: 'the pill crossing the grid answers a key and a tap closes the sheet, so a scale on the month block would be a third response to one touch'
+  },
+  {
     file: 'src/lib/components/CurveMarkers.svelte',
     count: 1,
     reason: 'fill: transparent - an invisible hit target has nothing visible to press; the mark it stands over answers instead'
@@ -1270,6 +1275,12 @@ describe('the cap on animating layout', () => {
       props: ['left', 'right'],
       reason:
         "the switcher's pill on the navigation's own mechanic (2026-09-08), one absolutely positioned empty box out of the track's flow, so its insets cannot move a segment; it animated `width` before, which was the same class of expense with none of the argument"
+    },
+    {
+      selector: '.month-jump-pill',
+      props: ['left', 'right', 'top', 'bottom'],
+      reason:
+        "the Journal month picker's pill (ticket 281), .segment-pill's shape on two axes: one absolutely positioned empty box out of the grid's flow, so its insets cannot move a month; the ticket's probe sampled 52 distinct frames of a two-step travel with no edge moving more than 15.2px in a frame"
     }
   ];
 
