@@ -179,15 +179,16 @@ const SAMPLE = `
     });
   });
   const body = document.querySelector('[data-cal-month-body]')?.getBoundingClientRect();
-  /* What sits under the grid, and whether any of it is inside the month
+  /* What sits under the grid, and how many px of it are inside the month
      body's box - the body is clipped to its animated height while it
-     changes, so something below that edge is present and not seen. */
+     changes, so something below that edge is present and not seen, and a
+     disclosed legend is clipped to its own animated height. */
   const under = {};
   for (const [name, sel] of [['key', '[data-cal-key]'], ['legend', '[data-cal-legend]'], ['chips', '[data-presentation-highlight-row]']]) {
     const el = document.querySelector(sel);
     if (!el || !body) continue;
     const r = el.getBoundingClientRect();
-    under[name] = { o: op(el), top: round(r.top), inside: r.top < body.bottom - 1 && r.height > 1 };
+    under[name] = { o: op(el), top: round(r.top), vis: round(Math.max(0, Math.min(r.bottom, body.bottom) - r.top)) };
   }
   return { h: body ? round(body.height) : null, cells, under };
 `;
@@ -262,13 +263,19 @@ function findYanks(samples) {
       }
     }
     for (const name of new Set([...Object.keys(samples[i - 1].under ?? {}), ...Object.keys(samples[i].under ?? {})])) {
-      const seen = (u) => (u && u.inside ? u.o : 0);
+      const most = Math.max(1, ...samples.map((s) => s.under?.[name]?.vis ?? 0));
+      const seen = (u) => (u ? Math.round(u.o * (u.vis / most) * 100) / 100 : 0);
       const was = seen(samples[i - 1].under?.[name]);
       const is = seen(samples[i].under?.[name]);
-      if (Math.abs(is - was) > 0.45) yanks.push({ t: samples[i].t, k: name, what: `${name} ${was} to ${is} in one frame` });
+      /* Uncovered by the body's own edge moving, which is a wipe at the
+         speed of the mask rather than a pop: the px that came into view fit
+         inside the px the body grew by in the same frame. */
+      const dvis = Math.abs((samples[i].under?.[name]?.vis ?? 0) - (samples[i - 1].under?.[name]?.vis ?? 0));
+      const wiped = dvis <= Math.abs(heights[i] - heights[i - 1]) + 2;
+      if (Math.abs(is - was) > 0.45 && !wiped) yanks.push({ t: samples[i].t, k: name, what: `${name} ${was} to ${is} in one frame` });
       const a = samples[i - 1].under?.[name];
       const b = samples[i].under?.[name];
-      if (a && b && a.inside && b.inside && Math.abs(a.top - b.top) > 8 && Math.max(a.o, b.o) > 0.15) {
+      if (a && b && a.vis > 1 && b.vis > 1 && Math.abs(a.top - b.top) > 8 && Math.max(a.o, b.o) > 0.15) {
         const whole = samples.slice(1).reduce((sum, s, j) => sum + Math.abs((s.under?.[name]?.top ?? 0) - (samples[j].under?.[name]?.top ?? 0)), 0);
         if (teleport(Math.abs(a.top - b.top), whole)) yanks.push({ t: samples[i].t, k: name, what: `${name} jumps ${Math.round(Math.abs(a.top - b.top))}px` });
       }
@@ -295,7 +302,10 @@ async function record(name, act) {
     }
   };
   cdp.on('Page.screencastFrame', onFrame);
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 });
+  /* At the device's own pixels: left alone the screencast hands back CSS
+     px, and a face at 44px is too soft to review frame by frame. The crop
+     below is in the same 2x. */
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1, maxWidth: 780, maxHeight: 1800 });
   await page.waitForTimeout(80);
   await startSampling(page, SAMPLE);
   const actAt = Date.now() - started;
