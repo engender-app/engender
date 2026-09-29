@@ -27,6 +27,7 @@
    (tests/long-journal, `mount-home`). */
 
 import { liveList, liveQuery, journal } from './live/journal.svelte';
+import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime } from './dates';
 import { hairRemovalAreaName } from './vocabulary/labels';
@@ -204,7 +205,7 @@ export function homeTiles(
       nowMs: nowTick,
       enabled: gates.enabled,
       snoozed: gates.snoozed,
-      areaStates: areaStates.value ?? {},
+      areaStates: areaStates.value ?? AREA_STATES_BEFORE_READ,
       reads: {
         runningWear: runningWear.value ?? null,
         episodes: episodes.rows,

@@ -25,21 +25,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Unconditional, not toggled with lock state: a recents thumbnail
-        // of the Journal is the leak this guards against, and a flag
-        // flipped at lock time is a race against whatever the system
-        // snapshots the moment this app backgrounds.
-        // Before super.onCreate, so the window never has a frame without it -
-        // reading SharedPreferences needs only a Context, which this Activity
-        // already is at this point, no bridge or WebView required.
-        //
-        // Gated on prefs.allowScreenCapture (screen-capture-guard/01), mirrored
-        // by ScreenCapturePlugin, rather than on isDebuggable() as it used to
-        // be: that stopgap (ticket 99 item 7 round 2, for a screencap/screen-
-        // record that came back black while capturing a nav glitch report)
-        // handed the same ability to any debug build on any device. The real
-        // fix stays off by default on every build, debug included, until
-        // someone who can already unlock the app turns it on in Settings.
+        // Apply the saved capture choice before the first frame. A device
+        // with no saved choice allows capture by default. SharedPreferences
+        // needs no bridge or WebView, so this runs before super.onCreate.
         ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
         // Before super.onCreate: the bridge is built there, and a plugin
         // registered afterwards is not in the bridge the WebView gets.

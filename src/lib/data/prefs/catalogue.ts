@@ -47,6 +47,7 @@ export interface PreferenceValues {
   metricDimension: string | null;
   theme: 'system' | 'light' | 'dark';
   palette: string;
+  launcherIconShape: 'current' | 'round';
   /** Mood's own fixed 5-step scale (ADR-0025), independent of `palette` -
       selectable on its own so a mood dot never has to double as a gender
       colour. */
@@ -66,10 +67,7 @@ export interface PreferenceValues {
   /** Android only (ticket screen-capture-guard/01): whether this device may
       screenshot or record the app, mirrored into SharedPreferences so
       MainActivity can decide FLAG_SECURE before the window has a frame.
-      Default false so FLAG_SECURE protects every install - fresh or
-      upgraded - until someone opens Settings and turns it on. Replaces the
-      isDebuggable() carve-out, which handed the same ability to any debug
-      build on any device rather than to a person who asked for it. */
+      Default true; a saved false still blocks capture on that device. */
   allowScreenCapture: boolean;
   /** Reminder notifications show their real title and body when false; a
       generic one otherwise, regardless of whether the device is locked at
@@ -331,17 +329,12 @@ export interface PreferenceValues {
       journey. A milestone this install no longer has resolves to unset
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
-  /** Whether cycle tracking is surfaced for someone no active regimen
-      already calls it out for (ADR-0043, phase 5 deepening ticket 05). Off
-      by default: a standalone cycle row is a dysphoria trigger for the
-      transfemme reader it has nothing to say to, so an active testosterone
-      regimen surfaces it on its own and this is everyone else's way in -
-      the row in More, the section beside side effects. It never hides or
-      deletes records; the log keeps them and its direct URL either way.
-      Portable: it says something about the person and their journal, the
-      way `activeScales` does, so moving to a new device brings the opt-in
-      along with the cycle_event rows it was set for. */
+  /** Legacy opt-in, kept so older journals and archives retain their
+      visibility before a cycle choice is made. */
   cycleTrackingEnabled: boolean;
+  /** Null preserves the pre-choice rule for existing journals. A new
+      journal records false when setup finishes. */
+  cycleTrackingChoice: boolean | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -478,6 +471,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   metricDimension: null,
   theme: 'system',
   palette: 'trans',
+  launcherIconShape: 'current',
   moodPreset: 'teal',
   language: 'system',
   a11yTextSizeBoost: false,
@@ -487,7 +481,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lockOnLeave: false,
   disguise: false,
   quickExit: false,
-  allowScreenCapture: false,
+  allowScreenCapture: true,
   hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',
@@ -539,6 +533,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hormoneCurveFitToOwnLabs: false,
   journeyAnchorMilestoneId: null,
   cycleTrackingEnabled: false,
+  cycleTrackingChoice: null,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -561,6 +556,7 @@ export const PORTABLE_KEYS = [
   'metricKind',
   'metricDimension',
   'palette',
+  'launcherIconShape',
   'moodPreset',
   'theme',
   'language',
@@ -572,6 +568,7 @@ export const PORTABLE_KEYS = [
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
   'cycleTrackingEnabled',
+  'cycleTrackingChoice',
   'voiceComfortLowHz',
   'voiceComfortHighHz',
   'areaFinishOfferDeclined',

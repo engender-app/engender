@@ -1754,6 +1754,11 @@ try {
   await page.locator('[data-list-row="language"]').click(); // a sheet since ticket 277
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
+  const cycleSwitch = page.getByRole('switch', { name: 'Śledzenie cyklu' });
+  await cycleSwitch.waitFor();
+  if (!['true', 'false'].includes(await cycleSwitch.getAttribute('aria-checked'))) {
+    throw new Error('Polish cycle choice has no announced state');
+  }
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 });
@@ -2190,11 +2195,13 @@ try {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  // The default four arrive ticked and nothing else does (measurements,
-  // care, milestones, tryouts - pinnedRows.ts's own default set).
+  // The default three arrive ticked. Measurements stays off until chosen.
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
-  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  for (const key of ['measurements', 'care', 'milestones', 'tryouts']) {
+  if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  if ((await page.locator('[data-list-row="area-measurements"]').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is selected by default');
+  }
+  for (const key of ['care', 'milestones', 'tryouts']) {
     if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
       throw new Error(`${key} is not part of the default set on arrival`);
     }
@@ -2299,6 +2306,68 @@ try {
   await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
+});
+
+await flow('measurements opt-in switch', async () => {
+try {
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
+  const choice = page.locator('[data-list-row="area-measurements"]');
+  if ((await choice.getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements starts selected in setup');
+  }
+  await page.locator('[data-skip-step]').click();
+  for (let i = 0; i < 3; i++) await page.locator('[data-next]').click();
+  await page.locator('[data-finish]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  const visit = async (path) => {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await booted();
+  };
+  await visit('/settings');
+  const toggle = page.locator('[data-measurements-toggle] [role="switch"]');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  if ((await toggle.getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is on after skipping setup');
+  }
+  if (await page.locator('[data-measurement-unit]').count()) throw new Error('measurement units stayed visible while off');
+  await page.addInitScript(() => {
+    window.measurementsRowSeen = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-list-row="measurements"]')) window.measurementsRowSeen = true;
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await visit('/more');
+  await page.waitForFunction(() => document.querySelector('[data-hub-index]') && !document.querySelector('[data-list-row="measurements"]'));
+  if (await page.evaluate(() => window.measurementsRowSeen)) throw new Error('hidden measurements flashed on More during load');
+
+  await visit('/settings');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  await toggle.click();
+  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForSelector('[data-measurement-unit]');
+  await visit('/more');
+  await page.waitForSelector('[data-list-row="measurements"]');
+  await visit('/');
+  if (await page.locator('[data-pinned-row="measurements"]').count()) {
+    throw new Error('Settings added a Today pin that setup left unselected');
+  }
+
+  await visit('/settings');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  await toggle.click();
+  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false');
+  await visit('/body/measurements');
+  if (!page.url().endsWith('/body/measurements')) throw new Error('the direct link stopped working while hidden');
+  await visit('/settings');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  if ((await toggle.getAttribute('aria-checked')) !== 'false') throw new Error('the off state did not survive navigation');
+
+  ok('measurements starts off, returns through Settings, and keeps its records address and Today pins');
+} catch (e) { fail('measurements opt-in switch', e); }
 });
 
 /* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
@@ -2551,6 +2620,9 @@ try {
   await waitingFor('the flag turning lesbian before the export', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
   );
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  await page.locator('[data-measurements-toggle] [role="switch"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
 
   /* Through the FAB, whose fan seeds the mood, so this needs no mood control
      of its own - the editor's and Home's log strip both answer to
@@ -2591,6 +2663,14 @@ try {
     page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
   );
   await emptyFirstRun();
+
+  /* A setup draft from the new-journal path must not override the archive.
+     Changing another area gives the draft a value while measurements stays
+     unchecked, opposite to the archived module state. */
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
+  await page.locator('[data-list-row="area-care"]').click();
+  for (let i = 0; i < 4; i++) await page.locator('[data-back]').click();
+  await page.waitForSelector('[data-restore-start]');
 
   await page.locator('[data-restore-start]').click();
   await page.waitForSelector('[data-restore-pick]');
@@ -2697,6 +2777,10 @@ try {
      rule 13b0 above already follows. */
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  if ((await page.locator('[data-measurements-toggle] [role="switch"]').getAttribute('aria-checked')) !== 'true') {
+    throw new Error('setup draft replaced archived measurements visibility');
+  }
   await page.locator('[data-palette-pick="trans"]').click();
   await waitingFor('the flag going back to trans after the restore', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
@@ -2946,11 +3030,16 @@ try {
   // Untouched, then skipped: the stored default has to survive both.
   await page.locator('[data-skip-step]').click(); // scales -> areas
 
-  /* Ticket 22's own version of the same proof: the default four arrive
+  /* Ticket 22's own version of the same proof: the default three arrive
      ticked, and skipping leaves `onboardingAreas` null rather than storing
      the default. */
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
-  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
+  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
+  await cycleChoice.focus();
+  await cycleChoice.press('Space');
+  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
   await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -2960,6 +3049,9 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  if (await page.getByRole('switch', { name: 'Cycle tracking' }).getAttribute('aria-checked') !== 'false') {
+    throw new Error('skipping feature choices did not leave cycle tracking off');
+  }
   await page.getByRole('button', { name: /Gender scales/i }).click();
   for (const key of ['euphoria_dysphoria', 'femininity', 'masculinity']) {
     await page.waitForSelector(`[data-list-row="scale-${key}"][aria-checked="true"]`);
@@ -2969,6 +3061,38 @@ try {
   }
   ok('skipping the scales step keeps the default set');
 } catch (e) { fail('onboarding scales skip', e); }
+});
+
+await flow('onboarding cycle choice Polish', async () => {
+try {
+  await fresh('/settings');
+  await page.locator('[data-list-row="language"]').click();
+  await page.locator('[data-segment="pl"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj');
+  await booted();
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  for (let step = 0; step < 4; step++) await page.locator('[data-next]').click();
+  const choice = page.getByRole('checkbox', { name: 'Śledzenie cyklu' });
+  if (await choice.getAttribute('aria-checked') !== 'false') throw new Error('new journal cycle choice did not start off');
+  await choice.focus();
+  await choice.press('Space');
+  if (await choice.getAttribute('aria-checked') !== 'true') throw new Error('Polish setup cycle choice ignored keyboard');
+  for (let step = 0; step < 4; step++) await page.locator('[data-next]').click();
+  await page.locator('[data-finish]').click();
+  await page.waitForSelector('[data-home-hello]');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  const cycleSwitch = page.getByRole('switch', { name: 'Śledzenie cyklu' });
+  if (await cycleSwitch.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not reach Settings');
+  await cycleSwitch.focus();
+  await cycleSwitch.press('Space');
+  await page.locator('[data-list-row="language"]').click();
+  await page.locator('[data-segment="en"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today');
+  await booted();
+  ok('Polish setup cycle choice reaches Settings with keyboard and announced state');
+} catch (e) { fail('onboarding cycle choice Polish', e); }
 });
 
 /* 14. desktop: rail via container query at wide viewport */
@@ -6701,8 +6825,7 @@ try {
   await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
-  // Back off, so the next flow starts from the default and the testosterone
-  // episode below has to be the thing that surfaces the log.
+  // Explicit off stays off, including during the testosterone episode below.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-cycle-tracking-toggle] [role="switch"]').click();
   await page.waitForFunction(
@@ -6716,11 +6839,85 @@ try {
 
 await flow('cycle tracking testosterone', async () => {
 try {
-  /* Way in two: an active testosterone episode, which is the body the log
-     is for, asking nothing of preferences. The regimen screen links the
-     log while the episode runs, and stops again once it is ended - cycle
-     cessation belongs to the timeline that caused it. */
-  await fresh('/care/regimen');
+  /* An explicit off choice keeps the regimen's offer hidden. Turning the
+     choice on with a keyboard then restores the offer. */
+  async function checkCycleOffers(shown, locale) {
+    await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+    await booted();
+    await page.locator('[data-list-row="language"]').click();
+    await page.locator(`[data-segment="${locale}"]`).click();
+    await page.waitForFunction((language) =>
+      document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === (language === 'pl' ? 'Dzisiaj' : 'Today'), locale);
+    await booted();
+    const switchName = locale === 'pl' ? 'Śledzenie cyklu' : 'Cycle tracking';
+    const cycleSwitch = page.getByRole('switch', { name: switchName });
+    await cycleSwitch.waitFor();
+    const announced = await cycleSwitch.getAttribute('aria-checked');
+    if (announced !== String(shown)) {
+      throw new Error(`${locale} cycle switch announced ${announced}, expected ${shown}`);
+    }
+
+    await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
+    await booted();
+    await page.waitForSelector('[data-episode]');
+    const regimenOffer = page.locator('[data-cycle-events-link]');
+    if (shown) await regimenOffer.waitFor();
+    if (Boolean(await regimenOffer.count()) !== shown) {
+      throw new Error(`${locale} regimen cycle offer visibility disagreed`);
+    }
+    if (shown) {
+      const name = locale === 'pl' ? /Cykl/ : /Cycle/;
+      if (await page.getByRole('link', { name }).count() === 0) throw new Error(`${locale} regimen cycle offer has no announced name`);
+    }
+    await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
+    await booted();
+    await page.waitForSelector('[data-changes-body] [data-read-reserve-body]');
+    if (shown) await page.locator('[data-list-row="all-cycle-events"]').waitFor();
+    if (Boolean(await page.locator('[data-list-row="all-cycle-events"]').count()) !== shown) {
+      throw new Error(`${locale} changes cycle offer visibility disagreed`);
+    }
+    if (shown) {
+      const name = locale === 'pl' ? /Wszystkie wydarzenia cyklu/ : /All cycle events/;
+      if (await page.getByRole('link', { name }).count() === 0) throw new Error(`${locale} changes cycle offer has no announced name`);
+    }
+
+    await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+    await booted();
+    const cyclePanel = page.locator('[data-contextual="cycle-event"]');
+    if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
+    if (shown) {
+      const chipNames = locale === 'pl' ? ['Miesiączka', 'Plamienie', 'Czysto'] : ['Period', 'Spotting', 'Clear'];
+      for (const name of chipNames) {
+        if (await cyclePanel.getByRole('button', { name, pressed: false }).count() !== 1) {
+          throw new Error(`${locale} entry cycle control ${name} lost its announced name or state`);
+        }
+      }
+    }
+
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await booted();
+    await page.locator('[data-edit-today]').click();
+    await page.waitForSelector('[data-home-editing]');
+    const todayCycle = page.locator('[data-edit-add="cycle-events"], [data-edit-pinned-row="cycle-events"]');
+    if (shown) await todayCycle.first().waitFor();
+    if (Boolean(await todayCycle.count()) !== shown) throw new Error(`${locale} Today cycle offer visibility disagreed`);
+    if (shown) {
+      const name = locale === 'pl' ? /(?:Przypnij|Odepnij).*Cykl/ : /(?:Pin|Unpin).*Cycle/;
+      if (await page.getByRole('button', { name }).count() === 0) throw new Error(`${locale} Today cycle offer has no announced name`);
+    }
+  }
+
+  await fresh('/settings');
+  const initialSwitch = page.locator('[data-cycle-tracking-toggle] [role="switch"]');
+  await initialSwitch.waitFor();
+  if (await initialSwitch.getAttribute('aria-checked') === 'false') {
+    await initialSwitch.click();
+    await page.waitForFunction(() => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
+  }
+  await initialSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false');
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
+  await booted();
   await page.click('[data-add]');
   await page.click('[data-own]');
   await page.waitForSelector('#regimen-drug');
@@ -6730,7 +6927,32 @@ try {
   await page.fill('#regimen-route', 'im');
   await page.fill('#regimen-interval', 'weekly');
   await page.click('[data-save-regimen]');
+  await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
+  await checkCycleOffers(false, 'en');
+  await checkCycleOffers(false, 'pl');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  const cycleSwitch = page.locator('[data-cycle-tracking-toggle] [role="switch"]');
+  await cycleSwitch.waitFor();
+  if (await cycleSwitch.getAttribute('aria-checked') !== 'false') {
+    throw new Error('explicit off did not survive an active testosterone regimen');
+  }
+  await cycleSwitch.focus();
+  await cycleSwitch.press('Space');
+  await page.waitForFunction(
+    () => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true',
+    null,
+    { timeout: 8000 }
+  );
+  await page.waitForTimeout(300);
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  if (await page.locator('[data-cycle-tracking-toggle] [role="switch"]').getAttribute('aria-checked') !== 'true') {
+    throw new Error('cycle choice did not survive reload');
+  }
+  await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
+  await checkCycleOffers(true, 'pl');
+  await checkCycleOffers(true, 'en');
 
   await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
@@ -6750,8 +6972,8 @@ try {
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
   await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
-  ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
+  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  ok('cycle tracking: explicit off hides regimen offer; keyboard on restores it');
 } catch (e) { fail('cycle tracking testosterone', e); }
 });
 

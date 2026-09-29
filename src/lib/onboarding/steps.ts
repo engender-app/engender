@@ -238,6 +238,17 @@ export function onboardingDestination(): string {
   return '/';
 }
 
+/** A new journal starts without measurements. An untouched setup step must
+    leave an older journal or restored archive's visibility alone. */
+export function measurementsHiddenOnSetup(
+  chosenVisibility: boolean | null,
+  wasOnboarded: boolean,
+  restored: boolean
+): boolean | null {
+  if (chosenVisibility !== null) return !chosenVisibility;
+  return !wasOnboarded && !restored ? true : null;
+}
+
 /** How small the sun starts. Large enough to be plainly the flag from the
     first frame, small enough that the growth over the flow is the thing
     being watched rather than a detail. Raised from 0.28 after looking at

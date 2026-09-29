@@ -60,6 +60,10 @@
   .kit-readings > :global(*) {
     border-left: 1px solid transparent;
     border-top: 1px solid transparent;
+    /* Cold Look back loads nine tiles at once. Keep offscreen rows in the
+       grid without painting their charts during the field handover. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 230px;
   }
 
   .kit-readings > :global([data-col]:not([data-col='0'])) {

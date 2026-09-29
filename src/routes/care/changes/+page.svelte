@@ -240,15 +240,15 @@
      with the rest of what /health/side-effects drew (ticket 13): bleeding
      and spotting are physiological effects like anything else read here, so
      the most recent ones sit beneath the two lists once cycle tracking is
-     surfaced at all - an active testosterone regimen or the explicit
-     opt-in (cycleTracking.ts). This screen is where that gate lives now.
+     surfaced at all under the cycle choice (cycleTracking.ts). This screen
+     is where that gate lives now.
 
      The rows state, they do not open anything: editing happens on the cycle
      screen the trailing row links to, which owns the chart and the range
      pickers this list deliberately does not duplicate. */
   let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
   let cycleEvents = $derived(cycleEventsQuery.rows);
-  let cycleShown = $derived(cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingEnabled));
+  let cycleShown = $derived(cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
   let recentCycleEvents = $derived([...cycleEvents].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   /* What the axis at the top of the screen draws: the changes that carry a

@@ -61,7 +61,7 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored';
+export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored' | '--dur-sun-open';
 type DistanceToken = '--motion-distance-sm' | '--motion-distance-md';
 
 /** The values base.css authors each token at, for the no-DOM path -
@@ -74,7 +74,8 @@ export const DURATION_FALLBACK: Record<DurationToken, number> = {
   '--dur-med': 240,
   '--dur-slow': 380,
   '--dur-press': 260,
-  '--dur-authored': 700
+  '--dur-authored': 700,
+  '--dur-sun-open': 900
 };
 
 /* DISTANCE_FALLBACK stays exported only for its own test (AU-09 test-only

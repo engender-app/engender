@@ -1,10 +1,5 @@
-/* Whether cycle tracking is surfaced at all (ADR-0043): a pure question
-   over the episodes and the preference, kept above the journal seam the
-   way regimenEpisode.ts is, so every surface that asks it asks the same
-   one. The default answer is no - a standalone cycle row is a dysphoria
-   trigger for someone who will never have a cycle, so it earns its place
-   either through an active testosterone regimen (the drug names it) or
-   through the explicit opt-in, and never any other way. */
+/* One cycle visibility rule for every offer. An explicit choice wins;
+   older journals without one keep the regimen rule and legacy opt-in. */
 
 import { activeEpisodesAt } from './regimenEpisode';
 import type { RegimenEpisode } from './types';
@@ -16,11 +11,8 @@ export function testosteroneActive(episodes: readonly RegimenEpisode[], timestam
   return activeEpisodesAt(episodes, timestamp).some((episode) => episode.drug.toLowerCase().includes('testosterone'));
 }
 
-/** The one visibility rule every cycle-tracking surface reads: an active
-    testosterone regimen surfaces it on its own, and the preference opts
-    in everyone else. Nothing here hides data - the log keeps its records
-    and its direct URL either way (ADR-0043); this only decides whether
-    navigation names it. */
-export function cycleTrackingVisible(episodes: readonly RegimenEpisode[], timestamp: number, cycleTrackingEnabled: boolean): boolean {
-  return testosteroneActive(episodes, timestamp) || cycleTrackingEnabled;
+/** Whether app-owned entry points and prompts offer cycle tracking.
+    Saved events and direct links remain available either way. */
+export function cycleTrackingVisible(episodes: readonly RegimenEpisode[], timestamp: number, cycleTrackingEnabled: boolean, choice: boolean | null): boolean {
+  return choice ?? (testosteroneActive(episodes, timestamp) || cycleTrackingEnabled);
 }

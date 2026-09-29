@@ -31,7 +31,13 @@ describe('importing the archive named in the audit (S6)', () => {
   });
 
   test('an archive missing a key leaves it out of the patch, same as an invalid one', () => {
-    expect(portablePreferencePatch({ theme: 'dark' })).toEqual({ theme: 'dark' });
+    expect(portablePreferencePatch({ theme: 'dark' })).toEqual({ theme: 'dark', cycleTrackingChoice: null });
+  });
+
+  test('an archived cycle choice survives restore, while an older archive returns to automatic', () => {
+    expect(portablePreferencePatch({ cycleTrackingChoice: false }).cycleTrackingChoice).toBe(false);
+    expect(portablePreferencePatch({ cycleTrackingChoice: true }).cycleTrackingChoice).toBe(true);
+    expect(portablePreferencePatch({ cycleTrackingEnabled: false }).cycleTrackingChoice).toBe(null);
   });
 });
 
@@ -84,7 +90,9 @@ describe('a valid archive', () => {
     expect(portableValueForKey('theme', 'dark')).toBe('dark');
     expect(portableValueForKey('language', 'pl')).toBe('pl');
     expect(portableValueForKey('palette', 'genderfluid')).toBe('genderfluid');
-    expect(portablePreferencePatch({ palette: 'polish' })).toEqual({ palette: 'polish' });
+    expect(portableValueForKey('launcherIconShape', 'round')).toBe('round');
+    expect(portableValueForKey('launcherIconShape', 'triangle')).toBeUndefined();
+    expect(portablePreferencePatch({ palette: 'polish' })).toEqual({ palette: 'polish', cycleTrackingChoice: null });
     expect(portableValueForKey('moodPreset', 'plum')).toBe('plum');
     expect(portableValueForKey('checkInTime', '07:05')).toBe('07:05');
     expect(portableValueForKey('measurementUnit', 'in')).toBe('in');

@@ -135,8 +135,8 @@ test('cycle tracking keeps its own gate: no row here changes what it answers', (
   };
   const noon = 19500 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000;
 
-  assert.equal(cycleTrackingVisible([], noon, false), false);
-  assert.equal(cycleTrackingVisible([], noon, true), true);
-  assert.equal(cycleTrackingVisible([testosterone], noon, false), true);
-  assert.equal(cycleTrackingVisible([testosterone], noon, true), true);
+  assert.equal(cycleTrackingVisible([], noon, false, null), false);
+  assert.equal(cycleTrackingVisible([], noon, true, null), true);
+  assert.equal(cycleTrackingVisible([testosterone], noon, false, null), true);
+  assert.equal(cycleTrackingVisible([testosterone], noon, true, null), true);
 });
