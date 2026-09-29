@@ -45,6 +45,7 @@
     subtitle,
     fadeSwap = false,
     icon,
+    maskImage,
     href,
     onclick,
     key,
@@ -71,6 +72,7 @@
     fadeSwap?: boolean;
     /** A name from $lib/components/icons.ts. */
     icon?: string;
+    maskImage?: string;
     href?: string;
     onclick?: () => void;
     /** The row's own identity for the walkthrough's handle (ADR-0029) -
@@ -143,7 +145,13 @@
   {#if leading}
     {@render leading()}
   {:else if icon}
-    <span class="kit-row-ico"><Icon name={icon} size={22} /></span>
+    <span class="kit-row-ico">
+      {#if maskImage}
+        <span class="kit-row-icon-mask" style:mask-image={maskImage} aria-hidden="true"></span>
+      {:else}
+        <Icon name={icon} size={22} />
+      {/if}
+    </span>
   {/if}
   <span class="kit-row-text" use:textTravel>
     {#if title}
@@ -232,6 +240,14 @@
 {/if}
 
 <style>
+  .kit-row-icon-mask {
+    width: 22px;
+    height: 22px;
+    background: currentColor;
+    mask-size: 22px 22px;
+    mask-repeat: no-repeat;
+  }
+
   .kit-row-act.has-text {
     width: auto;
     min-width: var(--touch-target);

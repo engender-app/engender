@@ -12,6 +12,11 @@ import { chromeTabOrigin } from './chrome-tab-origin';
 import { cutsInsteadOfMoving } from './chromeless';
 import { leavesHomeForEntry, screenTransition } from './screen-transition';
 import { rememberScroll, restoreScroll } from './scroll-region';
+import { animateAndroidTab } from './androidTabMotion';
+import { isAndroid } from '$lib/platform';
+import { isReducedMotion } from '$lib/motion/tokens';
+
+const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
 
 /* Tier 2 (phase 5 ticket 18): one screen becoming another.
 
@@ -108,6 +113,13 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      the screen slid past it. Computed first because the pattern is what
      says whether this navigation is the transform. */
   if (pattern !== 'container') closeEntryContainer();
+  if (
+    isAndroid() &&
+    !isReducedMotion() &&
+    pattern === 'fade-through' &&
+    TAB_ROOTS.has(navigation.from?.url.pathname ?? '') &&
+    TAB_ROOTS.has(navigation.to.url.pathname)
+  ) return animateAndroidTab(navigation);
   if (!document.startViewTransition || pattern === 'none') return;
 
   /* The field is a blind over the content (redesign ticket 28): named

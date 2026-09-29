@@ -806,6 +806,27 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
    column. */
 .app-column { view-transition-name: screen; }
 
+/* Android tab changes animate this flat field paint in the live screen. */
+[data-screen-field].is-tab-bridging,
+[data-home-field].is-tab-bridging {
+  overflow: visible;
+  z-index: 1;
+}
+.is-tab-bridging > .field-blind { background: transparent; }
+.tab-field-bridge {
+  position: absolute;
+  inset: 0 0 auto;
+  overflow: hidden;
+  z-index: -2;
+  pointer-events: none;
+}
+.tab-field-bridge-face {
+  position: absolute;
+  inset: 0 0 auto;
+  background: var(--field);
+  border-radius: 0 0 var(--r-block) var(--r-block);
+}
+
 /* The floating bar is its own group, above the screen's (Alicja, 2026-08-25:
    "during the transition the new tab is rendering above the nav for a
    second"). That is exactly what was happening, and it is how view
