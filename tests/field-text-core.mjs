@@ -35,8 +35,10 @@ export const TELEPORT_HARD = 14;
 /** What counts as standing still on either side of a step. */
 export const STILL_PX = 1.5;
 /** An opacity step larger than this in one frame is an appearance or a
-    disappearance in a single frame. */
-export const POP = 0.5;
+    disappearance in a single frame. Not lower: a fade on an ease-out spends
+    0.7 of its range in its first 20ms (measured on the arriving title at
+    1440), and that is a fade. */
+export const POP = 0.8;
 /** Visible enough to count. */
 export const SEEN = 0.05;
 /** Ink pixels below the field's own bottom, in one frame, before it is a
