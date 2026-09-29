@@ -241,11 +241,11 @@ export function onboardingDestination(): string {
 /** A new journal starts without measurements. An untouched setup step must
     leave an older journal or restored archive's visibility alone. */
 export function measurementsHiddenOnSetup(
-  chosenAreas: readonly string[] | null,
+  chosenVisibility: boolean | null,
   wasOnboarded: boolean,
   restored: boolean
 ): boolean | null {
-  if (chosenAreas !== null) return !chosenAreas.includes('measurements');
+  if (chosenVisibility !== null) return !chosenVisibility;
   return !wasOnboarded && !restored ? true : null;
 }
 

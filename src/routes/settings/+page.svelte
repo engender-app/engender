@@ -70,6 +70,9 @@
   let measurementsOn = $derived(
     measurementStates.value !== undefined && !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
   );
+  let genitalEffectsOn = $derived(
+    vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+  );
 
   let scalesSheet = $state(false);
 
@@ -266,19 +269,61 @@
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <div class="kit-row" data-measurements-toggle>
-        <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-        <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={measurementsOn}
-            disabled={measurementStates.value === undefined}
-            label={m.measurements_and_sizes()}
-            onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
-          />
-        </span>
-      </div>
-      {#if measurementsOn}
+    </ListCard>
+    <h3 class="field-label" id="settings-features-title">{m.features_to_show()}</h3>
+    <p class="muted small">{m.features_to_show_sub()}</p>
+    <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
+      <ListCard>
+        <div class="kit-row" data-measurements-toggle>
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={measurementsOn}
+              disabled={measurementStates.value === undefined}
+              label={m.measurements_and_sizes()}
+              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-genital-effects-toggle>
+          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={genitalEffectsOn}
+              label={m.feature_genital_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+            />
+          </span>
+        </div>
+        <!-- ADR-0043: the manual way into cycle tracking, for someone no
+             testosterone regimen already surfaces it for. The switch only
+             decides whether navigation names cycle tracking; turning it off
+             touches no record and no deep link. -->
+        <div class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            <!-- The one explanatory line the hub keeps: without it an off
+                 switch next to a cycle area that still shows reads as broken
+                 (ADR-0043's automatic half). -->
+            <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={prefs.cycleTrackingEnabled}
+              label={m.cycle_tracking_toggle_title()}
+              onChange={(v) => {
+                prefs.cycleTrackingEnabled = v;
+              }}
+            />
+          </span>
+        </div>
+      </ListCard>
+    </div>
+    {#if measurementsOn}
+      <ListCard>
         <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
           <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
           <span class="kit-row-text">
@@ -298,31 +343,8 @@
             />
           </span>
         </div>
-      {/if}
-      <!-- ADR-0043: the manual way into cycle tracking, for someone no
-           testosterone regimen already surfaces it for. The switch only
-           decides whether navigation names cycle tracking; turning it off
-           touches no record and no deep link. -->
-      <div class="kit-row" data-cycle-tracking-toggle>
-        <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
-          <!-- The one explanatory line the hub keeps: without it an off
-               switch next to a cycle area that still shows reads as broken
-               (ADR-0043's automatic half). -->
-          <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
-        </span>
-        <span class="kit-row-trail">
-          <Switch
-            checked={prefs.cycleTrackingEnabled}
-            label={m.cycle_tracking_toggle_title()}
-            onChange={(v) => {
-              prefs.cycleTrackingEnabled = v;
-            }}
-          />
-        </span>
-      </div>
-    </ListCard>
+      </ListCard>
+    {/if}
   </div>
 
   <SectionHeading text={m.settings_reminders()} />
