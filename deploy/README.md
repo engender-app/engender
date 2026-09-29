@@ -11,6 +11,9 @@ The VPS keeps immutable release directories and one symlink:
 Nginx resolves the symlink per request, so replacing it is enough to switch
 traffic with no reload and no half-copied release state.
 
+Hosting your own copy on another origin is covered in
+[SELF-HOSTING.md](SELF-HOSTING.md). It installs the same two snippets.
+
 ## Nginx setup
 
 Install these files:
@@ -105,7 +108,8 @@ npm run verify:hosting
 Prerequisite: Docker must be running and the current user must be allowed to
 talk to the Docker socket.
 
-It boots nginx in a container with these exact config snippets and checks:
+It builds the self-hosting image from `deploy/self-host/`, which installs these
+exact config snippets, serves the build through it and checks:
 
 - COOP/COEP, CSP, and cache headers
 - immutable caching for hashed assets, update-aware caching for shell files
@@ -113,6 +117,7 @@ It boots nginx in a container with these exact config snippets and checks:
 - `release.json` metadata
 - cold install followed by offline launch
 - no runtime requests to other origins
+- `nginx -t` over the bare-nginx template in `deploy/self-host/engender.conf`
 
 ## Local operator note
 

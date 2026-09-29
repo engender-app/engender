@@ -39,6 +39,7 @@ starts the app again.
 - Polityka prywatności (polski): [docs/privacy-policy.pl.md](docs/privacy-policy.pl.md)
 - Security disclosure process: [SECURITY.md](SECURITY.md)
 - Support boundaries and safe diagnostics: [SUPPORT.md](SUPPORT.md)
+- Hosting your own copy of the web app: [deploy/SELF-HOSTING.md](deploy/SELF-HOSTING.md)
 
 ## Development
 
