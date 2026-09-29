@@ -83,6 +83,10 @@ const REPORT = argv.includes('--report');
 const NATURAL = argv.includes('--natural');
 const KEEP_ALL = argv.includes('--keep-all');
 const THEME = opt('theme', '');
+/* Animation.setPlaybackRate for the run, with the scene's length stretched to
+   match: a phone that paints two frames of a 380ms change paints twenty of a
+   change slowed to a tenth, which is how the edge's curve is read on pixels. */
+const RATE = Number(opt('rate', '1'));
 
 const HEIGHT = { 390: 844, 1440: 900 };
 /** Every screen with a ScreenHeader that has an address of its own; the
@@ -302,7 +306,8 @@ async function rest(page, scene) {
 }
 
 /** Records the page for the scene's length and reads both instruments. */
-async function measure(held, scene) {
+async function measure(held, sceneIn) {
+  let scene = sceneIn;
   const { page, cdp } = held;
   const cast = [];
   const onFrame = async ({ data, sessionId, metadata }) => {
@@ -314,6 +319,11 @@ async function measure(held, scene) {
     }
   };
   cdp.on('Page.screencastFrame', onFrame);
+  if (RATE !== 1) {
+    await cdp.send('Animation.enable');
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: RATE });
+    scene = { ...scene, ms: Math.round(scene.ms / RATE) };
+  }
   await cdp.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
   await page.waitForTimeout(80);
   /* On the phone the field starts below the status bar, and the blind's edge
@@ -331,6 +341,7 @@ async function measure(held, scene) {
     await page.setViewportSize({ width: scene.resize.width, height: HEIGHT[390] });
   }
   const { epoch, rows } = await sampled;
+  if (RATE !== 1) await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
   return { epoch, rows, cast };
