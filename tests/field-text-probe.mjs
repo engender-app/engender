@@ -60,6 +60,30 @@ const NATURAL = argv.includes('--natural');
 const THEME = opt('theme', '');
 
 const HEIGHT = { 390: 844, 1440: 900 };
+/** Every screen with a ScreenHeader that has an address of its own; the
+    doors first. A field whose height moves at rest does it on one of these
+    - a title that wraps in Polish, a slot that fills when a query answers. */
+const COLD_ROUTES = [
+  ['home', '/'],
+  ['calendar', '/calendar'],
+  ['stats', '/stats'],
+  ['settings', '/more'],
+  ...[
+    '/body/hair-progress', '/body/hair-removal', '/body-map', '/body/measurements', '/body/wear',
+    '/care', '/care/changes', '/care/curve', '/care/doses', '/care/labs', '/care/regimen',
+    '/coming-back', '/compare', '/doubt', '/doubt/comfort', '/doubt/evidence',
+    '/health/appointments', '/health/appointments/in-the-room', '/health/clinician-summary',
+    '/health/cycle-events', '/health/dilation', '/health/surgery', '/media/documents',
+    '/media/photos', '/media/photos/export', '/on-this-day', '/search', '/settings',
+    '/settings/access-mode', '/settings/affirmations', '/settings/body-regions',
+    '/settings/dimension', '/settings/eras', '/settings/export', '/settings/journal-book',
+    '/settings/journaling-pause', '/settings/notifications', '/settings/passphrase',
+    '/settings/permissions', '/settings/recovery-key', '/settings/reminders', '/settings/security',
+    '/settings/tags', '/settings/trash', '/settings/words', '/support/resources', '/tally',
+    '/transition/letters', '/transition/milestones', '/transition/roadmap', '/transition/tryouts',
+    '/voice'
+  ].map((route) => [route.slice(1).replaceAll('/', '-'), route])
+];
 const ROUTE = { home: '/', calendar: '/calendar', stats: '/stats', settings: '/more' };
 const TABS = Object.keys(ROUTE);
 const tab = (key) => `[data-nav-item="${key}"]`;
@@ -341,6 +365,22 @@ try {
           log(width, scene.name, 0, r);
           if (failed(r)) await keep(scene.name, width, 0, m);
         }
+        /* Interrupted: a second gesture lands while the first is in flight,
+           forward twice, back twice, and back then forward. */
+        for (const [label, steps] of [
+          ['back and back again at 120ms', [{ at: 0, click: '[data-back]' }, { at: 120, click: '[data-back]' }]],
+          ['next and back at 120ms', [{ at: 0, click: '[data-next]' }, { at: 120, click: '[data-back]' }]],
+          ['next and next again at 120ms', [{ at: 0, click: '[data-next]' }, { at: 120, click: '[data-next]' }]]
+        ]) {
+          await wait(1100);
+          const scene = { name: `setup ${locale} ${label}`, ms: 1000, steps };
+          if (ONLY && !scene.name.includes(ONLY) && ONLY !== 'setup') continue;
+          const m = await measure(held, scene);
+          const r = analyse(m, { step: true });
+          results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
+          log(width, scene.name, 0, r);
+          if (failed(r)) await keep(scene.name, width, 0, m);
+        }
         /* The handover: walk to the end and let setup open the app. */
         await wait(900);
         if (await page.locator('[data-next]').count()) {
@@ -399,7 +439,7 @@ try {
     /* ---- the door field's height at rest, from the first frame of a cold load ---- */
     if (!ONLY || ONLY.startsWith('cold')) {
       for (const locale of ['en', 'pl']) {
-        for (const A of TABS) {
+        for (const [A, route] of COLD_ROUTES) {
           const held = await pageFor(width, { fresh: true, tag: `cold-${locale}` });
           const { page } = held;
           await page.addInitScript(() => {
@@ -414,9 +454,9 @@ try {
           });
           await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
           await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
-          await boot(page, ROUTE[A]);
+          await boot(page, route);
           await page.evaluate(() => (window.__field = []));
-          await page.goto(`${base}${ROUTE[A]}`, { waitUntil: 'domcontentloaded' });
+          await page.goto(`${base}${route}`, { waitUntil: 'domcontentloaded' });
           await page.waitForTimeout(3200);
           const series = await page.evaluate(() => window.__field);
           const jumps = findHeightJumps(series);

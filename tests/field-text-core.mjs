@@ -30,6 +30,10 @@ export const OVERSPILL_PX = 0.75;
     rather than slid. The anchored travel is 12px over 150ms (about 2px a
     frame); 6px leaves room for a dropped frame. */
 export const TELEPORT_PX = 6;
+/** A step this size is a jump whatever surrounds it. */
+export const TELEPORT_HARD = 14;
+/** What counts as standing still on either side of a step. */
+export const STILL_PX = 1.5;
 /** An opacity step larger than this in one frame is an appearance or a
     disappearance in a single frame. */
 export const POP = 0.5;
@@ -120,6 +124,10 @@ export function samplerExpression(steps, ms) {
         if (edge !== null) {
           row.edge = Math.round(edge * 10) / 10;
           row.parts = [];
+          /* Parts and rings are nested in the field's group, so their
+             groups are placed relative to it. */
+          const fieldGroup = gcs('::view-transition-group(field)');
+          const base = num(fieldGroup.height) === null ? 0 : ty(fieldGroup.transform);
           for (const name of names) {
             const g = gcs(`::view-transition-group(${name})`);
             const h = num(g.height);
@@ -127,7 +135,7 @@ export function samplerExpression(steps, ms) {
             const side = name.includes('-a-') ? 'old' : 'new';
             const img = gcs(`::view-transition-${side}(${name})`);
             const s = img.scale && img.scale !== 'none' ? Number(img.scale) : 1;
-            const top = ty(g.transform) + second(img.translate) + ty(img.transform);
+            const top = base + ty(g.transform) + second(img.translate) + ty(img.transform);
             /* Scaled about the centre, which is where a pseudo image's
                origin is. */
             const bottom = top + h / 2 + (h / 2) * s;
@@ -171,6 +179,7 @@ export function samplerExpression(steps, ms) {
                 el.__fieldPartId ??= (globalThis.__fieldPartIds = (globalThis.__fieldPartIds ?? 0) + 1);
                 return {
                   n: (el.className.split(' ')[0] || 'part') + '#' + el.__fieldPartId,
+                  text: (el.textContent ?? '').trim().slice(0, 12),
                   top: Math.round(r.top * 10) / 10,
                   bottom: Math.round(r.bottom * 10) / 10,
                   op: Math.round(Number(getComputedStyle(el).opacity) * 100) / 100
@@ -198,6 +207,9 @@ export function findGeometry(series, { persist = 1 } = {}) {
   const teleports = [];
   const pops = [];
   const streak = new Map();
+  /* Each part's frame-to-frame steps, judged once the run is in: whether a
+     step is a jump depends on what its neighbours did. */
+  const steps = new Map();
   let prev = null;
   for (const row of series) {
     if (row.edge === undefined || row.edge === null) {
@@ -206,7 +218,9 @@ export function findGeometry(series, { persist = 1 } = {}) {
     }
     for (const p of row.parts ?? []) {
       const reach = p.bottom - row.edge;
-      if (p.op > SEEN && reach > OVERSPILL_PX) {
+      /* A ring is cut by the field it is nested in, as the sun always is at
+         rest, so its box reaching past the edge is not paint past it. */
+      if (p.op > SEEN && reach > OVERSPILL_PX && !p.n.startsWith('sun-')) {
         const run = (streak.get(p.n) ?? 0) + 1;
         streak.set(p.n, run);
         if (run >= persist) {
@@ -216,10 +230,13 @@ export function findGeometry(series, { persist = 1 } = {}) {
       } else streak.set(p.n, 0);
     }
     if (prev) {
+      /* Per frame, not per sample: a dropped frame doubles what moved
+         between two samples and is not a teleport. */
+      const per = 16.7 / Math.max(row.t - prev.t, 16.7);
       for (const p of row.parts ?? []) {
         const q = prev.parts?.find((x) => x.n === p.n);
         if (!q) continue;
-        if (Math.abs(p.op - q.op) > POP) pops.push({ name: p.n, at: row.t, from: q.op, to: p.op });
+        if (Math.abs(p.op - q.op) * per > POP) pops.push({ name: p.n, at: row.t, from: q.op, to: p.op });
         if (p.op > SEEN && q.op > SEEN) {
           /* Two frames of reference, because the field moves in exactly one
              way: its bottom edge travels and its top stays. A thing printed
@@ -232,13 +249,27 @@ export function findGeometry(series, { persist = 1 } = {}) {
           const midWas = q.mid ?? q.bottom;
           const now = row.edge - mid;
           const was = prev.edge - midWas;
-          if (Math.min(Math.abs(now - was), Math.abs(mid - midWas)) > TELEPORT_PX)
-            teleports.push({ name: p.n, at: row.t, jump: Math.round((now - was) * 10) / 10 });
+          const step = Math.min(Math.abs(now - was), Math.abs(mid - midWas)) * per;
+          const list = steps.get(p.n) ?? [];
+          list.push({ at: row.t, step, jump: Math.round((now - was) * 10) / 10 });
+          steps.set(p.n, list);
         }
       }
     }
     prev = row;
   }
+  for (const [name, list] of steps) {
+    list.forEach((s, i) => {
+      const before = list[i - 1]?.step ?? 0;
+      const after = list[i + 1]?.step ?? 0;
+      /* An ease-out spends a quarter of its distance in its first frame, so
+         a step is only a teleport if nothing is moving on either side of it,
+         or if it is more than any ease-out of a field-sized distance does. */
+      if (s.step >= TELEPORT_HARD || (s.step >= TELEPORT_PX && before < STILL_PX && after < STILL_PX))
+        teleports.push({ name, at: s.at, jump: s.jump });
+    });
+  }
+  teleports.sort((a, b) => a.at - b.at);
   return { overspill: [...overspill.values()], teleports, pops };
 }
 
@@ -268,7 +299,10 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
   const { width, height, channels, pixels } = png;
   const lastBlue = new Int32Array(width).fill(-1);
   const end = Math.min(bottom, height);
-  const isBlue = (i) => pixels[i + 2] > 170 && pixels[i] < 70 && pixels[i + 1] < 70;
+  /* Blue, or a wash of it: the outgoing and incoming blind are drawn
+     additively over each other and over a screen that is fading in, so the
+     field is not always pure. Page ground and text are never this blue. */
+  const isBlue = (i) => pixels[i + 2] > 200 && pixels[i + 2] - Math.max(pixels[i], pixels[i + 1]) > 60;
   const isInk = (i) => pixels[i + 1] > 170 && pixels[i] < 70 && pixels[i + 2] < 70;
   for (let y = top; y < end; y++) {
     for (let x = 0; x < width; x++) {
