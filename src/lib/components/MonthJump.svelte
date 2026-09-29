@@ -194,7 +194,7 @@
   >
     <span class="month-jump-pill" class:is-shown={pill.shown} aria-hidden="true"></span>
     {#each MONTHS as i (i)}
-      <!-- data-no-press: the pill is this control's answer to a key, and a
+      <!-- No press on the block: the pill is this control's answer to a key, and a
            tap closes the sheet, so a scale on the block would be a third
            response to one touch. -->
       <button
