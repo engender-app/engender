@@ -46,6 +46,7 @@
     "cost:nav-motion": "VITE_DEMO=1 npm run build && node tests/nav-motion-cost.mjs",
     "sweep:yanks": "VITE_DEMO=1 npm run build && node tests/yank-sweep.mjs --prove",
     "sweep:yanks-device": "node tests/yank-sweep-device.mjs",
+    "probe:field-text": "VITE_DEMO=1 npm run build && node tests/field-text-probe.mjs",
     "sweep:hydration": "VITE_DEMO=1 npm run build && node tests/hydration-sweep.mjs --prove",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
