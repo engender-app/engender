@@ -53,6 +53,9 @@ describe('the mark is generated for every palette the app ships', () => {
       expect(exists(`android/app/src/main/res/mipmap-anydpi-v26/${icon}.xml`), flag).toBe(true);
       expect(read(`android/app/src/main/res/mipmap-anydpi-v26/${icon}.xml`), flag)
         .toContain(`@drawable/ic_launcher_${flag}_foreground`);
+      expect(read(`android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_${flag}_round.xml`), flag)
+        .toContain(`@drawable/ic_launcher_${flag}_round_foreground`);
+      expect(exists(`android/app/src/main/res/drawable/ic_launcher_${flag}_round_foreground.xml`), flag).toBe(true);
     }
   });
 
@@ -61,6 +64,8 @@ describe('the mark is generated for every palette the app ships', () => {
       if (flag === DEFAULT_PALETTE) continue;
       expect(manifest, flag).toContain(`android:name=".disguise.Launcher${capitalised(flag)}"`);
       expect(manifest, flag).toContain(`android:icon="@mipmap/ic_launcher_${flag}"`);
+      expect(manifest, flag).toContain(`android:name=".disguise.Launcher${capitalised(flag)}Round"`);
+      expect(manifest, flag).toContain(`android:icon="@mipmap/ic_launcher_${flag}_round"`);
     }
   });
 
@@ -71,7 +76,7 @@ describe('the mark is generated for every palette the app ships', () => {
        invariant on a device across every flip; this proves the state the
        device test starts from. */
     const aliases = [...manifest.matchAll(/<activity-alias[\s\S]*?<\/activity-alias>/g)].map((m) => m[0]);
-    expect(aliases).toHaveLength(palettes.length + 1);
+    expect(aliases).toHaveLength(palettes.length * 2 + 1);
     const enabled = aliases.filter((alias) => /android:enabled="true"/.test(alias));
     expect(enabled).toHaveLength(1);
     expect(enabled[0]).toContain('.disguise.LauncherDefault');

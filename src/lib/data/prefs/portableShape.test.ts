@@ -90,6 +90,8 @@ describe('a valid archive', () => {
     expect(portableValueForKey('theme', 'dark')).toBe('dark');
     expect(portableValueForKey('language', 'pl')).toBe('pl');
     expect(portableValueForKey('palette', 'genderfluid')).toBe('genderfluid');
+    expect(portableValueForKey('launcherIconShape', 'round')).toBe('round');
+    expect(portableValueForKey('launcherIconShape', 'triangle')).toBeUndefined();
     expect(portablePreferencePatch({ palette: 'polish' })).toEqual({ palette: 'polish', cycleTrackingChoice: null });
     expect(portableValueForKey('moodPreset', 'plum')).toBe('plum');
     expect(portableValueForKey('checkInTime', '07:05')).toBe('07:05');
