@@ -66,10 +66,7 @@ export interface PreferenceValues {
   /** Android only (ticket screen-capture-guard/01): whether this device may
       screenshot or record the app, mirrored into SharedPreferences so
       MainActivity can decide FLAG_SECURE before the window has a frame.
-      Default false so FLAG_SECURE protects every install - fresh or
-      upgraded - until someone opens Settings and turns it on. Replaces the
-      isDebuggable() carve-out, which handed the same ability to any debug
-      build on any device rather than to a person who asked for it. */
+      Default true; a saved false still blocks capture on that device. */
   allowScreenCapture: boolean;
   /** Reminder notifications show their real title and body when false; a
       generic one otherwise, regardless of whether the device is locked at
@@ -487,7 +484,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lockOnLeave: false,
   disguise: false,
   quickExit: false,
-  allowScreenCapture: false,
+  allowScreenCapture: true,
   hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',

@@ -27,7 +27,17 @@ test('a fresh database reads back the defaults', async () => {
   const prefs = await openPreferences(await migratedDb());
 
   expect(prefs.all()).toEqual(PREFERENCE_DEFAULTS);
+  expect(prefs.get('allowScreenCapture')).toBe(true);
   expect(prefs.openedEmpty()).toBe(true);
+});
+
+test('a saved capture block survives the new default', async () => {
+  const driver = await migratedDb();
+  const prefs = await openPreferences(driver);
+  await prefs.set('allowScreenCapture', false);
+
+  const reopened = await openPreferences(driver);
+  expect(reopened.get('allowScreenCapture')).toBe(false);
 });
 
 test('a written preference survives reopening the database', async () => {
