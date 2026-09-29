@@ -355,6 +355,8 @@
       folding = true;
       faded = await fadeWhatSitsOut(body);
       folding = false;
+      // Left the screen during the fade: nothing is left to fold.
+      if (!body.isConnected) return;
     }
     const swatches = boxesOf('data-cal-cell');
     const dates = boxesOf('data-cal-date');
