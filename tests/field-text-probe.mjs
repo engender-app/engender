@@ -25,13 +25,20 @@
    Exits 1 on any finding unless --report is given, which prints the same
    table for a before/after record. */
 import { createServer, preview } from 'vite';
+import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
+import { chromium } from 'playwright-core';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { JUMP_FIRST_RUN_EXPRESSION } from './yank-sweep-core.mjs';
+import {
+  LOCK_SETUP_EXPRESSION,
+  RESET_PERSONA_EXPRESSION,
+  UNLOCK_PIN_EXPRESSION
+} from './yank-sweep-core.mjs';
 import {
   PROBE_CSS,
   findGeometry,
@@ -48,7 +55,21 @@ const opt = (name, fallback) => {
   const at = argv.indexOf(`--${name}`);
   return at >= 0 ? argv[at + 1] : fallback;
 };
-const WIDTHS = opt('widths', '390,1440').split(',').map(Number);
+/* --device <serial>: drive the phone's WebView over its devtools socket
+   instead of a desktop Chromium (ticket 285, Android half). The scenes, the
+   samplers and the pixel rule are the same; the phone's own width stands in
+   for 390 and 1440, and the scenes that need a window or a fixture page
+   (resize, the gate fixture, cold heights) are left to the desktop run. */
+const DEVICE = opt('device', '');
+const PORT = opt('port', '9341');
+const PIN = '1111';
+/* The phone's real journal lives in dev.engender.app, and the probe signs a
+   scene in and out of a PIN gate, so it never attaches to that package. It
+   drives a separately installed probe build (a different applicationId, so
+   a different WebView and a different profile). */
+const PACKAGE = opt('package', 'dev.engender.probe285');
+const REAL_PACKAGE = 'dev.engender.app';
+const WIDTHS = DEVICE ? ['phone'] : opt('widths', '390,1440').split(',').map(Number);
 const ONLY_LIST = opt('only', '').split(',').filter(Boolean);
 const ONLY = ONLY_LIST.length === 1 ? ONLY_LIST[0] : '';
 const wanted = (name) => !ONLY_LIST.length || ONLY_LIST.some((o) => name.includes(o));
@@ -62,6 +83,10 @@ const REPORT = argv.includes('--report');
 const NATURAL = argv.includes('--natural');
 const KEEP_ALL = argv.includes('--keep-all');
 const THEME = opt('theme', '');
+/* Animation.setPlaybackRate for the run, with the scene's length stretched to
+   match: a phone that paints two frames of a 380ms change paints twenty of a
+   change slowed to a tenth, which is how the edge's curve is read on pixels. */
+const RATE = Number(opt('rate', '1'));
 
 const HEIGHT = { 390: 844, 1440: 900 };
 /** Every screen with a ScreenHeader that has an address of its own; the
@@ -177,18 +202,66 @@ for (const [key, route, sel] of [['stats', '/stats', '[data-screen-title]'], ['t
   const long = 'A title that is much too long to sit on one line of a phone and so wraps onto several';
   add({ name: `rewrap ${key} title grows`, at: route, still: true, ms: 900, steps: [{ at: 0, set: { sel, text: long } }] });
 }
-for (const A of ['calendar', 'stats', 'settings', 'home']) {
+for (const A of DEVICE ? [] : ['calendar', 'stats', 'settings', 'home']) {
   add({ name: `resize ${A} 390>320`, at: ROUTE[A], resize: { at: 200, width: 320 }, ms: 900, steps: [] });
 }
 
 /* ---------- the browser ---------- */
 
-const app = await preview({ preview: { port: 0 } });
-const base = `http://localhost:${app.httpServer.address().port}`;
-const browser = await launchChromium();
+/** The phone: forward the WebView socket of the probe build's own pid to our own
+    port, and leave every other forward alone (the port is removed at the end,
+    never --remove-all). */
+function forwardDevice() {
+  if (PACKAGE === REAL_PACKAGE)
+    throw new Error(`refusing to drive ${REAL_PACKAGE}: it holds the real journal. Install the probe build under another applicationId (default ${'dev.engender.probe285'}) and pass it with --package.`);
+  const adb = (...a) => execFileSync('adb', ['-s', DEVICE, ...a], { encoding: 'utf8' });
+  const pid = adb('shell', 'pidof', PACKAGE).trim().split(/\s+/)[0];
+  if (!pid) throw new Error(`${PACKAGE} is not running on ${DEVICE}`);
+  const unix = adb('shell', 'cat', '/proc/net/unix');
+  const socket = new RegExp(`webview_devtools_remote_${pid}\\b`).exec(unix)?.[0];
+  if (!socket) throw new Error(`no devtools socket for pid ${pid}`);
+  adb('forward', `tcp:${PORT}`, `localabstract:${socket}`);
+  return () => adb('forward', '--remove', `tcp:${PORT}`);
+}
+const unforward = DEVICE ? forwardDevice() : null;
+const app = DEVICE ? null : await preview({ preview: { port: 0 } });
+const base = DEVICE ? 'https://localhost' : `http://localhost:${app.httpServer.address().port}`;
+const browser = DEVICE
+  ? await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`)
+  : await launchChromium();
 const contexts = new Map();
+let deviceScale = 1;
+/** The WebView keeps a connection open, so the network never goes idle there. */
+const IDLE = DEVICE ? 'load' : 'networkidle';
+
+async function devicePage(reduced) {
+  if (!contexts.has('device')) {
+    const context = browser.contexts()[0];
+    const page = context.pages().find((p) => p.url().startsWith(base)) ?? context.pages()[0];
+    await context.addInitScript(
+      ({ css, natural }) => {
+        document.addEventListener('DOMContentLoaded', () => {
+          const style = document.createElement('style');
+          style.textContent = natural ? '.demo-bar { display: none !important; } [data-toast] { display: none !important; }' : css;
+          document.head.append(style);
+        });
+      },
+      { css: PROBE_CSS, natural: NATURAL }
+    );
+    page.on('pageerror', (e) => console.error('page error:', e.message));
+    const cdp = await context.newCDPSession(page);
+    contexts.set('device', { context, page, cdp });
+  }
+  const held = contexts.get('device');
+  await held.cdp.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: reduced ? 'reduce' : 'no-preference' }]
+  });
+  deviceScale = await held.page.evaluate(() => window.devicePixelRatio);
+  return held;
+}
 
 async function pageFor(width, { reduced = false, fresh = false, tag = '', height = 0 } = {}) {
+  if (DEVICE) return devicePage(reduced);
   const key = `${width}:${reduced}:${tag}:${height}`;
   if (contexts.has(key) && !fresh) return contexts.get(key);
   if (contexts.has(key)) await contexts.get(key).context.close();
@@ -224,20 +297,23 @@ async function pageFor(width, { reduced = false, fresh = false, tag = '', height
 }
 
 async function boot(page, path) {
-  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  await page.goto(`${base}${path}`, { waitUntil: IDLE });
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
   if (await page.locator('[data-leave-setup]').count()) {
     await page.locator('[data-leave-setup]').click();
     await page.waitForSelector('[data-home-hello]');
-    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+    await page.goto(`${base}${path}`, { waitUntil: IDLE });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
 }
 
 async function rest(page, scene) {
-  if (scene.locale) {
+  /* The phone has one profile for the whole run, so the language is set
+     for every scene, not only the Polish ones. */
+  const locale = scene.locale ?? (DEVICE ? 'en' : '');
+  if (locale) {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-    await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), scene.locale);
+    await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
   }
   await boot(page, scene.at);
   if (scene.enter) {
@@ -257,7 +333,8 @@ async function rest(page, scene) {
 }
 
 /** Records the page for the scene's length and reads both instruments. */
-async function measure(held, scene) {
+async function measure(held, sceneIn) {
+  let scene = sceneIn;
   const { page, cdp } = held;
   const cast = [];
   const onFrame = async ({ data, sessionId, metadata }) => {
@@ -269,14 +346,29 @@ async function measure(held, scene) {
     }
   };
   cdp.on('Page.screencastFrame', onFrame);
+  if (RATE !== 1) {
+    await cdp.send('Animation.enable');
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: RATE });
+    scene = { ...scene, ms: Math.round(scene.ms / RATE) };
+  }
   await cdp.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
   await page.waitForTimeout(80);
-  const sampled = page.evaluate(samplerExpression(scene.steps ?? [], scene.ms));
+  /* On the phone the field starts below the status bar, and the blind's edge
+     is measured from the field's top (field-text-core says why). */
+  const edgeOffset = DEVICE
+    ? await page.evaluate(() => {
+        const field = document.querySelector('[data-screen-field], [data-home-field], [data-setup-field], [data-gate-field]');
+        const region = document.querySelector('[data-app-scroll-region]');
+        return field ? Math.round((field.getBoundingClientRect().top + (region?.scrollTop ?? 0)) * 10) / 10 : 0;
+      })
+    : 0;
+  const sampled = page.evaluate(samplerExpression(scene.steps ?? [], scene.ms, edgeOffset));
   if (scene.resize) {
     await page.waitForTimeout(scene.resize.at);
     await page.setViewportSize({ width: scene.resize.width, height: HEIGHT[390] });
   }
   const { epoch, rows } = await sampled;
+  if (RATE !== 1) await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
   return { epoch, rows, cast };
@@ -305,7 +397,7 @@ function analyse({ epoch, rows, cast }, { step = false, still = false, cuts = fa
   }
   const ink = NATURAL
     ? { frames: 0, bad: 0, worst: { deepest: 0, at: 0 }, first: null }
-    : readInk(cast, epoch, { top: 0, bottom: 520 });
+    : readInk(cast, epoch, { top: 0, bottom: 520 * deviceScale, scale: deviceScale });
   const jumps = findHeightJumps(rows.filter((r) => r.field && r.edge === undefined && !r.nav).map((r) => ({ t: r.t, height: r.field.height })));
   /* A navigation swaps the screen under the transition, so the real field's
      height changes when the outgoing one is removed: only a scene with no
@@ -345,7 +437,14 @@ try {
       if (!wanted(scene.name)) continue;
       const held = await pageFor(width, { reduced: !!scene.reduced });
       for (let run = 0; run < RUNS; run++) {
-        const room = await rest(held.page, scene);
+        let room;
+        try {
+          room = await rest(held.page, scene);
+        } catch (err) {
+          console.log(`ERR  ${width} ${scene.name} - ${String(err).split('\n')[0].slice(0, 160)}`);
+          if (!DEVICE) throw err;
+          continue;
+        }
         if (scene.scroll !== 'top' && room < 120) {
           console.log(`skip ${width} ${scene.name} - only ${room}px of scroll`);
           break;
@@ -375,7 +474,7 @@ try {
         const { page } = held;
         await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
         await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), mode.lang);
-        await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+        await page.goto(`${base}/`, { waitUntil: IDLE });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
         /* A fresh profile boots into the demo persona; the demo bar's own
            jump is the way into the first run. */
@@ -455,8 +554,70 @@ try {
       }
     }
 
+    /* ---- the PIN gate opening into Today, on the phone ----
+       The lock gate leaves PIN 1111 behind, so the access mode is put back
+       to unlocked afterwards through the real controls (never device-bound,
+       which raises a BiometricPrompt only its owner can pass). ---- */
+    if (DEVICE) {
+      const { page } = await pageFor(width);
+      if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'setup'.startsWith(o) || o.startsWith('setup'))) {
+        await page.goto(`${base}/`, { waitUntil: IDLE });
+        await page.waitForSelector('[data-app-root][data-boot="ready"]');
+        await page.evaluate(RESET_PERSONA_EXPRESSION);
+        console.log('persona reset after setup');
+      }
+      if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'pin gate unlock'.includes(o) || o.startsWith('pin'))) {
+        try {
+          await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+          for (let run = 0; run < Math.max(RUNS, 1); run++) {
+            await boot(page, '/settings/access-mode');
+            await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
+            await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
+            await page.waitForSelector('[data-pin-pad]', { timeout: 40000 });
+            await page.waitForTimeout(1500);
+            const key = (d) => `[data-pin-pad] [data-key="${d}"]`;
+            const scene = {
+              name: 'pin gate unlock into today',
+              ms: 2600,
+              steps: [0, 1, 2, 3].map((i) => ({ at: i * 200, click: key(PIN[i]) }))
+            };
+            const held = await pageFor(width);
+            const m = await measure(held, scene);
+            const r = analyse(m);
+            results.push({ width, name: scene.name, run, ...r, cast: undefined });
+            log(width, scene.name, run, r);
+            if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, run, m);
+            await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 }).catch(() => {});
+            await page.waitForTimeout(1500);
+            /* And out: back to unlocked through the real controls - the tab
+               bar's Today, the gear, Security, then the access-mode list. A
+               reload would land on the gate again. */
+            await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 });
+            await page.waitForTimeout(1500);
+            await page.locator('[data-nav-item="home"]').click();
+            await page.waitForSelector('[data-home-gear]');
+            await page.waitForTimeout(800);
+            await page.locator('[data-home-gear]').click();
+            await page.locator('a[href="/settings/security"]').first().click();
+            await page.locator('a[href="/settings/access-mode"]').first().click();
+            await page.waitForSelector('[data-access-modes]');
+            await page.locator('[data-access-modes] [data-list-row="unlocked"]').click();
+            await page.waitForSelector('[data-access-submit]');
+            await page.locator('[data-access-submit]').click();
+            await page.waitForTimeout(2500);
+            await page.goto(`${base}/`, { waitUntil: IDLE });
+            if (!(await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 }).catch(() => null)))
+              throw new Error('the journal is still behind a gate after switching back to unlocked');
+          }
+        } catch (err) {
+          console.log('pin gate unlock ERROR: ' + String(err).slice(0, 300));
+          process.exitCode = 2;
+        }
+      }
+    }
+
     /* ---- a gate changing its own title, on the fixture page ---- */
-    if (!ONLY_LIST.length || ONLY_LIST.some((o) => o.startsWith('gate'))) {
+    if (!DEVICE && (!ONLY_LIST.length || ONLY_LIST.some((o) => o.startsWith('gate')))) {
       const fixture = await createServer({
         configFile: 'tests/browser-tier/browser-tier.vite.config.ts',
         server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } }
@@ -511,7 +672,7 @@ try {
     }
 
     /* ---- the door field's height at rest, from the first frame of a cold load ---- */
-    if (!ONLY_LIST.length || ONLY_LIST.some((o) => o.startsWith('cold'))) {
+    if (!DEVICE && (!ONLY_LIST.length || ONLY_LIST.some((o) => o.startsWith('cold')))) {
       for (const locale of ['en', 'pl']) {
         for (const [A, route] of COLD_ROUTES) {
           const held = await pageFor(width, { fresh: true, tag: `cold-${locale}` });
@@ -546,7 +707,12 @@ try {
   const bad = results.filter((r) => failed(r) || r.jumps?.length);
   console.log(`\n${results.length} runs, ${bad.length} with findings`);
   if (JSON_OUT) await writeFile(resolve(JSON_OUT), JSON.stringify(results, null, 2));
-  await browser.close();
-  await app.close();
+  if (DEVICE) {
+    unforward();
+    await browser.close().catch(() => {});
+  } else {
+    await browser.close();
+    await app.close();
+  }
   if (bad.length && !REPORT) process.exitCode = 1;
 }
