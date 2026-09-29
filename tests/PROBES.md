@@ -151,6 +151,7 @@ on this page ran green on 2026-09-23.
 | `gallery:savebar` | what the save bar covers, per screen and viewport, in minutes rather than the cohesion sweep's 25 |
 | `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
 | `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
+| `probe:field-text` | (ticket 285) nothing on a field paints past its painted edge or teleports against it, on every frame of every change that moves a field: doors both ways from top, middle and bottom, interrupted and reversed, deep push and back, gear, Polish, reduced motion, resize, setup's steps and handover, and the door field's height on a cold load, at 390 and 1440; `--only`, `--runs`, `--report`, `--frames`, `--json`. Timing-dependent: run it several times |
 | `tab-bar-withdraw-crossfade` | the floating bar's withdrawal crossfade across three sheet scenes, per frame, for blur snaps and dropouts (ticket 232) |
 
 ## Helpers
@@ -159,4 +160,4 @@ Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
-`setup-flow`, `contrast-walk`, `yank-sweep-core`.
+`setup-flow`, `contrast-walk`, `yank-sweep-core`, `field-text-core`.
