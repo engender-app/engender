@@ -550,13 +550,23 @@ describe('rule 4: surfaces are flush, block or ink', () => {
     expect([right, left], `.kit-row { padding: ${padding} }`).toEqual(['0', '0']);
   });
 
-  it("makes a day's date bar and a tag blocks of the stripe, in the ink proven on it", () => {
-    for (const prelude of ['.kit-day-bar', '.kit-pill']) {
-      const body = ruleFor(kit, prelude)?.body ?? '';
-      expect(body, prelude).toMatch(/background:\s*var\(--role-draw\)/);
-      expect(body, prelude).toMatch(/color:\s*var\(--role-fill-ink\)/);
-      expect(body, prelude).not.toMatch(/--role-tint|--role-ink\b/);
-    }
+  it('makes a tag a block of the stripe, in the ink proven on it', () => {
+    const body = ruleFor(kit, '.kit-pill')?.body ?? '';
+    expect(body).toMatch(/background:\s*var\(--role-draw\)/);
+    expect(body).toMatch(/color:\s*var\(--role-fill-ink\)/);
+    expect(body).not.toMatch(/--role-tint|--role-ink\b/);
+  });
+
+  /* Ux-carpet ticket 282: a run of stripe-filled bars down the Journal read
+     like a different app, and a leading stripe on a surface read as a
+     generated-UI default, so the day bar is a block of ink with no edge and
+     no role colour at all. */
+  it("makes a day's date bar a block of ink, with no stripe and no edge", () => {
+    const body = ruleFor(kit, '.kit-day-bar')?.body ?? '';
+    expect(body).toMatch(/background:\s*var\(--text\)/);
+    expect(body).toMatch(/color:\s*var\(--bg\)/);
+    expect(body).not.toMatch(/--role|border(-(top|right|bottom|left|inline|block)[a-z-]*)?:/);
+    expect(ruleFor(kit, '.kit-day-aside')?.body ?? '').not.toMatch(/color:/);
   });
 
   it("sets the notice's mark as a 40px square of ink", () => {
