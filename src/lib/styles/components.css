@@ -1386,16 +1386,23 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .mood-btn.is-selected .mood-face { outline-color: var(--accent); }
 /* The unselected faces sit back at 55% - but the dimming lands on the
    disc's fill and the features only, never on the whole svg. */
-.mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
-.mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
-.mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
-.mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
-.mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 1; }
-.mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 1; }
+.mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
+/* As one object since ticket 279 (ADR-0091). The fill used to fade on its
+   own and the features on their own, which compounds once a deep step draws
+   in white: the fill fading toward a light page is the fill fading toward
+   its ink, and teal light's step 5 came to 1.48:1. Dimming the whole face
+   keeps the two moving together. The edge is what the parts were for
+   (ce91bdc6: 1px of --outline at 55% vanished on the dark theme), so an
+   unchosen block draws it at 35% of --text, which the face's 0.55 brings
+   back to --outline's 19%. */
+.mood-btn:not(.is-selected) .mood-face-disc { stroke: color-mix(in oklab, var(--text) 35%, transparent); }
 /* Hover joins the magnifier's answer rather than replacing it - tier 4's
    "no hover-dependent motion" is about inventing motion for hover, not
    about a hover pointer being denied the response a finger gets. */
-.mood-btn:hover .mood-face-disc { fill-opacity: 0.75; }
+.mood-btn:not(.is-selected):hover .mood-face { opacity: 0.75; }
+/* Nothing chosen yet: every face at full strength, edge at its own weight. */
+.mood-picker:not(:has(.is-selected)) .mood-btn .mood-face { opacity: 1; }
+.mood-picker:not(:has(.is-selected)) .mood-btn .mood-face-disc { stroke: var(--outline); }
 /* The pick's own beat. It used to tilt the face 5 degrees at the top of the
    swell, which was the one piece of this motion nothing could say the meaning
    of - a mood does not lean. What carries the moment instead is the row: the
