@@ -62,8 +62,8 @@ for (const side of ['a', 'b']) {
     ({at, click|back|eval}), so t=0 is the frame the first one fires on and
     the recorded run is the measured one. Returned as a string so a Playwright
     evaluate and a devtools socket can both run it. */
-export function samplerExpression(steps, ms) {
-  const fn = async (steps, ms, names) => {
+export function samplerExpression(steps, ms, edgeOffset = 0) {
+  const fn = async (steps, ms, names, edgeOffset) => {
     const html = document.documentElement;
     const gcs = (pseudo) => getComputedStyle(html, pseudo);
     const num = (v) => {
@@ -109,6 +109,10 @@ export function samplerExpression(steps, ms) {
         const eo = edgeOf('old');
         const en = edgeOf('new');
         let edge = eo === null ? en : en === null ? eo : Math.max(eo, en);
+        /* The blind's edge is measured from the top of its own group, which on
+           a phone starts below the status bar inset; the parts are placed from
+           the viewport. Callers on such a screen pass the field's top. */
+        if (edge !== null) edge += edgeOffset;
         /* What is painted is the blind's clip cut again by the field's own
            group, which nests it and clips its children at its own animated
            box (app.css). Two animations on one edge: the smaller of them is
@@ -198,7 +202,7 @@ export function samplerExpression(steps, ms) {
       requestAnimationFrame(tick);
     });
   };
-  return `(${fn.toString()})(${JSON.stringify(steps)}, ${ms}, ${JSON.stringify(PART_NAMES)})`;
+  return `(${fn.toString()})(${JSON.stringify(steps)}, ${ms}, ${JSON.stringify(PART_NAMES)}, ${JSON.stringify(edgeOffset)})`;
 }
 
 /** Overspill and teleports in one list of edge-relative rows. `series` is
