@@ -328,17 +328,12 @@ export interface PreferenceValues {
       journey. A milestone this install no longer has resolves to unset
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
-  /** Whether cycle tracking is surfaced for someone no active regimen
-      already calls it out for (ADR-0043, phase 5 deepening ticket 05). Off
-      by default: a standalone cycle row is a dysphoria trigger for the
-      transfemme reader it has nothing to say to, so an active testosterone
-      regimen surfaces it on its own and this is everyone else's way in -
-      the row in More, the section beside side effects. It never hides or
-      deletes records; the log keeps them and its direct URL either way.
-      Portable: it says something about the person and their journal, the
-      way `activeScales` does, so moving to a new device brings the opt-in
-      along with the cycle_event rows it was set for. */
+  /** Legacy opt-in, kept so older journals and archives retain their
+      visibility before a cycle choice is made. */
   cycleTrackingEnabled: boolean;
+  /** Null preserves the pre-choice rule for existing journals. A new
+      journal records false when setup finishes. */
+  cycleTrackingChoice: boolean | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -536,6 +531,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hormoneCurveFitToOwnLabs: false,
   journeyAnchorMilestoneId: null,
   cycleTrackingEnabled: false,
+  cycleTrackingChoice: null,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
@@ -569,6 +565,7 @@ export const PORTABLE_KEYS = [
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
   'cycleTrackingEnabled',
+  'cycleTrackingChoice',
   'voiceComfortLowHz',
   'voiceComfortHighHz',
   'areaFinishOfferDeclined',

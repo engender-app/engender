@@ -205,6 +205,7 @@ function portableWith(marker: string) {
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
     hairAnchorEpochDay: values.hairAnchorEpochDay,
     cycleTrackingEnabled: values.cycleTrackingEnabled,
+    cycleTrackingChoice: values.cycleTrackingChoice,
     voiceComfortLowHz: values.voiceComfortLowHz,
     voiceComfortHighHz: values.voiceComfortHighHz,
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
