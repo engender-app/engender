@@ -429,7 +429,18 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
   }
   field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`, true));
   if (!options.holdSun) {
-    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`, true));
+    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => {
+      /* The field clips its sun at rest. Named, a ring is cut by the field's
+         group instead - except while a scrolled side has switched that clip
+         off, where the whole field arrives from above and a small field's
+         sun (Settings': 175px of ring in 154px of field) hung 21 to 71px
+         below the blue until the transition let go and cut it in one frame
+         (ticket 285). The cut travels in the ring's own clip, which is in its
+         capture and rides with it. */
+      const cut = Math.round((el.getBoundingClientRect?.().bottom ?? 0) - box.bottom);
+      if (cut > 0) el.style.clipPath = `inset(50% 50% ${cut}px 0)`;
+      take(el, `sun-${side}-${i}`, true);
+    });
   }
 
   return { height, scrollTravel, scrolled: false, named };

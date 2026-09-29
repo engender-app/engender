@@ -388,6 +388,19 @@ describe('a carry that interrupts another', () => {
    (app.css, --fp-from and --sun-from), and the script publishes as many as
    these two numbers say. They are written in two places, so they are held to
    each other here. */
+describe('a sun ring taller than its field', () => {
+  it('is cut at the field\'s bottom in its own clip, so it survives a scrolled arrival', () => {
+    const tall = { style: makeStyle(), getBoundingClientRect: () => ({ bottom: 175 }) };
+    const inside = { style: makeStyle(), getBoundingClientRect: () => ({ bottom: 120 }) };
+    const f = field({ height: 154, rings: [tall as Styled, inside as Styled] });
+    (f as unknown as { getBoundingClientRect: () => object }).getBoundingClientRect = () => ({ height: 154, top: 0, bottom: 154 });
+    const { as } = fakeDocument([f]);
+    carryBlind(as);
+    expect(tall.style.clipPath).toBe('inset(50% 50% 21px 0)');
+    expect(inside.style.clipPath).toBeUndefined();
+  });
+});
+
 describe('the carried starting points and the stylesheet', () => {
   const css = readFileSync(new URL('../styles/app.css', import.meta.url), 'utf8');
   it('has a rule for every part index the carry can publish, and no more', () => {
