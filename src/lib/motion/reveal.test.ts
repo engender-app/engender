@@ -911,7 +911,7 @@ describe('tier 3, a box resizing under its own content', () => {
   /** A node whose height the test controls, wired to a `ResizeObserver`
       stub the test fires by hand, and an `animate` that records its
       keyframes and hands back a `finished` the test settles by hand. */
-  function resizingNode(initialHeight: number) {
+  function resizingNode(initialHeight: number, top?: number) {
     let height = initialHeight;
     let notify: () => void = () => {};
     const g = globalThis as Record<string, unknown>;
@@ -928,7 +928,7 @@ describe('tier 3, a box resizing under its own content', () => {
     let settle: (() => void) | undefined;
     const node = {
       style: { overflow: '' },
-      getBoundingClientRect: () => ({ height }) as DOMRect,
+      getBoundingClientRect: () => ({ height, top }) as DOMRect,
       animate: (keyframes: Keyframe[]) => {
         if (keyframes[0].marginTop !== undefined) {
           margins.push([parseFloat(String(keyframes[0].marginTop)), parseFloat(String(keyframes[1].marginTop))]);
@@ -1083,6 +1083,48 @@ describe('tier 3, a box resizing under its own content', () => {
       trigger();
       expect(margins).toEqual([]);
     } finally {
+      restore();
+    }
+  });
+
+  /* Ux-carpet ticket 282: "Earlier entries" grows the Journal's gate by
+     972px with its button 160px above the viewport's bottom. Travelling
+     all of it put 280px into the first frame of the ease-out, so the button
+     left the screen and the next day was painted whole in one frame. Only
+     the part of the travel the viewport can show is animated; the rest
+     lands below the fold, where nobody sees it land. */
+  it('travels only as far as the viewport shows, and lands the rest below the fold without a chase', async () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    g.innerHeight = 844;
+    const { node, calls, setHeight, trigger, finish, restore } = resizingNode(100, 600);
+    try {
+      resize(node);
+      setHeight(1072);
+      trigger();
+      // The edge starts at 700 and leaves the viewport at 844.
+      expect(calls).toEqual([[100, 244]]);
+      await finish();
+      expect(calls).toHaveLength(1);
+    } finally {
+      delete g.innerHeight;
+      restore();
+    }
+  });
+
+  it('does not animate a change that happens wholly below the fold', () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    g.innerHeight = 844;
+    const { node, calls, setHeight, trigger, restore } = resizingNode(400, 600);
+    try {
+      resize(node);
+      setHeight(900);
+      trigger();
+      expect(calls).toEqual([]);
+      expect(node.style.overflow).toBe('');
+    } finally {
+      delete g.innerHeight;
       restore();
     }
   });
