@@ -17,9 +17,11 @@
      Ticket 18: "Recent entries" no longer stops at five days and a strip
      underneath repeating the same week. It grows five days at a tap
      ("Earlier entries", the same limit-growing control search's own
-     "show N more" already used - ADR-0069), with a month heading falling
-     out of the dates themselves wherever the month changes
-     (recentEntries.ts's `recentDayHeadings`). The top strip stays exactly
+     "show N more" already used - ADR-0069), with the months falling out of
+     the dates themselves (recentEntries.ts's `recentDayMonths`): the first
+     day's month is the heading's own sub-line and every later change of
+     month is a small divider, so there is one heading above the first day
+     rather than two stacked on each other (ux-carpet ticket 282). The top strip stays exactly
      what it was: the affordance that opens the month, not a second reading
      of the same seven days.
 
@@ -74,7 +76,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { entryDayGroups, entryMarks, recentDayHeadings } from '$lib/data/recentEntries';
+  import { entryDayGroups, entryMarks, recentDayMonths } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import {
@@ -85,7 +87,7 @@
     isReducedMotion,
     motionDuration
   } from '$lib/motion/tokens';
-  import { maskHeight } from '$lib/motion/reveal';
+  import { maskHeight, resize } from '$lib/motion/reveal';
   import { regroupSteps, type CellBox, type CellStep } from '$lib/motion/regroup';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, roleAt, type Role } from '$lib/theme/roles';
@@ -152,7 +154,7 @@
   let recentDaysLimit = $state(RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
   let dayGroups = $derived(entryDayGroups(recent.rows));
-  let headedDayGroups = $derived(recentDayHeadings(dayGroups));
+  let recentMonths = $derived(recentDayMonths(dayGroups));
 
   /* How many more days exist to grow into, read off the journal's own
      count of days that hold anything rather than guessed from whether the
@@ -450,18 +452,25 @@
        list are two more of day one's four placeholders" (phase 8 UX ticket
        01). Day one gets the notice under the field and nothing else. -->
   {#if hasEntries}
-    <SectionHeading text={m.recent_entries()} />
+    <!-- The sub-line's room is held from the first frame, empty until the
+         read answers, so the month fading in moves nothing under it. -->
+    <SectionHeading
+      text={m.recent_entries()}
+      sub={recentMonths.month ? fmtMonthYear(recentMonths.month.year, recentMonths.month.month) : ''}
+    />
   {/if}
   <div class="cal-swap">
     <ReadGate read={recent} variant="card" count={3}>
       {#snippet rows()}
         <div class="cal-days">
-          {#each headedDayGroups as group (group.epochDay)}
-            {#if group.monthHeading}
-              <!-- Falls out of the dates themselves (recentDayHeadings), not
-                   inserted per screen: reads "August" the first time an
+          {#each recentMonths.groups as group (group.epochDay)}
+            {#if group.monthDivider}
+              <!-- Falls out of the dates themselves (recentDayMonths), not
+                   inserted per screen: reads "August 2026" the first time an
                    August day appears scrolling down from today. -->
-              <SectionHeading text={fmtMonthYear(group.monthHeading.year, group.monthHeading.month)} />
+              <h3 class="cal-month-divider" data-cal-month-divider>
+                {fmtMonthYear(group.monthDivider.year, group.monthDivider.month)}
+              </h3>
             {/if}
             <DayCard
               key={String(group.epochDay)}
@@ -483,11 +492,6 @@
               {/each}
             </DayCard>
           {/each}
-          {#if moreDaysRemaining > 0}
-            <button class="btn btn-soft" data-recent-days-more onclick={() => (recentDaysLimit += RECENT_DAYS_STEP)}>
-              <span>{m.list_more_days({ count: Math.min(RECENT_DAYS_STEP, moreDaysRemaining) })}</span>
-            </button>
-          {/if}
         </div>
       {/snippet}
       {#snippet empty()}
@@ -506,6 +510,19 @@
         </div>
       {/snippet}
     </ReadGate>
+  </div>
+  <!-- Outside the gate, so the gate's own height travel (`resize`, on its
+       wrapper) is what reveals the days a tap adds: they are uncovered by
+       its clip from the bottom of the last day down, the days already on
+       screen stay where they are, and this control rides the clip's edge
+       instead of vanishing under it until the travel ends. Its own box
+       travels the same way when the day count answers late or runs out. -->
+  <div class="cal-more" use:resize>
+    {#if moreDaysRemaining > 0}
+      <button class="btn btn-soft" data-recent-days-more onclick={() => (recentDaysLimit += RECENT_DAYS_STEP)}>
+        <span>{m.list_more_days({ count: Math.min(RECENT_DAYS_STEP, moreDaysRemaining) })}</span>
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -649,4 +666,27 @@
   .cal-swap { display: grid; }
   .cal-swap > * { grid-area: 1 / 1; }
   .cal-days { display: grid; gap: var(--space-3); align-content: start; }
+
+  /* A later month, at the caption size with a hairline to the edge: it
+     marks where the list crosses into another month without being another
+     named area of the screen, which a second section heading said it was. */
+  .cal-month-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: var(--space-3) 0 0;
+    font-family: inherit;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .cal-month-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .cal-more { display: grid; }
 </style>

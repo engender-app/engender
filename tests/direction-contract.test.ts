@@ -550,13 +550,23 @@ describe('rule 4: surfaces are flush, block or ink', () => {
     expect([right, left], `.kit-row { padding: ${padding} }`).toEqual(['0', '0']);
   });
 
-  it("makes a day's date bar and a tag blocks of the stripe, in the ink proven on it", () => {
-    for (const prelude of ['.kit-day-bar', '.kit-pill']) {
-      const body = ruleFor(kit, prelude)?.body ?? '';
-      expect(body, prelude).toMatch(/background:\s*var\(--role-draw\)/);
-      expect(body, prelude).toMatch(/color:\s*var\(--role-fill-ink\)/);
-      expect(body, prelude).not.toMatch(/--role-tint|--role-ink\b/);
-    }
+  it('makes a tag a block of the stripe, in the ink proven on it', () => {
+    const body = ruleFor(kit, '.kit-pill')?.body ?? '';
+    expect(body).toMatch(/background:\s*var\(--role-draw\)/);
+    expect(body).toMatch(/color:\s*var\(--role-fill-ink\)/);
+    expect(body).not.toMatch(/--role-tint|--role-ink\b/);
+  });
+
+  /* Ux-carpet ticket 282: a run of stripe-filled bars down the Journal read
+     like a different app, so the day bar is the surface with the stripe as
+     its leading edge. The role still reaches it - the stripe is the only
+     place it does. */
+  it("makes a day's date bar the surface with a 4px leading stripe", () => {
+    const body = ruleFor(kit, '.kit-day-bar')?.body ?? '';
+    expect(body).toMatch(/background:\s*var\(--surface\)/);
+    expect(body).toMatch(/color:\s*var\(--text\)/);
+    expect(body).toMatch(/border-inline-start:\s*4px solid var\(--role-draw\)/);
+    expect(body).not.toMatch(/background:\s*var\(--role|--role-fill-ink|--role-tint/);
   });
 
   it("sets the notice's mark as a 40px square of ink", () => {
