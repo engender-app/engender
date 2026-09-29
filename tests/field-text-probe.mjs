@@ -316,7 +316,16 @@ async function measure(held, scene) {
   cdp.on('Page.screencastFrame', onFrame);
   await cdp.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
   await page.waitForTimeout(80);
-  const sampled = page.evaluate(samplerExpression(scene.steps ?? [], scene.ms));
+  /* On the phone the field starts below the status bar, and the blind's edge
+     is measured from the field's top (field-text-core says why). */
+  const edgeOffset = DEVICE
+    ? await page.evaluate(() => {
+        const field = document.querySelector('[data-screen-field], [data-home-field], [data-setup-field], [data-gate-field]');
+        const region = document.querySelector('[data-app-scroll-region]');
+        return field ? Math.round((field.getBoundingClientRect().top + (region?.scrollTop ?? 0)) * 10) / 10 : 0;
+      })
+    : 0;
+  const sampled = page.evaluate(samplerExpression(scene.steps ?? [], scene.ms, edgeOffset));
   if (scene.resize) {
     await page.waitForTimeout(scene.resize.at);
     await page.setViewportSize({ width: scene.resize.width, height: HEIGHT[390] });
