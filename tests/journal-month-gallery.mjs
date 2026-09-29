@@ -302,10 +302,9 @@ async function record(name, act) {
     }
   };
   cdp.on('Page.screencastFrame', onFrame);
-  /* At the device's own pixels: left alone the screencast hands back CSS
-     px, and a face at 44px is too soft to review frame by frame. The crop
-     below is in the same 2x. */
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1, maxWidth: 780, maxHeight: 1800 });
+  /* Headless Chromium hands the screencast back in CSS px whatever
+     maxWidth asks for, so the frames and the crop below are 1x. */
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 });
   await page.waitForTimeout(80);
   await startSampling(page, SAMPLE);
   const actAt = Date.now() - started;
@@ -326,7 +325,7 @@ async function record(name, act) {
   scenes.push({
     name,
     frames: written,
-    crop: { left: 0, top: Math.round(box.y * 2), width: null, height: Math.round(height * 2) },
+    crop: { left: 0, top: Math.round(box.y), width: null, height: Math.round(height) },
     yanks,
     samples: samples.map((s) => ({ t: s.t, h: s.h, n: s.cells.length }))
   });
