@@ -38,7 +38,7 @@ public class ScreenCapturePlugin extends Plugin {
     }
 
     public static boolean isAllowed(Context context) {
-        return prefs(context).getBoolean(KEY_ALLOWED, false);
+        return prefs(context).getBoolean(KEY_ALLOWED, true);
     }
 
     /** One flag either way: Android ties the recents thumbnail, screenshots
@@ -54,10 +54,8 @@ public class ScreenCapturePlugin extends Plugin {
         }
     }
 
-    /** The reset path. Whether this device was allowed to capture the
-        screen says something about that device, and the reset claims to
-        leave nothing - the same default-off protection a fresh install
-        gets. */
+    /** The reset path removes this device's capture choice. A fresh install
+        allows capture by default. */
     public static void wipe(Context context) {
         prefs(context).edit().clear().commit();
     }
