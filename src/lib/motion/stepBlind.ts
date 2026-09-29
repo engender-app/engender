@@ -122,7 +122,12 @@ export const blindEdge: Action<HTMLElement> = (node) => {
        frame (ticket 285). The first change's direction is kept until its
        edge has landed. */
     const now = performance.now();
-    if (now - lastChange < motionDuration('--dur-slow')) delete vars['--part-travel'];
+    /* Or while any word on the field is mid-fade, which is the same thing
+       before the first change has published anything: an arriving title
+       that started on the fallback's +12 flipped when the gate's first (and
+       only) height change came in shrinking, 6.7px in one frame. */
+    const fading = typeof node.getAnimations === 'function' && node.getAnimations({ subtree: true }).length > 0;
+    if (fading || now - lastChange < motionDuration('--dur-slow')) delete vars['--part-travel'];
     lastChange = now;
     for (const [property, value] of Object.entries(vars)) {
       host.style.setProperty(property, value);
