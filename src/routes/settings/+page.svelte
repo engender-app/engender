@@ -12,6 +12,7 @@
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { areasHidden } from '$lib/data/areaState';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
@@ -67,6 +68,8 @@
   let reminders = liveList((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
   let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
   let measurementsOn = $derived(
     measurementStates.value !== undefined && !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
   );
@@ -297,25 +300,21 @@
             />
           </span>
         </div>
-        <!-- ADR-0043: the manual way into cycle tracking, for someone no
-             testosterone regimen already surfaces it for. The switch only
-             decides whether navigation names cycle tracking; turning it off
-             touches no record and no deep link. -->
         <div class="kit-row" data-cycle-tracking-toggle>
           <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
-            <!-- The one explanatory line the hub keeps: without it an off
-                 switch next to a cycle area that still shows reads as broken
-                 (ADR-0043's automatic half). -->
-            <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+            {#if prefs.cycleTrackingChoice === null}
+              <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+            {/if}
           </span>
           <span class="kit-row-trail">
             <Switch
-              checked={prefs.cycleTrackingEnabled}
+              checked={cycleShown}
+              disabled={prefs.cycleTrackingChoice === null && cycleEpisodes.value === undefined}
               label={m.cycle_tracking_toggle_title()}
               onChange={(v) => {
-                prefs.cycleTrackingEnabled = v;
+                prefs.cycleTrackingChoice = v;
               }}
             />
           </span>

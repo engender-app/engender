@@ -46,6 +46,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   journeyAnchorMilestoneId: (v) => v === null || typeof v === 'string',
   hairAnchorEpochDay: (v) => v === null || Number.isFinite(v),
   cycleTrackingEnabled: (v) => typeof v === 'boolean',
+  cycleTrackingChoice: (v) => v === null || typeof v === 'boolean',
   voiceComfortLowHz: (v) => v === null || Number.isFinite(v),
   voiceComfortHighHz: (v) => v === null || Number.isFinite(v),
   areaFinishOfferDeclined: isStringArray,
@@ -74,12 +75,8 @@ export function portableValueForKey<K extends PortableKey>(
 }
 
 /** What applyPortablePreferences (store.svelte.ts) writes for a restored
-    archive: every portable key whose value passed portableValueForKey,
-    paired with that value. A key the patch omits - because the archive
-    didn't carry it, or its value was outside the key's shape - is a key
-    applyPortablePreferences leaves untouched, which is how this device's
-    own value survives an archive naming an invented theme, an out-of-shape
-    palette or a nonsense check-in time.
+    archive: every valid portable key, plus a null cycle choice for older
+    archives. Other missing or invalid keys leave this device's value alone.
 
     Pulled out as its own function so the "importing an archive keeps the
     device's value" behaviour has something to test against a whole
@@ -91,5 +88,8 @@ export function portablePreferencePatch(portable: Partial<PortablePreferences>):
     const value = portableValueForKey(key, portable?.[key]);
     if (value !== undefined) patch[key] = value as never;
   }
+  // Archives written before cycle choices keep the automatic rule even
+  // when replacing a journal whose choice was explicit.
+  if (!Object.prototype.hasOwnProperty.call(portable, 'cycleTrackingChoice')) patch.cycleTrackingChoice = null;
   return patch;
 }
