@@ -386,40 +386,47 @@
    still borrows nothing from the active flag, so a mood dot and a heat
    cell never collide into one system by sharing a scale.
 
-   Every step is a literal colour, not a color-mix() formula: the ramp has
-   to hold its own contrast promise (--text on top, at 4.5:1) regardless of
-   which of the 16 gender palettes is active, so it cannot be derived from
-   the palette the way the heat-map ramp is. The band each theme has to stay
-   inside is set by the palest light ink and the deepest dark one:
-   light-theme steps stay light (luminance >= 0.2752, which trans light's
-   #1B2B36 needs) and dark-theme steps stay dark (luminance <= 0.1474,
-   which nonbinary dark's #EFEAF6 needs). That is a floor in one theme and a
-   ceiling in the other, which is why the light ramp descends as it
-   saturates (OKLab lightness 0.90 to 0.73) and the dark ramp holds one lightness and spends chroma
-   instead. See docs/adr/0077-moods-ramp-runs-between-two-hues.md for the
-   derivation, the hue-clash review against all 16 palettes, and the
-   residual-risk pairs. */
+   Every step is a literal colour, not a color-mix() formula, and so is
+   the ink its face is drawn in (ADR-0091, amending ADR-0077's ink clause).
+   Each step carries --mood-N-ink beside its fill, picked by roles.ts's
+   heat-cell rule: the palette's own --text wherever it clears 4.5:1 on
+   that fill in all 16 palettes, otherwise whichever of black and white
+   contrasts more. With the ink free to change, the light ramp deepens as
+   the mood rises (OKLab lightness 0.89 to 0.51, amber 0.90 to 0.66 since a
+   gold has no chroma left lower down) and the dark ramp brightens (0.50 to
+   0.84, plum to 0.78), each step a clear move from the last. See
+   docs/adr/0091-each-mood-step-picks-its-own-ink.md for the numbers and
+   docs/adr/0077-moods-ramp-runs-between-two-hues.md for the hue pairs, the
+   hue-clash review against all 16 palettes, and the residual-risk pairs. */
 [data-mood-preset="amber"][data-theme="light"] {
-  --mood-1: #EFD3F5; --mood-2: #FBB9D7; --mood-3: #FFA7A7; --mood-4: #FF985A; --mood-5: #D99B01;
+  --mood-1: #F1D2F7; --mood-2: #F6B4D5; --mood-3: #F898A0; --mood-4: #EE835A; --mood-5: #C8801D;
+  --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: var(--text); --mood-5-ink: #000000;
 }
 [data-mood-preset="amber"][data-theme="dark"] {
-  --mood-1: #6F5B73; --mood-2: #825269; --mood-3: #934A4C; --mood-4: #994A11; --mood-5: #825B00;
+  --mood-1: #75567C; --mood-2: #AA688A; --mood-3: #DB7B82; --mood-4: #FB966A; --mood-5: #FCBD6B;
+  --mood-1-ink: var(--text); --mood-2-ink: #000000; --mood-3-ink: #000000; --mood-4-ink: #000000; --mood-5-ink: #000000;
 }
 [data-mood-preset="teal"][data-theme="light"] {
-  --mood-1: #E0D8FF; --mood-2: #BDCEFF; --mood-3: #8BCAFF; --mood-4: #01CAF4; --mood-5: #01BFC0;
+  --mood-1: #DBD3F9; --mood-2: #AABCF3; --mood-3: #60A5DF; --mood-4: #1C8EAB; --mood-5: #157475;
+  --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: #000000; --mood-5-ink: #FFFFFF;
 }
 [data-mood-preset="teal"][data-theme="dark"] {
-  --mood-1: #655E7D; --mood-2: #54618A; --mood-3: #356890; --mood-4: #026F87; --mood-5: #017272;
+  --mood-1: #665B87; --mood-2: #6A7DB9; --mood-3: #55A2E1; --mood-4: #2CC7EE; --mood-5: #33E5E5;
+  --mood-1-ink: var(--text); --mood-2-ink: #000000; --mood-3-ink: #000000; --mood-4-ink: #000000; --mood-5-ink: #000000;
 }
 [data-mood-preset="plum"][data-theme="light"] {
-  --mood-1: #BCE5FE; --mood-2: #B4D1FF; --mood-3: #BCBAFF; --mood-4: #D399FD; --mood-5: #ED73D6;
+  --mood-1: #BCE5FD; --mood-2: #9CBFF6; --mood-3: #9694E3; --mood-4: #9A65BF; --mood-5: #9A3289;
+  --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: #000000; --mood-5-ink: #FFFFFF;
 }
 [data-mood-preset="plum"][data-theme="dark"] {
-  --mood-1: #47687C; --mood-2: #486491; --mood-3: #5E589F; --mood-4: #7B489E; --mood-5: #9A3289;
+  --mood-1: #396986; --mood-2: #5A7AB3; --mood-3: #8C86D8; --mood-4: #C189E7; --mood-5: #F88AE2;
+  --mood-1-ink: var(--text); --mood-2-ink: #000000; --mood-3-ink: #000000; --mood-4-ink: #000000; --mood-5-ink: #000000;
 }
 [data-mood-preset="moss"][data-theme="light"] {
-  --mood-1: #FAD6BA; --mood-2: #EACB8F; --mood-3: #CAC86C; --mood-4: #93C95D; --mood-5: #00C773;
+  --mood-1: #FDD5B7; --mood-2: #D9B97C; --mood-3: #A7A347; --mood-4: #619129; --mood-5: #147645;
+  --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: #000000; --mood-5-ink: #FFFFFF;
 }
 [data-mood-preset="moss"][data-theme="dark"] {
-  --mood-1: #795D46; --mood-2: #77602F; --mood-3: #69671B; --mood-4: #4A701F; --mood-5: #007742;
+  --mood-1: #805A38; --mood-2: #9A7C37; --mood-3: #A2A13F; --mood-4: #92C760; --mood-5: #5BEA98;
+  --mood-1-ink: var(--text); --mood-2-ink: #000000; --mood-3-ink: #000000; --mood-4-ink: #000000; --mood-5-ink: #000000;
 }
