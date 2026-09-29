@@ -311,12 +311,27 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
       if (isBlue((y * width + x) * channels)) lastBlue[x] = y;
     }
   }
+  /* The sun is drawn over the field in the flag's colours and its white
+     stripe is the page's own colour, so where it crosses a column that
+     column has no blue to measure the field's bottom by. Its columns are
+     left out; they are the top corner, where no type is printed under it. */
+  const sun = new Uint8Array(width);
+  for (let x = 0; x < width; x++) {
+    let seen = 0;
+    for (let y = top; y < Math.min(top + 140, end); y++) {
+      const i = (y * width + x) * channels;
+      const hi = Math.max(pixels[i], pixels[i + 1], pixels[i + 2]);
+      const lo = Math.min(pixels[i], pixels[i + 1], pixels[i + 2]);
+      if (hi - lo > 40 && !isBlue(i) && !isInk(i)) seen++;
+    }
+    if (seen >= 8) sun[x] = 1;
+  }
   let count = 0;
   let deepest = 0;
   let deepestAt = null;
   for (let y = top; y < end; y++) {
     for (let x = 0; x < width; x++) {
-      if (!isInk((y * width + x) * channels)) continue;
+      if (sun[x] || !isInk((y * width + x) * channels)) continue;
       const below = y - lastBlue[x];
       if (below > 2) {
         count++;
