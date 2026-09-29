@@ -46,6 +46,13 @@ describe('findGeometry', () => {
     expect(r.teleports).toEqual([{ name: 'fp-a-0', at: 16, jump: 30 }]);
   });
 
+  it('passes an ease-out that starts fast, and flags the same step standing alone', () => {
+    const slide = [0, 9, 15, 19, 21, 22].map((d, i) => row(i * 16, 300, [part('fp-a-0', 150 + d)]));
+    expect(findGeometry(slide).teleports).toEqual([]);
+    const alone = [0, 0, 0, 8, 8, 8].map((d, i) => row(i * 16, 300, [part('fp-a-0', 150 + d)]));
+    expect(findGeometry(alone).teleports).toHaveLength(1);
+  });
+
   it('reads a ring by its middle, so scaling about the centre is not a jump', () => {
     const r = findGeometry([
       row(0, 200, [{ n: 'sun-a-0', bottom: 175, mid: 0, op: 1 }]),
@@ -60,6 +67,12 @@ describe('findGeometry', () => {
       row(16, 160, [{ n: 'sun-b-0', bottom: 45, mid: 0, op: 1 }])
     ]);
     expect(r.teleports).toEqual([]);
+  });
+
+  it('does not count what a dropped frame moved as a jump', () => {
+    const r = findGeometry([row(0, 200, [part('fp-a-0', 180, 1)]), row(50, 200, [part('fp-a-0', 165, 0.4)])]);
+    expect(r.teleports).toEqual([]);
+    expect(r.pops).toEqual([]);
   });
 
   it('flags a part that appears or vanishes in a single frame', () => {
