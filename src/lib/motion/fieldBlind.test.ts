@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { blindVariables, carryBlind } from './fieldBlind';
+import { readFileSync } from 'node:fs';
+
+import { blindVariables, carryBlind, CARRIED_PARTS, CARRIED_RINGS } from './fieldBlind';
 
 /** A live style object's own two methods, alongside `view-transition-name`
     and `clip-path` set as plain properties the same way real code does -
@@ -379,5 +381,23 @@ describe('a carry that interrupts another', () => {
     expect(doc.root.style.props.has('--fp-o-0')).toBe(false);
     expect(doc.root.style.props.has('--sun-s-0')).toBe(false);
     expect(doc.root.style.props.has('--blind-lead-from')).toBe(false);
+  });
+});
+
+/* The stylesheet has one starting-point rule per index the carry can publish
+   (app.css, --fp-from and --sun-from), and the script publishes as many as
+   these two numbers say. They are written in two places, so they are held to
+   each other here. */
+describe('the carried starting points and the stylesheet', () => {
+  const css = readFileSync(new URL('../styles/app.css', import.meta.url), 'utf8');
+  it('has a rule for every part index the carry can publish, and no more', () => {
+    const indices = [...css.matchAll(/view-transition-old\(fp-a-(\d+)\) \{ --fp-from: var\(--fp-o-(\d+), 1\)/g)];
+    expect(indices.map((m) => Number(m[1]))).toEqual(Array.from({ length: CARRIED_PARTS }, (_, i) => i));
+    for (const m of indices) expect(m[1]).toBe(m[2]);
+  });
+  it('has a rule for every ring the longest flag draws, inside what the carry publishes', () => {
+    const rings = [...css.matchAll(/--sun-from: var\(--sun-s-(\d+), 1\)/g)].map((m) => Number(m[1]));
+    expect(rings.length).toBeGreaterThan(0);
+    expect(Math.max(...rings)).toBeLessThan(CARRIED_RINGS);
   });
 });
