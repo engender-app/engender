@@ -297,7 +297,7 @@ export function findHeightJumps(series) {
     frame. `top`..`bottom` bounds the rows read, which is how a frame that is
     mostly page stays cheap. Returns the count and how far below the field
     the lowest one is. */
-export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
+export function offFieldInk(png, { top = 0, bottom = png.height, scale = 1 } = {}) {
   const { width, height, channels, pixels } = png;
   const lastBlue = new Int32Array(width).fill(-1);
   const end = Math.min(bottom, height);
@@ -318,13 +318,13 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
   const sun = new Uint8Array(width);
   for (let x = 0; x < width; x++) {
     let seen = 0;
-    for (let y = top; y < Math.min(top + 140, end); y++) {
+    for (let y = top; y < Math.min(top + 140 * scale, end); y++) {
       const i = (y * width + x) * channels;
       const hi = Math.max(pixels[i], pixels[i + 1], pixels[i + 2]);
       const lo = Math.min(pixels[i], pixels[i + 1], pixels[i + 2]);
       if (hi - lo > 40 && !isBlue(i) && !isInk(i)) seen++;
     }
-    if (seen >= 8) sun[x] = 1;
+    if (seen >= 8 * scale) sun[x] = 1;
   }
   let count = 0;
   let deepest = 0;
@@ -333,7 +333,7 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
     for (let x = 0; x < width; x++) {
       if (sun[x] || !isInk((y * width + x) * channels)) continue;
       const below = y - lastBlue[x];
-      if (below > 2) {
+      if (below > 2 * scale) {
         count++;
         if (below > deepest) {
           deepest = below;
@@ -352,9 +352,9 @@ export function readInk(cast, epoch, options = {}) {
   for (const shot of cast) {
     const png = decodePng(Buffer.from(shot.data, 'base64'));
     const read = offFieldInk(png, options);
-    frames.push({ at: Math.round(shot.ts - epoch), ...read });
+    frames.push({ at: Math.round(shot.ts - epoch), ...read, deepest: Math.round(read.deepest / (options.scale ?? 1)) });
   }
-  const bad = frames.filter((f) => f.count >= INK_PIXELS);
+  const bad = frames.filter((f) => f.count >= INK_PIXELS * (options.scale ?? 1) ** 2);
   return {
     frames: frames.length,
     bad: bad.length,
