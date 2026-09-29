@@ -45,6 +45,14 @@ function region(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-app-scroll-region]');
 }
 
+/** Where a screen was left, which is where `restoreScroll` is about to take
+    it. The transition needs to know before the region has got there:
+    restoring is eased, and it waits for the rows, so at the moment the
+    incoming screen is photographed the region is still at 0. */
+export function savedScroll(path: string | null | undefined): number {
+  return (path && positions.get(path)) || 0;
+}
+
 /** Called before leaving, while the outgoing screen can still be measured. */
 export function rememberScroll(path: string | null | undefined): void {
   const el = region();

@@ -11,7 +11,7 @@ import { markScreenArrival } from '$lib/motion/screenArrival';
 import { chromeTabOrigin } from './chrome-tab-origin';
 import { cutsInsteadOfMoving } from './chromeless';
 import { leavesHomeForEntry, screenTransition } from './screen-transition';
-import { rememberScroll, restoreScroll } from './scroll-region';
+import { rememberScroll, restoreScroll, savedScroll } from './scroll-region';
 
 /* Tier 2 (phase 5 ticket 18): one screen becoming another.
 
@@ -123,7 +123,8 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        grown one step's worth per step and arrives at Home's resting
        scale, so it holds still inside the two snapshots while the field
        closes around it rather than closing and opening its own rings. */
-    holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding')
+    holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding'),
+    restoring: savedScroll(navigation.to.url.pathname) > 1
   });
 
   return new Promise((resolve) => {

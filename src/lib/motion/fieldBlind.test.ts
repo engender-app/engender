@@ -40,7 +40,13 @@ function field({
 
 /** A document whose field list can be swapped out under the carry, which is
     what a navigation does to it. */
-function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0, regionTop = 0) {
+function fakeDocument(
+  fields: ReturnType<typeof field>[],
+  scrollTop = 0,
+  regionTop = 0,
+  /** What the pseudo elements of a transition in flight answer, by pseudo. */
+  pseudo: Record<string, Record<string, string>> = {}
+) {
   const root = {
     dataset: {} as Record<string, string>,
     style: {
@@ -61,7 +67,8 @@ function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0, regionT
       /* The one thing the carry asks the document for beside its fields:
          how far the screen under them is scrolled. */
       querySelector: () => doc.region,
-      documentElement: root
+      documentElement: root,
+      defaultView: { getComputedStyle: (_: unknown, name: string) => pseudo[name] ?? {} }
     } as unknown as Document
   };
 }
@@ -203,16 +210,20 @@ describe('the blind, carried across a navigation', () => {
     ]);
   });
 
-  /* ux-carpet 241: sun rings are lifted out of the field group so they paint
-     above the titles (*.field-part at 4) rather than being trapped in field at 3. */
-  it('leaves the sun rings in their own root group, while nesting the blind', () => {
+  /* Ticket 285 reverses ux-carpet 241's lifting: the blind, the printed parts
+     and the rings are all nested in the field's group, so its overflow clip
+     cuts every one of them at the painted edge (a ring 21px past Settings'
+     field, type past the blue). The z-order 241 wanted - rings over titles
+     over blind - now holds inside that group (app.css z-index 5, 4, 3). */
+  it('nests the blind, the printed parts and the rings under the field group', () => {
     const blind = el();
+    const parts = [el()];
     const rings = [el(), el()];
-    const { as } = fakeDocument([field({ height: 215, blind, rings })]);
+    const { as } = fakeDocument([field({ height: 215, blind, parts, rings })]);
     carryBlind(as);
-    expect(blind.style['view-transition-group']).toBe('nearest');
-    expect(rings[0].style['view-transition-group']).toBeUndefined();
-    expect(rings[1].style['view-transition-group']).toBeUndefined();
+    for (const node of [blind, parts[0], rings[0], rings[1]]) {
+      expect(node.style['view-transition-group']).toBe('nearest');
+    }
   });
 
   it('gives every name back when the transition is over, and takes its variables with it', () => {
@@ -290,5 +301,62 @@ describe("the sun across setup's handover", () => {
     const { as } = fakeDocument([field({ height: 100, rings })]);
     carryBlind(as, { holdSun: true });
     expect(rings.map((r) => r.style.viewTransitionName)).toEqual([undefined, undefined]);
+  });
+});
+
+/* A navigation that lands on one still running (ticket 285). The DOM is the
+   earlier navigation's destination and the earlier transition is skipped the
+   instant the new one starts, so the edge, the faded-in type and the opened
+   rings jump to their resting state unless the new carry starts from what
+   was on screen. */
+describe('a carry that interrupts another', () => {
+  const inFlight = {
+    '::view-transition-group(field)': { height: '170px' },
+    '::view-transition-group(fp-b-0)': { height: '46px' },
+    '::view-transition-new(fp-b-0)': { opacity: '0.4' },
+    '::view-transition-group(sun-b-0)': { height: '350px' },
+    '::view-transition-new(sun-b-0)': { scale: '0.6' }
+  };
+
+  it('starts the edge where it was drawn, not where it was going', () => {
+    const { doc, as } = fakeDocument([field({ height: 215 })], 0, 0, inFlight);
+    const first = carryBlind(as);
+    first.swap();
+    doc.fields = [field({ height: 215 })];
+    const second = carryBlind(as);
+    doc.fields = [field({ height: 128 })];
+    second.swap();
+    expect(doc.root.style.props.get('--blind-from')).toBe('170px');
+    expect(doc.root.style.props.get('--blind-to')).toBe('128px');
+    expect(doc.root.style.props.get('--blind-delta')).toBe('42px');
+    /* The outgoing type was photographed 45px below where the edge is. */
+    expect(doc.root.style.props.get('--blind-lead-from')).toBe('-45px');
+    second.release();
+    first.release();
+  });
+
+  it('hands the outgoing type and rings what they had reached', () => {
+    const { doc, as } = fakeDocument([field({ height: 215 })], 0, 0, inFlight);
+    const first = carryBlind(as);
+    first.swap();
+    doc.fields = [field({ height: 215 })];
+    carryBlind(as);
+    expect(doc.root.style.props.get('--fp-o-0')).toBe('0.4');
+    expect(doc.root.style.props.get('--sun-s-0')).toBe('0.6');
+    first.release();
+  });
+
+  it('gives all of it back on release, and starts from the DOM when nothing is running', () => {
+    const { doc, as } = fakeDocument([field({ height: 215 })], 0, 0, inFlight);
+    const first = carryBlind(as);
+    expect(doc.root.style.props.get('--blind-lead-from')).toBe('0px');
+    first.swap();
+    doc.fields = [field({ height: 215 })];
+    const second = carryBlind(as);
+    second.swap();
+    second.release();
+    expect(doc.root.style.props.has('--fp-o-0')).toBe(false);
+    expect(doc.root.style.props.has('--sun-s-0')).toBe(false);
+    expect(doc.root.style.props.has('--blind-lead-from')).toBe(false);
   });
 });
