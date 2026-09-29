@@ -60,6 +60,7 @@ const REPORT = argv.includes('--report');
 /* Real colours instead of the forced blue and green, for a flipbook a person
    reads; the pixel instrument has nothing to read there and is skipped. */
 const NATURAL = argv.includes('--natural');
+const KEEP_ALL = argv.includes('--keep-all');
 const THEME = opt('theme', '');
 
 const HEIGHT = { 390: 844, 1440: 900 };
@@ -373,7 +374,7 @@ try {
           const r = analyse(m, { step: true });
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
           log(width, scene.name, 0, r);
-          if (failed(r)) await keep(scene.name, width, 0, m);
+          if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
         }
         /* Interrupted: a second gesture lands while the first is in flight,
            forward twice, back twice, and back then forward. */
@@ -389,7 +390,7 @@ try {
           const r = analyse(m, { step: true });
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
           log(width, scene.name, 0, r);
-          if (failed(r)) await keep(scene.name, width, 0, m);
+          if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
         }
         /* The handover: walk to the end and let setup open the app. */
         await wait(900);
@@ -405,7 +406,7 @@ try {
           const r = analyse(m);
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
           log(width, scene.name, 0, r);
-          if (failed(r)) await keep(scene.name, width, 0, m);
+          if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
         } else console.log(`skip ${width} setup ${locale} finish - no [data-finish]`);
       }
     }
@@ -439,7 +440,7 @@ try {
           const r = analyse(m, { step: true });
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
           log(width, scene.name, 0, r);
-          if (failed(r)) await keep(scene.name, width, 0, m);
+          if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
         }
       } finally {
         await fixture.close();
