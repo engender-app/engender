@@ -34,8 +34,8 @@
 
      **The one new interaction: the month opens.** Collapsed, the month is a
      strip of bars - HeatMap's own drawing of the same read, see its
-     `compact` prop. Expanded, it is the grid, the legend, the highlight
-     chips and the hint. It is screen state and not a route: a month you
+     `compact` prop. Expanded, it is the grid, its key and the highlight
+     chips. It is screen state and not a route: a month you
      opened is not somewhere you navigated to, and back should leave the
      door rather than close a panel. Both states carry the metric picker,
      which is the one control for a choice this screen makes twice (the
@@ -100,7 +100,6 @@
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth());
 
-  let metricName = $derived(vocabulary.metricName);
   let monthLabel = $derived(fmtMonthYear(year, month));
 
   /* Whether this journal has anything in it at all, which decides whether
@@ -316,17 +315,56 @@
     );
   }
 
-  function toggleMonth() {
+  /* Closing, the faces and dots go first. A face is laid out in its cell,
+     and the frame after the tap the cell is a 7px bar scaled back up to the
+     size it was, so a face still showing in it is squashed into a sliver -
+     a different drawing from one frame to the next (ticket 280). So they
+     fade where they stand, unscaled, and the days fold once they are gone.
+     The key and the chips under the grid go in the same beat: the strip has
+     neither, and they used to be gone in the frame of the tap while the
+     panel was still its full height around the space they had left.
+     Opening is the same beat the other way round, and HeatMap owns it: the
+     days unfold first and the faces come back after. */
+  let folding = false;
+
+  function fadeWhatSitsOut(body: HTMLElement): Promise<Animation[]> {
+    const shown = [
+      ...body.querySelectorAll<HTMLElement>('[data-cal-sits-out], [data-presentation-highlight-row]')
+    ].filter(
+      (node) => Number(getComputedStyle(node).opacity) > 0
+    );
+    const fades = shown.map((node) =>
+      node.animate([{ opacity: getComputedStyle(node).opacity }, { opacity: 0 }], {
+        duration: motionDuration('--dur-fast'),
+        easing: EASE_OUT_CSS,
+        fill: 'forwards'
+      })
+    );
+    return Promise.all(fades.map((fade) => fade.finished)).then(() => fades, () => fades);
+  }
+
+  async function toggleMonth() {
     const body = monthBody;
     if (!body || isReducedMotion()) {
       monthOpen = !monthOpen;
       return;
+    }
+    if (folding) return;
+    let faded: Animation[] = [];
+    if (monthOpen) {
+      folding = true;
+      faded = await fadeWhatSitsOut(body);
+      folding = false;
+      // Left the screen during the fade: nothing is left to fold.
+      if (!body.isConnected) return;
     }
     const swatches = boxesOf('data-cal-cell');
     const dates = boxesOf('data-cal-date');
     const from = body.getBoundingClientRect().height;
     monthOpen = !monthOpen;
     flushSync();
+    // The strip holds them at 0 on its own now, with no transition to run.
+    for (const fade of faded) fade.cancel();
     const duration = motionDuration('--dur-slow');
     /* The panel gives or takes its own height while the cells travel inside
        it, so nothing under the month arrives at its new place in the frame
@@ -436,10 +474,17 @@
     </div>
 
     <div class="cal-month-body" id="calendar-month" data-cal-month-body bind:this={monthBody}>
-      <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} {highlight} compact={!monthOpen} />
+      <HeatMap
+        {year}
+        {month}
+        role={roleAt(activeFlag.roles, 0)}
+        eras={eraRoles}
+        {highlight}
+        compact={!monthOpen}
+        direction={dir}
+      />
       {#if monthOpen}
         <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-        <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
       {/if}
     </div>
   {/if}
@@ -649,13 +694,6 @@
     display: grid;
     gap: var(--space-3);
     margin-bottom: var(--space-5);
-  }
-
-  .cal-hint {
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    margin: 0;
   }
 
   /* ---------- The days ---------- */

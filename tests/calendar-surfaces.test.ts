@@ -148,18 +148,20 @@ describe('the heat map', () => {
 
   it('draws a day of two readings as two, rather than averaging it to one', () => {
     /* Phase 6 unprompted ticket 11, in the form Alicja asked for on
-       2026-09-02: Daylio's split cell. The rule between split, stack and
-       whole is statsCharts.ts's and has its own test; what is checked here
-       is that this file asks for it and draws both halves from the day's
-       own two steps rather than from the average twice - in the day's own
-       order, earliest on the left, which is the half a size-ordered draw
-       would silently get wrong. */
+       2026-09-02: Daylio's split cell. The rule between split and whole is
+       statsCharts.ts's and has its own test; what is checked here is that
+       this file asks for it and draws both halves from the day's own two
+       steps rather than from the average twice - in the day's own order,
+       earliest on the left, which is the half a size-ordered draw would
+       silently get wrong. */
     expect(heatMap).toContain('j.stats.daySpread(');
     expect(heatMap).toContain('dayShape(');
-    expect(heatMap).toMatch(/cal-half[\s\S]*?fillAt\(c\.shape\.first\)/);
-    expect(heatMap).toMatch(/is-later[\s\S]*?fillAt\(c\.shape\.last\)/);
+    expect(heatMap).toMatch(/cal-half is-earlier[\s\S]*?fillAt\(split\.first/);
+    expect(heatMap).toMatch(/cal-half is-later[\s\S]*?fillAt\(split\.last/);
     expect(markupOf(heatMap)).toContain('data-hm-cell-split');
-    expect(markupOf(heatMap)).toContain('data-hm-cell-stack');
+    // Ticket 280 retired the stack: the count is the pip under the date.
+    expect(markupOf(heatMap)).not.toContain('data-hm-cell-stack');
+    expect(markupOf(heatMap)).toContain('cal-pip');
   });
 
   it('draws mood as its own faces on its own ramp, and never the flag\'s', () => {
@@ -169,8 +171,8 @@ describe('the heat map', () => {
        at a size tests/mood-faces.test.ts holds them legible at, and a
        calendar cell is bigger than the year grid that already draws them. */
     expect(heatMap).toContain("import MoodFace from '$lib/components/MoodFace.svelte'");
-    expect(heatMap).toMatch(/isMood\s*=\s*\$derived\(vocabulary\.activeMetric === 'mood'\)/);
-    expect(heatMap).toContain('`var(--mood-${step})`');
+    expect(heatMap).toMatch(/const isMood = metric === 'mood'/);
+    expect(heatMap).toMatch(/isMood \? `var\(--mood-\$\{step\}\)`/);
     // A face sits over the halves, so it brings no disc of its own.
     expect(markupOf(heatMap)).toMatch(/<MoodFace[^>]*disc=\{false\}/);
   });
@@ -181,14 +183,14 @@ describe('the heat map', () => {
        one whole face over a split cell would say the day was one thing
        after all, which is the flattening this ticket exists to undo. */
     const markup = markupOf(heatMap);
-    expect(markup).toMatch(/is-earlier[\s\S]*?<MoodFace step=\{c\.shape\.first\}/);
-    expect(markup).toMatch(/is-later[\s\S]*?<MoodFace step=\{c\.shape\.last\}/);
-    /* Clipped rather than nested inside the halves: the later half is a
-       pixel proud on three sides, so a face hung inside it would sit a
-       pixel off the one beside it. Both are the whole cell, cut on the
-       colour's own seam. */
-    expect(heatMap).toMatch(/\.cal-face\.is-earlier \{ clip-path: inset\(0 calc\(50% \+ 1px\) 0 0\); \}/);
-    expect(heatMap).toMatch(/\.cal-face\.is-later \{ clip-path: inset\(0 0 0 calc\(50% - 1px\)\); \}/);
+    expect(markup).toMatch(/cal-face is-earlier[\s\S]*?<MoodFace step=\{split\?\.first/);
+    expect(markup).toMatch(/cal-face is-later[\s\S]*?<MoodFace step=\{split\?\.last/);
+    /* Clipped rather than nested inside the halves, and on the same cut
+       the colour takes: each half and each half-face is the whole cell,
+       stopped a pixel short of the middle, so the 2px gutter between the
+       halves runs through the face as well (ticket 280). */
+    expect(heatMap).toMatch(/\.cal-half\.is-earlier,\s*\.cal-face\.is-earlier \{ clip-path: inset\(0 calc\(50% \+ 1px\) 0 0\); \}/);
+    expect(heatMap).toMatch(/\.cal-half\.is-later,\s*\.cal-face\.is-later \{ clip-path: inset\(0 0 0 calc\(50% \+ 1px\)\); \}/);
   });
 
   it('gives a gender dimension no face, which is a rule and not an omission', () => {
@@ -196,8 +198,12 @@ describe('the heat map', () => {
        one, and a mouth is the most direct way there is to say otherwise. So
        the faces are gated on mood alone - a later ticket dropping the gate
        to "every metric gets a face" would be the judgment this app cannot
-       make, and no other test in the tree would see it. */
-    expect(heatMap).toMatch(/\{#if isMood\}/);
+       make, and no other test in the tree would see it. The faces stay
+       mounted so they can fade (ticket 280's metric switch), so the gate
+       is on whether each one is on, and every one of them has it. */
+    const faces = markupOf(heatMap).match(/<span class="cal-face[^>]*>/g) ?? [];
+    expect(faces.length).toBe(3);
+    for (const face of faces) expect(face).toMatch(/class:is-on=\{isMood &&/);
     // And the flag's ramp is still what a dimension shades in.
     expect(heatMap).toMatch(/role\?\.heat\[step\]\.fill/);
   });
@@ -206,7 +212,7 @@ describe('the heat map', () => {
     /* kit/YearRows.svelte (then MoodYear) made this call first and says why: the faces are
        the same five a person picks a mood from every day, so naming them
        under the grid is the app explaining itself to its reader. */
-    expect(markupOf(heatMap)).toMatch(/\{#if !isMood\}[\s\S]*?data-cal-legend/);
+    expect(markupOf(heatMap)).toMatch(/\{#if !view\.isMood\}[\s\S]*?data-cal-legend/);
   });
 
   it('keeps the date off the fill, now that a cell can carry two of them', () => {
@@ -216,10 +222,14 @@ describe('the heat map', () => {
        carries no text and the number sits on the page's own ground. A later
        ticket putting it back would put the contrast floor back at risk. */
     const markup = markupOf(heatMap);
-    expect(markup).toMatch(/<span class="cal-swatch"[\s\S]*?>\s*\{#if/);
+    // The date is the surface's sibling, never inside it.
+    expect(markup).toMatch(/<\/span>\s*<span class="cal-date"/);
     expect(markup).not.toContain('inkAt(');
     expect(heatMap).not.toContain('--on-heat-');
-    expect(heatMap).toMatch(/\.cal-num \{[^}]*color: var\(--text-2\)/);
+    // On the page's ground: --text for a day that has happened, --text-2
+    // for one still ahead (ticket 280).
+    expect(heatMap).toMatch(/\.cal-num \{[^}]*color: var\(--text\)/);
+    expect(heatMap).toMatch(/\.cal-day\.is-ahead \.cal-num[^{]*\{ color: var\(--text-2\)/);
   });
 
   it('reads the two ends out in native units, never the drawn ones', () => {
@@ -237,7 +247,7 @@ describe('the heat map', () => {
        too - otherwise a future day would flash a mark that then vanished,
        or vice versa, before dayAheadQuery's own read landed. */
     expect(heatMap).toContain('j.dayAhead.getDayAhead(');
-    expect(heatMap).toMatch(/loading = \$derived\([^)]*dayAheadQuery\.loading/);
+    expect(heatMap).toMatch(/ready = \$derived\([\s\S]*?answered\(dayAheadQuery/);
   });
 
   it('marks only a day strictly after today, never today or the past', () => {
@@ -271,14 +281,18 @@ describe('the heat map', () => {
     /* An empty result and a month with nothing logged are the same shape, so
        before the read lands every cell would announce "no entries" for a day
        that has six. */
-    expect(heatMap).toMatch(/aria-busy=\{loading\}/);
+    expect(heatMap).toMatch(/aria-busy=\{v\.loading\}/);
     expect(heatMap).toMatch(/label: loading/);
     /* The shape carries the same rule and needs it stated separately: an
        unloaded month and a month of single-entry days both come back with
        no spread rows, so an unguarded cell would draw every day whole
        before the answer arrived. */
     expect(heatMap).toMatch(/loading \? null : dayShape\(/);
-    expect(heatMap).toContain('spreads.loading');
+    /* And a read still answering the last question - the previous month,
+       or the previous metric - is not an answer to this one: the grid holds
+       its picture until all four have answered (ticket 280). */
+    expect(heatMap).toMatch(/answered\(spreads, vocabulary\.activeMetric\)/);
+    expect(heatMap).toMatch(/if \(ready\) held = build\(false\)/);
   });
 });
 
@@ -526,7 +540,7 @@ describe('loading states, since all six read entry data', () => {
   it('the calendar draws at full size and holds back only its claims', () => {
     // A month is 30 cells of known shape: there is nothing to reflow, so the
     // honest loading state is the grid itself plus aria-busy.
-    expect(heatMap).toContain('aria-busy={loading}');
+    expect(heatMap).toContain('aria-busy={v.loading}');
   });
 
   it('the calendar avoids hydration layout shifts on cold mount (ticket 109)', () => {
