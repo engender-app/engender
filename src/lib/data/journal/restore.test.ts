@@ -629,6 +629,21 @@ test('replace applies the state the archive put on built-in rows; merge leaves i
   assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording');
 });
 
+test('replace keeps archived feature visibility choices', async () => {
+  const source = await device();
+  await source.journal.areaStates.setAreasHidden(['measurements', 'sizeRecords'], false);
+  await source.journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  const target = await device();
+  await target.journal.areaStates.setAreasHidden(['measurements', 'sizeRecords'], true);
+
+  await target.journal.archive.replace(await exported(source.journal));
+
+  const states = await target.journal.areaStates.getAreaStates();
+  assert.equal(states.measurements?.hidden ?? false, false);
+  assert.equal(states.sizeRecords?.hidden ?? false, false);
+  assert.equal((await target.journal.effectCategories.getEffectCategories()).find((c) => c.key === 'genital_sexual')?.enabled, true);
+});
+
 test('replace leaves the PIN, the app-lock flags and the disguise settings alone', async () => {
   const source = await populated();
   const target = await device();

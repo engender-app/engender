@@ -74,7 +74,9 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '$lib/data/pinnedRows';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
-  import { journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
+  import { areasHidden } from '$lib/data/areaState';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { hubRow, hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -140,7 +142,18 @@
      whatever it answered last time, not the app's own default. */
   let areas = $state<string[] | null>(null);
   let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
-  let previewPins = $derived(defaultPins(tickedAreas));
+  let measurementsChoice = $state<boolean | null>(null);
+  let genitalEffectsChoice = $state<boolean | null>(null);
+  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let measurementsShown = $derived(
+    measurementsChoice ?? (prefs.onboarded && measurementStates.value !== undefined
+      ? !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
+      : false)
+  );
+  let genitalEffectsShown = $derived(
+    genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+  );
+  let previewPins = $derived(defaultPins(tickedAreas).filter((key) => key !== 'measurements' || measurementsShown));
 
   function toggleArea(key: string) {
     areas = tickedAreas.includes(key)
@@ -371,6 +384,8 @@
   function beginRestore() {
     restoring = true;
     areas = null;
+    measurementsChoice = null;
+    genitalEffectsChoice = null;
     archiveError = '';
     archiveErrorKind = '';
     go('restore');
@@ -451,7 +466,11 @@
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
-    else if (step === 'areas') areas = null;
+    else if (step === 'areas') {
+      areas = null;
+      measurementsChoice = null;
+      genitalEffectsChoice = null;
+    }
     else if (step === 'lock') lockOnLeave = false;
     /* The permissions step is not in this list, and that is the whole of
        what skipping it does (ticket 31). Its answers live in the OS rather
@@ -505,8 +524,11 @@
          disguise can close the Android process. */
       await completeSetup({
         async writeAnswers() {
-          const hidden = measurementsHiddenOnSetup(areas, wasOnboarded, restoring && archiveReady);
+          const hidden = measurementsHiddenOnSetup(measurementsChoice, wasOnboarded, restoring && archiveReady);
           if (hidden !== null) await journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, hidden);
+          if (genitalEffectsChoice !== null) {
+            await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice);
+          }
           /* New journals store the three pre-ticked areas, preserving older
              journals whose null answer meant four default pins. */
           if (name.trim()) prefs.name = name.trim();
@@ -812,6 +834,7 @@
                      back to. -->
                 <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
               {:else if step === 'areas'}
+                <p class="setup-caption" id="setup-pins-title">{m.ob_today_pins_title()}</p>
                 <!-- The hub's own groups and rows, ticked rather than tapped
                      through - the flag step and the scales step both already
                      solved "a list you tick" on this screen, so this is that
@@ -858,7 +881,7 @@
                   </ListCard>
                 </div>
 
-                <div class="setup-areas">
+                <div class="setup-areas" role="group" aria-labelledby="setup-pins-title">
                   {#each sections as section (section.key)}
                     <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
                     <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
@@ -880,6 +903,26 @@
                       {/each}
                     </ListCard>
                   {/each}
+                </div>
+                <div data-setup-feature-visibility role="group" aria-labelledby="setup-features-title">
+                  <p class="setup-caption" id="setup-features-title">{m.features_to_show()}</p>
+                  <p class="muted small">{m.features_to_show_sub()}</p>
+                  <ListCard>
+                    <ListRow
+                      key="feature-measurements"
+                      title={m.measurements_and_sizes()}
+                      checked={measurementsShown}
+                      chevron={false}
+                      onclick={() => (measurementsChoice = !measurementsShown)}
+                    />
+                    <ListRow
+                      key="feature-genital-effects"
+                      title={m.feature_genital_effects()}
+                      checked={genitalEffectsShown}
+                      chevron={false}
+                      onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
+                    />
+                  </ListCard>
                 </div>
               {:else if step === 'lock'}
                 {#if awaitingAccessMode}
