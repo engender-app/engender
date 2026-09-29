@@ -53,9 +53,9 @@ describe("the editor's cycle affordance (ADR-0043)", () => {
     /* The reader the fix is for: somebody on testosterone who never opened
        Settings got the More row and the side-effects section and not this,
        which is the one surface a cycle event is logged from. */
-    expect(cycleTrackingVisible([testosterone], Date.now(), false)).toBe(true);
-    expect(cycleTrackingVisible([], Date.now(), false)).toBe(false);
-    expect(cycleTrackingVisible([], Date.now(), true)).toBe(true);
+    expect(cycleTrackingVisible([testosterone], Date.now(), false, null)).toBe(true);
+    expect(cycleTrackingVisible([], Date.now(), false, null)).toBe(false);
+    expect(cycleTrackingVisible([], Date.now(), true, null)).toBe(true);
   });
 });
 
