@@ -1,9 +1,11 @@
 /* Verifies production hosting rules against the real nginx config from
-   deploy/nginx (phase 2 ticket 05). It boots nginx in a container with the
-   built app mounted as /srv/current, then checks headers, cache policy, SPA
-   fallback, release metadata, and a cold install followed by an offline start. */
+   deploy/nginx (phase 2 ticket 05). It builds the self-hosting image from
+   deploy/self-host, which installs those rules unchanged, boots it with the
+   built app mounted as /srv/engender, then checks headers, cache policy, SPA
+   fallback, release metadata, and a cold install followed by an offline start.
+   It also runs nginx -t over the bare-nginx template in deploy/self-host. */
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -62,6 +64,8 @@ function choosePort() {
   return value;
 }
 
+const IMAGE = 'engender-hosting-verify';
+
 const { ok, fail, finish } = createReporter();
 let containerId = '';
 let containerUp = false;
@@ -77,27 +81,37 @@ try {
   assertDockerAvailable();
   ensureBuild();
 
-  const snippets = join(tempRoot, 'snippets');
-  const confd = join(tempRoot, 'conf.d');
+  /* The self-hosting image (phase 13 self-hosting ticket 01) carries the same
+     two snippets production installs, so serving through it checks the
+     production rules and the image in one run. What neither covers is TLS,
+     which is certbot's on the box and the reverse proxy's in front of the
+     image. */
   const current = join(tempRoot, 'current');
-  mkdirSync(snippets, { recursive: true });
-  mkdirSync(confd, { recursive: true });
-
   cpSync('build', current, { recursive: true });
-  cpSync('deploy/nginx/journal-headers.conf', join(snippets, 'engender-journal-headers.conf'));
-  cpSync('deploy/nginx/journal-site.conf', join(snippets, 'engender-journal-site.conf'));
+  run('docker', ['build', '--quiet', '-t', IMAGE, '-f', 'deploy/self-host/Dockerfile', 'deploy']);
 
-  writeFileSync(
-    join(confd, 'default.conf'),
+  /* The bare-nginx template, with its certificate placeholders pointed at a
+     throwaway self-signed pair, has to be a config nginx accepts. */
+  const certs = join(tempRoot, 'certs');
+  const template = join(tempRoot, 'engender.conf');
+  mkdirSync(certs);
+  cpSync('deploy/self-host/engender.conf', template);
+  run('openssl', [
+    'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=journal.example.org',
+    '-keyout', join(certs, 'privkey.pem'), '-out', join(certs, 'fullchain.pem')
+  ]);
+  const templateCheck = spawnSync(
+    'docker',
     [
-      'server {',
-      '    listen 8080;',
-      '    server_name app.engender.dev;',
-      '    root /srv/current;',
-      '    include /etc/nginx/snippets/engender-journal-site.conf;',
-      '}'
-    ].join('\n') + '\n'
+      'run', '--rm',
+      '-v', `${template}:/etc/nginx/conf.d/default.conf:ro,z`,
+      '-v', `${certs}:/etc/ssl/engender:ro,z`,
+      IMAGE, 'nginx', '-t'
+    ],
+    { encoding: 'utf8' }
   );
+  if (templateCheck.status === 0) ok('the bare-nginx template passes nginx -t once its placeholders are filled');
+  else fail('the bare-nginx template passes nginx -t once its placeholders are filled', templateCheck.stderr);
 
   const port = choosePort();
   containerId = run('docker', [
@@ -105,14 +119,10 @@ try {
     '--rm',
     '-d',
     '-p',
-    `127.0.0.1:${port}:8080`,
+    `127.0.0.1:${port}:80`,
     '-v',
-    `${snippets}:/etc/nginx/snippets:ro,z`,
-    '-v',
-    `${confd}:/etc/nginx/conf.d:ro,z`,
-    '-v',
-    `${current}:/srv/current:ro,z`,
-    'nginx:1.27-alpine'
+    `${current}:/srv/engender:ro,z`,
+    IMAGE
   ]);
   containerUp = true;
 
