@@ -228,12 +228,36 @@ describe('the face draws in its own step\'s ink', () => {
      279 and 2.49:1 on its new ramps. A resting face draws its ink solid; only
      the picker's unchosen faces, which are dimmed on purpose, go lighter. */
   it('draws a resting face in its ink at full strength', () => {
-    const resting = rulesFor(/^\s*(\.mood-face-(eye|mouth)|\.mood-picker:not\(:has\(\.is-selected\)\) \.mood-face-(eye|mouth))\s*$/);
-    expect(resting.length).toBe(4);
-    for (const { sel, body } of resting) {
-      const opacity = /(?:^|[;\s])opacity:\s*([\d.]+)/.exec(body)?.[1];
-      expect(opacity === undefined || Number(opacity) === 1, `${sel} draws its ink at opacity ${opacity}`).toBe(true);
+    const own = rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/);
+    expect(own.length).toBe(2);
+    for (const { sel, body } of own) {
+      expect(body, `${sel} sets its own opacity`).not.toMatch(/(?:^|[;\s])opacity:/);
     }
+  });
+
+  /* The picker's unchosen faces sit back, and they used to do it in parts:
+     the block's fill at 0.55 over the page and the features at 0.41 over
+     that. With a dark ink on a pale fill the two fades roughly cancelled;
+     with ticket 279's white ink on a deep fill they compound, because the
+     fill fading toward a light page is the fill fading toward the ink.
+     Computed for teal on trans, the worst unchosen face went from 2.16:1 on
+     main to 1.48:1 (light step 5) and 1.64:1 (dark step 2). Dimming the face
+     as one object keeps ink and fill moving together: 2.13:1 at worst, and
+     every dark-theme face better than main.
+
+     The border is why it was ever done in parts (ce91bdc6): 1px of the
+     outline at 55% vanished on the dark theme. So the unchosen block draws
+     its edge at 35% of --text, which comes back to --outline's 19% once the
+     face's own 0.55 is applied, and the fade is on the face's opacity, which
+     .mood-face already transitions. */
+  it('dims an unchosen face as one object, with a border that survives it', () => {
+    expect(componentsCss).not.toMatch(/\.mood-face-disc\s*\{[^}]*fill-opacity/);
+    expect(componentsCss).not.toMatch(/\.mood-btn[^{]*\.mood-face-(eye|mouth)\s*\{[^}]*opacity/);
+    const dim = rulesFor(/^\s*\.mood-btn:not\(\.is-selected\) \.mood-face\s*$/);
+    expect(dim.map((r) => r.body.trim())).toEqual(['opacity: 0.55;']);
+    const edge = rulesFor(/^\s*\.mood-btn:not\(\.is-selected\) \.mood-face-disc\s*$/);
+    const alpha = /color-mix\(in oklab, var\(--text\) (\d+)%, transparent\)/.exec(edge[0]?.body ?? '')?.[1];
+    expect(Number(alpha) * 0.55).toBeCloseTo(19, 0);
   });
 
   /* A step's ink changes with the theme and the preset, and on a Journal
