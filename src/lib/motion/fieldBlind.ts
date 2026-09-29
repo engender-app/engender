@@ -106,6 +106,17 @@ export const PART_TRAVEL = 12;
    published them may remove them. */
 let current: BlindCarry | null = null;
 
+/* The newest carry made, which owns every name and variable while it lives.
+   A navigation that lands on another one skips it, and the skipped
+   transition's `finished` settles the moment the new one starts - before the
+   new one has captured its outgoing side. Its late release took the names off
+   the very elements the new carry had just named, so the new transition had
+   no outgoing blind, field or type: the edge stood at its destination from
+   its first frame while the incoming type rode in from the old one, up to
+   12px below it (ticket 285, interrupted and reversed door changes). Only the
+   newest carry may name, or give names back. */
+let latest: BlindCarry | null = null;
+
 export interface CarryOptions {
   /** The incoming screen is about to be scrolled by a restore that has not
       begun. The restore is eased and waits for the rows to arrive, so when
@@ -198,6 +209,7 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
 
   const carry: BlindCarry = {
     swap() {
+      if (latest !== carry) return;
       release(before);
       after = name(doc, 'b', before, options);
       for (const [property, value] of Object.entries(
@@ -218,6 +230,7 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
       current = carry;
     },
     release() {
+      if (latest !== carry) return;
       release(before);
       if (after) release(after);
       if (current !== carry) return;
@@ -228,6 +241,7 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
     }
   };
 
+  latest = carry;
   return carry;
 }
 

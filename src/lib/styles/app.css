@@ -875,8 +875,20 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 /* The other side of the same ride: what was printed on the blind before the
    navigation goes where the edge goes, which is the height the field lost. */
 @keyframes blind-lead {
-  from { translate: 0 var(--blind-lead-from, 0px); }
-  to { translate: 0 calc(var(--blind-lead-from, 0px) - var(--blind-delta, 0px)); }
+  from { translate: 0 var(--blind-lead-from, 0px); outline-offset: 0px; }
+  to { translate: 0 calc(var(--blind-lead-from, 0px) - var(--blind-delta, 0px)); outline-offset: 0.01px; }
+}
+/* The same ride for what arrives on the field, with the same pin on the main
+   thread as blind-lead and blind-slide (ticket 285). A `translate` alone is
+   run on the compositor and the edge's clip on the main thread, and the two
+   start a frame apart: at the top of the ease the type was 16px ahead of the
+   blue it was printed on, standing on the page for the first frames of every
+   change. All three on one thread start on one frame. The screen keeps
+   blind-follow: it is covered by the blind and gains nothing from being
+   pinned. */
+@keyframes part-follow {
+  from { translate: 0 var(--blind-delta, 0px); outline-offset: 0px; }
+  to { translate: 0 0; outline-offset: 0.01px; }
 }
 
 /* Between the four tabs: fade-through. The outgoing screen settles to 0.97
@@ -980,6 +992,18 @@ html[data-nav='fade-through']::view-transition-new(screen) {
      for a quarter of a second under it. */
   animation-duration: var(--blind-dur, var(--dur-slow));
   animation-timing-function: var(--blind-ease, var(--ease-out));
+  /* Its height between the numbers the blind slides between, rather than the
+     two boxes the browser captured. They are the same for a navigation that
+     starts at rest, and not for one that interrupts another: the captured
+     old box is the DOM's resting field, the edge was somewhere on its way,
+     and the smaller of the group and the clip is what is painted, so the
+     edge stood at the old box's height for the first 200ms while the type
+     rode in from where the edge really was (up to 12px below it). */
+  animation-name: field-slide;
+}
+@keyframes field-slide {
+  from { height: var(--blind-from, 0px); }
+  to { height: var(--blind-to, 0px); }
 }
 ::view-transition-old(field),
 ::view-transition-new(field) { opacity: 0; animation: none; }
@@ -1026,12 +1050,12 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
   animation-name: blind-scroll-in;
 }
 @keyframes blind-scroll-out {
-  from { translate: 0 0; }
-  to { translate: 0 calc(-1 * var(--blind-delta)); }
+  from { translate: 0 0; outline-offset: 0px; }
+  to { translate: 0 calc(-1 * var(--blind-delta)); outline-offset: 0.01px; }
 }
 @keyframes blind-scroll-in {
-  from { translate: 0 var(--blind-delta); }
-  to { translate: 0 0; }
+  from { translate: 0 var(--blind-delta); outline-offset: 0px; }
+  to { translate: 0 0; outline-offset: 0.01px; }
 }
 
 /* What is painted on the field is printed on it, and rides with it (Alicja,
@@ -1065,7 +1089,7 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
 ::view-transition-new(*.field-part) {
   animation:
     field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
-    blind-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
+    part-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 /* `--fp-from` is how far the part had faded in when a navigation landed on
    another one that was still running (fieldBlind.ts, ticket 285): the
@@ -1162,7 +1186,7 @@ html[data-blind-hold='short'] {
    there is no overshoot to object to. Longhands, not the shorthand, so the
    stagger the per-ring rules below set on the first animation still lands. */
 html[data-blind-scroll='enter']::view-transition-new(*.sun-ring) {
-  animation-name: sun-ring-open, blind-follow;
+  animation-name: sun-ring-open, part-follow;
   animation-duration: var(--dur-sun-open), var(--blind-dur, var(--dur-slow));
   animation-timing-function: var(--ease-out), var(--blind-ease, var(--ease-out));
 }
@@ -1317,7 +1341,7 @@ html[data-a11y-motion='reduce']::view-transition-old(*.field-part) {
   animation-timing-function: linear, linear;
 }
 html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
-  animation-name: screen-crossfade, blind-follow;
+  animation-name: screen-crossfade, part-follow;
   animation-duration: var(--dur-crossfade), var(--dur-slow) !important;
   animation-delay: var(--dur-crossfade), 0s;
   animation-fill-mode: both;
@@ -1342,7 +1366,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     animation-timing-function: linear, linear;
   }
   ::view-transition-new(*.field-part) {
-    animation-name: screen-crossfade, blind-follow;
+    animation-name: screen-crossfade, part-follow;
     animation-duration: var(--dur-crossfade), var(--dur-slow) !important;
     animation-delay: var(--dur-crossfade), 0s;
     animation-fill-mode: both;

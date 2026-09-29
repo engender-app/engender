@@ -340,10 +340,31 @@ describe('a carry that interrupts another', () => {
     const first = carryBlind(as);
     first.swap();
     doc.fields = [field({ height: 215 })];
-    carryBlind(as);
+    const second = carryBlind(as);
     expect(doc.root.style.props.get('--fp-o-0')).toBe('0.4');
     expect(doc.root.style.props.get('--sun-s-0')).toBe('0.6');
+    /* The skipped one settles first and must leave the newer carry's names
+       and numbers where they are. */
     first.release();
+    expect(doc.root.style.props.get('--fp-o-0')).toBe('0.4');
+    second.swap();
+    second.release();
+    expect(doc.root.style.props.has('--fp-o-0')).toBe(false);
+  });
+
+  it('does not let a skipped carry take names off the elements the newer one named', () => {
+    const blind = el();
+    const { doc, as } = fakeDocument([field({ height: 215, blind })]);
+    const first = carryBlind(as);
+    first.swap();
+    const second = carryBlind(as);
+    expect(blind.style.viewTransitionName).toBe('blind');
+    first.release();
+    expect(blind.style.viewTransitionName).toBe('blind');
+    doc.fields = [field({ height: 128 })];
+    second.swap();
+    second.release();
+    expect(blind.style.viewTransitionName).toBe('');
   });
 
   it('gives all of it back on release, and starts from the DOM when nothing is running', () => {
