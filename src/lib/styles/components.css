@@ -1690,8 +1690,12 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    its own - two chip pickers reaching for a presentation's colour is not
    two chips, it is one modifier two pills opt into (phase 8 features
    ticket 17). */
+/* The ring takes the presentation's colour and keeps the pill's own
+   1.5px, which is the kit's chip weight. It used to take --role-hairline
+   whole, width and all, and a 1px ring beside every other 1.5px control
+   on the Journal read as a lighter kind of chip (ux-carpet ticket 280). */
 .presentation-chip[data-kit-role] {
-  border: var(--role-hairline);
+  border-color: color-mix(in oklab, var(--role-mark) 35%, transparent);
 }
 .presentation-chip.is-active[data-kit-role] {
   background: var(--role-tint);

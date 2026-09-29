@@ -32,8 +32,8 @@
 
      **The one new interaction: the month opens.** Collapsed, the month is a
      strip of bars - HeatMap's own drawing of the same read, see its
-     `compact` prop. Expanded, it is the grid, the legend, the highlight
-     chips and the hint. It is screen state and not a route: a month you
+     `compact` prop. Expanded, it is the grid, its key and the highlight
+     chips. It is screen state and not a route: a month you
      opened is not somewhere you navigated to, and back should leave the
      door rather than close a panel. Both states carry the metric picker,
      which is the one control for a choice this screen makes twice (the
@@ -100,7 +100,6 @@
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth());
 
-  let metricName = $derived(vocabulary.metricName);
   let monthLabel = $derived(fmtMonthYear(year, month));
 
   /* Whether this journal has anything in it at all, which decides whether
@@ -469,10 +468,17 @@
     </div>
 
     <div class="cal-month-body" id="calendar-month" data-cal-month-body bind:this={monthBody}>
-      <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} {highlight} compact={!monthOpen} />
+      <HeatMap
+        {year}
+        {month}
+        role={roleAt(activeFlag.roles, 0)}
+        eras={eraRoles}
+        {highlight}
+        compact={!monthOpen}
+        direction={dir}
+      />
       {#if monthOpen}
         <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-        <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
       {/if}
     </div>
   {/if}
@@ -680,13 +686,6 @@
     display: grid;
     gap: var(--space-3);
     margin-bottom: var(--space-5);
-  }
-
-  .cal-hint {
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    margin: 0;
   }
 
   /* ---------- The days ---------- */
