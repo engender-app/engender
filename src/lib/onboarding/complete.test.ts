@@ -38,6 +38,18 @@ describe('finishing setup without turning disguise on', () => {
     await completeSetup(completion);
     expect(order).toEqual(['write', 'leave']);
   });
+
+  it('waits for an area visibility write before leaving setup', async () => {
+    const { completion, order } = recorder({
+      writeAnswers: async () => {
+        order.push('write-start');
+        await Promise.resolve();
+        order.push('write-landed');
+      }
+    });
+    await completeSetup(completion);
+    expect(order).toEqual(['write-start', 'write-landed', 'leave']);
+  });
 });
 
 describe('finishing setup with disguise turned on', () => {
