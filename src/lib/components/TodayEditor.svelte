@@ -108,7 +108,7 @@
      query on every load to hand the answer down. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let cycleVisible = $derived(
-    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled)
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
   );
 
   let addable = $derived(addablePins(prefs, reading, { cycleVisible }));

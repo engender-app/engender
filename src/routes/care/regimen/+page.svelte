@@ -16,7 +16,8 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
-  import { testosteroneActive } from '$lib/data/cycleTracking';
+  import { cycleTrackingVisible, testosteroneActive } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { episodeEndReasonLabel, pauseReasonLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
@@ -376,15 +377,9 @@
     {/snippet}
   </ReadGate>
 
-  <!-- ADR-0043: cycle cessation is what testosterone does, so an active
-       testosterone episode is what puts the cycle log one row away from
-       the regimen that explains it. Same one visibility question
-       cycleTracking.ts answers for More and side effects, read here for
-       the testosterone half alone - the preference has nothing to add on
-       a screen only a regimen reader reached. The cycle screen already
-       draws these episodes as bands behind the events, which is the
-       timeline this row names. -->
-  {#if testosteroneActive(episodes, Date.now())}
+  <!-- Keep this regimen-specific offer beside an active testosterone
+       episode, subject to the same cycle choice as other offers. -->
+  {#if testosteroneActive(episodes, Date.now()) && cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)}
     <div class="regimen-elsewhere">
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
         <ListRow

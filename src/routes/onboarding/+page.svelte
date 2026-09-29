@@ -76,6 +76,7 @@
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { areasHidden } from '$lib/data/areaState';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { hubRow, hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
@@ -144,6 +145,9 @@
   let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
   let measurementsChoice = $state<boolean | null>(null);
   let genitalEffectsChoice = $state<boolean | null>(null);
+  let cycleChoice = $state<boolean | null>(null);
+  let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleChoice ?? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
   let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
   let measurementsShown = $derived(
     measurementsChoice ?? (prefs.onboarded && measurementStates.value !== undefined
@@ -386,6 +390,7 @@
     areas = null;
     measurementsChoice = null;
     genitalEffectsChoice = null;
+    cycleChoice = null;
     archiveError = '';
     archiveErrorKind = '';
     go('restore');
@@ -470,6 +475,7 @@
       areas = null;
       measurementsChoice = null;
       genitalEffectsChoice = null;
+      cycleChoice = null;
     }
     else if (step === 'lock') lockOnLeave = false;
     /* The permissions step is not in this list, and that is the whole of
@@ -529,6 +535,8 @@
           if (genitalEffectsChoice !== null) {
             await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice);
           }
+          if (!restoring && !wasOnboarded) prefs.cycleTrackingChoice = cycleChoice ?? false;
+          else if (cycleChoice !== null) prefs.cycleTrackingChoice = cycleChoice;
           /* New journals store the three pre-ticked areas, preserving older
              journals whose null answer meant four default pins. */
           if (name.trim()) prefs.name = name.trim();
@@ -921,6 +929,13 @@
                       checked={genitalEffectsShown}
                       chevron={false}
                       onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
+                    />
+                    <ListRow
+                      key="feature-cycle-tracking"
+                      title={m.cycle_tracking_toggle_title()}
+                      checked={cycleShown}
+                      chevron={false}
+                      onclick={() => (cycleChoice = !cycleShown)}
                     />
                   </ListCard>
                 </div>

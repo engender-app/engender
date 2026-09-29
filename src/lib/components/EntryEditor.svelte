@@ -509,7 +509,7 @@
      to. A regimen that has since ended does not take the chips off an entry
      written last spring. */
   let cycleTrackingActive = $derived(
-    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled)
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
   );
 
   /* The cascade (phase 8 features ticket 04, ADR-0052). The effects chip is
