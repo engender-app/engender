@@ -21,9 +21,9 @@
      the dates themselves (recentEntries.ts's `recentDayMonths`): the first
      day's month is the heading's own sub-line and every later change of
      month is a small divider, so there is one heading above the first day
-     rather than two stacked on each other (ux-carpet ticket 282). The top strip stays exactly
-     what it was: the affordance that opens the month, not a second reading
-     of the same seven days.
+     rather than two stacked on each other (ux-carpet ticket 282). The top
+     strip stays exactly what it was: the affordance that opens the month,
+     not a second reading of the same seven days.
 
      The header is ticket 23's field, and DIRECTION.md rule 7 says what this
      door puts on it: the month at the section-heading size and those two

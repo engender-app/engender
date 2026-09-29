@@ -19,9 +19,10 @@
     text: string;
     /** A second line under the heading saying which part of the area comes
         first - the Journal's month over its first day (ux-carpet ticket 282).
-        An empty string holds the line's room with nothing on it yet, for a
-        sub-line that waits on a read: the text then fades in on a line
-        that is already there, and nothing under the heading moves.
+        An empty string draws the line with nothing on it yet (its
+        min-height keeps the room), for a sub-line that waits on a read: the
+        text then fades in on a line that is already there, and nothing
+        under the heading moves.
         Omitted, there is no second line. */
     sub?: string;
     /** An anchor for the area this names, when something links into the
@@ -71,6 +72,9 @@
     flex-basis: 100%;
     display: grid;
     min-height: 1.3em;
+    /* .kit-heading's 12px gap (kit.css) is for an action wrapping onto a
+       line of its own; a sub-line belongs to the words above it, so it
+       takes 8 of that back. */
     margin: calc(-1 * var(--space-2)) 0 0;
     color: var(--text-2);
     font-size: var(--text-sm);
