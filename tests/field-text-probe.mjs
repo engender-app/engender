@@ -49,7 +49,10 @@ const opt = (name, fallback) => {
   return at >= 0 ? argv[at + 1] : fallback;
 };
 const WIDTHS = opt('widths', '390,1440').split(',').map(Number);
-const ONLY = opt('only', '');
+const ONLY_LIST = opt('only', '').split(',').filter(Boolean);
+const ONLY = ONLY_LIST.length === 1 ? ONLY_LIST[0] : '';
+const wanted = (name) => !ONLY_LIST.length || ONLY_LIST.some((o) => name.includes(o));
+const ALL_ROUTES = argv.includes('--all-routes');
 const RUNS = Number(opt('runs', '1'));
 const JSON_OUT = opt('json', '');
 const FRAMES = opt('frames', '');
@@ -63,7 +66,7 @@ const HEIGHT = { 390: 844, 1440: 900 };
 /** Every screen with a ScreenHeader that has an address of its own; the
     doors first. A field whose height moves at rest does it on one of these
     - a title that wraps in Polish, a slot that fills when a query answers. */
-const COLD_ROUTES = [
+const COLD_ROUTES = (ALL_ROUTES ? (x) => x : (x) => x.slice(0, 4))([
   ['home', '/'],
   ['calendar', '/calendar'],
   ['stats', '/stats'],
@@ -83,7 +86,7 @@ const COLD_ROUTES = [
     '/transition/letters', '/transition/milestones', '/transition/roadmap', '/transition/tryouts',
     '/voice'
   ].map((route) => [route.slice(1).replaceAll('/', '-'), route])
-];
+]);
 const ROUTE = { home: '/', calendar: '/calendar', stats: '/stats', settings: '/more' };
 const TABS = Object.keys(ROUTE);
 const tab = (key) => `[data-nav-item="${key}"]`;
@@ -256,6 +259,13 @@ function analyse({ epoch, rows, cast }, { step = false, still = false } = {}) {
     ? rows.filter((r) => r.step).map((r) => ({ t: r.t, edge: r.step.edge, parts: r.step.parts }))
     : rows.filter((r) => r.edge !== undefined);
   const geometry = findGeometry(series, { persist: step ? 2 : 1 });
+  /* A step field cuts its words at --blind-edge (components.css), so a box
+     reaching past the edge there is text being uncovered by it, not text on
+     the page; the pixels decide whether anything got out. */
+  if (step) {
+    geometry.clipped = geometry.overspill;
+    geometry.overspill = [];
+  }
   const ink = NATURAL
     ? { frames: 0, bad: 0, worst: { deepest: 0, at: 0 }, first: null }
     : readInk(cast, epoch, { top: 0, bottom: 520 });
@@ -295,7 +305,7 @@ function log(width, name, run, r, extra = '') {
 try {
   for (const width of WIDTHS) {
     for (const scene of scenes) {
-      if (ONLY && !scene.name.includes(ONLY)) continue;
+      if (!wanted(scene.name)) continue;
       const held = await pageFor(width, { reduced: !!scene.reduced });
       for (let run = 0; run < RUNS; run++) {
         const room = await rest(held.page, scene);
@@ -314,7 +324,7 @@ try {
     }
 
     /* ---- setup: every step forward, two back, and the handover ---- */
-    if (!ONLY || 'setup'.includes(ONLY) || ONLY.startsWith('setup')) {
+    if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'setup'.startsWith(o) || o.startsWith('setup'))) {
       for (const locale of ['en', 'pl']) {
         const held = await pageFor(width, { fresh: true, tag: `setup-${locale}` });
         const { page } = held;
@@ -401,7 +411,7 @@ try {
     }
 
     /* ---- a gate changing its own title, on the fixture page ---- */
-    if (!ONLY || ONLY.startsWith('gate')) {
+    if (!ONLY_LIST.length || ONLY_LIST.some((o) => o.startsWith('gate'))) {
       const fixture = await createServer({
         configFile: 'tests/browser-tier/browser-tier.vite.config.ts',
         server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } }
@@ -437,7 +447,7 @@ try {
     }
 
     /* ---- the door field's height at rest, from the first frame of a cold load ---- */
-    if (!ONLY || ONLY.startsWith('cold')) {
+    if (!ONLY_LIST.length || ONLY_LIST.some((o) => o.startsWith('cold'))) {
       for (const locale of ['en', 'pl']) {
         for (const [A, route] of COLD_ROUTES) {
           const held = await pageFor(width, { fresh: true, tag: `cold-${locale}` });
