@@ -3,8 +3,9 @@
 #
 #   docker build -t engender -f deploy/self-host/Dockerfile deploy
 #
-# and mount an unpacked release bundle at /srv/engender. deploy/SELF-HOSTING.md
-# has the rest, including why HTTPS has to be in front of it.
+# and mount an unpacked release bundle at /srv/engender. It serves plain HTTP
+# on port 80: TLS is the job of the reverse proxy you put in front, and the app
+# will not start without it. deploy/SELF-HOSTING.md has the rest.
 #
 # The same nginx version tests/hosting/run.mjs has always checked the rules on.
 FROM nginx:1.27-alpine

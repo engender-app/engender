@@ -92,17 +92,37 @@ journal.example.org {
 }
 ```
 
-Caddy passes response headers through unchanged by default, which is what
-you want. Other proxies should do the same. Check with
+Caddy passes response headers through unchanged by default. Check with
 `curl -sI https://journal.example.org/` that `content-security-policy` and
 `cross-origin-embedder-policy` arrive.
 
 ## Option 2: nginx on the host
 
-Copy the shared snippets and the template in:
+This needs nginx 1.25.1 or newer for the template's `http2 on;`. On an older
+one, delete that line and write `listen 443 ssl http2;` instead.
+
+Put the release in place first. `scripts/journal-release.mjs` from the source
+archive copies it in whole and only then points a `current` symlink at it, so
+no request ever sees a half-copied release (the repository tests with
+Node 24):
 
 ```bash
 cd engender-1.0.0
+node scripts/journal-release.mjs deploy /srv/engender/1.0.0 \
+  --root /srv/engender/releases --current /srv/engender/current
+```
+
+If you'd rather not use it, skip this and point `root` at the unpacked bundle
+in the next step.
+
+You need a certificate before nginx will accept the config. With certbot,
+`sudo certbot certonly --nginx -d journal.example.org` gets one without
+touching any site, and its paths are
+`/etc/letsencrypt/live/journal.example.org/fullchain.pem` and `privkey.pem`.
+
+Copy the shared snippets and the template in:
+
+```bash
 sudo cp deploy/nginx/journal-headers.conf /etc/nginx/snippets/engender-journal-headers.conf
 sudo cp deploy/nginx/journal-site.conf /etc/nginx/snippets/engender-journal-site.conf
 sudo cp deploy/self-host/engender.conf /etc/nginx/sites-available/engender.conf
@@ -117,22 +137,8 @@ sudo ln -sf /etc/nginx/sites-available/engender.conf /etc/nginx/sites-enabled/en
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-If you use certbot, run it after this. It rewrites the certificate lines
-itself. Brotli is optional and has an install order that matters, see
+Brotli is optional and has an install order that matters, see
 [README.md](README.md#nginx-setup).
-
-For deploys, the template's root points at `/srv/engender/current`, a symlink
-that `scripts/journal-release.mjs` from the source archive can manage for you
-(the repository tests with Node 24):
-
-```bash
-node scripts/journal-release.mjs deploy /path/to/unpacked/bundle \
-  --root /srv/engender/releases --current /srv/engender/current
-```
-
-It copies the release in whole and only then switches the link, so no request
-sees a half-copied release. If you'd rather not use it, point `root` at an
-unpacked bundle directly.
 
 ## Updating
 
