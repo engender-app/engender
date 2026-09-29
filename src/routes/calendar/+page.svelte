@@ -61,11 +61,9 @@
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthYear, fmtTime } from '$lib/data/dates';
-    import flatpickr from 'flatpickr';
-  import 'flatpickr/dist/flatpickr.min.css';
-  import { pickerLocale } from '$lib/components/flatpickrLocale';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
+  import MonthJump from '$lib/components/MonthJump.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -345,15 +343,13 @@
   /* Item 11: a year is twelve taps of the chevron away, which is the whole
      of the reason nobody lands on last August on purpose. The month label
      itself is the way in - it already says where you are, so it is the thing
-     that offers to move you - and the sheet it opens is flatpickr doing the
-     thing it has already solved: a month grid with its own dropdown month
-     selector, slide animation and locale. The year stepper above it is the
-     one jump flatpickr does not give you, and the month transition's
-     direction follows whichever of the two moved, so arriving at a picked
-     month still slides the way it went. */
+     that offers to move you - and the sheet it opens is a year and its
+     twelve months (MonthJump.svelte, ticket 281; it was flatpickr's day
+     grid until then). The month transition's direction follows whichever
+     moved, the year or the pick, so arriving at a picked month still slides
+     the way it went. A pick closes the sheet in the same step, so the label
+     slides while the sheet is on its way down. */
   let jumpOpen = $state(false);
-  let jumpInput = $state<HTMLInputElement | undefined>();
-  let picker: flatpickr.Instance | null = null;
 
   function move(deltaMonths: number, close: boolean) {
     const total = year * 12 + month + deltaMonths;
@@ -366,41 +362,10 @@
   }
 
   function jumpTo(y: number, mo: number) {
-    move(y * 12 + mo - (year * 12 + month), true);
+    const delta = y * 12 + mo - (year * 12 + month);
+    if (delta === 0) jumpOpen = false;
+    else move(delta, true);
   }
-
-  function mountPicker(node: HTMLInputElement) {
-    jumpInput = node;
-    picker = flatpickr(node, {
-      inline: true,
-      defaultDate: new Date(year, month, 1),
-      disableMobile: true,
-      monthSelectorType: 'static',
-      locale: pickerLocale(),
-      /* Browsing inside the picker - its arrows, its month dropdown - walks
-         the heat map along live, the sheet staying open for more. Committing
-         is a day tap or the year stepper, which close it. */
-      onMonthChange: (_dates, _str, inst) => {
-        move(inst.currentYear * 12 + inst.currentMonth - (year * 12 + month), false);
-      },
-      onChange: (dates) => {
-        if (dates[0]) jumpTo(dates[0].getFullYear(), dates[0].getMonth());
-      }
-    });
-    return {
-      destroy() {
-        picker?.destroy();
-        picker = null;
-      }
-    };
-  }
-
-  /* Reopen on the month the heat map is showing, not the one the picker was
-     last left on - the label above the sheet is the promise of what it
-     opens onto. */
-  $effect(() => {
-    if (jumpOpen && picker) picker.jumpToDate(new Date(year, month, 1), false);
-  });
 </script>
 
 <div class="screen">
@@ -545,20 +510,7 @@
 </div>
 
 <Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
-  <div class="cal-jump">
-    <div class="cal-jump-year">
-      <button class="icon-btn" aria-label={m.prev_year()} onclick={() => move(-12, false)}>
-        <Icon name="chevronLeft" size={22} />
-      </button>
-      <strong>{year}</strong>
-      <button class="icon-btn" aria-label={m.next_year()} onclick={() => move(12, false)}>
-        <Icon name="chevronRight" size={22} />
-      </button>
-    </div>
-    <!-- The visible input flatpickr dresses up is not here: inline mode
-         draws the whole calendar, and its own container carries it. -->
-    <input class="cal-jump-input" type="text" use:mountPicker />
-  </div>
+  <MonthJump {year} {month} onYear={(delta) => move(delta * 12, false)} onPick={jumpTo} />
 </Sheet>
 
 <style>
@@ -697,21 +649,4 @@
   .cal-swap { display: grid; }
   .cal-swap > * { grid-area: 1 / 1; }
   .cal-days { display: grid; gap: var(--space-3); align-content: start; }
-
-  .cal-jump-year {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-3);
-  }
-
-  .cal-jump-year strong {
-    font-family: var(--font-display);
-    font-weight: var(--weight-display);
-    font-size: var(--text-lg);
-  }
-
-  .cal-jump-input {
-    display: none;
-  }
 </style>

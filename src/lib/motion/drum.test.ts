@@ -50,12 +50,24 @@ describe('tier 3, a glyph passing through a block', () => {
     expect(frame(drumIn(node).css!, 0)).not.toContain('.00');
   });
 
-  /* The reduced-motion contract: substitute, never strand. A face that cuts
-     still says what changed; a face frozen halfway through the edge would
-     not. */
-  it('cuts under reduced motion', () => {
+  /* A stepper's numeral goes both ways (ticket 281's year): stepping back,
+     the new face drops in from above and the old one falls out underneath,
+     so the drum turns the way the value went. */
+  it('turns the other way when the value went down', () => {
+    stubDocument();
+    expect(frame(drumIn(node, { dir: -1 }).css!, 0)).toBe('translate: 0 -100%');
+    const { css } = drumOut(node, { dir: -1 });
+    expect(frame(css!, 0)).toBe('translate: 0 100%');
+  });
+
+  /* The reduced-motion contract: substitute, never delete. The face does
+     not travel, but it still changes by a fade rather than a cut, so the
+     change reads as a change (DIRECTION.md rule 10). */
+  it('fades rather than travels under reduced motion', () => {
     stubDocument(true);
-    expect(drumIn(node).duration).toBe(0);
-    expect(drumOut(node).duration).toBe(0);
+    const { css, duration } = drumIn(node);
+    expect(duration).toBeGreaterThan(0);
+    expect(frame(css!, 0.5)).toBe('opacity: 0.5');
+    expect(frame(drumOut(node).css!, 0.5)).toBe('opacity: 0.5');
   });
 });
