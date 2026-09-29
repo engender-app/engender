@@ -281,8 +281,9 @@
   }
   .month-jump-pill.is-shown { opacity: 1; }
 
-  /* A key, rule 13's drawing: a block with a 1px outline edge. Positioned
-     so it paints over the pill. */
+  /* A key, rule 13's drawing: a block with a 1px outline edge, at the
+     PinPad key's 56px rather than the 48px floor, so the label and the dot
+     under it both clear the edge. Positioned so it paints over the pill. */
   .month-jump-cell {
     position: relative;
     display: grid;
@@ -308,10 +309,19 @@
   }
   .month-jump-cell > span:first-child { grid-area: 1 / 1; }
 
-  /* Today's ring, HeatMap's drawing of the same fact. */
-  .month-jump-cell.is-now {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+  /* Today's ring, HeatMap's drawing of the same fact: 2px of accent a
+     pixel clear of the block. Drawn on its own box rather than as the
+     block's outline, because the keyboard ring below is the outline, and
+     with both on one property focusing this month took today's ring off
+     it. 8px is rule 5's track corner, the one that stays concentric
+     around a 6px block. */
+  .month-jump-cell.is-now::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    pointer-events: none;
   }
   /* The keyboard ring draws inside the block, so it never sits on top of
      today's ring outside it. */
