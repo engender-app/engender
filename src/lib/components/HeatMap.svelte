@@ -571,7 +571,10 @@
   {/if}
 
   <!-- One line of caption under the grid: which era the month sits in, and
-       what a split and the dots mean (ticket 280). The eras were a hollow
+       what a split and the dots mean (ticket 280). The same words on every
+       metric: what deeper colour means is the scale's to say above, and on
+       mood the faces say it, so a sentence naming the metric only made the
+       line rewrap, and the chips under it jump, on every switch. The eras were a hollow
        swatch that read as a checkbox, over a border on every cell; the cells
        have no border now, so an era is named here and only here - a dot in
        its colour, the same mark the highlight chip puts on a day. -->
@@ -581,7 +584,7 @@
         <span class="cal-key-dot" style="background:{e.mark}"></span>{e.name}
       </span>
     {/each}
-    <span>{m.heat_hint({ metric: metricName })}</span>
+    <span>{m.heat_hint()}</span>
   </p>
 {/if}
 

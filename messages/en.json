@@ -145,7 +145,7 @@
   "cal_close_month": "Hide month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Deeper colour means a higher {metric}. A split day shows its first and last reading, and the dots under a date count its entries.",
+  "heat_hint": "A split day shows its first and last reading, and the dots under a date count its entries.",
   "entries_this_day": [
     {
       "declarations": [

@@ -147,7 +147,7 @@
   "cal_close_month": "Ukryj miesiąc",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
-  "heat_hint": "Mocniejszy kolor oznacza wyższą wartość: {metric}. Podzielony dzień pokazuje pierwszy i ostatni odczyt, a kropki pod datą liczą wpisy.",
+  "heat_hint": "Podzielony dzień pokazuje pierwszy i ostatni odczyt, a kropki pod datą liczą wpisy.",
   "entries_this_day": [
     {
       "declarations": [
