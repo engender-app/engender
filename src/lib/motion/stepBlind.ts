@@ -39,7 +39,7 @@
 import type { Action } from 'svelte/action';
 
 import { blindVariables, VARIABLES } from './fieldBlind';
-import { motionDuration } from './tokens';
+import { isReducedMotion, motionDuration } from './tokens';
 
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
@@ -49,6 +49,8 @@ const HOLD = 'blindHold';
     (components.css, redesign ticket 34) and this action is the only thing
     that measures where the words sit inside it. */
 const ASK = '.step-field-ask';
+/** How long after a heading arrives its rest is left alone. */
+const ARRIVAL_SETTLE_MS = 600;
 /** Everything under the edge, which rides it as one sheet. */
 const BELOW = '.step-field-below';
 
@@ -96,6 +98,7 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   let paintedFrame = 0;
   /* When the last change began, for the direction rule below. */
   let lastChange = -Infinity;
+  let lastArrival = -Infinity;
 
   /* Where the question's own box sits inside the field, in layout terms.
      `offsetTop` rather than a client rect, because the ride is a translate
@@ -114,6 +117,40 @@ export const blindEdge: Action<HTMLElement> = (node) => {
      arrived yet to where it was going - 7.7px, in one frame, on the
      incoming question when the outgoing one left the grid at 150ms and
      the field's height changed a second time (ticket 285). */
+  /* Where the field's bottom edge would be with only this heading on it: its
+     own words' bottom and the field's padding under it, not the box's height,
+     which is the taller of the arriving and the leaving until the leaving
+     goes. The heading is stretched to the grid row, so it is the words' own
+     extent that counts, less the ride they are carrying now. Each heading
+     carries its own (components.css, --own-rest). */
+  const restOf = (el: HTMLElement, fallback: number) => {
+    if (!el.textContent?.trim()) return fallback;
+    /* Its natural height: the grid stretches it to the tallest heading in the
+       cell, and it is the height it has alone that sets the field's. */
+    const was = el.style.alignSelf;
+    el.style.alignSelf = 'start';
+    const natural = el.offsetHeight;
+    el.style.alignSelf = was;
+    if (!natural) return fallback;
+    const padding = parseFloat(getComputedStyle(node).paddingBottom) || 0;
+    /* Layout offsets, which no ride, travel or fade-in transform is in: the
+       heading's top in its container and the container's top in the field. */
+    const ask = el.parentElement as HTMLElement;
+    return Math.round(ask.offsetTop + el.offsetTop + natural + padding);
+  };
+  /* Only headings that arrived on a field already showing one ride it; the
+     one a step is entered on, and the one leaving, stay where they were
+     printed. `arrived` is the newly inserted nodes; without it, whichever
+     headings already carry a rest are measured again after a resize. */
+  const setRests = (fallback: number, arrived?: Iterable<Node>) => {
+    const ask = node.querySelector<HTMLElement>(ASK);
+    if (!ask) return;
+    for (const el of arrived ?? ask.children) {
+      if (!(el instanceof HTMLElement) || el.parentElement !== ask) continue;
+      if (!arrived && !el.style.getPropertyValue('--own-rest')) continue;
+      el.style.setProperty('--own-rest', `${restOf(el, fallback)}px`);
+    }
+  };
   const shownEdge = () => {
     return edgeShown(getComputedStyle(host).getPropertyValue('--blind-edge'), edge);
   };
@@ -134,6 +171,11 @@ export const blindEdge: Action<HTMLElement> = (node) => {
     const belowRide = started ? shownRide(BELOW, host) : 0;
     edge = to;
     ask = askTop();
+    /* A heading that has just arrived was measured as it was inserted, and
+       the box changing because of it (or because the one it replaces leaves)
+       moves nothing it stands on. Measured again for a change that has no
+       arrival behind it: a wrap on resize, a raised keyboard. */
+    if (performance.now() - lastArrival > ARRIVAL_SETTLE_MS) setRests(to);
 
     const vars = blindVariables({ from, to });
     /* Which way the printed words travel is one fact for the length of a
@@ -197,11 +239,43 @@ export const blindEdge: Action<HTMLElement> = (node) => {
 
   observer.observe(node, { box: 'border-box' });
 
+  /* A new heading arrives before the field's box has necessarily changed (a
+     gate's two titles can be the same height), and it has to know where the
+     edge will rest with it alone on the field from the frame it is inserted,
+     not from the frame the old one leaves. A microtask, so before layout and
+     paint. */
+  const arrivals =
+    typeof MutationObserver === 'function' && node.querySelector?.(ASK)
+      ? new MutationObserver((records) => {
+          if (edge === 0) return;
+          /* A heading leaving is a mutation too, and is not an arrival. */
+          if (!records.some((r) => r.addedNodes.length)) return;
+          lastArrival = performance.now();
+          /* The heading being replaced stays where it was printed and fades:
+             riding a growing edge it would be carried out over the page. */
+          const added = new Set(records.flatMap((r) => [...r.addedNodes]));
+          for (const el of node.querySelector(ASK)?.children ?? []) {
+            if (added.has(el) || !(el instanceof HTMLElement)) continue;
+            if (el.style.getPropertyValue('--own-rest')) {
+              /* Held where it is drawn, so one that was mid-ride when another
+                 change landed stops there instead of stepping to its rest. */
+              el.style.translate = getComputedStyle(el).translate;
+              el.style.removeProperty('--own-rest');
+            }
+          }
+          /* The edge is cut, not travelled, under reduced motion. */
+          if (isReducedMotion()) return;
+          setRests(edge, records.flatMap((r) => [...r.addedNodes]));
+        })
+      : null;
+  arrivals?.observe(node.querySelector(ASK)!, { childList: true });
+
   return {
     destroy() {
       cancelAnimationFrame(frame);
       cancelAnimationFrame(paintedFrame);
       observer.disconnect();
+      arrivals?.disconnect();
       delete host.dataset[HOLD];
       /* Everything this published, given back. Setup mounts once per
          session, so nothing has been seen to depend on it - but a
