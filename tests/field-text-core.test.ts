@@ -75,6 +75,23 @@ describe('findGeometry', () => {
     expect(r.pops).toEqual([]);
   });
 
+  it('passes the first frame of an ease-out fade-in and flags a part that appears whole', () => {
+    const fade = [0, 0.72, 0.87, 0.95, 1].map((op, i) => row(i * 20, 200, [part('fp-b-0', 150, op)]));
+    expect(findGeometry(fade).pops).toEqual([]);
+    const whole = [0, 0, 0.9, 1].map((op, i) => row(i * 16, 200, [part('fp-b-0', 150, op)]));
+    expect(findGeometry(whole).pops).toHaveLength(1);
+    const vanish = [1, 1, 0.3, 0].map((op, i) => row(i * 16, 200, [part('fp-a-0', 150, op)]));
+    expect(findGeometry(vanish).pops).toHaveLength(1);
+  });
+
+  it('judges a ring against the edge where nothing clips it, and not where the field group does', () => {
+    const ring = { n: 'sun-b-0', bottom: 175, mid: 0, op: 1 };
+    expect(findGeometry([{ ...row(0, 128, [ring]), clipped: true }]).overspill).toEqual([]);
+    expect(findGeometry([{ ...row(0, 128, [ring]), clipped: false }]).overspill).toEqual([
+      { name: 'sun-b-0', reach: 47, at: 0 }
+    ]);
+  });
+
   it('flags a part that appears or vanishes in a single frame', () => {
     const r = findGeometry([row(0, 200, [part('fp-b-0', 150, 0)]), row(16, 200, [part('fp-b-0', 150, 1)])]);
     expect(r.pops).toEqual([{ name: 'fp-b-0', at: 16, from: 0, to: 1 }]);
@@ -97,6 +114,11 @@ describe('findHeightJumps', () => {
   it('flags a small change with stillness on both sides', () => {
     const r = findHeightJumps([128, 128, 132, 132, 132].map((height, i) => ({ t: i * 16, height })));
     expect(r).toEqual([{ at: 32, from: 128, to: 132, jump: 4 }]);
+  });
+
+  it('passes an ease-out that covers a long distance, its first step included', () => {
+    const heights = [128, 128, 180, 218, 244, 262, 275, 285, 290];
+    expect(findHeightJumps(heights.map((height, i) => ({ t: i * 16, height })))).toEqual([]);
   });
 
   it('passes the same 35px travelled over an ease-out', () => {
@@ -124,5 +146,17 @@ describe('offFieldInk', () => {
     const r = offFieldInk(frameOf(40, 60, 30, [[30, 45]]));
     expect(r.count).toBeGreaterThanOrEqual(INK_PIXELS);
     expect(r.deepest).toBe(15);
+  });
+
+  it('judges ink in the columns the sun covers, and in columns a glyph runs to the edge in, against the field\'s one edge', () => {
+    const w = 40, h = 60;
+    const pixels = new Uint8Array(w * h * 3).fill(255);
+    const set = (x: number, y: number, rgb: number[]) => pixels.set(rgb, (y * w + x) * 3);
+    for (let y = 0; y < 30; y++) for (let x = 0; x < w; x++) set(x, y, x < 20 ? [0, 0, 255] : [245, 169, 184]);
+    for (let y = 40; y < 46; y++) for (let x = 25; x < 32; x++) set(x, y, [0, 255, 0]);
+    expect(offFieldInk({ width: w, height: h, channels: 3, pixels }).count).toBeGreaterThan(20);
+    for (let y = 10; y < 16; y++) for (let x = 25; x < 32; x++) set(x, y, [0, 255, 0]);
+    const inside = offFieldInk({ width: w, height: h, channels: 3, pixels });
+    expect(inside.count).toBe(6 * 7);
   });
 });

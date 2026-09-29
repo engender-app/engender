@@ -35,10 +35,12 @@ export const TELEPORT_HARD = 14;
 /** What counts as standing still on either side of a step. */
 export const STILL_PX = 1.5;
 /** An opacity step larger than this in one frame is an appearance or a
-    disappearance in a single frame. Not lower: a fade on an ease-out spends
-    0.7 of its range in its first 20ms (measured on the arriving title at
-    1440), and that is a fade. */
-export const POP = 0.8;
+    disappearance in a single frame. */
+export const POP = 0.5;
+/** The most a fade-in's first frame may show. field-part-in is an ease-out
+    (--ease-out), which reaches 0.72 of its range in the first 20ms; a part
+    that goes from nothing to more than this in a frame did not fade. */
+export const FADE_START_MAX = 0.85;
 /** Visible enough to count. */
 export const SEEN = 0.05;
 /** Ink pixels below the field's own bottom, in one frame, before it is a
@@ -98,13 +100,6 @@ export function samplerExpression(steps, ms) {
     return await new Promise((finish) => {
       const tick = () => {
         const now = performance.now() - t0;
-        for (const s of pending) {
-          if (s.done || now < s.at) continue;
-          s.done = true;
-          if (s.click) document.querySelector(s.click)?.click();
-          else if (s.back) history.back();
-          else if (s.eval) new Function(s.eval)();
-        }
         const row = { t: Math.round(now * 10) / 10 };
         const eo = edgeOf('old');
         const en = edgeOf('new');
@@ -190,8 +185,25 @@ export function samplerExpression(steps, ms) {
             };
           }
         }
+        /* Nested in the field's group, which cuts what it holds at the painted
+           edge - except while a scrolled side has switched that clip off. */
+        row.clipped = !html.dataset.blindScroll;
         row.nav = html.dataset.nav ?? '';
         rows.push(row);
+        /* The gestures fire after the row is read, so a change that a
+           gesture makes to layout is first seen on the next frame, by which
+           time a ResizeObserver has run: reading it in the same tick shows a
+           layout the browser never painted. */
+        for (const s of pending) {
+          if (s.done || now < s.at) continue;
+          s.done = true;
+          if (s.click) document.querySelector(s.click)?.click();
+          else if (s.back) history.back();
+          else if (s.set) {
+            const el = document.querySelector(s.set.sel);
+            if (el) el.textContent = s.set.text;
+          }
+        }
         if (now < ms) requestAnimationFrame(tick);
         else finish({ epoch, rows });
       };
@@ -222,7 +234,7 @@ export function findGeometry(series, { persist = 1 } = {}) {
       const reach = p.bottom - row.edge;
       /* A ring is cut by the field it is nested in, as the sun always is at
          rest, so its box reaching past the edge is not paint past it. */
-      if (p.op > SEEN && reach > OVERSPILL_PX && !p.n.startsWith('sun-')) {
+      if (p.op > SEEN && reach > OVERSPILL_PX && !(row.clipped && p.n.startsWith('sun-'))) {
         const run = (streak.get(p.n) ?? 0) + 1;
         streak.set(p.n, run);
         if (run >= persist) {
@@ -238,7 +250,12 @@ export function findGeometry(series, { persist = 1 } = {}) {
       for (const p of row.parts ?? []) {
         const q = prev.parts?.find((x) => x.n === p.n);
         if (!q) continue;
-        if (Math.abs(p.op - q.op) * per > POP) pops.push({ name: p.n, at: row.t, from: q.op, to: p.op });
+        /* The first frame of a fade-in is the one place a big step is the
+           curve: from nothing, to no more than an ease-out's first frame.
+           Nothing else gets a pass - a part that appears whole, or vanishes
+           from more than a fade's first step, is a yank. */
+        const fadeStart = q.op <= 0.02 && p.op > q.op && p.op <= FADE_START_MAX;
+        if (!fadeStart && Math.abs(p.op - q.op) * per > POP) pops.push({ name: p.n, at: row.t, from: q.op, to: p.op });
         if (p.op > SEEN && q.op > SEEN) {
           /* Two frames of reference, because the field moves in exactly one
              way: its bottom edge travels and its top stays. A thing printed
@@ -287,7 +304,10 @@ export function findHeightJumps(series) {
   for (let i = 1; i < series.length; i++) {
     const step = d(i);
     const alone = Math.abs(step) >= 1 && Math.abs(d(i - 1)) < 0.5 && Math.abs(d(i + 1)) < 0.5;
-    if (Math.abs(step) >= JUMP_PX || alone)
+    /* A big step that the next one carries on in the same direction is an
+       ease-out starting, whatever the distance. */
+    const carriedOn = Math.sign(d(i + 1)) === Math.sign(step) && Math.abs(d(i + 1)) >= Math.abs(step) * 0.25;
+    if ((Math.abs(step) >= JUMP_PX && !carriedOn) || alone)
       out.push({ at: series[i].t, from: series[i - 1].height, to: series[i].height, jump: Math.round(step * 10) / 10 });
   }
   return out;
@@ -311,27 +331,24 @@ export function offFieldInk(png, { top = 0, bottom = png.height } = {}) {
       if (isBlue((y * width + x) * channels)) lastBlue[x] = y;
     }
   }
-  /* The sun is drawn over the field in the flag's colours and its white
-     stripe is the page's own colour, so where it crosses a column that
-     column has no blue to measure the field's bottom by. Its columns are
-     left out; they are the top corner, where no type is printed under it. */
-  const sun = new Uint8Array(width);
-  for (let x = 0; x < width; x++) {
-    let seen = 0;
-    for (let y = top; y < Math.min(top + 140, end); y++) {
-      const i = (y * width + x) * channels;
-      const hi = Math.max(pixels[i], pixels[i + 1], pixels[i + 2]);
-      const lo = Math.min(pixels[i], pixels[i + 1], pixels[i + 2]);
-      if (hi - lo > 40 && !isBlue(i) && !isInk(i)) seen++;
-    }
-    if (seen >= 8) sun[x] = 1;
-  }
+  /* The field's bottom is one horizontal line - the blind's clip - so it is
+     read once, as the 80th percentile of every column's last blue, and each
+     column is measured against that or its own, whichever is lower down.
+     A column has no blue to measure by where the sun crosses it (its white
+     stripe is the page's own colour) and where a glyph runs down to the edge
+     and is cut by it; measured column by column those were read as ink on
+     the page. Ink below the line is still ink on the page, in every column. */
+  const edges = [];
+  for (let x = 0; x < width; x++) if (lastBlue[x] >= 0) edges.push(lastBlue[x]);
+  edges.sort((p, q) => p - q);
+  const edgeY = edges.length ? edges[Math.min(edges.length - 1, Math.floor(edges.length * 0.8))] : -1;
+  if (edgeY >= 0) for (let x = 0; x < width; x++) lastBlue[x] = Math.max(lastBlue[x], edgeY);
   let count = 0;
   let deepest = 0;
   let deepestAt = null;
   for (let y = top; y < end; y++) {
     for (let x = 0; x < width; x++) {
-      if (sun[x] || !isInk((y * width + x) * channels)) continue;
+      if (!isInk((y * width + x) * channels)) continue;
       const below = y - lastBlue[x];
       if (below > 2) {
         count++;
