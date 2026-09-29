@@ -61,6 +61,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
+  import { AREA_STATES_BEFORE_READ } from '$lib/data/areaState';
   import { readRowForward } from '$lib/data/rowForwardReads';
   import type { RowForwardMap } from '$lib/data/rowForward';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
@@ -105,7 +106,7 @@
           forward: forwardQuery.value,
           voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value
         }
-      : { lastWrites: {}, states: {}, forward: {} as RowForwardMap, voiceMemoLastWriteEpochDay: null }
+      : { lastWrites: {}, states: AREA_STATES_BEFORE_READ, forward: {} as RowForwardMap, voiceMemoLastWriteEpochDay: null }
   );
 
   let reading = $derived({ todayEpochDay: today, ...landed });

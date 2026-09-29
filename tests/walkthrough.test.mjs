@@ -2190,11 +2190,13 @@ try {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  // The default four arrive ticked and nothing else does (measurements,
-  // care, milestones, tryouts - pinnedRows.ts's own default set).
+  // The default three arrive ticked. Measurements stays off until chosen.
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
-  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  for (const key of ['measurements', 'care', 'milestones', 'tryouts']) {
+  if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  if ((await page.locator('[data-list-row="area-measurements"]').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is selected by default');
+  }
+  for (const key of ['care', 'milestones', 'tryouts']) {
     if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
       throw new Error(`${key} is not part of the default set on arrival`);
     }
@@ -2299,6 +2301,68 @@ try {
   await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
+});
+
+await flow('measurements opt-in switch', async () => {
+try {
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
+  const choice = page.locator('[data-list-row="area-measurements"]');
+  if ((await choice.getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements starts selected in setup');
+  }
+  await page.locator('[data-skip-step]').click();
+  for (let i = 0; i < 3; i++) await page.locator('[data-next]').click();
+  await page.locator('[data-finish]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  const visit = async (path) => {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await booted();
+  };
+  await visit('/settings');
+  const toggle = page.locator('[data-measurements-toggle] [role="switch"]');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  if ((await toggle.getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is on after skipping setup');
+  }
+  if (await page.locator('[data-measurement-unit]').count()) throw new Error('measurement units stayed visible while off');
+  await page.addInitScript(() => {
+    window.measurementsRowSeen = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-list-row="measurements"]')) window.measurementsRowSeen = true;
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await visit('/more');
+  await page.waitForFunction(() => document.querySelector('[data-hub-index]') && !document.querySelector('[data-list-row="measurements"]'));
+  if (await page.evaluate(() => window.measurementsRowSeen)) throw new Error('hidden measurements flashed on More during load');
+
+  await visit('/settings');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  await toggle.click();
+  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForSelector('[data-measurement-unit]');
+  await visit('/more');
+  await page.waitForSelector('[data-list-row="measurements"]');
+  await visit('/');
+  if (await page.locator('[data-pinned-row="measurements"]').count()) {
+    throw new Error('Settings added a Today pin that setup left unselected');
+  }
+
+  await visit('/settings');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  await toggle.click();
+  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false');
+  await visit('/body/measurements');
+  if (!page.url().endsWith('/body/measurements')) throw new Error('the direct link stopped working while hidden');
+  await visit('/settings');
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  if ((await toggle.getAttribute('aria-checked')) !== 'false') throw new Error('the off state did not survive navigation');
+
+  ok('measurements starts off, returns through Settings, and keeps its records address and Today pins');
+} catch (e) { fail('measurements opt-in switch', e); }
 });
 
 /* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
@@ -2551,6 +2615,9 @@ try {
   await waitingFor('the flag turning lesbian before the export', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
   );
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  await page.locator('[data-measurements-toggle] [role="switch"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
 
   /* Through the FAB, whose fan seeds the mood, so this needs no mood control
      of its own - the editor's and Home's log strip both answer to
@@ -2591,6 +2658,14 @@ try {
     page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
   );
   await emptyFirstRun();
+
+  /* A setup draft from the new-journal path must not override the archive.
+     Changing another area gives the draft a value while measurements stays
+     unchecked, opposite to the archived module state. */
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
+  await page.locator('[data-list-row="area-care"]').click();
+  for (let i = 0; i < 4; i++) await page.locator('[data-back]').click();
+  await page.waitForSelector('[data-restore-start]');
 
   await page.locator('[data-restore-start]').click();
   await page.waitForSelector('[data-restore-pick]');
@@ -2697,6 +2772,10 @@ try {
      rule 13b0 above already follows. */
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
+  if ((await page.locator('[data-measurements-toggle] [role="switch"]').getAttribute('aria-checked')) !== 'true') {
+    throw new Error('setup draft replaced archived measurements visibility');
+  }
   await page.locator('[data-palette-pick="trans"]').click();
   await waitingFor('the flag going back to trans after the restore', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
@@ -2946,11 +3025,11 @@ try {
   // Untouched, then skipped: the stored default has to survive both.
   await page.locator('[data-skip-step]').click(); // scales -> areas
 
-  /* Ticket 22's own version of the same proof: the default four arrive
+  /* Ticket 22's own version of the same proof: the default three arrive
      ticked, and skipping leaves `onboardingAreas` null rather than storing
      the default. */
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
-  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
   await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
