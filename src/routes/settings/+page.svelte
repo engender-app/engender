@@ -10,7 +10,9 @@
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { areasHidden } from '$lib/data/areaState';
+  import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
@@ -64,6 +66,10 @@
      count of the enabled ones - which only the Android build displays at all. */
   let reminders = liveList((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
+  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let measurementsOn = $derived(
+    measurementStates.value !== undefined && !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
+  );
 
   let scalesSheet = $state(false);
 
@@ -260,25 +266,39 @@
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <div class="kit-row settings-unit-row" style="cursor:default">
+      <div class="kit-row" data-measurements-toggle>
         <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
-        </span>
+        <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
         <span class="kit-row-trail">
-          <Segmented
-            name={m.settings_measurement_unit_title()}
-            key="measurement-unit"
-            compact
-            options={[
-              { value: 'cm', label: m.measurement_unit_cm() },
-              { value: 'in', label: m.measurement_unit_in() }
-            ]}
-            value={prefs.measurementUnit}
-            onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
+          <Switch
+            checked={measurementsOn}
+            disabled={measurementStates.value === undefined}
+            label={m.measurements_and_sizes()}
+            onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
           />
         </span>
       </div>
+      {#if measurementsOn}
+        <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Segmented
+              name={m.settings_measurement_unit_title()}
+              key="measurement-unit"
+              compact
+              options={[
+                { value: 'cm', label: m.measurement_unit_cm() },
+                { value: 'in', label: m.measurement_unit_in() }
+              ]}
+              value={prefs.measurementUnit}
+              onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
+            />
+          </span>
+        </div>
+      {/if}
       <!-- ADR-0043: the manual way into cycle tracking, for someone no
            testosterone regimen already surfaces it for. The switch only
            decides whether navigation names cycle tracking; turning it off
