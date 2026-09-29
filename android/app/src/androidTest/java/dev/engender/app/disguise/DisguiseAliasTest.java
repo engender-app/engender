@@ -38,12 +38,12 @@ public class DisguiseAliasTest {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         pm = context.getPackageManager();
         // Manifest default: LauncherDefault enabled, nothing else.
-        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE, "current");
     }
 
     @After
     public void tearDown() {
-        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE, "current");
     }
 
     @Test
@@ -54,7 +54,7 @@ public class DisguiseAliasTest {
 
     @Test
     public void disguisingSwapsWhichAliasIsEnabled() {
-        boolean changed = DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE);
+        boolean changed = DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
 
         assertTrue(changed);
         assertFalse(isEnabled(DisguiseAlias.DEFAULT));
@@ -63,9 +63,9 @@ public class DisguiseAliasTest {
 
     @Test
     public void turningDisguiseOffRestoresTheRealIdentity() {
-        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
 
-        boolean changed = DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE);
+        boolean changed = DisguiseAlias.apply(context, false, DisguiseAlias.DEFAULT_PALETTE, "current");
 
         assertTrue(changed);
         assertTrue(isEnabled(DisguiseAlias.DEFAULT));
@@ -74,9 +74,9 @@ public class DisguiseAliasTest {
 
     @Test
     public void applyingTheSameStateTwiceIsANoOp() {
-        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE);
+        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
 
-        boolean changedAgain = DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE);
+        boolean changedAgain = DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
 
         assertFalse(changedAgain);
         assertTrue(isEnabled(DisguiseAlias.DISGUISED));
@@ -88,18 +88,34 @@ public class DisguiseAliasTest {
     @Test
     public void exactlyOneAliasIsEverEnabled() {
         List<String> aliases = DisguiseAlias.aliases(context);
-        assertEquals(17, aliases.size());
+        assertEquals(33, aliases.size());
 
         for (String alias : aliases) {
+            if (alias.endsWith("Round")) continue;
             /* LauncherDisguised answers to no palette, so asking for its
                name undisguised resolves back to the default - which is the
                fallback this walk also exercises. */
             String palette = paletteOf(alias);
-            String wanted = DisguiseAlias.aliasFor(context, false, palette);
-            DisguiseAlias.apply(context, false, palette);
+            String wanted = DisguiseAlias.aliasFor(context, false, palette, "current");
+            DisguiseAlias.apply(context, false, palette, "current");
 
             assertTrue(palette + " did not enable " + wanted, isEnabled(wanted));
             assertEquals(palette, 1, enabledCount(aliases));
+        }
+    }
+
+    @Test
+    public void roundShapeKeepsEveryPaletteAndDisguise() {
+        for (String alias : DisguiseAlias.aliases(context)) {
+            if (alias.equals(DisguiseAlias.DISGUISED) || alias.endsWith("Round")) continue;
+            String palette = paletteOf(alias);
+            String round = DisguiseAlias.aliasFor(context, false, palette, "round");
+            DisguiseAlias.apply(context, false, palette, "round");
+            assertEquals(alias + " lost its round partner", alias + "Round", round);
+            assertTrue(isEnabled(round));
+            assertEquals(1, enabledCount(DisguiseAlias.aliases(context)));
+            DisguiseAlias.apply(context, true, palette, "round");
+            assertTrue(isEnabled(DisguiseAlias.DISGUISED));
         }
     }
 
@@ -108,7 +124,7 @@ public class DisguiseAliasTest {
         for (String alias : DisguiseAlias.aliases(context)) {
             if (alias.equals(DisguiseAlias.DISGUISED)) continue;
 
-            DisguiseAlias.apply(context, true, paletteOf(alias));
+            DisguiseAlias.apply(context, true, paletteOf(alias), "current");
 
             assertTrue("disguised lost to " + alias, isEnabled(DisguiseAlias.DISGUISED));
             assertEquals(1, enabledCount(DisguiseAlias.aliases(context)));
@@ -120,7 +136,7 @@ public class DisguiseAliasTest {
         /* A palette with no alias would otherwise disable everything and
            take the app off the home screen, which is the one failure this
            class must not have. */
-        DisguiseAlias.apply(context, false, "notaflag");
+        DisguiseAlias.apply(context, false, "notaflag", "current");
 
         assertTrue(isEnabled(DisguiseAlias.DEFAULT));
         assertEquals(1, enabledCount(DisguiseAlias.aliases(context)));

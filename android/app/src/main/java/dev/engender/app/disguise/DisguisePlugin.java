@@ -15,9 +15,8 @@ import dev.engender.app.widgets.QuickLogWidgetProvider;
 import dev.engender.app.widgets.TallyWidgetProvider;
 
 /**
- * Mirrors the two preferences that decide the app's launcher identity - the
- * disguise and the palette - into the alias PackageManager reads. Called
- * from a Svelte effect on every change to either, including one that
+ * Mirrors disguise, palette and icon shape into the alias PackageManager
+ * reads. Called from a Svelte effect on every change, including one that
  * arrives through Archive restore rather than the Settings toggle:
  * restoring a disguised backup has to leave the launcher disguised too, not
  * just the in-app preference.
@@ -50,10 +49,12 @@ public class DisguisePlugin extends Plugin {
         {@code PickedFiles} guards with {@code synchronized}, so this does
         too rather than relying on plain fields. */
     private String pendingPalette;
+    private String pendingShape;
     private boolean pendingDisguised;
 
-    private synchronized void queuePendingPalette(boolean disguised, String palette) {
+    private synchronized void queuePendingPalette(boolean disguised, String palette, String shape) {
         pendingPalette = palette;
+        pendingShape = shape;
         pendingDisguised = disguised;
     }
 
@@ -69,7 +70,7 @@ public class DisguisePlugin extends Plugin {
         between reading them and clearing the old one. */
     private synchronized void applyPendingPalette() {
         if (pendingPalette == null) return;
-        DisguiseAlias.apply(getContext(), pendingDisguised, pendingPalette);
+        DisguiseAlias.apply(getContext(), pendingDisguised, pendingPalette, pendingShape);
         pendingPalette = null;
     }
 
@@ -77,6 +78,7 @@ public class DisguisePlugin extends Plugin {
     public void setLauncherIdentity(PluginCall call) {
         boolean disguised = Boolean.TRUE.equals(call.getBoolean("disguised", false));
         String palette = call.getString("palette", DisguiseAlias.DEFAULT_PALETTE);
+        String shape = call.getString("shape", "current");
         boolean wasDisguised = DisguiseAlias.isDisguised(getContext());
         call.resolve();
 
@@ -91,7 +93,7 @@ public class DisguisePlugin extends Plugin {
             // same category of exposure as the launcher icon, so they get
             // the same immediate refresh rather than waiting on their own
             // system-scheduled update.
-            boolean changed = DisguiseAlias.apply(getContext(), disguised, palette);
+            boolean changed = DisguiseAlias.apply(getContext(), disguised, palette, shape);
             clearPendingPalette();
             if (changed) {
                 for (DisguisableWidgetProvider provider : WIDGET_PROVIDERS) provider.updateAll(getContext());
@@ -119,7 +121,7 @@ public class DisguisePlugin extends Plugin {
         // just wasn't keeping that promise. The widgets are not branded by
         // the flag either (see above), so there is nothing of theirs to
         // refresh here.
-        queuePendingPalette(disguised, palette);
+        queuePendingPalette(disguised, palette, shape);
     }
 
     @Override
