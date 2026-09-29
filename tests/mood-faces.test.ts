@@ -203,7 +203,7 @@ describe('the five mood faces', () => {
    face back on a deep fill, and nothing else would notice. */
 describe('the face draws in its own step\'s ink', () => {
   const rulesFor = (selector: RegExp) =>
-    [...componentsCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    [...componentsCss.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
       .filter(([, sel]) => selector.test(sel))
       .map(([, sel, body]) => ({ sel: sel.trim(), body }));
 
@@ -222,12 +222,28 @@ describe('the face draws in its own step\'s ink', () => {
     }
   });
 
+  /* The 4.5:1 the palette test proves is for the ink at full strength. The
+     features used to sit at 0.75 opacity, which blended them toward the
+     fill: measured on the composite, the worst face was 2.60:1 before ticket
+     279 and 2.49:1 on its new ramps. A resting face draws its ink solid; only
+     the picker's unchosen faces, which are dimmed on purpose, go lighter. */
+  it('draws a resting face in its ink at full strength', () => {
+    const resting = rulesFor(/^\s*(\.mood-face-(eye|mouth)|\.mood-picker:not\(:has\(\.is-selected\)\) \.mood-face-(eye|mouth))\s*$/);
+    expect(resting.length).toBe(4);
+    for (const { sel, body } of resting) {
+      const opacity = /(?:^|[;\s])opacity:\s*([\d.]+)/.exec(body)?.[1];
+      expect(opacity === undefined || Number(opacity) === 1, `${sel} draws its ink at opacity ${opacity}`).toBe(true);
+    }
+  });
+
   /* A step's ink changes with the theme and the preset, and on a Journal
      cell whose day gains an entry. A face that swapped its colour in one
      frame would be a yank, so the ink crossfades on the same curve the
      block's fill already takes. */
   it('crossfades the ink rather than swapping it', () => {
-    for (const { sel, body } of rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/)) {
+    const own = rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/);
+    expect(own.length).toBe(2);
+    for (const { sel, body } of own) {
       expect(body, `${sel} has no transition on the ink`).toMatch(
         /transition:[^;]*\bfill var\(--dur-med\) var\(--ease-out\)[^;]*\bstroke var\(--dur-med\) var\(--ease-out\)/
       );
