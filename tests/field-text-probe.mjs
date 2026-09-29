@@ -150,6 +150,33 @@ for (const [A, B] of [['home', 'calendar'], ['calendar', 'stats'], ['stats', 'se
   add({ name: `reduced door ${A}>${B} top`, at: ROUTE[A], reduced: true, steps: [{ at: 0, click: tab(B) }] });
   add({ name: `reduced door ${A}>${B} bottom`, at: ROUTE[A], reduced: true, scroll: 'bottom', steps: [{ at: 0, click: tab(B) }] });
 }
+/* The rest of the matrix the ticket names (review round): Polish scrolled,
+   reversed and interrupted; reduced motion reversed, interrupted and there
+   and back; there and back from the middle of the screen; one in-tab step;
+   and a door field whose height really changes at rest. */
+const PAIRS = [['home', 'calendar'], ['calendar', 'stats'], ['stats', 'settings'], ['settings', 'home']];
+for (const [A, B] of PAIRS) {
+  const C = TABS.find((k) => k !== A && k !== B && k !== 'home') ?? 'stats';
+  for (const scroll of ['mid', 'bottom']) {
+    add({ name: `polish door ${A}>${B} ${scroll}`, at: ROUTE[A], locale: 'pl', scroll, steps: [{ at: 0, click: tab(B) }] });
+  }
+  add({ name: `polish door ${A}>${B}>${A} reversed at 140ms`, at: ROUTE[A], locale: 'pl', steps: [{ at: 0, click: tab(B) }, { at: 140, click: tab(A) }] });
+  add({ name: `polish door ${A}>${B}>${C} interrupted at 140ms`, at: ROUTE[A], locale: 'pl', steps: [{ at: 0, click: tab(B) }, { at: 140, click: tab(C) }] });
+  add({ name: `reduced door ${A}>${B}>${A} reversed at 140ms`, at: ROUTE[A], reduced: true, steps: [{ at: 0, click: tab(B) }, { at: 140, click: tab(A) }] });
+  add({ name: `reduced door ${A}>${B}>${C} interrupted at 140ms`, at: ROUTE[A], reduced: true, steps: [{ at: 0, click: tab(B) }, { at: 140, click: tab(C) }] });
+  add({ name: `reduced door ${A}>${B}>${A} there and back bottom`, at: ROUTE[A], reduced: true, scroll: 'bottom', ms: 2000, steps: [{ at: 0, click: tab(B) }, { at: 900, click: tab(A) }] });
+  add({ name: `door ${A}>${B}>${A} there and back mid`, at: ROUTE[A], scroll: 'mid', ms: 2000, steps: [{ at: 0, click: tab(B) }, { at: 900, click: tab(A) }] });
+}
+/* An in-tab step: the Journal's month, which changes what the field holds. */
+add({ name: 'in-tab step calendar month prev', at: '/calendar', steps: [{ at: 0, click: '[data-cal-step="prev"]' }], ms: 900 });
+add({ name: 'in-tab step calendar month prev twice', at: '/calendar', steps: [{ at: 0, click: '[data-cal-step="prev"]' }, { at: 120, click: '[data-cal-step="prev"]' }], ms: 900 });
+/* A door field whose height really changes at rest: the title takes a long
+   text and wraps to more lines, and back. `still` scenes read the field's own
+   box, so a jump is a frame where the layout moved and nothing eased it. */
+for (const [key, route, sel] of [['stats', '/stats', '[data-screen-title]'], ['transition', '/settings/eras', '[data-screen-title]']]) {
+  const long = 'A title that is much too long to sit on one line of a phone and so wraps onto several';
+  add({ name: `rewrap ${key} title grows`, at: route, still: true, ms: 900, steps: [{ at: 0, set: { sel, text: long } }] });
+}
 for (const A of ['calendar', 'stats', 'settings', 'home']) {
   add({ name: `resize ${A} 390>320`, at: ROUTE[A], resize: { at: 200, width: 320 }, ms: 900, steps: [] });
 }
@@ -161,12 +188,12 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const contexts = new Map();
 
-async function pageFor(width, { reduced = false, fresh = false, tag = '' } = {}) {
-  const key = `${width}:${reduced}:${tag}`;
+async function pageFor(width, { reduced = false, fresh = false, tag = '', height = 0 } = {}) {
+  const key = `${width}:${reduced}:${tag}:${height}`;
   if (contexts.has(key) && !fresh) return contexts.get(key);
   if (contexts.has(key)) await contexts.get(key).context.close();
   const context = await browser.newContext({
-    viewport: { width, height: HEIGHT[width] ?? 900 },
+    viewport: { width, height: height || (HEIGHT[width] ?? 900) },
     deviceScaleFactor: 1,
     reducedMotion: reduced ? 'reduce' : 'no-preference'
   });
@@ -255,17 +282,26 @@ async function measure(held, scene) {
   return { epoch, rows, cast };
 }
 
-function analyse({ epoch, rows, cast }, { step = false, still = false } = {}) {
+function analyse({ epoch, rows, cast }, { step = false, still = false, cuts = false } = {}) {
   const series = step
     ? rows.filter((r) => r.step).map((r) => ({ t: r.t, edge: r.step.edge, parts: r.step.parts }))
-    : rows.filter((r) => r.edge !== undefined);
+    : rows.filter((r) => r.edge !== undefined).map((r) => ({ ...r }));
   const geometry = findGeometry(series, { persist: step ? 2 : 1 });
-  /* A step field cuts its words at --blind-edge (components.css), so a box
-     reaching past the edge there is text being uncovered by it, not text on
-     the page; the pixels decide whether anything got out. */
-  if (step) {
-    geometry.clipped = geometry.overspill;
-    geometry.overspill = [];
+  /* Reduced motion substitutes a cut for a movement (ADR-0078): the edge and
+     the words arrive in one frame by design, so a jump or a change of opacity
+     in one frame is the substitute, not a yank. What it may never do is paint
+     outside the field, which the overspill and the pixels still judge. */
+  if (cuts) {
+    /* And a step field's held frame paints the old edge for one frame while
+       its words are already at their new size, which the clip cuts: the
+       pixels judge that. */
+    if (step) {
+      geometry.clipped = geometry.overspill;
+      geometry.overspill = [];
+    }
+    geometry.cut = { teleports: geometry.teleports, pops: geometry.pops };
+    geometry.teleports = [];
+    geometry.pops = [];
   }
   const ink = NATURAL
     ? { frames: 0, bad: 0, worst: { deepest: 0, at: 0 }, first: null }
@@ -315,7 +351,7 @@ try {
           break;
         }
         const m = await measure(held, scene);
-        const r = analyse(m, { still: !!scene.resize });
+        const r = analyse(m, { still: !!scene.resize || !!scene.still, cuts: !!scene.reduced });
         if (scene.resize) await held.page.setViewportSize({ width, height: HEIGHT[width] ?? 900 });
         results.push({ width, name: scene.name, run, ...r, cast: undefined });
         log(width, scene.name, run, r, room && scene.scroll !== 'top' ? ` [scroll ${room}px]` : '');
@@ -326,11 +362,19 @@ try {
 
     /* ---- setup: every step forward, two back, and the handover ---- */
     if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'setup'.startsWith(o) || o.startsWith('setup'))) {
-      for (const locale of ['en', 'pl']) {
-        const held = await pageFor(width, { fresh: true, tag: `setup-${locale}` });
+      /* English, Polish, reduced motion, and a short window - what a raised
+         keyboard leaves, where the form drops to its short form. */
+      for (const mode of [
+        { label: 'en', lang: 'en' },
+        { label: 'pl', lang: 'pl' },
+        { label: 'en reduced', lang: 'en', reduced: true },
+        { label: 'en short', lang: 'en', height: 568 }
+      ]) {
+        const locale = mode.label;
+        const held = await pageFor(width, { fresh: true, tag: `setup-${locale}`, reduced: !!mode.reduced, height: mode.height ?? 0 });
         const { page } = held;
         await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
+        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), mode.lang);
         await page.goto(`${base}/`, { waitUntil: 'networkidle' });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
         /* A fresh profile boots into the demo persona; the demo bar's own
@@ -371,7 +415,7 @@ try {
             continue;
           }
           const m = await measure(held, scene);
-          const r = analyse(m, { step: true });
+          const r = analyse(m, { step: true, cuts: /reduced/.test(scene.name || name || '') });
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
           log(width, scene.name, 0, r);
           if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
@@ -387,7 +431,7 @@ try {
           const scene = { name: `setup ${locale} ${label}`, ms: 1000, steps };
           if (ONLY && !scene.name.includes(ONLY) && ONLY !== 'setup') continue;
           const m = await measure(held, scene);
-          const r = analyse(m, { step: true });
+          const r = analyse(m, { step: true, cuts: /reduced/.test(scene.name || name || '') });
           results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
           log(width, scene.name, 0, r);
           if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
@@ -419,28 +463,47 @@ try {
       });
       await fixture.listen();
       try {
-        const held = await pageFor(width, { fresh: true, tag: 'gate' });
-        const { page } = held;
-        await page.goto(`http://localhost:${fixture.config.server.port}/gates.html`, { waitUntil: 'networkidle' });
-        await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
-        await page.selectOption('select[aria-label="Scene"]', 'access-choice');
-        await page.waitForSelector('[data-gate-field]');
-        for (const gesture of [
-          { label: 'choose a mode', click: '[data-list-row="pin"]' },
-          { label: 'continue to the pad', click: '[data-access-continue]' },
-          { label: 'back to the list', click: '[data-gate-back], [data-access-back]' }
+        for (const mode of [
+          { label: 'gate', reduced: false, height: 0 },
+          { label: 'gate reduced', reduced: true, height: 0 },
+          { label: 'gate short', reduced: false, height: 568 }
         ]) {
-          await page.waitForTimeout(900);
-          if (!(await page.locator(gesture.click).count())) {
-            console.log(`skip ${width} gate ${gesture.label} - no ${gesture.click}`);
-            continue;
+          const held = await pageFor(width, { fresh: true, tag: mode.label, reduced: mode.reduced, height: mode.height });
+          const { page } = held;
+          const open = async () => {
+            await page.goto(`http://localhost:${fixture.config.server.port}/gates.html`, { waitUntil: 'networkidle' });
+            await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
+            await page.selectOption('select[aria-label="Scene"]', 'access-choice');
+            await page.waitForSelector('[data-gate-field]');
+          };
+          await open();
+          const record = async (name, steps) => {
+            const scene = { name, ms: 900, steps };
+            const m = await measure(held, scene);
+            const r = analyse(m, { step: true, cuts: /reduced/.test(scene.name || name || '') });
+            results.push({ width, name, run: 0, ...r, cast: undefined });
+            log(width, name, 0, r);
+            if (failed(r) || (KEEP_ALL && FRAMES)) await keep(name, width, 0, m);
+          };
+          for (const gesture of [
+            { label: 'choose a mode', click: '[data-list-row="pin"]' },
+            { label: 'continue to the pad', click: '[data-access-continue]' },
+            { label: 'back to the list', click: '[data-gate-back], [data-access-back]' }
+          ]) {
+            await page.waitForTimeout(900);
+            if (!(await page.locator(gesture.click).count())) {
+              console.log(`skip ${width} ${mode.label} ${gesture.label} - no ${gesture.click}`);
+              continue;
+            }
+            await record(`${mode.label} ${gesture.label}`, [{ at: 0, click: gesture.click.split(', ')[0] }]);
           }
-          const scene = { name: `gate ${gesture.label}`, ms: 900, steps: [{ at: 0, click: gesture.click.split(', ')[0] }] };
-          const m = await measure(held, scene);
-          const r = analyse(m, { step: true });
-          results.push({ width, name: scene.name, run: 0, ...r, cast: undefined });
-          log(width, scene.name, 0, r);
-          if (failed(r) || (KEEP_ALL && FRAMES)) await keep(scene.name, width, 0, m);
+          /* Interrupted: the second tap lands while the first is in flight. */
+          await open();
+          await page.waitForTimeout(900);
+          await record(`${mode.label} choose a mode and continue at 120ms`, [
+            { at: 0, click: '[data-list-row="pin"]' },
+            { at: 120, click: '[data-access-continue]' }
+          ]);
         }
       } finally {
         await fixture.close();
