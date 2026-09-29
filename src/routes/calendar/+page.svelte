@@ -674,7 +674,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    margin: var(--space-3) 0 0;
+    margin: 0;
     font-family: inherit;
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
