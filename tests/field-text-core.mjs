@@ -232,9 +232,13 @@ export function findGeometry(series, { persist = 1 } = {}) {
     }
     for (const p of row.parts ?? []) {
       const reach = p.bottom - row.edge;
-      /* A ring is cut by the field it is nested in, as the sun always is at
-         rest, so its box reaching past the edge is not paint past it. */
-      if (p.op > SEEN && reach > OVERSPILL_PX && !(row.clipped && p.n.startsWith('sun-'))) {
+      /* A ring's box reaches past the field by design - the field cuts its sun
+         at rest, and a named ring is cut by its group or by its own clip
+         (fieldBlind.ts) - so its box says nothing about paint. Rings are
+         not judged by the probe's numbers: their black outline cannot be told
+         from the app's own black rules and type by colour, so the cut is held
+         by a unit test (fieldBlind.test.ts) and shown in the flipbook. */
+      if (p.op > SEEN && reach > OVERSPILL_PX && !p.n.startsWith('sun-')) {
         const run = (streak.get(p.n) ?? 0) + 1;
         streak.set(p.n, run);
         if (run >= persist) {
