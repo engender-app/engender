@@ -63,6 +63,12 @@ const opt = (name, fallback) => {
 const DEVICE = opt('device', '');
 const PORT = opt('port', '9341');
 const PIN = '1111';
+/* The phone's real journal lives in dev.engender.app, and the probe signs a
+   scene in and out of a PIN gate, so it never attaches to that package. It
+   drives a separately installed probe build (a different applicationId, so
+   a different WebView and a different profile). */
+const PACKAGE = opt('package', 'dev.engender.probe285');
+const REAL_PACKAGE = 'dev.engender.app';
 const WIDTHS = DEVICE ? ['phone'] : opt('widths', '390,1440').split(',').map(Number);
 const ONLY_LIST = opt('only', '').split(',').filter(Boolean);
 const ONLY = ONLY_LIST.length === 1 ? ONLY_LIST[0] : '';
@@ -171,13 +177,15 @@ for (const A of DEVICE ? [] : ['calendar', 'stats', 'settings', 'home']) {
 
 /* ---------- the browser ---------- */
 
-/** The phone: forward the WebView socket of this app's own pid to our own
+/** The phone: forward the WebView socket of the probe build's own pid to our own
     port, and leave every other forward alone (the port is removed at the end,
     never --remove-all). */
 function forwardDevice() {
+  if (PACKAGE === REAL_PACKAGE)
+    throw new Error(`refusing to drive ${REAL_PACKAGE}: it holds the real journal. Install the probe build under another applicationId (default ${'dev.engender.probe285'}) and pass it with --package.`);
   const adb = (...a) => execFileSync('adb', ['-s', DEVICE, ...a], { encoding: 'utf8' });
-  const pid = adb('shell', 'pidof', 'dev.engender.app').trim().split(/\s+/)[0];
-  if (!pid) throw new Error('dev.engender.app is not running on ' + DEVICE);
+  const pid = adb('shell', 'pidof', PACKAGE).trim().split(/\s+/)[0];
+  if (!pid) throw new Error(`${PACKAGE} is not running on ${DEVICE}`);
   const unix = adb('shell', 'cat', '/proc/net/unix');
   const socket = new RegExp(`webview_devtools_remote_${pid}\\b`).exec(unix)?.[0];
   if (!socket) throw new Error(`no devtools socket for pid ${pid}`);
@@ -192,6 +200,8 @@ const browser = DEVICE
   : await launchChromium();
 const contexts = new Map();
 let deviceScale = 1;
+/** The WebView keeps a connection open, so the network never goes idle there. */
+const IDLE = DEVICE ? 'load' : 'networkidle';
 
 async function devicePage(reduced) {
   if (!contexts.has('device')) {
@@ -256,12 +266,12 @@ async function pageFor(width, { reduced = false, fresh = false, tag = '' } = {})
 }
 
 async function boot(page, path) {
-  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  await page.goto(`${base}${path}`, { waitUntil: IDLE });
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
   if (await page.locator('[data-leave-setup]').count()) {
     await page.locator('[data-leave-setup]').click();
     await page.waitForSelector('[data-home-hello]');
-    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+    await page.goto(`${base}${path}`, { waitUntil: IDLE });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
 }
@@ -371,7 +381,14 @@ try {
       if (!wanted(scene.name)) continue;
       const held = await pageFor(width, { reduced: !!scene.reduced });
       for (let run = 0; run < RUNS; run++) {
-        const room = await rest(held.page, scene);
+        let room;
+        try {
+          room = await rest(held.page, scene);
+        } catch (err) {
+          console.log(`ERR  ${width} ${scene.name} - ${String(err).split('\n')[0].slice(0, 160)}`);
+          if (!DEVICE) throw err;
+          continue;
+        }
         if (scene.scroll !== 'top' && room < 120) {
           console.log(`skip ${width} ${scene.name} - only ${room}px of scroll`);
           break;
@@ -393,7 +410,7 @@ try {
         const { page } = held;
         await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
         await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
-        await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+        await page.goto(`${base}/`, { waitUntil: IDLE });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
         /* A fresh profile boots into the demo persona; the demo bar's own
            jump is the way into the first run. */
@@ -480,7 +497,7 @@ try {
     if (DEVICE) {
       const { page } = await pageFor(width);
       if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'setup'.startsWith(o) || o.startsWith('setup'))) {
-        await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+        await page.goto(`${base}/`, { waitUntil: IDLE });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
         await page.evaluate(RESET_PERSONA_EXPRESSION);
         console.log('persona reset after setup');
@@ -542,7 +559,7 @@ try {
       try {
         const held = await pageFor(width, { fresh: true, tag: 'gate' });
         const { page } = held;
-        await page.goto(`http://localhost:${fixture.config.server.port}/gates.html`, { waitUntil: 'networkidle' });
+        await page.goto(`http://localhost:${fixture.config.server.port}/gates.html`, { waitUntil: IDLE });
         await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
         await page.selectOption('select[aria-label="Scene"]', 'access-choice');
         await page.waitForSelector('[data-gate-field]');
