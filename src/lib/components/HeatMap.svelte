@@ -254,6 +254,7 @@
 
   type MonthView = {
     key: string;
+    metric: string;
     isMood: boolean;
     startDow: number;
     loading: boolean;
@@ -326,7 +327,7 @@
         isPastOrToday: epochDay <= today
       });
     }
-    return { key: `${year}-${month}`, isMood, startDow, loading, days };
+    return { key: `${year}-${month}`, metric, isMood, startDow, loading, days };
   }
 
   /* The picture on screen: rebuilt whenever every read has answered the
@@ -363,8 +364,9 @@
   /* ---------- The month change ----------
 
      Each cell takes --dur-fast and the whole wave fits inside --dur-med, so
-     the last cell starts the difference later: 90ms of spread across the
-     grid's twelve diagonals (six in the strip's single row are its days).
+     the last cell starts the difference between the two later, spread
+     evenly over the grid's diagonals (the strip's single row over its
+     days).
      Forward, the wave starts at the first of the month and runs to the
      last; back, it starts at the last. Both halves read the direction when
      they start, so the leaving month and the arriving one run the same way.
@@ -435,6 +437,37 @@
     if (!months || !heightBefore || isReducedMotion()) return;
     const now = months.getBoundingClientRect().height;
     if (Math.abs(now - heightBefore) > 0.5) maskHeight(months, heightBefore, motionDuration('--dur-med'));
+  });
+
+  /* A metric switch under reduced motion. The corner is movement and goes
+     at once, but a fill changing colour moves nothing, and the ticket keeps
+     its crossfade - which base.css's clamp would flatten into a cut, since
+     it takes every CSS transition to 1ms. So the fills, halves and faces
+     are read just before the switch lands, and each is animated from what
+     it was with a single keyframe at offset 0: Web Animations run on to the
+     underlying value by themselves, and the clamp does not reach them. */
+  let shownMetric: string | undefined;
+  let before = new Map<HTMLElement, { backgroundColor: string; opacity: string }>();
+  $effect.pre(() => {
+    const metric = view.metric;
+    const switched = shownMetric !== undefined && shownMetric !== metric;
+    shownMetric = metric;
+    if (!switched || !months || !isReducedMotion()) return;
+    before = new Map(
+      [...months.querySelectorAll<HTMLElement>('.cal-fill, .cal-half, .cal-face')].map((node) => {
+        const style = getComputedStyle(node);
+        return [node, { backgroundColor: style.backgroundColor, opacity: style.opacity }];
+      })
+    );
+  });
+  $effect(() => {
+    void view.metric;
+    if (!before.size) return;
+    for (const [node, was] of before) {
+      // offset 0: a lone keyframe is otherwise the end one, and this is where it starts.
+      if (node.isConnected) node.animate([{ ...was, offset: 0 }], { duration: crossfadeDuration(), easing: 'linear' });
+    }
+    before = new Map();
   });
 
   /* Opening the month, the faces and the dots sit the travel out (see the

@@ -11,7 +11,7 @@
 
    `--motion` records each scene the ticket names - month change forward and
    back, metric switch both ways, strip to grid and back, and the month
-   change under reduced motion - as every frame Chromium's screencast paints
+   change and metric switch under reduced motion - as every frame Chromium's screencast paints
    (tests/panel-motion-flipbook.mjs turns the directory into a flipbook).
    Beside the frames, a rAF loop samples every cell's box, opacity and face,
    and the scene's `yanks` list is what that sampling found: something
@@ -367,6 +367,12 @@ try {
     await dress('light');
     await openMonth();
     await record('month-back-reduced-light', () => page.locator('[data-cal-step="prev"]').click());
+    await gridSettled();
+    const scale = await page.$eval('[data-chart-picker="calendar-metric"]', (select) =>
+      [...select.options].map((o) => o.value).find((v) => v !== 'mood')
+    );
+    await record('metric-to-scale-reduced-light', () => pickMetric(scale));
+    await record('metric-to-mood-reduced-light', () => pickMetric('mood'));
     await page.emulateMedia({ reducedMotion: 'no-preference' });
   }
 } finally {
