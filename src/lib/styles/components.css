@@ -171,6 +171,16 @@
      ticket 28 relies on. */
   overflow: clip;
   overflow-clip-margin: 120px;
+  /* Everything on the field is cut at the edge the eye sees (ticket 285), not
+     at the box's own bottom plus 120px. A step that asks a taller question is
+     laid out at its final height on the first frame while the painted edge
+     travels there over --dur-slow, and the incoming lines start fading in
+     75ms later - so their extra lines were painted on the page under the
+     field for as long as the edge was short of them. The clip reads the same
+     `--blind-edge` the paint does, on the same clock, so the words are
+     uncovered by the edge instead of hanging below it. A closing field has
+     an edge below its box, which a negative inset gives back. */
+  clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0);
 }
 /* The paint, split from the box above (ticket 28's mechanism, and the same
    reason it exists there): a flat block a window tall whose bottom edge is a

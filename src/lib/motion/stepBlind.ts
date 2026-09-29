@@ -39,6 +39,7 @@
 import type { Action } from 'svelte/action';
 
 import { blindVariables, VARIABLES } from './fieldBlind';
+import { motionDuration } from './tokens';
 
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
@@ -48,6 +49,8 @@ const HOLD = 'blindHold';
     (components.css, redesign ticket 34) and this action is the only thing
     that measures where the words sit inside it. */
 const ASK = '.step-field-ask';
+/** Everything under the edge, which rides it as one sheet. */
+const BELOW = '.step-field-below';
 
 /**
  * Moves one field's bottom edge whenever the field's height changes, and
@@ -63,6 +66,8 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   let ask = 0;
   let frame = 0;
   let paintedFrame = 0;
+  /* When the last change began, for the direction rule below. */
+  let lastChange = -Infinity;
 
   /* Where the question's own box sits inside the field, in layout terms.
      `offsetTop` rather than a client rect, because the ride is a translate
@@ -71,16 +76,55 @@ export const blindEdge: Action<HTMLElement> = (node) => {
      Relative to the field, whose own top never moves. */
   const askTop = () => (node.querySelector<HTMLElement>(ASK)?.offsetTop ?? 0);
 
+  /* Where things are drawn right now, not where they were headed. A second
+     change that lands while the first is still travelling has to start from
+     what is on screen: the edge's registered property and the two riders'
+     `translate` are all mid-transition, and the computed style is the one
+     place that says how far. Written back as the "old geometry" of the
+     hold, they make the interrupting change a continuation. Written as the
+     previous change's target instead, they teleport whatever had not
+     arrived yet to where it was going - 7.7px, in one frame, on the
+     incoming question when the outgoing one left the grid at 150ms and
+     the field's height changed a second time (ticket 285). */
+  const shownEdge = () => {
+    const value = parseFloat(getComputedStyle(host).getPropertyValue('--blind-edge'));
+    return Number.isFinite(value) ? value : edge;
+  };
+  const shownRide = (selector: string, within: ParentNode) => {
+    const el = within.querySelector<HTMLElement>(selector);
+    if (!el) return 0;
+    const value = getComputedStyle(el).translate;
+    if (!value || value === 'none') return 0;
+    return parseFloat(value.split(/\s+/)[1] ?? '0') || 0;
+  };
+
   const observer = new ResizeObserver((entries) => {
     const box = entries[0]?.borderBoxSize?.[0];
     const to = Math.round(box ? box.blockSize : node.getBoundingClientRect().height);
     if (to === edge) return;
-    const from = edge;
+    const boxFrom = edge;
+    const from = edge === 0 ? 0 : shownEdge();
     const askFrom = ask;
+    const askRide = from === 0 ? 0 : shownRide(ASK, node);
+    const belowRide = from === 0 ? 0 : shownRide(BELOW, host);
     edge = to;
     ask = askTop();
 
-    for (const [property, value] of Object.entries(blindVariables({ from, to }))) {
+    const vars = blindVariables({ from, to });
+    /* Which way the printed words travel is one fact for the length of a
+       burst of changes, not one per change. A keyed question is in the grid
+       beside its successor for 150ms, so the field grows to the taller of
+       the two on the first frame and shrinks to the successor's when the
+       outgoing one leaves: two changes in opposite directions for one step
+       change. Each republished the sign, and the arriving question reads it
+       every frame of its own 150ms fade, so at the second one it flipped
+       from -12px of travel to +12 and the question stepped 6 to 9px in one
+       frame (ticket 285). The first change's direction is kept until its
+       edge has landed. */
+    const now = performance.now();
+    if (now - lastChange < motionDuration('--dur-slow')) delete vars['--part-travel'];
+    lastChange = now;
+    for (const [property, value] of Object.entries(vars)) {
       host.style.setProperty(property, value);
     }
     /* What the question rides, which is not what the page under the field
@@ -90,19 +134,22 @@ export const blindEdge: Action<HTMLElement> = (node) => {
        itself getting taller, and a box does not move because it grew
        downwards. Measured on the flipbook: riding the field's own delta
        sent the question 91px past where it had been, which is a teleport
-       in one frame and the one thing this ticket may not ship. */
-    host.style.setProperty('--part-delta', `${askFrom - ask}px`);
+       in one frame and the one thing this ticket is not allowed to ship.
+       Each is added to what the rider is already carrying, so a change
+       that interrupts another continues it. */
+    host.style.setProperty('--part-delta', `${askRide + (askFrom - ask)}px`);
+    host.style.setProperty('--blind-delta', `${belowRide - (to - boxFrom)}px`);
 
     /* The first measurement is where the field starts, not a move: there is
        no earlier frame for the edge to have travelled from. */
-    if (from === 0) {
+    if (boxFrom === 0) {
       host.style.setProperty('--blind-edge', `${to}px`);
       host.style.setProperty('--part-delta', '0px');
       return;
     }
 
-    /* Painted this frame: the edge where it was, everything that rides it
-       back where it was, and no transitions to interrupt. */
+    /* Painted this frame: the edge where it is, everything that rides it
+       back where it is, and no transitions to interrupt. */
     host.style.setProperty('--blind-edge', `${from}px`);
     host.dataset[HOLD] = '';
     cancelAnimationFrame(frame);
