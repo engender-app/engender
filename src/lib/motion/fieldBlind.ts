@@ -246,11 +246,14 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
 }
 
 /** How many of each name the stylesheet has a starting-point rule for. */
-const CARRIED_PARTS = 12;
-const CARRIED_RINGS = 8;
+export const CARRIED_PARTS = 12;
+export const CARRIED_RINGS = 8;
+const partKey = (i: number) => `--fp-o-${i}`;
+const ringKey = (i: number) => `--sun-s-${i}`;
+const thousandths = (n: number) => Math.round(n * 1000) / 1000;
 const carriedProperties = () => [
-  ...Array.from({ length: CARRIED_PARTS }, (_, i) => `--fp-o-${i}`),
-  ...Array.from({ length: CARRIED_RINGS }, (_, i) => `--sun-s-${i}`)
+  ...Array.from({ length: CARRIED_PARTS }, (_, i) => partKey(i)),
+  ...Array.from({ length: CARRIED_RINGS }, (_, i) => ringKey(i))
 ];
 
 /**
@@ -276,12 +279,12 @@ function inFlight(doc: Document): { edge: number | null; carried: Record<string,
   for (let i = 0; i < CARRIED_PARTS; i++) {
     if (px(read(`::view-transition-group(fp-b-${i})`).height) === null) continue;
     const opacity = Number(read(`::view-transition-new(fp-b-${i})`).opacity);
-    if (Number.isFinite(opacity) && opacity < 1) carried[`--fp-o-${i}`] = String(Math.round(opacity * 1000) / 1000);
+    if (Number.isFinite(opacity) && opacity < 1) carried[partKey(i)] = String(thousandths(opacity));
   }
   for (let i = 0; i < CARRIED_RINGS; i++) {
     if (px(read(`::view-transition-group(sun-b-${i})`).height) === null) continue;
     const scale = Number(read(`::view-transition-new(sun-b-${i})`).scale);
-    if (Number.isFinite(scale) && scale < 1) carried[`--sun-s-${i}`] = String(Math.round(scale * 1000) / 1000);
+    if (Number.isFinite(scale) && scale < 1) carried[ringKey(i)] = String(thousandths(scale));
   }
   return edge === null && !Object.keys(carried).length ? null : { edge, carried };
 }

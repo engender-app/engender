@@ -52,6 +52,34 @@ const ASK = '.step-field-ask';
 /** Everything under the edge, which rides it as one sheet. */
 const BELOW = '.step-field-below';
 
+/** Whether a change keeps the direction the last one published. */
+export function holdsDirection({
+  now,
+  lastChange,
+  settleMs,
+  fading
+}: {
+  now: number;
+  lastChange: number;
+  settleMs: number;
+  fading: boolean;
+}): boolean {
+  return fading || now - lastChange < settleMs;
+}
+
+/** The registered edge as drawn, from its computed custom property, or the
+    target when the browser has nothing to say. */
+export function edgeShown(computed: string, target: number): number {
+  const value = parseFloat(computed);
+  return Number.isFinite(value) ? value : target;
+}
+
+/** How far a rider is translated, from its computed `translate`. */
+export function rideShown(computed: string | null | undefined): number {
+  if (!computed || computed === 'none') return 0;
+  return parseFloat(computed.split(/\s+/)[1] ?? '0') || 0;
+}
+
 /**
  * Moves one field's bottom edge whenever the field's height changes, and
  * hands the stylesheet what everything riding that edge needs.
@@ -87,15 +115,11 @@ export const blindEdge: Action<HTMLElement> = (node) => {
      incoming question when the outgoing one left the grid at 150ms and
      the field's height changed a second time (ticket 285). */
   const shownEdge = () => {
-    const value = parseFloat(getComputedStyle(host).getPropertyValue('--blind-edge'));
-    return Number.isFinite(value) ? value : edge;
+    return edgeShown(getComputedStyle(host).getPropertyValue('--blind-edge'), edge);
   };
   const shownRide = (selector: string, within: ParentNode) => {
     const el = within.querySelector<HTMLElement>(selector);
-    if (!el) return 0;
-    const value = getComputedStyle(el).translate;
-    if (!value || value === 'none') return 0;
-    return parseFloat(value.split(/\s+/)[1] ?? '0') || 0;
+    return el ? rideShown(getComputedStyle(el).translate) : 0;
   };
 
   const observer = new ResizeObserver((entries) => {
@@ -103,31 +127,32 @@ export const blindEdge: Action<HTMLElement> = (node) => {
     const to = Math.round(box ? box.blockSize : node.getBoundingClientRect().height);
     if (to === edge) return;
     const boxFrom = edge;
-    const from = edge === 0 ? 0 : shownEdge();
+    const started = edge !== 0;
+    const from = started ? shownEdge() : 0;
     const askFrom = ask;
-    const askRide = from === 0 ? 0 : shownRide(ASK, node);
-    const belowRide = from === 0 ? 0 : shownRide(BELOW, host);
+    const askRide = started ? shownRide(ASK, node) : 0;
+    const belowRide = started ? shownRide(BELOW, host) : 0;
     edge = to;
     ask = askTop();
 
     const vars = blindVariables({ from, to });
     /* Which way the printed words travel is one fact for the length of a
-       burst of changes, not one per change. A keyed question is in the grid
-       beside its successor for 150ms, so the field grows to the taller of
-       the two on the first frame and shrinks to the successor's when the
-       outgoing one leaves: two changes in opposite directions for one step
-       change. Each republished the sign, and the arriving question reads it
-       every frame of its own 150ms fade, so at the second one it flipped
-       from -12px of travel to +12 and the question stepped 6 to 9px in one
-       frame (ticket 285). The first change's direction is kept until its
-       edge has landed. */
+       burst of changes, not one per change (ticket 285). A keyed question is
+       in the grid beside its successor for 150ms, so the field grows to the
+       taller of the two on the first frame and shrinks to the successor's when
+       the outgoing one leaves: two changes in opposite directions for one step
+       change, and the arriving question reads the sign every frame of its own
+       fade, so it stepped 6 to 9px in one frame when the second one flipped
+       it. The same when nothing has been published yet: an arriving title that
+       started on the fallback's +12 flipped when the gate's first and only
+       change came in shrinking. The direction is kept while the last change's
+       edge is landing (--dur-slow; step machines never shorten it with
+       --blind-dur) or any word on the field is mid-fade. */
     const now = performance.now();
-    /* Or while any word on the field is mid-fade, which is the same thing
-       before the first change has published anything: an arriving title
-       that started on the fallback's +12 flipped when the gate's first (and
-       only) height change came in shrinking, 6.7px in one frame. */
     const fading = typeof node.getAnimations === 'function' && node.getAnimations({ subtree: true }).length > 0;
-    if (fading || now - lastChange < motionDuration('--dur-slow')) delete vars['--part-travel'];
+    if (holdsDirection({ now, lastChange, settleMs: motionDuration('--dur-slow'), fading })) {
+      delete vars['--part-travel'];
+    }
     lastChange = now;
     for (const [property, value] of Object.entries(vars)) {
       host.style.setProperty(property, value);

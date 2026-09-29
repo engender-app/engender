@@ -875,20 +875,15 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 /* The other side of the same ride: what was printed on the blind before the
    navigation goes where the edge goes, which is the height the field lost. */
 @keyframes blind-lead {
-  from { translate: 0 var(--blind-lead-from, 0px); outline-offset: 0px; }
-  to { translate: 0 calc(var(--blind-lead-from, 0px) - var(--blind-delta, 0px)); outline-offset: 0.01px; }
+  from { translate: 0 var(--blind-lead-from, 0px); outline-offset: var(--pin-from); }
+  to { translate: 0 calc(var(--blind-lead-from, 0px) - var(--blind-delta, 0px)); outline-offset: var(--pin-to); }
 }
-/* The same ride for what arrives on the field, with the same pin on the main
-   thread as blind-lead and blind-slide (ticket 285). A `translate` alone is
-   run on the compositor and the edge's clip on the main thread, and the two
-   start a frame apart: at the top of the ease the type was 16px ahead of the
-   blue it was printed on, standing on the page for the first frames of every
-   change. All three on one thread start on one frame. The screen keeps
-   blind-follow: it is covered by the blind and gains nothing from being
-   pinned. */
+/* What arrives on the field rides the edge the way blind-follow carries the
+   screen, with the main-thread pin (see THE MAIN-THREAD PIN above) so it
+   starts on the same frame as the edge's clip. The screen keeps blind-follow. */
 @keyframes part-follow {
-  from { translate: 0 var(--blind-delta, 0px); outline-offset: 0px; }
-  to { translate: 0 0; outline-offset: 0.01px; }
+  from { translate: 0 var(--blind-delta, 0px); outline-offset: var(--pin-from); }
+  to { translate: 0 0; outline-offset: var(--pin-to); }
 }
 
 /* Between the four tabs: fade-through. The outgoing screen settles to 0.97
@@ -1012,26 +1007,38 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 ::view-transition-new(blind) {
   animation: blind-slide var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
-/* `outline-offset` is here for one reason (ticket 285): it cannot be
-   composited, so it keeps this animation on the main thread. Chromium runs a
-   clip-path-only animation on the compositor, and there --blind-ease's
-   linear() is lost and the edge is drawn as a straight 380ms ramp - measured
-   on screencast frames of Transition to Today, 3.5px a frame from first
-   frame to last, while the same animation read off getComputedStyle went 16px
-   in its first frame, swelled to 5px past its mark and came back. The type
-   riding the edge is a `translate`, which does keep the curve, so the words
-   ran up to 30px ahead of the blue they were printed on and stood on the page
-   below it for a fifth of a second. On the main thread the edge is drawn on
-   the curve it was written on. The offset changes by a hundredth of a pixel
-   on an element with no outline. */
+html {
+  --pin-from: 0px;
+  --pin-to: 0.01px;
+}
+/* THE MAIN-THREAD PIN (ticket 285, ADR-0078's named exception to "transform,
+   opacity or clip-path"). Every keyframe below that carries
+   `outline-offset: var(--pin-from)` to `var(--pin-to)` is carrying this, and
+   cites it rather than saying why.
+
+   Chromium runs a clip-path-only animation on the compositor, and there
+   --blind-ease's linear() is dropped and the edge is drawn as a straight
+   380ms ramp: measured on screencast frames of Transition to Today, 3.5px a
+   frame from first frame to last, while the same animation read off
+   getComputedStyle went 16px in its first frame, swelled to 5px past its mark
+   and came back. The type riding the edge is a `translate`, which keeps the
+   curve, so the words ran up to 30px ahead of the blue they were printed on.
+   And even with the curves equal, a compositor `translate` and a main-thread
+   clip start a frame apart - 16px at the top of the ease. An animation with a
+   property that cannot be composited stays on the main thread, so a hundredth
+   of a pixel of outline-offset on an element with no outline puts the clip,
+   the field group's height and the type's ride on one thread and one frame.
+   The screen's own follow (blind-follow) is covered by the blind and stays on
+   the compositor. tests/motion-system.test.ts holds the list of keyframes
+   that carry it. */
 @keyframes blind-slide {
   from {
     clip-path: inset(0 0 calc(100vh - var(--blind-from, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
-    outline-offset: 0px;
+    outline-offset: var(--pin-from);
   }
   to {
     clip-path: inset(0 0 calc(100vh - var(--blind-to, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
-    outline-offset: 0.01px;
+    outline-offset: var(--pin-to);
   }
 }
 /* A restored scroll position puts one field above the window. Keep the
@@ -1050,12 +1057,12 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
   animation-name: blind-scroll-in;
 }
 @keyframes blind-scroll-out {
-  from { translate: 0 0; outline-offset: 0px; }
-  to { translate: 0 calc(-1 * var(--blind-delta)); outline-offset: 0.01px; }
+  from { translate: 0 0; outline-offset: var(--pin-from); }
+  to { translate: 0 calc(-1 * var(--blind-delta)); outline-offset: var(--pin-to); }
 }
 @keyframes blind-scroll-in {
-  from { translate: 0 var(--blind-delta); outline-offset: 0px; }
-  to { translate: 0 0; outline-offset: 0.01px; }
+  from { translate: 0 var(--blind-delta); outline-offset: var(--pin-from); }
+  to { translate: 0 0; outline-offset: var(--pin-to); }
 }
 
 /* What is painted on the field is printed on it, and rides with it (Alicja,

@@ -1065,6 +1065,24 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(slide[1].decls.height).toContain('var(--blind-to');
   });
 
+  /* The main-thread pin (app.css, "THE MAIN-THREAD PIN"; ADR-0078's named
+     exception): the keyframes that carry it are exactly these five, each by
+     the two variables and never a literal, so the reason is written once. */
+  it('carries the main-thread pin by name in exactly the keyframes that need it', () => {
+    const carrying = [...app.matchAll(/@keyframes ([\w-]+) \{/g)]
+      .map((m) => m[1])
+      .filter((name) => /outline-offset/.test(keyframesOf(app, name)?.body ?? ''));
+    expect(carrying.sort()).toEqual(
+      ['blind-lead', 'blind-scroll-in', 'blind-scroll-out', 'blind-slide', 'part-follow']
+    );
+    for (const name of carrying) {
+      const values = frames(keyframesOf(app, name)!.body).map((f) => f.decls['outline-offset']);
+      expect(values, name).toEqual(['var(--pin-from)', 'var(--pin-to)']);
+    }
+    expect(app).toMatch(/--pin-from:\s*0px;/);
+    expect(app).toMatch(/--pin-to:\s*0\.0\d*px;/);
+  });
+
   it('translates the full blind when one side is scrolled', () => {
     expect(declarations(ruleOf(app, 'html[data-blind-scroll]::view-transition-group-children(field)')?.body ?? '').overflow).toBe('visible');
     const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(blind)")?.body ?? '');
