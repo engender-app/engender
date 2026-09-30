@@ -1882,7 +1882,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    long as a sheet stayed open. Measured the hard way: the first version of
    this fix did exactly that, and the bar's own pixels moved far more than
    the blur crossfade this ticket exists to add. */
-[data-app-root] > [inert]::after {
+:is([data-app-root] > [inert], [data-app-savebar][inert])::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1892,7 +1892,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   transition: opacity var(--dur-slow) var(--ease-out);
 }
 @supports (backdrop-filter: blur(1px)) {
-  [data-app-root] > [inert]::after {
+  :is([data-app-root] > [inert], [data-app-savebar][inert])::after {
     backdrop-filter: blur(var(--blur-withdraw));
   }
 }
@@ -1904,7 +1904,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    `requestAnimationFrame` after `inert`, so the browser paints the
    overlay's own resting state - opacity 0, the rule above - at least once
    before this rule gives it something to transition to. */
-[data-app-root] > [inert].is-withdrawn::after {
+:is([data-app-root] > [inert], [data-app-savebar][inert]).is-withdrawn::after {
   opacity: 1;
 }
 /* Behind the screen while it is withdrawn, and this is the whole of ticket
@@ -1941,16 +1941,19 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    covering the bar, not on the frame the sheet started opening - so
    whatever the screen is scrolled to is never what paints where the bar
    was. */
-[data-app-root] > [inert] {
+:is([data-app-root] > [inert], [data-app-savebar][inert]) {
   z-index: -1;
   transition: z-index 0s var(--dur-slow);
 }
-html[data-a11y-motion='reduce'] [data-app-root] > [inert]::after {
+/* The foot is a static flex item, and the blur layer above needs something
+   to be absolute against. */
+[data-app-savebar][inert] { position: relative; }
+html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar][inert])::after {
   opacity: 0;
   backdrop-filter: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-app-root] > [inert]::after {
+  :is([data-app-root] > [inert], [data-app-savebar][inert])::after {
     opacity: 0;
     backdrop-filter: none;
   }
