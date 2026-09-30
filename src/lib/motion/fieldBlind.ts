@@ -82,6 +82,9 @@ const FIELD_NAME = 'field';
     of the glitch's visible height (Alicja, round four: "now about 50%",
     a match for 400px's own footprint, not a smaller residual bug). */
 const BLIND_CAPTURE_MAX = 260;
+/** What the capture keeps below a field taller than that: the settle's 8px of
+    overshoot and a little more. */
+const BLIND_CAPTURE_ROOM = 40;
 
 /** How far a thing painted on the field travels as it leaves or arrives, on
     top of the ride it takes with the blind. Under the field's own 16px of
@@ -103,7 +106,29 @@ export const PART_TRAVEL = 12;
    published them may remove them. */
 let current: BlindCarry | null = null;
 
+/* The newest carry made, which owns every name and variable while it lives.
+   A navigation that lands on another one skips it, and the skipped
+   transition's `finished` settles the moment the new one starts - before the
+   new one has captured its outgoing side. Its late release took the names off
+   the very elements the new carry had just named, so the new transition had
+   no outgoing blind, field or type: the edge stood at its destination from
+   its first frame while the incoming type rode in from the old one, up to
+   12px below it (ticket 285, interrupted and reversed door changes). Only the
+   newest carry may name, or give names back. */
+let latest: BlindCarry | null = null;
+
 export interface CarryOptions {
+  /** The incoming screen is about to be scrolled by a restore that has not
+      begun. The restore is eased and waits for the rows to arrive, so when
+      the incoming field is measured the region is still at the top, the
+      field is named as if it would stay there, and then the live screen
+      scrolls it up out of the window under its own parts: the month strip
+      hung 30px below a 65px sliver of blue on a return to a Journal that had
+      been scrolled to its foot, and the type was up to 700px from the edge
+      it was riding (ticket 285). A screen that is going to be scrolled
+      contributes no field, exactly as one that already is. */
+  restoring?: boolean;
+
   /** The one navigation where the sun is the same object at the same size on
       both sides, and so must not be drawn twice.
 
@@ -143,7 +168,17 @@ interface Side {
  */
 export function carryBlind(doc: Document = document, options: CarryOptions = {}): BlindCarry {
   const root = doc.documentElement;
+  /* Read before anything is named or started: starting a transition skips the
+     one in flight, and its pseudo elements are gone with it. */
+  const flight = current ? inFlight(doc) : null;
   const before = name(doc, 'a', undefined, options);
+  /* Where the edge is drawn, when a navigation lands on one that has not
+     finished (ticket 285). The DOM is already the earlier navigation's
+     destination, so `before.height` is where that edge was going; starting
+     from it takes the edge from wherever it had got to, to there, in the one
+     frame the earlier transition is skipped - a 43px yank of the blue with
+     the type on it. The new transition starts from what was on screen. */
+  const fromEdge = flight?.edge ?? before.height;
   /* Published here, not only in swap() (Alicja, 2026-09-10, on a phone
      recording, two rounds: "the field completely glitches out ... for 1-2
      frames", then "the field teleporting up at the end of the
@@ -159,16 +194,26 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
      --blind-to is set to the same value rather than left unset for the
      same reason; swap() overwrites both the instant it knows the real
      pair. */
-  root.style.setProperty('--blind-from', `${before.height}px`);
-  root.style.setProperty('--blind-to', `${before.height}px`);
+  root.style.setProperty('--blind-from', `${fromEdge}px`);
+  root.style.setProperty('--blind-to', `${fromEdge}px`);
+  /* The outgoing type was photographed at the DOM's resting positions, which
+     are the edge's old destination's; it starts as far from there as the edge
+     is (app.css, blind-lead). */
+  root.style.setProperty('--blind-lead-from', `${fromEdge - before.height}px`);
+  /* What each part and ring of the earlier navigation had reached, which the
+     new outgoing side starts from instead of from full. */
+  for (const [property, value] of Object.entries(flight?.carried ?? {})) {
+    root.style.setProperty(property, value);
+  }
   let after: Side | null = null;
 
   const carry: BlindCarry = {
     swap() {
+      if (latest !== carry) return;
       release(before);
       after = name(doc, 'b', before, options);
       for (const [property, value] of Object.entries(
-        blindVariables({ from: before.height, to: after.height })
+        blindVariables({ from: fromEdge, to: after.height })
       )) {
         root.style.setProperty(property, value);
       }
@@ -185,22 +230,70 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
       current = carry;
     },
     release() {
+      if (latest !== carry) return;
       release(before);
       if (after) release(after);
       if (current !== carry) return;
       current = null;
       delete root.dataset.blindScroll;
       for (const property of VARIABLES) root.style.removeProperty(property);
+      for (const property of carriedProperties()) root.style.removeProperty(property);
     }
   };
 
+  latest = carry;
   return carry;
+}
+
+/** How many of each name the stylesheet has a starting-point rule for. */
+export const CARRIED_PARTS = 12;
+export const CARRIED_RINGS = 8;
+const partKey = (i: number) => `--fp-o-${i}`;
+const ringKey = (i: number) => `--sun-s-${i}`;
+const thousandths = (n: number) => Math.round(n * 1000) / 1000;
+const carriedProperties = () => [
+  ...Array.from({ length: CARRIED_PARTS }, (_, i) => partKey(i)),
+  ...Array.from({ length: CARRIED_RINGS }, (_, i) => ringKey(i))
+];
+
+/**
+ * What a navigation that has not finished is showing: the edge as drawn, and
+ * how far each printed part has faded in and each ring opened, so the one
+ * that replaces it can start from there. Read off the pseudo elements, which
+ * are the only place that knows.
+ */
+function inFlight(doc: Document): { edge: number | null; carried: Record<string, string> } | null {
+  const win = doc.defaultView;
+  if (!win) return null;
+  const root = doc.documentElement;
+  /* A scrolled side has no field group to read; its travel is the whole
+     field moving and the earlier rules already own it. */
+  if (root.dataset.blindScroll) return null;
+  const read = (pseudo: string) => win.getComputedStyle(root, pseudo);
+  const px = (value: string) => {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const edge = px(read('::view-transition-group(field)').height);
+  const carried: Record<string, string> = {};
+  for (let i = 0; i < CARRIED_PARTS; i++) {
+    if (px(read(`::view-transition-group(fp-b-${i})`).height) === null) continue;
+    const opacity = Number(read(`::view-transition-new(fp-b-${i})`).opacity);
+    if (Number.isFinite(opacity) && opacity < 1) carried[partKey(i)] = String(thousandths(opacity));
+  }
+  for (let i = 0; i < CARRIED_RINGS; i++) {
+    if (px(read(`::view-transition-group(sun-b-${i})`).height) === null) continue;
+    const scale = Number(read(`::view-transition-new(sun-b-${i})`).scale);
+    if (Number.isFinite(scale) && scale < 1) carried[ringKey(i)] = String(thousandths(scale));
+  }
+  return edge === null && !Object.keys(carried).length ? null : { edge, carried };
 }
 
 /** The five a moving edge publishes. Exported so whoever publishes them can
     also give them back: a navigation's carry does it in `release`, and
     setup's own action does it when the screen is destroyed. */
 export const VARIABLES = [
+  '--blind-lead-from',
   '--blind-from',
   '--blind-to',
   '--blind-delta',
@@ -257,7 +350,7 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
      printed parts would pull their off-screen captures into the transition.
      The visible side instead travels by its full height (app.css). */
   const region = doc.querySelector<HTMLElement>(REGION);
-  const scrolled = (region?.scrollTop ?? 0) > 1;
+  const scrolled = (region?.scrollTop ?? 0) > 1 || (side === 'b' && !!options.restoring);
   if (scrolled) return { height: 0, scrollTravel: 0, scrolled: true, named: [] };
   const named: HTMLElement[] = [field];
   const box = field.getBoundingClientRect();
@@ -326,12 +419,28 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
        traces) is 239px, and reduced-height clamps below 360px scale it
        down further, never up. Nowhere near "the whole screen" is the only
        property this needs. */
-    if (blind) blind.style.clipPath = `inset(0 0 calc(100vh - ${BLIND_CAPTURE_MAX}px) 0 round 0 0 var(--r-block) var(--r-block))`;
+    /* Never less than this side's own field, and its swell: setup's last
+       step is 290px tall with a two-line title, and the capture cut it at
+       260, so the blue ended 14px above the type printed on it for the first
+       frames of the handover to Today (ticket 285). */
+    const capture = Math.max(BLIND_CAPTURE_MAX, Math.ceil(height) + BLIND_CAPTURE_ROOM);
+    if (blind) blind.style.clipPath = `inset(0 0 calc(100vh - ${capture}px) 0 round 0 0 var(--r-block) var(--r-block))`;
     take(blind, BLIND_NAME, true);
   }
-  field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`));
+  field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`, true));
   if (!options.holdSun) {
-    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
+    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => {
+      /* The field clips its sun at rest. Named, a ring is cut by the field's
+         group instead - except while a scrolled side has switched that clip
+         off, where the whole field arrives from above and a small field's
+         sun (Settings': 175px of ring in 154px of field) hung 21 to 71px
+         below the blue until the transition let go and cut it in one frame
+         (ticket 285). The cut travels in the ring's own clip, which is in its
+         capture and rides with it. */
+      const cut = Math.round((el.getBoundingClientRect?.().bottom ?? 0) - box.bottom);
+      if (cut > 0) el.style.clipPath = `inset(50% 50% ${cut}px 0)`;
+      take(el, `sun-${side}-${i}`, true);
+    });
   }
 
   return { height, scrollTravel, scrolled: false, named };

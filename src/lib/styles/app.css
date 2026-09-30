@@ -896,8 +896,15 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 /* The other side of the same ride: what was printed on the blind before the
    navigation goes where the edge goes, which is the height the field lost. */
 @keyframes blind-lead {
-  from { translate: 0 0; }
-  to { translate: 0 calc(-1 * var(--blind-delta, 0px)); }
+  from { translate: 0 var(--blind-lead-from, 0px); outline-offset: var(--pin-from); }
+  to { translate: 0 calc(var(--blind-lead-from, 0px) - var(--blind-delta, 0px)); outline-offset: var(--pin-to); }
+}
+/* What arrives on the field rides the edge the way blind-follow carries the
+   screen, with the main-thread pin (see THE MAIN-THREAD PIN above) so it
+   starts on the same frame as the edge's clip. The screen keeps blind-follow. */
+@keyframes part-follow {
+  from { translate: 0 var(--blind-delta, 0px); outline-offset: var(--pin-from); }
+  to { translate: 0 0; outline-offset: var(--pin-to); }
 }
 
 /* Between the four tabs: fade-through. The outgoing screen settles to 0.97
@@ -984,7 +991,36 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    when it ended (ux-carpet 230). The sun rings are lifted to root groups
    at z-index 5 so they paint over the titles (*.field-part at 4) rather
    than being trapped under the field group's z-index 3 (ux-carpet 241). */
-::view-transition-group(field) { z-index: 3; }
+::view-transition-group(field) {
+  z-index: 3;
+  /* One edge, one clock (ticket 285). The field's group is what clips the
+     blind - `group-children(field)` below cuts everything nested in it at
+     the group's own box - and the browser animates that box from the old
+     field's height to the new one's on its own default: 0.25s, plain ease.
+     The blind's clip, and everything printed on it, ride --dur-slow on
+     --blind-ease. What was painted was the smaller of the two, so an opening
+     field showed the slow start of the default while the text rode the fast
+     start of the settle: the search box sat 34px lower than the blue it was
+     printed on, over the page, on Transition to Today at 40ms, and a closing
+     field did the reverse by 14px. Handing the group the blind's own
+     duration and curve makes the two clips one edge. Reduced motion has
+     --dur-slow at 1ms, so the box cuts with the blind instead of sliding
+     for a quarter of a second under it. */
+  animation-duration: var(--blind-dur, var(--dur-slow));
+  animation-timing-function: var(--blind-ease, var(--ease-out));
+  /* Its height between the numbers the blind slides between, rather than the
+     two boxes the browser captured. They are the same for a navigation that
+     starts at rest, and not for one that interrupts another: the captured
+     old box is the DOM's resting field, the edge was somewhere on its way,
+     and the smaller of the group and the clip is what is painted, so the
+     edge stood at the old box's height for the first 200ms while the type
+     rode in from where the edge really was (up to 12px below it). */
+  animation-name: field-slide;
+}
+@keyframes field-slide {
+  from { height: var(--blind-from, 0px); }
+  to { height: var(--blind-to, 0px); }
+}
 ::view-transition-old(field),
 ::view-transition-new(field) { opacity: 0; animation: none; }
 ::view-transition-group-children(field) { overflow: clip; }
@@ -992,12 +1028,38 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 ::view-transition-new(blind) {
   animation: blind-slide var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
+html {
+  --pin-from: 0px;
+  --pin-to: 0.01px;
+}
+/* THE MAIN-THREAD PIN (ticket 285, ADR-0078's named exception to "transform,
+   opacity or clip-path"). Every keyframe below that carries
+   `outline-offset: var(--pin-from)` to `var(--pin-to)` is carrying this, and
+   cites it rather than saying why.
+
+   Chromium runs a clip-path-only animation on the compositor, and there
+   --blind-ease's linear() is dropped and the edge is drawn as a straight
+   380ms ramp: measured on screencast frames of Transition to Today, 3.5px a
+   frame from first frame to last, while the same animation read off
+   getComputedStyle went 16px in its first frame, swelled to 5px past its mark
+   and came back. The type riding the edge is a `translate`, which keeps the
+   curve, so the words ran up to 30px ahead of the blue they were printed on.
+   And even with the curves equal, a compositor `translate` and a main-thread
+   clip start a frame apart - 16px at the top of the ease. An animation with a
+   property that cannot be composited stays on the main thread, so a hundredth
+   of a pixel of outline-offset on an element with no outline puts the clip,
+   the field group's height and the type's ride on one thread and one frame.
+   The screen's own follow (blind-follow) is covered by the blind and stays on
+   the compositor. tests/motion-system.test.ts holds the list of keyframes
+   that carry it. */
 @keyframes blind-slide {
   from {
     clip-path: inset(0 0 calc(100vh - var(--blind-from, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+    outline-offset: var(--pin-from);
   }
   to {
     clip-path: inset(0 0 calc(100vh - var(--blind-to, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+    outline-offset: var(--pin-to);
   }
 }
 /* A restored scroll position puts one field above the window. Keep the
@@ -1016,12 +1078,12 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
   animation-name: blind-scroll-in;
 }
 @keyframes blind-scroll-out {
-  from { translate: 0 0; }
-  to { translate: 0 calc(-1 * var(--blind-delta)); }
+  from { translate: 0 0; outline-offset: var(--pin-from); }
+  to { translate: 0 calc(-1 * var(--blind-delta)); outline-offset: var(--pin-to); }
 }
 @keyframes blind-scroll-in {
-  from { translate: 0 var(--blind-delta); }
-  to { translate: 0 0; }
+  from { translate: 0 var(--blind-delta); outline-offset: var(--pin-from); }
+  to { translate: 0 0; outline-offset: var(--pin-to); }
 }
 
 /* What is painted on the field is printed on it, and rides with it (Alicja,
@@ -1055,11 +1117,28 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
 ::view-transition-new(*.field-part) {
   animation:
     field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
-    blind-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
+    part-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
+/* `--fp-from` is how far the part had faded in when a navigation landed on
+   another one that was still running (fieldBlind.ts, ticket 285): the
+   outgoing photograph is taken of the resting DOM at full opacity, and
+   fading out from full is the part popping to full in one frame. */
 @keyframes field-part-out {
+  from { opacity: var(--fp-from, 1); }
   to { opacity: 0; transform: translateY(var(--part-travel, 12px)); }
 }
+::view-transition-old(fp-a-0) { --fp-from: var(--fp-o-0, 1); }
+::view-transition-old(fp-a-1) { --fp-from: var(--fp-o-1, 1); }
+::view-transition-old(fp-a-2) { --fp-from: var(--fp-o-2, 1); }
+::view-transition-old(fp-a-3) { --fp-from: var(--fp-o-3, 1); }
+::view-transition-old(fp-a-4) { --fp-from: var(--fp-o-4, 1); }
+::view-transition-old(fp-a-5) { --fp-from: var(--fp-o-5, 1); }
+::view-transition-old(fp-a-6) { --fp-from: var(--fp-o-6, 1); }
+::view-transition-old(fp-a-7) { --fp-from: var(--fp-o-7, 1); }
+::view-transition-old(fp-a-8) { --fp-from: var(--fp-o-8, 1); }
+::view-transition-old(fp-a-9) { --fp-from: var(--fp-o-9, 1); }
+::view-transition-old(fp-a-10) { --fp-from: var(--fp-o-10, 1); }
+::view-transition-old(fp-a-11) { --fp-from: var(--fp-o-11, 1); }
 @keyframes field-part-in {
   from { opacity: 0; transform: translateY(calc(-1 * var(--part-travel, 12px))); }
 }
@@ -1125,22 +1204,41 @@ html[data-blind-hold='short'] {
      something else that asked for nothing. */
   animation: sun-ring-open var(--dur-sun-open) var(--ease-out) both;
 }
-@keyframes sun-ring-close { to { scale: 0; } }
+/* Where the field arrives from above, off a screen that was scrolled (ticket
+   285), the sun rides in with it. The rings open in place and do not follow
+   the blind, on purpose (see above), and that is safe while the blind's top
+   is fixed to the window. Here the whole field is above the window and
+   travelling in, so rings that opened in place were a sun painted onto the
+   page 8px past nothing, with the blue still off-screen. The ride is
+   --blind-follow, on the monotonic settle these travels always take, so
+   there is no overshoot to object to. Longhands, not the shorthand, so the
+   stagger the per-ring rules below set on the first animation still lands. */
+html[data-blind-scroll='enter']::view-transition-new(*.sun-ring) {
+  animation-name: sun-ring-open, part-follow;
+  animation-duration: var(--dur-sun-open), var(--blind-dur, var(--dur-slow));
+  animation-timing-function: var(--ease-out), var(--blind-ease, var(--ease-out));
+}
+/* `--sun-from` is how far a ring had opened when a navigation landed on one
+   still running, for the reason `--fp-from` is (fieldBlind.ts). */
+@keyframes sun-ring-close {
+  from { scale: var(--sun-from, 1); }
+  to { scale: 0; }
+}
 @keyframes sun-ring-open { from { scale: 0; } }
 ::view-transition-old(sun-a-0),
-::view-transition-new(sun-b-0) { animation-delay: calc(0 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-0) { animation-delay: calc(0 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-0, 1); }
 ::view-transition-old(sun-a-1),
-::view-transition-new(sun-b-1) { animation-delay: calc(1 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-1) { animation-delay: calc(1 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-1, 1); }
 ::view-transition-old(sun-a-2),
-::view-transition-new(sun-b-2) { animation-delay: calc(2 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-2) { animation-delay: calc(2 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-2, 1); }
 ::view-transition-old(sun-a-3),
-::view-transition-new(sun-b-3) { animation-delay: calc(3 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-3) { animation-delay: calc(3 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-3, 1); }
 ::view-transition-old(sun-a-4),
-::view-transition-new(sun-b-4) { animation-delay: calc(4 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-4) { animation-delay: calc(4 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-4, 1); }
 ::view-transition-old(sun-a-5),
-::view-transition-new(sun-b-5) { animation-delay: calc(5 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-5) { animation-delay: calc(5 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-5, 1); }
 ::view-transition-old(sun-a-6),
-::view-transition-new(sun-b-6) { animation-delay: calc(6 * var(--stagger-ring)), 0s; }
+::view-transition-new(sun-b-6) { animation-delay: calc(6 * var(--stagger-ring)), 0s; --sun-from: var(--sun-s-6, 1); }
 
 /* Into a detail, and back out of it: shared-axis-X. Both halves travel
    --motion-distance-md so the pair reads as one axis rather than as two
@@ -1246,34 +1344,61 @@ html[data-nav='open']::view-transition-new(screen) {
    on purpose, and the whole change is 240ms of opacity and nothing else.
    The new image is held at its first frame through the delay
    (fill-mode both), or it would sit at full opacity under the old one. */
-html[data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-a11y-motion='reduce']::view-transition-old(*.field-part) {
+html[data-a11y-motion='reduce']::view-transition-old(screen) {
   animation-name: screen-fade-away;
   animation-duration: var(--dur-crossfade) !important;
   animation-timing-function: linear;
 }
-html[data-a11y-motion='reduce']::view-transition-new(screen),
-html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
+html[data-a11y-motion='reduce']::view-transition-new(screen) {
   animation-name: screen-crossfade;
   animation-duration: var(--dur-crossfade) !important;
   animation-delay: var(--dur-crossfade);
   animation-fill-mode: both;
   animation-timing-function: linear;
 }
+/* What is printed on the field crossfades the same way and keeps its ride
+   (ticket 285). The blind's edge is cut to its new height by --dur-slow at
+   1ms; a part that lost its ride with its movement stayed where it was
+   printed, fading for 120ms below an edge that had already gone, which is
+   text on the page: the search box 70px under the edge on Today to Journal.
+   The ride is the edge's own move, so it is cut with the edge and only the
+   opacity is substituted. */
+html[data-a11y-motion='reduce']::view-transition-old(*.field-part) {
+  animation-name: screen-fade-away, blind-lead;
+  animation-duration: var(--dur-crossfade), var(--dur-slow) !important;
+  animation-timing-function: linear, linear;
+}
+html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
+  animation-name: screen-crossfade, part-follow;
+  animation-duration: var(--dur-crossfade), var(--dur-slow) !important;
+  animation-delay: var(--dur-crossfade), 0s;
+  animation-fill-mode: both;
+  animation-timing-function: linear, linear;
+}
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(screen),
-  ::view-transition-old(*.field-part) {
+  ::view-transition-old(screen) {
     animation-name: screen-fade-away;
     animation-duration: var(--dur-crossfade) !important;
     animation-timing-function: linear;
   }
-  ::view-transition-new(screen),
-  ::view-transition-new(*.field-part) {
+  ::view-transition-new(screen) {
     animation-name: screen-crossfade;
     animation-duration: var(--dur-crossfade) !important;
     animation-delay: var(--dur-crossfade);
     animation-fill-mode: both;
     animation-timing-function: linear;
+  }
+  ::view-transition-old(*.field-part) {
+    animation-name: screen-fade-away, blind-lead;
+    animation-duration: var(--dur-crossfade), var(--dur-slow) !important;
+    animation-timing-function: linear, linear;
+  }
+  ::view-transition-new(*.field-part) {
+    animation-name: screen-crossfade, part-follow;
+    animation-duration: var(--dur-crossfade), var(--dur-slow) !important;
+    animation-delay: var(--dur-crossfade), 0s;
+    animation-fill-mode: both;
+    animation-timing-function: linear, linear;
   }
 }
 @keyframes screen-crossfade { from { opacity: 0; } }

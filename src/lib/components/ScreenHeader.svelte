@@ -151,7 +151,7 @@
        inside this element to 24px, or 18.66px bold. Under disguise the
        shell publishes --surface-2 and --text instead, so the same markup
        draws a grey header and nothing here has to know. -->
-  <div class="screen-field" data-screen-field>
+  <div class="screen-field" data-screen-field use:resize>
     <!-- The blind (redesign ticket 28): the field's colour, split off from
          the box that measures it so the two can move on different clocks
          during a navigation. Decoration and nothing else - what it paints

@@ -39,6 +39,7 @@
 import type { Action } from 'svelte/action';
 
 import { blindVariables, VARIABLES } from './fieldBlind';
+import { isReducedMotion, motionDuration } from './tokens';
 
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
@@ -48,6 +49,38 @@ const HOLD = 'blindHold';
     (components.css, redesign ticket 34) and this action is the only thing
     that measures where the words sit inside it. */
 const ASK = '.step-field-ask';
+/** How long after a heading arrives its rest is left alone. */
+const ARRIVAL_SETTLE_MS = 600;
+/** Everything under the edge, which rides it as one sheet. */
+const BELOW = '.step-field-below';
+
+/** Whether a change keeps the direction the last one published. */
+export function holdsDirection({
+  now,
+  lastChange,
+  settleMs,
+  fading
+}: {
+  now: number;
+  lastChange: number;
+  settleMs: number;
+  fading: boolean;
+}): boolean {
+  return fading || now - lastChange < settleMs;
+}
+
+/** The registered edge as drawn, from its computed custom property, or the
+    target when the browser has nothing to say. */
+export function edgeShown(computed: string, target: number): number {
+  const value = parseFloat(computed);
+  return Number.isFinite(value) ? value : target;
+}
+
+/** How far a rider is translated, from its computed `translate`. */
+export function rideShown(computed: string | null | undefined): number {
+  if (!computed || computed === 'none') return 0;
+  return parseFloat(computed.split(/\s+/)[1] ?? '0') || 0;
+}
 
 /**
  * Moves one field's bottom edge whenever the field's height changes, and
@@ -63,6 +96,9 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   let ask = 0;
   let frame = 0;
   let paintedFrame = 0;
+  /* When the last change began, for the direction rule below. */
+  let lastChange = -Infinity;
+  let lastArrival = -Infinity;
 
   /* Where the question's own box sits inside the field, in layout terms.
      `offsetTop` rather than a client rect, because the ride is a translate
@@ -71,16 +107,96 @@ export const blindEdge: Action<HTMLElement> = (node) => {
      Relative to the field, whose own top never moves. */
   const askTop = () => (node.querySelector<HTMLElement>(ASK)?.offsetTop ?? 0);
 
+  /* Where things are drawn right now, not where they were headed. A second
+     change that lands while the first is still travelling has to start from
+     what is on screen: the edge's registered property and the two riders'
+     `translate` are all mid-transition, and the computed style is the one
+     place that says how far. Written back as the "old geometry" of the
+     hold, they make the interrupting change a continuation. Written as the
+     previous change's target instead, they teleport whatever had not
+     arrived yet to where it was going - 7.7px, in one frame, on the
+     incoming question when the outgoing one left the grid at 150ms and
+     the field's height changed a second time (ticket 285). */
+  /* Where the field's bottom edge would be with only this heading on it: its
+     own words' bottom and the field's padding under it, not the box's height,
+     which is the taller of the arriving and the leaving until the leaving
+     goes. The heading is stretched to the grid row, so it is the words' own
+     extent that counts, less the ride they are carrying now. Each heading
+     carries its own (components.css, --own-rest). */
+  const restOf = (el: HTMLElement, fallback: number) => {
+    if (!el.textContent?.trim()) return fallback;
+    /* Its natural height: the grid stretches it to the tallest heading in the
+       cell, and it is the height it has alone that sets the field's. */
+    const was = el.style.alignSelf;
+    el.style.alignSelf = 'start';
+    const natural = el.offsetHeight;
+    el.style.alignSelf = was;
+    if (!natural) return fallback;
+    const padding = parseFloat(getComputedStyle(node).paddingBottom) || 0;
+    /* Layout offsets, which no ride, travel or fade-in transform is in: the
+       heading's top in its container and the container's top in the field. */
+    const ask = el.parentElement as HTMLElement;
+    return Math.round(ask.offsetTop + el.offsetTop + natural + padding);
+  };
+  /* Only headings that arrived on a field already showing one ride it; the
+     one a step is entered on, and the one leaving, stay where they were
+     printed. `arrived` is the newly inserted nodes; without it, whichever
+     headings already carry a rest are measured again after a resize. */
+  const setRests = (fallback: number, arrived?: Iterable<Node>) => {
+    const ask = node.querySelector<HTMLElement>(ASK);
+    if (!ask) return;
+    for (const el of arrived ?? ask.children) {
+      if (!(el instanceof HTMLElement) || el.parentElement !== ask) continue;
+      if (!arrived && !el.style.getPropertyValue('--own-rest')) continue;
+      el.style.setProperty('--own-rest', `${restOf(el, fallback)}px`);
+    }
+  };
+  const shownEdge = () => {
+    return edgeShown(getComputedStyle(host).getPropertyValue('--blind-edge'), edge);
+  };
+  const shownRide = (selector: string, within: ParentNode) => {
+    const el = within.querySelector<HTMLElement>(selector);
+    return el ? rideShown(getComputedStyle(el).translate) : 0;
+  };
+
   const observer = new ResizeObserver((entries) => {
     const box = entries[0]?.borderBoxSize?.[0];
     const to = Math.round(box ? box.blockSize : node.getBoundingClientRect().height);
     if (to === edge) return;
-    const from = edge;
+    const boxFrom = edge;
+    const started = edge !== 0;
+    const from = started ? shownEdge() : 0;
     const askFrom = ask;
+    const askRide = started ? shownRide(ASK, node) : 0;
+    const belowRide = started ? shownRide(BELOW, host) : 0;
     edge = to;
     ask = askTop();
+    /* A heading that has just arrived was measured as it was inserted, and
+       the box changing because of it (or because the one it replaces leaves)
+       moves nothing it stands on. Measured again for a change that has no
+       arrival behind it: a wrap on resize, a raised keyboard. */
+    if (performance.now() - lastArrival > ARRIVAL_SETTLE_MS) setRests(to);
 
-    for (const [property, value] of Object.entries(blindVariables({ from, to }))) {
+    const vars = blindVariables({ from, to });
+    /* Which way the printed words travel is one fact for the length of a
+       burst of changes, not one per change (ticket 285). A keyed question is
+       in the grid beside its successor for 150ms, so the field grows to the
+       taller of the two on the first frame and shrinks to the successor's when
+       the outgoing one leaves: two changes in opposite directions for one step
+       change, and the arriving question reads the sign every frame of its own
+       fade, so it stepped 6 to 9px in one frame when the second one flipped
+       it. The same when nothing has been published yet: an arriving title that
+       started on the fallback's +12 flipped when the gate's first and only
+       change came in shrinking. The direction is kept while the last change's
+       edge is landing (--dur-slow; step machines never shorten it with
+       --blind-dur) or any word on the field is mid-fade. */
+    const now = performance.now();
+    const fading = typeof node.getAnimations === 'function' && node.getAnimations({ subtree: true }).length > 0;
+    if (holdsDirection({ now, lastChange, settleMs: motionDuration('--dur-slow'), fading })) {
+      delete vars['--part-travel'];
+    }
+    lastChange = now;
+    for (const [property, value] of Object.entries(vars)) {
       host.style.setProperty(property, value);
     }
     /* What the question rides, which is not what the page under the field
@@ -90,19 +206,22 @@ export const blindEdge: Action<HTMLElement> = (node) => {
        itself getting taller, and a box does not move because it grew
        downwards. Measured on the flipbook: riding the field's own delta
        sent the question 91px past where it had been, which is a teleport
-       in one frame and the one thing this ticket may not ship. */
-    host.style.setProperty('--part-delta', `${askFrom - ask}px`);
+       in one frame and the one thing this ticket is not allowed to ship.
+       Each is added to what the rider is already carrying, so a change
+       that interrupts another continues it. */
+    host.style.setProperty('--part-delta', `${askRide + (askFrom - ask)}px`);
+    host.style.setProperty('--blind-delta', `${belowRide - (to - boxFrom)}px`);
 
     /* The first measurement is where the field starts, not a move: there is
        no earlier frame for the edge to have travelled from. */
-    if (from === 0) {
+    if (boxFrom === 0) {
       host.style.setProperty('--blind-edge', `${to}px`);
       host.style.setProperty('--part-delta', '0px');
       return;
     }
 
-    /* Painted this frame: the edge where it was, everything that rides it
-       back where it was, and no transitions to interrupt. */
+    /* Painted this frame: the edge where it is, everything that rides it
+       back where it is, and no transitions to interrupt. */
     host.style.setProperty('--blind-edge', `${from}px`);
     host.dataset[HOLD] = '';
     cancelAnimationFrame(frame);
@@ -120,11 +239,43 @@ export const blindEdge: Action<HTMLElement> = (node) => {
 
   observer.observe(node, { box: 'border-box' });
 
+  /* A new heading arrives before the field's box has necessarily changed (a
+     gate's two titles can be the same height), and it has to know where the
+     edge will rest with it alone on the field from the frame it is inserted,
+     not from the frame the old one leaves. A microtask, so before layout and
+     paint. */
+  const arrivals =
+    typeof MutationObserver === 'function' && node.querySelector?.(ASK)
+      ? new MutationObserver((records) => {
+          if (edge === 0) return;
+          /* A heading leaving is a mutation too, and is not an arrival. */
+          if (!records.some((r) => r.addedNodes.length)) return;
+          lastArrival = performance.now();
+          /* The heading being replaced stays where it was printed and fades:
+             riding a growing edge it would be carried out over the page. */
+          const added = new Set(records.flatMap((r) => [...r.addedNodes]));
+          for (const el of node.querySelector(ASK)?.children ?? []) {
+            if (added.has(el) || !(el instanceof HTMLElement)) continue;
+            if (el.style.getPropertyValue('--own-rest')) {
+              /* Held where it is drawn, so one that was mid-ride when another
+                 change landed stops there instead of stepping to its rest. */
+              el.style.translate = getComputedStyle(el).translate;
+              el.style.removeProperty('--own-rest');
+            }
+          }
+          /* The edge is cut, not travelled, under reduced motion. */
+          if (isReducedMotion()) return;
+          setRests(edge, records.flatMap((r) => [...r.addedNodes]));
+        })
+      : null;
+  arrivals?.observe(node.querySelector(ASK)!, { childList: true });
+
   return {
     destroy() {
       cancelAnimationFrame(frame);
       cancelAnimationFrame(paintedFrame);
       observer.disconnect();
+      arrivals?.disconnect();
       delete host.dataset[HOLD];
       /* Everything this published, given back. Setup mounts once per
          session, so nothing has been seen to depend on it - but a
