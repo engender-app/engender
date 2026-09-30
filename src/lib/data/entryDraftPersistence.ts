@@ -37,6 +37,8 @@ export interface PersistedEntryDraft {
   tryoutFeltSense?: EntryTryoutFeltSenseInput | null;
   doseLog?: EntryDoseLogInput | null;
   procedureRecovery?: { procedureId: string; notes?: string } | null;
+  effectMarkers?: EntryEffectMarkerInput[];
+  /** Written before ticket 289, which made it a list; read, never written. */
   effectMarker?: EntryEffectMarkerInput | null;
   cycleEvent?: EntryCycleEventInput | null;
   presentationId?: string | null;
@@ -64,7 +66,7 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
     procedureRecovery: draft.procedureRecovery
       ? { procedureId: draft.procedureRecovery.procedureId, notes: draft.procedureRecovery.notes }
       : null,
-    effectMarker: draft.effectMarker ? { ...draft.effectMarker } : null,
+    effectMarkers: draft.effectMarkers.map((marker) => ({ ...marker })),
     cycleEvent: draft.cycleEvent ? { ...draft.cycleEvent } : null,
     presentationId: draft.presentationId,
     openSection: draft.openSection
@@ -100,7 +102,9 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.tryoutFeltSense = persisted.tryoutFeltSense ? { ...persisted.tryoutFeltSense } : null;
   draft.doseLog = persisted.doseLog ? { ...persisted.doseLog } : null;
   draft.procedureRecovery = persisted.procedureRecovery ? { ...persisted.procedureRecovery } : null;
-  draft.effectMarker = persisted.effectMarker ? { ...persisted.effectMarker } : null;
+  draft.effectMarkers = (persisted.effectMarkers ?? (persisted.effectMarker ? [persisted.effectMarker] : [])).map(
+    (marker) => ({ ...marker })
+  );
   draft.cycleEvent = persisted.cycleEvent ? { ...persisted.cycleEvent } : null;
   draft.presentationId = persisted.presentationId ?? null;
   /* Checked rather than trusted: the mirror is hand-editable storage, and a

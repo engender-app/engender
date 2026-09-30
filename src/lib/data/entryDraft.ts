@@ -57,7 +57,7 @@ export interface EntryDraft {
   tryoutFeltSense: EntryTryoutFeltSenseInput | null;
   doseLog: EntryDoseLogInput | null;
   procedureRecovery: EntryProcedureRecoveryInput | null;
-  effectMarker: EntryEffectMarkerInput | null;
+  effectMarkers: EntryEffectMarkerInput[];
   cycleEvent: EntryCycleEventInput | null;
   /** The fluidity engine's chip (phase 5 deepening ticket 17, ADR-0048): a
       domain id or null, never pre-filled for a new entry - only an existing
@@ -104,7 +104,8 @@ export interface EntryDraft {
   setTryoutFeltSense(feltSense: EntryTryoutFeltSenseInput | null): void;
   setDoseLog(doseLog: EntryDoseLogInput | null): void;
   setProcedureRecovery(recovery: EntryProcedureRecoveryInput | null): void;
-  setEffectMarker(marker: EntryEffectMarkerInput | null): void;
+  /** Choose an effect, or take it back when it is already chosen. */
+  toggleEffectMarker(effect: string, firstNoticedEpochDay: number): void;
   setCycleEvent(cycleEvent: EntryCycleEventInput | null): void;
   setPresentation(id: string | null): void;
   setOpenSection(section: EntrySection | null): void;
@@ -144,7 +145,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     tryoutFeltSense: null,
     doseLog: null,
     procedureRecovery: null,
-    effectMarker: null,
+    effectMarkers: [],
     cycleEvent: null,
     presentationId: existing ? existing.presentationId : null,
     openSection: null,
@@ -257,8 +258,10 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.procedureRecovery = recovery;
     },
 
-    setEffectMarker(marker) {
-      this.effectMarker = marker;
+    toggleEffectMarker(effect, firstNoticedEpochDay) {
+      this.effectMarkers = this.effectMarkers.some((marker) => marker.effect === effect)
+        ? this.effectMarkers.filter((marker) => marker.effect !== effect)
+        : [...this.effectMarkers, { effect, firstNoticedEpochDay }];
     },
 
     setCycleEvent(cycleEvent) {
@@ -287,7 +290,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.tryoutFeltSense = null;
       this.doseLog = null;
       this.procedureRecovery = null;
-      this.effectMarker = null;
+      this.effectMarkers = [];
       this.cycleEvent = null;
       return id;
     },
@@ -316,7 +319,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       if (this.tryoutFeltSense) payload.tryoutFeltSense = this.tryoutFeltSense;
       if (this.doseLog) payload.doseLog = this.doseLog;
       if (this.procedureRecovery) payload.procedureRecovery = this.procedureRecovery;
-      if (this.effectMarker) payload.effectMarker = this.effectMarker;
+      if (this.effectMarkers.length > 0) payload.effectMarkers = this.effectMarkers;
       if (this.cycleEvent) payload.cycleEvent = this.cycleEvent;
       return payload;
     }
