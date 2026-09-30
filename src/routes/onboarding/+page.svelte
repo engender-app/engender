@@ -84,6 +84,7 @@
   import { HOME_AREA_ROLE, roleAt, tileRoleAt } from '$lib/theme/roles';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
+  import { firstRunScales } from '$lib/onboarding/firstRunScales';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import DisguisePreview from '$lib/components/DisguisePreview.svelte';
@@ -840,7 +841,11 @@
                      readable on the other. No "add your own" row here: it
                      leaves the flow, and the first run has nowhere to come
                      back to. -->
-                <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
+                <ScaleChecklist
+                  ticked={tickedScales}
+                  onToggle={toggleScale}
+                  offered={vocabulary.ready ? undefined : firstRunScales()}
+                />
               {:else if step === 'areas'}
                 <p class="setup-caption" id="setup-pins-title">{m.ob_today_pins_title()}</p>
                 <!-- The hub's own groups and rows, ticked rather than tapped

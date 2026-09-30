@@ -14,39 +14,7 @@
    message fails the typecheck rather than showing a raw key to someone. */
 
 import type { GenderDimension, GenderPreset, Tag, TagGroup } from '../types.ts';
-
-/* The six default scales an entry can carry a number on.
-
-   Five of these are the original set, which predates this tracker and was
-   never argued from a source: four of them describe the content of a
-   gender (how feminine, how masculine, how binary, how strongly present)
-   and the fifth describes a feeling about it. `gender_stability` came out
-   of `.scratch/phase-5/gender-scale-axes-research.md` and describes
-   movement. Every other scale here records a position; none of them can say
-   that the position moved. `binary_nonbinary` and `agender_gendered` each
-   collapse a day that shifted to whatever it averaged out at, which is the
-   same reading a flat day gets.
-
-   Deliberately not a certainty or doubt scale, which is the neighbouring
-   idea and a different one. The GRRS measures rumination about one's own
-   gender as a harm, and ADR-0037 has just removed the surface that asked
-   somebody to narrate their doubt; a daily slider for how sure you are
-   would put that question back on the log form. Steady and shifting are
-   descriptive and neither is the better end.
-
-   `social_recognition` was removed from the default vocabulary. Existing
-   journal rows and their recorded values remain readable through the
-   retired label mapping in labels.ts. */
-export const BUILT_IN_DIMENSIONS = [
-  { key: 'euphoria_dysphoria', min: 0, max: 100 },
-  { key: 'femininity', min: 0, max: 100 },
-  { key: 'masculinity', min: 0, max: 100 },
-  { key: 'binary_nonbinary', min: 0, max: 100 },
-  { key: 'agender_gendered', min: 0, max: 100 },
-  { key: 'gender_stability', min: 0, max: 100 }
-] as const;
-
-export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
+import { BUILT_IN_DIMENSIONS } from './builtinTemplates.ts';
 
 /* Frozen. These eight stopped being a picker in ticket 35 and survive only
    to resolve a preset key out of an archive written before that, so each
@@ -305,12 +273,14 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
 
 export type BuiltInPersonalEffectKey = (typeof BUILT_IN_PERSONAL_EFFECT_TYPES)[number]['key'];
 
-/* The milestone, regimen and entry templates and the euphoria tag keys live
-   in builtinTemplates.ts (ux-carpet ticket 223): they are what the boot-time
-   vocabulary and Today read, and kept in this file they carried the whole
-   catalogue below into every first load. Re-exported so nothing that reads
-   the catalogue has to know. */
+/* The dimension keys, the milestone, regimen and entry templates and the
+   euphoria tag keys live in builtinTemplates.ts (ux-carpet ticket 223): they
+   are what the boot-time vocabulary, Today and the first run's scales step
+   read, and kept in this file they carried the whole catalogue below into
+   every first load. Re-exported so nothing that reads the catalogue has to
+   know. */
 export {
+  BUILT_IN_DIMENSIONS,
   EUPHORIA_TAG_KEYS,
   MILESTONE_TEMPLATE_KEYS,
   MILESTONE_TEMPLATE_LEAN,
@@ -319,6 +289,7 @@ export {
   ENTRY_TEMPLATES,
   milestoneTemplateRows,
   regimenTemplateRows,
+  type BuiltInDimensionKey,
   type MilestoneTemplateKey,
   type RegimenTemplateKey,
   type EntryTemplateKey
