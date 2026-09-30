@@ -45,7 +45,7 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
   draft.setTryoutFeltSense({ tryoutId: 't1', mood: 5, note: 'great' });
   draft.setDoseLog({ dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
   draft.setProcedureRecovery({ procedureId: 'p1', notes: 'healing well' });
-  draft.setEffectMarker({ effect: 'skin_softening', firstNoticedEpochDay: 20_001 });
+  draft.toggleEffectMarker('skin_softening', 20_001);
   draft.setCycleEvent({ kind: 'spotting', epochDay: 20_001 });
 
   const persisted = serializeDraft(draft);
@@ -64,7 +64,7 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
     tryoutFeltSense: { tryoutId: 't1', mood: 5, note: 'great' },
     doseLog: { dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' },
     procedureRecovery: { procedureId: 'p1', notes: 'healing well' },
-    effectMarker: { effect: 'skin_softening', firstNoticedEpochDay: 20_001 },
+    effectMarkers: [{ effect: 'skin_softening', firstNoticedEpochDay: 20_001 }],
     cycleEvent: { kind: 'spotting', epochDay: 20_001 },
     presentationId: null,
     openSection: null
@@ -126,7 +126,10 @@ test('applying a persisted draft overlays mood, note, dims, tags, body regions a
     tryoutFeltSense: { tryoutId: 't1', mood: 4, note: 'nice' },
     doseLog: { dose: 100, doseUnit: 'mg', route: 'im' },
     procedureRecovery: { procedureId: 'proc-1', notes: 'day 1' },
-    effectMarker: { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 },
+    effectMarkers: [
+      { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 },
+      { effect: 'hair_changes', firstNoticedEpochDay: 20_001 }
+    ],
     cycleEvent: { kind: 'period_occurred', epochDay: 20_001 },
     presentationId: 'femme'
   };
@@ -141,7 +144,10 @@ test('applying a persisted draft overlays mood, note, dims, tags, body regions a
   assert.deepEqual(draft.tryoutFeltSense, { tryoutId: 't1', mood: 4, note: 'nice' });
   assert.deepEqual(draft.doseLog, { dose: 100, doseUnit: 'mg', route: 'im' });
   assert.deepEqual(draft.procedureRecovery, { procedureId: 'proc-1', notes: 'day 1' });
-  assert.deepEqual(draft.effectMarker, { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 });
+  assert.deepEqual(draft.effectMarkers, [
+    { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 },
+    { effect: 'hair_changes', firstNoticedEpochDay: 20_001 }
+  ]);
   assert.deepEqual(draft.cycleEvent, { kind: 'period_occurred', epochDay: 20_001 });
   assert.equal(draft.presentationId, 'femme');
 });
@@ -249,4 +255,12 @@ test('the open chip travels with the draft, so a resumed entry lands where the p
   const { openSection: _dropped, ...withoutChip } = serializeDraft(draft);
   applyPersistedDraft(older, withoutChip);
   assert.equal(older.openSection, null);
+});
+
+test('a mirror written before ticket 289 holds one effectMarker and loads as a one-item list', () => {
+  const draft = createEntryDraft(20_001);
+  const legacy = { ...serializeDraft(createEntryDraft(20_001)), effectMarker: { effect: 'skin_softening', firstNoticedEpochDay: 20_001 } };
+  delete (legacy as { effectMarkers?: unknown }).effectMarkers;
+  applyPersistedDraft(draft, legacy as PersistedEntryDraft);
+  assert.deepEqual(draft.effectMarkers, [{ effect: 'skin_softening', firstNoticedEpochDay: 20_001 }]);
 });
