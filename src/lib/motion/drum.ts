@@ -22,31 +22,36 @@
    the faces rising; -1 is the value going down and the faces falling, the
    new one dropping in from above. Under reduced motion the faces do not
    travel and fade instead, which is tier 3's substitute: the block still
-   says what changed, and says it as a change rather than a cut. */
+   says what changed, and says it as a change rather than a cut.
+
+   The date picker's month title turns sideways (phase 12 pickers, ticket
+   01): `axis: 'x'` runs the same faces across the block instead, so the
+   title leaves the way the grid under it went. `dir` 1 is the next month,
+   the faces travelling left. */
 import type { TransitionConfig } from 'svelte/transition';
 import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 
-type Turn = { dir?: 1 | -1 };
+type Turn = { dir?: 1 | -1; axis?: 'x' | 'y' };
 
 /** The new face, rising in from under the block's bottom edge (or dropping
     in over its top edge, turning the other way). */
-export function drumIn(_node: Element, { dir = 1 }: Turn = {}): TransitionConfig {
+export function drumIn(_node: Element, { dir = 1, axis = 'y' }: Turn = {}): TransitionConfig {
   if (isReducedMotion()) return fadeOnly(crossfadeDuration());
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
-    css: (t, u) => `translate: 0 ${round(dir * u * 100)}%`
+    css: (t, u) => face(axis, dir * u * 100)
   };
 }
 
 /** The old face, rising out through the block's top edge (or falling out
     through its bottom one). */
-export function drumOut(_node: Element, { dir = 1 }: Turn = {}): TransitionConfig {
+export function drumOut(_node: Element, { dir = 1, axis = 'y' }: Turn = {}): TransitionConfig {
   if (isReducedMotion()) return fadeOnly(crossfadeDuration());
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
-    css: (t, u) => `translate: 0 ${round(-dir * u * 100)}%`
+    css: (t, u) => face(axis, -dir * u * 100)
   };
 }
 
@@ -54,3 +59,6 @@ export function drumOut(_node: Element, { dir = 1 }: Turn = {}): TransitionConfi
    48px travel in visible half-pixel jumps, and a round frame still writes
    as a round value. */
 const round = (n: number) => Number(n.toFixed(2));
+
+const face = (axis: 'x' | 'y', percent: number) =>
+  axis === 'x' ? `translate: ${round(percent)}% 0` : `translate: 0 ${round(percent)}%`;

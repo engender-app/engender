@@ -30,6 +30,15 @@ describe('tier 3, a glyph passing through a block', () => {
     expect(frame(css!, 1)).toBe('translate: 0 0%');
   });
 
+  /* The date picker's title: the next month comes in from the right and
+     the old one leaves to the left, the way the grid under it went. */
+  it('turns sideways on the x axis', () => {
+    stubDocument();
+    expect(frame(drumIn(node, { axis: 'x' }).css!, 0)).toBe('translate: 100% 0');
+    expect(frame(drumOut(node, { axis: 'x' }).css!, 0)).toBe('translate: -100% 0');
+    expect(frame(drumIn(node, { axis: 'x', dir: -1 }).css!, 0)).toBe('translate: -100% 0');
+  });
+
   it('rises out through the top edge, the way the new face came', () => {
     stubDocument();
     const { css } = drumOut(node);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { epochDayFromLocalDate } from '../data/epochDay';
-import { dayStep, monthCells, monthKey, monthOfDay, parseIsoDate, rubberBand, settleStep } from './datePicker';
+import { dayInMonth, dayStep, monthCells, monthKey, monthOfDay, parseIsoDate, rubberBand, settleStep } from './datePicker';
 
 const day = (y: number, m: number, d: number) => epochDayFromLocalDate(new Date(y, m, d));
 
@@ -73,6 +73,13 @@ describe('dayStep', () => {
 
   it('ignores every other key', () => {
     expect(dayStep(at, 'Enter', false)).toBeNull();
+  });
+});
+
+describe('dayInMonth', () => {
+  it('keeps the day of the month, or the last day the month has', () => {
+    expect(dayInMonth(day(2026, 0, 31), monthKey(2026, 3))).toBe(day(2026, 3, 30));
+    expect(dayInMonth(day(2026, 0, 15), monthKey(1999, 11))).toBe(day(1999, 11, 15));
   });
 });
 

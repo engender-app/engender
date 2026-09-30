@@ -52,12 +52,15 @@ export function parseIsoDate(text: string): number | null {
   return epochDayFromLocalDate(new Date(year, month, date));
 }
 
-/** The same day of the month `months` away, pulled back to the month's last
-    day where it has fewer. */
+/** The same day of the month in another month, pulled back to that
+    month's last day where it has fewer. */
+export function dayInMonth(epochDay: number, key: number): number {
+  const date = localDateFromEpochDay(epochDay).getDate();
+  return epochDayFromLocalDate(new Date(keyYear(key), keyMonth(key), Math.min(date, daysIn(key))));
+}
+
 function shiftMonths(epochDay: number, months: number): number {
-  const d = localDateFromEpochDay(epochDay);
-  const key = monthKey(d.getFullYear(), d.getMonth()) + months;
-  return epochDayFromLocalDate(new Date(keyYear(key), keyMonth(key), Math.min(d.getDate(), daysIn(key))));
+  return dayInMonth(epochDay, monthOfDay(epochDay) + months);
 }
 
 /** Where a key moves the cursor, or null for a key that is not a move:
