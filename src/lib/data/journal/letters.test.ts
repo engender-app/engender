@@ -97,3 +97,12 @@ test('two letters unlocking the same day report that day once', async () => {
 
   assert.deepEqual(await journal.letters.getUnlockDaysInRange(0, 300), [200]);
 });
+
+test('hasAny is false with no letters, true with one, and false again once the last is deleted', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.letters.hasAny(), false);
+  const id = await journal.letters.addLetter({ epochDay: 100, text: 'dear future me', unlockEpochDay: 200 });
+  assert.equal(await journal.letters.hasAny(), true);
+  await journal.letters.deleteLetter(id);
+  assert.equal(await journal.letters.hasAny(), false);
+});

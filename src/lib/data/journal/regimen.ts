@@ -8,7 +8,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { EpisodeEndReason, RegimenEpisode } from '../types';
-import { assertChanged, mintUuid, now } from './support';
+import { assertChanged, bool, mintUuid, now } from './support';
 
 type RegimenEpisodeInput = Omit<RegimenEpisode, 'id'> & { id?: string };
 
@@ -16,6 +16,10 @@ export interface RegimenArea {
   /** Ordered by start day, ties broken by insertion order - the order
       earliestEpisode (regimenEpisode.ts) requires. */
   getEpisodes(): Promise<RegimenEpisode[]>;
+  /** Whether any episode is stored, running or ended. One `EXISTS`, for the
+      surface that only asks whether a regimen was ever started (Home's
+      Getting started row). */
+  hasAny(): Promise<boolean>;
   /** Returns the episode's id. Updating an unknown id throws. Carries
       `endEpochDay` through like any other field - a straight edit of an
       episode's dated range, not the "end this episode" action below - and
@@ -68,6 +72,11 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
 
   return {
     getEpisodes,
+
+    async hasAny() {
+      const rows = await driver.query<{ found: number }>('SELECT EXISTS(SELECT 1 FROM regimen_episode) AS found');
+      return bool(rows[0].found);
+    },
 
     async upsertEpisode(input) {
       // A reason with no end day is meaningless (ticket 43), so this is

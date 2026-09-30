@@ -346,3 +346,22 @@ test('two episodes for different drugs can both be active on the same day (phase
   assert.equal(attribution.episode, null);
   assert.equal(attribution.ambiguous, true);
 });
+
+test('hasAny is false with no episode and true with one, running or ended', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.regimen.hasAny(), false);
+  const id = await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 2 weeks',
+    startEpochDay: 19000,
+    endEpochDay: null,
+    endReason: null
+  });
+  assert.equal(await journal.regimen.hasAny(), true);
+  await journal.regimen.endEpisode(id, 19100);
+  assert.equal(await journal.regimen.hasAny(), true);
+});

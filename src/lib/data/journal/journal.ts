@@ -453,7 +453,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     photos: makePhotosArea(driver, files),
     photoLibrary: deferredArea<PhotoLibraryArea>(async () =>
       (await import('./photoLibrary')).makePhotoLibraryArea(driver)
-    )(['inJournal', 'starred']),
+    )(['inJournal', 'starred', 'hasAny']),
     documents,
     presentations: makePresentationsArea(driver),
     entryTemplates: makeEntryTemplatesArea(driver),
