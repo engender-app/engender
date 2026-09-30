@@ -168,6 +168,28 @@ const MONO_INKS = [
 /** The review set's shapes, and what markSvg calls each of them. */
 const SHAPES = { tile: 'tile', round: 'round', maskable: 'bleed' };
 
+/** The logotype as a picture, for the README (ticket 37): the trans mark
+    beside the word, in the proportions app.css's .lockup sets - mark 1.23em,
+    gap 0.5em, track -0.03em, word lifted 0.115em - at four times the rail's
+    26px. A PNG rather than an SVG because the word is Outfit and GitHub
+    draws an SVG in an <img> without loading fonts. The ink is the trans
+    palette's --text, light and dark, on a transparent ground. */
+const LOCKUP_INKS = [['light', '#1B2B36'], ['dark', '#E8F1F7']];
+async function lockups(page, stripes) {
+  const font = readFileSync(join(STATIC, 'fonts/outfit-latin.woff2')).toString('base64');
+  for (const [theme, ink] of LOCKUP_INKS) {
+    await page.setContent(`<style>
+      @font-face { font-family: Outfit; font-weight: 100 900; src: url(data:font/woff2;base64,${font}) format('woff2'); }
+      body { margin: 0; background: transparent; }
+      #l { display: inline-flex; align-items: center; gap: 0.5em; padding: 24px; color: ${ink};
+           font: 800 104px Outfit; letter-spacing: -0.03em; }
+      #l span { padding-bottom: 0.23em; }
+    </style><div id="l">${markSvg(stripes, 'tile', 128, { id: 'lockup' })}<span>engender</span></div>`);
+    await page.evaluate(() => document.fonts.load('800 104px Outfit'));
+    await (await page.$('#l')).screenshot({ path: join(OUT, 'png', `lockup-${theme}.png`), omitBackground: true });
+  }
+}
+
 async function main() {
   for (const d of ['svg', 'png', 'jpg']) mkdirSync(join(OUT, d), { recursive: true });
   mkdirSync(join(STATIC, 'icons'), { recursive: true });
@@ -253,6 +275,7 @@ async function main() {
     }, job);
     writeFileSync(job.file, Buffer.from(dataUrl.split(',')[1], 'base64'));
   }
+  await lockups(page, PAL[DEFAULT_FLAG]);
   await browser.close();
   const flags = Object.keys(PAL).length;
   console.log(
