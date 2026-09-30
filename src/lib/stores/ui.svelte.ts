@@ -17,7 +17,7 @@ export const ui = $state({
      24 and 25"). Waiting for this to clear puts it on a settled screen,
      where opening its own height reads as the change it is. */
   appOpening: false,
-  /** Hold incoming panels while the Android tab field is moving. */
+  /** The Android tab field is moving; nested month entrances ride it. */
   tabMoving: false,
   /* Whether the pointer that opened the fan is still down. The add control
      sets it and quick add clears it, because the press-and-slide gesture

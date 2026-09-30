@@ -977,6 +977,21 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
+  it('starts a read swap before the observer delivers the changed height', () => {
+    stubDocument(false);
+    const { node, calls, setHeight, trigger, restore } = resizingNode(220);
+    try {
+      const action = resize(node, 'loading');
+      setHeight(806);
+      action?.update?.('rows');
+      expect(calls).toEqual([[220, 806]]);
+      trigger();
+      expect(calls).toHaveLength(1);
+    } finally {
+      restore();
+    }
+  });
+
   it('does not travel from a height the box had before it was ever painted (ux-carpet 201)', async () => {
     stubDocument(false);
     const g = globalThis as Record<string, unknown>;
@@ -1237,4 +1252,3 @@ describe('tier 3, the slideMonit transition', () => {
     expect(config.css).toBeUndefined();
   });
 });
-

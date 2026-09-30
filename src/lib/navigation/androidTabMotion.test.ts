@@ -109,7 +109,7 @@ it('cancels preparation when another navigation removes the incoming screen', as
   expect(animations().every((animation) => animation.play.mock.calls.length === 0)).toBe(true);
 });
 
-it('holds incoming reads until the field finishes moving', async () => {
+it('tracks the field motion until its animation finishes', async () => {
   await arrive();
   paint();
   paint();

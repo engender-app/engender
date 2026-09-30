@@ -6,9 +6,8 @@
   import { gateBranch } from './readGate';
   import type { LiveList } from '$lib/data/live/journal.svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
-  import { ui } from '$lib/stores/ui.svelte';
-  import { playAfterPaint } from '$lib/motion/screenArrival';
+  import { EASE_OUT_CSS } from '$lib/motion/tokens';
+  import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
 
   let {
     read,
@@ -37,11 +36,7 @@
     failed?: Snippet;
   } = $props();
 
-  let revealed = $state(false);
-  $effect.pre(() => {
-    if (!read.loading && !ui.tabMoving) revealed = true;
-  });
-  let branch = $derived(revealed ? gateBranch(read) : 'loading');
+  let branch = $derived(gateBranch(read));
 
   /* The answer fades in over the skeleton fading out (ux-carpet ticket
      184). The skeleton's `out:crossfade` only ever handled the leaving
@@ -62,7 +57,8 @@
   /* Hide the answer before Svelte inserts it. Android can paint one frame
      before a new Web Animation starts, exposing content through the skeleton. */
   $effect.pre(() => {
-    if (wasLoading === true && branch !== 'loading' && part) {
+    const loading = branch === 'loading';
+    if (wasLoading === true && !loading && part) {
       part.dataset.gateRevealing = '';
       revealVersion += 1;
     }
@@ -70,7 +66,7 @@
   $effect(() => {
     const loading = branch === 'loading';
     if (wasLoading === true && !loading && part) {
-      const duration = motionDuration('--dur-fast');
+      const duration = readRevealDuration('--dur-fast');
       if (duration > 0) {
         const version = revealVersion;
         const revealedPart = part;
@@ -102,7 +98,7 @@
      caller's own one used to (see each `rows`/`empty` snippet below) -
      `.screen > .screen-part > *` (app.css) is what gives their content
      its floor. -->
-<div class="screen-part" use:resize bind:this={part}>
+<div class="screen-part" use:resize={branch} bind:this={part}>
   {#if branch === 'loading'}
     <div out:crossfade data-gate-skeleton><Skeleton {variant} {count} /></div>
   {:else}

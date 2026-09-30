@@ -122,7 +122,7 @@
   let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
   let railRevealed = $state(false);
   $effect.pre(() => {
-    if (!railLoading && !ui.tabMoving) railRevealed = true;
+    if (!railLoading) railRevealed = true;
   });
   let railStart = $derived(
     railLoading

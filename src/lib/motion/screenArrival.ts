@@ -4,6 +4,24 @@
 
 import { motionDuration } from './tokens';
 
+let tabRevealBy: number | undefined;
+
+/** Ready panels share the field's arrival instead of starting another one. */
+export function beginTabArrival(): void {
+  tabRevealBy = performance.now() + motionDuration('--dur-slow');
+}
+
+export function endTabArrival(): void {
+  tabRevealBy = undefined;
+}
+
+export function readRevealDuration(token: '--dur-fast' | '--dur-med'): number {
+  const duration = motionDuration(token);
+  return tabRevealBy === undefined
+    ? duration
+    : Math.min(duration, Math.max(0, tabRevealBy - performance.now()));
+}
+
 /** Keep new layers at their first position while Android prepares their paint. */
 export function playAfterPaint(owner: HTMLElement, animations: Animation[]): void {
   for (const animation of animations) {

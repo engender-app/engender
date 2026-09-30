@@ -80,6 +80,14 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 }, devi
 const errors = [];
 page.on('pageerror', (err) => errors.push(String(err)));
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
+await page.addInitScript(() => {
+  const post = Worker.prototype.postMessage;
+  Worker.prototype.postMessage = function(message, ...options) {
+    const delay = message?.op === 'query' ? Math.max(0, (window.__lateReadUntil ?? 0) - performance.now()) : 0;
+    if (delay) setTimeout(() => post.call(this, message, ...options), delay);
+    else post.call(this, message, ...options);
+  };
+});
 
 /* The fullest journal the demo has, so every tile has something to read. */
 await settlePage(page, base, '/', 'light');
@@ -212,7 +220,82 @@ for (const to of ['/', '/stats']) {
     );
   }
 }
-if (errors.length) console.log(`page errors:\n  ${errors.join('\n  ')}`);
+/* Android's presentation path over the real web journal. The native bridge
+   is measured on the phone; this checks the same field/reveal coordination
+   in CI without replacing the read model or navigating to probe screens. */
+await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
+await page.evaluate(`window.Capacitor.getPlatform = () => 'android'`);
+async function androidArrival(to) {
+  return page.evaluate(`(() => {
+    const start = performance.now();
+    document.querySelector('nav a[href="${to}"]').click();
+    const frames = [];
+    const visible = (node) => {
+      if (!node || !node.getClientRects().length) return false;
+      let opacity = 1;
+      for (let at = node; at && !at.matches('[data-app-scroll-region]'); at = at.parentElement) {
+        const style = getComputedStyle(at);
+        if (style.visibility === 'hidden' || style.display === 'none') return false;
+        opacity *= Number(style.opacity);
+      }
+      return opacity >= 0.99;
+    };
+    return new Promise((done) => {
+      const tick = () => {
+        const screen = [...document.querySelectorAll('[data-app-scroll-region] .screen')].at(-1);
+        const field = screen?.querySelector('[data-home-field], [data-screen-field]');
+        const bodies = [...(screen?.querySelectorAll('.cal-days, [data-read-reserve-body], .read-group-members:not(.is-held), [data-hub-index]') ?? [])];
+        const gate = screen?.querySelector('.cal-days')?.parentElement;
+        frames.push({
+          at: performance.now() - start,
+          route: location.pathname === '${to}',
+          moving: field?.classList.contains('is-tab-bridging') ?? false,
+          readable: bodies.length > 0 && bodies.every(visible),
+          placeholder: !!screen?.querySelector('[data-gate-skeleton], [data-read-reserve-hold], .read-group-members.is-held'),
+          height: gate?.getBoundingClientRect().height ?? null
+        });
+        if (performance.now() - start > 1200) done(frames);
+        else requestAnimationFrame(() => setTimeout(tick, 0));
+      };
+      requestAnimationFrame(() => setTimeout(tick, 0));
+    });
+  })()`);
+}
+for (const pass of ['first', 'repeat']) for (const to of ['/calendar', '/stats', '/more', '/']) {
+  const frames = await androidArrival(to);
+  const lastMotion = frames.findLastIndex((f) => f.route && f.moving);
+  const deadline = frames[lastMotion + 1];
+  const readable = frames.find((f) => f.route && f.readable);
+  const ok = lastMotion >= 0 && deadline?.readable;
+  if (!ok) failed = true;
+  console.log(`${ok ? 'ok  ' : 'FAIL'} Android presentation ${pass} ${to}: readable ${Math.round(readable?.at ?? -1)}ms, field end ${Math.round(deadline?.at ?? -1)}ms`);
+  const heights = frames.filter((f) => f.route && f.height !== null).map((f) => f.height);
+  const reversal = heights.some((height, i) => i > 0 && height < heights[i - 1] - 2);
+  if (reversal) failed = true;
+  if (to === '/calendar') console.log(`${reversal ? 'FAIL' : 'ok  '} Journal arrival never expands then collapses before settling`);
+}
+
+/* Hold actual worker reads past the field deadline on an uncached visit.
+   Releasing every first-wave query at one time avoids fabricating a slow
+   SQL waterfall. The ordinary chained reads still run afterwards. */
+await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
+await page.evaluate(`(() => {
+  window.Capacitor.getPlatform = () => 'android';
+  window.__lateReadUntil = performance.now() + 650;
+})()`);
+const late = await androidArrival('/calendar');
+const motionEnd = late.findLastIndex((f) => f.route && f.moving);
+const waited = late[motionEnd + 1]?.placeholder && !late[motionEnd + 1]?.readable;
+const arrived = late.find((f) => f.route && f.readable);
+const lateHeights = late.filter((f) => f.route && f.height !== null).map((f) => f.height);
+const bounced = lateHeights.some((height, i) => i > 0 && height < lateHeights[i - 1] - 2);
+const lateOk = waited && arrived?.at < 1200 && !bounced;
+if (!lateOk) failed = true;
+console.log(`${lateOk ? 'ok  ' : 'FAIL'} unfinished Journal read keeps placeholder, then reveals without a height reversal (${Math.round(arrived?.at ?? -1)}ms)`);
+if (errors.length) {
+  failed = true;
+  console.log(`page errors:\n  ${errors.join('\n  ')}`);
+}
 
 await browser.close();
 await app.close();
