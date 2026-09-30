@@ -153,8 +153,9 @@ export interface EntryInput {
   doseLog?: EntryDoseLogInput;
   /** Contextual post-op procedure recovery note and wound photo (ADR-0044). */
   procedureRecovery?: EntryProcedureRecoveryInput;
-  /** Contextual HRT physical effect noticed milestone (ADR-0044). */
-  effectMarker?: EntryEffectMarkerInput;
+  /** Contextual HRT physical effects noticed (ADR-0044), several per entry
+      since phase 12 ux-carpet ticket 289. */
+  effectMarkers?: EntryEffectMarkerInput[];
   /** Contextual cycle event (ADR-0044). */
   cycleEvent?: EntryCycleEventInput;
   /** The presentation this entry is filed under (phase 5 deepening ticket
@@ -734,12 +735,11 @@ export function makeEntriesArea(
       }
     }
 
-    if (input.effectMarker) {
-      const known = await driver.query<{ key: string }>(
-        'SELECT key FROM personal_effect_type WHERE key = ?',
-        [input.effectMarker.effect]
-      );
-      if (known.length === 0) throw new Error(`unknown personal effect type: ${input.effectMarker.effect}`);
+    for (const marker of input.effectMarkers ?? []) {
+      const known = await driver.query<{ key: string }>('SELECT key FROM personal_effect_type WHERE key = ?', [
+        marker.effect
+      ]);
+      if (known.length === 0) throw new Error(`unknown personal effect type: ${marker.effect}`);
     }
 
     return { tryoutRowId, procedureRowId, stagedProcedurePhoto };
@@ -826,24 +826,17 @@ export function makeEntriesArea(
       }
     }
 
-    if (input.effectMarker) {
-      const marker = input.effectMarker;
-      const markerDay = marker.firstNoticedEpochDay ?? epochDay;
-      const existing = await driver.query<{ uuid: string }>(
-        'SELECT uuid FROM personal_effect WHERE effect = ?',
-        [marker.effect]
+    /* An effect already on the record keeps the day it was first noticed:
+       a later entry choosing it again is not a second "first". */
+    for (const marker of input.effectMarkers ?? []) {
+      const existing = await driver.query<{ uuid: string }>('SELECT uuid FROM personal_effect WHERE effect = ?', [
+        marker.effect
+      ]);
+      if (existing.length > 0) continue;
+      await driver.run(
+        'INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES (?, ?, ?, ?)',
+        [mintUuid(), marker.effect, marker.firstNoticedEpochDay ?? epochDay, now()]
       );
-      if (existing.length > 0) {
-        await driver.run(
-          'UPDATE personal_effect SET first_noticed_epoch_day = ?, updated_at = ? WHERE effect = ?',
-          [markerDay, now(), marker.effect]
-        );
-      } else {
-        await driver.run(
-          'INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES (?, ?, ?, ?)',
-          [mintUuid(), marker.effect, markerDay, now()]
-        );
-      }
     }
 
     if (input.cycleEvent) {

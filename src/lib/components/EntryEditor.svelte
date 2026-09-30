@@ -61,12 +61,12 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { collapse, crossfade, disclose } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { effectCategoryName } from '$lib/data/vocabulary/labels';
 
   let {
     epochDay,
@@ -528,6 +528,10 @@
   let procRecoveryNote = $state('');
   let procRecoveryPhoto = $state<NormalizedPhoto | null>(null);
   let effectSheetOpen = $state(false);
+  /* What is already on the record, which the sheet shows ticked and leaves
+     alone: a save never moves the day an effect was first noticed. */
+  let markersQuery = liveQuery((j) => j.personalEffects.getMarkers());
+  let recordedEffects = $derived(new Map((markersQuery.value ?? []).map((marker) => [marker.effect, marker.firstNoticedEpochDay])));
 
   $effect(() => {
     if (entryDraft.tryoutFeltSense?.note !== undefined && entryDraft.tryoutFeltSense?.note !== null) {
@@ -1295,28 +1299,27 @@
 
   {#if prefs.entryHrtEffectsEnabled && isHrtActive && !effectsQuiet}
     <div class="contextual-row" data-contextual="hrt-effects">
-      {#if entryDraft.effectMarker}
-        <div class="contextual-chip effect-chip is-active">
-          <span>{m.entry_hrt_effects_title()}: {vocabulary.personalEffectTypeName(entryDraft.effectMarker.effect)}</span>
+      {#each entryDraft.effectMarkers as marker (marker.effect)}
+        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global>
+          <span>{vocabulary.personalEffectTypeName(marker.effect)}</span>
           <button
             type="button"
             class="icon-btn-inline"
-            aria-label={m.dismiss()}
-            onclick={() => entryDraft.setEffectMarker(null)}
+            aria-label={m.entry_hrt_effects_remove({ name: vocabulary.personalEffectTypeName(marker.effect) })}
+            onclick={() => entryDraft.toggleEffectMarker(marker.effect, day)}
           >
             <Icon name="x" size={14} />
           </button>
         </div>
-      {:else}
-        <button
-          type="button"
-          class="contextual-chip press"
-          onclick={() => (effectSheetOpen = true)}
-        >
-          <Icon name="plus" size={16} />
-          <span>{m.entry_hrt_effects_chip()}</span>
-        </button>
-      {/if}
+      {/each}
+      <button
+        type="button"
+        class="contextual-chip press"
+        onclick={() => (effectSheetOpen = true)}
+      >
+        <Icon name="plus" size={16} />
+        <span>{m.entry_hrt_effects_chip()}</span>
+      </button>
     </div>
   {/if}
 
@@ -1457,32 +1460,16 @@
     {/if}
   </Sheet>
 
-  <Sheet bind:open={effectSheetOpen} title={m.entry_hrt_effects_sheet_title()}>
-    <SectionHeading text={m.entry_hrt_effects_sheet_title()} />
-    <ListCard {role}>
-      <!-- `vocabulary`, not a read of the effect table this screen ran for
-           itself (ticket 99 item 19, "they are called with technical names,
-           such as taste_perception_change_feminizing"). A built-in effect
-           row carries no name of its own - the words live in the message
-           catalogue and `vocabulary` is the layer that puts the two
-           together, which is why every other screen showing an effect gets
-           real words. The raw read also skipped the hidden/category filter
-           `visiblePersonalEffectTypes` applies, so this picker offered
-           effects the person had already turned off. -->
-      {#each vocabulary.visiblePersonalEffectTypes as effectType (effectType.key)}
-        <ListRow
-          key={effectType.key}
-          title={effectType.name}
-          subtitle={effectType.categoryKey ? effectCategoryName(effectType.categoryKey) : undefined}
-          chevron={false}
-          onclick={() => {
-            entryDraft.setEffectMarker({ effect: effectType.key, firstNoticedEpochDay: day });
-            effectSheetOpen = false;
-          }}
-        />
-      {/each}
-    </ListCard>
-  </Sheet>
+  <EffectPickerSheet
+    bind:open={effectSheetOpen}
+    {role}
+    effects={vocabulary.visiblePersonalEffectTypes}
+    categoryOrder={vocabulary.effectCategories.map((category) => category.key)}
+    drugs={activeEpisodes.map((episode) => episode.drug)}
+    chosen={entryDraft.effectMarkers.map((marker) => marker.effect)}
+    recorded={recordedEffects}
+    onToggle={(key) => entryDraft.toggleEffectMarker(key, day)}
+  />
 
   <PhotoDayPromptSheet
     open={dayPromptQueue.length > 0}

@@ -1014,10 +1014,12 @@ test('upsertEntry commits contextual sub-records atomically across models', asyn
       procedureId,
       notes: 'Day 5 swelling minimal'
     },
-    effectMarker: {
-      effect: effectType.key,
-      firstNoticedEpochDay: 100
-    },
+    effectMarkers: [
+      {
+        effect: effectType.key,
+        firstNoticedEpochDay: 100
+      }
+    ],
     cycleEvent: {
       kind: 'spotting',
       epochDay: 100
@@ -1109,9 +1111,7 @@ test('upsertEntry rolls back completely if any secondary validation or insert th
         epochDay: 200,
         mood: 4,
         note: 'Should roll back',
-        effectMarker: {
-          effect: 'non-existent-effect'
-        }
+        effectMarkers: [{ effect: 'non-existent-effect' }]
       });
     },
     /unknown personal effect type/
@@ -1254,4 +1254,26 @@ test('the demo journal offers back no dysphoria-tagged day it was not starred on
     [],
     'a day tagged as dysphoria was offered back as counterevidence'
   );
+});
+
+test('an entry can mark several effects, and saving never moves the day of one already marked (ticket 289)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.personalEffects.addCustomEffectType('Softer skin');
+  const second = await journal.personalEffects.addCustomEffectType('Slower hair');
+  const third = await journal.personalEffects.addCustomEffectType('Rounder face');
+
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, effectMarkers: [{ effect: first.key }] });
+  const before = (await journal.personalEffects.getMarkers()).find((marker) => marker.effect === first.key);
+  await journal.entries.upsertEntry({
+    epochDay: 140,
+    mood: 3,
+    effectMarkers: [{ effect: first.key }, { effect: second.key }, { effect: third.key, firstNoticedEpochDay: 130 }]
+  });
+
+  const after = (await journal.personalEffects.getMarkers()).find((marker) => marker.effect === first.key);
+  assert.deepEqual(after, before, 'the row already on the record is the same row, untouched');
+  const days = Object.fromEntries(
+    (await journal.personalEffects.getMarkers()).map((marker) => [marker.effect, marker.firstNoticedEpochDay])
+  );
+  assert.deepEqual(days, { [first.key]: 100, [second.key]: 140, [third.key]: 130 });
 });
