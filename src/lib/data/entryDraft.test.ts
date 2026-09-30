@@ -99,14 +99,14 @@ test('saving consumes every contextual creation action', async () => {
   draft.setTryoutFeltSense({ tryoutId, mood: 5 });
   draft.setDoseLog({ dose: 2, doseUnit: 'mg' });
   draft.setProcedureRecovery({ procedureId, notes: 'Healing', photo: photo(1) });
-  draft.setEffectMarker({ effect: effect.key });
+  draft.toggleEffectMarker(effect.key, 100);
   draft.setCycleEvent({ kind: 'spotting' });
 
   await draft.save(journal.entries);
   assert.equal(draft.tryoutFeltSense, null);
   assert.equal(draft.doseLog, null);
   assert.equal(draft.procedureRecovery, null);
-  assert.equal(draft.effectMarker, null);
+  assert.deepEqual(draft.effectMarkers, []);
   assert.equal(draft.cycleEvent, null);
   await draft.save(journal.entries);
   assert.equal((await journal.feltSense.forTryout(tryoutId)).length, 1);
@@ -466,34 +466,34 @@ test('draft holds contextual sub-records and attaches them to toUpsert payload',
   assert.equal(draft.tryoutFeltSense, null);
   assert.equal(draft.doseLog, null);
   assert.equal(draft.procedureRecovery, null);
-  assert.equal(draft.effectMarker, null);
+  assert.deepEqual(draft.effectMarkers, []);
   assert.equal(draft.cycleEvent, null);
 
   draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 5, note: 'felt great' });
   draft.setDoseLog({ dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
   draft.setProcedureRecovery({ procedureId: 'proc-1', notes: 'swelling down' });
-  draft.setEffectMarker({ effect: 'skin_softening', firstNoticedEpochDay: 20_000 });
+  draft.toggleEffectMarker('skin_softening', 20_000);
   draft.setCycleEvent({ kind: 'period_occurred', epochDay: 20_000 });
 
   const upsert = draft.toUpsert();
   assert.deepEqual(upsert.tryoutFeltSense, { tryoutId: 'tryout-1', mood: 5, note: 'felt great' });
   assert.deepEqual(upsert.doseLog, { dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
   assert.deepEqual(upsert.procedureRecovery, { procedureId: 'proc-1', notes: 'swelling down' });
-  assert.deepEqual(upsert.effectMarker, { effect: 'skin_softening', firstNoticedEpochDay: 20_000 });
+  assert.deepEqual(upsert.effectMarkers, [{ effect: 'skin_softening', firstNoticedEpochDay: 20_000 }]);
   assert.deepEqual(upsert.cycleEvent, { kind: 'period_occurred', epochDay: 20_000 });
 
   // Can be cleared back to null
   draft.setTryoutFeltSense(null);
   draft.setDoseLog(null);
   draft.setProcedureRecovery(null);
-  draft.setEffectMarker(null);
+  draft.toggleEffectMarker('skin_softening', 20_000);
   draft.setCycleEvent(null);
 
   const clearedUpsert = draft.toUpsert();
   assert.equal(clearedUpsert.tryoutFeltSense, undefined);
   assert.equal(clearedUpsert.doseLog, undefined);
   assert.equal(clearedUpsert.procedureRecovery, undefined);
-  assert.equal(clearedUpsert.effectMarker, undefined);
+  assert.equal(clearedUpsert.effectMarkers, undefined);
   assert.equal(clearedUpsert.cycleEvent, undefined);
 });
 
@@ -525,4 +525,20 @@ test('applyTemplate fills its chips and opens none (ticket 19)', () => {
   } as never);
   assert.deepEqual(draft.tags, ['e-happy']);
   assert.equal(draft.openSection, null);
+});
+
+test('effect markers toggle on and off, keep their order, and never double up (ticket 289)', () => {
+  const draft = createEntryDraft(20_000);
+  draft.toggleEffectMarker('skin_softening', 20_000);
+  draft.toggleEffectMarker('hair_changes', 20_000);
+  draft.toggleEffectMarker('skin_softening', 20_000);
+  draft.toggleEffectMarker('breast_development', 20_000);
+  assert.deepEqual(
+    draft.effectMarkers.map((marker) => marker.effect),
+    ['hair_changes', 'breast_development']
+  );
+  assert.deepEqual(
+    draft.toUpsert().effectMarkers?.map((marker) => marker.effect),
+    ['hair_changes', 'breast_development']
+  );
 });
