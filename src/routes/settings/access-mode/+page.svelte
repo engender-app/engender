@@ -235,13 +235,12 @@
              left, so nothing under it jumps and nothing appears whole. -->
         <div class="am-after" data-lock-after-block transition:disclose>
           {#if hasSecret}
-            <h3 class="field-label" id="lock-after-title">{m.lock_after_title()}</h3>
-            <LockAfterChoice
-              value={prefs.lockAfter}
-              onChange={(next) => (prefs.lockAfter = next)}
-              aria-labelledby="lock-after-title"
-            />
+            <!-- First, under the "Now:" line it qualifies: it is about how
+                 the current mode opens. Captioned like the timing, because a
+                 bare card under the panel put two hairlines 20px apart, which
+                 read as one doubled rule rather than two areas. -->
             {#if startPromptApplies}
+              <h3 class="field-label">{m.bio_row_caption()}</h3>
               <ListCard>
                 <ListRow static key="biometrics" icon="fingerprint" title={m.bio_row_title()} subtitle={m.bio_row_sub()}>
                   {#snippet trailing()}
@@ -256,6 +255,12 @@
                 </ListRow>
               </ListCard>
             {/if}
+            <h3 class="field-label" id="lock-after-title">{m.lock_after_title()}</h3>
+            <LockAfterChoice
+              value={prefs.lockAfter}
+              onChange={(next) => (prefs.lockAfter = next)}
+              aria-labelledby="lock-after-title"
+            />
           {:else}
             <p class="ob-text" data-lock-after-none>{m.lock_after_no_secret()}</p>
           {/if}
@@ -294,5 +299,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+  /* A caption after a card starts a new area, so it stands further off the
+     card above than from the one it names. */
+  .am-after .field-label:not(:first-child) {
+    margin-top: var(--space-3);
   }
 </style>

@@ -41,7 +41,7 @@ it('the timing is asked in exactly two places: the access-mode screen and setup'
 it('both places ask it only under a mode with a secret', () => {
   /* The branch that opens right before the mount has to be the secret
      check, so a mode with nothing to ask again shows no question. */
-  expect(ACCESS_MODE).toMatch(/\{#if hasSecret\}\s*<h3[^>]*>\{m\.lock_after_title\(\)\}<\/h3>\s*<LockAfterChoice/);
+  expect(ACCESS_MODE).toMatch(/\{#if hasSecret\}(?:(?!\{:else\})[\s\S])*<LockAfterChoice/);
   expect(ACCESS_MODE).toContain('let hasSecret = $derived(accessModeHasSecret(current, android));');
   expect(ONBOARDING).toMatch(/\{:else if lockAsks\}(\s*<!--[\s\S]*?-->)?\s*<LockAfterChoice/);
   expect(ONBOARDING).toContain('let lockAsks = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));');

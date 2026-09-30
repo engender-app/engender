@@ -8,7 +8,16 @@
      node tests/lock-timing-gallery.mjs --motion --out /abs/dir
    `--motion` records the second question folding away as a mode row opens
    and coming back as it closes, as every frame the screencast paints, with
-   a rAF loop sampling the block's box and opacity beside it. */
+   a rAF loop sampling the block's box and opacity beside it.
+
+   `--setup` records setup's lock step crossing from the access-mode
+   module to the timing question. It needs a plain build (npm run build),
+   because the demo's first run skips the module: the demo journal already
+   has its passphrase.
+
+   `--tag android` is the Android branch drawn by a web build: pin the
+   access-mode page's `android` to true and `current` to 'device-bound',
+   build, run this, and put the file back. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -21,7 +30,8 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const outDir = resolve(flag('out', '/tmp/lock-timing-shots'));
-const motion = args.includes('--motion');
+const setup = args.includes('--setup');
+const motion = args.includes('--motion') || setup;
 /** Only the scenes whose name contains this, for a quicker rerun. */
 const only = flag('only', '');
 const tag = flag('tag', 'web');
@@ -196,8 +206,97 @@ async function record(name, act, target) {
   for (const y of yanks.slice(0, 12)) console.log(`   ${y.t}ms ${y.what}`);
 }
 
+/* Every part in the lock step's cell, with what it holds and how visible
+   it is: the crossing is right when some part is visible on every frame and
+   no part goes from nothing to solid in one. */
+const SETUP_SAMPLE = `
+  return { parts: [...document.querySelectorAll('.setup-lock-part')].map((part) => ({
+    module: !!part.querySelector('[data-access-secret], [data-access-modes], [data-access-chosen]'),
+    timing: !!part.querySelector('[data-lock-after]'),
+    opacity: Number(getComputedStyle(part).opacity)
+  })) };
+`;
+
+function findCrossingYanks(samples) {
+  const yanks = [];
+  const shown = (s, kind) => Math.max(0, ...s.parts.filter((p) => p[kind]).map((p) => p.opacity));
+  for (let i = 1; i < samples.length; i++) {
+    const [a, b] = [samples[i - 1], samples[i]];
+    if (b.parts.length && b.parts.every((p) => p.opacity < 0.05)) yanks.push({ t: b.t, what: 'no part visible' });
+    for (const kind of ['module', 'timing']) {
+      const d = shown(b, kind) - shown(a, kind);
+      if (Math.abs(d) > 0.6) yanks.push({ t: b.t, what: `${kind} opacity ${shown(a, kind).toFixed(2)} to ${shown(b, kind).toFixed(2)} in one frame` });
+    }
+  }
+  return yanks;
+}
+
+async function recordSetup(theme) {
+  const name = `setup-crossing-${theme}`;
+  const frames = [];
+  const started = Date.now();
+  const onFrame = async ({ data, sessionId }) => {
+    frames.push({ at: Date.now() - started, data });
+    try {
+      await cdp.send('Page.screencastFrameAck', { sessionId });
+    } catch {
+      /* Stopped between this frame and its ack. */
+    }
+  };
+  /* A context of its own each time: the first run has to be a first run,
+     and a context starts with empty storage. */
+  const own = await browser.newContext({
+    viewport: { width: 390, height: 900 },
+    deviceScaleFactor: 2,
+    colorScheme: theme,
+    reducedMotion: 'no-preference'
+  });
+  const page = await own.newPage();
+  const cdp = await own.newCDPSession(page);
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-next]', { timeout: 30000 });
+  for (let i = 0; i < 12 && !(await page.locator('[data-access-modes]').count()); i++) {
+    await page.locator('[data-next]').click();
+    await page.waitForTimeout(700);
+  }
+  await page.locator('[data-access-modes] [data-list-row="pin"]').click();
+  await page.locator('[data-access-continue]').click();
+  const type = async () => {
+    for (const d of '1234') await page.locator(`[data-key="${d}"]`).click();
+  };
+  await type();
+  await page.waitForTimeout(500);
+  cdp.on('Page.screencastFrame', onFrame);
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 });
+  await page.waitForTimeout(80);
+  await startSampling(page, SETUP_SAMPLE);
+  const actAt = Date.now() - started;
+  /* The confirming entry: the keystore is made on its last digit, and the
+     timing arrives when it has been. */
+  await type();
+  await page.waitForSelector('[data-lock-after]', { timeout: 20000 });
+  await page.waitForTimeout(SCENE_MS);
+  const samples = await stopSampling(page);
+  await cdp.send('Page.stopScreencast');
+  cdp.off('Page.screencastFrame', onFrame);
+  const written = [];
+  for (const [i, frame] of frames.entries()) {
+    const file = `${name}-${String(i).padStart(3, '0')}.jpg`;
+    await writeFile(resolve(outDir, file), Buffer.from(frame.data, 'base64'));
+    written.push({ file, at: frame.at - actAt });
+  }
+  await own.close();
+  const yanks = findCrossingYanks(samples);
+  scenes.push({ name, frames: written, crop: { left: 0, top: 0, width: null, height: 900 }, yanks, samples });
+  console.log(`${name}: ${written.length} frames, ${samples.length} samples, ${yanks.length} yank(s)`);
+  for (const y of yanks.slice(0, 12)) console.log(`   ${y.t}ms ${y.what}`);
+}
+
 try {
-  for (const theme of THEMES) {
+  if (setup) {
+    for (const theme of THEMES) await recordSetup(theme);
+  }
+  for (const theme of setup ? [] : THEMES) {
     await dress(theme);
     await openAccessMode();
     if (motion) {
@@ -208,7 +307,14 @@ try {
       await record(`unfold-${tag}-${theme}`, () => page.locator('[data-access-back]').click(), '[data-access-back]');
       continue;
     }
-    await crop(`access-mode-timing-${tag}-${theme}`, '[data-access-current]', '[data-lock-after-block]');
+    /* The Android pass is the web build with the page pinned to the
+       screen-lock mode (android-only-screen-gallery), so its "Now:" line
+       names a web mode and is left out of the crop. */
+    await crop(
+      `access-mode-timing-${tag}-${theme}`,
+      tag === 'web' ? '[data-access-current]' : '[data-lock-after-block]',
+      '[data-lock-after-block]'
+    );
     if (tag !== 'web') continue;
     await page.locator('[data-screen-back]').click();
     await page.waitForSelector('[data-security-list]');
@@ -235,7 +341,7 @@ try {
     await crop(`setup-lock-${theme}`, '[data-setup-question]', '[data-lock-after]', 24);
   }
 
-  if (tag === 'web' && !motion) {
+  if (tag === 'web' && !motion && !setup) {
     /* A mode with no secret: move the demo journal to this browser only,
        then shoot where the question would have been. All of it in-app from
        here on, for the reason strip() gives. */
@@ -272,7 +378,7 @@ try {
   throw error;
 } finally {
   await writeFile(
-    `${outDir}/${motion ? 'manifest' : 'shots'}-${tag}.json`,
+    `${outDir}/${motion ? 'manifest' : 'shots'}-${setup ? 'setup' : tag}.json`,
     JSON.stringify(motion ? { scenes } : { shots }, null, 1)
   );
   if (errors.length) console.log('page errors:', errors);
