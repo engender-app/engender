@@ -12,7 +12,7 @@ import { chromeTabOrigin } from './chrome-tab-origin';
 import { cutsInsteadOfMoving } from './chromeless';
 import { leavesHomeForEntry, screenTransition } from './screen-transition';
 import { rememberScroll, restoreScroll, savedScroll } from './scroll-region';
-import { animateAndroidTab } from './androidTabMotion';
+import { animateAndroidTab, finishAndroidTab } from './androidTabMotion';
 import { isAndroid } from '$lib/platform';
 import { isReducedMotion } from '$lib/motion/tokens';
 
@@ -37,6 +37,7 @@ const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
    <html> as a data attribute for app.css to read - the decision is a
    table, and this is only the wiring. */
 export function navigateWithTransition(navigation: OnNavigate, replacesApp: boolean): Promise<void> | void {
+  finishAndroidTab();
   /* The bar sits above quick add's scrim so the add control stays sharp
      while the fan is up, which leaves the four tabs pressable behind it.
      Rather than making them inert - which would need the button to escape
