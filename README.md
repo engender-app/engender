@@ -1,4 +1,9 @@
-# engender
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/mark/png/lockup-dark.png">
+    <img src="brand/mark/png/lockup-light.png" alt="engender" height="64">
+  </picture>
+</h1>
 
 [![Checks](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml)
 

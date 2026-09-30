@@ -36,6 +36,7 @@
     type Schedule
   } from '$lib/motion/indicator';
   import Icon from './Icon.svelte';
+  import Mark from './Mark.svelte';
 
   const NAV = [
     /* Today, Journal, Look back, Transition (ticket 08) - none of the four
@@ -304,8 +305,8 @@
        (F24): the rail is the one piece of chrome that says the app's name
        out loud, so it follows the preference like every other surface that
        does - through the module all of them read (disguise/identity.ts). -->
-  <div class="rail-brand">
-    <span class="brand-mark"><Icon name="brand" size={22} /></span><span translate="no"
+  <div class="rail-brand lockup">
+    <Mark size={32} /><span class="lockup-word" translate="no"
       >{appWordmark(prefs.disguise, m.app_name())}</span
     >
   </div>

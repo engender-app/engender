@@ -23,6 +23,8 @@ Regenerate with:
   tile and no ground. The printed surfaces and any single-colour reproduction.
 - `png/<flag>-tile-{512,192,96,48,32,16}.png` - the sizes the manifest, the
   store listing and a favicon ask for.
+- `png/lockup-{light,dark}.png` - the mark beside the word, in the rail's proportions
+  (ticket 37), for the README. Transparent, dark ink on light and light on dark.
 - `png/<flag>-{round,maskable}-512.png`, `png/mark-mono{,-reversed}-512.png`.
 - `jpg/<flag>-tile-512.jpg` - for anything that will only take a jpeg. The tile
   is white and opaque, so nothing is lost.
