@@ -1,11 +1,23 @@
 <script lang="ts">
-  /* Flatpickr owns local dates and bounds. The popup lists days in a
-     wrapping grid, so every target fits without a seven-column minimum. */
-  import flatpickr from 'flatpickr';
-  import 'flatpickr/dist/flatpickr.min.css';
+  /* A date field: the day as `yyyy-mm-dd` in a readonly field, and the
+     picker (DatePickerPanel.svelte) behind a tap, Enter or ArrowDown on it.
+     The picker is the control, so the field takes no typing of its own;
+     typed entry lives in the picker's foot.
+
+     The picker is mounted outside the screen, into whatever holds the
+     field: the scrim of the sheet it sits in, or the app frame. A sheet
+     inside a sheet's scroll box would scroll with it and be clipped by it,
+     and a popover inside a screen is spent inside `.app-main`'s stacking
+     context under the floating bar (overlayLock.ts). Svelte's `mount` does
+     that rather than moving a node the screen's markup owns - a moved node
+     is not between the anchors its block removes by (carpet 26). It is
+     mounted on the first opening, not with the field: 39 screens carry a
+     date field, and a picker for each would be built for nothing on most
+     visits (ticket 165's reason). It is let go once it has closed and its
+     exit has played, which is when its host is empty again. */
+  import { flushSync, mount, unmount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { pickerLocale } from './flatpickrLocale';
-  import { registerOverlayRegion } from './overlayLock';
+  import DatePickerHost from './DatePickerHost.svelte';
 
   let {
     value = $bindable(''),
@@ -22,8 +34,7 @@
     value?: string;
     id?: string;
     /** The id of the field's help paragraph (kit/Field hands it to its
-        children). It goes on the field a person actually reaches, which is
-        flatpickr's alternate input rather than the hidden original. */
+        children). */
     describedBy?: string;
     name?: string;
     /** Inclusive bounds, `yyyy-mm-dd`. */
@@ -31,9 +42,9 @@
     max?: string;
     ariaLabel?: string;
     /** For the list rows that are their own date display (compare, the
-        wrapped custom range): the input spreads over the row invisibly and
-        only the popup is flatpickr's, so the row keeps its drawing and
-        gains its picker. */
+        wrapped custom range): the field spreads over the row invisibly and
+        only the picker is its own, so the row keeps its drawing and gains
+        its picker. */
     invis?: boolean;
     /** For callers that keep their date in someone else's state and want
         the new value on the way out rather than through a bind. */
@@ -41,287 +52,99 @@
     [attribute: string]: unknown;
   } = $props();
 
-  let picker: flatpickr.Instance | null = null;
-  let releaseOverlay: (() => void) | null = null;
+  /** app.css's `@container app (min-width: 1024px)`: the rail layout, where
+      a pointer is the likely hand and a popover beats a sheet. */
+  const DESKTOP_WIDTH = 1024;
 
-  function mount(node: HTMLInputElement) {
-    let directInput: HTMLInputElement;
-    let clearButton: HTMLButtonElement;
+  let open = $state(false);
+  let desktop = $state(false);
+  let field: HTMLInputElement;
+  let host: { instance: ReturnType<typeof mount>; target: HTMLElement; observer: MutationObserver } | null = null;
 
-    function fitPopup() {
-      if (!picker?.isOpen) return;
-      const root = (node.closest('[data-app-root]') ?? document.documentElement).getBoundingClientRect();
-      const view = window.visualViewport;
-      const calendar = picker.calendarContainer;
-      const left = view?.offsetLeft ?? 0;
-      const width = view?.width ?? window.innerWidth;
-      calendar.style.maxWidth = `${Math.min(root.width, width) - 16}px`;
-      calendar.style.maxHeight = `${(view?.height ?? window.innerHeight) - 16}px`;
-      calendar.style.top = `${(view?.offsetTop ?? 0) + 8}px`;
-      calendar.style.left = `${Math.max(left + 8, Math.min(root.left + (root.width - calendar.offsetWidth) / 2, left + width - calendar.offsetWidth - 8))}px`;
-
-    }
-
-    function moveDay(event: KeyboardEvent) {
-      if (!(event.target instanceof HTMLElement) || !event.target.classList.contains('flatpickr-day') || !picker) return;
-      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key) || event.ctrlKey) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const days = Array.from(picker.days.querySelectorAll<HTMLElement>('.flatpickr-day:not(.prevMonthDay):not(.nextMonthDay)'));
-      const columns = getComputedStyle(picker.days).gridTemplateColumns.split(' ').length;
-      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns }[event.key]!;
-      let index = days.indexOf(event.target) + step;
-      while (days[index]?.classList.contains('flatpickr-disabled')) index += Math.sign(step);
-      if (days[index]) days[index].focus();
-    }
-
-    function focusableNavigation(_dates: Date[], _text: string, fp: flatpickr.Instance) {
-      fp.currentYearElement.tabIndex = 0;
-      fp.monthsDropdownContainer.tabIndex = 0;
-    }
-
-    function addControls(fp: flatpickr.Instance) {
-      focusableNavigation([], '', fp);
-      fp.monthsDropdownContainer.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape' && event.key !== 'Tab') event.stopPropagation();
-      });
-      fp.calendarContainer.classList.add('date-picker-calendar');
-      fp.calendarContainer.addEventListener('keydown', moveDay, true);
-      for (const [control, label, step] of [
-        [fp.prevMonthNav, m.prev_month(), -1],
-        [fp.nextMonthNav, m.next_month(), 1]
-      ] as const) {
-        control.setAttribute('role', 'button');
-        control.setAttribute('aria-label', label);
-        control.tabIndex = 0;
-        control.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            fp.changeMonth(step);
-          }
-        });
-      }
-      const footer = document.createElement('div');
-      footer.className = 'date-picker-entry';
-      const label = document.createElement('label');
-      label.textContent = m.date_picker_entry();
-      directInput = document.createElement('input');
-      directInput.className = 'input';
-      directInput.type = 'text';
-      directInput.autocomplete = 'off';
-      label.append(directInput);
-      function applyDate() {
-        const text = directInput.value.trim();
-        const parsed = /^\d{4}-\d{2}-\d{2}$/.test(text) ? flatpickr.parseDate(text, 'Y-m-d') : undefined;
-        if (!parsed || flatpickr.formatDate(parsed, 'Y-m-d') !== text || !fp.isEnabled(parsed)) {
-          directInput.setCustomValidity(m.date_picker_invalid());
-          directInput.reportValidity();
-          return;
-        }
-        fp.setDate(parsed, true);
-        (fp.altInput ?? node).focus({ preventScroll: true });
-        fp.close();
-      }
-      directInput.addEventListener('input', () => directInput.setCustomValidity(''));
-      directInput.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape' && event.key !== 'Tab') event.stopPropagation();
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          applyDate();
-        }
-      });
-      const apply = document.createElement('button');
-      apply.type = 'button';
-      apply.className = 'btn btn-primary';
-      apply.textContent = m.date_picker_apply();
-      apply.addEventListener('click', applyDate);
-      clearButton = document.createElement('button');
-      clearButton.type = 'button';
-      clearButton.className = 'btn btn-ghost';
-      clearButton.textContent = m.date_picker_clear();
-      clearButton.addEventListener('click', () => {
-        fp.clear();
-        (fp.altInput ?? node).focus({ preventScroll: true });
-        fp.close();
-      });
-      footer.append(label, apply, clearButton);
-      fp.calendarContainer.append(footer);
-    }
-
-    /* Building the calendar grid and its footer is genuinely heavy
-       synchronous DOM work (ticket 165) - competing for the main thread
-       with whatever entrance transition is animating the field's host
-       surface, if it runs at mount like it used to. Deferred to the
-       field's first click or ArrowDown instead, both direct responses to
-       a real gesture rather than something that can fire on its own.
-
-       Deliberately NOT triggered by focus, idle, or any other
-       independently-timed hook: this swaps the field's id from the plain
-       input onto flatpickr's alt input (below), and a host sheet already
-       focuses its first field on its own clock (Sheet.svelte's `introend`
-       idiom, ticket 115) - a trigger that can fire whenever, unrelated to
-       whatever a caller is doing right then, raced a test driver that had
-       already resolved that id to the plain input and was still polling
-       it when the swap landed underneath it. A click or ArrowDown can't
-       have that problem: the swap only ever happens inside the same
-       synchronous handler that the gesture itself woke up. */
-    let destroyed = false;
-
-    function ensurePicker() {
-      if (picker || destroyed) return;
-      const hadFocus = document.activeElement === node;
-      picker = flatpickr(node, {
-        dateFormat: 'Y-m-d',
-        altInput: !invis,
-        altFormat: 'Y-m-d',
-        defaultDate: value || undefined,
-        minDate: min || undefined,
-        maxDate: max || undefined,
-        disableMobile: true,
-        // Flatpickr dismisses on touchstart, before Android can cancel a Back
-        // gesture. Outside dismissal below waits for a completed click.
-        ignoredFocusElements: [document.body],
-        clickOpens: false,
-        locale: pickerLocale(),
-        position: fitPopup,
-        onChange: (dates) => {
-          const next = dates[0] ? flatpickr.formatDate(dates[0], 'Y-m-d') : '';
-          value = next;
-          onchange?.(next);
-        },
-        onReady: (_dates, _text, fp) => addControls(fp),
-        onMonthChange: focusableNavigation,
-        onYearChange: focusableNavigation,
-        onOpen: () => {
-          if (!picker) return;
-          fitPopup();
-          directInput.value = value;
-          directInput.setCustomValidity('');
-          clearButton.disabled = !value;
-          releaseOverlay?.();
-          const launcher = picker.altInput ?? node;
-          releaseOverlay = registerOverlayRegion(launcher, picker.calendarContainer, {
-            dismiss: () => picker?.close(),
-            restoreFocus: launcher
-          });
-        },
-        onClose: () => {
-          releaseOverlay?.();
-          releaseOverlay = null;
-        }
-      });
-      /* The id belongs on the field a person sees and a label points at; the
-         hidden original keeps the name for whatever submits it. The instance
-         goes on both, so anything holding the visible field - a label, a
-         test - reaches the picker through it. */
-      if (picker.altInput) {
-        if (id) {
-          picker.altInput.id = id as string;
-          node.removeAttribute('id');
-        }
-        if (describedBy) {
-          picker.altInput.setAttribute('aria-describedby', describedBy);
-          node.removeAttribute('aria-describedby');
-        }
-        const visible = picker.altInput as unknown as Record<string, unknown>;
-        visible.flatpickr = picker;
-        visible._flatpickr = picker;
-        // `node` is hidden once the alt input exists, so it stops receiving
-        // clicks/keydowns/focus - the launcher moves to the alt input. If
-        // `node` held focus the instant before this ran (a real Tab or the
-        // host sheet's own auto-focus), that focus would otherwise fall
-        // through to the document.
-        picker.altInput.addEventListener('click', open);
-        picker.altInput.addEventListener('keydown', openFromKeyboard, true);
-        if (hadFocus) picker.altInput.focus({ preventScroll: true });
-      }
-    }
-
-    const open = () => {
-      ensurePicker();
-      picker?.open();
-    };
-    const openFromKeyboard = (event: KeyboardEvent) => {
-      if (event.key !== 'ArrowDown' && event.key !== 'Enter') return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      ensurePicker();
-      if (!picker) return;
-      picker.open();
-      /* Enter just opens, matching flatpickr's own native behavior on an
-         already-built instance (which this always preempts, capturing
-         ahead of it) - only ArrowDown also steps focus into the grid. */
-      if (event.key !== 'ArrowDown') return;
-      const selected = picker.days.querySelector<HTMLElement>('.selected');
-      (selected ?? picker.days.querySelector<HTMLElement>('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)'))?.focus();
-    };
-    const dismissOutside = (event: MouseEvent) => {
-      if (!picker?.isOpen || !(event.target instanceof Node)) return;
-      /* The click that lazily builds the picker (above) targets `node`
-         itself, before its id and launcher role move to the alt input -
-         still bubbling up to this same document listener afterwards, in
-         the same turn. `node` counts as "inside" regardless of which
-         element is the current launcher, or that first click both opens
-         and immediately closes the popup it just built. */
-      if (picker.calendarContainer.contains(event.target)
-        || node.contains(event.target)
-        || (picker.altInput ?? node).contains(event.target)) return;
-      picker.close();
-    };
-    document.addEventListener('click', dismissOutside);
-    node.addEventListener('click', open);
-    node.addEventListener('keydown', openFromKeyboard, true);
-    window.visualViewport?.addEventListener('resize', fitPopup);
-    window.visualViewport?.addEventListener('scroll', fitPopup);
-    return {
-      destroy() {
-        destroyed = true;
-        document.removeEventListener('click', dismissOutside);
-        node.removeEventListener('click', open);
-        node.removeEventListener('keydown', openFromKeyboard, true);
-        picker?.altInput?.removeEventListener('click', open);
-        picker?.altInput?.removeEventListener('keydown', openFromKeyboard, true);
-        window.visualViewport?.removeEventListener('resize', fitPopup);
-        window.visualViewport?.removeEventListener('scroll', fitPopup);
-        releaseOverlay?.();
-        releaseOverlay = null;
-        picker?.destroy();
-        picker = null;
-      }
-    };
+  function commit(next: string) {
+    value = next;
+    onchange?.(next);
+    open = false;
+    if (desktop) field.focus({ preventScroll: true });
   }
 
-  /* A value changed underneath the picker - the screen cleared its form, a
-     range edit narrowed the bounds - and the field follows it. */
-  $effect(() => {
-    if (!picker) return;
-    picker.set('minDate', (min as string) ?? undefined);
-    picker.set('maxDate', (max as string) ?? undefined);
-    if ((picker.selectedDates[0] ? flatpickr.formatDate(picker.selectedDates[0], 'Y-m-d') : '') !== value) {
-      if (value) picker.setDate(value as string, false);
-      else picker.clear(false);
+  const hostProps = {
+    get open() { return open; },
+    get desktop() { return desktop; },
+    get anchor() { return field; },
+    get label() {
+      return ariaLabel || field.labels?.[0]?.textContent?.trim() || m.date_picker_title();
+    },
+    get value() { return value; },
+    get min() { return min; },
+    get max() { return max; },
+    onPick: commit,
+    onClear: () => commit(''),
+    onDismiss: () => (open = false)
+  };
+
+  function release() {
+    if (!host) return;
+    host.observer.disconnect();
+    unmount(host.instance);
+    host.target.remove();
+    host = null;
+  }
+
+  function show() {
+    if (open) return;
+    const frame = field.closest('[data-app-root]');
+    desktop = (frame?.clientWidth ?? window.innerWidth) >= DESKTOP_WIDTH;
+    if (!host) {
+      const target = document.createElement('div');
+      target.style.display = 'contents';
+      (field.closest('[data-sheet-scrim]') ?? frame ?? document.body).append(target);
+      const instance = mount(DatePickerHost, { target, props: hostProps });
+      const observer = new MutationObserver(() => {
+        if (!open && !target.firstElementChild) release();
+      });
+      observer.observe(target, { childList: true });
+      host = { instance, target, observer };
+      /* Mounted closed and opened a flush later, so the host's own
+         `{#if open}` is what creates the surface and its entrance plays. */
+      flushSync();
     }
-  });
+    open = true;
+  }
+
+  function onKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Enter' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    show();
+  }
+
+  function attach(node: HTMLInputElement) {
+    field = node;
+    return release;
+  }
 </script>
 
 <input
   class="input"
   class:date-invis={invis}
   type="text"
+  readonly
   {id}
   {name}
   {value}
-  use:mount
   aria-label={ariaLabel}
   aria-describedby={describedBy}
+  aria-haspopup="dialog"
   placeholder={ariaLabel}
+  onclick={show}
+  onkeydown={onKeydown}
+  {@attach attach}
   {...rest}
 />
 
 <style>
   /* The invisible variant spreads over whatever row renders the date in its
-     place, so the whole row is the press target and the popup anchors to
+     place, so the whole row is the press target and the picker anchors to
      the row's own box. */
   .date-invis {
     position: absolute;

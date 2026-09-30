@@ -138,6 +138,7 @@
   "date_picker_apply": "Use date",
   "date_picker_clear": "Clear date",
   "date_picker_invalid": "Enter a valid date within the allowed range.",
+  "date_picker_title": "Choose a date",
   "prev_month": "Previous month",
   "prev_year": "Previous year",
   "cal_jump_month": "Jump to month",
