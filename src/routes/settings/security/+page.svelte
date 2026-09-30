@@ -11,9 +11,9 @@
      That row also says when the mode's secret is asked for again, because
      it is the same secret and the same screen decides both (lock-timing
      ticket 01). The lock-on-leave switch that used to sit here as a second
-     mechanism is that screen's second question now, and so is the Android
-     start prompt switch, which is about how the journal opens under one
-     mode and was a row here that applied to no mode but that one. */
+     mechanism is that screen's second question now. The Android "Open
+     automatically" switch is gone altogether: the screen-lock prompt always
+     fires by itself at start (lock-timing ticket 01). */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';

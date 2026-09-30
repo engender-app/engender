@@ -17,12 +17,7 @@
      used to be here for the pre-database lock screen, and moved back
      behind encryption when the passphrase gate took that slot - a 4-digit
      hash beside the ciphertext is an offline-guessable secret (ADR-0018
-     names sensitive boot preferences as covered). `bioOptIn` (ticket 18) is
-     also in the boot set for the same "needed before the database opens"
-     reason - the Android device-bound gate has to decide whether to auto-fire
-     the platform prompt before there is a database to read the answer from -
-     but it is a plain yes/no/unasked flag rather than a secret, so plaintext
-     costs nothing the way a PIN hash would.
+     names sensitive boot preferences as covered).
 
    catalogue.test.ts fails if a preference lands in neither of the first
    two lists. */
@@ -61,11 +56,6 @@ export interface PreferenceValues {
   a11yTextSizeBoost: boolean;
   a11yLegibilityBoost: boolean;
   a11yMotionReduce: boolean;
-  /** Null until the person has answered the biometric ask (ticket 18) - the
-      boot gate and the PIN pad both read it to decide whether to offer
-      biometrics at all, so it has to distinguish "never asked" from
-      "declined" rather than defaulting either way. */
-  bioOptIn: boolean | null;
   /** How long the app may be out of sight before the access mode's secret
       is asked for again (lock-timing ticket 01). Replaced `lockOnLeave`,
       whose on and off are `immediately` and `restart`; openPreferences()
@@ -487,7 +477,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   a11yTextSizeBoost: false,
   a11yLegibilityBoost: false,
   a11yMotionReduce: false,
-  bioOptIn: null,
   /* A restart, because that is what the old switch's off meant and every
      journal from before ticket 01 that never touched it was off. A new
      install is offered a minute in setup instead, and only writes it by
@@ -607,7 +596,6 @@ export const DEVICE_LOCAL_KEYS = [
   'a11yTextSizeBoost',
   'a11yLegibilityBoost',
   'a11yMotionReduce',
-  'bioOptIn',
   'lockAfter',
   'disguise',
   'quickExit',
@@ -679,8 +667,7 @@ export const BOOT_KEYS = [
   'a11yLegibilityBoost',
   'a11yMotionReduce',
   'lockAfter',
-  'disguise',
-  'bioOptIn'
+  'disguise'
 ] as const satisfies readonly PreferenceKey[];
 
 export type BootKey = (typeof BOOT_KEYS)[number];

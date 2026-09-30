@@ -40,7 +40,6 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
   import LockAfterChoice from '$lib/components/LockAfterChoice.svelte';
-  import Switch from '$lib/components/Switch.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -66,11 +65,6 @@
   let chosen = $state<Mode | null>(null);
   let android = isAndroid();
   let hasSecret = $derived(accessModeHasSecret(current, android));
-  /* The Android start prompt applies to one mode and is about opening, not
-     locking: whether the Keystore prompt fires by itself at start or waits
-     behind a button (ticket 18). It was a Security row that named the mode
-     it needed; here it is only where that mode is the current one. */
-  let startPromptApplies = $derived(android && current === 'device-bound');
   const reserve = readReserve('access-mode');
   const rememberHeight = (px: number) => rememberReserve('access-mode', px);
 
@@ -235,26 +229,6 @@
              left, so nothing under it jumps and nothing appears whole. -->
         <div class="am-after" data-lock-after-block transition:disclose>
           {#if hasSecret}
-            <!-- First, under the "Now:" line it qualifies: it is about how
-                 the current mode opens. Captioned like the timing, because a
-                 bare card under the panel put two hairlines 20px apart, which
-                 read as one doubled rule rather than two areas. -->
-            {#if startPromptApplies}
-              <h3 class="field-label">{m.bio_row_caption()}</h3>
-              <ListCard>
-                <ListRow static key="biometrics" icon="fingerprint" title={m.bio_row_title()} subtitle={m.bio_row_sub()}>
-                  {#snippet trailing()}
-                    <Switch
-                      checked={prefs.bioOptIn === true}
-                      label={m.bio_row_title()}
-                      onChange={(v) => {
-                        prefs.bioOptIn = v;
-                      }}
-                    />
-                  {/snippet}
-                </ListRow>
-              </ListCard>
-            {/if}
             <h3 class="field-label" id="lock-after-title">{m.lock_after_title()}</h3>
             <LockAfterChoice
               value={prefs.lockAfter}
@@ -299,10 +273,5 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-  }
-  /* A caption after a card starts a new area, so it stands further off the
-     card above than from the one it names. */
-  .am-after .field-label:not(:first-child) {
-    margin-top: var(--space-3);
   }
 </style>

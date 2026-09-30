@@ -47,12 +47,10 @@ it('both places ask it only under a mode with a secret', () => {
   expect(ONBOARDING).toContain('let lockAsks = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));');
 });
 
-it('the start prompt switch is on the access-mode screen, only under Android screen-lock mode', () => {
-  const writers = screens.filter((file) => /prefs\.bioOptIn = /.test(file.source)).map((file) => file.path);
-  expect(writers.sort()).toEqual([
-    'src/lib/components/AndroidKeyGate.svelte',
-    'src/routes/settings/access-mode/+page.svelte'
-  ]);
-  expect(ACCESS_MODE).toContain("let startPromptApplies = $derived(android && current === 'device-bound');");
-  expect(ACCESS_MODE).toMatch(/\{#if startPromptApplies\}[\s\S]*?prefs\.bioOptIn = v;[\s\S]*?\{\/if\}/);
+it('nothing offers a choice about the Android start prompt: it always fires', () => {
+  /* Alicja, on the ticket 01 sign-off: the prompt fires by itself, with no
+     option. The pref, its first-boot question and its switch are gone. */
+  const offenders = screens.filter((file) => /bioOptIn|bio_ask_boot|bio_row_/.test(file.source)).map((file) => file.path);
+  expect(offenders).toEqual([]);
+  expect(read('src/lib/components/AndroidKeyGate.svelte')).toMatch(/if \(fired\) return;[\s\S]*?void authenticate\(false\);/);
 });
