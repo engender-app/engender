@@ -1486,24 +1486,26 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 .rail-brand { padding: 0 var(--space-3) var(--space-5); }
 /* The logotype: the real mark beside the word, sized against each other
    on purpose (ticket 37, Alicja picked option B on 2026-09-30 and asked
-   for a wider gap and a truer centre). Every measure is in em of the word,
-   so the pairing holds wherever it is set: the mark is 1.23em (32px beside
-   the 26px word), the gap is half an em, and the word's track is -0.03em,
-   looser than --display-track because that value is tuned for a headline
-   and closes up at this size next to a solid tile.
+   for a wider gap and a truer centre). The word's own measures are em of
+   the word: the gap is half an em and the track is -0.03em, looser than
+   --display-track because that value is tuned for a headline and closes up
+   at this size next to a solid tile. The mark is a fixed 32px (1.23em of
+   the 26px word) because Mark takes pixels, so the ratio holds at a 16px
+   root and drifts if the word is scaled alone.
 
    Centring is optical. Outfit's box puts the line's middle 0.37em above the
    baseline, but the word's ink (x-height 0.49em, ascender 0.73em, one
    descender) is centred 0.25em above it, so a plain align-items:center
-   leaves the word 0.12em low against the mark. The word's own bottom
-   padding lifts it by half that. Under disguise Mark draws nothing, and
-   what is left is the word alone (ADR-0014). */
+   leaves the word 0.12em low against the mark. The word's bottom padding
+   lifts it by half its own size. Under disguise Mark draws nothing and the
+   word is the only child, so it takes no lift and sits as plain type
+   (ADR-0014). */
 .lockup {
   display: flex; align-items: center; gap: 0.5em;
   font-family: var(--font-display); font-weight: var(--weight-display);
   font-size: 1.625rem; letter-spacing: -0.03em;
 }
-.lockup-word { padding-bottom: 0.23em; }
+.lockup-word:not(:first-child) { padding-bottom: 0.23em; }
 /* The bar's add button, laid on its side. Same fill, same corner, same
    press - the rail is the same navigation at a width that has room for
    words, not a different one. */
