@@ -431,7 +431,7 @@
   "a11y_legibility_boost_sub": "mocniejszy tekst pomocniczy i wyraźniejsze podziały",
   "a11y_motion_reduce_override": "Ogranicz ruch",
   "a11y_motion_reduce_override_sub": "Ogranicz animacje także wtedy, gdy ustawienia systemowe na nie pozwalają",
-  "gender_scales": "Skale płci",
+  "gender_scales": "Skale genderowe",
   "scales_note": "Zaznacz skale widoczne we wpisach. Odznaczenie zachowuje wcześniejsze wartości.",
   "custom_dimension": "Własna skala",
   "tag_groups": "Grupy tagów",
