@@ -1483,23 +1483,27 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
    somewhere past it, means the rounded corner is what clips the sun now,
    instead of the sun stopping at an edge and a border being drawn
    somewhere else. */
-.rail-brand {
-  font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-lg);
-  letter-spacing: var(--display-track);
-  padding: 0 var(--space-3) var(--space-5);
-  display: flex; align-items: center; gap: var(--space-2);
+.rail-brand { padding: 0 var(--space-3) var(--space-5); }
+/* The logotype: the real mark beside the word, sized against each other
+   on purpose (ticket 37, Alicja picked option B on 2026-09-30 and asked
+   for a wider gap and a truer centre). Every measure is in em of the word,
+   so the pairing holds wherever it is set: the mark is 1.23em (32px beside
+   the 26px word), the gap is half an em, and the word's track is -0.03em,
+   looser than --display-track because that value is tuned for a headline
+   and closes up at this size next to a solid tile.
+
+   Centring is optical. Outfit's box puts the line's middle 0.37em above the
+   baseline, but the word's ink (x-height 0.49em, ascender 0.73em, one
+   descender) is centred 0.25em above it, so a plain align-items:center
+   leaves the word 0.12em low against the mark. The word's own bottom
+   padding lifts it by half that. Under disguise Mark draws nothing, and
+   what is left is the word alone (ADR-0014). */
+.lockup {
+  display: flex; align-items: center; gap: 0.5em;
+  font-family: var(--font-display); font-weight: var(--weight-display);
+  font-size: 1.625rem; letter-spacing: -0.03em;
 }
-/* A drawn mark rather than a gradient square (phase 5 ticket 31). What it
-   replaced was a linear-gradient of --motif-stripes, which is the pride
-   motif - and the rail renders on every screen including a disguised one, so
-   it put a rainbow next to the word "Notes". ADR-0035 is specifically that
-   the motif is Home's and never shows under disguise. In --accent it carries
-   no flag: that is one hue the whole app is drawn in already. */
-.rail-brand .brand-mark {
-  display: grid; place-items: center;
-  color: var(--accent);
-  flex-shrink: 0;
-}
+.lockup-word { padding-bottom: 0.23em; }
 /* The bar's add button, laid on its side. Same fill, same corner, same
    press - the rail is the same navigation at a width that has room for
    words, not a different one. */
@@ -1652,16 +1656,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
      the sheet rather than flush with it (Alicja, 2026-09-21): @page's own
      15mm is the paper's margin, and this is the lockup standing off that,
      so the mark does not read as something that fell off the edge. */
-  .print-lockup {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4) 0 var(--space-4) var(--space-4);
-    font-family: var(--font-display);
-    font-weight: var(--weight-display);
-    font-size: var(--text-lg);
-    letter-spacing: var(--display-track);
-  }
+  .print-lockup { padding: var(--space-4) 0 var(--space-4) var(--space-4); }
 
   .screen {
     padding: 0;

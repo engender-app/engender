@@ -24,12 +24,12 @@
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
 
-  let { size = 36 }: { size?: number } = $props();
+  let { size = 32 }: { size?: number } = $props();
 </script>
 
 {#if !prefs.disguise}
-  <div class="print-lockup">
+  <div class="print-lockup lockup">
     <Mark {size} mono />
-    <span translate="no">{m.app_name()}</span>
+    <span class="lockup-word" translate="no">{m.app_name()}</span>
   </div>
 {/if}
