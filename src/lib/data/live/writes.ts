@@ -483,7 +483,18 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       ],
       // The `photo` table's own arm, which is the only one with a starred
       // column (photoLibrary.ts says why).
-      starred: ['photo', 'entry', 'milestone']
+      starred: ['photo', 'entry', 'milestone'],
+      // The same six arms as inJournal, so the same names.
+      hasAny: [
+        'photo',
+        'entry',
+        'milestone',
+        'hairProgress',
+        'hairRemoval',
+        'tryout',
+        'procedure',
+        'videoNote'
+      ]
     }
   }),
   /* One table and one owner - itself - so unlike `photos` above there is no
@@ -834,7 +845,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getLetters: ['letter'],
       getLetterSeals: ['letter'],
       getLetter: ['letter'],
-      getUnlockDaysInRange: ['letter']
+      getUnlockDaysInRange: ['letter'],
+      hasAny: ['letter']
     }
   }),
   roadmap: classify<Journal['roadmap']>()({
@@ -881,7 +893,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   regimen: classify<Journal['regimen']>()({
     writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
-    reads: { getEpisodes: ['regimen'] }
+    reads: { getEpisodes: ['regimen'], hasAny: ['regimen'] }
   }),
   doses: classify<Journal['doses']>()({
     writes: {

@@ -221,3 +221,18 @@ test('the library agrees with the tables it reads: nothing is dropped and nothin
   assert.equal(library.length, stored);
   assert.equal(new Set(library.map((photo) => photo.id)).size, stored);
 });
+
+test('hasAny is false on an empty library, true with one photograph, and ignores a trashed entry', async () => {
+  const { journal } = await journalWithFiles();
+  assert.equal(await journal.photoLibrary.hasAny(), false);
+
+  const entryId = await journal.entries.upsertEntry({ epochDay: 20000, mood: 4 });
+  await journal.photos.attach({ entryId }, shot('e'));
+  assert.equal(await journal.photoLibrary.hasAny(), true);
+
+  await journal.entries.deleteEntry(entryId);
+  assert.equal(await journal.photoLibrary.hasAny(), false, 'a trashed entry has no photographs in the library');
+
+  await journal.hairProgress.addPhoto(20002, shot('h'));
+  assert.equal(await journal.photoLibrary.hasAny(), true, 'any of the six tables counts');
+});

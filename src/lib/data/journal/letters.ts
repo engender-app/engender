@@ -10,7 +10,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Letter } from '../types';
-import { mintUuid, now } from './support';
+import { bool, mintUuid, now } from './support';
 
 /** A letter with its seal and nothing else - what letterStatus.ts's rules
     are written over, and all a surface offering an unlocked letter needs
@@ -44,6 +44,10 @@ export interface LettersArea {
       and exists for a different reader (letterStatus.ts) that is allowed
       to know which letter it is offering. */
   getUnlockDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
+  /** Whether any letter is stored. One `EXISTS`, for the surface that only
+      asks whether the person has written one (Home's Getting started row)
+      and has no business holding sixty sealed bodies to find out. */
+  hasAny(): Promise<boolean>;
   /** Returns the letter's id. Throws on blank text: a letter's one field
       is the whole point of the record, unlike Entry's "at least one of
       six" rule. */
@@ -81,6 +85,11 @@ export function makeLettersArea(driver: SqliteDriver): LettersArea {
         epochDay: row.epoch_day,
         unlockEpochDay: row.unlock_epoch_day
       }));
+    },
+
+    async hasAny() {
+      const rows = await driver.query<{ found: number }>('SELECT EXISTS(SELECT 1 FROM letter) AS found');
+      return bool(rows[0].found);
     },
 
     async getLetter(id) {
