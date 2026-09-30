@@ -19,8 +19,12 @@
   import Icon from '$lib/components/Icon.svelte';
   import MoodFace from '$lib/components/MoodFace.svelte';
   import { PATHS } from '$lib/components/icons';
+  import { markSvg } from '$lib/components/mark';
   import { measure } from '../icon-ink';
   import { PALETTES } from '../palettes.mjs';
+
+  /* The rail's logotype mark at its 32px, in the default flag. */
+  const LOCKUP_MARK = markSvg(['#5BCEFA', '#F5A9B8', '#FFFFFF', '#F5A9B8', '#5BCEFA'], 'tile', 32, { id: 'lockup' });
 
   let palette = $state('trans');
   let theme = $state('dark');
@@ -115,11 +119,11 @@
 
   <h2>The rail, and the brand mark</h2>
   <p class="note">
-    Marks at 22 beside their words, and the mark that used to be a gradient square. This is the
+    The logotype: the real mark at 32 beside its word at 26. This is the
     arrangement, not the live rail.
   </p>
   <div class="rail">
-    <span class="rail-brand-row"><span class="brand"><Icon name="brand" size={22} /></span> Ledger</span>
+    <span class="rail-brand-row">{@html LOCKUP_MARK}<span class="lockup-word">Ledger</span></span>
     <span class="rail-add"><Icon name="plus" size={20} /> Quick add</span>
     <span class="rail-row is-active"><Icon name="home" size={22} /> Start</span>
     <span class="rail-row"><Icon name="calendar" size={22} /> Calendar</span>
@@ -305,21 +309,18 @@
     border-radius: var(--radius-md);
     background: var(--surface);
   }
+  /* Mirrors .lockup in app.css: em-sized against the word, half an em apart. */
   .rail-brand-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5em;
     padding: 0 6px 12px;
     font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: 600;
-    letter-spacing: var(--display-track);
+    font-size: 1.625rem;
+    font-weight: var(--weight-display);
+    letter-spacing: -0.03em;
   }
-  .brand {
-    display: grid;
-    place-items: center;
-    color: var(--accent);
-  }
+  .lockup-word { padding-bottom: 0.23em; }
   .rail-add {
     display: flex;
     align-items: center;
