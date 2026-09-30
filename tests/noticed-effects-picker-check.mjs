@@ -52,7 +52,20 @@ await page.addInitScript(() => {
       // A short block arrives from above by clip-path and leaves by height,
       // so what is visible is the box less whatever the clip has hidden.
       const clipTop = parseFloat((style.clipPath.match(/inset\(([\d.]+)px/) ?? [0, 0])[1]);
-      out[key] = { opacity: +style.opacity, height: Math.max(0, target.getBoundingClientRect().height - clipTop) };
+      const rect = target.getBoundingClientRect();
+      let opacity = +style.opacity;
+      let height = Math.max(0, rect.height - clipTop);
+      // A row inside a group is only as visible as its group lets it be: a
+      // leaving group collapses around rows that are still whole.
+      const group = key.startsWith('row:') ? target.closest('.effect-group') : null;
+      if (group) {
+        const g = group.getBoundingClientRect();
+        const groupStyle = getComputedStyle(group);
+        const groupClip = parseFloat((groupStyle.clipPath.match(/inset\(([\d.]+)px/) ?? [0, 0])[1]);
+        height = Math.max(0, Math.min(height, Math.min(rect.bottom, g.bottom) - Math.max(rect.top, g.top + groupClip)));
+        opacity *= +groupStyle.opacity;
+      }
+      out[key] = { opacity, height };
     }
     return out;
   };
@@ -191,6 +204,18 @@ try {
     await page.screenshot({ path: '/tmp/claude-1000/-home-alice--projekty-priv-gender-diary/787bf72c-d37e-4175-b485-375d59e7f4bc/scratchpad/editor.png' });
     throw e;
   });
+
+  // Opening: nothing in the list is mid-transition. The rows belong to the
+  // sheet that slides in; none of them should also collapse open.
+  const opening = await sample(900, async () => {
+    await page.locator(CHIP).click();
+    await page.waitForSelector('[data-effect-search]');
+  });
+  await page.waitForTimeout(500);
+  const arriving = opening.flatMap((f) => Object.entries(f.items).filter(([key, v]) => key.startsWith('row:') && (v.opacity < 0.99 || v.height < 40)));
+  assert.equal(arriving.length, 0, `rows animate on opening: ${JSON.stringify(arriving.slice(0, 2))}`);
+  console.log('PASS opening: the list does not animate in on top of the sheet,', opening.length, 'frames');
+  await closeSheet();
 
   // Testosterone alone.
   await openSheet();

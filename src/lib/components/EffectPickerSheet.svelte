@@ -15,7 +15,9 @@
 
      Every row, heading and notice here arrives and leaves by collapsing
      (DIRECTION rule 10), so typing in the box or lifting the filter moves the
-     rows under it instead of cutting them. */
+     rows under it instead of cutting them. The transitions are local on
+     purpose: the list is part of the sheet that slides in, and a global one
+     would collapse every row open again on each opening. */
   import { m } from '$lib/paraglide/messages';
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import type { Role } from '$lib/theme/roles';
@@ -112,12 +114,12 @@
   </div>
 
   {#each picker.groups as group (group.key)}
-    <div class="effect-group" data-effect-picker-group={group.key ?? 'results'} transition:collapse|global>
+    <div class="effect-group" data-effect-picker-group={group.key ?? 'results'} transition:collapse>
       {#if group.heading}<SectionHeading text={group.heading} />{/if}
       <ListCard {role}>
         {#each group.effects as effect (effect.key)}
           {@const since = recorded.get(effect.key)}
-          <div class="rows-divide" transition:collapse|global>
+          <div class="rows-divide" transition:collapse>
             <ListRow
               key={effect.key}
               title={effect.name}
@@ -125,7 +127,6 @@
               checked={since !== undefined || chosen.includes(effect.key)}
               chevron={false}
               disabled={since !== undefined}
-              data-effect-row={effect.key}
               onclick={() => onToggle(effect.key)}
             />
           </div>
@@ -135,11 +136,11 @@
   {/each}
 
   {#if picker.groups.length === 0}
-    <p class="muted effect-none" transition:collapse|global>{m.entry_hrt_effects_none()}</p>
+    <p class="muted effect-none" transition:collapse>{m.entry_hrt_effects_none()}</p>
   {/if}
 
   {#if picker.hiddenCount > 0}
-    <div transition:collapse|global>
+    <div transition:collapse>
       <button class="btn btn-ghost press effect-show-all" data-effect-show-all onclick={() => (showAll = true)}>
         <span>{m.entry_hrt_effects_show_all()}</span>
       </button>
