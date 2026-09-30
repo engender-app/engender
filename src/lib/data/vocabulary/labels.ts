@@ -47,8 +47,8 @@ type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
    `euphoria_dysphoria` was "Gender feeling" until this rule was written
    down. That name was the only one that said neither its poles nor its
-   subject, and once there were seven scales it also over-claimed: all
-   seven are gender feelings, so the vague one read as the general case.
+   subject, and once there were six scales it also over-claimed: all
+   six are gender feelings, so the vague one read as the general case.
    The key keeps its original spelling; only the display name moved. */
 const DIMENSION_NAME: Record<BuiltInDimensionKey, Message> = {
   euphoria_dysphoria: m.dim_euphoria_dysphoria,
@@ -56,7 +56,6 @@ const DIMENSION_NAME: Record<BuiltInDimensionKey, Message> = {
   masculinity: m.dim_masculinity,
   binary_nonbinary: m.dim_binary_nonbinary,
   agender_gendered: m.dim_agender_gendered,
-  social_recognition: m.dim_social_recognition,
   gender_stability: m.dim_gender_stability
 };
 
@@ -66,7 +65,6 @@ const DIMENSION_LOW: Record<BuiltInDimensionKey, Message> = {
   masculinity: m.dim_masculinity_low,
   binary_nonbinary: m.dim_binary_nonbinary_low,
   agender_gendered: m.dim_agender_gendered_low,
-  social_recognition: m.dim_social_recognition_low,
   gender_stability: m.dim_gender_stability_low
 };
 
@@ -76,7 +74,6 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
   masculinity: m.dim_masculinity_high,
   binary_nonbinary: m.dim_binary_nonbinary_high,
   agender_gendered: m.dim_agender_gendered_high,
-  social_recognition: m.dim_social_recognition_high,
   gender_stability: m.dim_gender_stability_high
 };
 
@@ -95,7 +92,6 @@ const DIMENSION_NOTE: Record<BuiltInDimensionKey, Message> = {
   masculinity: m.dim_masculinity_note,
   binary_nonbinary: m.dim_binary_nonbinary_note,
   agender_gendered: m.dim_agender_gendered_note,
-  social_recognition: m.dim_social_recognition_note,
   gender_stability: m.dim_gender_stability_note
 };
 
@@ -568,11 +564,22 @@ function lookup<K extends string>(map: Record<K, Message>, key: string): string 
   return (map as Record<string, Message | undefined>)[key]?.() ?? key;
 }
 
-export const dimensionName = (key: string) => lookup(DIMENSION_NAME, key);
-export const dimensionLow = (key: string) => lookup(DIMENSION_LOW, key);
-export const dimensionHigh = (key: string) => lookup(DIMENSION_HIGH, key);
+/* Existing journals can still carry the retired built-in row. Keep its
+   wording readable without seeding it into new journals. */
+const RETIRED_DIMENSIONS: Record<string, { name: Message; low: Message; high: Message; note: Message }> = {
+  social_recognition: {
+    name: m.dim_social_recognition,
+    low: m.dim_social_recognition_low,
+    high: m.dim_social_recognition_high,
+    note: m.dim_social_recognition_note
+  }
+};
+
+export const dimensionName = (key: string) => RETIRED_DIMENSIONS[key]?.name() ?? lookup(DIMENSION_NAME, key);
+export const dimensionLow = (key: string) => RETIRED_DIMENSIONS[key]?.low() ?? lookup(DIMENSION_LOW, key);
+export const dimensionHigh = (key: string) => RETIRED_DIMENSIONS[key]?.high() ?? lookup(DIMENSION_HIGH, key);
 export const dimensionNote = (key: string): string | null =>
-  (DIMENSION_NOTE as Record<string, Message | undefined>)[key]?.() ?? null;
+  RETIRED_DIMENSIONS[key]?.note() ?? (DIMENSION_NOTE as Record<string, Message | undefined>)[key]?.() ?? null;
 export const tagGroupName = (key: string) => lookup(TAG_GROUP_NAME, key);
 export const tagLabel = (key: string) => lookup(TAG_LABEL, key);
 /** The longer explanation a dysphoria type tag carries, or null for every

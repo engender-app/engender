@@ -66,6 +66,14 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     );
   }
 
+  /* Retire social_recognition from scale selection without deleting its
+     dimension row or any values recorded against it. */
+  await driver.run(
+    `UPDATE gender_dimension SET hidden = 1, updated_at = ?
+     WHERE key = 'social_recognition' AND is_built_in = 1 AND hidden = 0`,
+    [ts]
+  );
+
   /* No preset is seeded. The eight stopped being a picker in ticket 35 and
      the app has read none since; BUILT_IN_PRESETS survives only to say what
      a preset key meant when an older archive was written, which
