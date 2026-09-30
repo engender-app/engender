@@ -17,8 +17,8 @@ export type JournalAccessMode = 'passphrase' | 'pin' | 'biometric' | 'device-bou
 
 /** Whether this mode has a secret to ask for again mid-session. Device-bound
     on Android does: the Keystore prompt is one. Device-bound on the web does
-    not - there is nothing to ask - which is the one combination where
-    lock-on-leave can only blank the screen, and the settings copy says so.
+    not - there is nothing to ask - so the access-mode screen asks no lock
+    timing there and says why, and quick exit can only blank the screen.
     Unlocked mode on Android also has no secret.
     Biometric mode does: the prompt is the secret, the same way Android's
     Keystore one is. */

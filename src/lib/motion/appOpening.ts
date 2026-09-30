@@ -79,7 +79,7 @@ export function openApp(
 
   return transition.finished
     /* A transition superseded by another - a lock landing on the frame the
-       app opened, which lock-on-leave can genuinely do - rejects rather than
+       app opened, which an immediate lock can genuinely do - rejects rather than
        resolves, and that is not a failure. Swallowed here for the reason the
        layout swallows a superseded navigation's: one unhandled rejection per
        aborted transition buries a real one, and the walkthrough fails a whole

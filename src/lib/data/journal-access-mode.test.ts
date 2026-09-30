@@ -154,7 +154,8 @@ test('android still refuses a plaintext journal when there is no usable key mode
 
 /* What mid-session locking can ask for. The web's device-bound mode is the
    one gap, and it is a real one rather than an oversight: there is no secret
-   to re-ask, so lock-on-leave there can only blank the screen. */
+   to re-ask, so no lock timing is asked there and quick exit can only
+   blank the screen. */
 test('a mode has a secret to re-ask for only where one exists', () => {
   expect(accessModeHasSecret('passphrase', false)).toBe(true);
   expect(accessModeHasSecret('pin', false)).toBe(true);

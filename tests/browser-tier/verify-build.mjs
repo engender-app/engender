@@ -225,7 +225,7 @@ try {
 
   /* The gate steps aside once the mode is set up, and onboarding picks up
      exactly where it left off - its own lock-step content (the
-     lock-on-leave toggle), not a jump back to the welcome screen and not a
+     lock timing question), not a jump back to the welcome screen and not a
      stall on the gate's own screen. */
   await page.waitForSelector('[data-next]', { timeout: 10000 });
   ok('onboarding continues on its own lock step once the access mode is set up');
