@@ -29,9 +29,8 @@
    (GateScreen.svelte's gateBodyClass is one), template literals baked into
    a .ts module (icons.ts's own `class="icon ..."`), a `class={expression}`
    built at runtime (Tile.svelte's and Notice.svelte's ternaries), or a
-   class a third-party library injects into the DOM itself (flatpickr's
-   default `altInputClass`, or any of its own popup markup) - all of these
-   exist in this app and all of them undercount a class's real reach. A
+   class a third-party library injects into the DOM itself - all of these
+   can undercount a class's real reach. A
    false "single consumer" or "no consumer" from any of these blind spots
    fails this check same as a real one; fixed the same way, by adding the
    class to that sheet's SHARED with the reason.
@@ -106,39 +105,6 @@ const SHEETS = [
       /* SectionTitle renders caller-owned aside snippets. Their links need
          this global selector because scoped component CSS cannot reach them. */
       'section-aside',
-      /* DatePicker.svelte never sets flatpickr's `altInputClass` option, so
-         the library falls back to its own default - the visible field it
-         creates at runtime carries `form-control` (and, in `.inline`
-         calendars, `.selected`/`.today`/`.prevMonthDay`/`.nextMonthDay` on
-         the day cells it renders) - none of it a literal our grep can find
-         in DatePicker.svelte or anywhere else. */
-      'form-control',
-      'inline',
-      'selected',
-      'today',
-      'prevMonthDay',
-      'nextMonthDay',
-      /* flatpickr's own popup markup, themed here rather than replaced -
-         same blind spot, the library builds these elements itself. */
-      'date-picker-calendar',
-      'date-picker-entry',
-      'flatpickr-calendar',
-      'flatpickr-months',
-      'flatpickr-month',
-      'flatpickr-current-month',
-      'flatpickr-monthDropdown-months',
-      'flatpickr-monthDropdown-month',
-      'flatpickr-prev-month',
-      'flatpickr-next-month',
-      'flatpickr-weekdays',
-      'flatpickr-weekday',
-      'flatpickr-days',
-      'flatpickr-day',
-      'dayContainer',
-      'flatpickr-innerContainer',
-      'flatpickr-rContainer',
-      'numInputWrapper',
-      'cur-year',
       /* Prototype light-sweep trigger on .btn-primary, exercised in controls gallery */
       'is-swiping',
       /* Skeleton.svelte:26 builds `class="skeleton-{variant} stagger-in"` -

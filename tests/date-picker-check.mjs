@@ -12,12 +12,21 @@ const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const errors = [];
+const PICKER = '[data-date-picker]';
 async function shot(page, name) {
   if (gallery) await page.screenshot({ path: `${out}/${name}.png`, animations: 'disabled' });
 }
+/* A picker closes on its own exit, so the next step waits for it to have
+   gone rather than clicking a field under a scrim that is still leaving. */
+async function closed(page) {
+  await page.locator(PICKER).waitFor({ state: 'detached' });
+}
 async function enterDate(page, value) {
-  await page.locator('.flatpickr-calendar.open .date-picker-entry input').fill(value);
-  await page.locator('.flatpickr-calendar.open .date-picker-entry button').first().click();
+  await page.locator(`${PICKER} [data-date-picker-entry]`).fill(value);
+  await page.locator(`${PICKER} [data-date-picker-apply]`).click();
+}
+async function title(page) {
+  return (await page.locator(`${PICKER} [data-date-picker-title]`).textContent()).trim();
 }
 async function open(page, route) {
   await settlePage(page, base, route, 'light');
@@ -32,55 +41,79 @@ try {
       await page.locator('[data-add]').click();
       const input = page.locator('#appointment-date');
       for (const day of [15, 16]) {
-        if (!await page.locator('.flatpickr-calendar.open').count()) await input.click();
-        const cell = page.locator('.flatpickr-calendar.open .flatpickr-day:not(.prevMonthDay):not(.nextMonthDay)').filter({ hasText: new RegExp(`^${day}$`) });
-        await cell.scrollIntoViewIfNeeded();
+        await input.click();
+        const cell = page.locator(`${PICKER} [role="grid"] .dp-day`).filter({ hasText: new RegExp(`^${day}$`) });
+        await cell.waitFor();
         const box = await cell.boundingBox();
-        assert.ok(box.width >= 48 && box.height >= 48, `${language} ${width}px: day ${day} target ${box.width} × ${box.height}`);
+        assert.ok(box.width >= 47.99 && box.height >= 47.99, `${language} ${width}px: day ${day} target ${box.width} × ${box.height}`);
         const ownsEdges = await cell.evaluate(el => {
           const r = el.getBoundingClientRect();
           return [[1, r.height / 2], [r.width - 1, r.height / 2], [r.width / 2, 1], [r.width / 2, r.height - 1]]
             .every(([x, y]) => el.contains(document.elementFromPoint(r.x + x, r.y + y)));
         });
         assert.ok(ownsEdges, 'neighboring dates do not overlap hit regions');
+        await page.waitForTimeout(450);
         await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await closed(page);
         assert.match(await input.inputValue(), new RegExp(`-${day}$`), 'adjacent day selected through actual hit target');
       }
+
+      /* Keyboard parity: ArrowDown opens on the chosen day, arrows move a
+         day, PageDown turns a month, Shift+PageDown a year, Enter picks,
+         and focus comes back to the field. */
       await input.focus();
       await input.press('ArrowDown');
-      assert.equal(await page.locator('.flatpickr-day:focus').textContent(), '16', 'keyboard starts on selected day');
+      await page.waitForFunction(() => document.activeElement?.matches('[data-date-picker] .dp-day'));
+      assert.equal((await page.locator(`${PICKER} .dp-day:focus`).textContent()).trim(), '16', 'keyboard starts on selected day');
       await page.keyboard.press('ArrowLeft');
-      assert.equal(await page.locator('.flatpickr-day:focus').textContent(), '15', 'day arrow reaches adjacent target');
+      assert.equal((await page.locator(`${PICKER} .dp-day:focus`).textContent()).trim(), '15', 'day arrow reaches adjacent target');
+      const monthBefore = await title(page);
+      await page.keyboard.press('PageDown');
+      await page.waitForTimeout(400);
+      assert.notEqual(await title(page), monthBefore, 'PageDown turns the month');
+      assert.equal((await page.locator(`${PICKER} .dp-day:focus`).textContent()).trim(), '15', 'PageDown keeps the day of the month');
+      await page.keyboard.press('Shift+PageDown');
+      await page.waitForTimeout(400);
+      assert.match(await title(page), /2027/, 'Shift+PageDown turns the year');
+      await page.keyboard.press('Enter');
+      await closed(page);
+      assert.match(await input.inputValue(), /^2027-\d\d-15$/, 'Enter picks the day under the cursor');
+      assert.equal(await input.evaluate(el => el === document.activeElement), true, 'picking returns focus to the field');
+
+      await input.click();
       await enterDate(page, '2000-02-29');
+      await closed(page);
       assert.equal(await input.inputValue(), '2000-02-29', 'historical leap day preserves local date east of UTC');
       await input.click();
       await enterDate(page, '2000-02-30');
       assert.equal(await input.inputValue(), '2000-02-29', 'invalid date does not roll over');
-      assert.equal(await page.locator('.date-picker-calendar.open .date-picker-entry input').evaluate(el => el.validity.valid), false);
+      assert.equal(await page.locator(`${PICKER} [data-date-picker-entry]`).evaluate(el => el.validity.valid), false);
+
+      /* The arrows and the month drum. */
+      assert.match(await title(page), /2000/);
+      await page.locator(`${PICKER} [data-date-picker-next]`).click();
+      await page.waitForTimeout(400);
+      assert.match(await title(page), /(march|mar)/i, 'next month button turns the month');
+      await page.locator(`${PICKER} [data-date-picker-title]`).click();
+      await page.locator(`${PICKER} [data-month-jump="8"]`).click();
+      await page.waitForTimeout(400);
+      assert.match(await title(page), /(september|wrzesie)/i, 'the month drum jumps to a month');
+      await page.locator(`${PICKER} [data-date-picker-title]`).click();
+      await page.locator(`${PICKER} .dp-jump`).waitFor();
       await page.keyboard.press('Escape');
-      await input.click();
-      const month = page.locator('.date-picker-calendar.open .flatpickr-monthDropdown-months');
-      await month.selectOption('8');
-      assert.equal(await month.inputValue(), '8', 'month dropdown works');
-      await month.focus();
-      await month.press('ArrowDown');
-      assert.equal(await month.inputValue(), '9', 'month dropdown responds to keyboard arrows');
-      const year = page.locator('.date-picker-calendar.open .cur-year');
-      await year.fill('1999');
-      await year.press('Enter');
-      assert.equal(await year.inputValue(), '1999', 'direct year navigation works');
-      const controls = await page.locator('.date-picker-calendar.open').evaluate(calendar =>
-        [...calendar.querySelectorAll('button, input, select, [role="button"], .flatpickr-day')]
-          .filter(el => el.getClientRects().length && !el.disabled)
+      assert.equal(await page.locator(`${PICKER} .dp-jump`).count(), 0, 'Escape closes the drum before the picker');
+      assert.equal(await page.locator(PICKER).count(), 1);
+
+      const controls = await page.locator(PICKER).evaluate(picker =>
+        [...picker.querySelectorAll('button, input')]
+          .filter(el => el.getClientRects().length && !el.disabled && !el.closest('[aria-hidden="true"]'))
           .map(el => { const r = el.getBoundingClientRect(); return [el.className, r.width, r.height]; }));
-      /* A day cell comes back 47.99999px tall in Polish at 320px - a 48px
-         row after the grid is divided in floats, not a short target - so
-         the floor gets a hundredth of slack. */
       assert.ok(controls.every(([, width, height]) => width >= 47.99 && height >= 47.99), JSON.stringify(controls));
       await shot(page, `picker-${language}-${width}`);
       await page.keyboard.press('Escape');
-      assert.equal(await page.locator('[data-sheet]').count(), 1, 'calendar Escape preserves parent sheet');
-      assert.equal(await input.evaluate(el => el === document.activeElement), true, 'calendar Escape restores launcher');
+      await closed(page);
+      assert.equal(await page.locator('[data-sheet]').count(), 1, 'picker Escape preserves parent sheet');
+      await page.waitForFunction(() => document.activeElement?.id === 'appointment-date');
       await page.keyboard.press('Escape');
       await page.locator('[data-discard-record]').click();
       await page.waitForSelector('[data-sheet]', { state: 'detached' });
@@ -102,23 +135,26 @@ try {
       await enterDate(page, '1900-01-01');
       assert.equal(await end.inputValue(), previousEnd, 'range bound rejects a date before start');
       await page.keyboard.press('Escape');
+      await closed(page);
 
       await open(page, '/care/regimen');
       await page.locator('[data-add]').click();
       await page.locator('[data-own]').click();
-      if (await page.locator('.flatpickr-calendar.open').count()) await page.keyboard.press('Escape');
       const optionalEnd = page.locator('#regimen-end');
       await optionalEnd.click();
       await enterDate(page, '2020-09-30');
+      await closed(page);
       assert.equal(await optionalEnd.inputValue(), '2020-09-30');
       await optionalEnd.click();
-      await page.locator('.date-picker-calendar.open .date-picker-entry button').last().click();
+      await page.locator(`${PICKER} [data-date-picker-clear]`).click();
+      await closed(page);
       assert.equal(await optionalEnd.inputValue(), '', 'open-ended range stays empty after clearing');
       await optionalEnd.click();
       await page.keyboard.press('Escape');
+      await closed(page);
       assert.equal(await optionalEnd.inputValue(), '', 'opening and dismissing empty end does not choose today');
       await page.close();
-      console.log(`PASS ${language} ${width}px: adjacent hits, history, bounds, clearing, range text and Escape`);
+      console.log(`PASS ${language} ${width}px: adjacent hits, keyboard, history, drum, bounds, clearing, range text and Escape`);
     }
   }
 
@@ -126,14 +162,16 @@ try {
   page.on('pageerror', error => errors.push(error.stack));
   await open(page, '/care/labs');
   await page.locator('[data-add]').click();
-  if (!await page.locator('.flatpickr-calendar.open').count()) await page.locator('#lab-date').click();
+  await page.locator('#lab-date').click();
   await enterDate(page, '2001-09-30');
+  await closed(page);
   assert.equal(await page.locator('#lab-date').inputValue(), '2001-09-30', 'historical action reachable in short viewport');
   await page.locator('#lab-date').click();
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
   assert.equal(await page.evaluate(() => visualViewport.scale), 2);
   await enterDate(page, '2001-10-01');
+  await closed(page);
   assert.equal(await page.locator('#lab-date').inputValue(), '2001-10-01', 'date action reachable at real 200% page scale');
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
   await page.setViewportSize({ width: 390, height: 844 });

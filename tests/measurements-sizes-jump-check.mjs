@@ -121,8 +121,7 @@ try {
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet] input[name="measurement-value"]');
   await page.locator('[data-sheet] input[name="measurement-value"]').fill('55.5');
-  // The visible date field is flatpickr's alt input; the bound input it
-  // fronts carries the draft's date and is what preservation is about
+  // The date field carries the draft's date, which is what preservation is about
   const dateBefore = await page.locator('[data-sheet] input[name="measurement-date"]').inputValue();
   assert(dateBefore, 'The new editor should arrive with a date');
 

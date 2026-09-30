@@ -12,7 +12,7 @@
    #demo-jump control), then serves that build. */
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate, waitForFlatpickr } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 
@@ -4494,18 +4494,9 @@ try {
   // endEpisode() writes to the DB asynchronously and only then updates the
   // end-date field's own value via Svelte's reactive binding - filling it
   // before that settles gets clobbered right back to today's date.
-  // Read off the plain input until the picker exists: since ticket 165
-  // flatpickr is built on the field's first click, and until then the
-  // bound value sits on the input itself, already as Y-m-d. Clicking to
-  // build it here would open the calendar mid-wait (ticket 194).
   const today = localDateInput();
   await page.waitForFunction(
-    ([sel, expected]) => {
-      const el = document.querySelector(sel);
-      const fp = el?._flatpickr;
-      const shown = fp ? fp.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d') : el?.value;
-      return shown === expected;
-    },
+    ([sel, expected]) => document.querySelector(sel)?.value === expected,
     ['#regimen-end', today]
   );
   await fillDate(page, '#regimen-end', localDateInput(1));
@@ -7836,12 +7827,7 @@ try {
      calendar affordance on its cell, prefilled with what was just set. */
   await datedCell.locator('xpath=../button[@data-photo-edit-day]').click();
   await page.waitForSelector('[data-photo-day-edit-save]');
-  await waitForFlatpickr(page, '#photo-day-edit');
-  const prefilled = await page.evaluate(() => {
-    const el = document.querySelector('#photo-day-edit');
-    const fp = el?._flatpickr;
-    return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d');
-  });
+  const prefilled = await page.inputValue('#photo-day-edit');
   if (prefilled !== '1994-03-15') throw new Error(`the edit sheet did not prefill the photo's day: ${prefilled}`);
 
   await fillDate(page, '#photo-day-edit', '1994-04-20');

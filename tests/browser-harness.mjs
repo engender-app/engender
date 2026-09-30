@@ -48,45 +48,17 @@ export function launchPersistentChromium(userDataDir, options = {}) {
   });
 }
 
-/** The date fields are DatePickers on flatpickr: the visible field is
-    flatpickr's altInput and the ISO value lives on the hidden original, so
-    typing into the field is not how a date gets set. The picker instance
-    hangs off the element; setDate with fireChange runs the same onChange a
-    real pick runs.
-
-    Ticket 165 defers flatpickr's own init off the mount task (it's heavy
-    enough to stall a host sheet's entrance transition) to the field's
-    first click or ArrowDown, so the instance may not have attached yet on
-    a freshly-opened sheet. `.click()` is the same gesture a real pick
-    starts with and runs the init synchronously in the same turn - no
-    polling, no wait for some other, independently-timed hook to land.
-    It also opens the popup, which a script setting a date via the
-    instance directly never wanted, so this closes it again; flatpickr
-    keeps the reference across the id's move from the plain input to its
-    alt input, so the same element handle finds it before and after.
-
-    `_flatpickr` only - the plugin also parks a same-named `flatpickr()`
-    constructor-invoking method on `HTMLElement.prototype`, which reads as
-    truthy on any element, initialized or not, unless something (this
-    component, on its alt input) has shadowed it with the real instance
-    as an own property. */
-export async function waitForFlatpickr(page, selector) {
-  await page.evaluate((sel) => {
-    const el = document.querySelector(sel);
-    if (el?._flatpickr) return;
-    el?.click();
-    el?._flatpickr?.close();
-  }, selector);
-}
-
+/** Puts a date into a DatePicker the way a person types one: a tap on the
+    field opens the picker, whose foot takes `yyyy-mm-dd` and "Use date".
+    Waits for the picker to have gone, so the next step starts on the
+    screen again. A date outside the field's bounds leaves the picker open
+    with its field marked invalid, and this times out on the wait. */
 export async function fillDate(page, selector, iso) {
-  await waitForFlatpickr(page, selector);
-  await page.evaluate(([sel, v]) => {
-    const el = document.querySelector(sel);
-    const fp = el?._flatpickr;
-    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
-    fp.setDate(v, true);
-  }, [selector, iso]);
+  await page.locator(selector).click();
+  const picker = page.locator('[data-date-picker]');
+  await picker.locator('[data-date-picker-entry]').fill(iso);
+  await picker.locator('[data-date-picker-apply]').click();
+  await picker.waitFor({ state: 'detached' });
 }
 
 /** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;

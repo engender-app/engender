@@ -33,7 +33,7 @@ async function discard() {
 async function openNew() {
   await page.locator('[data-add]').click();
   await page.waitForFunction(() => document.activeElement?.closest('[data-sheet]'));
-  if (await page.locator('.flatpickr-calendar.open').count()) await page.keyboard.press('Escape');
+  if (await page.locator('[data-date-picker]').count()) await page.keyboard.press('Escape');
 }
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });

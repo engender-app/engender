@@ -16,7 +16,7 @@
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium } from './browser-harness.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -104,15 +104,11 @@ const dress = async (theme) => {
 };
 
 /** Moves the start of the range `days` back from the end the screen opened
-    on. DatePicker's visible field is a readonly flatpickr altInput, so it is
-    driven through the instance the component parks on the element. */
+    on, typed into the picker's foot (browser-harness.mjs's fillDate). */
 const setStartDaysBack = async (days) => {
-  const end = await page.$eval('#journal-book-end', (input) => input._flatpickr.selectedDates[0].getTime());
-  await page.$eval(
-    '#journal-book-start',
-    (input, at) => input._flatpickr.setDate(new Date(at), true),
-    end - days * 86_400_000
-  );
+  const end = await page.inputValue('#journal-book-end');
+  const start = new Date(new Date(`${end}T12:00:00`).getTime() - days * 86_400_000);
+  await fillDate(page, '#journal-book-start', start.toLocaleDateString('sv-SE'));
   await page.waitForTimeout(4000);
 };
 
