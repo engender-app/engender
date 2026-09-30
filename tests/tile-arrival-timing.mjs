@@ -238,7 +238,10 @@ async function androidArrival(to) {
         if (style.visibility === 'hidden' || style.display === 'none') return false;
         opacity *= Number(style.opacity);
       }
-      return opacity >= 0.99;
+      const entrances = node.getAnimations({ subtree: true }).filter((animation) =>
+        animation.animationName === 'kit-block-in');
+      return opacity >= 0.99 && entrances.every((animation) =>
+        animation.playState === 'finished' || animation.effect.getComputedTiming().progress >= 0.99);
     };
     return new Promise((done) => {
       const tick = () => {
@@ -250,7 +253,14 @@ async function androidArrival(to) {
           at: performance.now() - start,
           route: location.pathname === '${to}',
           moving: field?.classList.contains('is-tab-bridging') ?? false,
-          readable: bodies.length > 0 && bodies.every(visible),
+          readable: bodies.length > 0 && bodies.every(visible) &&
+            !bodies.some((body) => {
+              for (let at = body; at && at !== screen; at = at.parentElement) {
+                if (at.getAnimations().some((animation) => animation.playState === 'running' &&
+                    animation.effect.getKeyframes().some((frame) => frame.height !== undefined))) return true;
+              }
+              return false;
+            }),
           placeholder: !!screen?.querySelector('[data-gate-skeleton], [data-read-reserve-hold], .read-group-members.is-held'),
           height: gate?.getBoundingClientRect().height ?? null
         });
@@ -274,6 +284,14 @@ for (const pass of ['first', 'repeat']) for (const to of ['/calendar', '/stats',
   if (reversal) failed = true;
   if (to === '/calendar') console.log(`${reversal ? 'FAIL' : 'ok  '} Journal arrival never expands then collapses before settling`);
 }
+
+await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
+await page.evaluate(`window.Capacitor.getPlatform = () => 'android'; window.__lateReadUntil = performance.now() + 250`);
+const during = await androidArrival('/stats');
+const duringEnd = during.findLastIndex((f) => f.route && f.moving);
+const duringOk = during[duringEnd + 1]?.readable;
+if (!duringOk) failed = true;
+console.log(`${duringOk ? 'ok  ' : 'FAIL'} reads finishing during motion also finish nested tile entrances by field end`);
 
 /* Hold actual worker reads past the field deadline on an uncached visit.
    Releasing every first-wave query at one time avoids fabricating a slow

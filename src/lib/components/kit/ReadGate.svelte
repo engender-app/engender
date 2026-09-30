@@ -7,7 +7,7 @@
   import type { LiveList } from '$lib/data/live/journal.svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
   import { EASE_OUT_CSS } from '$lib/motion/tokens';
-  import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
+  import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
 
   let {
     read,
@@ -66,6 +66,7 @@
   $effect(() => {
     const loading = branch === 'loading';
     if (wasLoading === true && !loading && part) {
+      fitReadArrival(part.getAnimations({ subtree: true }));
       const duration = readRevealDuration('--dur-fast');
       if (duration > 0) {
         const version = revealVersion;

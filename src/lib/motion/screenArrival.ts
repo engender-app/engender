@@ -22,6 +22,22 @@ export function readRevealDuration(token: '--dur-fast' | '--dur-med'): number {
     : Math.min(duration, Math.max(0, tabRevealBy - performance.now()));
 }
 
+/** Fit nested entrances, including their stagger, into the field's remaining movement. */
+export function fitReadArrival(animations: Animation[]): void {
+  if (tabRevealBy === undefined) return;
+  const remaining = Math.max(0, tabRevealBy - performance.now());
+  for (const animation of animations) {
+    const timing = animation.effect?.getComputedTiming();
+    if (!timing || timing.iterations === Infinity || animation.playState === 'finished') continue;
+    if (remaining === 0) {
+      animation.finish();
+      continue;
+    }
+    const left = Number(timing.endTime) - Number(animation.currentTime ?? 0);
+    animation.playbackRate = Math.max(animation.playbackRate, left / remaining);
+  }
+}
+
 /** Keep new layers at their first position while Android prepares their paint. */
 export function playAfterPaint(owner: HTMLElement, animations: Animation[]): void {
   for (const animation of animations) {
@@ -30,7 +46,9 @@ export function playAfterPaint(owner: HTMLElement, animations: Animation[]): voi
   }
   requestAnimationFrame(() => requestAnimationFrame(() => {
     for (const animation of animations) {
-      if (owner.isConnected) animation.play();
+      if (owner.isConnected) {
+        if (animation.playState !== 'finished' && animation.playState !== 'idle') animation.play();
+      }
       else animation.cancel();
     }
   }));

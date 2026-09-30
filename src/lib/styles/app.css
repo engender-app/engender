@@ -95,6 +95,18 @@ body {
   transform: translateZ(0);
 }
 
+/* The system icons keep the page's ground while fields move or scroll
+   beneath them. This strip belongs to the frame, not the scrolling screen. */
+.app::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: max(0px, calc(var(--inset-top) - var(--field-bleed-top)));
+  background: var(--bg);
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* The one place the window insets are spent (phase 5 ticket 18).
 
    Both halves of the shell's safe-area defect are fixed by putting them

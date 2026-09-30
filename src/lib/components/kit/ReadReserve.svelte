@@ -33,8 +33,8 @@
   import type { Snippet } from 'svelte';
   import Skeleton from '../Skeleton.svelte';
   import { crossfade, maskHeight } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
-  import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
+  import { EASE_OUT_CSS, isReducedMotion } from '$lib/motion/tokens';
+  import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
 
   let {
     ready: answered,
@@ -74,6 +74,7 @@
       }
       return;
     }
+    fitReadArrival(node.getAnimations({ subtree: true }));
     const duration = readRevealDuration('--dur-fast');
     if (duration === 0) return;
     const animation = node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
@@ -135,7 +136,7 @@
     const box = wrapper.getBoundingClientRect();
     const to = box.height;
     if (isReducedMotion()) return;
-    const duration = motionDuration('--dur-med');
+    const duration = readRevealDuration('--dur-med');
     /* `fill: 'forwards'` on every margin travel below, released once it has
        safely finished (ux-carpet ticket 233). Without `fill`, a `.animate()`
        call reverts its property to the stylesheet's own value the instant

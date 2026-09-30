@@ -41,7 +41,7 @@
   import Skeleton from '../Skeleton.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { provideReadGroup } from './readGroup.svelte';
-  import { readRevealDuration } from '$lib/motion/screenArrival';
+  import { fitReadArrival, readRevealDuration } from '$lib/motion/screenArrival';
 
   let {
     answered = true,
@@ -100,6 +100,7 @@
       for (const animation of exits) animation.finish();
       await Promise.allSettled(exits.map((animation) => animation.finished));
       if (!cancelled) {
+        fitReadArrival(members.getAnimations({ subtree: true }));
         members.style.setProperty('--read-fade-duration', `${readRevealDuration('--dur-med')}ms`);
         group.show();
       }

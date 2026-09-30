@@ -30,9 +30,9 @@ import type { Action } from 'svelte/action';
 import type { TransitionConfig } from 'svelte/transition';
 
 import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
-import { markScreenArrival, endScreenArrival, stillArriving } from './screenArrival';
+import { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration } from './screenArrival';
 
-export { markScreenArrival, endScreenArrival, stillArriving };
+export { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration };
 
 /** Whether the runtime can clip at all.
 
@@ -1121,7 +1121,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     // Android can paint before a pending Web Animation owns the height.
     // Its underlying box keeps the previous height until the handover.
     node.style.height = `${from}px`;
-    const duration = motionDuration('--dur-med');
+    const duration = readRevealDuration('--dur-med');
     current = node.animate(
       [{ height: `${from}px` }, { height: `${to}px` }],
       { duration, easing: EASE_OUT_CSS, fill: 'both' }
