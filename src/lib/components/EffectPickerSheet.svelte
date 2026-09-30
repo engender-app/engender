@@ -112,7 +112,7 @@
   </div>
 
   {#each picker.groups as group (group.key)}
-    <div class="effect-group" transition:collapse|global>
+    <div class="effect-group" data-effect-picker-group={group.key ?? 'results'} transition:collapse|global>
       {#if group.heading}<SectionHeading text={group.heading} />{/if}
       <ListCard {role}>
         {#each group.effects as effect (effect.key)}
