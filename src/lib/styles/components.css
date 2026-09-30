@@ -621,7 +621,14 @@
     filter: saturate(1.15);
   }
 }
-.btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }
+/* A block of the page, DIRECTION.md rule 4's fourth line (final-audit
+   ticket 22): no ground, the --outline edge every block draws, --text type.
+   This was a pale --accent-soft tint, 1.08:1 from the page on trans light,
+   a tonal ground the rule does not sanction. The primary action keeps the
+   ink, so a secondary one is held by its line and spends no colour, since
+   colour is content in this direction. .btn-danger is the same block with
+   --danger type. */
+.btn-soft { background: none; border: 1px solid var(--outline); color: var(--text); }
 /* --accent-ink, not --accent, and it is a contrast fix rather than a look
    change: the two are the same hue and the ink is only pulled toward --text
    until it clears the 4.5:1 small-text floor on all three surfaces in every
@@ -633,7 +640,7 @@
    was under the floor on that pair; the token for accent-coloured text
    already existed and this rule was not using it. */
 .btn-ghost { background: none; color: var(--accent-ink); }
-.btn-danger { background: var(--danger-soft); color: var(--danger); }
+.btn-danger { background: none; border: 1px solid var(--outline); color: var(--danger); }
 .btn-block { width: 100%; }
 
 /* The ring, and nothing else. This used to also set
