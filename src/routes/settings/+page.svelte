@@ -653,22 +653,21 @@
   <Sheet bind:open={aboutSheet} title={m.about()}>
     <div class="about-content">
       <header class="about-identity">
-        <!-- The icon, in the flag this person picked: the white tile and
-             its black edge, because what this row is showing is the app's
-             own icon beside its own name and version, and the tile's edge is
-             not optional anywhere the drawing has an outside (Alicja,
-             2026-09-21: "its supposed to be black always"). Absent under
-             disguise, which is Mark's own answer - what is left is the name
-             in type, which is what every surface carrying the mark falls
-             back to (ADR-0014). -->
-        <Mark size={64} crop="tile" />
-        <div class="about-identity-copy">
-          <h2 translate="no">{m.app_name()}</h2>
-          <p class="about-version">
-            {m.version()}
-            <span translate="no" data-app-version>{__APP_VERSION__}</span>
-          </p>
-        </div>
+        <!-- The logotype, in the flag this person picked (ticket 37): the
+             white tile and its black edge beside the name, in the
+             proportions app.css's .lockup sets, scaled to 32px. The tile's
+             edge is not optional anywhere the drawing has an outside
+             (Alicja, 2026-09-21: "its supposed to be black always").
+             Absent under disguise, which is Mark's own answer - what is
+             left is the name in type, which is what every surface carrying
+             the mark falls back to (ADR-0014). -->
+        <h2 class="lockup about-lockup" translate="no">
+          <Mark size={40} crop="tile" /><span class="lockup-word">{m.app_name()}</span>
+        </h2>
+        <p class="about-version">
+          {m.version()}
+          <span translate="no" data-app-version>{__APP_VERSION__}</span>
+        </p>
       </header>
 
       <p class="about-license">{m.about_license()}</p>
@@ -712,24 +711,17 @@
   }
 
   .about-identity {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
+    display: grid;
+    gap: var(--space-2);
     padding: var(--space-4);
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
     background: color-mix(in oklab, var(--accent) 9%, var(--surface));
   }
 
-  .about-identity-copy {
-    min-width: 0;
-  }
-
-  .about-identity h2 {
+  .about-lockup {
     margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-display);
+    font-size: 2rem;
     line-height: 1.1;
     overflow-wrap: anywhere;
   }
@@ -739,7 +731,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1) var(--space-2);
-    margin: var(--space-2) 0 0;
+    margin: 0;
     color: var(--text-2);
     font-size: var(--text-sm);
   }
