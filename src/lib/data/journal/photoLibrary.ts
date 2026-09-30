@@ -62,6 +62,10 @@ export interface PhotoLibraryArea {
       photograph means a migration, an archive round trip and a control
       that does not exist; it is not this ticket's. */
   starred(): Promise<LibraryPhoto[]>;
+  /** Whether the library holds anything at all: the same six arms as
+      `inJournal`, asked with one `EXISTS` instead of hydrating every row
+      (Home's Getting started row). */
+  hasAny(): Promise<boolean>;
 }
 
 type LibraryRow = {
@@ -103,7 +107,7 @@ const PHOTO_ARM = (extra: string) => `
 
 const LIBRARY_ORDER = 'ORDER BY epoch_day, source_rank, owner_order, row_id';
 
-const IN_JOURNAL = `${PHOTO_ARM('')}
+const IN_JOURNAL_ARMS = `${PHOTO_ARM('')}
   UNION ALL
   SELECT h.uuid, h.file_path, h.epoch_day, 'hair', NULL, 0, h.uuid, 1, 0, h.id
   FROM hair_photo h
@@ -123,7 +127,9 @@ const IN_JOURNAL = `${PHOTO_ARM('')}
   SELECT v.uuid, v.file_path, n.epoch_day, 'video', NULL, 0, CAST(n.id AS TEXT), 5, v.order_index, v.id
   FROM video_note v
   JOIN entry n ON n.id = v.entry_id
-  WHERE n.trashed_at IS NULL
+  WHERE n.trashed_at IS NULL`;
+
+const IN_JOURNAL = `${IN_JOURNAL_ARMS}
   ${LIBRARY_ORDER}`;
 
 const STARRED = `${PHOTO_ARM(' AND p.starred = 1')}
@@ -133,6 +139,11 @@ export function makePhotoLibraryArea(driver: SqliteDriver): PhotoLibraryArea {
   return {
     async inJournal() {
       return (await driver.query<LibraryRow>(IN_JOURNAL)).map(toLibraryPhoto);
+    },
+
+    async hasAny() {
+      const rows = await driver.query<{ found: number }>(`SELECT EXISTS(SELECT 1 FROM (${IN_JOURNAL_ARMS})) AS found`);
+      return bool(rows[0].found);
     },
 
     async starred() {
