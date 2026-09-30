@@ -15,6 +15,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { ApplicationSiteKey, InjectionSiteKey, RouteOption } from '$lib/data/doseSchedule';
+import type { DoseAttribution } from '$lib/data/regimenEpisode';
 import type { DoseEvent, DoseRoute, DoseStatus, EpisodeEndReason, InjectionVehicle, PauseReason } from '$lib/data/types';
 import type { RegimenTemplateKey } from './builtins';
 
@@ -155,3 +156,14 @@ export const doseRowTitle = (
   dose: Pick<DoseEvent, 'dose' | 'doseUnit' | 'route'>,
   separator = ' · '
 ): string => `${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}${separator}${routeLabel(dose.route)}`;
+
+/** Which episode a dose row is attributed to, in the wording the row's
+    trailing edge and an auto-logged row's second line both use (phase 5
+    ticket 11) - the two must not word it differently, so this is the one
+    place either asks. */
+export const attributionLabel = (attribution: DoseAttribution): string =>
+  attribution.episode
+    ? m.doses_under_episode({ drug: attribution.episode.drug })
+    : attribution.ambiguous
+      ? m.doses_ambiguous_episode()
+      : m.doses_no_episode();
