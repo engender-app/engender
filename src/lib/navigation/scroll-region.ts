@@ -8,16 +8,19 @@
    Support and resources from the bottom of the More hub put it half way down
    a screen it had never been scrolled on (Alicja, 2026-08-26).
 
-   Each path remembers its own position, and that is the whole rule. A screen
-   you have never scrolled starts at the top, which is the complaint; a screen
-   you are coming back to starts where you left it, which is what the browser
+   Each path remembers its own position, and a screen gets it back only when
+   history brings you back to it - a popstate, from the system back gesture
+   or a back control that calls `history.back()`. Anything that goes forward
+   (a door, a tab, a link, a `goto`) opens its screen at the top, even one
+   you have scrolled before: choosing a door is starting to read it, not
+   returning to where you were (Alicja, 2026-09-30). That is what the browser
    would do for you if this were the window scrolling.
 
    Deliberately not asked of `screen-transition.ts`'s `isBack`, which was the
    first attempt: that one answers "is this a step back up a path", and the
    hub links to `/settings/*` routes that are nowhere underneath `/more`, so
-   neither leg of hub to screen to hub qualifies. Remembering per path needs
-   no notion of direction at all.
+   neither leg of hub to screen to hub qualifies. The navigation's own type
+   is the direction, and it needs no map of the app.
 */
 
 /* Relative, not `$lib`: the node-tier vitest loads this module and does not
@@ -45,12 +48,13 @@ function region(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-app-scroll-region]');
 }
 
-/** Where a screen was left, which is where `restoreScroll` is about to take
-    it. The transition needs to know before the region has got there:
+/** Where `restoreScroll` is about to take a screen: where it was left when
+    the navigation (SvelteKit's `type`) is history going back to it, the top
+    otherwise. The transition needs to know before the region has got there:
     restoring is eased, and it waits for the rows, so at the moment the
     incoming screen is photographed the region is still at 0. */
-export function savedScroll(path: string | null | undefined): number {
-  return (path && positions.get(path)) || 0;
+export function savedScroll(path: string | null | undefined, type: string): number {
+  return (type === 'popstate' && path && positions.get(path)) || 0;
 }
 
 /** Called before leaving, while the outgoing screen can still be measured. */
@@ -78,11 +82,11 @@ export function rememberScroll(path: string | null | undefined): void {
     the same reason, and the same reason it is a loop rather than a single
     delayed retry: what is being waited for is a layout, and nothing fires
     an event when one has finished growing. */
-export function restoreScroll(path: string): void {
+export function restoreScroll(path: string, type: string): void {
   const el = region();
   if (!el) return;
 
-  const wanted = positions.get(path) ?? 0;
+  const wanted = savedScroll(path, type);
   const reachable = () => el.scrollHeight - el.clientHeight >= wanted;
   const travel = () => el.scrollTo({ top: wanted, behavior: scrollBehavior() });
   /* Once the position can be reached it is travelled to, eased, exactly once.
