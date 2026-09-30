@@ -132,6 +132,18 @@ export function registerOverlayRegion(
   };
 }
 
+/* Locks overlap: a sheet releases only when its scrim is destroyed, after
+   its outro, so a sheet raised by another's close takes its lock first and
+   releases it last. Each lock used to remember and restore the state it
+   found, and the second one found the first's `hidden` and `inert` - so
+   the first release unlocked the background under the open second sheet,
+   and the second release locked the scroll region again for good. The
+   state is shared and counted instead: the first lock saves it, the last
+   release restores it. */
+const inertHolds = new Map<HTMLElement, number>();
+let scrollHolds = 0;
+let unlockedOverflow = '';
+
 /** Makes everything outside `node` inert and unscrollable. Returns the undo,
     which restores focus to its launcher or the nearest surviving control in
     the launcher's prior keyboard order. */
@@ -143,8 +155,14 @@ export function lockBackground(node: HTMLElement): () => void {
   const restoreInert: HTMLElement[] = [];
   if (root) {
     for (const child of Array.from(root.children) as HTMLElement[]) {
-      if (child.contains(node) || child.hasAttribute('inert')) continue;
-      child.setAttribute('inert', '');
+      if (child.contains(node)) continue;
+      const holds = inertHolds.get(child);
+      if (holds) inertHolds.set(child, holds + 1);
+      else if (child.hasAttribute('inert')) continue;
+      else {
+        child.setAttribute('inert', '');
+        inertHolds.set(child, 1);
+      }
       restoreInert.push(child);
     }
   }
@@ -161,16 +179,24 @@ export function lockBackground(node: HTMLElement): () => void {
     for (const child of restoreInert) child.classList.add('is-withdrawn');
   });
   const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
-  const previousOverflow = mainEl?.style.overflow ?? '';
-  if (mainEl) mainEl.style.overflow = 'hidden';
+  if (mainEl) {
+    if (scrollHolds++ === 0) unlockedOverflow = mainEl.style.overflow;
+    mainEl.style.overflow = 'hidden';
+  }
 
   return () => {
     if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
     restoreInert.forEach((el) => {
+      const holds = (inertHolds.get(el) ?? 1) - 1;
+      if (holds > 0) {
+        inertHolds.set(el, holds);
+        return;
+      }
+      inertHolds.delete(el);
       el.removeAttribute('inert');
       el.classList.remove('is-withdrawn');
     });
-    if (mainEl) mainEl.style.overflow = previousOverflow;
+    if (mainEl && --scrollHolds === 0) mainEl.style.overflow = unlockedOverflow;
     queueMicrotask(() => {
       if (previouslyFocused?.isConnected && isFocusable(previouslyFocused)) {
         previouslyFocused.focus({ preventScroll: true });
