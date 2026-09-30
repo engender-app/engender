@@ -1035,11 +1035,52 @@ describe('ticket 28: the field is a blind over the content', () => {
     const slide = frames(keyframesOf(app, 'blind-slide')!.body);
     expect(slide.length, 'one curve from one height to another, not a phase list').toBe(2);
     for (const frame of slide) {
-      expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual(['clip-path']);
+      /* The clip, and `outline-offset`, which moves nothing and is there so
+         the animation cannot be composited: a clip-path-only animation is run
+         on the compositor in Chromium, which draws --blind-ease's linear() as
+         a straight ramp while the text riding the edge keeps the curve
+         (ticket 285). */
+      expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual([
+        'clip-path',
+        'outline-offset'
+      ]);
       expect(frame.decls['clip-path']).toMatch(/round 0 0 var\(--r-block\) var\(--r-block\)\)$/);
     }
     expect(slide[0].decls['clip-path']).toContain('var(--blind-from');
     expect(slide[1].decls['clip-path']).toContain('var(--blind-to');
+  });
+
+  /* One edge, one clock (ticket 285): what is painted is the smaller of the
+     blind's clip and the field group's own box, which the browser animates on
+     its default 0.25s ease unless told otherwise. */
+  it('animates the field group on the blind\'s own duration and curve', () => {
+    const group = declarations(ruleOf(app, '::view-transition-group(field)')?.body ?? '');
+    expect(group['animation-duration']).toBe('var(--blind-dur, var(--dur-slow))');
+    expect(group['animation-timing-function']).toBe('var(--blind-ease, var(--ease-out))');
+    /* Between the blind's own two numbers, so an interrupted navigation's
+       edge does not restart from the DOM's resting box. */
+    expect(group['animation-name']).toBe('field-slide');
+    const slide = frames(keyframesOf(app, 'field-slide')!.body);
+    expect(slide[0].decls.height).toContain('var(--blind-from');
+    expect(slide[1].decls.height).toContain('var(--blind-to');
+  });
+
+  /* The main-thread pin (app.css, "THE MAIN-THREAD PIN"; ADR-0078's named
+     exception): the keyframes that carry it are exactly these five, each by
+     the two variables and never a literal, so the reason is written once. */
+  it('carries the main-thread pin by name in exactly the keyframes that need it', () => {
+    const carrying = [...app.matchAll(/@keyframes ([\w-]+) \{/g)]
+      .map((m) => m[1])
+      .filter((name) => /outline-offset/.test(keyframesOf(app, name)?.body ?? ''));
+    expect(carrying.sort()).toEqual(
+      ['blind-lead', 'blind-scroll-in', 'blind-scroll-out', 'blind-slide', 'part-follow']
+    );
+    for (const name of carrying) {
+      const values = frames(keyframesOf(app, name)!.body).map((f) => f.decls['outline-offset']);
+      expect(values, name).toEqual(['var(--pin-from)', 'var(--pin-to)']);
+    }
+    expect(app).toMatch(/--pin-from:\s*0px;/);
+    expect(app).toMatch(/--pin-to:\s*0\.0\d*px;/);
   });
 
   it('translates the full blind when one side is scrolled', () => {
@@ -1053,7 +1094,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     for (const name of ['blind-scroll-out', 'blind-scroll-in']) {
       const motion = frames(keyframesOf(app, name)!.body);
       expect(motion).toHaveLength(2);
-      expect(motion.map((frame) => Object.keys(frame.decls))).toEqual([['translate'], ['translate']]);
+      expect(motion.map((frame) => Object.keys(frame.decls))).toEqual([['translate', 'outline-offset'], ['translate', 'outline-offset']]);
       expect(motion[name.endsWith('out') ? 1 : 0].decls.translate).toContain('var(--blind-delta)');
     }
   });
@@ -1070,7 +1111,11 @@ describe('ticket 28: the field is a blind over the content', () => {
       'field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both'
     );
     for (const name of ['field-part-out', 'field-part-in']) {
-      const [frame] = frames(keyframesOf(app, name)!.body);
+      /* The leave also names where it starts from opacity-wise, for a
+         navigation that interrupts another (ticket 285), so its moving frame
+         is the last one and the arrival's is still the first. */
+      const [first, last] = frames(keyframesOf(app, name)!.body);
+      const frame = name.endsWith('-out') ? last : first;
       expect(Object.keys(frame.decls).sort()).toEqual(['opacity', 'transform']);
       /* The direction is the blind's, published per navigation, so the two
          travel the way the edge is going rather than always downwards. */
@@ -1091,21 +1136,32 @@ describe('ticket 28: the field is a blind over the content', () => {
     const ride = 'var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both';
     for (const [selector, keyframe] of [
       ['::view-transition-old(*.field-part)', 'blind-lead'],
-      ['::view-transition-new(*.field-part)', 'blind-follow'],
+      ['::view-transition-new(*.field-part)', 'part-follow'],
       ['::view-transition-old(*.sun-ring)', 'blind-lead']
     ]) {
       expect(declarations(ruleOf(app, selector)?.body ?? '').animation, selector).toContain(
         `${keyframe} ${ride}`
       );
     }
-    for (const name of ['blind-lead', 'blind-follow']) {
+    /* `outline-offset` pins the ride to the main thread beside the edge's
+       clip (ticket 285); the screen's follow moves only the screen. */
+    for (const [name, keys] of [
+      ['blind-lead', ['translate', 'outline-offset']],
+      ['part-follow', ['translate', 'outline-offset']],
+      ['blind-follow', ['translate']]
+    ] as const) {
       for (const frame of frames(keyframesOf(app, name)!.body)) {
-        expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(['translate']);
+        expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(keys);
       }
     }
     /* The ride ends where the element rests, both ways round. */
-    expect(frames(keyframesOf(app, 'blind-follow')!.body).at(-1)!.decls.translate).toBe('0 0');
-    expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe('0 0');
+    expect(frames(keyframesOf(app, 'part-follow')!.body).at(-1)!.decls.translate).toBe('0 0');
+    /* And the leave starts where the photograph was taken - at rest, or as
+       far from it as the edge was when a navigation interrupted another
+       (ticket 285). */
+    expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe(
+      '0 var(--blind-lead-from, 0px)'
+    );
   });
 
   /* The content under the blind travels with its bottom edge, on the
@@ -1219,16 +1275,19 @@ describe('ticket 28: the field is a blind over the content', () => {
     );
     expect(old.length, 'the outgoing contents, both paths').toBe(2);
     expect(fresh.length, 'the incoming contents, both paths').toBe(2);
+    /* The contents keep their ride with the edge (ticket 285): the edge is
+       cut at 1ms, and a part that kept only its fade stood where it was
+       printed, fading over the page below an edge that had already gone. */
     for (const rule of old) {
       const d = declarations(rule.body);
-      expect(d['animation-name']).toBe('screen-fade-away');
-      expect(d['animation-duration']).toBe('var(--dur-crossfade) !important');
+      expect(d['animation-name']).toBe('screen-fade-away, blind-lead');
+      expect(d['animation-duration']).toBe('var(--dur-crossfade), var(--dur-slow) !important');
     }
     for (const rule of fresh) {
       const d = declarations(rule.body);
-      expect(d['animation-name']).toBe('screen-crossfade');
+      expect(d['animation-name']).toBe('screen-crossfade, part-follow');
       expect(d['animation-delay'], 'the incoming half waits for the outgoing one').toBe(
-        'var(--dur-crossfade)'
+        'var(--dur-crossfade), 0s'
       );
       expect(d['animation-fill-mode'], 'held at its first frame through the wait').toBe('both');
     }

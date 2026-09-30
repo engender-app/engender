@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 
-import { containerReceive, containerSend, fadeThrough, scrimFade, sharedAxisX, sheetRise } from './navigation';
+import { containerReceive, containerSend, fadeThrough, fieldPart, scrimFade, sharedAxisX, sheetRise } from './navigation';
 import { EASE_OUT } from './tokens';
 
 /* The node tier has no DOM, and these read their durations and distances
@@ -268,5 +268,41 @@ describe('container transform, into the entry editor', () => {
     const source = readFileSync(new URL('./navigation.ts', import.meta.url), 'utf8');
     const configured = /crossfade\(\{[\s\S]*?duration:\s*\(\)\s*=>\s*motionDuration\('(--dur-[a-z]+)'/.exec(source);
     expect(configured?.[1], 'the crossfade should not share --dur-med with the fade').toBe('--dur-slow');
+  });
+});
+
+/* A printed part leaving while it is still arriving (ticket 285): the two are
+   separate transitions, so the leave has to start from what is drawn or the
+   part steps to full opacity and to its resting place in one frame. */
+describe('a printed part leaving', () => {
+  function stubStyle(style: { opacity: string; transform: string }) {
+    stubDocument(TOKENS);
+    (globalThis as Record<string, unknown>).getComputedStyle = () => ({
+      getPropertyValue: (name: string) => (TOKENS as Record<string, string>)[name] ?? '',
+      ...style
+    });
+  }
+
+  it('starts from full opacity and no travel when nothing was arriving', () => {
+    stubStyle({ opacity: '1', transform: 'none' });
+    const config = fieldPart(node, { printed: true }, { direction: 'out' });
+    expect(config.css!(1, 0)).toBe('opacity: 1; transform: translateY(calc(var(--part-travel, 12px) * 0))');
+  });
+
+  it('starts from the opacity and offset it had when it was arriving', () => {
+    stubStyle({ opacity: '0.3', transform: 'matrix(1, 0, 0, 1, 0, -3)' });
+    const config = fieldPart(node, { printed: true }, { direction: 'out' });
+    const first = config.css!(1, 0);
+    expect(first).toContain('opacity: 0.3');
+    expect(first).toContain('translateY(calc(-3px + (var(--part-travel, 12px) * 1 - -3px) * 0))');
+    /* And lands where a fresh leave lands. */
+    expect(config.css!(0, 1)).toContain('opacity: 0');
+    expect(config.css!(0, 1)).toContain('* 1)');
+  });
+
+  it('leaves an arrival alone', () => {
+    stubStyle({ opacity: '0.3', transform: 'matrix(1, 0, 0, 1, 0, -3)' });
+    const config = fieldPart(node, { printed: true }, { direction: 'in' });
+    expect(config.css!(0, 1)).toBe('opacity: 0; transform: translateY(calc(var(--part-travel, 12px) * -1))');
   });
 });

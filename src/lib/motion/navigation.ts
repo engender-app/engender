@@ -143,7 +143,7 @@ export function sharedAxisX(
  * be wrong.
  */
 export function fieldPart(
-  _node: Element,
+  node: Element,
   params: { printed?: boolean } = {},
   options: { direction?: Direction } = {}
 ): TransitionConfig {
@@ -151,10 +151,43 @@ export function fieldPart(
   /* Leaving goes with the edge and arriving comes from the far side of it,
      which is what stops the two reading as one element sliding through. */
   const sign = options.direction === 'out' ? 1 : -1;
-  const move = (u: number) =>
-    params.printed
-      ? `transform: translateY(calc(var(--part-travel, ${PART_TRAVEL}px) * ${sign * u}))`
-      : '';
+  /* Where the element is when this starts. A second change landing while a
+     question is still arriving turns its arrival into a departure, and one
+     landing while it is leaving brings it back: the transitions are separate
+     and each began from its own idea of where it started, so a question 30%
+     in and 3px off its place was 100% in and on its place in one frame and
+     popped back off it as it left, and one 67% out started again from
+     nothing (ticket 285, -9px and a full-opacity flash on the flipbook).
+     Each starts from what is drawn. A fresh element is not being animated,
+     and gets the curves this always had. */
+  const leaving = options.direction === 'out';
+  let shown = leaving ? 1 : 0;
+  let offset = 0;
+  let resumed = false;
+  if (typeof getComputedStyle === 'function') {
+    const running = typeof node.getAnimations === 'function' && node.getAnimations().length > 0;
+    if (leaving || running) {
+      const style = getComputedStyle(node);
+      const opacity = Number(style.opacity);
+      if (Number.isFinite(opacity)) shown = opacity;
+      if (params.printed) {
+        const matrix = /matrix\(([^)]+)\)/.exec(style.transform)?.[1].split(',');
+        offset = matrix ? Number(matrix[5]) || 0 : 0;
+      }
+      resumed = running;
+    }
+  }
+  const opacityAt = (t: number) => {
+    const ramp = Math.min(1, t * 2);
+    return leaving ? ramp * shown : resumed ? shown + (1 - shown) * ramp : ramp;
+  };
+  const move = (u: number) => {
+    if (!params.printed) return '';
+    if (!leaving && resumed) return `transform: translateY(${offset * u}px)`;
+    return offset
+      ? `transform: translateY(calc(${offset}px + (var(--part-travel, ${PART_TRAVEL}px) * ${sign} - ${offset}px) * ${u}))`
+      : `transform: translateY(calc(var(--part-travel, ${PART_TRAVEL}px) * ${sign * u}))`;
+  };
   const fast = motionDuration('--dur-fast');
   return {
     duration: fast,
@@ -171,12 +204,12 @@ export function fieldPart(
        outgoing one is solid for the first half of its length, the incoming
        one is solid for the last half of its, and the crossover is the 75ms
        between. No frame is empty and no frame carries two solid ones. */
-    delay: options.direction === 'out' ? 0 : Math.round(fast / 2),
+    delay: leaving || resumed ? 0 : Math.round(fast / 2),
     /* Linear, because the shape is in the css below rather than in the
        curve: an eased opacity and a doubled rate would compound into a
        crossover neither of them describes. */
     easing: LINEAR,
-    css: (t, u) => `opacity: ${Math.min(1, t * 2)}; ${move(u)}`
+    css: (t, u) => `opacity: ${opacityAt(t)}; ${move(u)}`
   };
 }
 

@@ -171,6 +171,16 @@
      ticket 28 relies on. */
   overflow: clip;
   overflow-clip-margin: 120px;
+  /* Everything on the field is cut at the edge the eye sees (ticket 285), not
+     at the box's own bottom plus 120px. A step that asks a taller question is
+     laid out at its final height on the first frame while the painted edge
+     travels there over --dur-slow, and the incoming lines start fading in
+     75ms later - so their extra lines were painted on the page under the
+     field for as long as the edge was short of them. The clip reads the same
+     `--blind-edge` the paint does, on the same clock, so the words are
+     uncovered by the edge instead of hanging below it. A closing field has
+     an edge below its box, which a negative inset gives back. */
+  clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0);
 }
 /* The paint, split from the box above (ticket 28's mechanism, and the same
    reason it exists there): a flat block a window tall whose bottom edge is a
@@ -199,6 +209,23 @@
   display: grid;
 }
 .step-field-ask > * { grid-area: 1 / 1; }
+/* What arrives on the field rides its edge (ticket 285, and ticket 28's rule
+   for the doors: the type is printed on the blind, on the blind's own curve).
+   A taller question is laid out at its final height on the first frame while
+   the painted edge travels there; left alone it stood still while the edge
+   uncovered it. Its bottom keeps its distance from the edge instead: it is
+   offset by however far the edge still has to go, which is the registered
+   --blind-edge less where it will rest, so it needs no clock of its own, is
+   exactly on the edge's curve on every frame, and an interrupting change is
+   a continuation for free. Each heading carries its own rest (stepBlind sets
+   --own-rest when it arrives and whenever the field is measured), the
+   leaving one included, which rides the edge from where it stood; before the
+   first measurement nothing has one and the offset is nothing. The clip on
+   .step-field remains as the backstop that stops anything painting past the
+   edge. */
+.step-field-ask > * {
+  translate: 0 calc(var(--blind-edge) - var(--own-rest, var(--blind-edge)));
+}
 /* Everything under the edge, riding it on the edge's own clock, so the pair
    reads as one sheet of page being uncovered rather than as two blocks each
    finding its own way down (rule 10). */
