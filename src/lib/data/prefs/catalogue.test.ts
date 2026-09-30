@@ -57,8 +57,7 @@ test('the boot set is exactly the pre-database preferences', () => {
       'a11yLegibilityBoost',
       'a11yMotionReduce',
       'lockAfter',
-      'disguise',
-      'bioOptIn'
+      'disguise'
     ].sort()
   );
 });
@@ -72,8 +71,7 @@ test('the boot set cuts across the portable split rather than following it', () 
     'a11yLegibilityBoost',
     'a11yMotionReduce',
     'lockAfter',
-    'disguise',
-    'bioOptIn'
+    'disguise'
   ]);
 });
 

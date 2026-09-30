@@ -16,18 +16,17 @@
      (docs/ui-copy.md) and states the whole consequence before offering the
      one action there is.
 
-     The prompt firing by itself used to be unconditional (ticket 18's first
-     finding: nobody was ever asked). It still has to fire eventually - a
-     device-bound key can only be unwrapped by the platform saying who is
-     here, and that stays true whatever `bioOptIn` says (out of scope: the
-     crypto). Consent only decides whether it fires the moment this screen
-     mounts, or waits behind the primary button below, which already existed
-     and was simply redundant with the auto-fire before this. */
+     The prompt fires by itself the moment this screen mounts, every time.
+     Ticket 18 made that a question asked once ("Open automatically?") and a
+     Settings switch after it; lock-timing ticket 01 took both out at
+     Alicja's word, since the prompt has to come eventually anyway - a
+     device-bound key only unwraps once the platform says who is here - and
+     waiting behind a button first was one more tap for the same prompt. The
+     primary button below is the way back to it after a cancel. */
 
   import { m } from '$lib/paraglide/messages';
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { bioGateDecision } from '$lib/lock/bio-consent';
   import { appWordmark } from '$lib/disguise/identity';
   import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
@@ -51,14 +50,19 @@
   let invalidatedBody = $derived(
     recoveryKeyPresence.exists ? m.ak_invalidated_body_recoverable() : m.ak_invalidated_body()
   );
-  let consentOpen = $state(false);
 
   let refusal = $derived(bootState.androidKey?.kind === 'refused' ? bootState.androidKey.authentication : null);
   let invalidated = $derived(bootState.androidKey?.kind === 'invalidated');
 
+  /** Whether a prompt has been shown on this gate, by the button or by the
+      mount below. A cancel is an answer, so the mount does not fire again
+      over it. */
+  let fired = false;
+
   async function authenticate(deviceCredential: boolean) {
     if (busy) return;
     busy = true;
+    fired = true;
     try {
       await openAndroidJournal({
         title: m.ak_prompt_title(),
@@ -71,38 +75,22 @@
     }
   }
 
-  function answerConsent(optIn: boolean) {
-    prefs.bioOptIn = optIn;
-    consentOpen = false;
-    if (optIn) void authenticate(false);
-  }
-
   /* Once only, and guarded by a plain variable rather than by reading
      `busy`: an effect that reads what it writes re-runs itself until Svelte
      gives up, which is a mistake this codebase has already made once
-     (boot.svelte.ts). Never answered asks first, rather than firing or
-     waiting - answering is what the other two decisions are for.
+     (boot.svelte.ts).
 
      But only on a path the platform can honor (ticket U08, UX22). The two
      states below are recovery states - the cliff and a device with no
-     screen lock to bind a key to - and on either, firing the prompt or
-     asking the question can only cover the one screen that says what to
-     do. Returning without marking `asked` is what repairs the miss: when
-     a screen lock exists and a prompt lands on this gate again, the
-     question is asked then, once, and a choice already made still counts. */
-  let asked = false;
+     screen lock to bind a key to - and on either, firing the prompt can
+     only cover the one screen that says what to do. Returning without
+     marking `fired` is what repairs the miss: once a screen lock exists,
+     Check again is the prompt, and nothing fires on top of it. */
   $effect(() => {
-    if (asked) return;
+    if (fired) return;
     if (invalidated) return;
     if (refusal?.wayForward === 'setDeviceLock') return;
-    const decision = bioGateDecision(prefs.bioOptIn);
-    if (decision === 'auto') {
-      asked = true;
-      void authenticate(false);
-    } else if (decision === 'ask') {
-      asked = true;
-      consentOpen = true;
-    }
+    void authenticate(false);
   });
 
   let explanation = $derived(
@@ -240,19 +228,6 @@
     </button>
     <button class="btn btn-ghost" disabled={resetting} onclick={() => (resetOpen = false)}>
       <span>{m.reset_keep_trying()}</span>
-    </button>
-  </div>
-</Sheet>
-
-<Sheet bind:open={consentOpen} title={m.bio_ask_boot_title()}>
-  <h3>{m.bio_ask_boot_title()}</h3>
-  <p class="ob-text">{m.bio_ask_boot_body()}</p>
-  <div class="stack-3" style="margin-top:var(--space-4)">
-    <button class="btn btn-primary" data-bio-consent-yes onclick={() => answerConsent(true)}>
-      <span>{m.bio_ask_boot_yes()}</span>
-    </button>
-    <button class="btn btn-ghost" data-bio-consent-no onclick={() => answerConsent(false)}>
-      <span>{m.bio_ask_boot_no()}</span>
     </button>
   </div>
 </Sheet>

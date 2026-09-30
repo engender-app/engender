@@ -117,8 +117,7 @@ test('SQLite wins over the cache, because the cache is only a cache', async () =
     a11yLegibilityBoost: false,
     a11yMotionReduce: false,
     lockAfter: 'restart',
-    disguise: false,
-    bioOptIn: null
+    disguise: false
   });
 
   const prefs = await openPreferences(driver, cache);
