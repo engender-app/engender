@@ -621,8 +621,9 @@
     filter: saturate(1.15);
   }
 }
-/* A block of the page, DIRECTION.md rule 4's fourth line (final-audit
-   ticket 22): no ground, the --outline edge every block draws, --text type.
+/* A block of the page, DIRECTION.md rule 4 as final-audit ticket 22
+   amended it (ADR-0093): no ground, the --outline edge every block draws,
+   --text type.
    This was a pale --accent-soft tint, 1.08:1 from the page on trans light,
    a tonal ground the rule does not sanction. The primary action keeps the
    ink, so a secondary one is held by its line and spends no colour, since
