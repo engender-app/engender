@@ -1,7 +1,7 @@
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { compareDoseSchedule } from './journal/doses';
 import type { Journal } from './journal/journal';
-import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode } from './regimenEpisode';
+import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode, showAttributionLabel } from './regimenEpisode';
 
 /** How far back the log and the comparison look at first. The screen widens
     it by this much per Earlier, or to reach a deep-linked dose (phase 11
@@ -84,15 +84,22 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
      drug that goes with it. The drug is attributeDrug's answer rather than
      the attribution's: it tolerates two active episodes agreeing on one drug
      and takes a dose's own name as-is. */
-  const logRows = [...doses].reverse().map((dose) => ({
-    dose,
-    attribution: attributeDose(episodes, dose),
-    drug: attributeDrug(episodes, dose).drug,
-    /* The one-tap correction: an auto-logged dose not already corrected,
-       inside its window. */
-    offersSkip: dose.source === 'schedule' && dose.status !== 'skipped' &&
-      epochDayFromTimestamp(dose.timestamp) >= today - SKIP_CONTROL_DAYS
-  }));
+  const logRows = [...doses].reverse().map((dose) => {
+    const attribution = attributeDose(episodes, dose);
+    const drug = attributeDrug(episodes, dose).drug;
+    return {
+      dose,
+      attribution,
+      drug,
+      /* Whether the trailing text repeats the episode the title already
+         named (audit U8, ticket 17). */
+      showAttribution: showAttributionLabel(attribution, drug, activeEpisodesAt(episodes, dose.timestamp).length),
+      /* The one-tap correction: an auto-logged dose not already corrected,
+         inside its window. */
+      offersSkip: dose.source === 'schedule' && dose.status !== 'skipped' &&
+        epochDayFromTimestamp(dose.timestamp) >= today - SKIP_CONTROL_DAYS
+    };
+  });
   const unmatchedRows = (scheduleView.reason === null ? scheduleView.comparison.unmatched : []).map((dose) => ({
     dose,
     drug: attributeDrug(episodes, dose).drug
