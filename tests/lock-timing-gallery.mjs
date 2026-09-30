@@ -330,6 +330,8 @@ try {
       '[data-lock-after-block]'
     );
     if (tag !== 'web') continue;
+    /* The web's no-prompt mode, named Unlocked since the sign-off. */
+    await crop(`mode-list-${theme}`, '[data-access-intro]', '[data-access-modes]');
     await page.locator('[data-screen-back]').click();
     await page.waitForSelector('[data-security-list]');
     await crop(`security-row-${theme}`, '[data-list-row="access-mode"]');
