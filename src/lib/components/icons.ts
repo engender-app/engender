@@ -103,20 +103,6 @@ export const PATHS: Record<string, string> = {
      their shape rather than by their size. Centred by construction, both
      halves of the measure. */
   grip: '<circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/>',
-  /* The brand mark beside the rail's wordmark, which used to be a CSS
-     gradient of --motif-stripes and is now part of the set (phase 5 ticket
-     31). It quotes the app's own signature: Home's flag sun is one
-     concentric ring per stripe of the active flag, and this is that reduced
-     to a mark.
-
-     One colour, and that is the point rather than a simplification. The
-     stripe gradient it replaces was the pride motif, which ADR-0035 puts on
-     Home and nowhere else and never under disguise - and the rail is the one
-     piece of chrome that renders on every screen, disguised or not, so a
-     rainbow next to the word "Notes" was the motif showing exactly where the
-     ADR says it must not. Rings in --accent carry no flag: --accent is a
-     single hue the whole app is already drawn in. */
-  brand: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.3"/>',
   grid: '<rect x="4.5" y="4.5" width="5.5" height="5.5" rx="2"/><rect x="14" y="4.5" width="5.5" height="5.5" rx="2"/><rect x="4.5" y="14" width="5.5" height="5.5" rx="2"/><rect x="14" y="14" width="5.5" height="5.5" rx="2"/>',
   fingerprint: '<path d="M11.73 11.61a3 3 0 0 0-3 3c0 2.5-0.5 4.5-1.4 6"/><path d="M14.73 15.11c0 2-0.3 4-1 5.5"/><path d="M17.53 12.91A6 6 0 0 0 6.43 9.81"/><path d="M4.73 13.61c-0.2 1.5-0.5 3-1.2 4.3"/><path d="M8.43 5.71A9 9 0 0 1 20.73 13.81"/><path d="M3.23 9.61A9 9 0 0 1 4.73 7.11"/>',
   alert: '<path d="M12 1.61 2 19.61h20z"/><path d="M12 8.61v4M12 16.11v0.5"/>',
