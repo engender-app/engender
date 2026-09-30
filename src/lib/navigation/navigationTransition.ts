@@ -137,7 +137,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        scale, so it holds still inside the two snapshots while the field
        closes around it rather than closing and opening its own rings. */
     holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding'),
-    restoring: savedScroll(navigation.to.url.pathname) > 1
+    restoring: savedScroll(navigation.to.url.pathname, navigation.type) > 1
   });
 
   return new Promise((resolve) => {
@@ -179,7 +179,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
            Restoring here as well as there is not a race fixed by luck -
            this one is provably before the capture, and afterNavigate's own
            call becomes a harmless no-op restoring the same value again. */
-        if (navigation.to) restoreScroll(navigation.to.url.pathname);
+        if (navigation.to) restoreScroll(navigation.to.url.pathname, navigation.type);
       } finally {
         /* The incoming screen has mounted and the outgoing one is gone.
            Before the new capture, so each name is on exactly one element

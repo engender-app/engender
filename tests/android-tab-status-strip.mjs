@@ -39,14 +39,16 @@ try {
     await page.evaluate(DEMO_THEME_EXPRESSION(theme));
     await page.waitForTimeout(900);
     const expected = stripPixels(await page.screenshot());
-    for (const pass of ['first', 'remembered']) for (const tab of ['calendar', 'stats', 'settings', 'home']) {
+    for (const pass of ['first', 'scrolled']) for (const tab of ['calendar', 'stats', 'settings', 'home']) {
       let wrong = 0;
       const count = await screencast(page, async (frames) => {
         await page.evaluate(`document.querySelector('[data-nav-item="${tab}"]').click()`);
         await page.waitForTimeout(1200);
-        if (pass === 'remembered') {
+        /* A tab tap is a forward navigation, so a tab left scrolled still
+           opens at the top; only going back restores a position. */
+        if (pass === 'scrolled') {
           const scrollTop = await page.evaluate(() => document.querySelector('[data-app-scroll-region]').scrollTop);
-          if (scrollTop < 59) throw new Error(`${theme} ${tab}: remembered scroll was ${scrollTop}, expected 60`);
+          if (scrollTop !== 0) throw new Error(`${theme} ${tab}: a tab left scrolled opened at ${scrollTop}, expected 0`);
         }
         for (let i = 0; i < frames.length; i++) {
           const bytes = Buffer.from(frames[i].data, 'base64');
