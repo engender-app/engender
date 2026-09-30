@@ -586,6 +586,34 @@ describe('rule 4: surfaces are flush, block or ink', () => {
     expect(pill).not.toMatch(/border:\s*1px/);
     expect(ruleFor(components, '.segment.is-active')?.body).toMatch(/color:\s*var\(--bg\)/);
   });
+
+  /* Final-audit ticket 22: .btn-soft painted a pale accent tint and
+     .btn-danger a pale terracotta one, a fourth treatment the rule did not
+     name, on 100 call sites. A secondary action is a block of the page
+     now: no ground, the --outline edge a block draws inside, --text type.
+     A destructive one is the same block with --danger type. */
+  it('grounds every button variant in ink, the page, or nothing', () => {
+    const variants = rules(sheet('components')).filter((r) => /^\.btn(-[a-z]+)?$/.test(r.prelude));
+    expect(variants.map((r) => r.prelude)).toEqual(
+      expect.arrayContaining(['.btn-primary', '.btn-soft', '.btn-ghost', '.btn-danger'])
+    );
+    for (const { prelude, body } of variants) {
+      const background = declarations(body).find(([prop]) => prop === 'background')?.[1];
+      if (background !== undefined) {
+        expect(['none', 'var(--text)'], `${prelude} { background: ${background} }`).toContain(background);
+      }
+    }
+  });
+
+  it('draws a secondary and a destructive action as a block of the page', () => {
+    for (const [selector, ink] of [
+      ['.btn-soft', 'var(--text)'],
+      ['.btn-danger', 'var(--danger)']
+    ]) {
+      const decl = Object.fromEntries(declarations(ruleFor(sheet('components'), selector)?.body ?? ''));
+      expect(decl, selector).toMatchObject({ background: 'none', border: '1px solid var(--outline)', color: ink });
+    }
+  });
 });
 
 /* The tile, which rule 3 spends more words on than anything else and which
