@@ -21,9 +21,9 @@ function bodyOf(screen: HTMLElement, field: HTMLElement | null): HTMLElement[] {
   );
 }
 
-function animateIn(fromHeight: number, toPath: string): Promise<void> | void {
+function animateIn(fromHeight: number, toPath: string, type: string): Promise<void> | void {
   dropOutgoingScreens();
-  restoreScroll(toPath);
+  restoreScroll(toPath, type);
 
   const field = document.querySelector<HTMLElement>(FIELD);
   const screen = field?.closest<HTMLElement>('.screen') ?? document.querySelector<HTMLElement>(SCREEN);
@@ -109,7 +109,7 @@ export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
   return new Promise((resolve) => {
     resolve();
     void navigation.complete.then(() => {
-      if (finishCurrent === finish && navigation.to) return animateIn(fromHeight, navigation.to.url.pathname);
+      if (finishCurrent === finish && navigation.to) return animateIn(fromHeight, navigation.to.url.pathname, navigation.type);
     }).then(finish, finish);
   });
 }

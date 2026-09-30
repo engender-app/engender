@@ -72,19 +72,25 @@ describe('savedScroll', () => {
     delete (globalThis as Record<string, unknown>).document;
   });
 
-  it('is where the screen was left', () => {
+  it('is where the screen was left, going back to it', () => {
     stubRegion(634);
     rememberScroll('/calendar');
-    expect(savedScroll('/calendar')).toBe(634);
+    expect(savedScroll('/calendar', 'popstate')).toBe(634);
+  });
+
+  it('is the top going forward, even to a screen scrolled before', () => {
+    stubRegion(634);
+    rememberScroll('/calendar');
+    for (const type of ['link', 'goto', 'form', 'enter']) expect(savedScroll('/calendar', type)).toBe(0);
   });
 
   it('is 0 for a screen never scrolled, one left at the top, and no path', () => {
     stubRegion(0);
     rememberScroll('/stats');
-    expect(savedScroll('/stats')).toBe(0);
-    expect(savedScroll('/never-visited')).toBe(0);
-    expect(savedScroll(null)).toBe(0);
-    expect(savedScroll(undefined)).toBe(0);
+    expect(savedScroll('/stats', 'popstate')).toBe(0);
+    expect(savedScroll('/never-visited', 'popstate')).toBe(0);
+    expect(savedScroll(null, 'popstate')).toBe(0);
+    expect(savedScroll(undefined, 'popstate')).toBe(0);
   });
 
   it('remembers each path on its own', () => {
@@ -92,7 +98,7 @@ describe('savedScroll', () => {
     rememberScroll('/a');
     stubRegion(340);
     rememberScroll('/b');
-    expect(savedScroll('/a')).toBe(120);
-    expect(savedScroll('/b')).toBe(340);
+    expect(savedScroll('/a', 'popstate')).toBe(120);
+    expect(savedScroll('/b', 'popstate')).toBe(340);
   });
 });
