@@ -71,6 +71,20 @@ test('the log is the window newest first, each row attributed, with the older do
   assert.equal(wider.hasOlderDoses, false);
 });
 
+test('a row repeats its episode in the trailing text only when several are running or none resolved', async () => {
+  const two = await twoRegimens();
+  await two.doses.upsertDose(oral('estradiol', TODAY - 1));
+  assert.deepEqual((await readDoseLog(two, question())).logRows.map((row) => row.showAttribution), [true]);
+
+  const { journal: one } = await journalWithBuiltIns();
+  await one.regimen.upsertEpisode({
+    drug: 'estradiol', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    startEpochDay: TODAY - 400, endEpochDay: null, endReason: null
+  });
+  await one.doses.upsertDose(oral('estradiol', TODAY - 1));
+  assert.deepEqual((await readDoseLog(one, question())).logRows.map((row) => row.showAttribution), [false]);
+});
+
 test('the schedule view compares against the first claim that names an active drug, the same answer getComparison gives', async () => {
   const journal = await twoRegimens();
   await journal.doses.upsertDose(oral('progesterone', TODAY - 2));
