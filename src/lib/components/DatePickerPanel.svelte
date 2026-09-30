@@ -441,7 +441,7 @@
     </button>
     <button
       type="button"
-      class="icon-btn press"
+      class="icon-btn press dp-prev"
       aria-label={m.prev_month()}
       data-date-picker-prev
       disabled={jumping || title.key <= firstKey}
@@ -580,6 +580,7 @@
 <style>
   .date-picker {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
     container: date-picker / inline-size;
   }
@@ -666,10 +667,15 @@
 
   .dp-track { display: grid; }
 
+  /* Six rows of one target each, stated rather than left to the content:
+     a month whose sixth week is blank would otherwise collapse that row
+     and stretch the other five into its room, so two months side by side
+     on the track had their weeks at different heights. */
   .dp-month {
     grid-area: 1 / 1;
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: repeat(6, var(--touch-target));
     transform: translateX(calc(var(--dp-at) * (100% + 16px)));
   }
   .dp-week { display: contents; }
@@ -753,6 +759,7 @@
   }
   .dp-entry-label {
     flex: 1 1 12rem;
+    min-width: 0;
     display: grid;
     gap: var(--space-1);
     font-size: var(--text-sm);
@@ -775,7 +782,17 @@
      blanks, and every month keeps 31 slots so it wraps to the same height. */
   @container date-picker (width < 336px) {
     .dp-weekdays { display: none; }
-    .dp-month { grid-template-columns: repeat(auto-fill, minmax(var(--touch-target), 1fr)); }
+    /* The title takes its own line and may wrap; the arrows sit under it
+       at the far edge. */
+    .dp-head { flex-wrap: wrap; }
+    .dp-title { flex-basis: 100%; }
+    .dp-title-face > span { white-space: normal; }
+    .dp-prev { margin-left: auto; }
+    .dp-month {
+      grid-template-columns: repeat(auto-fill, minmax(var(--touch-target), 1fr));
+      grid-template-rows: none;
+      grid-auto-rows: var(--touch-target);
+    }
     .dp-lead,
     .dp-tail { display: none; }
     .dp-pad { visibility: hidden; }
