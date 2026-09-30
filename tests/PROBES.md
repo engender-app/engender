@@ -54,6 +54,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
 | `search-filter-scope` | search says what its filter covers and what a saved question holds |
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
+| `getting-started-cross-check` | Home's Getting started rows cross when done, frame by frame, and are static on a cold arrival |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
