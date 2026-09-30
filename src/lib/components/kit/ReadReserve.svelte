@@ -33,10 +33,12 @@
   import type { Snippet } from 'svelte';
   import Skeleton from '../Skeleton.svelte';
   import { crossfade, maskHeight } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { playAfterPaint } from '$lib/motion/screenArrival';
+  import { ui } from '$lib/stores/ui.svelte';
 
   let {
-    ready,
+    ready: answered,
     estimate,
     onrest,
     children,
@@ -51,11 +53,24 @@
     [attr: `data-${string}`]: unknown;
   } = $props();
 
+  // Keep the first answer behind its placeholder until the tab settles.
+  // Once shown, it stays visible when the next navigation starts.
+  let ready = $state(false);
+  $effect.pre(() => {
+    if (answered && !ui.tabMoving) ready = true;
+  });
+
   /* A skeleton block (Skeleton.svelte, `block`) is about 166px with its gap,
      so this many fill the room; the last one is clipped at the edge. */
   const SKELETON_BLOCK_PX = 166;
 
-  const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
+  function fadeIn(node: HTMLElement) {
+    const duration = motionDuration('--dur-fast');
+    if (duration === 0) return;
+    const animation = node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+    playAfterPaint(node, [animation]);
+    return { destroy: () => animation.cancel() };
+  }
 
   let wrapper: HTMLElement;
   let restingHeight = $state(0);
@@ -215,7 +230,7 @@
       <Skeleton variant="block" count={Math.max(1, Math.ceil(estimate / SKELETON_BLOCK_PX))} />
     </div>
   {:else if ready}
-    <div class="read-reserve-body" in:fadeIn bind:clientHeight={restingHeight} data-read-reserve-body>
+    <div class="read-reserve-body" use:fadeIn bind:clientHeight={restingHeight} data-read-reserve-body>
       {@render children()}
     </div>
   {/if}

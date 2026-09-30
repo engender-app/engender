@@ -4,6 +4,20 @@
 
 import { motionDuration } from './tokens';
 
+/** Keep new layers at their first position while Android prepares their paint. */
+export function playAfterPaint(owner: HTMLElement, animations: Animation[]): void {
+  for (const animation of animations) {
+    animation.pause();
+    animation.currentTime = 0;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    for (const animation of animations) {
+      if (owner.isConnected) animation.play();
+      else animation.cancel();
+    }
+  }));
+}
+
 /* When the screen under the panels last changed, as a `performance.now()`
    reading. Set at module load, because that is the app opening, and then by
    the shell on every navigation and every boot state change (+layout.svelte)

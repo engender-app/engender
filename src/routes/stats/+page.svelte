@@ -98,6 +98,7 @@
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
+  import { playAfterPaint } from '$lib/motion/screenArrival';
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -119,6 +120,10 @@
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
+  let railRevealed = $state(false);
+  $effect.pre(() => {
+    if (!railLoading && !ui.tabMoving) railRevealed = true;
+  });
   let railStart = $derived(
     railLoading
       ? null
@@ -365,7 +370,7 @@
   /* Still loading until the span exists too: the branch with the rail in it
      waits on `span`, which the effect above sets a tick after the rail
      answers. */
-  let railPending = $derived(railLoading || (railStart !== null && span === null));
+  let railPending = $derived(!railRevealed || (railStart !== null && span === null));
   $effect(() => {
     if (!screen) return;
     if (railPending) {
@@ -375,9 +380,11 @@
     if (whileLoading.size === 0) return;
     const duration = motionDuration('--dur-fast');
     if (duration > 0) {
+      const animations: Animation[] = [];
       for (const child of screen.children) {
-        if (!whileLoading.has(child)) child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
       }
+      playAfterPaint(screen, animations);
     }
     whileLoading = new Set();
   });
@@ -393,7 +400,7 @@
        Entry data behind the rail's start, so it waits; a journal with
        nothing dated yet says so instead of drawing a rail from today to
        today. -->
-  {#if railLoading}
+  {#if !railRevealed}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if railStart === null}
     <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()}

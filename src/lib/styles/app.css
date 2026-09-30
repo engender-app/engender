@@ -812,19 +812,20 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
   overflow: visible;
   z-index: 1;
 }
-.is-tab-bridging > .field-blind { background: transparent; }
-.tab-field-bridge {
-  position: absolute;
-  inset: 0 0 auto;
+.is-tab-bridging > .field-blind {
+  background: transparent;
+  height: 100%;
   overflow: hidden;
-  z-index: -2;
-  pointer-events: none;
 }
-.tab-field-bridge-face {
+.is-tab-bridging::before {
+  content: '';
   position: absolute;
-  inset: 0 0 auto;
+  inset: auto 0 0;
+  height: var(--tab-bridge-height);
   background: var(--field);
   border-radius: 0 0 var(--r-block) var(--r-block);
+  z-index: -2;
+  pointer-events: none;
 }
 
 /* The floating bar is its own group, above the screen's (Alicja, 2026-08-25:
