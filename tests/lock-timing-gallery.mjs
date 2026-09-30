@@ -160,7 +160,18 @@ function findYanks(samples) {
     }
     if (a.belowTop != null && b.belowTop != null && path > 0) {
       const d = Math.abs(b.belowTop - a.belowTop);
-      if (d > Math.max(24, path * 0.4)) yanks.push({ t: b.t, what: `row below jumps ${Math.round(d)}px of ${Math.round(path)}` });
+      if (d > Math.max(24, path * 0.4)) {
+        /* A jump the next sample takes back is the rAF loop reading layout
+           before resize()'s ResizeObserver has answered in the same frame:
+           the paint after it already shows the animation's first frame.
+           Named rather than dropped, so the frames it points at can be
+           looked at. */
+        const c = samples[i + 1];
+        const back = c?.belowTop != null && Math.abs(c.belowTop - a.belowTop) < d / 2;
+        const prior = yanks.at(-1);
+        if (prior?.sampler && prior.t === a.t) continue;
+        yanks.push({ t: b.t, sampler: back, what: `row below ${back ? 'reads' : 'jumps'} ${Math.round(d)}px of ${Math.round(path)}${back ? ' for one sample, taken back on the next (read before ResizeObserver)' : ''}` });
+      }
     }
   }
   return yanks;
@@ -200,9 +211,12 @@ async function record(name, act, target) {
     await writeFile(resolve(outDir, file), Buffer.from(frame.data, 'base64'));
     written.push({ file, at: frame.at - actAt });
   }
-  const yanks = findYanks(samples);
-  scenes.push({ name, frames: written, crop: { left: 0, top: 120, width: null, height: 780 }, yanks, samples });
-  console.log(`${name}: ${written.length} frames, ${samples.length} samples, ${yanks.length} yank(s)`);
+  const found = findYanks(samples);
+  const yanks = found.filter((y) => !y.sampler);
+  const samplerOnly = found.filter((y) => y.sampler);
+  scenes.push({ name, frames: written, crop: { left: 0, top: 120, width: null, height: 780 }, yanks, samplerOnly, samples });
+  console.log(`${name}: ${written.length} frames, ${samples.length} samples, ${yanks.length} yank(s), ${samplerOnly.length} sampler-only`);
+  for (const y of samplerOnly) console.log(`   ${y.t}ms ${y.what}`);
   for (const y of yanks.slice(0, 12)) console.log(`   ${y.t}ms ${y.what}`);
 }
 
