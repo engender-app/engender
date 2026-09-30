@@ -56,6 +56,17 @@ await page.addInitScript(() => {
     }
     return out;
   };
+  window.__sampleChips = (ms) =>
+    new Promise((resolve) => {
+      const frames = [];
+      const start = performance.now();
+      const tick = () => {
+        frames.push([...document.querySelectorAll('[data-contextual="hrt-effects"] .effect-chip')].map((c) => +getComputedStyle(c).opacity));
+        if (performance.now() - start < ms) requestAnimationFrame(tick);
+        else resolve(frames);
+      };
+      requestAnimationFrame(tick);
+    });
   window.__sampleSheet = (ms) =>
     new Promise((resolve) => {
       const frames = [];
@@ -219,9 +230,13 @@ try {
   await closeSheet();
   await page.waitForTimeout(400);
   assert.equal(await page.locator('[data-contextual="hrt-effects"] .effect-chip').count(), 2, 'one chip per chosen effect');
+  const chipRun = page.evaluate(() => window.__sampleChips(700));
   await page.locator('[data-contextual="hrt-effects"] .effect-chip .icon-btn-inline').first().click();
-  await page.waitForTimeout(500);
+  const chipFrames = await chipRun;
+  await page.waitForTimeout(200);
   assert.equal(await page.locator('[data-contextual="hrt-effects"] .effect-chip').count(), 1, "a chip's x deselects it");
+  const fading = chipFrames.filter((f) => f.length === 2 && f.some((o) => o > 0.05 && o < 0.95)).length;
+  assert(fading >= 2, `a leaving chip passes through intermediate opacities (${fading} frames)`);
   console.log('PASS several at once: tick, untick, chips, chip remove');
 
   // Already on the record: ticked, dated, not toggleable.

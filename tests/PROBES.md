@@ -55,6 +55,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `search-filter-scope` | search says what its filter covers and what a saved question holds |
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
 | `getting-started-cross-check` | Home's Getting started rows cross when done, frame by frame, and are static on a cold arrival |
+| `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 

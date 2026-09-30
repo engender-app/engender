@@ -123,6 +123,7 @@
               title={effect.name}
               subtitle={since !== undefined && m.entry_hrt_effects_noticed_on({ date: fmtDay(since, { day: 'numeric', month: 'short', year: 'numeric' }) })}
               checked={since !== undefined || chosen.includes(effect.key)}
+              chevron={false}
               disabled={since !== undefined}
               data-effect-row={effect.key}
               onclick={() => onToggle(effect.key)}
@@ -139,7 +140,7 @@
 
   {#if picker.hiddenCount > 0}
     <div transition:collapse|global>
-      <button class="btn btn-ghost press" data-effect-show-all onclick={() => (showAll = true)}>
+      <button class="btn btn-ghost press effect-show-all" data-effect-show-all onclick={() => (showAll = true)}>
         <span>{m.entry_hrt_effects_show_all()}</span>
       </button>
     </div>
@@ -153,6 +154,28 @@
 <style>
   .effect-search { margin-bottom: var(--space-3); }
   .effect-group { margin-bottom: var(--space-3); }
+  /* Chromium's own clear cross is 16px, under the touch floor and drawn by
+     nothing else; the box draws its own (the button beside the input), the
+     same call the More search makes. */
+  .effect-search :global(.search-input::-webkit-search-cancel-button) { display: none; }
+  .field-search-clear {
+    flex: 0 0 auto;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    margin-right: calc(-1 * var(--space-3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .field-search-clear:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+  }
+  .effect-show-all { width: 100%; }
   .effect-none { margin: var(--space-3) 0; }
   .effect-done { margin-top: var(--space-3); width: 100%; }
 </style>
