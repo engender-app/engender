@@ -338,7 +338,7 @@
      `loading` draws (the claims wait; the grid does not). */
   let held: MonthView | undefined;
   let view = $derived.by(() => {
-    if (ready && !ui.tabMoving) held = build(false);
+    if (ready) held = build(false);
     else held ??= build(true);
     return held;
   });

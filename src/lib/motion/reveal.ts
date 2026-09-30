@@ -1060,8 +1060,8 @@ export function crossfade(
  * the box chasing its own frame-by-frame travel forever.
  *
  * A resize that lands mid-flight is not lost, though: the `finished`
- * handler reads the node's real height at the one moment nothing is
- * overriding it, and if that differs from the animation that just finished,
+ * handler releases the held height before reading the node's real height.
+ * If that differs from the animation that just finished,
  * starts a second animation from there rather than snapping to it. One box,
  * one animation at a time still holds - the second animation only starts
  * once the first has fully finished - so a caller with several
@@ -1078,7 +1078,7 @@ export function crossfade(
  * rather than backward from a stale `lastHeight`, is what keeps the chain
  * moving the one direction the content actually went.
  */
-export const resize: Action<HTMLElement> = (node) => {
+export const resize: Action<HTMLElement, unknown> = (node) => {
   if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
 
   let lastHeight = node.getBoundingClientRect().height;
@@ -1116,11 +1116,15 @@ export const resize: Action<HTMLElement> = (node) => {
     }
     animating = true;
     const restoreOverflow = node.style.overflow;
+    const restoreHeight = node.style.height;
     node.style.overflow = 'clip';
+    // Android can paint before a pending Web Animation owns the height.
+    // Its underlying box keeps the previous height until the handover.
+    node.style.height = `${from}px`;
     const duration = motionDuration('--dur-med');
     current = node.animate(
       [{ height: `${from}px` }, { height: `${to}px` }],
-      { duration, easing: EASE_OUT_CSS }
+      { duration, easing: EASE_OUT_CSS, fill: 'both' }
     );
     /* A box that empties, or fills from empty, also loses or gains its own
        bottom margin at one end of the travel (ux-carpet ticket 196). Empty
@@ -1144,14 +1148,14 @@ export const resize: Action<HTMLElement> = (node) => {
         // quietly is what stops the two fighting over it.
       })
       .finally(() => {
+        node.style.height = restoreHeight;
+        current?.cancel();
         node.style.overflow = restoreOverflow;
         animating = false;
         current = undefined;
-        // Read here rather than trusted to still be `newHeight`: a resize
-        // arriving mid-travel was ignored, not measured, and the node's own
-        // fill: none reverts to whatever the content is by now - which is
-        // that ignored resize's real height, not this animation's own
-        // target, whenever the two differ. A second block settling inside
+        // With the held height and animation released, measure the content
+        // again: a resize arriving mid-travel was ignored, not measured.
+        // It may have changed the real height beyond this animation's target. A second block settling inside
         // the first one's 240ms used to land here as a silent snap - one
         // sibling-displacing frame with nothing chasing it; a caller with
         // several independently-settling children (a tile grid, a reading
@@ -1167,7 +1171,7 @@ export const resize: Action<HTMLElement> = (node) => {
       });
   };
 
-  const observer = new ResizeObserver(() => {
+  const changed = () => {
     // The animation's own frames are themselves resizes; ignored rather than
     // measured, or the box would chase its own tail mid-travel. One that
     // lands while an animation is already running is picked up once that
@@ -1183,10 +1187,14 @@ export const resize: Action<HTMLElement> = (node) => {
     if (Math.abs(newHeight - oldHeight) < 1) return;
 
     animateTo(oldHeight, newHeight);
-  });
+  };
+  const observer = new ResizeObserver(changed);
   observer.observe(node);
 
   return {
+    // A read branch can resize in the DOM flush, before the browser paints
+    // its new height. The observer still owns later content changes.
+    update: changed,
     destroy() {
       observer.disconnect();
       current?.cancel();

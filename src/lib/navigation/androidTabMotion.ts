@@ -5,7 +5,7 @@ import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
 import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
 import { restoreScroll } from './scroll-region';
 import { ui } from '$lib/stores/ui.svelte';
-import { playAfterPaint } from '$lib/motion/screenArrival';
+import { beginTabArrival, endTabArrival, playAfterPaint } from '$lib/motion/screenArrival';
 
 const FIELD = '[data-screen-field], [data-home-field]';
 const SCREEN = '[data-app-scroll-region] .screen';
@@ -37,6 +37,7 @@ function animateIn(fromHeight: number, toPath: string): Promise<void> | void {
   }
 
   const duration = motionDuration('--dur-slow');
+  beginTabArrival();
   const toHeight = field?.getBoundingClientRect().height ?? 0;
   const delta = fromHeight - toHeight;
   const fade = motionDuration('--dur-med');
@@ -95,6 +96,7 @@ export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
   ui.tabMoving = true;
   const finish = () => {
     if (finishCurrent === finish) {
+      endTabArrival();
       ui.tabMoving = false;
       finishCurrent = () => {};
     }

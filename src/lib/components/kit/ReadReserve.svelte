@@ -34,8 +34,7 @@
   import Skeleton from '../Skeleton.svelte';
   import { crossfade, maskHeight } from '$lib/motion/reveal';
   import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
-  import { playAfterPaint } from '$lib/motion/screenArrival';
-  import { ui } from '$lib/stores/ui.svelte';
+  import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
 
   let {
     ready: answered,
@@ -53,11 +52,15 @@
     [attr: `data-${string}`]: unknown;
   } = $props();
 
-  // Keep the first answer behind its placeholder until the tab settles.
-  // Once shown, it stays visible when the next navigation starts.
+  // Once shown, keep the answer visible during later refreshes.
   let ready = $state(false);
   $effect.pre(() => {
-    if (answered && !ui.tabMoving) ready = true;
+    if (answered) ready = true;
+  });
+
+  let painted = false;
+  $effect(() => {
+    requestAnimationFrame(() => setTimeout(() => (painted = true)));
   });
 
   /* A skeleton block (Skeleton.svelte, `block`) is about 166px with its gap,
@@ -65,7 +68,13 @@
   const SKELETON_BLOCK_PX = 166;
 
   function fadeIn(node: HTMLElement) {
-    const duration = motionDuration('--dur-fast');
+    if (!painted) {
+      for (const animation of node.getAnimations({ subtree: true })) {
+        if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
+      }
+      return;
+    }
+    const duration = readRevealDuration('--dur-fast');
     if (duration === 0) return;
     const animation = node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
     playAfterPaint(node, [animation]);
@@ -122,6 +131,7 @@
     if (!ready || before === null || before < 0) return;
     const from = before;
     before = -1;
+    if (!painted) return;
     const box = wrapper.getBoundingClientRect();
     const to = box.height;
     if (isReducedMotion()) return;

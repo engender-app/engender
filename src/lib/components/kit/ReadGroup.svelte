@@ -41,6 +41,7 @@
   import Skeleton from '../Skeleton.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { provideReadGroup } from './readGroup.svelte';
+  import { readRevealDuration } from '$lib/motion/screenArrival';
 
   let {
     answered = true,
@@ -98,7 +99,10 @@
         );
       for (const animation of exits) animation.finish();
       await Promise.allSettled(exits.map((animation) => animation.finished));
-      if (!cancelled) group.show();
+      if (!cancelled) {
+        members.style.setProperty('--read-fade-duration', `${readRevealDuration('--dur-med')}ms`);
+        group.show();
+      }
     });
     return () => {
       cancelled = true;
@@ -126,7 +130,7 @@
   }
 
   .read-group-members.fades {
-    transition: opacity var(--dur-med) var(--ease-out);
+    transition: opacity var(--read-fade-duration, var(--dur-med)) var(--ease-out);
   }
 
   /* The members stand where the caller's own blocks stood, directly in a
