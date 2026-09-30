@@ -31,13 +31,15 @@
 
   import { m } from '$lib/paraglide/messages';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import type { GenderDimension } from '$lib/data/types';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
 
   let {
     ticked,
     onToggle,
-    addHref
+    addHref,
+    offered
   }: {
     /** Dimension keys, in any order - the list draws the catalogue's. */
     ticked: string[];
@@ -46,6 +48,9 @@
         send somebody there. The first run cannot: leaving mid-flow would
         drop it, so onboarding passes nothing and the row does not render. */
     addHref?: string;
+    /** The scales to draw instead of the vocabulary's: the first run, which
+        has no journal to fill the vocabulary from yet. */
+    offered?: GenderDimension[];
   } = $props();
 
   /* Every scale, not `visibleDimensions`. This list has to offer exactly
@@ -58,7 +63,7 @@
      is that ticket's job to decide whether hiding also unticks - and those
      two answers have to be decided together, which is the argument for not
      guessing at half of it here. */
-  let scales = $derived(vocabulary.dimensions);
+  let scales = $derived(offered ?? vocabulary.dimensions);
   let isTicked = $derived((key: string) => ticked.includes(key));
 </script>
 
