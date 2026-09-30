@@ -7,6 +7,8 @@
   import type { LiveList } from '$lib/data/live/journal.svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
   import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
+  import { ui } from '$lib/stores/ui.svelte';
+  import { playAfterPaint } from '$lib/motion/screenArrival';
 
   let {
     read,
@@ -35,7 +37,11 @@
     failed?: Snippet;
   } = $props();
 
-  let branch = $derived(gateBranch(read));
+  let revealed = $state(false);
+  $effect.pre(() => {
+    if (!read.loading && !ui.tabMoving) revealed = true;
+  });
+  let branch = $derived(revealed ? gateBranch(read) : 'loading');
 
   /* The answer fades in over the skeleton fading out (ux-carpet ticket
      184). The skeleton's `out:crossfade` only ever handled the leaving
@@ -73,6 +79,7 @@
           if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
           animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
         }
+        playAfterPaint(part, animations);
         void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
           if (version === revealVersion) delete revealedPart.dataset.gateRevealing;
         });

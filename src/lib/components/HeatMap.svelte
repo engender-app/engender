@@ -76,6 +76,7 @@
      describing a picture it no longer matches. */
   import { m } from '$lib/paraglide/messages';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { eraCoversDay } from '$lib/data/eras';
@@ -337,7 +338,7 @@
      `loading` draws (the claims wait; the grid does not). */
   let held: MonthView | undefined;
   let view = $derived.by(() => {
-    if (ready) held = build(false);
+    if (ready && !ui.tabMoving) held = build(false);
     else held ??= build(true);
     return held;
   });
@@ -376,6 +377,8 @@
      rather than CSS, so base.css's reduced-motion clamp does not flatten
      that crossfade into a cut. */
   function waveCells(node: HTMLElement, arriving: boolean) {
+    // The tab already carries the incoming month as one moving block.
+    if (arriving && ui.tabMoving) return 0;
     const cells = [...node.querySelectorAll<HTMLElement>('[data-cal-wave]')];
     if (isReducedMotion()) {
       node.animate([{ opacity: arriving ? 0 : 1 }, { opacity: arriving ? 1 : 0 }], {
