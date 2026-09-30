@@ -446,7 +446,6 @@
   <div class="search-controls">
     <div class="search-box">
       <Icon name="search" size={20} />
-      <!-- svelte-ignore a11y_autofocus — a search screen's single purpose is this field -->
       <input
         class="search-input"
         id="q"
@@ -455,7 +454,6 @@
         placeholder={m.search_placeholder()}
         aria-label={m.search()}
         autocomplete="off"
-        autofocus
         bind:value={query}
       />
     </div>

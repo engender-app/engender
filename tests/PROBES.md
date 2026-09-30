@@ -61,6 +61,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | --- | --- |
 | `date-picker-check` | the calendar's targets are 48px, and it works by keyboard, at 200% and inside a sheet |
 | `sheet-focus-check` | a sheet takes focus and gives it back, on appointment, lab and dose screens |
+| `no-auto-keyboard` | no screen, the new-entry editor and search included, arrives with a text field focused, so a phone never opens with the keyboard up |
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
 | `sheet-handoff-scroll-check` | a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close |
 | `sheet-touch-drag-check` | a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies) |
