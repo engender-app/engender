@@ -652,7 +652,7 @@ test('replace leaves the PIN, the app-lock flags and the disguise settings alone
   for (const [key, value] of [
     ['pinHash', '"argon2-hash"'],
     ['appLock', 'true'],
-    ['lockOnLeave', 'true'],
+    ['lockAfter', '"immediately"'],
     ['disguise', 'true']
   ]) {
     await target.db.run('INSERT INTO pref (key, value) VALUES (?, ?)', [key, value]);
@@ -666,7 +666,7 @@ test('replace leaves the PIN, the app-lock flags and the disguise settings alone
     [
       ['appLock', 'true'],
       ['disguise', 'true'],
-      ['lockOnLeave', 'true'],
+      ['lockAfter', '"immediately"'],
       ['pinHash', '"argon2-hash"']
     ]
   );

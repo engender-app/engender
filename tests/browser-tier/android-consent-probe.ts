@@ -1,35 +1,22 @@
-/* Ticket U08 (pre-production UI/UX): the automatic-unlock consent question
-   may only appear where the platform can actually honor the answer.
+/* Ticket U08 (pre-production UI/UX), reshaped by lock-timing ticket 01:
+   the Android key gate fires the platform prompt by itself, but only where
+   the platform can actually honor it.
 
-   The audit's finding UX22, as a three-by-three: consent unanswered,
-   accepted or declined, against a healthy key, a device with no screen
-   lock, and an invalidated key. The last two rows are recovery states -
-   "look again" and the cliff - and the bug was that the "Open
-   automatically?" sheet mounted over them, because the gate's consent
-   effect decided once, on mount, without asking whether authentication was
-   even possible.
+   U08's finding UX22 was that the "Open automatically?" question mounted
+   over the two recovery states - a device with no screen lock and an
+   invalidated key. Ticket 01 removed the question and its preference at
+   Alicja's word: the prompt always fires on a healthy gate. What this
+   still guards is the U08 half: on the recovery states nothing fires, and
+   once the screen lock is back the prompt fires then, once.
 
-   This is the real-component gate fixture the ticket names: AndroidKeyGate
-   itself, mounted per case, with bootState moved through the same
-   transitions boot uses (the shape tests/browser-tier/gates-gallery.svelte
-   established) and the one thing a browser cannot supply - Android
-   Keystore - stubbed at the Capacitor boundary the real bridge talks to
-   (android-consent.html sets that stub up before this module loads, which
-   is when registerPlugin binds it).
-
-   The nine matrix cells, then the repair sequence: on the no-lock screen
-   nothing is asked, the screen lock gets set, Check again is pressed, and
-   only then - on the healthy gate a cancelled prompt leaves behind - may
-   the question be asked, once, with an existing choice still honored
-   rather than re-asked. Focus lands inside the sheet when it opens, and no
-   case ever leaves the gate states: the journal field stays null and the
-   status stays needs-authentication, which is this tier's half of "no gate
-   reveals journal contents" (gates-surfaces.test.ts holds the source-level
-   half: a gate may not import a journal read at all). */
+   AndroidKeyGate itself, mounted per case, with bootState moved through the
+   same transitions boot uses and Android Keystore stubbed at the Capacitor
+   boundary (android-consent.html sets that stub up before this module
+   loads). No case ever leaves the gate states: the journal field stays null
+   and the status stays needs-authentication. */
 
 import { bootState } from '../../src/lib/stores/boot.svelte';
 import { bootStates, bootTransitions } from '../../src/lib/stores/boot-state';
-import { prefs } from '../../src/lib/data/prefs/store.svelte';
 import { revokeRecoveryKey } from '../../src/lib/data/recovery-key';
 import AndroidKeyGate from '../../src/lib/components/AndroidKeyGate.svelte';
 import { mountInto, publishFixture } from './mount.ts';
@@ -83,18 +70,15 @@ async function until(ready: () => boolean, ms = 2500): Promise<boolean> {
   return ready();
 }
 
-const consentSheetOpen = () => document.querySelector('[data-sheet] [data-bio-consent-yes]') !== null;
-const focusInsideSheet = () =>
-  document.activeElement instanceof HTMLElement && document.activeElement.closest('[data-sheet]') !== null;
+/** Any sheet open over the gate: there is no question left to ask, so none
+    may be. */
+const sheetOpen = () => document.querySelector('[data-sheet]') !== null;
 
 type GateState = 'healthy' | 'no-lock' | 'invalidated';
-type Consent = 'unanswered' | 'accepted' | 'declined';
 
-/** One matrix cell: the gate mounted into `state` holding `consent`, read
-    back after the mount effect and any auto-fire it caused have settled. */
-async function matrixCell(state: GateState, consent: Consent) {
-  prefs.bioOptIn = consent === 'unanswered' ? null : consent === 'accepted';
-
+/** One case: the gate mounted into `state`, read back after the mount
+    effect and any prompt it fired have settled. */
+async function stateCell(state: GateState) {
   const gate = bootTransitions.toNeedsAuthentication(bootStates.booting());
   if (state === 'no-lock') {
     Object.assign(
@@ -111,17 +95,14 @@ async function matrixCell(state: GateState, consent: Consent) {
   }
 
   fake.calls = [];
+  fake.unlockOutcome = 'cancelled';
   const target = document.createElement('div');
   document.getElementById('gate')!.append(target);
   const mounted = mountInto(AndroidKeyGate, {}, target);
-
-  /* Long enough for the mount effect, the auto-fire it may cause, the
-     bridge round trip and the boot machine's answer - each is a microtask,
-     but the sheet that may open rides a transition. */
   await frame(600);
 
   const read = {
-    consentSheet: consentSheetOpen(),
+    sheet: sheetOpen(),
     unlockCalls: unlockCalls(),
     recoveryVisible:
       (state === 'no-lock' && document.querySelector('[data-check-again]') !== null) ||
@@ -134,11 +115,10 @@ async function matrixCell(state: GateState, consent: Consent) {
   return read;
 }
 
-/** The repair sequence: no lock, then one, then the question - once.
-    `existingChoice` is what bioOptIn holds when the gate first mounts. */
-async function repairSequence(existingChoice: Consent) {
-  prefs.bioOptIn = existingChoice === 'unanswered' ? null : existingChoice === 'accepted';
-
+/** No lock, then one: nothing fires before the repair, the prompt fires
+    once after it, and a cancel or a rejected finger leaves the retry gate
+    rather than the cliff. */
+async function repairSequence() {
   const gate = bootTransitions.toNeedsAuthentication(bootStates.booting());
   Object.assign(
     bootState,
@@ -155,64 +135,32 @@ async function repairSequence(existingChoice: Consent) {
   const mounted = mountInto(AndroidKeyGate, {}, target);
 
   await frame(300);
-  const askedBeforeRepair = consentSheetOpen();
-  const autoBeforeRepair = unlockCalls();
+  const firedBeforeRepair = unlockCalls();
 
   /* The screen lock gets set out in Settings; what the app sees is Check
-     again leading to a prompt somebody dismisses - the cancelled refusal
-     whose way forward is retry, which is the healthy gate. */
-  const checkAgain = document.querySelector<HTMLButtonElement>('[data-check-again]');
-  checkAgain?.click();
-  /* A cancelled prompt must land on the retry gate, not the cliff: that
-     distinction is the ticket's fourth acceptance line, and it is the
-     difference between a bad finger and a destroyed key. */
+     again leading to a prompt somebody dismisses. */
+  document.querySelector<HTMLButtonElement>('[data-check-again]')?.click();
   const cancelledOfferedRetry = await until(() => document.querySelector('[data-key-retry]') !== null);
+  await frame(500);
+  /* Check again's own prompt and nothing after it: a cancel is an answer,
+     not a cue to prompt again. */
+  const firedAfterRepair = unlockCalls();
 
-  const askedAfterRepair = await until(consentSheetOpen);
-  /* The sheet focuses itself when its entrance settles (Sheet.svelte's
-     introend), so this waits for that rather than reading the instant the
-     dialog exists. */
-  const focusInSheet = askedAfterRepair && (await until(focusInsideSheet));
-
-  let choicePreserved: boolean | null = null;
-  let sheetClosedAfterAnswer = false;
-  let askedAgainAfterDecline = true;
-  let failedStayedRetryGate = false;
-  if (consentSheetOpen() && existingChoice === 'unanswered') {
-    document.querySelector<HTMLButtonElement>('[data-bio-consent-no]')?.click();
-    await until(() => !consentSheetOpen());
-    sheetClosedAfterAnswer = !consentSheetOpen();
-    choicePreserved = prefs.bioOptIn === false;
-
-    /* One more prompt, this time a rejected finger, must not re-ask either:
-       once means once. And `failed` lands on the retry gate like cancelled
-       did - the ticket's fourth acceptance line covers both transient
-       outcomes, not just dismissal. */
-    fake.unlockOutcome = 'failed';
-    const unlocksBefore = unlockCalls();
-    document.querySelector<HTMLButtonElement>('[data-key-retry]')?.click();
-    await until(() => unlockCalls() > unlocksBefore);
-    await frame(500);
-    askedAgainAfterDecline = consentSheetOpen();
-    failedStayedRetryGate =
-      document.querySelector('[data-key-retry]') !== null &&
-      document.querySelector('[data-open-reset]') === null;
-  } else if (existingChoice === 'accepted') {
-    /* A preserved yes is honored by firing, not by asking again. */
-    choicePreserved = await until(() => unlockCalls() > 0) && prefs.bioOptIn === true;
-  }
+  fake.unlockOutcome = 'failed';
+  const before = unlockCalls();
+  document.querySelector<HTMLButtonElement>('[data-key-retry]')?.click();
+  await until(() => unlockCalls() > before);
+  await frame(500);
+  const failedStayedRetryGate =
+    document.querySelector('[data-key-retry]') !== null && document.querySelector('[data-open-reset]') === null;
 
   const result = {
-    askedBeforeRepair,
-    autoBeforeRepair,
+    firedBeforeRepair,
     cancelledOfferedRetry,
-    askedAfterRepair,
-    focusInSheet,
-    sheetClosedAfterAnswer,
-    choicePreserved,
-    askedAgainAfterDecline,
+    firedAfterRepair,
     failedStayedRetryGate,
-    unlockCalls: unlockCalls(),
+    unlockCallsAfterRetry: unlockCalls(),
+    sheet: sheetOpen(),
     status: bootState.status,
     journal: bootState.journal
   };
@@ -222,24 +170,15 @@ async function repairSequence(existingChoice: Consent) {
 }
 
 async function run() {
-  /* A fresh context has no wrap, but the browser tier shares one page per
-     run and the galleries mint keys into it: revoke so every invalidated
-     mount here reads the honest "no recovery key" body. */
+  /* The browser tier shares one page per run and the galleries mint keys
+     into it: revoke so every invalidated mount reads the honest "no
+     recovery key" body. */
   await revokeRecoveryKey();
 
-  const states: GateState[] = ['healthy', 'no-lock', 'invalidated'];
-  const consents: Consent[] = ['unanswered', 'accepted', 'declined'];
-  const matrix: Record<string, Record<string, unknown>> = {};
-  for (const state of states) {
-    for (const consent of consents) {
-      matrix[`${state}-${consent}`] = await matrixCell(state, consent);
-    }
-  }
-
-  const repairUnanswered = await repairSequence('unanswered');
-  const repairAccepted = await repairSequence('accepted');
-
-  return { matrix, repairUnanswered, repairAccepted };
+  const cells: Record<string, Awaited<ReturnType<typeof stateCell>>> = {};
+  for (const state of ['healthy', 'no-lock', 'invalidated'] as GateState[]) cells[state] = await stateCell(state);
+  const repair = await repairSequence();
+  return { cells, repair };
 }
 
 publishFixture(NAME, run);

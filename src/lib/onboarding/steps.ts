@@ -124,7 +124,7 @@ export function onboardingSteps(): readonly OnboardingStep[] {
 
     `lock` is listed by the one preference it stores. The access mode itself
     is not a preference at all - it is a keystore made on this device - which
-    is the deeper reason that step survives a restore, and `lockOnLeave`
+    is the deeper reason that step survives a restore, and `lockAfter`
     being device-local says the same thing in the shape this map can check. */
 const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   welcome: [],
@@ -133,7 +133,7 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   flag: ['palette'],
   scales: ['activeScales'],
   areas: ['onboardingAreas'],
-  lock: ['lockOnLeave'],
+  lock: ['lockAfter'],
   /* Nothing, and not because it was forgotten: the permissions step's
      answers live in the OS rather than in a preference (ticket 31), so
      there is nothing here for an archive to have carried. That is the same

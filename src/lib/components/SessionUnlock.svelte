@@ -35,6 +35,7 @@
   import { markUnlocked } from '$lib/stores/lock.svelte';
   import { resetApp } from '$lib/stores/boot.svelte';
   import { confirmWithBiometrics } from '$lib/lock/android-key';
+  import { lockAfterNote } from '$lib/lock/lock-after-words';
   import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { isAndroid } from '$lib/platform';
   import { appWordmark } from '$lib/disguise/identity';
@@ -241,9 +242,13 @@
     <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
       <span>{wayOut}</span>
     </button>
-    {#if prefs.lockOnLeave || prefs.quickExit}
-      <p class="gate-note">
-        {prefs.lockOnLeave ? m.lock_auto_note() + ' ' : ''}
+    <!-- When this gate comes back, in the words of the timing chosen for it
+         (lock-timing ticket 01). Nothing for a restart: this gate is only
+         here mid-session because of a quick exit then, and "only when the
+         app restarts" above a gate that just appeared would read as wrong. -->
+    {#if prefs.lockAfter !== 'restart' || prefs.quickExit}
+      <p class="gate-note" data-session-lock-note>
+        {prefs.lockAfter !== 'restart' ? lockAfterNote[prefs.lockAfter]() + ' ' : ''}
         {prefs.quickExit ? m.lock_quick_exit_note() : ''}
       </p>
     {/if}

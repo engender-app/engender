@@ -69,6 +69,16 @@ export async function openPreferences(driver: SqliteDriver, cache?: PreferenceCa
     }
   }
 
+  /* The lock-on-leave switch, from before lock timing replaced it (lock-timing
+     ticket 01): on locked at the moment of leaving, off never did. Read
+     across rather than migrated in SQL, because the old row is one this build
+     would otherwise skip, and skipping leaves it in place exactly as it does
+     a newer build's row. A timing written since wins. */
+  const legacyLock = rows.find((row) => row.key === 'lockOnLeave');
+  if (legacyLock && !rows.some((row) => row.key === 'lockAfter')) {
+    values.lockAfter = JSON.parse(legacyLock.value) === true ? 'immediately' : 'restart';
+  }
+
   cache?.write(bootSubset(values));
 
   return {
