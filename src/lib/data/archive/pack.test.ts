@@ -77,7 +77,7 @@ function everyPreferenceSet(): PreferenceValues {
     palette: 'lesbian',
     language: 'pl',
     lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-ENTRY-ID',
-    lockOnLeave: true,
+    lockAfter: 'immediately',
     disguise: true,
     quickExit: true,
     allowScreenCapture: true,

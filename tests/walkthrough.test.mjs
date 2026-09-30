@@ -3415,7 +3415,6 @@ try {
   }
   if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
-  await page.getByRole('switch', { name: 'Lock on leave' }).click();
   await page.getByRole('switch', { name: 'Quick exit' }).click();
 
   /* Escaped rather than left open: the disguise sheet's own scrim sits over
@@ -3424,19 +3423,45 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('[data-sheet-scrim]', { state: 'detached' });
 
+  /* The timing lives on the access-mode screen since lock-timing ticket 01,
+     reached and left by in-app navigation: a page.goto would reload into
+     the cold-start gate this flow is not here to test. */
+  await page.locator('a[href="/settings/security"]').click();
+  await page.locator('a[href="/settings/access-mode"]').click();
+  await page.locator('[data-lock-after-choice="immediately"]').click();
+  await page.waitForSelector('[data-lock-after-choice="immediately"][aria-checked="true"]');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-security-list]');
+  if (!/as soon as you leave/.test(await page.locator('[data-list-row="access-mode"]').innerText())) {
+    throw new Error('the security row does not say when the mode asks again');
+  }
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-settings-list]');
+
   /* Quick add floating over the lock screen (phase 8 audit ticket 08): opened here and left
-     open, so the blur below has something to fail to close if lockNow()
-     stops clearing it. Lock-on-leave rather than the two-finger gesture,
+     open, so the leave below has something to fail to close if lockNow()
+     stops clearing it. The lock timing rather than the two-finger gesture,
      because it is the one path with no blank covering the mistake on any
      platform - quick exit's blank hides the same bug by accident on the
      web, and does not exist to hide it on Android. */
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan]');
 
-  /* A dispatched blur rather than a real one: headless Chromium has no
-     second window to hand focus to, and what is under test is that the
-     event the listener waits for locks the app. */
+  /* Focus leaving the window first, which must not lock any more (the
+     desktop case lock-timing ticket 01 is about), then the page going
+     hidden, which must. Both dispatched rather than real: headless
+     Chromium has no second window to hand focus to and no app switcher,
+     and what is under test is what the listeners do with the events. The
+     visibility override is taken off again, so nothing later reads a page
+     that says it is hidden. */
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.waitForTimeout(200);
+  if (await page.locator('[data-applock]').count()) throw new Error('focus leaving a visible window locked the app');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
+  });
   await page.waitForSelector('[data-applock]');
   /* Detached rather than an instant count: the fan's cards carry their own
      out:fanOut transition, so closing it leaves them in the DOM for that

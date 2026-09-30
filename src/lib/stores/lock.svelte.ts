@@ -13,23 +13,24 @@
    `unlocked` still starts false and a cold start is still locked before
    anything decides anything. Boot sets it the moment a secret is typed.
 
-   What this earns mid-session is unchanged: lock-on-leave and quick exit lock
+   What this earns mid-session is unchanged: the lock timing and quick exit lock
    the app while the unlocked key is still in memory, and the access mode's
    own secret is the way back in (SessionUnlock.svelte). Re-entry costs one
    Argon2id derivation, which is the honest price of not keeping a second,
    weaker secret around to make it cheaper.
 
    One combination has no way back and it is named rather than papered over:
-   device-bound mode on the web has no secret to ask for, so lock-on-leave
-   there can only blank the screen. Android's device-bound mode does have one
-   - the Keystore prompt - because Keystore will not release the key until the
-   platform confirms who is present. */
+   device-bound mode on the web has no secret to ask for, so no screen asks
+   when to lock there, and quick exit can only blank the screen. Android's
+   device-bound mode does have one - the Keystore prompt - because Keystore
+   will not release the key until the platform confirms who is present. */
 
 import { prefs } from '../data/prefs/store.svelte';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { isAndroid } from '../platform';
 import { ui } from './ui.svelte';
 import { forgetLastResults } from '../data/live/lastResults';
+import { watchLeave } from '../lock/leave-lock';
 
 export const lockState = $state({
   /** Set once the access mode's secret has been given, cleared on every lock. */
@@ -102,29 +103,23 @@ export function watchLock(): () => void {
     startY = null;
   };
 
-  /* Both events, because they answer different halves of "the app is no
-     longer in front of you": visibilitychange covers a backgrounded
-     Android app and a switched tab, blur covers a window that lost focus
-     while still visible. Locking twice is free. */
-  const onVisibility = () => {
-    if (prefs.lockOnLeave && document.visibilityState === 'hidden') lockNow();
-  };
-  const onBlur = () => {
-    if (prefs.lockOnLeave) lockNow();
-  };
+  /* Leaving is the page going hidden and nothing else; a window that only
+     lost focus is still in front of somebody (leave-lock.ts, lock-timing
+     ticket 01). */
+  const stopLeave = watchLeave({ page: document, lockAfter: () => prefs.lockAfter, lock: lockNow });
 
   window.addEventListener('touchstart', onTouchStart, { passive: true });
   window.addEventListener('touchmove', onTouchMove, { passive: true });
   window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('touchcancel', onTouchEnd, { passive: true });
-  document.addEventListener('visibilitychange', onVisibility);
-  window.addEventListener('blur', onBlur);
 
   /* The Android equivalent of the two-finger swipe (ticket 15): pressing
      Home or Recents. MainActivity.onUserLeaveHint calls this straight
-     through evaluateJavascript rather than waiting on onVisibility above,
+     through evaluateJavascript rather than waiting on watchLeave above,
      which only runs once the WebView's event loop gets to it - by then the
-     system may already have the recents thumbnail it took at leave time. */
+     system may already have the recents thumbnail it took at leave time.
+     It answers to quick exit's native flag for now, not to the lock
+     timing; lock-timing ticket 02 moves it onto `immediately`. */
   if (isAndroid()) {
     (window as unknown as { __quickExitFromNative?: () => void }).__quickExitFromNative = quickExit;
   }
@@ -135,7 +130,6 @@ export function watchLock(): () => void {
     window.removeEventListener('touchmove', onTouchMove);
     window.removeEventListener('touchend', onTouchEnd);
     window.removeEventListener('touchcancel', onTouchEnd);
-    document.removeEventListener('visibilitychange', onVisibility);
-    window.removeEventListener('blur', onBlur);
+    stopLeave();
   };
 }

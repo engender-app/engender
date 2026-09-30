@@ -15,8 +15,11 @@
     if (mode === 'passphrase') return messages.am_mode_passphrase();
     if (mode === 'pin') return messages.am_mode_pin({ digits: String(PIN_DIGITS) });
     if (mode === 'biometric') return messages.am_mode_biometric();
-    if (mode === 'unlocked') return messages.am_mode_unlocked();
-    return onAndroid() ? messages.am_mode_device_android() : messages.am_mode_device_web();
+    /* The web's device-bound mode is named for what it is to the person:
+       the key sits in the browser and nothing is asked, which is Android's
+       unlocked mode by another mechanism, so it carries that name. */
+    if (mode === 'unlocked' || !onAndroid()) return messages.am_mode_unlocked();
+    return messages.am_mode_device_android();
   }
 
   /** The sentence for every outcome of submitAccessModeSetup() besides 'ok'
@@ -59,8 +62,7 @@
      offered and fails. On Android the biometric is not a fourth thing at
      all but what device-bound mode already does, so that row says so
      instead of offering a second mechanism (its Keystore key is not
-     released until the platform confirms who is present, whatever
-     `bioOptIn` says).
+     released until the platform confirms who is present).
 
      Copy rule for this screen, and it is the strict one (docs/ui-copy.md,
      "The screens that carry risk"): every mode states its own consequence
@@ -178,8 +180,8 @@
     if (mode === 'passphrase') return m.am_mode_passphrase_sub();
     if (mode === 'pin') return m.am_mode_pin_sub();
     if (mode === 'biometric') return m.am_mode_biometric_sub();
-    if (mode === 'unlocked') return m.am_mode_unlocked_sub();
-    return android ? m.am_mode_device_sub_android() : m.am_mode_device_sub_web();
+    if (mode === 'unlocked' || !android) return m.am_mode_unlocked_sub();
+    return m.am_mode_device_sub_android();
   }
 
   /* A glyph per mode, on every platform. Device-bound was drawn with the
@@ -390,7 +392,7 @@
     {:else}
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('device-bound', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_device()}</span>
+          <span>{busy ? m.pp_encrypting() : android ? m.am_confirm_device() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>

@@ -90,6 +90,9 @@
   import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import LockAfterChoice from '$lib/components/LockAfterChoice.svelte';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import type { LockAfter } from '$lib/data/prefs/catalogue';
   import PermissionList from '$lib/components/PermissionList.svelte';
 
   /* Keyed, not worded, so the flag names translate with the rest of the
@@ -193,7 +196,12 @@
     )
   );
 
-  let lockOnLeave = $state(false);
+  /* The lock step's own answer once a mode is set up: when that mode's
+     secret is asked for again (lock-timing ticket 01). A minute is offered
+     rather than the catalogue's restart, which is only the default because
+     it is what an old journal's "off" meant. Null after a Skip, which writes
+     nothing and so leaves the restart. */
+  let lockAfter = $state<LockAfter | null>('one-minute');
 
   /* Setup's last answer (ADR-0079, phase 10 redesign ticket 32). Held like
      every other one and never read back off `prefs`, which matters more
@@ -280,11 +288,15 @@
      already holds a returning install to, here because reading `bootState`
      directly is simpler than a second flag mirroring it. */
   let awaitingAccessMode = $derived(step === 'lock' && needsOnboardingAccessMode(bootState));
+  /** Whether the mode just set up has a secret to ask for again, which is
+      whether the lock step has a question left once the module is done. */
+  let lockAsks = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));
 
   let question = $derived.by(() => {
     if (awaitingAccessMode) {
       return accessChosen === null ? m.am_setup_title() : accessModeTitle(accessChosen);
     }
+    if (step === 'lock' && !lockAsks) return m.lock_after_no_secret_setup_title();
     if (step === 'done') {
       if (restoring && archiveReady) return m.ob_restore_done_title();
       return name.trim() ? m.ob_done_title_named({ name: name.trim() }) : m.ob_done_title();
@@ -294,6 +306,7 @@
 
   let line = $derived.by(() => {
     if (awaitingAccessMode) return m.am_setup_body();
+    if (step === 'lock' && !lockAsks) return m.lock_after_no_secret_setup();
     if (step === 'done' && restoring && archiveReady) return m.ob_restore_done_body();
     return LINE[step]();
   });
@@ -478,7 +491,7 @@
       genitalEffectsChoice = null;
       cycleChoice = null;
     }
-    else if (step === 'lock') lockOnLeave = false;
+    else if (step === 'lock') lockAfter = null;
     /* The permissions step is not in this list, and that is the whole of
        what skipping it does (ticket 31). Its answers live in the OS rather
        than in `prefs`, so there is no stored default for a Skip to protect:
@@ -544,7 +557,10 @@
           if (scales) prefs.activeScales = scales;
           if (areas) prefs.onboardingAreas = areas;
           else if (!wasOnboarded && !restoring) prefs.onboardingAreas = [...DEFAULT_ONBOARDING_AREAS];
-          if (lockOnLeave) prefs.lockOnLeave = true;
+          /* Only where the question was asked: a mode with no secret
+             shows none, and a timing it never saw should not be waiting
+             for a mode that has one. */
+          if (lockAfter && lockAsks) prefs.lockAfter = lockAfter;
           prefs.onboarded = true;
         },
         flushWrites: flushPreferences,
@@ -945,54 +961,55 @@
                   </ListCard>
                 </div>
               {:else if step === 'lock'}
-                {#if awaitingAccessMode}
-                  <!-- The app-lock toggle that used to head this list is
-                       gone with the gate it turned on (ticket 53): how the
-                       journal opens is now one choice made in the security
-                       module, and a PIN is one of its access modes rather
-                       than a switch here.
+                <!-- The module and the question after it cross rather than
+                     swap: the module leaves on the frame the keystore is
+                     made, and the timing arrives in the same cell, so there
+                     is no frame with neither and none with both stacked. -->
+                <div class="setup-lock-stage">
+                  {#key awaitingAccessMode}
+                    <div class="setup-lock-part" in:fieldPart out:fieldPart>
+                      {#if awaitingAccessMode}
+                        <!-- The app-lock toggle that used to head this list is
+                             gone with the gate it turned on (ticket 53): how the
+                             journal opens is now one choice made in the security
+                             module, and a PIN is one of its access modes rather
+                             than a switch here.
 
-                       On a brand new install this module is what a person
-                       meets on reaching this step (ticket 54) - the same
-                       AccessModeSetup component Settings uses, wired in at
-                       this one point in the flow because this is the one
-                       step that actually creates the keystore.
+                             On a brand new install this module is what a person
+                             meets on reaching this step (ticket 54) - the same
+                             AccessModeSetup component Settings uses, wired in at
+                             this one point in the flow because this is the one
+                             step that actually creates the keystore.
 
-                       It carries its own forward and back, which is the one
-                       place setup's foot is not the way on (named in the
-                       ticket): those controls drive a state machine inside
-                       the module that four screens share, and the module's
-                       own title is this step's question while it does. What
-                       this screen does is give them the foot's drawing, so
-                       the eye meets the same shape it has met nine times. -->
-                  <AccessModeSetup
-                    purpose="setup"
-                    busy={accessBusy}
-                    error={accessError}
-                    onChoose={chooseAccessMode}
-                    bind:chosen={accessChosen}
-                  />
-                {:else}
-                  <!-- What is left once the module above has run: the one
-                       thing this step still decides for itself, whether
-                       leaving the app locks it. -->
-                  <ListCard>
-                    <ListRow
-                      key="lock-on-leave"
-                      title={m.lock_on_leave_title()}
-                      subtitle={m.lock_on_leave_sub()}
-                      chevron={false}
-                    >
-                      {#snippet trailing()}
-                        <Switch
-                          checked={lockOnLeave}
-                          label={m.lock_on_leave_title()}
-                          onChange={(v) => (lockOnLeave = v)}
+                             It carries its own forward and back, which is the one
+                             place setup's foot is not the way on (named in the
+                             ticket): those controls drive a state machine inside
+                             the module that four screens share, and the module's
+                             own title is this step's question while it does. What
+                             this screen does is give them the foot's drawing, so
+                             the eye meets the same shape it has met nine times. -->
+                        <AccessModeSetup
+                          purpose="setup"
+                          busy={accessBusy}
+                          error={accessError}
+                          onChoose={chooseAccessMode}
+                          bind:chosen={accessChosen}
                         />
-                      {/snippet}
-                    </ListRow>
-                  </ListCard>
-                {/if}
+                      {:else if lockAsks}
+                        <!-- What is left once the module above has run: when
+                             the mode's secret is asked for again, the one
+                             thing this step still decides for itself. A mode
+                             with nothing to ask has no question, and the
+                             line above says so. -->
+                        <LockAfterChoice
+                          value={lockAfter ?? 'one-minute'}
+                          onChange={(next) => (lockAfter = next)}
+                          aria-label={m.ob_lock_title()}
+                        />
+                      {/if}
+                    </div>
+                  {/key}
+                </div>
               {:else if step === 'permissions'}
                 <!-- Where the daily check-in used to be asked about (ticket
                      31). The nudge is not a question setup asks any more: it
@@ -1342,6 +1359,14 @@
   .setup-step {
     display: flex;
     flex-direction: column;
+    min-height: 0;
+  }
+  /* The lock step's two halves in one cell, like the stage above it. */
+  .setup-lock-stage {
+    display: grid;
+  }
+  .setup-lock-stage > * {
+    grid-area: 1 / 1;
     min-height: 0;
   }
 

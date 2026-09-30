@@ -116,9 +116,8 @@ test('SQLite wins over the cache, because the cache is only a cache', async () =
     a11yTextSizeBoost: false,
     a11yLegibilityBoost: false,
     a11yMotionReduce: false,
-    lockOnLeave: false,
-    disguise: false,
-    bioOptIn: null
+    lockAfter: 'restart',
+    disguise: false
   });
 
   const prefs = await openPreferences(driver, cache);
@@ -189,4 +188,44 @@ test('works without a cache at all, which is what the Node tier and Android boot
   await prefs.set('theme', 'dark');
 
   expect(prefs.get('theme')).toBe('dark');
+});
+
+/* Lock timing replaced the lock-on-leave switch (lock-timing ticket 01).
+   The old row stays on disk, because nothing here deletes rows, and is read
+   once into the new key so nobody's behaviour changes on upgrade: on meant
+   "lock the moment the app goes to background", off meant "only a restart
+   asks again". */
+test('an upgraded journal with lock on leave on asks again immediately', async () => {
+  const driver = await migratedDb();
+  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'true']);
+
+  const prefs = await openPreferences(driver);
+
+  expect(prefs.get('lockAfter')).toBe('immediately');
+});
+
+test('an upgraded journal with lock on leave off asks again only on a restart', async () => {
+  const driver = await migratedDb();
+  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'false']);
+
+  const prefs = await openPreferences(driver);
+
+  expect(prefs.get('lockAfter')).toBe('restart');
+});
+
+test('a journal that never wrote lock on leave keeps its old off, which is a restart', async () => {
+  const prefs = await openPreferences(await migratedDb());
+
+  expect(prefs.get('lockAfter')).toBe('restart');
+});
+
+test('a timing chosen after the upgrade wins over the old switch', async () => {
+  const driver = await migratedDb();
+  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'true']);
+  const first = await openPreferences(driver);
+  await first.set('lockAfter', 'five-minutes');
+
+  const reopened = await openPreferences(driver);
+
+  expect(reopened.get('lockAfter')).toBe('five-minutes');
 });

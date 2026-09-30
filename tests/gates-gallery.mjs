@@ -316,10 +316,9 @@ const base = `http://localhost:${address.port}`;
       await shoot(page, `setup-${i}-${step}-${palette}-${theme}`);
       if (step === 'name') await page.locator('#ob-name').fill('Alicja');
       if (step === 'lock') {
-        /* One switch now, and no reveal under it: the app-lock toggle that
-           used to open a second row went with its gate (ticket 53), so what
-           is left is lock-on-leave on its own. */
-        await page.getByRole('switch').first().click();
+        /* The timing question after the module (lock-timing ticket 01),
+           shot again with another answer than the one offered. */
+        await page.locator('[data-lock-after-choice="immediately"]').click();
         await page.waitForTimeout(400);
         await shoot(page, `setup-${i}-${step}-on-${palette}-${theme}`);
       }
