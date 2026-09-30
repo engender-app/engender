@@ -111,6 +111,21 @@
     if (dragging) dragY = dy;
   }
 
+  /* `touch-action: pan-y` on the wrapper leaves vertical scrolling to the
+     browser, and a browser that has started a pan fires `pointercancel` and
+     stops sending pointermoves, so a finger never got the sheet past its
+     first few pixels. Cancelling the touchmove once the drag has begun is
+     what keeps the gesture ours; until then a swipe is still free to scroll
+     a sheet taller than the screen. Svelte registers `touchmove` as passive,
+     so the listener is added by hand. */
+  function holdTouchDrag(node: HTMLElement) {
+    const onTouchMove = (e: TouchEvent) => {
+      if (dragging && e.cancelable) e.preventDefault();
+    };
+    node.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => node.removeEventListener('touchmove', onTouchMove);
+  }
+
   /* The component outlives one opening, so a sheet dismissed by a drag would
      otherwise come back already pushed down by however far it was thrown. */
   $effect(() => {
@@ -236,6 +251,7 @@
       onpointermove={dragMove}
       onpointerup={dragEnd}
       onpointercancel={dragEnd}
+      {@attach holdTouchDrag}
     >
       {@render panel()}
     </div>
