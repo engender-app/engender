@@ -1165,7 +1165,7 @@ describe('tier 3, a panel uncovering its new height', () => {
   /** A node that records what was animated and what was set on its style. */
   function panel(height: number, rows = '40px 20px') {
     const style: Record<string, string> = { overflow: '', gridTemplateRows: '' };
-    let settle: (() => void) | undefined;
+    const settles: (() => void)[] = [];
     const calls: { keyframes: Keyframe[]; options: KeyframeAnimationOptions }[] = [];
     const node = {
       style,
@@ -1175,14 +1175,14 @@ describe('tier 3, a panel uncovering its new height', () => {
         return {
           finished: {
             then: (done: () => void) => {
-              settle = done;
+              settles.push(done);
             }
           }
         };
       }
     } as unknown as HTMLElement;
     (globalThis as Record<string, unknown>).getComputedStyle = () => ({ gridTemplateRows: rows });
-    return { node, style, calls, finish: () => settle?.() };
+    return { node, style, calls, finish: (i = settles.length - 1) => settles[i]?.() };
   }
 
   it('travels from the height the caller measured to the one the box now has', () => {
@@ -1210,6 +1210,22 @@ describe('tier 3, a panel uncovering its new height', () => {
     expect(style.overflow).toBe('clip');
     finish();
     expect(style.overflow).toBe('auto');
+  });
+
+  /* A month tapped again inside the travel: the second call used to save
+     the first's clip and pinned tracks as the box's own, and settling last
+     wrote them back for good - content clipped and rows frozen at an old
+     layout until the screen was left. */
+  it('gives the box back its own styles when a second travel starts inside the first', () => {
+    const { node, style, finish } = panel(420, '40px 20px');
+    style.overflow = 'auto';
+    maskHeight(node, 36, 380);
+    maskHeight(node, 420, 380);
+    finish(0);
+    expect(style.overflow).toBe('clip');
+    finish(1);
+    expect(style.overflow).toBe('auto');
+    expect(style.gridTemplateRows).toBe('');
   });
 });
 

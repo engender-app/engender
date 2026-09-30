@@ -1202,6 +1202,8 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
   };
 };
 
+const masks = new WeakMap<HTMLElement, { count: number; overflow: string; rows: string }>();
+
 /**
  * Tier 3, change within a screen: a box that has already been relaid out,
  * uncovering itself from the height it used to have (phase 10 redesign
@@ -1241,13 +1243,26 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
  * substitute a fade for.
  */
 export function maskHeight(node: HTMLElement, from: number, duration: number): void {
-  const restoreOverflow = node.style.overflow;
-  const restoreRows = node.style.gridTemplateRows;
+  /* A second travel can start inside the first (a month tapped twice). The
+     box's own styles are saved once, by the first, and put back by the last
+     to settle: saved per call, the second took the first's clip and pinned
+     tracks for the box's own and left them on for good. Its tracks are
+     unpinned before they are read, so they are the new layout's. */
+  let held = masks.get(node);
+  if (!held) {
+    held = { count: 0, overflow: node.style.overflow, rows: node.style.gridTemplateRows };
+    masks.set(node, held);
+  }
+  const own = held;
+  own.count++;
   node.style.overflow = 'clip';
+  node.style.gridTemplateRows = own.rows;
   node.style.gridTemplateRows = getComputedStyle(node).gridTemplateRows;
   const settle = () => {
-    node.style.overflow = restoreOverflow;
-    node.style.gridTemplateRows = restoreRows;
+    if (--own.count > 0) return;
+    masks.delete(node);
+    node.style.overflow = own.overflow;
+    node.style.gridTemplateRows = own.rows;
   };
   node
     .animate([{ height: `${from}px` }, { height: `${node.getBoundingClientRect().height}px` }], {
