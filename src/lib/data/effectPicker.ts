@@ -57,12 +57,13 @@ export function buildEffectPicker(input: EffectPickerInput): EffectPicker {
     return { groups: hits.length ? [{ key: null, heading: null, effects: hits }] : [], hiddenCount };
   }
 
-  const rank = (e: PersonalEffectCatalogEntry) => (e.direction === 'masculinizing' ? 1 : 0);
+  /* Feminizing first inside a category when both hormones are on offer. */
+  const directionOrder = (e: PersonalEffectCatalogEntry) => (e.direction === 'masculinizing' ? 1 : 0);
   const groups: EffectPickerGroup[] = [];
   for (const key of input.categoryOrder) {
     const inCategory = offered.filter((e) => e.builtIn && e.categoryKey === key);
     if (inCategory.length) {
-      groups.push({ key, heading: input.categoryName(key), effects: [...inCategory].sort((a, b) => rank(a) - rank(b)) });
+      groups.push({ key, heading: input.categoryName(key), effects: [...inCategory].sort((a, b) => directionOrder(a) - directionOrder(b)) });
     }
   }
   const own = offered.filter((e) => !e.builtIn || !e.categoryKey || !input.categoryOrder.includes(e.categoryKey));

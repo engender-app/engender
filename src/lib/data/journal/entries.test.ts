@@ -1263,12 +1263,15 @@ test('an entry can mark several effects, and saving never moves the day of one a
   const third = await journal.personalEffects.addCustomEffectType('Rounder face');
 
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3, effectMarkers: [{ effect: first.key }] });
+  const before = (await journal.personalEffects.getMarkers()).find((marker) => marker.effect === first.key);
   await journal.entries.upsertEntry({
     epochDay: 140,
     mood: 3,
     effectMarkers: [{ effect: first.key }, { effect: second.key }, { effect: third.key, firstNoticedEpochDay: 130 }]
   });
 
+  const after = (await journal.personalEffects.getMarkers()).find((marker) => marker.effect === first.key);
+  assert.deepEqual(after, before, 'the row already on the record is the same row, untouched');
   const days = Object.fromEntries(
     (await journal.personalEffects.getMarkers()).map((marker) => [marker.effect, marker.firstNoticedEpochDay])
   );
