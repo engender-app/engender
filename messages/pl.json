@@ -800,7 +800,7 @@
   "ob_setup_save_failed": "Nie udało się zapisać ustawień początkowych. Spróbuj ponownie.",
   "ob_areas_preview_title": "Podgląd ekranu Dziś",
   "ob_lock_title": "Kiedy pytać znowu?",
-  "ob_lock_body": "Ile czasu aplikacja może być poza zasięgiem wzroku, zanim trzeba będzie znowu ją odblokować.",
+  "ob_lock_body": "Jak długo aplikacja może być w tle, zanim trzeba będzie ją znowu odblokować.",
   "ob_perms_title": "O co aplikacja może poprosić",
   "ob_perms_body": "Możesz pisać wpisy bez tych uprawnień. Możesz je nadać później w Ustawieniach.",
   "ob_disguise_title": "Wyglądać jak coś innego?",
