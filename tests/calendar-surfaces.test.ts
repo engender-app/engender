@@ -292,7 +292,7 @@ describe('the heat map', () => {
        or the previous metric - is not an answer to this one: the grid holds
        its picture until all four have answered (ticket 280). */
     expect(heatMap).toMatch(/answered\(spreads, vocabulary\.activeMetric\)/);
-    expect(heatMap).toMatch(/if \(ready && !ui\.tabMoving\) held = build\(false\)/);
+    expect(heatMap).toMatch(/if \(ready\) held = build\(false\)/);
   });
 });
 
