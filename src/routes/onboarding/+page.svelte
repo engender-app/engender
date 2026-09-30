@@ -296,6 +296,7 @@
     if (awaitingAccessMode) {
       return accessChosen === null ? m.am_setup_title() : accessModeTitle(accessChosen);
     }
+    if (step === 'lock' && !lockAsks) return m.lock_after_no_secret_setup_title();
     if (step === 'done') {
       if (restoring && archiveReady) return m.ob_restore_done_title();
       return name.trim() ? m.ob_done_title_named({ name: name.trim() }) : m.ob_done_title();

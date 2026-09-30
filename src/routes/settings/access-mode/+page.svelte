@@ -24,7 +24,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { isAndroid } from '$lib/platform';
-  import { disclose } from '$lib/motion/reveal';
+  import { disclose, resize } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
@@ -216,7 +216,11 @@
          dropped the current one for the line naming it: 40px up in one
          frame, 70ms in (ux-carpet ticket 193). -->
     <ReadReserve ready={current !== null} estimate={reserve} onrest={rememberHeight}>
-      <div class="kit-panel" data-kit-surface>
+      <!-- Travels its height when the module swaps screens inside it: the
+           list and a mode's consequence share one grid cell, and the cell
+           took the taller one's height in a frame, 309px on a passphrase
+           journal, with the second question and the rows below riding it. -->
+      <div class="kit-panel" data-kit-surface use:resize>
         <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} bind:chosen />
         {#if recoveryKeyPresence.exists}
           <!-- The fact every mode's description depends on and this screen
