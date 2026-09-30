@@ -11,8 +11,20 @@
 
      Changing the secret *within* a mode is a different job and is not here:
      that is /settings/passphrase for a passphrase and the PIN row below for
-     a PIN, both of which need the current secret and this screen does not. */
+     a PIN, both of which need the current secret and this screen does not.
+
+     Its second question is when that same secret is asked for again
+     (lock-timing ticket 01). It used to be a "Lock on leave" switch on two
+     other screens, which read as a second mechanism rather than the mode's
+     own secret coming back. Asked of the mode the journal is on now, and
+     only while no other mode is being looked at: under a chosen mode's
+     consequence it would read as a question about that one. A mode with no
+     secret has nothing to ask again, so it gets a sentence instead. */
   import { goto } from '$app/navigation';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import { isAndroid } from '$lib/platform';
+  import { disclose } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
@@ -27,6 +39,8 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
+  import LockAfterChoice from '$lib/components/LockAfterChoice.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -48,6 +62,15 @@
      a fourth mode would have gone missing from "Now: ..." without anything
      failing. */
   let current = $derived(bootState.accessMode);
+  /** The mode row open inside the module, if any. */
+  let chosen = $state<Mode | null>(null);
+  let android = isAndroid();
+  let hasSecret = $derived(accessModeHasSecret(current, android));
+  /* The Android start prompt applies to one mode and is about opening, not
+     locking: whether the Keystore prompt fires by itself at start or waits
+     behind a button (ticket 18). It was a Security row that named the mode
+     it needed; here it is only where that mode is the current one. */
+  let startPromptApplies = $derived(android && current === 'device-bound');
   const reserve = readReserve('access-mode');
   const rememberHeight = (px: number) => rememberReserve('access-mode', px);
 
@@ -194,7 +217,7 @@
          frame, 70ms in (ux-carpet ticket 193). -->
     <ReadReserve ready={current !== null} estimate={reserve} onrest={rememberHeight}>
       <div class="kit-panel" data-kit-surface>
-        <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} />
+        <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} bind:chosen />
         {#if recoveryKeyPresence.exists}
           <!-- The fact every mode's description depends on and this screen
                could not see before ADR-0054: whatever is chosen here, the
@@ -202,6 +225,38 @@
           <p class="ob-text" data-access-recovery-active>{m.am_recovery_active()}</p>
         {/if}
       </div>
+
+      {#if chosen === null}
+        <!-- Opens and closes by its own height as a mode row is opened and
+             left, so nothing under it jumps and nothing appears whole. -->
+        <div class="am-after" data-lock-after-block transition:disclose>
+          {#if hasSecret}
+            <h3 class="field-label" id="lock-after-title">{m.lock_after_title()}</h3>
+            <LockAfterChoice
+              value={prefs.lockAfter}
+              onChange={(next) => (prefs.lockAfter = next)}
+              aria-labelledby="lock-after-title"
+            />
+            {#if startPromptApplies}
+              <ListCard>
+                <ListRow static key="biometrics" icon="fingerprint" title={m.bio_row_title()} subtitle={m.bio_row_sub()}>
+                  {#snippet trailing()}
+                    <Switch
+                      checked={prefs.bioOptIn === true}
+                      label={m.bio_row_title()}
+                      onChange={(v) => {
+                        prefs.bioOptIn = v;
+                      }}
+                    />
+                  {/snippet}
+                </ListRow>
+              </ListCard>
+            {/if}
+          {:else}
+            <p class="ob-text" data-lock-after-none>{m.lock_after_no_secret()}</p>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Changing the secret without changing the mode. Two rows rather than
            one, because only one of them applies at a time and a disabled row
@@ -229,3 +284,11 @@
     </ReadReserve>
   {/if}
 </div>
+
+<style>
+  .am-after {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+</style>
