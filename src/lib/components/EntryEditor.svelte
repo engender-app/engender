@@ -379,19 +379,12 @@
   });
   let isToday = $derived(day === todayEpochDay());
 
-  /* The chip row and the section it opens (phase 11 ticket 19). The note
-     is the focus target on a new entry: the screen opens on the page, with
-     the keyboard up, the way the two references do (Mobbin: Journal, Liven).
-     `preventScroll` because the screen is arriving through the container
-     transform and a focus scroll during it would fight the frame. An
-     existing entry is read before it is written, so it opens unfocused. */
-  let noteEl = $state<HTMLTextAreaElement | undefined>();
+  /* The chip row and the section it opens (phase 11 ticket 19). Nothing
+     takes the focus on arrival, a new entry included: a focused note put
+     the keyboard over half the editor before anyone asked to type
+     (tests/no-auto-keyboard.mjs). */
   let chipRowEl = $state<HTMLElement | undefined>();
   let moodsEl = $state<HTMLElement | undefined>();
-
-  $effect(() => {
-    if (entryId == null && noteEl) noteEl.focus({ preventScroll: true });
-  });
 
   function sectionName(section: EntrySection): string {
     switch (section) {
@@ -899,7 +892,6 @@
     name="note"
     rows="4"
     placeholder={m.note_placeholder()}
-    bind:this={noteEl}
     bind:value={entryDraft.note}
   ></textarea>
 
