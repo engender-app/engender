@@ -8,7 +8,8 @@ import {
   drugSpans,
   earliestEpisode,
   expectedDosesOnDay,
-  nearestActiveEpisode
+  nearestActiveEpisode,
+  showAttributionLabel
 } from './regimenEpisode.ts';
 import type { DoseEvent, DosePause, DoseSchedule, DoseScheduleAmount } from './types.ts';
 import type { RegimenEpisode } from './types.ts';
@@ -373,4 +374,21 @@ test('expectedDosesOnDay reads the day itself, so an episode starting later stil
     expectedDosesOnDay([later], [everyThirdDay('later')], [], 303).map((dose) => dose.drug),
     ['progesterone']
   );
+});
+
+test('showAttributionLabel: a lone active episode already named its drug in the title', () => {
+  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol', 1), false);
+});
+
+test('showAttributionLabel: an episode picked out among two concurrent ones still shows', () => {
+  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol', 2), true);
+});
+
+test('showAttributionLabel: no episode and no drug shows, so the row still says nothing covered it', () => {
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: false }, null, 0), true);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, null, 2), true);
+});
+
+test('showAttributionLabel: two episodes agreeing on one drug hide the "not recorded" text the title contradicts', () => {
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol', 2), false);
 });

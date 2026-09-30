@@ -52,9 +52,30 @@ export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp:
     kind of exclusion (ticket 38's "counted and surfaced") without
     changing what an existing single-episode journal already showed for
     the old kind. */
-type DoseAttribution =
+export type DoseAttribution =
   | { episode: RegimenEpisode; ambiguous: false }
   | { episode: null; ambiguous: boolean };
+
+/** Whether a dose row's trailing edge should repeat `attributionLabel` (doseLabels.ts)
+    beyond what its title already says (audit U8, ticket 17). `drug` is the
+    same value `doseRowTitle` above was given - the row's title already
+    said everything `attributionLabel` (doseLabels.ts) would if it agrees:
+
+    - One episode active: nothing to pick between, so the title already
+      named the only drug there was.
+    - No episode resolved, but `attributeDrug` still landed on a single
+      name (several active episodes agreeing on one drug, say - a dose
+      change recorded as a new episode before the old one ended):
+      `attributionLabel` (doseLabels.ts) would claim the drug "was not recorded", which
+      the title's own name already contradicts.
+
+    Otherwise - more than one episode active and named, or nothing named
+    at all - the trailing text says something the title didn't. */
+export const showAttributionLabel = (
+  attribution: DoseAttribution,
+  drug: string | null,
+  activeEpisodeCount: number
+): boolean => (attribution.episode ? activeEpisodeCount > 1 : drug === null);
 
 /** Which episode `dose` belongs to, for reading its drug, ester and route
     parameters against - not only its drug's name (attributeDrug below is

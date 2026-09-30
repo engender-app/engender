@@ -33,7 +33,7 @@
   import { DOSE_LOG_WINDOW_DAYS, NO_DOSE_LOG, readDoseLog } from '$lib/data/doseLogReads';
   import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft, type DoseDraft } from '$lib/data/doseDraft';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt, type attributeDose } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -52,6 +52,7 @@
     ROUTE_OPTIONS,
     STATUS_OPTIONS,
     applicationSiteLabel,
+    attributionLabel,
     doseRowTitle,
     injectionSiteLabel,
     pauseReasonLabel,
@@ -155,17 +156,6 @@
     if (dose.source !== 'schedule') return null;
     return dose.status === 'skipped' ? m.dose_from_schedule_skipped() : m.dose_from_schedule();
   };
-
-  /** Which episode the app put this dose under, as the row says it. Named
-      here because an auto-logged row states it on its own second line
-      rather than at its trailing edge, and the two must not word it
-      differently. */
-  const attributionLabel = (attribution: ReturnType<typeof attributeDose>): string =>
-    attribution.episode
-      ? m.doses_under_episode({ drug: attribution.episode.drug })
-      : attribution.ambiguous
-        ? m.doses_ambiguous_episode()
-        : m.doses_no_episode();
 
   /* The correction, in one tap: the status flips and the source stays, so
      the row still says the schedule wrote it and now also says the person
@@ -469,7 +459,7 @@
             focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
           >
             {#snippet rows(shownRows)}
-              {#each shownRows as { dose, attribution, drug, offersSkip } (dose.id)}
+              {#each shownRows as { dose, attribution, drug, showAttribution, offersSkip } (dose.id)}
                 {@const site = siteOf(dose)}
                 {@const sourceNote = sourceNoteOf(dose)}
                 <!-- Keyed on what the row says about itself, so correcting an
@@ -544,7 +534,7 @@
                         {#if dose.status !== 'taken' && !sourceNote}
                           <span class="dose-status">{statusLabel(dose.status)}</span>
                         {/if}
-                        {#if !sourceNote}
+                        {#if !sourceNote && showAttribution}
                           <span>{attributionLabel(attribution)}</span>
                         {/if}
                         {#if dose.scheduled}
