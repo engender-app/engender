@@ -27,6 +27,11 @@
    catalogue.test.ts fails if a preference lands in neither of the first
    two lists. */
 
+/** The four answers to "when does it ask again", in the order screens list
+    them. */
+export const LOCK_AFTER_CHOICES = ['immediately', 'one-minute', 'five-minutes', 'restart'] as const;
+export type LockAfter = (typeof LOCK_AFTER_CHOICES)[number];
+
 export interface PreferenceValues {
   onboarded: boolean;
   name: string;
@@ -61,7 +66,12 @@ export interface PreferenceValues {
       biometrics at all, so it has to distinguish "never asked" from
       "declined" rather than defaulting either way. */
   bioOptIn: boolean | null;
-  lockOnLeave: boolean;
+  /** How long the app may be out of sight before the access mode's secret
+      is asked for again (lock-timing ticket 01). Replaced `lockOnLeave`,
+      whose on and off are `immediately` and `restart`; openPreferences()
+      reads an old row across. Meaningless under a mode with no secret, which
+      is why no screen asks it there. */
+  lockAfter: LockAfter;
   disguise: boolean;
   quickExit: boolean;
   /** Android only (ticket screen-capture-guard/01): whether this device may
@@ -478,7 +488,11 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   a11yLegibilityBoost: false,
   a11yMotionReduce: false,
   bioOptIn: null,
-  lockOnLeave: false,
+  /* A restart, because that is what the old switch's off meant and every
+     journal from before ticket 01 that never touched it was off. A new
+     install is offered a minute in setup instead, and only writes it by
+     answering. */
+  lockAfter: 'restart',
   disguise: false,
   quickExit: false,
   allowScreenCapture: true,
@@ -594,7 +608,7 @@ export const DEVICE_LOCAL_KEYS = [
   'a11yLegibilityBoost',
   'a11yMotionReduce',
   'bioOptIn',
-  'lockOnLeave',
+  'lockAfter',
   'disguise',
   'quickExit',
   'allowScreenCapture',
@@ -664,7 +678,7 @@ export const BOOT_KEYS = [
   'a11yTextSizeBoost',
   'a11yLegibilityBoost',
   'a11yMotionReduce',
-  'lockOnLeave',
+  'lockAfter',
   'disguise',
   'bioOptIn'
 ] as const satisfies readonly PreferenceKey[];

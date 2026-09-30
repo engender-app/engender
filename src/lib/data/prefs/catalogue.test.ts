@@ -56,7 +56,7 @@ test('the boot set is exactly the pre-database preferences', () => {
       'a11yTextSizeBoost',
       'a11yLegibilityBoost',
       'a11yMotionReduce',
-      'lockOnLeave',
+      'lockAfter',
       'disguise',
       'bioOptIn'
     ].sort()
@@ -71,7 +71,7 @@ test('the boot set cuts across the portable split rather than following it', () 
     'a11yTextSizeBoost',
     'a11yLegibilityBoost',
     'a11yMotionReduce',
-    'lockOnLeave',
+    'lockAfter',
     'disguise',
     'bioOptIn'
   ]);

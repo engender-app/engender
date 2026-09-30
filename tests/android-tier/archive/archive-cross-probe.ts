@@ -148,7 +148,7 @@ async function seedTargetLocalState(driver: SqliteDriver, journal: Journal, mark
   const prefs = await openPreferences(driver);
   await prefs.set('onboarded', true);
   await prefs.set('lastWrappedNotifiedPeriodKey', `wrapped-${marker}`);
-  await prefs.set('lockOnLeave', true);
+  await prefs.set('lockAfter', 'immediately');
   await prefs.set('disguise', true);
   await prefs.set('quickExit', true);
   await prefs.set('hideNotificationTitles', true);
@@ -163,7 +163,7 @@ async function readLocalPrefs(driver: SqliteDriver) {
   return {
     onboarded: prefs.get('onboarded'),
     lastWrappedNotifiedPeriodKey: prefs.get('lastWrappedNotifiedPeriodKey'),
-    lockOnLeave: prefs.get('lockOnLeave'),
+    lockAfter: prefs.get('lockAfter'),
     disguise: prefs.get('disguise'),
     quickExit: prefs.get('quickExit'),
     hideNotificationTitles: prefs.get('hideNotificationTitles'),
