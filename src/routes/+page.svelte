@@ -427,11 +427,14 @@
     ]);
     return { regimen, letters, photos };
   });
-  /* The section waits for the answer, so a row that is done paints crossed
+  /* The section waits for the answer, and for the mirror the milestones row
+     reads, so a row that is done paints crossed
      in the frame the section lands and is never seen open and then flipped.
      A failed read shows it with nothing crossed, which is what it was
      before the rows could be. */
-  let gettingStartedReady = $derived(showGettingStarted && (doneQuery.value != null || doneQuery.failed));
+  let gettingStartedReady = $derived(
+    showGettingStarted && vocabulary.ready && (doneQuery.value != null || doneQuery.failed)
+  );
   let doneKeys = $derived(
     new Set<string>([
       ...(vocabulary.milestones.length > 0 ? ['milestones'] : []),
