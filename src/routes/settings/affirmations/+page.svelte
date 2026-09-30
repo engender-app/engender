@@ -17,6 +17,7 @@
 
   let language = $state<'en' | 'pl'>(getLocale() === 'pl' ? 'pl' : 'en');
 
+  let addLabel = $derived(language === 'pl' ? m.affirmations_add_pl() : m.affirmations_add_en());
   let builtIns = $derived(vocabulary.affirmations.filter((a) => a.builtIn));
   let customs = $derived(vocabulary.customAffirmations(language));
   const reserve = readReserve('affirmations');
@@ -46,10 +47,12 @@
        (phase 11 ticket 38): fourteen built-in lines are a screenful, and the
        add button under them was the last thing on the screen - the person's
        own vocabulary read as an appendix to the app's. -->
-  <SectionHeading text={m.affirmations_custom_heading()}>
-    {#snippet action()}
+  <SectionHeading text={m.affirmations_custom_heading()} />
+
+  <Field label={m.affirmations_language_label()} legend>
+    {#snippet children()}
       <Segmented
-        name={m.language()}
+        name={m.affirmations_language_label()}
         options={[
           { value: 'en', label: 'English' },
           { value: 'pl', label: 'Polski' }
@@ -58,7 +61,7 @@
         onChange={(v) => (language = v as 'en' | 'pl')}
       />
     {/snippet}
-  </SectionHeading>
+  </Field>
 
   <button
     class="btn btn-soft"
@@ -68,7 +71,7 @@
       newText = '';
     }}
   >
-    <Icon name="plus" size={20} /><span>{m.affirmations_add()}</span>
+    <Icon name="plus" size={20} /><span>{addLabel}</span>
   </button>
 
   <!-- Gated on the vocabulary mirror, ticket 152's gap: a cold open paints
@@ -130,9 +133,9 @@
     </details>
   </ReadReserve>
 
-  <Sheet bind:open={addOpen} title={m.affirmations_new_sheet()}>
-    <h3>{m.affirmations_new_sheet()}</h3>
-    <Field label={m.affirmations_new_sheet()} hidden>
+  <Sheet bind:open={addOpen} title={addLabel}>
+    <h3>{addLabel}</h3>
+    <Field label={addLabel} hidden>
       {#snippet children(id)}
         <textarea class="input" {id} rows="3" placeholder={m.affirmations_placeholder()} bind:value={newText}></textarea>
       {/snippet}
