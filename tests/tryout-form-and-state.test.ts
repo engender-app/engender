@@ -26,10 +26,9 @@ const pl = JSON.parse(read('messages/pl.json'));
 
 describe('a hinted field points the control at its help', () => {
   it('carries the described-by onto the field a date picker actually shows', () => {
-    /* flatpickr's alternate input is the element a person reaches and a
-       label points at; the original is hidden, so a description left on it
-       describes nothing, silently. */
-    expect(datePicker).toContain("picker.altInput.setAttribute('aria-describedby', describedBy)");
+    /* The field is the element a person reaches and a label points at, so
+       the description goes on it rather than on anything the picker draws. */
+    expect(datePicker).toContain('aria-describedby={describedBy}');
   });
 
   it('takes the help id at every field that has one', () => {

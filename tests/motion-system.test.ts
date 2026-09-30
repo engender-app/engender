@@ -280,6 +280,11 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'the pill crossing the grid answers a key and a tap closes the sheet, so a scale on the month block would be a third response to one touch'
   },
   {
+    file: 'src/lib/components/DatePickerPanel.svelte',
+    count: 2,
+    reason: 'a swipe starts on a day or the title as often as a tap does, and a cell shrinking under a finger while the grid follows it is two movements for one gesture; a tap on a day closes the picker, the title answers with its wash'
+  },
+  {
     file: 'src/lib/components/CurveMarkers.svelte',
     count: 1,
     reason: 'fill: transparent - an invisible hit target has nothing visible to press; the mark it stands over answers instead'
