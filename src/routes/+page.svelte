@@ -38,6 +38,7 @@
      areas out of reading order say why. The notices take none, because the
      flag colours the areas of the journal and a notice is the app talking
      about itself. */
+  import { untrack } from 'svelte';
   import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
   import { replaceRoute } from '$lib/navigation/smart-back';
@@ -61,6 +62,7 @@
   import { fallbackReading, pinnedRows, shownAgendaKinds } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
+  import { crossesOnArrival, rememberCrossed } from '$lib/data/gettingStartedMemory';
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -405,6 +407,62 @@
     { key: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
   ];
+
+  /* A row is crossed when what it suggests has been done, which is data
+     existing and not the screen having been visited (ux-carpet ticket 288).
+     Derived live with nothing stored: delete the milestone and the row
+     un-crosses. `more` is an inventory pointer, not a task, so it has no
+     key here and is never crossed.
+
+     Milestones are mirrored (ADR-0004), so theirs is a synchronous read; the
+     other three are one EXISTS each rather than a list. The query is asked
+     only while the section is up, so a journal past five entries neither
+     reads them nor pulls in the photo library's chunk. */
+  let doneQuery = liveQuery(async (j) => {
+    if (!showGettingStarted) return null;
+    const [regimen, letters, photos] = await Promise.all([
+      j.regimen.hasAny(),
+      j.letters.hasAny(),
+      j.photoLibrary.hasAny()
+    ]);
+    return { regimen, letters, photos };
+  });
+  /* The section waits for the answer, so a row that is done paints crossed
+     in the frame the section lands and is never seen open and then flipped.
+     A failed read shows it with nothing crossed, which is what it was
+     before the rows could be. */
+  let gettingStartedReady = $derived(showGettingStarted && (doneQuery.value != null || doneQuery.failed));
+  let doneKeys = $derived(
+    new Set<string>([
+      ...(vocabulary.milestones.length > 0 ? ['milestones'] : []),
+      ...Object.entries(doneQuery.value ?? {}).filter(([, done]) => done).map(([key]) => key)
+    ])
+  );
+  /* Done rows held back from their crossing for the two frames it takes the
+     open row to be painted, so the change has a "from" to travel out of.
+     Only a row that becomes done while Home is up, or since Home was last
+     shown in this session (gettingStartedMemory.ts), is held; the rest
+     never enter this set and are crossed in their first frame. */
+  let held = $state(new Set<string>());
+  let arrived = false;
+  const decided = new Set<string>();
+  $effect(() => {
+    if (!gettingStartedReady) return;
+    const now = doneKeys;
+    const crossing = [...now].filter((key) => !decided.has(key) && (arrived || crossesOnArrival(key)));
+    for (const key of [...decided]) if (!now.has(key)) decided.delete(key);
+    for (const key of now) decided.add(key);
+    arrived = true;
+    rememberCrossed(now);
+    if (crossing.length === 0) return;
+    held = new Set([...untrack(() => held), ...crossing]);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        held = new Set([...held].filter((key) => !crossing.includes(key)));
+      })
+    );
+  });
+  const isCrossed = (key: string) => doneKeys.has(key) && !held.has(key);
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read. The list itself no longer draws here - a milestone still ahead is
@@ -1119,7 +1177,7 @@
        while it is on screen - a journal this young has no tile qualifying -
        and both are the same kind of thing: somewhere on Home that asks to
        be acted on rather than read. -->
-  {#if showGettingStarted}
+  {#if gettingStartedReady}
     <!-- The handle rides the wrapper: ListCard takes a role and its children
          and nothing else, and widening a kit surface to pass one screen's
          walkthrough handle through would be the wrong file to change. -->
@@ -1128,13 +1186,29 @@
       <p class="home-start-intro">{m.home_start_intro()}</p>
       <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
         {#each GETTING_STARTED as offer (offer.key)}
+          {@const crossed = isCrossed(offer.key)}
+          <!-- Both glyphs stay in the markup and cross on opacity and a
+               scale, as the roadmap's tick does: one that was added and
+               removed would be a yank in both directions. `more` has only
+               the one, and is never done. The words "Done" are for a
+               screen reader, because the strikethrough is only drawn. -->
           <ListRow
             key={offer.key}
-            icon={offer.icon}
             href={offer.href}
             title={offer.title()}
             subtitle={offer.sub()}
-          />
+            data-done={crossed || undefined}
+          >
+            {#snippet leading()}
+              <span class="kit-row-ico start-ico">
+                <span class="start-glyph" class:start-glyph-away={crossed}><Icon name={offer.icon} size={22} /></span>
+                {#if offer.key !== 'more'}
+                  <span class="start-glyph start-check" class:start-check-shown={crossed}><Icon name="check" size={22} /></span>
+                {/if}
+                {#if crossed}<span class="visually-hidden">{m.home_start_done()}</span>{/if}
+              </span>
+            {/snippet}
+          </ListRow>
         {/each}
       </ListCard>
     </div>
@@ -1562,6 +1636,63 @@
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
+  }
+
+  /* A row that is done (ux-carpet ticket 288): the check takes the icon's
+     place, the title is struck through and steps back to the secondary ink.
+     Everything crosses on --dur-fast, and all of it is opacity, transform
+     or colour, so nothing changes size when a row crosses. The two glyphs
+     share one grid cell inside the disc the kit draws. */
+  .start-glyph {
+    grid-area: 1 / 1;
+    display: grid;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+
+  .start-glyph-away {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  .start-check {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  .start-check-shown {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* The kit's title is a span inside .kit-row-title; it gets sized to the
+     words so the line has something to travel across, scaleX from its left
+     edge, the way the roadmap draws its own (.roadmap-strike-text). */
+  div[data-getting-started] :global([data-done] .kit-row-title) {
+    color: var(--text-2);
+  }
+
+  div[data-getting-started] :global(.kit-row-title > span) {
+    position: relative;
+    display: inline-block;
+  }
+
+  div[data-getting-started] :global(.kit-row-title > span::after) {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  div[data-getting-started] :global([data-done] .kit-row-title > span::after) {
+    transform: scaleX(1);
   }
 
   /* The agenda's day block: 44 wide so a two-digit day at display weight
