@@ -20,12 +20,12 @@
 
 import type { LockAfter } from '../data/prefs/catalogue.ts';
 
-/** Null is "only when the app restarts": no absence is long enough. */
-const LOCK_AFTER_MS: Record<LockAfter, number | null> = {
-  immediately: 0,
+/** How long an absence may last under each timing that waits for the
+    return. `immediately` locks as the page goes and `restart` never does,
+    so neither has a length. */
+const LOCK_AFTER_MS: Record<Exclude<LockAfter, 'immediately' | 'restart'>, number> = {
   'one-minute': 60_000,
-  'five-minutes': 5 * 60_000,
-  restart: null
+  'five-minutes': 5 * 60_000
 };
 
 export function watchLeave({
@@ -46,15 +46,17 @@ export function watchLeave({
 
   const onVisibility = () => {
     if (page.visibilityState === 'hidden') {
-      if (LOCK_AFTER_MS[lockAfter()] === 0) lock();
+      if (lockAfter() === 'immediately') lock();
       else hiddenAt = now();
       return;
     }
     if (hiddenAt === null) return;
     const away = now() - hiddenAt;
     hiddenAt = null;
-    const limit = LOCK_AFTER_MS[lockAfter()];
-    if (limit !== null && (away >= limit || away < 0)) lock();
+    const timing = lockAfter();
+    if (timing === 'restart') return;
+    /* Changed to immediately while away: the absence already happened. */
+    if (timing === 'immediately' || away >= LOCK_AFTER_MS[timing] || away < 0) lock();
   };
 
   page.addEventListener('visibilitychange', onVisibility);

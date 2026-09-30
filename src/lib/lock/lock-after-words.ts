@@ -1,7 +1,7 @@
 /* The words for each lock timing (lock-timing ticket 01), in the three forms
    screens need: the choice itself, the fragment under the Security row, and
-   the sentence under an unlock gate. Kept together so a fifth timing cannot
-   be added to one of them and not the others. */
+   the sentence under an unlock gate. Kept together, and each keyed on
+   LockAfter, so a fifth timing is a type error in all three at once. */
 
 import { m } from '$lib/paraglide/messages';
 import type { LockAfter } from '../data/prefs/catalogue.ts';
