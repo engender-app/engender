@@ -79,7 +79,10 @@ export async function fillTime(page, selector, hhmm) {
  *  +layout.svelte stamps it. */
 export async function settlePage(page, base, path, theme) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
+  /* Attached, not visible: at a 200%-zoom width the demo bar wraps taller
+     than the viewport and leaves the app no height at all until the settle
+     below hides the bar, so waiting for it to be visible first never ends. */
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { state: 'attached', timeout: 30000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
     await page.waitForSelector('[data-home-hello]');
