@@ -822,7 +822,7 @@
 
 <!-- The backdate's own step. It is the one target that cannot resolve in a
      gesture, because it needs a date first. Deferring the entire sheet behind a
-     lazy import keeps DatePicker and flatpickr out of the first-load layout chunk.
+     lazy import keeps DatePicker out of the first-load layout chunk.
      The backdate confirmation button grips data-choose="date" inside QuickAddBackdateSheet. -->
 {#if backdateOpen}
   {#await import('./QuickAddBackdateSheet.svelte') then { default: QuickAddBackdateSheet }}

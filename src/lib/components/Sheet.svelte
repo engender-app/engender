@@ -151,12 +151,8 @@
      takes focus in that case, which keeps the rest of the contract below
      (the label is read out, Tab walks in from the top) without summoning
      a keyboard nobody asked for. Readonly is excluded because a readonly
-     field never raises one regardless of type, not because of anything
-     about DatePicker specifically: its flatpickr instance is lazy, built
-     only on the field's own first click or ArrowDown (DatePicker.svelte),
-     so at introend the appointment sheet's date field is still a plain,
-     uninitialised, non-readonly text input - correctly caught here and
-     sent to the sheet instead, same as any other text field would be. */
+     field never raises one regardless of type - DatePicker's field is one,
+     since its picker is the control. */
   const NON_TEXT_INPUT_TYPES = ['checkbox', 'radio', 'range', 'color', 'file', 'button', 'submit', 'reset', 'image'];
   function opensKeyboard(el: HTMLElement): boolean {
     if (el instanceof HTMLInputElement) {
@@ -173,6 +169,10 @@
      opens with "yes" under the cursor is one stray Enter from doing the
      thing it opened to warn about (ticket 15, F22).
 
+     A sheet whose body is a composite control names the one element that
+     holds its cursor with `data-sheet-focus` - the date picker's chosen
+     day - and that wins over the first control in document order.
+
      Ticket 115: calling .focus() synchronously upon DOM attachment forces
      layout flushes on Android Chromium before CSS transition keyframes attach,
      teleporting the sheet from translateY(0) to translateY(travel). Defer
@@ -185,7 +185,7 @@
       if (fallback) clearTimeout(fallback);
       if (!sheetEl || !sheetEl.isConnected) return;
       if (sheetEl.contains(document.activeElement)) return;
-      const target = firstFocusable(node);
+      const target = node.querySelector<HTMLElement>('[data-sheet-focus]') ?? firstFocusable(node);
       (target && !opensKeyboard(target) ? target : node).focus({ preventScroll: true });
     };
 

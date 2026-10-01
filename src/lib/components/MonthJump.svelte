@@ -18,7 +18,12 @@
      carries a value takes role 0"), read as the year's day counts folded
      into months. Each cell keeps its own dot and only its opacity changes,
      so stepping the year crossfades each dot to that year's answer where it
-     stands; a month with entries in both years never blinks. */
+     stands; a month with entries in both years never blinks.
+
+     The date picker's title opens it too (phase 12 pickers, ticket 01),
+     with two differences a Journal has no use for: months outside the
+     picker's bounds are shut, and there is no journal behind it to count,
+     so no dots and no "This month" (the picker's own Today does that). */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { intlLocale } from '$lib/data/dates';
@@ -29,13 +34,17 @@
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
   import Icon from './Icon.svelte';
+  import { monthKey } from './datePicker';
   import { entryMonths, monthStep, yearBounds } from './monthJump';
 
   let {
     year,
     month,
     onYear,
-    onPick
+    onPick,
+    from = -Infinity,
+    to = Infinity,
+    journal = true
   }: {
     year: number;
     month: number;
@@ -43,6 +52,12 @@
     onYear: (delta: 1 | -1) => void;
     /** Move the grid to this month and close the sheet. */
     onPick: (year: number, month: number) => void;
+    /** Inclusive bounds as month keys, `year * 12 + month`. */
+    from?: number;
+    to?: number;
+    /** The Journal's own sheet: dots for months with entries, and a way
+        back to this month. */
+    journal?: boolean;
   } = $props();
 
   const now = new Date();
@@ -60,8 +75,10 @@
   });
 
   let bounds = $derived(yearBounds(year));
-  let counts = liveList((j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
-  let withEntries = $derived(entryMonths(counts.rows.map((r) => r.day)));
+  // svelte-ignore state_referenced_locally
+  const counts = journal ? liveList((j) => j.stats.entryCountsByDay(bounds.first, bounds.last)) : null;
+  let withEntries = $derived(entryMonths(counts?.rows.map((r) => r.day) ?? []));
+  const shut = (i: number) => monthKey(year, i) < from || monthKey(year, i) > to;
 
   /* The cursor. Opening on the month the grid shows is the promise the
      label makes (the sheet is mounted per opening, so this runs each
@@ -86,12 +103,13 @@
   }
 
   async function onKeydown(event: KeyboardEvent) {
-    const to = monthStep(event.key, cursor, columns());
-    if (to === null) return;
+    const next = monthStep(event.key, cursor, columns());
+    if (next === null) return;
     event.preventDefault();
-    cursor = to;
+    if (shut(next)) return;
+    cursor = next;
     await tick();
-    cells[to]?.focus();
+    cells[next]?.focus();
   }
 
   /* The pill: the same measuring Segmented does, on both axes. Placed, not
@@ -151,7 +169,7 @@
 
 <div class="month-jump">
   <div class="month-jump-year">
-    <button class="icon-btn press" aria-label={m.prev_year()} onclick={() => stepYear(-1)}>
+    <button class="icon-btn press" aria-label={m.prev_year()} disabled={monthKey(year, 0) - 1 < from} onclick={() => stepYear(-1)}>
       <Icon name="chevronLeft" size={22} />
     </button>
     <!-- The live region stands still and only the numeral inside it is
@@ -162,7 +180,7 @@
         <span in:drumIn={{ dir: turn }} out:drumOut={{ dir: turn }}>{year}</span>
       {/key}
     </strong>
-    <button class="icon-btn press" aria-label={m.next_year()} onclick={() => stepYear(1)}>
+    <button class="icon-btn press" aria-label={m.next_year()} disabled={monthKey(year + 1, 0) > to} onclick={() => stepYear(1)}>
       <Icon name="chevronRight" size={22} />
     </button>
   </div>
@@ -208,6 +226,7 @@
         tabindex={i === cursor ? 0 : -1}
         data-month-jump={i}
         data-no-press
+        disabled={shut(i)}
         onclick={() => onPick(year, i)}
       >
         <span aria-hidden="true">{names[i].short}</span>
@@ -217,9 +236,11 @@
     {/each}
   </div>
 
-  <button class="btn btn-soft btn-block" data-month-jump-now onclick={() => onPick(now.getFullYear(), now.getMonth())}>
-    {m.cal_jump_this_month()}
-  </button>
+  {#if journal}
+    <button class="btn btn-soft btn-block" data-month-jump-now onclick={() => onPick(now.getFullYear(), now.getMonth())}>
+      {m.cal_jump_this_month()}
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -308,6 +329,13 @@
     transition-timing-function: cubic-bezier(0.7, 0, 0.84, 0);
   }
   .month-jump-cell > span:first-child { grid-area: 1 / 1; }
+  /* Outside the picker's bounds: struck through rather than only greyed,
+     so the difference does not rest on colour alone. */
+  .month-jump-cell:disabled {
+    color: var(--text-2);
+    text-decoration: line-through;
+    cursor: default;
+  }
 
   /* Today's ring, HeatMap's drawing of the same fact: 2px of accent a
      pixel clear of the block. Drawn on its own box rather than as the
