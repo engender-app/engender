@@ -77,7 +77,10 @@
 
      A drag only starts when the sheet is scrolled to its top. Sheets in this
      app can be taller than the screen - the dose editor is a form - and a
-     downward swipe inside one means "scroll up" until there is no up left. */
+     downward swipe inside one means "scroll up" until there is no up left.
+     Nor inside a scroller of its own that says so (`data-sheet-no-drag`):
+     the time picker's drums scroll vertically under the finger, and a
+     sheet that took the swipe would never let them turn. */
   const DISMISS_DISTANCE = 96;
   const DISMISS_VELOCITY = 0.5; // px per ms
 
@@ -89,7 +92,7 @@
 
   function dragStart(e: PointerEvent) {
     if (dragPointer !== null || !sheetEl || sheetEl.scrollTop > 0) return;
-    if ((e.target as HTMLElement).closest('input, select, textarea')) return;
+    if ((e.target as HTMLElement).closest('input, select, textarea, [data-sheet-no-drag]')) return;
     dragPointer = e.pointerId;
     dragFrom = e.clientY;
     dragAt = e.timeStamp;
