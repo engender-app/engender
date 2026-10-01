@@ -213,6 +213,7 @@ try {
   // affordance and the selected option stays visible
   await page.setViewportSize({ width: 320, height: 690 });
   await visit('/settings');
+  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForTimeout(300);
   await page.evaluate(async () => {
