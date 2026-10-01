@@ -8,9 +8,10 @@
 export type Time = { hour: number; minute: number };
 
 /** A typed time, or null. One or two digits of hour and two of minute,
-    with a colon or the dot a time is often written with by hand. */
+    with a colon, the dot a time is often written with by hand, or nothing
+    between them - a phone's number pad may have no colon on it. */
 export function parseTime(text: string): Time | null {
-  const match = /^(\d{1,2})[:.](\d{2})$/.exec(text.trim());
+  const match = /^(\d{1,2})[:.]?(\d{2})$/.exec(text.trim());
   if (!match) return null;
   const hour = Number(match[1]);
   const minute = Number(match[2]);

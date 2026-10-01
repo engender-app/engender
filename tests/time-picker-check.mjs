@@ -110,6 +110,8 @@ async function newPage(width, theme, { reducedMotion } = {}) {
 /* The picker settled: open, focus inside it, no animation running, and
    no drum still scrolling. */
 async function pickerAtRest(page) {
+  await page.evaluate(() => (window.__tpLast = null));
+  await page.waitForTimeout(50);
   await page.waitForFunction(() => {
     const picker = document.querySelector('[data-time-picker]');
     if (!picker || !picker.contains(document.activeElement)) return false;
@@ -270,10 +272,17 @@ try {
       const s = await assertRestsOnRow(page, 'flick');
       assert.ok(s.minute.now > before.minute.now + 2, `the flick only reached ${s.minute.now} from ${before.minute.now}`);
     });
-    await record(phone, `pull-down-${theme}`, () => touchDrag(cdp, page, 'hour', 160), { crop, note: 'a finger pulls the hour drum down: the drum turns back, the sheet stays put' });
+    /* At 00 the drum has nothing above it to scroll to, which is where
+       the sheet's own drag-to-dismiss would take a downward swipe. */
+    await drum(page, 'hour').focus();
+    await page.keyboard.press('Home');
     await pickerAtRest(page);
-    await check(`${theme}: a downward swipe on a drum turns the drum, not the sheet`, async () => {
-      assert.equal(await sheetTop(page), top);
+    await record(phone, `pull-down-${theme}`, () => touchDrag(cdp, page, 'hour', 160), { crop, note: 'a finger pulls the hour drum down at 00: the drum stretches, the sheet stays put' });
+    await check(`${theme}: a downward swipe on a drum at its end leaves the sheet where it is`, async () => {
+      await pickerAtRest(page);
+      const tops = scenes.at(-1).samples.filter((x) => x.top !== undefined).map((x) => x.top);
+      const drift = Math.max(...tops.map((t) => Math.abs(t - top)));
+      assert.ok(drift < 1, `the sheet moved ${drift}px under a swipe on the drum`);
       await assertRestsOnRow(page, 'pull-down');
     });
 
