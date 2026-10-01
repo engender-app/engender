@@ -35,7 +35,7 @@ describe('one clock', () => {
   });
 
   it('writes the resting pose into the markup, so the first paint is not a frame of defaults', () => {
-    expect(markup).toMatch(/style="--breath:0; --surface-y:\{LOW\}px; --lap-x:\{C\}px; --lap-y:\{C - TRACK\}px"/);
+    expect(markup).toContain('style="--breath:0; --surface-y:{restReduced ? STILL : LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"');
   });
 
   it('stops the loop when it leaves the screen', () => {
