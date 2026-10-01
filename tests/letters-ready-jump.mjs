@@ -109,11 +109,18 @@ try {
   // Verify browser back restores previous position
   await page.goBack();
   await page.waitForFunction(() => !window.location.hash);
-  /* Back eases to the remembered position now (ticket 278), so wait for it. */
-  await page.waitForFunction(() => {
-    const region = document.querySelector('[data-app-scroll-region]');
-    return (region ? region.scrollTop : window.scrollY) <= 50;
-  });
+  /* Back eases to the remembered position now (ticket 278), so wait for it.
+     On a timeout, say where the scroll stopped, since only CI has failed
+     here. */
+  await page
+    .waitForFunction(() => {
+      const region = document.querySelector('[data-app-scroll-region]');
+      return (region ? region.scrollTop : window.scrollY) <= 50;
+    })
+    .catch(async (error) => {
+      console.log('back stopped at', await getScroll(), 'on', page.url(), 'from', scrolledY);
+      throw error;
+    });
   const returnedScroll = await getScroll();
   assert.ok(returnedScroll <= initialScroll + 50, 'Back restores list position at waiting section');
 
