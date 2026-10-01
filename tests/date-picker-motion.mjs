@@ -55,8 +55,8 @@ const SAMPLE = `
   const surface = picker.closest('[data-sheet]') ?? picker;
   const s = surface.getBoundingClientRect();
   const clip = getComputedStyle(surface).clipPath;
-  const shut = /inset\\(([\\d.]+)%(?: ([\\d.]+)%? ([\\d.]+)%? ?([\\d.]+)?%?)?/.exec(clip);
-  const clipShut = shut ? Math.max(...shut.slice(1).filter(Boolean).map(Number)) / 100 : 0;
+  const shut = clip.startsWith('inset(') ? [...clip.matchAll(/([\\d.]+)%/g)].map((m) => +m[1]) : [];
+  const clipShut = shut.length ? Math.max(...shut) / 100 : 0;
   const seen = Math.max(0, Math.min(s.bottom, innerHeight) - Math.max(s.top, 0)) / Math.max(1, s.height);
   const vp = picker.querySelector('[data-date-picker-viewport]');
   const v = vp.getBoundingClientRect();
@@ -73,7 +73,7 @@ const SAMPLE = `
     open: true,
     top: Math.round(s.top * 10) / 10, h: Math.round(s.height), seen: Math.round(seen * 100) / 100,
     shown: Math.round((1 - clipShut) * 100) / 100, op: +getComputedStyle(surface).opacity,
-    vl: v.left, vw: v.width, panels, fl: box.left, fw: box.width, faces
+    vl: v.left, vw: v.width, vop: +getComputedStyle(vp).opacity, panels, fl: box.left, fw: box.width, faces
   };
 `;
 
@@ -95,12 +95,15 @@ function findYanks(samples, { bound = false } = {}) {
       continue;
     }
     if (Math.abs(amount(s) - amount(was)) > 0.45) yanks.push({ t: s.t, what: `surface ${amount(was)} to ${amount(s)} in one frame` });
-    for (const p of s.panels) {
+    /* A rebase under the reduced-motion crossfade happens at opacity 0:
+       nothing painted moved. */
+    const dark = s.vop < 0.05 || was.vop < 0.05;
+    for (const p of dark ? [] : s.panels) {
       const before = was.panels.find((q) => q.k === p.k);
       if (before && Math.abs(before.l - p.l) > s.vw * 0.5) yanks.push({ t: s.t, k: p.k, what: `month jumps ${Math.round(p.l - before.l)}px` });
       if (!before && visible(s, p)) yanks.push({ t: s.t, k: p.k, what: 'month painted on screen with no frame before it' });
     }
-    for (const q of was.panels) {
+    for (const q of dark ? [] : was.panels) {
       if (visible(was, q) && !s.panels.some((p) => p.k === q.k)) yanks.push({ t: s.t, k: q.k, what: 'month gone from the screen in one frame' });
     }
     if (!bound) {

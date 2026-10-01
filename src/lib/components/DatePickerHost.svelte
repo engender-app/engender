@@ -87,7 +87,14 @@
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => place(node));
     };
-    const focusCursor = () => node.querySelector<HTMLElement>('[data-sheet-focus]')?.focus({ preventScroll: true });
+    /* On the intro's end, Sheet.svelte's reason (ticket 115); the timer is
+       its fallback too, for an intro that is cut short or never fires. */
+    const focusCursor = () => {
+      clearTimeout(fallback);
+      if (!node.isConnected || node.contains(document.activeElement)) return;
+      node.querySelector<HTMLElement>('[data-sheet-focus]')?.focus({ preventScroll: true });
+    };
+    const fallback = setTimeout(focusCursor, motionDuration('--dur-med') + 200);
     document.addEventListener('click', outside);
     document.addEventListener('scroll', follow, true);
     window.addEventListener('resize', follow);
@@ -99,6 +106,7 @@
       document.removeEventListener('scroll', follow, true);
       window.removeEventListener('resize', follow);
       node.removeEventListener('introend', focusCursor);
+      clearTimeout(fallback);
     };
   }
 </script>
