@@ -81,7 +81,10 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-document-reader]').scrollTop > 0);
   await page.locator('[data-page-forward]').click();
   await page.getByText('Page 2 of 3', { exact: true }).waitFor();
-  assert.equal(await reader.evaluate((el) => el.scrollTop), 0, 'next page starts at top');
+  /* The turn scrolls back to the top smoothly - scrollBehavior() asks the
+     app's own motion setting, not the emulated media query this page sets -
+     so on a slow machine the label changes before the scroll lands. */
+  await page.waitForFunction(() => document.querySelector('[data-document-reader]').scrollTop === 0);
   await page.locator('[data-list-row="document-owner"]').click();
   await page.locator('#ms-name').waitFor();
   assert.equal(await page.locator('#ms-name').inputValue(), 'Original referral');
