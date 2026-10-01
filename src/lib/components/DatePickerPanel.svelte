@@ -1,6 +1,6 @@
 <script lang="ts">
   /* The date picker's body (phase 12 pickers, ticket 01), the same in the
-     phone's sheet and the desktop's popover (DatePickerHost.svelte).
+     phone's sheet and the desktop's popover (PickerHost.svelte).
 
      **One surface, three months on it.** The grid is a track of three
      months side by side - the one shown and its neighbours - and the track
