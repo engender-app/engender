@@ -1,0 +1,2 @@
+# Merge the message catalogues by key, not by line (scripts/merge-catalogue.mjs).
+messages/*.json merge=catalogue
