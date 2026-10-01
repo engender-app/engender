@@ -8,7 +8,11 @@
    absent in Polish, since the runtime falls back to the base locale and
    prints English at a Polish reader. Hence the parity half. */
 import { describe, expect, it } from 'vitest';
-import { catalogueProblems, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { catalogueOrderProblems, catalogueProblems, fixCatalogues, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
+import { serializeCatalogue } from '../scripts/catalogue.mjs';
 
 describe('catalogueProblems', () => {
   it('passes two catalogues holding the same keys', () => {
@@ -31,6 +35,26 @@ describe('catalogueProblems', () => {
 
   it('ignores the $schema pointer, which is not a message', () => {
     expect(catalogueProblems({ $schema: 'a' }, {})).toEqual([]);
+  });
+});
+
+describe('catalogueOrderProblems', () => {
+  const unsorted = '{\n  "$schema": "x",\n  "b": "B",\n  "a": "A"\n}\n';
+
+  it('names a catalogue that is not in serializer order', () => {
+    const problems = catalogueOrderProblems({ 'messages/en.json': unsorted });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('messages/en.json');
+    expect(problems[0]).toContain('--fix');
+  });
+
+  it('passes once fixCatalogues, which --fix runs, has rewritten the file', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'catalogue-')), 'en.json');
+    writeFileSync(file, unsorted);
+    fixCatalogues([file]);
+    const fixed = readFileSync(file, 'utf8');
+    expect(catalogueOrderProblems({ [file]: fixed })).toEqual([]);
+    expect(Object.keys(JSON.parse(fixed))).toEqual(['$schema', 'a', 'b']);
   });
 });
 
