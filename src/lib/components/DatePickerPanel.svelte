@@ -60,6 +60,11 @@
   /* The months sit this far apart on the track, so a neighbour sliding in
      is a separate page rather than a continuation of the one leaving. */
   const GUTTER = 16;
+  /* The gesture's clocks: the velocity window, and the trackpad's quiet
+     and deaf spells (both explained where the wheel is read). */
+  const VELOCITY_WINDOW = 80;
+  const WHEEL_QUIET = 120;
+  const WHEEL_DEAF = 160;
 
   let minDay = $derived(min ? parseIsoDate(min) : null);
   let maxDay = $derived(max ? parseIsoDate(max) : null);
@@ -208,7 +213,7 @@
   type Sample = { t: number; x: number };
   function velocity(samples: Sample[]): number {
     const last = samples[samples.length - 1];
-    const first = samples.find((s) => last.t - s.t <= 80) ?? last;
+    const first = samples.find((s) => last.t - s.t <= VELOCITY_WINDOW) ?? last;
     return last.t === first.t ? 0 : (last.x - first.x) / (last.t - first.t);
   }
 
@@ -288,7 +293,7 @@
     if (jumping || Math.abs(dx) <= Math.abs(event.deltaY)) return;
     event.preventDefault();
     if (event.timeStamp < wheelDeafUntil) {
-      wheelDeafUntil = event.timeStamp + 160;
+      wheelDeafUntil = event.timeStamp + WHEEL_DEAF;
       return;
     }
     if (!wheel) {
@@ -299,14 +304,14 @@
     wheel.sum -= dx;
     x = shape(wheel.base + wheel.sum);
     wheel.samples.push({ t: event.timeStamp, x });
-    wheel.timer = setTimeout(releaseWheel, 120);
+    wheel.timer = setTimeout(releaseWheel, WHEEL_QUIET);
   }
 
   function releaseWheel() {
     if (!wheel) return;
     const samples = wheel.samples;
     wheel = null;
-    wheelDeafUntil = performance.now() + 160;
+    wheelDeafUntil = performance.now() + WHEEL_DEAF;
     settle(samples.length ? settleStep(x, velocity(samples), width(), canStep(-1), canStep(1)) : 0);
   }
 
@@ -400,7 +405,6 @@
 
   const DAY_LABEL: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
   const WEEKDAYS = Array.from({ length: 7 }, (_, i) => fmtDay(4 + i, { weekday: 'narrow' }));
-  const WEEKDAY_NAMES = Array.from({ length: 7 }, (_, i) => fmtDay(4 + i, { weekday: 'long' }));
 
   /* A month's cells as weeks, each blank marked for the narrow layout:
      leading blanks go, and trailing ones are kept up to 31 so every month
@@ -412,7 +416,7 @@
     return Array.from({ length: 6 }, (_, w) =>
       cells.slice(w * 7, w * 7 + 7).map((day, i) => {
         const index = w * 7 + i;
-        const blank = day === null ? (index < lead ? 'lead' : index - lead - length < 31 - length ? 'pad' : 'tail') : null;
+        const blank = day === null ? (index < lead ? 'lead' : index - lead < 31 ? 'pad' : 'tail') : null;
         return { day, blank };
       })
     );
@@ -479,7 +483,7 @@
         onwheel={onWheel}
         {@attach holdSideways}
       >
-        <div bind:this={track} class="dp-track" style:transform={x ? `translate3d(${x}px, 0, 0)` : undefined}>
+        <div bind:this={track} class="dp-track" style:--dp-gutter="{GUTTER}px" style:transform={x ? `translate3d(${x}px, 0, 0)` : undefined}>
           {#each slots as slot (slot.key)}
             <div
               class="dp-month"
@@ -527,7 +531,6 @@
           {/each}
         </div>
       </div>
-      <span class="visually-hidden">{WEEKDAY_NAMES.join(', ')}</span>
     </div>
 
     {#if jumping}
@@ -676,7 +679,7 @@
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: repeat(6, var(--touch-target));
-    transform: translateX(calc(var(--dp-at) * (100% + 16px)));
+    transform: translateX(calc(var(--dp-at) * (100% + var(--dp-gutter))));
   }
   .dp-week { display: contents; }
   .dp-cell { display: grid; }
