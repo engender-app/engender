@@ -82,7 +82,13 @@ export async function verifyCareRead({ gallery = false } = {}) {
     });
     await page.waitForFunction(() => window.careFault.pending.length >= 2);
     assert.equal(await lane.innerText(), before);
-    await page.evaluate(() => window.careFault.pending.at(-1).reject(new Error('refresh totals failure')));
+    /* Fail every refresh still waiting and any that starts later. The write
+       can start more than one run, and on a slow machine one can begin after
+       the newest was rejected and wait forever, so Try again never shows. */
+    await page.evaluate(() => {
+      window.careFault.mode = 'fail';
+      for (const run of window.careFault.pending) run.reject(new Error('refresh totals failure'));
+    });
     await retry.waitFor();
     assert.equal(await lane.innerText(), before);
     assert.match(await page.getByRole('status').filter({ has: retry }).innerText(), /Showing the last result/);
