@@ -78,16 +78,17 @@ async function record(page, steps) {
 }
 
 function check(name, { frames, marks }, { reduced }) {
-  const pausedAt = (t) => {
-    let state = 'rest';
-    for (const m of marks) if (m.t <= t) state = m.label;
-    return state.startsWith('pause');
+  const lastMark = (t) => {
+    let last = null;
+    for (const m of marks) if (m.t <= t) last = m;
+    return last;
   };
   const problems = [];
   for (let i = 1; i < frames.length; i++) {
     const a = frames[i - 1];
     const b = frames[i];
-    const frozen = pausedAt(a.t) && pausedAt(b.t) && b.t - marks.find((m) => m.t <= a.t && m.label.startsWith('pause')).t > 500;
+    const mark = lastMark(a.t);
+    const frozen = mark?.label.startsWith('pause') && lastMark(b.t) === mark && a.t - mark.t > 500;
     for (const [id, nb] of Object.entries(b.nodes)) {
       const na = a.nodes[id];
       if (!na) {
@@ -136,8 +137,9 @@ try {
     /* Clicked from inside the page rather than through Playwright's input
        pipeline. A synthetic click from a task can land after a frame has
        begun, so the first rAF callback carries a timestamp from before the
-       start - the case that once flashed "Hold" over the first inhale. A
-       real input event is dispatched ahead of the frame and never shows it. */
+       start - the case that once flashed "Hold" over the first inhale. It
+       only sometimes lands that way, so this probe cannot be relied on to
+       catch that one: breathClock.test.ts pins it. */
     const toggle = () => page.evaluate((root) => document.querySelector(`${root} [data-breathing-toggle]`).click(), ROOT);
     const run = await record(page, [
       ['rest', 600],
