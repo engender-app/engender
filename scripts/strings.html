@@ -118,6 +118,8 @@
           for (const entry of records) {
             const updated = latest.find((row) => row.key === entry.key);
             entry.findings = updated?.findings ?? [];
+            entry.en = updated?.en ?? null;
+            entry.pl = updated?.pl ?? null;
             entry.change = updated?.change ?? null;
             entry.previous = updated?.previous ?? { en: null, pl: null };
             showFindings(entry);
