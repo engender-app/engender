@@ -10,6 +10,15 @@ import { catalogueFindings, collectReferenceSites, copySourceFiles } from './che
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PAGE = fileURLToPath(new URL('./strings.html', import.meta.url));
+/** @type {Record<number, string>} */
+const THEMES = {
+  38: 'Journal, day, search and readback',
+  39: 'Body, care and health',
+  40: 'Transition, voice and reflection',
+  41: 'Setup, access, recovery and gates',
+  42: 'Preferences and reminders',
+  43: 'Files, system and shared controls'
+};
 
 class RequestError extends Error {
   /** @param {number} status @param {string} message */
@@ -23,6 +32,7 @@ class RequestError extends Error {
 export function readStrings(root = ROOT) {
   const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
   const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
+  const coverage = JSON.parse(readFileSync(join(root, 'docs/agents/copy-coverage-50.json'), 'utf8'));
   const base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: root, encoding: 'utf8' }).trim();
   const previousEn = JSON.parse(execFileSync('git', ['show', `${base}:messages/en.json`], { cwd: root, encoding: 'utf8' }));
   const previousPl = JSON.parse(execFileSync('git', ['show', `${base}:messages/pl.json`], { cwd: root, encoding: 'utf8' }));
@@ -30,6 +40,7 @@ export function readStrings(root = ROOT) {
   const findings = catalogueFindings(en, pl, new Set(sites.keys()));
   return Object.keys({ ...previousEn, ...previousPl, ...en, ...pl }).filter((key) => !key.startsWith('$')).sort().map((key) => ({
     key,
+    theme: THEMES[coverage[key]?.owner] ?? 'Unassigned copy',
     en: en[key] ?? null,
     pl: pl[key] ?? null,
     previous: { en: previousEn[key] ?? null, pl: previousPl[key] ?? null },

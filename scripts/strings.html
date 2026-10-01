@@ -5,7 +5,7 @@
 <title>Message catalogues</title>
 <style>
   body { font: 16px system-ui, sans-serif; margin: 1rem; }
-  input, textarea, button { font: inherit; }
+  input, textarea, button, select { font: inherit; }
   input { width: min(100%, 40rem); box-sizing: border-box; }
   table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
   th, td { border: 1px solid #aaa; padding: .5rem; text-align: left; vertical-align: top; }
@@ -24,12 +24,16 @@
   .comparison p, #prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
   #prose table { min-width: 0; table-layout: fixed; }
   #prose td { width: 50%; }
+  .group h2 { font-size: 1.1rem; margin: 0; }
+  select { max-width: 100%; margin-bottom: .5rem; }
 </style>
 <h1>Message catalogues</h1>
 <p>Edit existing values. Save writes to <code>messages/en.json</code> or <code>messages/pl.json</code>.</p>
 <label for="search">Search keys, English and Polish</label>
 <input id="search" type="search" autocomplete="off">
 <button id="reload" type="button">Reload from disk</button>
+<label for="theme">Copy theme</label>
+<select id="theme"><option value="">All themes</option></select>
 <div>
   <label class="toggle"><input id="changed" type="checkbox"> Changed vs main</label>
   <label class="toggle"><input id="prose-toggle" type="checkbox"> Read as prose</label>
@@ -53,7 +57,9 @@
   const status = document.querySelector('#status');
   const changed = document.querySelector('#changed');
   const proseToggle = document.querySelector('#prose-toggle');
+  const theme = document.querySelector('#theme');
   let records = [];
+  let groups = new Map();
   let dirty = new Set();
 
   function element(tag, text) {
@@ -67,6 +73,16 @@
     if (Array.isArray(value)) return value.flatMap((entry, variant) =>
       Object.entries(entry.match).map(([form, text]) => ({ variant, form, text })));
     return [];
+  }
+
+  function groupRow(name, columns) {
+    const row = element('tr');
+    row.className = 'group';
+    const cell = element('th');
+    cell.colSpan = columns;
+    cell.append(element('h2', name));
+    row.append(cell);
+    return row;
   }
 
   function localeCell(record, locale) {
@@ -168,14 +184,21 @@
     const query = search.value.toLocaleLowerCase();
     let visible = 0;
     const paragraphs = document.createDocumentFragment();
+    for (const group of groups.values()) { group.count = 0; group.proseHeader = null; }
     for (const record of records) {
       const text = [record.key, ...['en', 'pl'].flatMap((locale) =>
         [...fields(record[locale]), ...fields(record.previous[locale])].map((field) => field.text))].join('\n');
       record.row.hidden = (changed.checked ? !record.change : record.change === 'removed') ||
-        !text.toLocaleLowerCase().includes(query);
+        (theme.value && record.theme !== theme.value) || !text.toLocaleLowerCase().includes(query);
       if (record.row.hidden) continue;
       visible++;
+      const group = groups.get(record.theme);
+      group.count++;
       if (proseToggle.checked) {
+        if (!group.proseHeader) {
+          group.proseHeader = groupRow(record.theme, 2);
+          paragraphs.append(group.proseHeader);
+        }
         const paragraph = element('tr');
         for (const locale of ['en', 'pl']) {
           const cell = element('td');
@@ -187,10 +210,15 @@
         paragraphs.append(paragraph);
       }
     }
+    for (const [name, group] of groups) {
+      group.header.hidden = group.count === 0;
+      group.header.querySelector('h2').textContent = `${name} (${group.count})`;
+      if (group.proseHeader) group.proseHeader.querySelector('h2').textContent = `${name} (${group.count})`;
+    }
     document.querySelector('#editor').hidden = proseToggle.checked;
     document.querySelector('#prose').hidden = !proseToggle.checked;
     document.querySelector('#paragraphs').replaceChildren(paragraphs);
-    status.textContent = `${visible} of ${records.length} keys`;
+    status.textContent = visible ? `${visible} of ${records.length} keys` : 'No matching keys';
   }
 
   async function load() {
@@ -199,9 +227,16 @@
       const response = await fetch('/api/strings');
       if (!response.ok) throw new Error(await response.text());
       records = await response.json();
+      records.sort((a, b) => a.theme.localeCompare(b.theme));
       dirty.clear();
+      groups = new Map();
       const fragment = document.createDocumentFragment();
       for (const record of records) {
+        if (!groups.has(record.theme)) {
+          const header = groupRow(record.theme, 4);
+          groups.set(record.theme, { header });
+          fragment.append(header);
+        }
         record.row = element('tr');
         const key = element('td');
         record.checks = element('div');
@@ -218,6 +253,15 @@
         showChange(record);
         fragment.append(record.row);
       }
+      const selected = theme.value;
+      theme.replaceChildren(element('option', 'All themes'));
+      theme.firstElementChild.value = '';
+      for (const name of groups.keys()) {
+        const option = element('option', name);
+        option.value = name;
+        theme.append(option);
+      }
+      if (groups.has(selected)) theme.value = selected;
       rows.replaceChildren(fragment);
       filter();
     } catch (error) {
@@ -228,6 +272,7 @@
   search.addEventListener('input', filter);
   changed.addEventListener('change', filter);
   proseToggle.addEventListener('change', filter);
+  theme.addEventListener('change', filter);
   document.querySelector('#reload').addEventListener('click', load);
   window.addEventListener('beforeunload', (event) => {
     if (dirty.size) { event.preventDefault(); event.returnValue = ''; }
