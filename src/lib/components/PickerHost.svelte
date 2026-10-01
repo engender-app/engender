@@ -1,18 +1,19 @@
 <script lang="ts">
-  /* Where the date picker's body is shown (phase 12 pickers, ticket 01):
+  /* Where a picker's body is shown (phase 12 pickers, tickets 01 and 02):
      the app's own bottom Sheet on a phone, and on a desktop a popover
      hung from the field, which a pointer can reach without the page
-     going away behind it.
+     going away behind it. The date and the time picker share it, each
+     handing over its body as `panel`.
 
-     DatePicker.svelte mounts this outside the screen (see the note there),
-     so it owns both ends of the popover's motion itself. The popover is a
+     pickerField.svelte.ts mounts this outside the screen (see the note
+     there), so it owns both ends of the popover's motion itself. The popover is a
      block, and a block does not fade up from nothing (ADR-0078): it
      unrolls from the field's edge on a clip, travelling the last few
      pixels with it, and rolls back up into the field on the way out. Under
      reduced motion it crossfades instead. */
+  import type { Snippet } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
   import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
-  import DatePickerPanel from './DatePickerPanel.svelte';
   import Sheet from './Sheet.svelte';
   import { registerOverlayRegion } from './overlayLock';
 
@@ -21,11 +22,8 @@
     desktop,
     anchor,
     label,
-    value,
-    min,
-    max,
-    onPick,
-    onClear,
+    kind,
+    panel,
     onDismiss
   }: {
     open: boolean;
@@ -33,13 +31,14 @@
     /** The field the popover hangs from. */
     anchor: HTMLElement;
     label: string;
-    value: string;
-    min?: string;
-    max?: string;
-    onPick: (value: string) => void;
-    onClear: () => void;
+    /** Names the surface for tests and the popover's width: seven day
+        targets for a date, two drums for a time. */
+    kind: 'date' | 'time';
+    panel: Snippet;
     onDismiss: () => void;
   } = $props();
+
+  let marker = $derived({ [`data-${kind}-picker`]: '' });
 
   /* Which way the popover opens, decided when it is placed: down from the
      field, or up from it where the frame has no room below. */
@@ -114,18 +113,15 @@
   }
 </script>
 
-{#snippet panel()}
-  <DatePickerPanel {value} {min} {max} {onPick} {onClear} />
-{/snippet}
-
 {#if desktop}
   {#if open}
     <div
-      class="date-popover"
+      class="picker-popover"
+      class:is-time={kind === 'time'}
       role="dialog"
       aria-label={label}
       tabindex="-1"
-      data-date-picker
+      {...marker}
       in:unroll
       out:unroll={{ closing: true }}
       {@attach own}
@@ -135,14 +131,15 @@
   {/if}
 {:else}
   <Sheet {open} title={label} onRequestClose={onDismiss}>
-    <div data-date-picker>{@render panel()}</div>
+    <div {...marker}>{@render panel()}</div>
   </Sheet>
 {/if}
 
 <style>
   /* A surface's own edge against arbitrary content: a line, no shadow
-     (the sheet's trade, and the kit's). Seven 48px targets plus padding. */
-  .date-popover {
+     (the sheet's trade, and the kit's). Seven 48px targets plus padding,
+     or for a time the drums and the typed entry under them. */
+  .picker-popover {
     position: fixed;
     z-index: 45;
     width: min(calc(336px + 2 * var(--space-3) + 2px), calc(100% - 16px));
@@ -155,4 +152,5 @@
     background: var(--surface);
     outline: none;
   }
+  .picker-popover.is-time { width: min(calc(256px + 2 * var(--space-3) + 2px), calc(100% - 16px)); }
 </style>
