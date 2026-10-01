@@ -8,7 +8,8 @@
    absent in Polish, since the runtime falls back to the base locale and
    prints English at a Polish reader. Hence the parity half. */
 import { describe, expect, it } from 'vitest';
-import { catalogueProblems, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
+import { catalogueOrderProblems, catalogueProblems, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
+import { serializeCatalogue } from '../scripts/catalogue.mjs';
 
 describe('catalogueProblems', () => {
   it('passes two catalogues holding the same keys', () => {
@@ -31,6 +32,22 @@ describe('catalogueProblems', () => {
 
   it('ignores the $schema pointer, which is not a message', () => {
     expect(catalogueProblems({ $schema: 'a' }, {})).toEqual([]);
+  });
+});
+
+describe('catalogueOrderProblems', () => {
+  const unsorted = '{\n  "$schema": "x",\n  "b": "B",\n  "a": "A"\n}\n';
+
+  it('names a catalogue that is not in serializer order', () => {
+    const problems = catalogueOrderProblems({ 'messages/en.json': unsorted });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('messages/en.json');
+    expect(problems[0]).toContain('--fix');
+  });
+
+  it('passes once the serializer has rewritten it, which is what --fix does', () => {
+    const fixed = serializeCatalogue(JSON.parse(unsorted));
+    expect(catalogueOrderProblems({ 'messages/en.json': fixed })).toEqual([]);
   });
 });
 
