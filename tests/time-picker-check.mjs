@@ -323,6 +323,14 @@ try {
       assert.equal(await field.inputValue(), '07:45');
       await page.waitForFunction(() => document.activeElement?.id === 'r-time', null, { timeout: 2000 });
     });
+    await check(`${theme}: Enter straight after an arrow commits the stepped time, not the one before`, async () => {
+      await field.click();
+      await pickerAtRest(page);
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('Enter');
+      await page.locator('[data-time-picker]').waitFor({ state: 'detached' });
+      assert.equal(await field.inputValue(), '08:45');
+    });
     await phone.context.close();
 
     /* An optional field: the lab draw time offers Clear. */

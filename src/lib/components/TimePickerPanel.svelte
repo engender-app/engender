@@ -20,10 +20,13 @@
      (text clipped to a background on a scrolled box). A band the digits
      pass over unchanged has nothing to fall behind.
 
-     **One value.** The typed entry under the drums always says what the
-     drums do: a drum coming to rest writes its time there, and a time
-     typed there turns the drums to it. Use time takes the entry, so a
-     half-typed time is refused rather than half applied. */
+     **One value.** The typed entry under the drums says what the drums
+     do: a drum coming to rest writes its time there, and a time typed
+     there turns the drums to it. Use time takes whichever was touched
+     last - the drums' own value, so an arrow and Enter in quick
+     succession commit the stepped time even though the drum is still on
+     its way and the entry not yet written; or the entry, so a half-typed
+     time is refused rather than half applied. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, isReducedMotion } from '$lib/motion/tokens';
@@ -44,27 +47,32 @@
 
   /* An empty field opens on the hour it is now, the nearest guess at a
      time someone is about to record. */
+  const now = new Date();
   // svelte-ignore state_referenced_locally
-  const start = parseTime(value) ?? { hour: new Date().getHours(), minute: new Date().getMinutes() };
+  const start = parseTime(value) ?? { hour: now.getHours(), minute: now.getMinutes() };
   let hour = $state(start.hour);
   let minute = $state(start.minute);
   // svelte-ignore state_referenced_locally
   let typed = $state(value);
   let entry = $state<HTMLInputElement>();
+  let lastTouched: 'drums' | 'entry' = 'drums';
 
   type Drum = { key: 'hour' | 'minute'; count: number; label: string };
-  const DRUMS: Drum[] = [
-    { key: 'hour', count: 24, label: m.time_picker_hour() },
-    { key: 'minute', count: 60, label: m.time_picker_minute() }
-  ];
+  const HOURS: Drum = { key: 'hour', count: 24, label: m.time_picker_hour() };
+  const MINUTES: Drum = { key: 'minute', count: 60, label: m.time_picker_minute() };
+  const DRUMS = [HOURS, MINUTES];
   const pad = (n: number) => String(n).padStart(2, '0');
   const read = (key: Drum['key']) => (key === 'hour' ? hour : minute);
+  const write = (key: Drum['key'], n: number) => (key === 'hour' ? (hour = n) : (minute = n));
 
   const nodes: Partial<Record<Drum['key'], HTMLElement>> = {};
   const rowHeight = (node: HTMLElement) => (node.firstElementChild as HTMLElement | null)?.offsetHeight || 48;
   /** Where the drum is going, while the picker is turning it. A scroll on
       the way there is the travel, not a choice. */
-  const heading: Partial<Record<Drum['key'], number>> = {};
+  const travellingTo: Partial<Record<Drum['key'], number>> = {};
+  /** A reduced-motion fade under way, and the scroll it lands on: a second
+      turn during it moves the landing rather than starting another fade. */
+  const fading: Partial<Record<Drum['key'], { top: number }>> = {};
   const settleTimers: Partial<Record<Drum['key'], ReturnType<typeof setTimeout>>> = {};
 
   /* The quiet spell after the last scroll event that means a drum is at
@@ -75,9 +83,9 @@
     const node = nodes[drum.key];
     if (!node) return;
     const at = drumIndex(node.scrollTop, rowHeight(node), drum.count);
-    if (heading[drum.key] === undefined) {
-      if (drum.key === 'hour') hour = at;
-      else minute = at;
+    if (travellingTo[drum.key] === undefined) {
+      write(drum.key, at);
+      lastTouched = 'drums';
     }
     clearTimeout(settleTimers[drum.key]);
     settleTimers[drum.key] = setTimeout(() => settle(drum), SETTLE_QUIET);
@@ -90,9 +98,8 @@
     clearTimeout(settleTimers[drum.key]);
     if (!node) return;
     const at = drumIndex(node.scrollTop, rowHeight(node), drum.count);
-    heading[drum.key] = undefined;
-    if (drum.key === 'hour') hour = at;
-    else minute = at;
+    travellingTo[drum.key] = undefined;
+    write(drum.key, at);
     typed = formatTime(hour, minute);
     entry?.setCustomValidity('');
   }
@@ -101,14 +108,14 @@
   function turn(drum: Drum, to: number) {
     const node = nodes[drum.key];
     if (!node) return;
-    if (drum.key === 'hour') hour = to;
-    else minute = to;
+    write(drum.key, to);
+    lastTouched = 'drums';
     const top = to * rowHeight(node);
     if (Math.abs(node.scrollTop - top) < 1) {
-      heading[drum.key] = undefined;
+      travellingTo[drum.key] = undefined;
       return;
     }
-    heading[drum.key] = to;
+    travellingTo[drum.key] = to;
     if (!isReducedMotion()) {
       node.scrollTo({ top, behavior: 'smooth' });
       return;
@@ -116,10 +123,17 @@
     /* Reduced motion: the column fades out where it is, moves while
        unseen, and fades back in. The fade in starts before the fade out is
        let go, so no frame shows the column at full opacity between them. */
+    const fade = fading[drum.key];
+    if (fade) {
+      fade.top = top;
+      return;
+    }
+    const landing = (fading[drum.key] = { top });
     const half = crossfadeDuration() / 2;
     const out = node.animate([{ opacity: 1 }, { opacity: 0 }], { duration: half, fill: 'forwards' });
     out.onfinish = () => {
-      node.scrollTop = top;
+      fading[drum.key] = undefined;
+      node.scrollTop = landing.top;
       node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: half });
       out.cancel();
     };
@@ -165,12 +179,13 @@
     entry?.setCustomValidity('');
     const time = parseTime(typed);
     if (!time) return;
-    turn(DRUMS[0], time.hour);
-    turn(DRUMS[1], time.minute);
+    turn(HOURS, time.hour);
+    turn(MINUTES, time.minute);
+    lastTouched = 'entry';
   }
 
   function apply() {
-    const time = parseTime(typed);
+    const time = lastTouched === 'drums' ? { hour, minute } : parseTime(typed);
     if (!time) {
       entry?.setCustomValidity(m.time_picker_invalid());
       entry?.reportValidity();
@@ -291,7 +306,6 @@
     border-radius: var(--r-block);
     mask-image: linear-gradient(transparent, #000 45%, #000 55%, transparent);
     outline: none;
-    cursor: ns-resize;
   }
   .tp-drum::-webkit-scrollbar { display: none; }
 
@@ -323,6 +337,7 @@
     font-size: var(--text-lg);
     font-variant-numeric: tabular-nums;
     user-select: none;
+    cursor: pointer;
   }
 
   .tp-entry {

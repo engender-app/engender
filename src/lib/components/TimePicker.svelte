@@ -31,11 +31,7 @@
     [attribute: string]: unknown;
   } = $props();
 
-  const picker: PickerField = new PickerField(
-    'time',
-    (): string => ariaLabel || picker.field?.labels?.[0]?.textContent?.trim() || m.time_picker_title(),
-    panel
-  );
+  const picker = new PickerField('time', () => ariaLabel, m.time_picker_title, panel);
 
   function commit(next: string) {
     value = next;
