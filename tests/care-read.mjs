@@ -12,6 +12,13 @@ export async function verifyCareRead({ gallery = false } = {}) {
   const browser = await launchChromium();
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   page.setDefaultTimeout(30000);
+  /* Navigations, printed only if a wait below runs out: a reload would drop
+     the fault this check installs, and only CI has failed it. */
+  const navigations = [];
+  const started = Date.now();
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigations.push(`${Date.now() - started}ms ${frame.url()}`);
+  });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
@@ -49,7 +56,11 @@ export async function verifyCareRead({ gallery = false } = {}) {
     await page.locator('#care-proof-link').click();
     const retry = page.getByRole('button', { name: 'Try again', exact: true });
     const lane = page.locator('[data-care-regimen-block="Care proof"]');
-    await retry.waitFor();
+    await retry.waitFor().catch(async (error) => {
+      console.log('navigations:', navigations.join(' | '));
+      console.log('page says:', (await page.locator('main').innerText().catch(() => '')).slice(0, 300));
+      throw error;
+    });
     assert.equal(await lane.count(), 0);
     assert.equal(await page.locator('[data-care-rail]').count(), 0);
 
