@@ -393,11 +393,10 @@ await block('ticket 13 browser tier', 10, async () => {
     restored.tags?.includes('e-happy') &&
     restored.milestones === 1 &&
     restored.photos === 2 &&
-    /* Seven built-in gender dimensions today (src/lib/data/vocabulary/
-       builtins.ts's BUILT_IN_DIMENSIONS) - social_recognition and
-       gender_stability joined the original five after this count was
-       last written here. */
-    restored.builtInDimensions === 7 &&
+    /* Six built-in gender dimensions today (src/lib/data/vocabulary/
+       builtinTemplates.ts's BUILT_IN_DIMENSIONS) - social_recognition
+       was retired from the defaults in 512f4f73. */
+    restored.builtInDimensions === 6 &&
     restored.photoBytesMatch
   )
     ok('a Replace installs the archive over the encrypted driver and OPFS: rows, photo bytes and the built-ins it kept by key');
