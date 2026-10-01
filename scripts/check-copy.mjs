@@ -149,6 +149,18 @@ export function catalogueOrderProblems(texts) {
 }
 
 /**
+ * Rewrites, in place, each catalogue that is not in serializer order.
+ *
+ * @param {string[]} files
+ */
+export function fixCatalogues(files) {
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8');
+    if (!isSerialized(text)) writeFileSync(file, serializeCatalogue(JSON.parse(text)));
+  }
+}
+
+/**
  * Polish strings that gender the reader: a word ending in "-łaś" (the
  * feminine second-person past-tense clitic, e.g. "czułaś", "zapisałaś") or
  * a known feminine predicate adjective aimed at the reader.
@@ -334,12 +346,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
 
-  if (process.argv.includes('--fix')) {
-    for (const file of CATALOGUES) {
-      const text = readFileSync(file, 'utf8');
-      if (!isSerialized(text)) writeFileSync(file, serializeCatalogue(JSON.parse(text)));
-    }
-  }
+  if (process.argv.includes('--fix')) fixCatalogues(CATALOGUES);
 
   const enCatalogue = JSON.parse(readFileSync('messages/en.json', 'utf8'));
   const plCatalogue = JSON.parse(readFileSync('messages/pl.json', 'utf8'));

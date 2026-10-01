@@ -8,7 +8,10 @@
    absent in Polish, since the runtime falls back to the base locale and
    prints English at a Polish reader. Hence the parity half. */
 import { describe, expect, it } from 'vitest';
-import { catalogueOrderProblems, catalogueProblems, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { catalogueOrderProblems, catalogueProblems, fixCatalogues, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
 import { serializeCatalogue } from '../scripts/catalogue.mjs';
 
 describe('catalogueProblems', () => {
@@ -45,9 +48,13 @@ describe('catalogueOrderProblems', () => {
     expect(problems[0]).toContain('--fix');
   });
 
-  it('passes once the serializer has rewritten it, which is what --fix does', () => {
-    const fixed = serializeCatalogue(JSON.parse(unsorted));
-    expect(catalogueOrderProblems({ 'messages/en.json': fixed })).toEqual([]);
+  it('passes once fixCatalogues, which --fix runs, has rewritten the file', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'catalogue-')), 'en.json');
+    writeFileSync(file, unsorted);
+    fixCatalogues([file]);
+    const fixed = readFileSync(file, 'utf8');
+    expect(catalogueOrderProblems({ [file]: fixed })).toEqual([]);
+    expect(Object.keys(JSON.parse(fixed))).toEqual(['$schema', 'a', 'b']);
   });
 });
 
