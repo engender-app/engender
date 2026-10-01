@@ -235,6 +235,11 @@ jobs:
       - name: Compile message catalogues
         run: npx paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 
+      # tsconfig.json extends .svelte-kit/tsconfig.json, which only exists
+      # after a sync; without it the dev server cannot resolve its config.
+      - name: Sync SvelteKit
+        run: npx svelte-kit sync
+
       - name: Chromium
         run: |
           npx playwright-core install --with-deps chromium
