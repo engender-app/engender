@@ -160,8 +160,8 @@ try {
       );
     if (row.mixed) assert.doesNotMatch(text, new RegExp(`\\b${row.count} readings\\b`), text);
     assert.doesNotMatch(text, /\d+\.\d/, `no fractional intensity: ${text}`);
-    if (row.mixed) assert.match(text, /other way/, `${region} went both ways: ${text}`);
-    else assert.doesNotMatch(text, /other way/, `${region} went one way only: ${text}`);
+    if (row.mixed) assert.match(text, /Both dysphoria and euphoria were logged/, `${region} went both ways: ${text}`);
+    else assert.doesNotMatch(text, /Both dysphoria and euphoria/, `${region} went one way only: ${text}`);
   }
 
   // 1. The figure and the words name the same region, from the first paint.
