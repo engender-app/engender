@@ -1453,17 +1453,21 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  if (live.seeding.unseededRuns === 2) ok('an unseeded query over a read with reads past its first await settles at two runs');
-  else fail('an unseeded query over a read with reads past its first await settles at two runs', `${live.seeding.unseededRuns} run(s)`);
+  /* Every count here includes the one closure call d30529d8 added: a new
+     query runs its closure once against a journal that answers nothing, only
+     to learn its last-answer key, before the real run. Two runs became
+     three, one became two, and the saving from seeding is unchanged. */
+  if (live.seeding.unseededRuns === 3) ok('an unseeded query over a read with reads past its first await settles at three runs: the key-learning call, the run, the late read');
+  else fail('an unseeded query over a read with reads past its first await settles at three runs: the key-learning call, the run, the late read', `${live.seeding.unseededRuns} run(s)`);
 
-  if (live.seeding.seededRuns === 1) ok('the same read, seeded with its own table list, settles at one run');
-  else fail('the same read, seeded with its own table list, settles at one run', `${live.seeding.seededRuns} run(s)`);
+  if (live.seeding.seededRuns === 2) ok('the same read, seeded with its own table list, settles at two runs: the key-learning call and the run');
+  else fail('the same read, seeded with its own table list, settles at two runs: the key-learning call and the run', `${live.seeding.seededRuns} run(s)`);
 
-  if (live.seeding.compareRuns === 1)
-    ok("/compare's recap-then-dayAverages shape settles at one run unseeded, since dayAverages reads no table recap doesn't");
+  if (live.seeding.compareRuns === 2)
+    ok("/compare's recap-then-dayAverages shape settles at two runs unseeded, the key-learning call and the run, since dayAverages reads no table recap doesn't");
   else
     fail(
-      "/compare's recap-then-dayAverages shape settles at one run unseeded, since dayAverages reads no table recap doesn't",
+      "/compare's recap-then-dayAverages shape settles at two runs unseeded, the key-learning call and the run, since dayAverages reads no table recap doesn't",
       `${live.seeding.compareRuns} run(s)`
     );
 } catch (e) {
