@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { get } from 'node:http';
+import { get, request } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import { serializeCatalogue } from '../scripts/catalogue.mjs';
 import { createStringsServer, readStrings, writeString } from '../scripts/strings.mjs';
@@ -146,6 +146,18 @@ describe('strings HTTP server', () => {
       expect((await patch(JSON.stringify(plainEdit()), { Origin: url })).status).toBe(204);
       expect((await patch(JSON.stringify(plainEdit('Stale')))).status).toBe(409);
       expect(JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8')).greeting).toBe('Welcome');
+      const body = Buffer.from(JSON.stringify({ ...plainEdit(), locale: 'pl', previous: 'Dzień dobry', text: 'Miłego dnia' }));
+      const split = body.indexOf(Buffer.from('ł')) + 1;
+      const saved = await new Promise<number | undefined>((resolve, reject) => {
+        const outgoing = request(`${url}/api/strings`, { method: 'PATCH', headers: {
+          'Content-Type': 'application/json', 'Content-Length': body.length
+        } }, (response) => { response.resume(); resolve(response.statusCode); });
+        outgoing.on('error', reject);
+        outgoing.write(body.subarray(0, split));
+        setTimeout(() => outgoing.end(body.subarray(split)), 25);
+      });
+      expect(saved).toBe(204);
+      expect(JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8')).greeting).toBe('Miłego dnia');
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }

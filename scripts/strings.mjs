@@ -95,13 +95,16 @@ export function createStringsServer(root = ROOT) {
         if (request.headers['content-type'] !== 'application/json') {
           throw new RequestError(415, 'Send application/json.');
         }
-        let body = '';
+        /** @type {Buffer[]} */
+        const chunks = [];
+        let bytes = 0;
         for await (const chunk of request) {
-          body += chunk;
-          if (Buffer.byteLength(body) > 1024 * 1024) throw new RequestError(413, 'Edit is too large.');
+          bytes += chunk.length;
+          if (bytes > 1024 * 1024) throw new RequestError(413, 'Edit is too large.');
+          chunks.push(chunk);
         }
         let edit;
-        try { edit = JSON.parse(body); } catch { throw new RequestError(400, 'Invalid JSON.'); }
+        try { edit = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
         writeString(root, edit);
         response.statusCode = 204;
         response.end();
