@@ -87,10 +87,13 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
   const logRows = [...doses].reverse().map((dose) => {
     const attribution = attributeDose(episodes, dose);
     const drug = attributeDrug(episodes, dose).drug;
+    const schedule = schedules.find((schedule) => schedule.episodeId === attribution.episode?.id);
+    const day = epochDayFromTimestamp(dose.timestamp);
     return {
       dose,
       attribution,
       drug,
+      mayAutoLogAgain: day < today && schedule?.autoLogFromEpochDay != null && day >= schedule.autoLogFromEpochDay,
       /* Whether the trailing text repeats the episode the title already
          named (audit U8, ticket 17). */
       showAttribution: showAttributionLabel(attribution, drug, activeEpisodesAt(episodes, dose.timestamp).length),

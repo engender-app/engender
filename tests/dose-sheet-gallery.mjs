@@ -106,6 +106,14 @@ async function openSheet(page) {
   await page.waitForTimeout(SETTLED);
 }
 
+async function closeDoseSheet(page) {
+  await page.keyboard.press('Escape');
+  if (await page.locator('[data-discard-record]').count()) {
+    await page.locator('[data-discard-record]').click();
+  }
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+}
+
 /** "Fill every feature", which is the only seed with a real rotation behind
     it: 500 days of weekly injections around six of the twelve sites, so the
     map has every swatch of the recency ramp and six sites never used
@@ -221,7 +229,7 @@ for (const [palette, theme] of [...THEMES.map((t) => ['trans', t]), ...EXTRA_LOO
     await page.locator('[data-dose-what]').click();
     await page.waitForTimeout(SETTLED);
     await shoot(page, `dose-injection-what-open-trans-${theme}`);
-    await page.keyboard.press('Escape');
+    await closeDoseSheet(page);
 
     // Editing the dose already logged, which is the same sheet plus a way
     // to throw the dose away.
@@ -229,6 +237,10 @@ for (const [palette, theme] of [...THEMES.map((t) => ['trans', t]), ...EXTRA_LOO
     await page.locator('[data-dose]').first().click();
     await page.waitForTimeout(SETTLED);
     await shoot(page, `dose-edit-existing-trans-${theme}`);
+    await page.locator('[data-delete-dose]').click();
+    await page.waitForSelector('[data-confirm-delete-dose]');
+    await page.waitForTimeout(SETTLED);
+    await shoot(page, `dose-delete-confirm-trans-${theme}`);
   }
   await page.close();
 }
@@ -282,6 +294,12 @@ for (const palette of PALETTES) {
     await setLook(page, palette, theme);
     await openInjectionSheet(page);
     await shoot(page, `dose-recency-${palette}-${theme}`);
+    await page.locator('[data-close-record]').click();
+    await page.waitForSelector('[data-keep-editing]');
+    await page.waitForTimeout(SETTLED);
+    await shoot(page, `dose-discard-${palette}-${theme}`);
+    await page.locator('[data-keep-editing]').click();
+    await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
     await page.locator('.site-map').screenshot({ path: `${outDir}/dose-recency-map-${palette}-${theme}.png` });
     process.stdout.write(`  dose-recency-map-${palette}-${theme}\n`);
 
