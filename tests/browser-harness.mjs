@@ -61,6 +61,16 @@ export async function fillDate(page, selector, iso) {
   await picker.waitFor({ state: 'detached' });
 }
 
+/** fillDate's twin for a TimePicker: the picker's foot takes `HH:MM` and
+    "Use time". */
+export async function fillTime(page, selector, hhmm) {
+  await page.locator(selector).click();
+  const picker = page.locator('[data-time-picker]');
+  await picker.locator('[data-time-picker-entry]').fill(hhmm);
+  await picker.locator('[data-time-picker-apply]').click();
+  await picker.waitFor({ state: 'detached' });
+}
+
 /** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
  *  the hydration sweep, ticket 108, needed the same one for its sheet
  *  scenes and profile prologues): the page navigated, boot waited ready,

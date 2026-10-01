@@ -20,6 +20,7 @@
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import TimePicker from '$lib/components/TimePicker.svelte';
   import { journal, liveList, liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
   import { paddedSeries } from '$lib/charts/geometry';
@@ -625,7 +626,7 @@
              carries no time, and day-of-interval does not need one. -->
         <Field label={m.labs_time_label()} id="lab-time">
           {#snippet children(id)}
-            <input class="input" type="time" {id} name="lab-time" bind:value={editor.time} />
+            <TimePicker {id} name="lab-time" bind:value={editor.time} />
           {/snippet}
         </Field>
       </div>
