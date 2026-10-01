@@ -44,6 +44,8 @@ try {
         await input.click();
         const cell = page.locator(`${PICKER} [role="grid"] .dp-day`).filter({ hasText: new RegExp(`^${day}$`) });
         await cell.waitFor();
+        /* Measured on the settled sheet, not mid-rise. */
+        await page.waitForFunction(() => document.activeElement?.closest('[data-date-picker]'));
         const box = await cell.boundingBox();
         assert.ok(box.width >= 47.99 && box.height >= 47.99, `${language} ${width}px: day ${day} target ${box.width} × ${box.height}`);
         const ownsEdges = await cell.evaluate(el => {
@@ -52,7 +54,6 @@ try {
             .every(([x, y]) => el.contains(document.elementFromPoint(r.x + x, r.y + y)));
         });
         assert.ok(ownsEdges, 'neighboring dates do not overlap hit regions');
-        await page.waitForTimeout(450);
         await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
         await closed(page);
         assert.match(await input.inputValue(), new RegExp(`-${day}$`), 'adjacent day selected through actual hit target');
@@ -101,8 +102,8 @@ try {
       await page.locator(`${PICKER} [data-date-picker-title]`).click();
       await page.locator(`${PICKER} .dp-jump`).waitFor();
       await page.keyboard.press('Escape');
-      assert.equal(await page.locator(`${PICKER} .dp-jump`).count(), 0, 'Escape closes the drum before the picker');
-      assert.equal(await page.locator(PICKER).count(), 1);
+      await page.locator(`${PICKER} .dp-jump`).waitFor({ state: 'detached' });
+      assert.equal(await page.locator(PICKER).count(), 1, 'Escape closes the drum before the picker');
 
       const controls = await page.locator(PICKER).evaluate(picker =>
         [...picker.querySelectorAll('button, input')]
