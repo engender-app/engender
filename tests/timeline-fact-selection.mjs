@@ -420,6 +420,29 @@ try {
       const rail = document.querySelector('[data-span-timeline]');
       return rail?.dataset.spanStart === rail?.dataset.spanEnd;
     });
+    /* The grips travel to their new place, so a slow machine can measure
+       one mid-flight and then hit-test where it has already left. Wait for
+       both to hold still over three frames. */
+    await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          let last = '';
+          let still = 0;
+          const tick = () => {
+            const now = ['start', 'end']
+              .map((h) => {
+                const r = document.querySelector(`[data-span-handle="${h}"]`).getBoundingClientRect();
+                return `${r.x},${r.y}`;
+              })
+              .join(';');
+            still = now === last ? still + 1 : 0;
+            last = now;
+            if (still >= 3) resolve();
+            else requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        })
+    );
     const controls = await page.evaluate(() =>
       ['start', 'end'].map((handle) => {
         const el = document.querySelector(`[data-span-handle="${handle}"]`);
@@ -430,7 +453,7 @@ try {
     assert.ok(Math.abs(controls[1].x - controls[0].x) >= 13.5, `${viewport.width}px ${theme}: coincident grips stay apart`);
     assert.notEqual(controls[0].label, controls[1].label, `${viewport.width}px ${theme}: each handle keeps own accessible name`);
     for (const control of controls) {
-      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset?.spanHandle, control);
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-span-handle]')?.dataset.spanHandle, control);
       assert.equal(hit, control.handle, `${viewport.width}px ${theme}: ${control.handle} grip owns its target`);
     }
   }
@@ -483,7 +506,7 @@ try {
     assert.notEqual(rail.handles[0].label, rail.handles[1].label, `${viewport.width}px ${theme}: sliders separately labeled`);
     assert.ok(rail.handles.every((handle) => handle.role === 'slider' && handle.label && handle.valueText), `${viewport.width}px ${theme}: sliders expose accessible names and dates`);
     for (const control of rail.handles) {
-      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.dataset?.spanHandle, control);
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-span-handle]')?.dataset.spanHandle, control);
       assert.equal(hit, control.handle, `${viewport.width}px ${theme}: ${control.handle} owns handle target`);
     }
     assert.match(
