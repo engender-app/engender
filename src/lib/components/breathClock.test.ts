@@ -95,13 +95,18 @@ describe('the breath clock', () => {
     expect(clockElapsed(c, 50100)).toBe(2600);
   });
 
-  it('agrees with itself across ten random pauses', () => {
+  /* A fixed table rather than Math.random, so a failure names its inputs:
+     runs that end on and either side of phase boundaries, a zero-length run,
+     and rests long and short. */
+  const PAUSES: [number, number][] = [
+    [3999, 120], [1, 6400], [4000, 0], [2500, 9000], [0, 300],
+    [7999, 15], [12345, 2000], [16000, 50], [333, 333], [6001, 4100]
+  ];
+  it('agrees with itself across ten pauses', () => {
     let c = restingClock();
     let now = 0;
     let running = 0;
-    for (let i = 0; i < 10; i++) {
-      const run = Math.round(Math.random() * 7000);
-      const rest = Math.round(Math.random() * 7000);
+    for (const [run, rest] of PAUSES) {
       c = startClock(c, now);
       now += run;
       running += run;

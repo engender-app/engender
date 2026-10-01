@@ -47,20 +47,25 @@
 
   /* The drawing, in viewBox units. The vessel holds the water; the track
      the dot travels sits outside it with room for the dot's 7 radius and
-     its 3px knockout, so the whole drawing fits a 272 box and a 320px
+     its 3px knockout (127 + 7 + 1.5 = 135.5), so the whole drawing fits a 272 box and a 320px
      phone's 270px column scales it rather than overrunning (carpet 28). */
   const SIZE = 272;
   const C = SIZE / 2;
   const VESSEL = 112;
-  const TRACK = 128;
+  const TRACK = 127;
   /* Low water at rest is a band, not nothing: an empty vessel at rest
      would read as a ring with nothing in it rather than as a tide waiting
      to come in. High water leaves a sliver of sky under the rim. */
   const LOW = C + VESSEL - 26;
   const HIGH = C - VESSEL + 14;
-  /* Under reduced motion the water stands at half and its colour fades
-     with the breath instead of its level moving. */
-  const STILL = (LOW + HIGH) / 2;
+  /* Under reduced motion the water stands still just under the word and
+     its colour fades with the breath instead of its level moving. Under the
+     word and not across it: the fill ink is proven against the stripe at
+     full strength, and over water faded to 30% it was white on a pale tint. */
+  const STILL = C + 26;
+  /* The widest the word may run, inside the vessel at its own height with a
+     margin either side. "Wstrzymaj oddech" at the display size is wider. */
+  const WORD_MAX = 2 * VESSEL - 48;
   const QUARTERS = [0, 1, 2, 3].map((q) => {
     const a = (q * Math.PI) / 2 - Math.PI / 2;
     return {
@@ -90,27 +95,47 @@
     }
   });
   const fadeOut = tickFade(OUT_MS);
-  const fadeIn = tickFade(IN_MS, IN_DELAY_MS);
+  /* Hidden the moment it is inserted. Svelte applies tick(0) on its next
+     animation frame, so a word inserted after this frame's callbacks had
+     run was painted once at full opacity before its fade began. */
+  const fadeIn = (node: Element) => {
+    (node as HTMLElement | SVGElement).style.opacity = '0';
+    return tickFade(IN_MS, IN_DELAY_MS)(node);
+  };
+
+  /* Shrinks a word wider than WORD_MAX to fit, measured on mount and so
+     before its first paint. */
+  const fitWord = (node: SVGTextElement) => {
+    const length = node.getComputedTextLength();
+    if (length > WORD_MAX) {
+      const size = parseFloat(getComputedStyle(node).fontSize);
+      node.style.fontSize = `${(size * WORD_MAX) / length}px`;
+    }
+  };
 
   /* Unique per instance, since clipPath ids are document-global. */
   const uid = $props.id();
 
   let clock = $state(restingClock());
-  let started = $state(false);
   let phaseIndex = $state(0);
-  /* Read once for the resting pose written into the markup, and never
-     again there: a reactive value in that style attribute would be
-     re-applied whenever it changed and wipe what paint() had written. */
-  const restReduced = isReducedMotion();
-  let reduced = $state(restReduced);
+  /* Read once, when the exercise mounts, and held for the visit. Switching
+     mid-breath would have to move the water from its level to the still
+     line and step the dot back to the last whole second in one frame; the
+     next visit takes the new setting instead. Not reactive in the style
+     attribute below either, which Svelte would re-apply and so wipe what
+     paint() had written. */
+  const reduced = isReducedMotion();
   let figure: SVGSVGElement | undefined = $state();
   let raf = 0;
+  /* Paused by the app going to the background rather than by the person,
+     so it carries on by itself on return. */
+  let hiddenPause = false;
 
   const running = $derived(isRunning(clock));
+  const started = $derived(running || clock.banked > 0);
 
   function paint(now: number) {
     if (!figure) return;
-    reduced = isReducedMotion();
     const r = readBreath(clockElapsed(clock, now), reduced);
     const surface = reduced ? STILL : LOW + (HIGH - LOW) * r.level;
     const angle = r.cycleProgress * 2 * Math.PI - Math.PI / 2;
@@ -126,19 +151,42 @@
     raf = isRunning(clock) ? requestAnimationFrame(frame) : 0;
   }
 
-  function toggle() {
+  function pause() {
     const now = performance.now();
-    if (isRunning(clock)) {
-      clock = pauseClock(clock, now);
-      cancelAnimationFrame(raf);
-      raf = 0;
-      paint(now);
-    } else {
-      clock = startClock(clock, now);
-      started = true;
-      raf = requestAnimationFrame(frame);
-    }
+    clock = pauseClock(clock, now);
+    cancelAnimationFrame(raf);
+    raf = 0;
+    paint(now);
   }
+
+  function resume() {
+    clock = startClock(clock, performance.now());
+    raf = requestAnimationFrame(frame);
+  }
+
+  function toggle() {
+    hiddenPause = false;
+    if (isRunning(clock)) pause();
+    else resume();
+  }
+
+  /* No frames are drawn while the app is in the background, but the clock
+     would keep counting, so the first frame back painted a breath seconds
+     on: the water, the dot and the word all in new places at once. The
+     clock stops with the frames instead and carries on from the same one. */
+  $effect(() => {
+    const onVisibility = () => {
+      if (document.hidden && isRunning(clock)) {
+        hiddenPause = true;
+        pause();
+      } else if (!document.hidden && hiddenPause) {
+        hiddenPause = false;
+        resume();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  });
 
   onDestroy(() => cancelAnimationFrame(raf));
 
@@ -187,7 +235,7 @@
       viewBox="0 0 {SIZE} {SIZE}"
       width={SIZE}
       height={SIZE}
-      style="--breath:0; --surface-y:{restReduced ? STILL : LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"
+      style="--breath:0; --surface-y:{reduced ? STILL : LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"
       aria-hidden="true"
     >
       <defs>
@@ -196,6 +244,9 @@
         </clipPath>
         <clipPath id="{uid}-water">
           <rect class="breathing-water" x="0" y="0" width={SIZE} height={SIZE} />
+        </clipPath>
+        <clipPath id="{uid}-sky">
+          <rect class="breathing-water" x="0" y={-SIZE} width={SIZE} height={SIZE} />
         </clipPath>
       </defs>
 
@@ -209,18 +260,20 @@
       </g>
       <circle class="breathing-vessel" cx={C} cy={C} r={VESSEL} />
 
-      <!-- The word twice: once in the page's ink, once in the ink that reads
-           on the flag's fill, clipped to the water - so where the tide
-           covers a letter it changes ink at the waterline rather than
-           sinking out of contrast. -->
-      <g>
+      <!-- The word twice: once in the page's ink clipped to the sky, once in
+           the ink that reads on the flag's fill clipped to the water - so
+           where the tide covers a letter it changes ink at the waterline
+           rather than sinking out of contrast. Each copy is cut to its own
+           side: drawn whole under the other, the page ink's antialiased
+           edges showed as a fringe round the fill-ink letters. -->
+      <g clip-path="url(#{uid}-sky)">
         {#key word}
-          <text class="breathing-word" x={C} y={C} in:fadeIn out:fadeOut>{word}</text>
+          <text class="breathing-word" x={C} y={C} use:fitWord in:fadeIn out:fadeOut>{word}</text>
         {/key}
       </g>
       <g clip-path="url(#{uid}-water)">
         {#key word}
-          <text class="breathing-word on-fill" x={C} y={C} in:fadeIn out:fadeOut>{word}</text>
+          <text class="breathing-word on-fill" x={C} y={C} use:fitWord in:fadeIn out:fadeOut>{word}</text>
         {/key}
       </g>
 
@@ -330,9 +383,19 @@
     transform: translate(var(--lap-x), var(--lap-y));
   }
 
+  /* Their opacity belongs to the JS fade. Under reduced motion base.css
+     gives every element a 1ms transition on all properties, so an inserted
+     word whose style had already been read at full opacity transitioned
+     from 1 to the fade's 0 and was painted once at 1. */
+  .breathing-word,
+  .breathing-toggle-face {
+    transition-property: none;
+  }
+
   .breathing-word {
     font-family: var(--font-display);
-    font-size: 26px;
+    /* In rem so it follows the reader's text size; fitWord caps the width. */
+    font-size: 1.625rem;
     font-weight: var(--weight-display);
     fill: var(--text);
     text-anchor: middle;
@@ -345,8 +408,8 @@
     fill: var(--role-fill-ink);
   }
 
-  /* Reduced motion: the water stands still at half and the breath is its
-     colour fading up and down on the same curve. The dot still steps once
+  /* Reduced motion: the water stands still under the word and the breath
+     is its colour fading up and down on the same curve. The dot still steps once
      a second - readBreath quantises the lap - because it carries the time. */
   .breathing-figure.is-reduced .breathing-water {
     fill-opacity: calc(0.3 + 0.7 * var(--breath));

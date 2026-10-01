@@ -35,7 +35,7 @@ describe('one clock', () => {
   });
 
   it('writes the resting pose into the markup, so the first paint is not a frame of defaults', () => {
-    expect(markup).toContain('style="--breath:0; --surface-y:{restReduced ? STILL : LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"');
+    expect(markup).toContain('style="--breath:0; --surface-y:{reduced ? STILL : LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"');
   });
 
   it('stops the loop when it leaves the screen', () => {
@@ -60,6 +60,19 @@ describe('the tide', () => {
   it('moves the water by transform rather than by its height', () => {
     expect(style).toMatch(/\.breathing-water \{[^}]*transform: translateY\(var\(--surface-y\)\)/);
     expect(codeOnly).not.toMatch(/setAttribute\('height'/);
+  });
+
+  it('cuts the page-ink word to the sky, so its edges never fringe the fill-ink copy', () => {
+    expect(markup).toMatch(/<g clip-path="url\(#\{uid\}-sky\)">[\s\S]*?class="breathing-word" /);
+  });
+
+  it('reads reduced motion once, never per frame, so switching it cannot move the figure mid-breath', () => {
+    expect(script).toMatch(/const reduced = isReducedMotion\(\);/);
+    expect(script.match(/isReducedMotion\(\)/g)).toHaveLength(1);
+  });
+
+  it('stops the clock with the frames when the app goes to the background', () => {
+    expect(script).toMatch(/document\.hidden && isRunning\(clock\)/);
   });
 
   it('draws the word a second time in the fill ink, clipped to the same water', () => {

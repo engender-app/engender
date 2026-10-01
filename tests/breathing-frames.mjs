@@ -6,11 +6,17 @@
    offset - across a start from rest, more than a whole cycle (so the lap
    wraps), a pause, a resume and a second pause, and fails on any of:
 
-   - a box that moves or resizes more than JUMP_PX between two frames;
+   - a box that moves or resizes more than JUMP_PX between two frames (the
+     water's fastest is about 1.2px a frame, the dot's about 0.8);
+   - the lap's dot going backwards round the track;
    - a dash offset that moves more than JUMP_DASH between two frames;
    - an opacity that changes more than JUMP_ALPHA between two frames;
    - a node that arrives already visible, or leaves while still visible;
-   - anything moving while the exercise is paused.
+   - anything moving while the exercise is paused;
+   - reduced motion being switched mid-breath changing anything (the
+     component reads it once per visit);
+   - the app going to the background and coming back: nothing may move
+     while it is hidden, and the breath must carry on by itself after.
 
    Then the same under reduced motion, where nothing but the lap's dot may
    move at all. The dot is exempt there: it steps once a second, sixteen
@@ -21,16 +27,26 @@
    replaced and seen to fail there: the old ring's dash offset dropped from
    full to empty in one frame at every phase boundary.
 
-   Needs a running server: `node tests/breathing-frames.mjs <base-url>`,
-   against `VITE_DEMO=1 npx vite dev` or a demo build's preview. */
+   `node tests/breathing-frames.mjs` starts its own demo dev server;
+   `node tests/breathing-frames.mjs <base-url>` uses one already running. */
+import { realpathSync } from 'node:fs';
+import { createServer } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 
-const BASE = process.argv[2] ?? 'http://localhost:5291';
-const PATH = process.argv[3] ?? '/doubt';
-const JUMP_PX = 8;
+let server = null;
+let BASE = process.argv[2];
+if (!BASE) {
+  process.env.VITE_DEMO = '1';
+  server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
+  await server.listen();
+  BASE = server.resolvedUrls.local[0].replace(/\/$/, '');
+}
+const PATH = '/doubt';
+const JUMP_PX = 3;
 const JUMP_DASH = 40;
 const JUMP_ALPHA = 0.3;
 const ROOT = '[data-breathing-exercise]';
+const CENTRE_TOLERANCE = 0.02;
 
 let failures = 0;
 const fail = (msg) => {
@@ -84,11 +100,26 @@ function check(name, { frames, marks }, { reduced }) {
     return last;
   };
   const problems = [];
+  const svg = Object.entries(frames[0].nodes).find(([id]) => id.startsWith('svg.breathing-figure'))[1];
+  const centre = { x: svg.x + svg.w / 2, y: svg.y + svg.h / 2 };
+  /* Back from the background, the breath carries on by itself. */
+  const shown = marks.find((m) => m.label === 'show');
+  if (shown) {
+    const lapAt = (t) => {
+      const f = frames.find((fr) => fr.t >= t);
+      return f && Object.entries(f.nodes).find(([id]) => id.includes('lap'))[1];
+    };
+    const p = lapAt(shown.t + 100);
+    const q = lapAt(shown.t + 900);
+    if (!p || !q || Math.hypot(q.x - p.x, q.y - p.y) < 5) problems.push('the breath did not carry on after coming back from the background');
+  }
   for (let i = 1; i < frames.length; i++) {
     const a = frames[i - 1];
     const b = frames[i];
     const mark = lastMark(a.t);
-    const frozen = mark?.label.startsWith('pause') && lastMark(b.t) === mark && a.t - mark.t > 500;
+    /* From the second frame after the press: the press paints the frozen
+       pose once, and the frame after it is the first that shows it. */
+    const frozen = mark?.label.startsWith('pause') && lastMark(b.t) === mark && a.t - mark.t > 34;
     for (const [id, nb] of Object.entries(b.nodes)) {
       const na = a.nodes[id];
       if (!na) {
@@ -97,6 +128,13 @@ function check(name, { frames, marks }, { reduced }) {
       }
       const moved = Math.max(Math.abs(nb.x - na.x), Math.abs(nb.y - na.y), Math.abs(nb.w - na.w), Math.abs(nb.h - na.h));
       const isLap = id.includes('lap');
+      if (isLap) {
+        const turn = (n) => Math.atan2(n.y + n.h / 2 - centre.y, n.x + n.w / 2 - centre.x);
+        let d = turn(nb) - turn(na);
+        if (d < -Math.PI) d += 2 * Math.PI;
+        if (d > Math.PI) d -= 2 * Math.PI;
+        if (d < -CENTRE_TOLERANCE) problems.push(`frame ${i} (${b.t.toFixed(0)}ms): the lap goes back ${((-d * 180) / Math.PI).toFixed(1)} degrees`);
+      }
       if (reduced && !isLap && moved > 0.5) problems.push(`frame ${i}: ${id} moves ${moved.toFixed(1)}px under reduced motion`);
       else if (!(reduced && isLap) && moved > JUMP_PX) problems.push(`frame ${i} (${b.t.toFixed(0)}ms): ${id} jumps ${moved.toFixed(1)}px`);
       if (Math.abs(nb.dash - na.dash) > JUMP_DASH) problems.push(`frame ${i} (${b.t.toFixed(0)}ms): ${id} dash offset ${na.dash.toFixed(0)} -> ${nb.dash.toFixed(0)}`);
@@ -119,10 +157,11 @@ function check(name, { frames, marks }, { reduced }) {
 const browser = await launchChromium();
 try {
   for (const reduced of [false, true]) {
-    const page = await browser.newPage({
+    const context = await browser.newContext({
       viewport: { width: 390, height: 1000 },
       reducedMotion: reduced ? 'reduce' : 'no-preference'
     });
+    const page = await context.newPage();
     /* The storage-persistence toast is not this screen's, and it lands
        over the figure on a fresh demo origin. */
     await page.addInitScript(() => {
@@ -141,18 +180,35 @@ try {
        only sometimes lands that way, so this probe cannot be relied on to
        catch that one: breathClock.test.ts pins it. */
     const toggle = () => page.evaluate((root) => document.querySelector(`${root} [data-breathing-toggle]`).click(), ROOT);
+    /* The opposite of this run's setting, flipped mid-breath and back,
+       the way +layout.svelte follows the OS setting live. */
+    const flip = (to) => () => page.evaluate((v) => (document.documentElement.dataset.a11yMotion = v), to);
+    /* Hidden and back as the page sees it. Bringing another tab to the
+       front in headless Chromium only throttles frames to one a second and
+       never fires visibilitychange, so the document is told directly. */
+    const visibility = (hidden) => () =>
+      page.evaluate((h) => {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
+        document.dispatchEvent(new Event('visibilitychange'));
+      }, hidden);
     const run = await record(page, [
       ['rest', 600],
-      ['start', 17600, toggle],
+      ['start', 2700, toggle],
+      ['flip', 1500, flip(reduced ? 'none' : 'reduce')],
+      ['flip-back', 1500, flip(reduced ? 'reduce' : 'none')],
+      ['pause-hidden', 2500, visibility(true)],
+      ['show', 10000, visibility(false)],
       ['pause', 1500, toggle],
       ['resume', 2300, toggle],
       ['pause-2', 1200, toggle]
     ]);
     check(reduced ? 'reduced motion' : 'motion', run, { reduced });
-    await page.close();
+    await context.close();
   }
 } finally {
   await browser.close();
+  await server?.close();
 }
 console.log(failures ? `${failures} failing` : 'all clean');
 process.exit(failures ? 1 : 0);
