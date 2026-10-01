@@ -56,7 +56,7 @@ export function isRunning(clock: BreathClock): boolean {
 }
 
 export function clockElapsed(clock: BreathClock, now: number): number {
-  return clock.banked + (clock.startedAt === null ? 0 : now - clock.startedAt);
+  return clock.banked + (clock.startedAt === null ? 0 : Math.max(0, now - clock.startedAt));
 }
 
 export function startClock(clock: BreathClock, now: number): BreathClock {

@@ -133,7 +133,12 @@ try {
     await page.goto(BASE + PATH);
     await page.waitForSelector(`${ROOT} svg`, { timeout: 60000 });
     await page.waitForTimeout(1000);
-    const toggle = () => page.click(`${ROOT} [data-breathing-toggle]`);
+    /* Clicked from inside the page rather than through Playwright's input
+       pipeline. A synthetic click from a task can land after a frame has
+       begun, so the first rAF callback carries a timestamp from before the
+       start - the case that once flashed "Hold" over the first inhale. A
+       real input event is dispatched ahead of the frame and never shows it. */
+    const toggle = () => page.evaluate((root) => document.querySelector(`${root} [data-breathing-toggle]`).click(), ROOT);
     const run = await record(page, [
       ['rest', 600],
       ['start', 17600, toggle],
