@@ -133,6 +133,12 @@ function expectCrossingDrawn(frames, label) {
 }
 
 try {
+  /* Vite reloads a page the first time a route pulls in dependencies it has
+     not bundled yet, and the demo journal lives in memory, so a reload on
+     the milestones route mid-test drops the episode the test just wrote.
+     Visit that route once first, so its dependencies are bundled before
+     anything is written. */
+  await page.goto(`${base}transition/milestones`, { waitUntil: 'networkidle' });
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
   if (await page.locator('[data-leave-setup]').count()) {
