@@ -19,23 +19,40 @@
   .field { margin-bottom: .75rem; }
   .scroll { overflow-x: auto; }
   table { min-width: 800px; }
+  .toggle { display: inline-block; margin: 1rem 1rem 0 0; }
+  .toggle input { width: auto; }
+  .comparison p, #prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #prose table { min-width: 0; table-layout: fixed; }
+  #prose td { width: 50%; }
 </style>
 <h1>Message catalogues</h1>
 <p>Edit existing values. Save writes to <code>messages/en.json</code> or <code>messages/pl.json</code>.</p>
 <label for="search">Search keys, English and Polish</label>
 <input id="search" type="search" autocomplete="off">
 <button id="reload" type="button">Reload from disk</button>
+<div>
+  <label class="toggle"><input id="changed" type="checkbox"> Changed vs main</label>
+  <label class="toggle"><input id="prose-toggle" type="checkbox"> Read as prose</label>
+</div>
 <p id="status" role="status">Loading…</p>
-<div class="scroll">
+<div id="editor" class="scroll">
   <table>
     <thead><tr><th scope="col">Key / checks</th><th scope="col">EN</th><th scope="col">PL</th><th scope="col">Used in</th></tr></thead>
     <tbody id="rows"></tbody>
+  </table>
+</div>
+<div id="prose" hidden>
+  <table>
+    <thead><tr><th scope="col">EN</th><th scope="col">PL</th></tr></thead>
+    <tbody id="paragraphs"></tbody>
   </table>
 </div>
 <script type="module">
   const rows = document.querySelector('#rows');
   const search = document.querySelector('#search');
   const status = document.querySelector('#status');
+  const changed = document.querySelector('#changed');
+  const proseToggle = document.querySelector('#prose-toggle');
   let records = [];
   let dirty = new Set();
 
@@ -54,6 +71,10 @@
 
   function localeCell(record, locale) {
     const cell = element('td');
+    record[`${locale}Comparison`] = element('div');
+    record[`${locale}Comparison`].className = 'comparison';
+    cell.append(record[`${locale}Comparison`]);
+    if (record.change === 'removed') return cell;
     const values = fields(record[locale]);
     if (!values.length) cell.append(element('p', 'Missing value'));
     for (const field of values) {
@@ -95,8 +116,12 @@
           if (!refreshed.ok) throw new Error(await refreshed.text());
           const latest = await refreshed.json();
           for (const entry of records) {
-            entry.findings = latest.find((row) => row.key === entry.key)?.findings ?? [];
+            const updated = latest.find((row) => row.key === entry.key);
+            entry.findings = updated?.findings ?? [];
+            entry.change = updated?.change ?? null;
+            entry.previous = updated?.previous ?? { en: null, pl: null };
             showFindings(entry);
+            showChange(entry);
           }
           filter();
         } catch (error) {
@@ -120,14 +145,49 @@
     }));
   }
 
+  function showChange(record) {
+    record.mark.textContent = record.change ?? '';
+    for (const locale of ['en', 'pl']) {
+      const comparison = record[`${locale}Comparison`];
+      comparison.replaceChildren();
+      if (!record.change) continue;
+      for (const [label, value] of [['Before', record.previous[locale]], ['Now', record[locale]]]) {
+        comparison.append(element('strong', label));
+        const values = fields(value);
+        if (!values.length) comparison.append(element('p', 'Missing value'));
+        for (const field of values) {
+          comparison.append(element('p', field.form === null ? field.text : `${field.form}: ${field.text}`));
+        }
+      }
+    }
+  }
+
   function filter() {
     const query = search.value.toLocaleLowerCase();
     let visible = 0;
+    const paragraphs = document.createDocumentFragment();
     for (const record of records) {
-      const text = [record.key, ...fields(record.en).map((field) => field.text), ...fields(record.pl).map((field) => field.text)].join('\n');
-      record.row.hidden = !text.toLocaleLowerCase().includes(query);
-      if (!record.row.hidden) visible++;
+      const text = [record.key, ...['en', 'pl'].flatMap((locale) =>
+        [...fields(record[locale]), ...fields(record.previous[locale])].map((field) => field.text))].join('\n');
+      record.row.hidden = (changed.checked ? !record.change : record.change === 'removed') ||
+        !text.toLocaleLowerCase().includes(query);
+      if (record.row.hidden) continue;
+      visible++;
+      if (proseToggle.checked) {
+        const paragraph = element('tr');
+        for (const locale of ['en', 'pl']) {
+          const cell = element('td');
+          cell.lang = locale;
+          const value = record.change === 'removed' ? record.previous[locale] : record[locale];
+          for (const field of fields(value)) cell.append(element('p', field.text));
+          paragraph.append(cell);
+        }
+        paragraphs.append(paragraph);
+      }
     }
+    document.querySelector('#editor').hidden = proseToggle.checked;
+    document.querySelector('#prose').hidden = !proseToggle.checked;
+    document.querySelector('#paragraphs').replaceChildren(paragraphs);
     status.textContent = `${visible} of ${records.length} keys`;
   }
 
@@ -143,7 +203,8 @@
         record.row = element('tr');
         const key = element('td');
         record.checks = element('div');
-        key.append(element('code', record.key), record.checks);
+        record.mark = element('p');
+        key.append(element('code', record.key), record.mark, record.checks);
         showFindings(record);
         const used = element('td');
         for (const site of record.sites) {
@@ -152,6 +213,7 @@
           used.append(link);
         }
         record.row.append(key, localeCell(record, 'en'), localeCell(record, 'pl'), used);
+        showChange(record);
         fragment.append(record.row);
       }
       rows.replaceChildren(fragment);
@@ -162,6 +224,8 @@
   }
 
   search.addEventListener('input', filter);
+  changed.addEventListener('change', filter);
+  proseToggle.addEventListener('change', filter);
   document.querySelector('#reload').addEventListener('click', load);
   window.addEventListener('beforeunload', (event) => {
     if (dirty.size) { event.preventDefault(); event.returnValue = ''; }

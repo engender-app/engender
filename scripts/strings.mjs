@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { serializeCatalogue } from './catalogue.mjs';
 import { catalogueFindings, collectReferenceSites, copySourceFiles } from './check-copy.mjs';
 
@@ -21,12 +23,19 @@ class RequestError extends Error {
 export function readStrings(root = ROOT) {
   const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
   const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
+  const base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: root, encoding: 'utf8' }).trim();
+  const previousEn = JSON.parse(execFileSync('git', ['show', `${base}:messages/en.json`], { cwd: root, encoding: 'utf8' }));
+  const previousPl = JSON.parse(execFileSync('git', ['show', `${base}:messages/pl.json`], { cwd: root, encoding: 'utf8' }));
   const sites = collectReferenceSites(copySourceFiles(root));
   const findings = catalogueFindings(en, pl, new Set(sites.keys()));
-  return Object.keys({ ...en, ...pl }).filter((key) => !key.startsWith('$')).sort().map((key) => ({
+  return Object.keys({ ...previousEn, ...previousPl, ...en, ...pl }).filter((key) => !key.startsWith('$')).sort().map((key) => ({
     key,
     en: en[key] ?? null,
     pl: pl[key] ?? null,
+    previous: { en: previousEn[key] ?? null, pl: previousPl[key] ?? null },
+    change: !Object.hasOwn(previousEn, key) && !Object.hasOwn(previousPl, key) ? 'added' :
+      !Object.hasOwn(en, key) && !Object.hasOwn(pl, key) ? 'removed' :
+      !isDeepStrictEqual(en[key], previousEn[key]) || !isDeepStrictEqual(pl[key], previousPl[key]) ? 'changed' : null,
     findings: findings.filter((finding) => finding.key === key).map(({ message }) => message),
     sites: (sites.get(key) ?? []).map(({ file, line }) => ({
       file: relative(root, file), line, href: `vscode://file${pathToFileURL(file).pathname}:${line}`

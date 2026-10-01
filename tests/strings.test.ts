@@ -31,9 +31,15 @@ function fixture() {
   writeFileSync(join(root, 'messages/en.json'), serializeCatalogue(en));
   writeFileSync(join(root, 'messages/pl.json'), serializeCatalogue(pl));
   writeFileSync(join(root, 'src/page.ts'), 'm.greeting();\nmessages.readings({count: 2});\nm.greeting();\n');
-  execFileSync('git', ['init', '-q', root]);
-  execFileSync('git', ['-C', root, 'add', 'src']);
+  execFileSync('git', ['init', '-q', '-b', 'main', root]);
+  commit(root, 'Initial catalogues');
   return root;
+}
+
+function commit(root: string, message: string) {
+  execFileSync('git', ['-C', root, 'add', 'src', 'messages']);
+  execFileSync('git', ['-C', root, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+    '-c', 'commit.gpgsign=false', 'commit', '-qm', message]);
 }
 
 function plainEdit(text = 'Welcome', previous = 'Hello') {
@@ -41,6 +47,44 @@ function plainEdit(text = 'Welcome', previous = 'Hello') {
 }
 
 describe('strings read/write', () => {
+  it('has no changed keys on main', () => {
+    expect(readStrings(fixture()).filter((row) => row.change)).toEqual([]);
+  });
+
+  it('marks added, changed and removed keys against main with both old and new locales', () => {
+    const root = fixture();
+    execFileSync('git', ['-C', root, 'checkout', '-qb', 'copy-review']);
+    for (const locale of ['en', 'pl']) {
+      const file = join(root, `messages/${locale}.json`);
+      const catalogue = JSON.parse(readFileSync(file, 'utf8'));
+      catalogue.added = locale === 'en' ? 'New text' : 'Nowy tekst';
+      catalogue.greeting = locale === 'en' ? 'Welcome' : 'Witaj';
+      delete catalogue.orphan;
+      writeFileSync(file, serializeCatalogue(catalogue));
+    }
+    commit(root, 'Change copy');
+    const changes = readStrings(root).filter((row) => row.change);
+    expect(changes.map(({ key, change, en, pl, previous }) => ({ key, change, en, pl, previous }))).toEqual([
+      { key: 'added', change: 'added', en: 'New text', pl: 'Nowy tekst', previous: { en: null, pl: null } },
+      { key: 'greeting', change: 'changed', en: 'Welcome', pl: 'Witaj', previous: { en: 'Hello', pl: 'Dzień dobry' } },
+      { key: 'orphan', change: 'removed', en: null, pl: null, previous: { en: 'Unused', pl: 'Zapisałaś' } }
+    ]);
+  });
+
+  it('uses the merge-base rather than later main changes and includes unsaved edits', () => {
+    const root = fixture();
+    execFileSync('git', ['-C', root, 'branch', 'copy-review']);
+    writeString(root, plainEdit('Main text'));
+    commit(root, 'Change main copy');
+    execFileSync('git', ['-C', root, 'checkout', '-q', 'copy-review']);
+    expect(readStrings(root).filter((row) => row.change)).toEqual([]);
+    writeString(root, plainEdit('Branch text'));
+    const greeting = readStrings(root).find((row) => row.key === 'greeting')!;
+    expect(greeting.change).toBe('changed');
+    expect(greeting.en).toBe('Branch text');
+    expect(greeting.previous).toEqual({ en: 'Hello', pl: 'Dzień dobry' });
+  });
+
   it('reads disk values, declared plural forms, findings and every source location', () => {
     const root = fixture();
     const rows = readStrings(root);
@@ -81,6 +125,13 @@ describe('strings read/write', () => {
       '"countPlural=few": "{count} odczyty"', '"countPlural=few": "Odczyty: {count}"'
     ));
     expect(readFileSync(enFile, 'utf8')).toBe(enBefore.replace('"greeting": "Hello"', '"greeting": "Welcome"'));
+    const changes = readStrings(root).filter((row) => row.change);
+    expect(changes.map(({ key, change }) => ({ key, change }))).toEqual([
+      { key: 'greeting', change: 'changed' }, { key: 'readings', change: 'changed' }
+    ]);
+    const readings = changes.find((row) => row.key === 'readings')!;
+    expect(readings.previous.pl[0].match['countPlural=few']).toBe('{count} odczyty');
+    expect(readings.pl[0].match['countPlural=few']).toBe('Odczyty: {count}');
   });
 
   it('preserves independent edits and rejects a stale same-field save', () => {
@@ -130,6 +181,7 @@ describe('strings HTTP server', () => {
       expect(page.headers.get('cache-control')).toBe('no-store');
       const rows = await (await fetch(`${url}/api/strings`)).json();
       expect(rows.find((row: { key: string }) => row.key === 'greeting').pl).toBe('Dzień dobry');
+      expect(rows.filter((row: { change: string | null }) => row.change)).toEqual([]);
       const patch = (body: string, headers: Record<string, string> = {}) => fetch(`${url}/api/strings`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', ...headers }, body
       });
@@ -158,6 +210,10 @@ describe('strings HTTP server', () => {
       });
       expect(saved).toBe(204);
       expect(JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8')).greeting).toBe('Miłego dnia');
+      const updated = await (await fetch(`${url}/api/strings`)).json();
+      expect(updated.find((row: { key: string }) => row.key === 'greeting')).toMatchObject({
+        change: 'changed', pl: 'Miłego dnia', previous: { en: 'Hello', pl: 'Dzień dobry' }
+      });
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
