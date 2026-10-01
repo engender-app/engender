@@ -76,6 +76,16 @@ describe('the breath clock', () => {
     expect(clockElapsed(c, 3500)).toBe(2500);
   });
 
+  /* A frame's rAF timestamp is when the frame began, which can be a few ms
+     before the click handler that started the clock stamped its start. A
+     negative elapsed wrapped to the cycle's last moment and flashed "Hold"
+     on the first frames of the very first inhale (the sign-off flipbook). */
+  it('never reads before its own start', () => {
+    const c = startClock(restingClock(), 1000);
+    expect(clockElapsed(c, 996)).toBe(0);
+    expect(readBreath(clockElapsed(c, 996)).phase).toBe('inhale');
+  });
+
   it('freezes on pause and carries on from the same point on resume', () => {
     let c = startClock(restingClock(), 1000);
     c = pauseClock(c, 3500);
