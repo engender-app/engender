@@ -15,6 +15,10 @@ function fixture() {
   roots.push(root);
   mkdirSync(join(root, 'messages'));
   mkdirSync(join(root, 'src'));
+  mkdirSync(join(root, 'docs/agents'), { recursive: true });
+  writeFileSync(join(root, 'docs/agents/copy-coverage-50.json'), JSON.stringify({
+    greeting: { owner: 38 }, readings: { owner: 39 }
+  }));
   const en = {
     $schema: 'schema', greeting: 'Hello', missing: 'Only English', orphan: 'Unused',
     readings: [{ declarations: ['input count'], selectors: ['countPlural'], match: {
@@ -47,6 +51,15 @@ function plainEdit(text = 'Welcome', previous = 'Hello') {
 }
 
 describe('strings read/write', () => {
+  it('groups keys by their copy review theme and keeps unmapped keys visible', () => {
+    expect(readStrings(fixture()).map(({ key, theme }) => ({ key, theme }))).toEqual([
+      { key: 'greeting', theme: 'Journal, day, search and readback' },
+      { key: 'missing', theme: 'Unassigned copy' },
+      { key: 'orphan', theme: 'Unassigned copy' },
+      { key: 'readings', theme: 'Body, care and health' }
+    ]);
+  });
+
   it('has no changed keys on main', () => {
     expect(readStrings(fixture()).filter((row) => row.change)).toEqual([]);
   });
