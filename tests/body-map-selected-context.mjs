@@ -288,6 +288,7 @@ try {
          only measured. */
   await page.setViewportSize({ width: 320, height: 690 });
   await page.goto(`${base}/settings`, { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForTimeout(300);
   await settlePage(page, base, '/body-map', 'light');

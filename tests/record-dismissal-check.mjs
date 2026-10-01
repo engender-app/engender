@@ -266,6 +266,7 @@ try {
   console.log('PASS confirmation renders across eight palettes and both themes with 48px actions');
   await discard();
   await navigate('/settings');
+  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
   await navigate('/health/appointments');

@@ -51,6 +51,7 @@ try {
   for (const language of ['en', 'pl']) {
     if (language === 'pl') {
       await settlePage(page, base, '/settings', 'light');
+      await page.locator('[data-list-row="language"]').click();
       await page.locator('[data-segment="pl"]').click();
       await page.waitForFunction(() => document.documentElement.lang === 'pl');
     }
@@ -71,6 +72,7 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await settlePage(page, base, '/settings', 'light');
+  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="en"]').click();
   await page.waitForFunction(() => document.documentElement.lang === 'en');
   await settlePage(page, base, '/voice', 'light');
