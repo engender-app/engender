@@ -255,7 +255,7 @@
   /* (b) box */
   .block {
     fill: var(--role-draw);
-    transform: scale(calc(0.78 + 0.6 * var(--breath)));
+    transform: scale(calc(0.92 + 0.46 * var(--breath)));
   }
 
   /* (c) tide: low water at rest, high water full. */
