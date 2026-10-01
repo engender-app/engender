@@ -41,11 +41,7 @@
     [attribute: string]: unknown;
   } = $props();
 
-  const picker: PickerField = new PickerField(
-    'date',
-    (): string => ariaLabel || picker.field?.labels?.[0]?.textContent?.trim() || m.date_picker_title(),
-    panel
-  );
+  const picker = new PickerField('date', () => ariaLabel, m.date_picker_title, panel);
 
   function commit(next: string) {
     value = next;

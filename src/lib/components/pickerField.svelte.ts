@@ -28,19 +28,21 @@ export class PickerField {
   #host: { instance: ReturnType<typeof mount>; target: HTMLElement; observer: MutationObserver } | null = null;
 
   readonly #kind: 'date' | 'time';
-  readonly #label: () => string;
+  readonly #ariaLabel: () => string | undefined;
+  readonly #title: () => string;
   readonly #panel: Snippet;
 
-  /** `label` names the surface: the caller's aria-label, else the field's
-      own label, else the picker's generic title. */
-  constructor(kind: 'date' | 'time', label: () => string, panel: Snippet) {
+  /** The surface is named by the caller's aria-label, else the field's own
+      label, else the picker's generic `title`. */
+  constructor(kind: 'date' | 'time', ariaLabel: () => string | undefined, title: () => string, panel: Snippet) {
     this.#kind = kind;
-    this.#label = label;
+    this.#ariaLabel = ariaLabel;
+    this.#title = title;
     this.#panel = panel;
   }
 
-  get field(): HTMLInputElement | undefined {
-    return this.#field;
+  #label(): string {
+    return this.#ariaLabel() || this.#field?.labels?.[0]?.textContent?.trim() || this.#title();
   }
 
   /** Close, handing focus back to the field on a desktop - on a phone the
