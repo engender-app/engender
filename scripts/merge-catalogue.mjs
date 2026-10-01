@@ -31,9 +31,10 @@ export function mergeCatalogues(base, ours, theirs) {
   for (const key of new Set([...Object.keys(base), ...Object.keys(ours), ...Object.keys(theirs)])) {
     const [b, o, t] = [base[key], ours[key], theirs[key]];
     let value = o;
-    if (same(o, t) || same(b, t)) value = o;
-    else if (same(b, o)) value = t;
-    else conflicts.push(key);
+    if (!same(o, t) && !same(b, t)) {
+      if (same(b, o)) value = t;
+      else conflicts.push(key); // ours stays
+    }
     if (value !== undefined) merged[key] = value;
   }
   return { merged, conflicts: conflicts.sort() };

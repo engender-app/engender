@@ -2,7 +2,7 @@
    key, so two branches adding neighbouring keys no longer conflict. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { mergeCatalogues } from '../scripts/merge-catalogue.mjs';
@@ -38,8 +38,8 @@ describe('mergeCatalogues', () => {
 
   it('merges a variant value as a whole', () => {
     const v = (other: string) => [{ declarations: ['input count'], match: { 'count=one': 'one', 'count=other': other } }];
-    const same = mergeCatalogues({ n: v('x') }, { n: v('y') }, { n: v('x') });
-    expect(same).toEqual({ merged: { n: v('y') }, conflicts: [] });
+    const agreed = mergeCatalogues({ n: v('x') }, { n: v('y') }, { n: v('x') });
+    expect(agreed).toEqual({ merged: { n: v('y') }, conflicts: [] });
     expect(mergeCatalogues({ n: v('x') }, { n: v('y') }, { n: v('z') }).conflicts).toEqual(['n']);
   });
 });
@@ -47,20 +47,23 @@ describe('mergeCatalogues', () => {
 describe('the driver inside git', () => {
   const script = resolve(__dirname, '../scripts/merge-catalogue.mjs');
   let dir: string;
+  let file: string;
   const git = (...args: string[]) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
   const commit = (message: string, catalogue: Record<string, unknown>) => {
-    writeFileSync(join(dir, 'messages.json'), serializeCatalogue(catalogue));
+    writeFileSync(file, serializeCatalogue(catalogue));
     git('commit', '-qam', message);
   };
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'merge-catalogue-'));
+    mkdirSync(join(dir, 'messages'));
+    file = join(dir, 'messages', 'en.json');
     git('init', '-q', '-b', 'main');
     git('config', 'user.email', 't@example.com');
     git('config', 'user.name', 't');
     git('config', 'merge.catalogue.driver', `node ${script} %O %A %B %P`);
-    writeFileSync(join(dir, '.gitattributes'), 'messages.json merge=catalogue\n');
-    writeFileSync(join(dir, 'messages.json'), serializeCatalogue({ $schema: 'x', pre_a: 'A', pre_z: 'Z' }));
+    writeFileSync(join(dir, '.gitattributes'), readFileSync(resolve(__dirname, '../.gitattributes'), 'utf8'));
+    writeFileSync(file, serializeCatalogue({ $schema: 'x', pre_a: 'A', pre_z: 'Z' }));
     git('add', '-A');
     git('commit', '-qm', 'base');
     git('checkout', '-qb', 'other');
@@ -73,7 +76,7 @@ describe('the driver inside git', () => {
     commit('main', { $schema: 'x', pre_a: 'A', pre_c: 'C', pre_z: 'Z' });
     const merge = git('merge', '--no-edit', 'other');
     expect(merge.status).toBe(0);
-    const text = readFileSync(join(dir, 'messages.json'), 'utf8');
+    const text = readFileSync(file, 'utf8');
     expect(Object.keys(JSON.parse(text))).toEqual(['$schema', 'pre_a', 'pre_b', 'pre_c', 'pre_z']);
     expect(text).toBe(serializeCatalogue(JSON.parse(text)));
   });
@@ -85,8 +88,8 @@ describe('the driver inside git', () => {
     const merge = git('merge', '--no-edit', 'other');
     expect(merge.status).not.toBe(0);
     expect(merge.stderr + merge.stdout).toContain('pre_a');
-    expect(git('status', '--porcelain').stdout).toContain('UU messages.json');
-    const left = JSON.parse(readFileSync(join(dir, 'messages.json'), 'utf8'));
+    expect(git('status', '--porcelain').stdout).toContain('UU messages/en.json');
+    const left = JSON.parse(readFileSync(file, 'utf8'));
     expect(left).toMatchObject({ pre_a: 'ours', pre_z: 'Z2' });
   });
 });
