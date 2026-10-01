@@ -16,7 +16,9 @@
    - reduced motion being switched mid-breath changing anything (the
      component reads it once per visit);
    - the app going to the background and coming back: nothing may move
-     while it is hidden, and the breath must carry on by itself after.
+     while it is hidden, and the breath must carry on by itself after;
+   - the Polish hold word, the longest, not clearing the vessel by 16px
+     either side at 390 and 320.
 
    Then the same under reduced motion, where nothing but the lap's dot may
    move at all. The dot is exempt there: it steps once a second, sixteen
@@ -205,6 +207,31 @@ try {
     ]);
     check(reduced ? 'reduced motion' : 'motion', run, { reduced });
     await context.close();
+  }
+  /* The longest word there is, the Polish hold, inside the vessel with
+     room either side, at the widest and the narrowest column. */
+  for (const width of [390, 320]) {
+    const page = await browser.newPage({ viewport: { width, height: 1000 } });
+    await page.goto(BASE + PATH);
+    await page.waitForSelector(`${ROOT} svg`, { timeout: 60000 });
+    await page.evaluate(async () => {
+      const { setLocale } = await import('/src/lib/paraglide/runtime.js');
+      setLocale('pl', { reload: false });
+    });
+    await page.waitForTimeout(500);
+    await page.evaluate((root) => document.querySelector(`${root} [data-breathing-toggle]`).click(), ROOT);
+    await page.waitForTimeout(4900);
+    const fit = await page.evaluate((root) => {
+      const vessel = document.querySelector(`${root} .breathing-vessel`).getBoundingClientRect();
+      const words = [...document.querySelectorAll(`${root} .breathing-word`)].map((t) => ({ text: t.textContent, ...t.getBoundingClientRect().toJSON() }));
+      return { vessel: vessel.toJSON(), words };
+    }, ROOT);
+    const word = fit.words.find((w) => w.text.includes('Wstrzymaj'));
+    const margin = word && Math.min(word.left - fit.vessel.left, fit.vessel.right - word.right);
+    const label = `pl hold word at ${width}px: ${word ? `${word.width.toFixed(0)}px in a ${fit.vessel.width.toFixed(0)}px vessel, ${margin.toFixed(0)}px clear each side` : 'not found'}`;
+    if (!word || margin < 16) fail(label);
+    else pass(label);
+    await page.close();
   }
 } finally {
   await browser.close();
