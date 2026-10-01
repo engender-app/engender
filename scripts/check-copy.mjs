@@ -1,6 +1,7 @@
-/* Four checks over the app's copy, run on every pull request (phase 2 ticket
+/* Five checks over the app's copy, run on every pull request (phase 2 ticket
    06, which wires up what ticket 19 then relies on; the third check added by
-   phase 5 ticket 05; the fourth by phase 8 deepening ticket 05):
+   phase 5 ticket 05; the fourth by phase 8 deepening ticket 05; the fifth by
+   phase 12 copy-tooling ticket 01):
 
    1. The two catalogues hold the same keys. A key present in English and
       missing in Polish is not an error anywhere else - paraglide falls back to
@@ -43,15 +44,22 @@
       finds it same as anywhere else. DEAD_ALLOW exists for the rarer case a
       plain-text scan genuinely cannot see - each entry carries its reason.
 
+   5. Both catalogues are in the order scripts/catalogue.mjs writes: `$schema`
+      first, keys sorted. Branches that each append a key at the end of an
+      unsorted file collide on merge; sorted keys scatter the insertions.
+
    Run `node scripts/check-copy.mjs` to see where it stands, and
    `node scripts/check-copy.mjs --update` after moving copy into the
-   catalogues, which rewrites the record. */
+   catalogues, which rewrites the record. `--fix` rewrites a catalogue that
+   is out of serializer order (scripts/catalogue.mjs) in place. */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'svelte/compiler';
+import { isSerialized, serializeCatalogue } from './catalogue.mjs';
 
 const BASELINE = 'messages/untranslated-literals.txt';
+const CATALOGUES = ['messages/en.json', 'messages/pl.json'];
 
 /** Attributes a person reads or hears. The rest are for the machine. */
 const SPOKEN_ATTRIBUTES = new Set([
@@ -124,6 +132,20 @@ export function catalogueProblems(en, pl) {
     ...enKeys.filter((key) => !plKeys.includes(key)).map((key) => `${key} is missing from messages/pl.json`),
     ...plKeys.filter((key) => !enKeys.includes(key)).map((key) => `${key} is missing from messages/en.json`)
   ];
+}
+
+/**
+ * Catalogues whose text is not what scripts/catalogue.mjs would write: keys
+ * out of order, or the formatting drifted. Sorted keys are what keep parallel
+ * branches from colliding on the same spot at the end of the file.
+ *
+ * @param {Record<string, string>} texts  file path to file contents
+ * @returns {string[]}
+ */
+export function catalogueOrderProblems(texts) {
+  return Object.entries(texts)
+    .filter(([, text]) => !isSerialized(text))
+    .map(([file]) => `${file} is not in serializer order. Run \`npm run check:copy -- --fix\`.`);
 }
 
 /**
@@ -312,10 +334,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
 
+  if (process.argv.includes('--fix')) {
+    for (const file of CATALOGUES) {
+      const text = readFileSync(file, 'utf8');
+      if (!isSerialized(text)) writeFileSync(file, serializeCatalogue(JSON.parse(text)));
+    }
+  }
+
   const enCatalogue = JSON.parse(readFileSync('messages/en.json', 'utf8'));
   const plCatalogue = JSON.parse(readFileSync('messages/pl.json', 'utf8'));
   const referenced = collectReferencedKeys(refFiles);
   const problems = [
+    ...catalogueOrderProblems(Object.fromEntries(CATALOGUES.map((file) => [file, readFileSync(file, 'utf8')]))),
     ...catalogueProblems(enCatalogue, plCatalogue),
     ...ratchetProblems(counts, readBaseline()),
     ...genderedReaderProblems(plCatalogue),
@@ -328,6 +358,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  console.log('PASS both catalogues are in serializer order');
   console.log('PASS both catalogues hold the same keys');
   console.log(
     `PASS no new user-facing literals (${total} known, in ${Object.keys(counts).length} file(s), ` +
