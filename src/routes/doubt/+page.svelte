@@ -41,9 +41,6 @@
      its own reads. */
   import { m } from '$lib/paraglide/messages';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
-  import BreathingPrototype from '$lib/components/BreathingPrototype.svelte';
-  import { page } from '$app/state';
-  const proto = $derived(page.url.searchParams.get('breath'));
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -76,11 +73,7 @@
   <a class="btn btn-soft btn-block" href="/doubt/comfort">{m.comfort_list_title()}</a>
 
   <div class="breath-stage">
-    {#if proto === 'a' || proto === 'b' || proto === 'c'}
-      <BreathingPrototype variant={proto} role={roleAt(activeFlag.roles, 0)} />
-    {:else}
-      <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
-    {/if}
+    <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
   </div>
 
   <ListCard role={roleAt(activeFlag.roles, 1)}>

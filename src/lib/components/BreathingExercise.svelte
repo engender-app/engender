@@ -1,19 +1,40 @@
 <script lang="ts">
-  /* Calming tool for Safe Space (ticket 52, ADR-0040): 4-4-4-4 box breathing.
-     Impeccable craft: organic concentric halo in pure theme tokens (no gradients).
-     Self-contained component with full accessibility and reduced-motion fallback. */
+  /* Calming tool for Safe Space (ticket 52, ADR-0040): 4-4-4-4 box breathing,
+     drawn as a tide (phase 12 breathing ticket 01, picked by Alicja from
+     three live prototypes on 2026-10-01). The flag's colour rises inside a
+     vessel on the inhale, stands still through the hold, drains on the
+     exhale and stands still again. A dot travels the track around it, one
+     lap per 16s cycle, past a tick at each quarter.
+
+     One clock (breathing.ts) drives all of it. Each frame reads one elapsed
+     time and writes the water level and the dot's position as custom
+     properties straight onto the drawing, so nothing re-renders per frame
+     and nothing can disagree. The version this replaced ran its ring, its
+     halo and its count off a one-second interval through three separate
+     CSS transitions: they drifted apart, the ring dropped from full to
+     empty in one frame at every phase boundary, the first breath was
+     shorter than the rest, and resuming mid-phase ran a 4s transition over
+     what was left of it.
+
+     The lap is a travelling dot and not a stroke that fills, because a
+     fill has to drop from full back to empty when the cycle wraps - the
+     same single-frame drop, moved from every phase to every cycle. A dot's
+     last position is its first. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { isReducedMotion } from '$lib/motion/tokens';
   import {
-    initialBreathingState,
-    tickBreathing,
-    phaseProgress,
     BOX_BREATHING_PHASES,
-    type BreathingPhase,
-    type BreathingState
+    clockElapsed,
+    isRunning,
+    pauseClock,
+    readBreath,
+    restingClock,
+    startClock,
+    type BreathingPhase
   } from './breathing';
 
   let {
@@ -24,55 +45,89 @@
     [attribute: string]: unknown;
   } = $props();
 
-  let breath = $state<BreathingState>(initialBreathingState());
-  let ringResetting = $state<boolean>(true);
+  /* The drawing, in viewBox units. The vessel holds the water; the track
+     the dot travels sits outside it with room for the dot's 7 radius and
+     its 3px knockout, so the whole drawing fits a 272 box and a 320px
+     phone's 270px column scales it rather than overrunning (carpet 28). */
+  const SIZE = 272;
+  const C = SIZE / 2;
+  const VESSEL = 112;
+  const TRACK = 128;
+  /* Low water at rest is a band, not nothing: an empty vessel at rest
+     would read as a ring with nothing in it rather than as a tide waiting
+     to come in. High water leaves a sliver of sky under the rim. */
+  const LOW = C + VESSEL - 26;
+  const HIGH = C - VESSEL + 14;
+  /* Under reduced motion the water stands at half and its colour fades
+     with the breath instead of its level moving. */
+  const STILL = (LOW + HIGH) / 2;
+  const QUARTERS = [0, 1, 2, 3].map((q) => {
+    const a = (q * Math.PI) / 2 - Math.PI / 2;
+    return {
+      x1: C + (TRACK - 6) * Math.cos(a),
+      y1: C + (TRACK - 6) * Math.sin(a),
+      x2: C + (TRACK + 6) * Math.cos(a),
+      y2: C + (TRACK + 6) * Math.sin(a)
+    };
+  });
 
-  /* The countdown ring drawn around the halo (Alicja, 2026-08-31 review:
-     "a nice stroke going around the circle filling up as the count goes
-     down").
+  /* The phase word fades in and out over this, under reduced motion too:
+     opacity moves nothing. Written as a JS tick rather than Svelte's `fade`,
+     whose CSS animation base.css clamps to 1ms under reduced motion - and a
+     crossfade with no duration is a cut. */
+  const WORD_FADE_MS = 420;
+  const wordFade = (node: Element) => ({
+    duration: WORD_FADE_MS,
+    tick: (t: number) => {
+      (node as SVGElement).style.opacity = String(t);
+    }
+  });
 
-     132 rather than 123, which is where it started: the halo's contents
-     come after the ring in DOM order, so at 123 the stroke was painted over
-     by the halo itself and only a couple of its pixels cleared. The halo
-     reaches a 120px radius (breathing-outer-ring is 240px across), so 132
-     with the 6px stroke draws the band from 129 to 135 - a 9px gap outside
-     it, and nothing of the halo's to fight now that carpet 30 has taken its
-     border. */
-  const RING_RADIUS = 132;
-  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-  let intervalId: ReturnType<typeof setInterval> | null = null;
+  /* Unique per instance, since clipPath ids are document-global. */
+  const uid = $props.id();
 
-  function start() {
-    if (breath.running) return;
-    breath = { ...breath, running: true };
-    intervalId = setInterval(() => {
-      breath = tickBreathing(breath);
-    }, 1000);
+  let clock = $state(restingClock());
+  let started = $state(false);
+  let phaseIndex = $state(0);
+  let reduced = $state(false);
+  let figure: SVGSVGElement | undefined = $state();
+  let raf = 0;
+
+  const running = $derived(isRunning(clock));
+
+  function paint(now: number) {
+    if (!figure) return;
+    reduced = isReducedMotion();
+    const r = readBreath(clockElapsed(clock, now), reduced);
+    const surface = reduced ? STILL : LOW + (HIGH - LOW) * r.level;
+    const angle = r.cycleProgress * 2 * Math.PI - Math.PI / 2;
+    figure.style.setProperty('--breath', r.level.toFixed(4));
+    figure.style.setProperty('--surface-y', `${surface.toFixed(2)}px`);
+    figure.style.setProperty('--lap-x', `${(C + TRACK * Math.cos(angle)).toFixed(2)}px`);
+    figure.style.setProperty('--lap-y', `${(C + TRACK * Math.sin(angle)).toFixed(2)}px`);
+    if (r.phaseIndex !== phaseIndex) phaseIndex = r.phaseIndex;
   }
 
-  function pause() {
-    if (!breath.running) return;
-    if (intervalId) {
-      clearInterval(intervalId);
-      intervalId = null;
-    }
-    breath = { ...breath, running: false };
+  function frame(now: number) {
+    paint(now);
+    raf = isRunning(clock) ? requestAnimationFrame(frame) : 0;
   }
 
   function toggle() {
-    if (breath.running) {
-      pause();
+    const now = performance.now();
+    if (isRunning(clock)) {
+      clock = pauseClock(clock, now);
+      cancelAnimationFrame(raf);
+      raf = 0;
+      paint(now);
     } else {
-      start();
+      clock = startClock(clock, now);
+      started = true;
+      raf = requestAnimationFrame(frame);
     }
   }
 
-  onDestroy(() => {
-    if (intervalId) {
-      clearInterval(intervalId);
-      intervalId = null;
-    }
-  });
+  onDestroy(() => cancelAnimationFrame(raf));
 
   const phaseLabel = (phase: BreathingPhase): string => {
     switch (phase) {
@@ -86,55 +141,14 @@
     }
   };
 
-  /* Scaling class based on current phase */
-  let scaleClass = $derived(!breath.running ? 'is-idle' : `is-${breath.phase}`);
-
-  let phaseDuration = $derived(BOX_BREATHING_PHASES[breath.phaseIndex].duration);
-
-  /* The ring resets to empty and instantly (no transition) on the frame a
-     new phase starts, then - one animation frame later, once the browser
-     has actually painted that empty frame - the CSS transition below takes
-     over and sweeps it to wherever `phaseProgress` is heading, over the
-     rest of that second. Skipping the reset frame would run the transition
-     from the previous phase's *full* ring straight to this phase's first
-     target, which unfills before it fills rather than starting empty.
-
-     Keyed through a `$derived` and not off `breath` directly, which is what
-     it took to key on the boundary at all. `tickBreathing` reassigns the
-     whole state object every second, so an effect that read `breath.running`
-     - as this one did, one line under a comment claiming it was keyed on
-     `phaseIndex` alone - depended on `breath` itself and re-ran on every
-     tick. It set the ring empty each second and then had one frame to
-     transition out of it, so the fill never reached more than about a
-     twentieth of the circle: the ring had been a stub since the day it
-     landed, in a state no unit test can see and every render shows. Found
-     on carpet 30's crops, once unboxing had made the reading the thing the
-     surface is for. A `$derived` only invalidates when its value changes,
-     so this now runs exactly at a boundary and when running flips. */
-  let ringPhase = $derived(breath.running ? breath.phaseIndex : -1);
-  $effect(() => {
-    if (ringPhase < 0) return;
-    ringResetting = true;
-    const raf = requestAnimationFrame(() => {
-      ringResetting = false;
-    });
-    return () => cancelAnimationFrame(raf);
-  });
-
-  let ringEmpty = $derived(!breath.running || ringResetting);
-  let ringDashoffset = $derived(
-    ringEmpty ? RING_CIRCUMFERENCE : RING_CIRCUMFERENCE * (1 - phaseProgress(phaseDuration, breath.secondsRemaining))
-  );
+  const phase = $derived(BOX_BREATHING_PHASES[phaseIndex]);
+  /* The pattern, and not a title a second time, sits where the phase word
+     will be (redesign ticket 47), so starting changes what the vessel says
+     rather than where it says it. */
+  const word = $derived(started ? phaseLabel(phase) : '4 · 4 · 4 · 4');
 </script>
 
-<!-- Carpet 30: no container. A breathing exercise is a ring, and the ring
-     is the object rather than something that needs a box to say it is one -
-     which is also what every reference does (Mobbin, eight of eight
-     breathing screens: QUITTR, stoic., Finch, Breathwrk, Calm, Opal, WHOOP,
-     Waking Up all draw the ring straight on the page). rule 4's argument for
-     a fourth treatment had to be made here or nowhere, and this is where it
-     failed: the card was carrying "this is a thing you do" for a drawing
-     that already says so at 272px across. -->
+<!-- Carpet 30: no container. The vessel is the object. -->
 <div
   class="breathing-exercise"
   data-kit-surface
@@ -142,109 +156,89 @@
   {...roleAttrs(role)}
   {...rest}
 >
-  <div class="breathing-header">
-    <span class="breathing-desc">{m.safe_space_breathing_desc()}</span>
-  </div>
+  <span class="breathing-desc">{m.safe_space_breathing_desc()}</span>
 
-  <div class="breathing-stage">
-    <!-- The ring sits behind the halo, in its own stacking layer, so the
-         halo's press feedback and the ring's fill never fight over paint
-         order. pointer-events:none - the ring is a reading, not a target;
-         the button underneath already covers the whole tappable area. -->
+  <button
+    type="button"
+    class="breathing-stage"
+    aria-label={running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
+    onclick={toggle}
+  >
+    <!-- The resting values are written into the markup, so the first paint
+         is already the rest pose rather than a frame of defaults before the
+         first paint() lands. -->
     <svg
-      class="breathing-ring"
-      class:is-empty={ringEmpty}
-      width="272"
-      height="272"
-      viewBox="0 0 272 272"
+      bind:this={figure}
+      class="breathing-figure"
+      class:is-reduced={reduced}
+      viewBox="0 0 {SIZE} {SIZE}"
+      width={SIZE}
+      height={SIZE}
+      style="--breath:0; --surface-y:{LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"
       aria-hidden="true"
     >
-      <circle class="breathing-ring-track" cx="136" cy="136" r={RING_RADIUS} />
-      <circle
-        class="breathing-ring-progress"
-        cx="136"
-        cy="136"
-        r={RING_RADIUS}
-        stroke-dasharray={RING_CIRCUMFERENCE}
-        stroke-dashoffset={ringDashoffset}
-      />
+      <defs>
+        <clipPath id="{uid}-vessel">
+          <circle cx={C} cy={C} r={VESSEL} />
+        </clipPath>
+        <clipPath id="{uid}-water">
+          <rect class="breathing-water" x="0" y="0" width={SIZE} height={SIZE} />
+        </clipPath>
+      </defs>
+
+      <circle class="breathing-track" cx={C} cy={C} r={TRACK} />
+      {#each QUARTERS as q}
+        <line class="breathing-tick" x1={q.x1} y1={q.y1} x2={q.x2} y2={q.y2} />
+      {/each}
+
+      <g clip-path="url(#{uid}-vessel)">
+        <rect class="breathing-water" x="0" y="0" width={SIZE} height={SIZE} />
+      </g>
+      <circle class="breathing-vessel" cx={C} cy={C} r={VESSEL} />
+
+      <!-- The word twice: once in the page's ink, once in the ink that reads
+           on the flag's fill, clipped to the water - so where the tide
+           covers a letter it changes ink at the waterline rather than
+           sinking out of contrast. -->
+      <g>
+        {#key word}
+          <text class="breathing-word" x={C} y={C} in:wordFade out:wordFade>{word}</text>
+        {/key}
+      </g>
+      <g clip-path="url(#{uid}-water)">
+        {#key word}
+          <text class="breathing-word on-fill" x={C} y={C} in:wordFade out:wordFade>{word}</text>
+        {/key}
+      </g>
+
+      <circle class="breathing-lap" cx="0" cy="0" r="7" />
     </svg>
-    <!-- Clickable concentric breathing halo -->
-    <button
-      type="button"
-      class="breathing-halo-trigger press"
-      aria-label={breath.running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
-      onclick={toggle}
-    >
-      <!-- Outermost fixed ambient boundary -->
-      <div class="breathing-outer-ring">
-        <!-- Middle breathing aura (scales with breath) -->
-        <div class="breathing-aura {scaleClass}"></div>
+  </button>
 
-        <!-- Inner solid breathing core -->
-        <div class="breathing-core {scaleClass}">
-          <div class="breathing-content" aria-live="polite">
-            {#if breath.running}
-              <span class="breathing-phase-text" data-breathing-phase={breath.phase}>
-                {phaseLabel(breath.phase)}
-              </span>
-              <span class="breathing-count">{breath.secondsRemaining}</span>
-              <!-- 4-step box breathing indicator dots -->
-              <div class="breathing-dots" aria-hidden="true">
-                {#each BOX_BREATHING_PHASES as p, i}
-                  <span
-                    class="breathing-dot"
-                    class:is-active={breath.phaseIndex === i}
-                  ></span>
-                {/each}
-              </div>
-            {:else}
-              <!-- The pattern, and not a title a second time. Redesign
-                   ticket 47 took the section heading off /doubt entirely -
-                   the field says where this is, and the screen holds
-                   nothing but this - so the only words above the ring now
-                   are the description this component draws itself. The
-                   figure sits in the slot the phase word takes once the
-                   count is running, so starting changes what the core says
-                   rather than where it says it.
+  <!-- What a screen reader hears: the phase word, once per phase, and
+       nothing at rest - four numerals and three separators are not
+       something anybody can act on, and the button says what pressing it
+       does. -->
+  <span class="breathing-live" aria-live="polite">
+    {#if started}
+      <span data-breathing-phase={phase}>{word}</span>
+    {/if}
+  </span>
 
-                   `aria-hidden`, because this sits in the live region and four
-                   numerals with three separators are not something anybody can
-                   act on. The words it replaced were: the heading above says
-                   them, and the button's own label says what pressing it does.
-                   So at rest the region is silent, and pausing announces
-                   nothing rather than announcing digits. -->
-              <span class="breathing-pattern" aria-hidden="true">4 · 4 · 4 · 4</span>
-              <div class="breathing-dots" aria-hidden="true">
-                {#each BOX_BREATHING_PHASES as _}
-                  <span class="breathing-dot"></span>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        </div>
-      </div>
-    </button>
-  </div>
-
-  <div class="breathing-actions">
-    <button
-      type="button"
-      class="btn btn-soft btn-block press"
-      data-breathing-toggle
-      onclick={toggle}
-    >
-      <Icon name={breath.running ? 'pause' : 'play'} size={18} />
-      <span>
-        {breath.running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
-      </span>
-    </button>
-  </div>
+  <button
+    type="button"
+    class="btn btn-soft btn-block press"
+    data-breathing-toggle
+    onclick={toggle}
+  >
+    <Icon name={running ? 'pause' : 'play'} size={18} />
+    <span>
+      {running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
+    </span>
+  </button>
 </div>
 
 <style>
-  /* On the page, so the padding a card owed its own edge goes with the edge.
-     What is left is the column and its rhythm. */
   .breathing-exercise {
     display: flex;
     flex-direction: column;
@@ -253,259 +247,96 @@
     gap: var(--space-4);
   }
 
-  .breathing-header {
-    width: 100%;
-  }
-
   .breathing-desc {
     font-size: var(--text-sm);
     color: var(--muted);
   }
 
   .breathing-stage {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: none;
+    border: none;
     padding: var(--space-3) 0;
-    width: 100%;
+    cursor: pointer;
+    touch-action: manipulation;
+    max-width: 100%;
   }
 
-  /* Centered on the stage over the halo. The ring's radius is drawn well
-     outside the halo's own edge (240px across, so a 120px radius) on
-     purpose: at 123 the stroke sat almost entirely under the halo's own
-     opaque background, which paints after the ring in DOM order and
-     covered all but a sliver of it. pointer-events:none - the ring is a
-     reading, not a target; the button underneath already covers the
-     whole tappable area, and this only has to not intercept its taps. */
-  .breathing-ring {
-    position: absolute;
-    pointer-events: none;
-    /* The 6px fill draws its outer edge at a 135px radius, so the band is
-       exactly 270px across - which is exactly the column a 320px phone
-       leaves, and carpet 28's hit test read a 1px overrun on each side. It
-       has a viewBox, so constraining the width scales the whole drawing
-       rather than cropping it. */
+  /* It has a viewBox, so a column narrower than 272 scales the drawing
+     rather than cropping it. Overflow visible for the dot's knockout ring,
+     which reaches 3px past the track at the quarters. */
+  .breathing-figure {
+    display: block;
     max-width: 100%;
     height: auto;
-    /* An absolutely positioned element takes no part in its flex parent's
-       centering - .breathing-stage centers the button through
-       align-items/justify-content, which only ever applied to in-flow
-       children. Center this one explicitly on the same point instead. */
-    top: 50%;
-    left: 50%;
-    /* 12 o'clock start rather than SVG's 3 o'clock default, so the sweep
-       reads the way every clock-shaped progress reading does. */
-    transform: translate(-50%, -50%) rotate(-90deg);
+    overflow: visible;
   }
 
-  /* --role-hairline (kit.css) bundles width, style and colour into one
-     border shorthand ("1px solid <colour>") - it is not a colour on its
-     own, and stroke takes a paint value only. Reproducing its own colour
-     formula here as opacity over --role-mark rather than trying to pull a
-     colour out of the shorthand. */
-  /* A guide, at rule 9's weight for one. It was 4 - the same as the fill
-     that sweeps over it - so at rest the loudest mark on the screen was an
-     empty track, and once running the reading that matters was a 4px stub
-     on a 4px ring of the same colour. */
-  .breathing-ring-track {
+  /* A guide at rule 9's weight: 1px in --text-2, never the series colour.
+     The ticks mark the quarters - the phase boundaries - at a series' 2px. */
+  .breathing-track {
     fill: none;
-    stroke: var(--role-mark);
-    stroke-opacity: 0.35;
+    stroke: var(--text-2);
+    stroke-width: 1;
+    opacity: 0.6;
+  }
+
+  .breathing-tick {
+    stroke: var(--text-2);
     stroke-width: 2;
   }
 
-  /* Drawn shapes read off --role-draw (kit.css: "the stripe as it is,
-     ...what every drawn shape in a chart uses - the line... the timeline's
-     rail"), the same token the ring's aura and core borders now read
-     below - not --role-accent, which nothing in kit.css defines (see the
-     fix note by .breathing-aura). */
-  .breathing-ring-progress {
+  .breathing-vessel {
     fill: none;
     stroke: var(--role-draw);
-    stroke-width: 6;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 1s linear;
+    stroke-width: 2;
   }
 
-  /* The reset frame: instant, no transition, so the next frame's fill
-     starts from a ring the browser has actually painted as empty rather
-     than animating backwards from wherever the last phase left off. */
-  .breathing-ring.is-empty .breathing-ring-progress {
-    transition: none;
+  /* The water is a full-size block whose top edge is the surface, moved by
+     transform rather than by its height so the browser only composites it.
+     The same rect, used again as a clip, cuts the on-fill copy of the word
+     at the same line. */
+  .breathing-water {
+    fill: var(--role-draw);
+    transform: translateY(var(--surface-y));
   }
 
-  .breathing-halo-trigger {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    touch-action: manipulation;
+  /* The dot knocks the track out under itself with a ring of the page's
+     own ground, so it reads as on the track rather than over it. */
+  .breathing-lap {
+    fill: var(--role-draw);
+    stroke: var(--bg);
+    stroke-width: 3;
+    transform: translate(var(--lap-x), var(--lap-y));
   }
 
-  /* No edge of its own (carpet 30). This was "the outermost fixed ambient
-     boundary", which is a container saying where the thing is - the card's
-     job, drawn a second time at 240px. Unboxed, five concentric circles
-     stood between the reading and the figure and only three of them had
-     one: the countdown, the aura and the core. What is left here is the
-     box the other two are centred in. */
-  .breathing-outer-ring {
-    position: relative;
-    width: 240px;
-    height: 240px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+  .breathing-word {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: var(--weight-display);
+    fill: var(--text);
+    text-anchor: middle;
+    dominant-baseline: central;
   }
 
-  /* Middle aura ring: flat theme color, no gradients. --role-draw is "the
-     stripe as it is... what every drawn shape in a chart uses" (kit.css) -
-     a ring's own outline is exactly that kind of drawn shape. */
-  .breathing-aura {
+  /* The heat ramp's deepest ink, proven against the stripe itself; the
+     role's own ink is not (text-on-a-flag-fill). */
+  .breathing-word.on-fill {
+    fill: var(--role-fill-ink);
+  }
+
+  /* Reduced motion: the water stands still at half and the breath is its
+     colour fading up and down on the same curve. The dot still steps once
+     a second - readBreath quantises the lap - because it carries the time. */
+  .breathing-figure.is-reduced .breathing-water {
+    fill-opacity: calc(0.3 + 0.7 * var(--breath));
+  }
+
+  .breathing-live {
     position: absolute;
-    width: 210px;
-    height: 210px;
-    border-radius: 50%;
-    border: 1px solid var(--role-draw);
-    transform-origin: center center;
-    will-change: transform, opacity;
-    transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
-  }
-
-  /* Inner core orb: solid theme tint and accent border, no gradients */
-  .breathing-core {
-    position: relative;
-    z-index: 2;
-    width: 170px;
-    height: 170px;
-    border-radius: 50%;
-    background: var(--role-tint);
-    border: 2px solid var(--role-draw);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform-origin: center center;
-    will-change: transform;
-    transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Phase scaling states */
-  .breathing-aura.is-idle,
-  .breathing-core.is-idle {
-    transform: scale(0.78);
-    transition: transform 0.4s ease;
-  }
-
-  .breathing-aura.is-inhale,
-  .breathing-core.is-inhale {
-    transform: scale(1);
-    transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .breathing-aura.is-hold-in,
-  .breathing-core.is-hold-in {
-    transform: scale(1);
-    transition: none;
-  }
-
-  .breathing-aura.is-exhale,
-  .breathing-core.is-exhale {
-    transform: scale(0.65);
-    transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .breathing-aura.is-hold-out,
-  .breathing-core.is-hold-out {
-    transform: scale(0.65);
-    transition: none;
-  }
-
-  .breathing-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    pointer-events: none;
-    user-select: none;
-  }
-
-  .breathing-phase-text {
-    font-family: var(--font-display);
-    font-size: var(--text-xl, 1.25rem);
-    font-weight: var(--weight-display);
-    color: var(--text);
-    letter-spacing: -0.01em;
-  }
-
-  .breathing-count {
-    font-size: var(--text-4xl, 2.25rem);
-    font-weight: var(--weight-display);
-    font-family: var(--font-display);
-    color: var(--role-ink, var(--text));
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* The phase word's own slot, in the display face at the same size, so the
-     core reads as one line changing rather than two layouts swapping. Letter-
-     spaced, because four numerals and three separators need the air a word
-     does not. */
-  .breathing-pattern {
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-display);
-    color: var(--text-2);
-    letter-spacing: 0.08em;
-  }
-
-  .breathing-dots {
-    display: flex;
-    gap: 6px;
-    margin-top: 6px;
-  }
-
-  .breathing-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--role-mark, var(--outline));
-    opacity: 0.4;
-    transition: background 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
-  }
-
-  .breathing-dot.is-active {
-    /* Same token the inactive dot's fallback already reaches for: a small
-       mark sitting on --role-tint (the core's own background) is exactly
-       the case --role-mark exists for (kit.css). */
-    background: var(--role-mark, var(--outline));
-    opacity: 1;
-    transform: scale(1.4);
-  }
-
-  .breathing-actions {
-    width: 100%;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .breathing-aura,
-    .breathing-core {
-      transform: none !important;
-      transition: opacity 0.3s ease !important;
-    }
-
-    /* Still steps once a second with the count - the ring keeps carrying
-       real information - just without the continuous 1s sweep between
-       steps. */
-    .breathing-ring-progress {
-      transition: none !important;
-    }
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 </style>
