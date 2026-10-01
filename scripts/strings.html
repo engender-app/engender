@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Message catalogues</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 1rem; }
+  input, textarea, button { font: inherit; }
+  input { width: min(100%, 40rem); box-sizing: border-box; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  th, td { border: 1px solid #aaa; padding: .5rem; text-align: left; vertical-align: top; }
+  th { background: #eee; }
+  td:first-child { overflow-wrap: anywhere; width: 20%; }
+  td:nth-child(2), td:nth-child(3) { width: 30%; }
+  textarea { width: 100%; min-height: 4rem; box-sizing: border-box; resize: vertical; }
+  label { display: block; }
+  a { display: block; overflow-wrap: anywhere; }
+  .finding { color: #a00000; }
+  .field { margin-bottom: .75rem; }
+  .scroll { overflow-x: auto; }
+  table { min-width: 800px; }
+</style>
+<h1>Message catalogues</h1>
+<p>Edit existing values. Save writes to <code>messages/en.json</code> or <code>messages/pl.json</code>.</p>
+<label for="search">Search keys, English and Polish</label>
+<input id="search" type="search" autocomplete="off">
+<button id="reload" type="button">Reload from disk</button>
+<p id="status" role="status">Loading…</p>
+<div class="scroll">
+  <table>
+    <thead><tr><th scope="col">Key / checks</th><th scope="col">EN</th><th scope="col">PL</th><th scope="col">Used in</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<script type="module">
+  const rows = document.querySelector('#rows');
+  const search = document.querySelector('#search');
+  const status = document.querySelector('#status');
+  let records = [];
+  let dirty = new Set();
+
+  function element(tag, text) {
+    const node = document.createElement(tag);
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function fields(value) {
+    if (typeof value === 'string') return [{ variant: null, form: null, text: value }];
+    if (Array.isArray(value)) return value.flatMap((entry, variant) =>
+      Object.entries(entry.match).map(([form, text]) => ({ variant, form, text })));
+    return [];
+  }
+
+  function localeCell(record, locale) {
+    const cell = element('td');
+    const values = fields(record[locale]);
+    if (!values.length) cell.append(element('p', 'Missing value'));
+    for (const field of values) {
+      const wrapper = element('div');
+      wrapper.className = 'field';
+      const label = element('label', field.form ?? 'Text');
+      const input = element('textarea');
+      input.setAttribute('aria-label', `${record.key} ${locale.toUpperCase()} ${field.form ?? 'text'}`);
+      input.value = field.text;
+      label.append(input);
+      const save = element('button', 'Save');
+      save.type = 'button';
+      save.disabled = true;
+      const message = element('span');
+      message.setAttribute('role', 'status');
+      input.addEventListener('input', () => {
+        save.disabled = input.value === field.text;
+        if (save.disabled) dirty.delete(input); else dirty.add(input);
+        message.textContent = '';
+      });
+      save.addEventListener('click', async () => {
+        const text = input.value;
+        save.disabled = true;
+        input.disabled = true;
+        message.textContent = ' Saving…';
+        try {
+          const response = await fetch('/api/strings', {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locale, key: record.key, variant: field.variant, form: field.form, previous: field.text, text })
+          });
+          if (!response.ok) throw new Error(await response.text());
+          field.text = text;
+          if (field.form === null) record[locale] = text;
+          else record[locale][field.variant].match[field.form] = text;
+          dirty.delete(input);
+          message.textContent = ' Saved.';
+          // Refresh findings without replacing other fields' unsaved text.
+          const refreshed = await fetch('/api/strings');
+          if (!refreshed.ok) throw new Error(await refreshed.text());
+          const latest = await refreshed.json();
+          for (const entry of records) {
+            entry.findings = latest.find((row) => row.key === entry.key)?.findings ?? [];
+            showFindings(entry);
+          }
+          filter();
+        } catch (error) {
+          message.textContent = ` ${error.message}`;
+        } finally {
+          input.disabled = false;
+          save.disabled = input.value === field.text;
+        }
+      });
+      wrapper.append(label, save, message);
+      cell.append(wrapper);
+    }
+    return cell;
+  }
+
+  function showFindings(record) {
+    record.checks.replaceChildren(...record.findings.map((finding) => {
+      const node = element('p', finding);
+      node.className = 'finding';
+      return node;
+    }));
+  }
+
+  function filter() {
+    const query = search.value.toLocaleLowerCase();
+    let visible = 0;
+    for (const record of records) {
+      const text = [record.key, ...fields(record.en).map((field) => field.text), ...fields(record.pl).map((field) => field.text)].join('\n');
+      record.row.hidden = !text.toLocaleLowerCase().includes(query);
+      if (!record.row.hidden) visible++;
+    }
+    status.textContent = `${visible} of ${records.length} keys`;
+  }
+
+  async function load() {
+    if (dirty.size && !confirm('Discard unsaved edits and reload from disk?')) return;
+    try {
+      const response = await fetch('/api/strings');
+      if (!response.ok) throw new Error(await response.text());
+      records = await response.json();
+      dirty.clear();
+      const fragment = document.createDocumentFragment();
+      for (const record of records) {
+        record.row = element('tr');
+        const key = element('td');
+        record.checks = element('div');
+        key.append(element('code', record.key), record.checks);
+        showFindings(record);
+        const used = element('td');
+        for (const site of record.sites) {
+          const link = element('a', `${site.file}:${site.line}`);
+          link.href = site.href;
+          used.append(link);
+        }
+        record.row.append(key, localeCell(record, 'en'), localeCell(record, 'pl'), used);
+        fragment.append(record.row);
+      }
+      rows.replaceChildren(fragment);
+      filter();
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  }
+
+  search.addEventListener('input', filter);
+  document.querySelector('#reload').addEventListener('click', load);
+  window.addEventListener('beforeunload', (event) => {
+    if (dirty.size) { event.preventDefault(); event.returnValue = ''; }
+  });
+  load();
+</script>
+</html>

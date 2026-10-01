@@ -54,6 +54,7 @@
    is out of serializer order (scripts/catalogue.mjs) in place. */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'svelte/compiler';
 import { isSerialized, serializeCatalogue } from './catalogue.mjs';
@@ -122,6 +123,11 @@ const UNSCANNED = new Map([
  * @returns {string[]}
  */
 export function catalogueProblems(en, pl) {
+  return missingKeyFindings(en, pl).map(({ message }) => message);
+}
+
+/** @param {Record<string, unknown>} en @param {Record<string, unknown>} pl */
+function missingKeyFindings(en, pl) {
   // The inlang schema pointer sits alongside the messages and is not one.
   /** @type {(catalogue: Record<string, unknown>) => string[]} */
   const keys = (catalogue) => Object.keys(catalogue).filter((key) => !key.startsWith('$'));
@@ -129,8 +135,8 @@ export function catalogueProblems(en, pl) {
   const plKeys = keys(pl);
 
   return [
-    ...enKeys.filter((key) => !plKeys.includes(key)).map((key) => `${key} is missing from messages/pl.json`),
-    ...plKeys.filter((key) => !enKeys.includes(key)).map((key) => `${key} is missing from messages/en.json`)
+    ...enKeys.filter((key) => !plKeys.includes(key)).map((key) => ({ key, message: `${key} is missing from messages/pl.json` })),
+    ...plKeys.filter((key) => !enKeys.includes(key)).map((key) => ({ key, message: `${key} is missing from messages/en.json` }))
   ];
 }
 
@@ -169,6 +175,11 @@ export function fixCatalogues(files) {
  * @returns {string[]}
  */
 export function genderedReaderProblems(pl) {
+  return genderedReaderFindings(pl).map(({ message }) => message);
+}
+
+/** @param {Record<string, unknown>} pl */
+function genderedReaderFindings(pl) {
   const problems = [];
   for (const [key, value] of Object.entries(pl)) {
     if (key.startsWith('$') || typeof value !== 'string') continue;
@@ -176,7 +187,7 @@ export function genderedReaderProblems(pl) {
     for (const word of words) {
       const lower = word.toLowerCase();
       if (lower.endsWith('łaś') || GENDERED_READER_ADJECTIVES.has(lower)) {
-        problems.push(`${key} genders the reader: "${word}" in messages/pl.json`);
+        problems.push({ key, message: `${key} genders the reader: "${word}" in messages/pl.json` });
       }
     }
   }
@@ -192,12 +203,30 @@ export function genderedReaderProblems(pl) {
  * @returns {Set<string>}
  */
 export function collectReferencedKeys(files) {
-  const referenced = new Set();
+  return new Set(collectReferenceSites(files).keys());
+}
+
+/** @param {string[]} files @returns {Map<string, { file: string, line: number }[]>} */
+export function collectReferenceSites(files) {
+  const sites = new Map();
   const pattern = /\b(?:m|messages)\.([A-Za-z_$][A-Za-z0-9_$]*)/g;
   for (const file of files) {
-    for (const match of readFileSync(file, 'utf8').matchAll(pattern)) referenced.add(match[1]);
+    const lines = readFileSync(file, 'utf8').split('\n');
+    for (const [index, line] of lines.entries()) {
+      for (const match of line.matchAll(pattern)) {
+        if (!sites.has(match[1])) sites.set(match[1], []);
+        sites.get(match[1]).push({ file, line: index + 1 });
+      }
+    }
   }
-  return referenced;
+  return sites;
+}
+
+/** The same shipped-source list for the CLI and the local strings page.
+ * @param {string} root @returns {string[]} */
+export function copySourceFiles(root = process.cwd()) {
+  return execFileSync('git', ['ls-files', '-z', 'src'], { cwd: root, encoding: 'utf8' })
+    .split('\0').filter((file) => /\.(svelte|ts|js)$/.test(file)).map((file) => resolve(root, file));
 }
 
 /**
@@ -209,9 +238,26 @@ export function collectReferencedKeys(files) {
  * @returns {string[]}
  */
 export function deadKeyProblems(catalogue, referenced, allowList) {
+  return deadKeyFindings(catalogue, referenced, allowList).map(({ message }) => message);
+}
+
+/** @param {Record<string, unknown>} catalogue @param {Set<string>} referenced
+ * @param {Map<string, string>} allowList */
+function deadKeyFindings(catalogue, referenced, allowList) {
   return Object.keys(catalogue)
     .filter((key) => !key.startsWith('$') && !referenced.has(key) && !allowList.has(key))
-    .map((key) => `${key} is in the catalogues but nothing calls m.${key} or messages.${key}`);
+    .map((key) => ({ key, message: `${key} is in the catalogues but nothing calls m.${key} or messages.${key}` }));
+}
+
+/** Row findings shared by check:copy and the strings page.
+ * @param {Record<string, unknown>} en @param {Record<string, unknown>} pl
+ * @param {Set<string>} referenced @returns {{ key: string, message: string }[]} */
+export function catalogueFindings(en, pl, referenced) {
+  return [
+    ...missingKeyFindings(en, pl),
+    ...genderedReaderFindings(pl),
+    ...deadKeyFindings({ ...en, ...pl }, referenced, DEAD_ALLOW)
+  ];
 }
 
 /**
@@ -323,15 +369,9 @@ function writeBaseline(counts) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const files = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
-    .trim()
-    .split('\n')
+  const refFiles = copySourceFiles();
+  const files = refFiles.map((file) => relative(process.cwd(), file))
     .filter((file) => file.endsWith('.svelte') && !UNSCANNED.has(file));
-
-  const refFiles = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
-    .trim()
-    .split('\n')
-    .filter((file) => /\.(svelte|ts|js)$/.test(file));
 
   /** @type {Record<string, number>} */
   const counts = {};
@@ -353,10 +393,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const referenced = collectReferencedKeys(refFiles);
   const problems = [
     ...catalogueOrderProblems(Object.fromEntries(CATALOGUES.map((file) => [file, readFileSync(file, 'utf8')]))),
-    ...catalogueProblems(enCatalogue, plCatalogue),
     ...ratchetProblems(counts, readBaseline()),
-    ...genderedReaderProblems(plCatalogue),
-    ...deadKeyProblems(enCatalogue, referenced, DEAD_ALLOW)
+    ...catalogueFindings(enCatalogue, plCatalogue, referenced).map(({ message }) => message)
   ];
 
   for (const problem of problems) console.log('FAIL', problem);
