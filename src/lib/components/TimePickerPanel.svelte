@@ -24,6 +24,7 @@
      drums do: a drum coming to rest writes its time there, and a time
      typed there turns the drums to it. Use time takes the entry, so a
      half-typed time is refused rather than half applied. */
+  import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, isReducedMotion } from '$lib/motion/tokens';
   import { drumIndex, drumStep, formatTime, parseTime } from './timePicker';
@@ -143,11 +144,13 @@
   }
 
   /** The drum opens on its row with nothing travelling: the scroll is set
-      before the first frame is painted. */
+      before the first frame is painted. Untracked, or every change of the
+      value would re-run the attachment and set the scroll again, cutting
+      straight to the row a travel or a finger was on its way to. */
   function holdDrum(drum: Drum) {
     return (node: HTMLElement) => {
       nodes[drum.key] = node;
-      node.scrollTop = read(drum.key) * rowHeight(node);
+      node.scrollTop = untrack(() => read(drum.key)) * rowHeight(node);
       const end = () => settle(drum);
       node.addEventListener('scrollend', end);
       return () => {
@@ -286,7 +289,7 @@
     scroll-snap-type: y mandatory;
     scrollbar-width: none;
     border-radius: var(--r-block);
-    mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+    mask-image: linear-gradient(transparent, #000 45%, #000 55%, transparent);
     outline: none;
     cursor: ns-resize;
   }
