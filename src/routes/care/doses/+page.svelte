@@ -29,6 +29,7 @@
   import { replaceState } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import TimePicker from '$lib/components/TimePicker.svelte';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { DOSE_LOG_WINDOW_DAYS, NO_DOSE_LOG, readDoseLog } from '$lib/data/doseLogReads';
   import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft, type DoseDraft } from '$lib/data/doseDraft';
@@ -889,7 +890,7 @@
               </Field>
               <Field label={m.dose_time_label()} id="dose-time">
                 {#snippet children(id)}
-                  <input class="input" type="time" {id} name="dose-time" bind:value={editor!.time} />
+                  <TimePicker {id} name="dose-time" required bind:value={editor!.time} />
                 {/snippet}
               </Field>
             </div>
@@ -947,13 +948,7 @@
                   </Field>
                   <Field label={m.dose_scheduled_time_label()} id="dose-scheduled-time">
                     {#snippet children(id)}
-                      <input
-                        class="input"
-                        type="time"
-                        {id}
-                        name="dose-scheduled-time"
-                        bind:value={editor!.scheduledTime}
-                      />
+                      <TimePicker {id} name="dose-scheduled-time" required bind:value={editor!.scheduledTime} />
                     {/snippet}
                   </Field>
                 </div>

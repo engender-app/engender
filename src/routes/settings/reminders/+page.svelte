@@ -8,6 +8,7 @@
   import { prefs, preferencesAttached } from '$lib/data/prefs/store.svelte';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import TimePicker from '$lib/components/TimePicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -187,14 +188,7 @@
                the 160px `/settings/reminders/[id]` gives the same field. -->
           <Field label={m.checkin_time()} id="checkin-time" spread>
             {#snippet children(id)}
-              <input
-                class="input"
-                style="max-width:160px"
-                type="time"
-                {id}
-                name="checkin-time"
-                bind:value={prefs.checkInTime}
-              />
+              <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
             {/snippet}
           </Field>
           <div class="spread" data-checkin-affirmations>

@@ -13,6 +13,7 @@
   import { resolveReminderOrigin } from '$lib/data/provenance';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import TimePicker from '$lib/components/TimePicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -111,7 +112,7 @@
   </Field>
   <Field label={m.rem_time_label()} id="r-time">
     {#snippet children(id)}
-      <input class="input" {id} name="r-time" type="time" style="max-width:160px" bind:value={draft.time} />
+      <TimePicker {id} name="r-time" style="max-width:160px" required bind:value={draft.time} />
     {/snippet}
   </Field>
   <Field label={m.rem_repeats_label()} legend>

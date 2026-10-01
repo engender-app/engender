@@ -2,22 +2,11 @@
   /* A date field: the day as `yyyy-mm-dd` in a readonly field, and the
      picker (DatePickerPanel.svelte) behind a tap, Enter or ArrowDown on it.
      The picker is the control, so the field takes no typing of its own;
-     typed entry lives in the picker's foot.
-
-     The picker is mounted outside the screen, into whatever holds the
-     field: the scrim of the sheet it sits in, or the app frame. A sheet
-     inside a sheet's scroll box would scroll with it and be clipped by it,
-     and a popover inside a screen is spent inside `.app-main`'s stacking
-     context under the floating bar (overlayLock.ts). Svelte's `mount` does
-     that rather than moving a node the screen's markup owns - a moved node
-     is not between the anchors its block removes by (carpet 26). It is
-     mounted on the first opening, not with the field: 39 screens carry a
-     date field, and a picker for each would be built for nothing on most
-     visits (ticket 165's reason). It is let go once it has closed and its
-     exit has played, which is when its host is empty again. */
-  import { flushSync, mount, unmount } from 'svelte';
+     typed entry lives in the picker's foot. pickerField.svelte.ts owns the
+     field's half: where the picker is mounted, and when. */
   import { m } from '$lib/paraglide/messages';
-  import DatePickerHost from './DatePickerHost.svelte';
+  import DatePickerPanel from './DatePickerPanel.svelte';
+  import { PickerField } from './pickerField.svelte';
 
   let {
     value = $bindable(''),
@@ -52,77 +41,18 @@
     [attribute: string]: unknown;
   } = $props();
 
-  /** app.css's `@container app (min-width: 1024px)`: the rail layout, where
-      a pointer is the likely hand and a popover beats a sheet. */
-  const DESKTOP_WIDTH = 1024;
-
-  let open = $state(false);
-  let desktop = $state(false);
-  let field: HTMLInputElement;
-  let host: { instance: ReturnType<typeof mount>; target: HTMLElement; observer: MutationObserver } | null = null;
+  const picker = new PickerField('date', () => ariaLabel, m.date_picker_title, panel);
 
   function commit(next: string) {
     value = next;
     onchange?.(next);
-    open = false;
-    if (desktop) field.focus({ preventScroll: true });
-  }
-
-  const hostProps = {
-    get open() { return open; },
-    get desktop() { return desktop; },
-    get anchor() { return field; },
-    get label() {
-      return ariaLabel || field.labels?.[0]?.textContent?.trim() || m.date_picker_title();
-    },
-    get value() { return value; },
-    get min() { return min; },
-    get max() { return max; },
-    onPick: commit,
-    onClear: () => commit(''),
-    onDismiss: () => (open = false)
-  };
-
-  function release() {
-    if (!host) return;
-    host.observer.disconnect();
-    unmount(host.instance);
-    host.target.remove();
-    host = null;
-  }
-
-  function show() {
-    if (open) return;
-    const frame = field.closest('[data-app-root]');
-    desktop = (frame?.clientWidth ?? window.innerWidth) >= DESKTOP_WIDTH;
-    if (!host) {
-      const target = document.createElement('div');
-      target.style.display = 'contents';
-      (field.closest('[data-sheet-scrim]') ?? frame ?? document.body).append(target);
-      const instance = mount(DatePickerHost, { target, props: hostProps });
-      const observer = new MutationObserver(() => {
-        if (!open && !target.firstElementChild) release();
-      });
-      observer.observe(target, { childList: true });
-      host = { instance, target, observer };
-      /* Mounted closed and opened a flush later, so the host's own
-         `{#if open}` is what creates the surface and its entrance plays. */
-      flushSync();
-    }
-    open = true;
-  }
-
-  function onKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Enter' && event.key !== 'ArrowDown') return;
-    event.preventDefault();
-    show();
-  }
-
-  function attach(node: HTMLInputElement) {
-    field = node;
-    return release;
+    picker.close();
   }
 </script>
+
+{#snippet panel()}
+  <DatePickerPanel {value} {min} {max} onPick={commit} onClear={() => commit('')} />
+{/snippet}
 
 <input
   class="input"
@@ -136,9 +66,9 @@
   aria-describedby={describedBy}
   aria-haspopup="dialog"
   placeholder={ariaLabel}
-  onclick={show}
-  onkeydown={onKeydown}
-  {@attach attach}
+  onclick={picker.show}
+  onkeydown={picker.onKeydown}
+  {@attach picker.attach}
   {...rest}
 />
 
