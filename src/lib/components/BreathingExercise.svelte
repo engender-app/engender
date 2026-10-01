@@ -71,21 +71,26 @@
     };
   });
 
-  /* The phase word fades in and out over this, under reduced motion too:
-     opacity moves nothing. Written as a JS tick rather than Svelte's `fade`,
-     whose CSS animation base.css clamps to 1ms under reduced motion - and a
-     crossfade with no duration is a cut. */
-  const WORD_FADE_MS = 420;
-  const tickFade = (duration: number) => (node: Element) => ({
+  /* The phase word fades through rather than crossfading: two different
+     words laid over each other at half opacity read as a misprint ("Begi
+     Pause thing" on the button, on the first flipbook). The old word goes
+     out over OUT_MS, the new one starts IN_DELAY_MS in and comes up over
+     IN_MS, so they share 60ms, both faint. Under reduced motion too:
+     opacity moves nothing. Written as a JS tick rather than Svelte's
+     `fade`, whose CSS animation base.css clamps to 1ms under reduced motion
+     - and a fade with no duration is a cut. */
+  const OUT_MS = 180;
+  const IN_DELAY_MS = 120;
+  const IN_MS = 240;
+  const tickFade = (duration: number, delay = 0) => (node: Element) => ({
     duration,
+    delay,
     tick: (t: number) => {
       (node as HTMLElement | SVGElement).style.opacity = String(t);
     }
   });
-  const wordFade = tickFade(WORD_FADE_MS);
-  /* The button's two faces trade the same way, quicker: it is the answer
-     to a press. */
-  const faceFade = tickFade(150);
+  const fadeOut = tickFade(OUT_MS);
+  const fadeIn = tickFade(IN_MS, IN_DELAY_MS);
 
   /* Unique per instance, since clipPath ids are document-global. */
   const uid = $props.id();
@@ -210,12 +215,12 @@
            sinking out of contrast. -->
       <g>
         {#key word}
-          <text class="breathing-word" x={C} y={C} in:wordFade out:wordFade>{word}</text>
+          <text class="breathing-word" x={C} y={C} in:fadeIn out:fadeOut>{word}</text>
         {/key}
       </g>
       <g clip-path="url(#{uid}-water)">
         {#key word}
-          <text class="breathing-word on-fill" x={C} y={C} in:wordFade out:wordFade>{word}</text>
+          <text class="breathing-word on-fill" x={C} y={C} in:fadeIn out:fadeOut>{word}</text>
         {/key}
       </g>
 
@@ -245,7 +250,7 @@
          one frame. -->
     <span class="breathing-toggle-faces">
       {#key running}
-        <span class="breathing-toggle-face" in:faceFade out:faceFade>
+        <span class="breathing-toggle-face" in:fadeIn out:fadeOut>
           <Icon name={running ? 'pause' : 'play'} size={18} />
           <span>{running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}</span>
         </span>
