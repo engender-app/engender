@@ -171,7 +171,20 @@ try {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
   assert.equal(await page.evaluate(() => visualViewport.scale), 2);
-  await enterDate(page, '2001-10-01');
+  /* Pinch-zoomed, the picker is a sheet on the layout viewport like every
+     other sheet; a person pans the zoomed view to its foot (scrollIntoView
+     pans the visual viewport too), types, and taps "Use date". */
+  const typed = page.locator(`${PICKER} [data-date-picker-entry]`);
+  const apply = page.locator(`${PICKER} [data-date-picker-apply]`);
+  await typed.fill('2001-10-01');
+  await apply.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'center' }));
+  const inView = await apply.evaluate(el => {
+    const r = el.getBoundingClientRect(), v = visualViewport;
+    return r.top >= v.offsetTop - 1 && r.bottom <= v.offsetTop + v.height + 1 && r.left >= v.offsetLeft - 1 && r.right <= v.offsetLeft + v.width + 1;
+  });
+  assert.ok(inView, '"Use date" can be brought inside the zoomed visual viewport');
+  const box = await apply.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await closed(page);
   assert.equal(await page.locator('#lab-date').inputValue(), '2001-10-01', 'date action reachable at real 200% page scale');
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
