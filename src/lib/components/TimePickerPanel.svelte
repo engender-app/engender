@@ -222,7 +222,7 @@
         bind:value={typed}
         class="input"
         type="text"
-        inputmode="numeric"
+        inputmode="decimal"
         autocomplete="off"
         data-time-picker-entry
         oninput={onTyped}

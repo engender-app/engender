@@ -13,8 +13,14 @@ describe('parseTime', () => {
     expect(parseTime('9.30')).toEqual({ hour: 9, minute: 30 });
   });
 
+  it('takes the digits alone, which is all a phone keypad may offer', () => {
+    expect(parseTime('0745')).toEqual({ hour: 7, minute: 45 });
+    expect(parseTime('745')).toEqual({ hour: 7, minute: 45 });
+    expect(parseTime('2359')).toEqual({ hour: 23, minute: 59 });
+  });
+
   it('refuses what is not a time of day', () => {
-    for (const text of ['', '24:00', '12:60', '12:5', '1230', 'noon', '12:30 pm', '-1:30']) {
+    for (const text of ['', '24:00', '12:60', '12:5', '12', '12345', '2460', 'noon', '12:30 pm', '-1:30']) {
       expect(parseTime(text), text).toBeNull();
     }
   });
