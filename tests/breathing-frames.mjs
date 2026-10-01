@@ -39,7 +39,7 @@ let server = null;
 let BASE = process.argv[2];
 if (!BASE) {
   process.env.VITE_DEMO = '1';
-  server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
+  server = await createServer({ cacheDir: '.svelte-kit/breathing-frames-vite', server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
   await server.listen();
   BASE = server.resolvedUrls.local[0].replace(/\/$/, '');
 }
@@ -173,6 +173,13 @@ try {
       }
     });
     await page.goto(BASE + PATH);
+    await page.waitForSelector(`${ROOT} svg`, { timeout: 60000 });
+    /* On a dev server with nothing optimised yet, Vite finds more
+       dependencies as the page loads and reloads it once they are bundled,
+       which lands in the middle of a recording and wipes the sampler. A
+       second load, after the network has gone quiet, is the stable one. */
+    await page.waitForLoadState('networkidle');
+    await page.reload();
     await page.waitForSelector(`${ROOT} svg`, { timeout: 60000 });
     await page.waitForTimeout(1000);
     /* Clicked from inside the page rather than through Playwright's input
