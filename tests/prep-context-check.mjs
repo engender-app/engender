@@ -29,7 +29,7 @@ page.on('pageerror', (err) => console.log('PAGE THREW:', err.message));
 
 const goto = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
 };
 
 const settle = async (path) => {

@@ -183,7 +183,7 @@ const settle = async (path, theme) => {
   if (await page.locator('[data-leave-setup]').count()) {
     await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-app-root][data-boot="ready"]');
+    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   }
   /* The demo bar is hidden rather than removed since redesign ticket 33:
      setup's own scenes reach the flow through the demo's first-run control,

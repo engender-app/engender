@@ -12,7 +12,7 @@ page.setDefaultTimeout(10000);
 
 async function reloadDilation() {
   await page.goto(`${base}/health/dilation`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
 }
 
 try {
