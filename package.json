@@ -6,6 +6,7 @@
   "scripts": {
     "postinstall": "node scripts/prepare-vendor-assets.mjs",
     "dev": "vite dev",
+    "strings": "node scripts/strings.mjs",
     "build": "node scripts/prepare-vendor-assets.mjs && vite build && node scripts/release-metadata.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
