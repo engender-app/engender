@@ -56,6 +56,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
 | `getting-started-cross-check` | Home's Getting started rows cross when done, frame by frame, and are static on a cold arrival |
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
+| `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
