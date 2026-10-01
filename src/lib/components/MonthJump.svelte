@@ -34,6 +34,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
   import Icon from './Icon.svelte';
+  import { monthKey } from './datePicker';
   import { entryMonths, monthStep, yearBounds } from './monthJump';
 
   let {
@@ -77,7 +78,7 @@
   // svelte-ignore state_referenced_locally
   const counts = journal ? liveList((j) => j.stats.entryCountsByDay(bounds.first, bounds.last)) : null;
   let withEntries = $derived(entryMonths(counts?.rows.map((r) => r.day) ?? []));
-  const shut = (i: number) => year * 12 + i < from || year * 12 + i > to;
+  const shut = (i: number) => monthKey(year, i) < from || monthKey(year, i) > to;
 
   /* The cursor. Opening on the month the grid shows is the promise the
      label makes (the sheet is mounted per opening, so this runs each
@@ -168,7 +169,7 @@
 
 <div class="month-jump">
   <div class="month-jump-year">
-    <button class="icon-btn press" aria-label={m.prev_year()} disabled={year * 12 - 1 < from} onclick={() => stepYear(-1)}>
+    <button class="icon-btn press" aria-label={m.prev_year()} disabled={monthKey(year, 0) - 1 < from} onclick={() => stepYear(-1)}>
       <Icon name="chevronLeft" size={22} />
     </button>
     <!-- The live region stands still and only the numeral inside it is
@@ -179,7 +180,7 @@
         <span in:drumIn={{ dir: turn }} out:drumOut={{ dir: turn }}>{year}</span>
       {/key}
     </strong>
-    <button class="icon-btn press" aria-label={m.next_year()} disabled={(year + 1) * 12 > to} onclick={() => stepYear(1)}>
+    <button class="icon-btn press" aria-label={m.next_year()} disabled={monthKey(year + 1, 0) > to} onclick={() => stepYear(1)}>
       <Icon name="chevronRight" size={22} />
     </button>
   </div>

@@ -312,6 +312,20 @@ try {
     }, { crop: deskCrop, note: 'desktop: a two-finger trackpad swipe' });
     await pickerAtRest(desk.page);
     await check(`${theme}: a trackpad swipe turns the month`, async () => assert.notEqual(await title(desk.page), before));
+    before = await title(desk.page);
+    await record(desk, `popover-drag-${theme}`, async () => {
+      const box = await desk.page.locator('[data-date-picker-viewport]').boundingBox();
+      const y = box.y + box.height / 2;
+      await desk.page.mouse.move(box.x + box.width * 0.8, y);
+      await desk.page.mouse.down();
+      for (let i = 1; i <= 12; i++) {
+        await desk.page.mouse.move(box.x + box.width * (0.8 - 0.04 * i), y);
+        await wait(16);
+      }
+      await desk.page.mouse.up();
+    }, { crop: deskCrop, note: 'desktop: a mouse drag, the same gesture as a finger' });
+    await pickerAtRest(desk.page);
+    await check(`${theme}: a mouse drag turns the month`, async () => assert.notEqual(await title(desk.page), before));
     await record(desk, `popover-close-${theme}`, () => desk.page.keyboard.press('Escape'), { crop: deskCrop, note: 'desktop: Escape rolls it back up' });
     await desk.context.close();
   }

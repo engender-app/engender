@@ -57,6 +57,9 @@
   }
 
   function unroll(node: Element, { closing = false }: { closing?: boolean } = {}): TransitionConfig {
+    /* Placed here as well as in `own`: which edge it unrolls from depends
+       on where it fits, and Svelte may build the intro before the
+       attachment has run. */
     if (!closing) place(node as HTMLElement);
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     const edge = above ? 'top' : 'bottom';
