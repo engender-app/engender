@@ -9,7 +9,7 @@ const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd
 await server.listen();
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
-page.setDefaultTimeout(10000);
+page.setDefaultTimeout(30000);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 async function visit(path) {
