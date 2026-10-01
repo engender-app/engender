@@ -12,7 +12,7 @@
    #demo-jump control), then serves that build. */
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate, fillTime } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 
@@ -6586,7 +6586,7 @@ try {
     throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
   }
   await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
-  await page.fill('#calendar-handoff-time', '09:15');
+  await fillTime(page, '#calendar-handoff-time', '09:15');
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),

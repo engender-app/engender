@@ -22,6 +22,7 @@
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { toast } from '$lib/stores/toasts.svelte';
   import Sheet from './Sheet.svelte';
+  import TimePicker from './TimePicker.svelte';
   import Field from './kit/Field.svelte';
 
   let {
@@ -91,7 +92,7 @@
   {#if kind === 'appointment'}
     <Field label={m.calendar_handoff_time_label()} id="calendar-handoff-time">
       {#snippet children(id)}
-        <input class="input" type="time" {id} name="calendar-handoff-time" bind:value={time} />
+        <TimePicker {id} name="calendar-handoff-time" bind:value={time} />
       {/snippet}
     </Field>
   {/if}

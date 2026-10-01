@@ -45,6 +45,7 @@
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import TimePicker from '$lib/components/TimePicker.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -246,12 +247,12 @@
           <div class="quiet-window">
             <Field label={m.notif_quiet_from()} id="quiet-start">
               {#snippet children(id)}
-                <input class="input" type="time" name="quiet-start" {id} bind:value={prefs.quietHoursStart} />
+                <TimePicker name="quiet-start" {id} required bind:value={prefs.quietHoursStart} />
               {/snippet}
             </Field>
             <Field label={m.notif_quiet_to()} id="quiet-end">
               {#snippet children(id)}
-                <input class="input" type="time" name="quiet-end" {id} bind:value={prefs.quietHoursEnd} />
+                <TimePicker name="quiet-end" {id} required bind:value={prefs.quietHoursEnd} />
               {/snippet}
             </Field>
           </div>
@@ -308,10 +309,10 @@
      unrelated settings. */
   .quiet-window {
     display: grid;
-    /* minmax(0, 1fr), not 1fr: a time input's min-content width is the
-       platform control's own, which is wider than half a 320px screen once
-       the card's padding comes off, and a plain 1fr would let it push the
-       row past the viewport. */
+    /* minmax(0, 1fr), not 1fr: a time field's min-content width is a text
+       input's default 20 characters, which is wider than half a 320px
+       screen once the card's padding comes off, and a plain 1fr would let
+       it push the row past the viewport. */
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-3);
   }
