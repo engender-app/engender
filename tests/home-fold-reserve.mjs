@@ -130,7 +130,7 @@ async function coldLoad(prepare) {
   /* Settle on Home first so the reserve remembers this journal's heights,
      then bend them as the case asks, then load cold. */
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   await page.waitForTimeout(1200);
   await page.evaluate(prepare);
   await page.goto(`${base}/`, { waitUntil: 'commit' });

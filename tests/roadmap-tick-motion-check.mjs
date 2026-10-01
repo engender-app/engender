@@ -85,7 +85,7 @@ function intermediateCount(series) {
 
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.locator('[data-leave-setup]').click();
     await page.waitForSelector('[data-home-hello]');

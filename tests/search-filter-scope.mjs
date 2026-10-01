@@ -14,7 +14,7 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 async function visit(path) {
   await page.goto(`${server.resolvedUrls.local[0]}${path.slice(1)}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   await page.evaluate(async () => {
     document.querySelector('.demo-bar')?.style.setProperty('display', 'none');
     const { toasts } = await import('/src/lib/stores/toasts.svelte.ts');

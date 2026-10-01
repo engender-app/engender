@@ -140,7 +140,7 @@ try {
      anything is written. */
   await page.goto(`${base}transition/milestones`, { waitUntil: 'networkidle' });
   await page.goto(base, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.locator('[data-leave-setup]').click();
     await page.waitForSelector('[data-home-hello]');

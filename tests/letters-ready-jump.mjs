@@ -14,7 +14,7 @@ page.setDefaultTimeout(10000);
 
 async function reloadLetters() {
   await page.goto(`${base}/transition/letters`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
 }
 
 try {

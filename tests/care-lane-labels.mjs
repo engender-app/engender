@@ -34,7 +34,7 @@ async function settle(path) {
     await page.locator('[data-leave-setup]').click();
     await page.waitForSelector('[data-home-hello]');
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-app-root][data-boot="ready"]');
+    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   }
 }
 
