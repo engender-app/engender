@@ -76,12 +76,16 @@
      whose CSS animation base.css clamps to 1ms under reduced motion - and a
      crossfade with no duration is a cut. */
   const WORD_FADE_MS = 420;
-  const wordFade = (node: Element) => ({
-    duration: WORD_FADE_MS,
+  const tickFade = (duration: number) => (node: Element) => ({
+    duration,
     tick: (t: number) => {
-      (node as SVGElement).style.opacity = String(t);
+      (node as HTMLElement | SVGElement).style.opacity = String(t);
     }
   });
+  const wordFade = tickFade(WORD_FADE_MS);
+  /* The button's two faces trade the same way, quicker: it is the answer
+     to a press. */
+  const faceFade = tickFade(150);
 
   /* Unique per instance, since clipPath ids are document-global. */
   const uid = $props.id();
@@ -89,7 +93,11 @@
   let clock = $state(restingClock());
   let started = $state(false);
   let phaseIndex = $state(0);
-  let reduced = $state(false);
+  /* Read once for the resting pose written into the markup, and never
+     again there: a reactive value in that style attribute would be
+     re-applied whenever it changed and wipe what paint() had written. */
+  const restReduced = isReducedMotion();
+  let reduced = $state(restReduced);
   let figure: SVGSVGElement | undefined = $state();
   let raf = 0;
 
@@ -174,7 +182,7 @@
       viewBox="0 0 {SIZE} {SIZE}"
       width={SIZE}
       height={SIZE}
-      style="--breath:0; --surface-y:{LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"
+      style="--breath:0; --surface-y:{restReduced ? STILL : LOW}px; --lap-x:{C}px; --lap-y:{C - TRACK}px"
       aria-hidden="true"
     >
       <defs>
@@ -231,9 +239,17 @@
     data-breathing-toggle
     onclick={toggle}
   >
-    <Icon name={running ? 'pause' : 'play'} size={18} />
-    <span>
-      {running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}
+    <!-- Glyph and label trade as one face, each centred in the same cell:
+         "Begin breathing" and "Pause" differ in width, so swapping them in
+         place re-centred the button's content and jumped the glyph 38px in
+         one frame. -->
+    <span class="breathing-toggle-faces">
+      {#key running}
+        <span class="breathing-toggle-face" in:faceFade out:faceFade>
+          <Icon name={running ? 'pause' : 'play'} size={18} />
+          <span>{running ? m.safe_space_breathing_pause() : m.safe_space_breathing_start()}</span>
+        </span>
+      {/key}
     </span>
   </button>
 </div>
@@ -329,6 +345,20 @@
      a second - readBreath quantises the lap - because it carries the time. */
   .breathing-figure.is-reduced .breathing-water {
     fill-opacity: calc(0.3 + 0.7 * var(--breath));
+  }
+
+  .breathing-toggle-faces {
+    display: grid;
+    justify-items: center;
+  }
+
+  /* The kit's .btn lays its icon and label out with a gap; the face takes
+     that job now that it stands between them. */
+  .breathing-toggle-face {
+    grid-area: 1 / 1;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .breathing-live {
