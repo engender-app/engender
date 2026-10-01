@@ -68,7 +68,8 @@
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import Segmented from '$lib/components/Segmented.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
@@ -177,7 +178,20 @@
     });
   }
 
-  let editor = $state<DoseDraft | null>(null);
+  const record = recordEditor<DoseEvent, DoseDraft>({
+    upsert: async (draft) => {
+      if (!editorCanSave) return false;
+      const input = doseInputOfDraft(draft);
+      if (!input) return false;
+      const stored = allDoses.find((dose) => dose.id === draft.id);
+      await journal.doses.upsertDose(stored?.source === 'schedule' ? { ...input, source: 'schedule' } : input);
+      windowDays = Math.max(windowDays, today - epochDayFromTimestamp(input.timestamp));
+      view = 'log';
+    },
+    remove: (id) => journal.doses.deleteDose(id),
+    findById: (id) => allDoses.find((dose) => dose.id === id)
+  });
+  let editor = $derived(record.editor);
   /** True only for a *new* dose, while it is genuinely ambiguous which of
       several active episodes it is for (ticket 40: two schedules tied for
       nearest, or neither has a schedule to break the tie with) - not for
@@ -246,7 +260,7 @@
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
     if (dose) {
       openGroup = null;
-      editor = draftOfDose(dose);
+      record.editor = draftOfDose(dose);
       return;
     }
     const draft = newDoseDraft({
@@ -272,13 +286,13 @@
        nothing seeded, and several active episodes tied with no drug named
        yet (ticket 40). Everything else opens stated and closed. */
     openGroup = seeded.dose === '' || (activeDrugChoices.length > 1 && !seeded.drug) ? 'what' : null;
-    editor = seeded;
+    record.editor = seeded;
   }
 
   /** Picking a drug in the disambiguation prompt. */
   function pickDrug(drug: string) {
     if (!editor) return;
-    editor = draftWithDrug(editor, activeEpisodes, drug, ROUTE_OPTIONS);
+    Object.assign(editor, draftWithDrug(editor, activeEpisodes, drug, ROUTE_OPTIONS));
   }
 
   /* What the record's three lines state, and the one rule they share: a
@@ -298,7 +312,7 @@
     return at.length === 1 ? at[0] : null;
   });
 
-  let editorHasAmount = $derived(editor !== null && !isNaN(parseFloat(editor.dose)));
+  let editorHasAmount = $derived(editor !== null && Number.isFinite(parseFloat(editor.dose)));
   let editorAmountText = $derived(
     editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_amount_label()
   );
@@ -363,19 +377,6 @@
       (!editorNeedsDrugPick || editor.drug !== '')
   );
 
-  async function saveDose() {
-    if (!editor || !editorCanSave) return;
-    const input = doseInputOfDraft(editor);
-    if (!input) return;
-    await journal.doses.upsertDose(input);
-    editor = null;
-  }
-
-  async function deleteDose() {
-    if (!editor?.id) return;
-    await journal.doses.deleteDose(editor.id);
-    editor = null;
-  }
   /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
   let returnHref = $derived(careLaneReturnHref(page.url));
 
@@ -700,12 +701,30 @@
     {/if}
   </ReadReserve>
 
-  <Sheet
-    open={editor !== null}
-    title={editor?.id ? m.dose_edit_sheet() : m.dose_new_sheet()}
-    onClose={() => (editor = null)}
-  >
-    {#if editor}
+  <RecordSheet
+    {record}
+    handle="dose"
+    newTitle={m.dose_new_sheet()}
+    editTitle={m.dose_edit_sheet()}
+    saveLabel={m.dose_save()}
+    deleteLabel={m.dose_delete()}
+    canSave={() => editorCanSave}
+    showHeading={false}
+    fields={doseFields}
+    confirm={{
+      title: m.dose_delete_sheet(),
+      question: (dose) => m.dose_delete_question({
+        dose: doseRowTitle(logRows.find((row) => row.dose.id === dose.id)?.drug ?? dose.drug ?? null, dose),
+        when: whenOf(dose)
+      }),
+      hint: (dose) => logRows.find((row) => row.dose.id === dose.id)?.mayAutoLogAgain
+        ? m.dose_delete_automatic_hint()
+        : m.dose_delete_hint(),
+      confirmLabel: m.dose_delete(),
+      cancelLabel: m.cancel()
+    }}
+  />
+  {#snippet doseFields(editor: DoseDraft)}
       <!-- The record, and the whole of this redesign (phase 5 UX ticket 37).
 
            Alicja, 2026-08-26: "current setting in the popup are too many
@@ -810,7 +829,10 @@
                   inputmode="decimal"
                   aria-label={m.dose_amount_label()}
                   placeholder={m.dose_amount_placeholder()}
-                  bind:value={editor.dose}
+                  aria-invalid={!editorHasAmount}
+                  aria-describedby={!editorCanSave ? 'dose-requirements' : undefined}
+                  value={editor.dose}
+                  oninput={(event) => { editor.dose = event.currentTarget.value; }}
                 />
                 <input
                   class="dose-amount-unit"
@@ -942,7 +964,8 @@
                         {id}
                         name="dose-scheduled-amount"
                         inputmode="decimal"
-                        bind:value={editor!.scheduledDose}
+                        value={editor.scheduledDose}
+                        oninput={(event) => { editor.scheduledDose = event.currentTarget.value; }}
                       />
                     {/snippet}
                   </Field>
@@ -1021,16 +1044,15 @@
         </Field>
       {/if}
 
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-dose disabled={!editorCanSave} onclick={saveDose}>
-          <span>{m.dose_save()}</span>
-        </button>
-        {#if editor.id}
-          <button class="btn btn-ghost" data-delete-dose onclick={deleteDose}><span>{m.dose_delete()}</span></button>
-        {/if}
-      </div>
-    {/if}
-  </Sheet>
+      {#if !editorCanSave}
+        <div id="dose-requirements" class="muted small" aria-live="polite">
+          {#if !editorHasAmount}<p>{m.dose_amount_required()}</p>{/if}
+          {#if editorNeedsDrugPick}<p>{m.dose_drug_required()}</p>{/if}
+          {#if editorIsInjection && !editor.injectionSite}<p>{m.dose_injection_site_required()}</p>{/if}
+          {#if editorIsTopical && !editor.applicationSite}<p>{m.dose_app_site_required()}</p>{/if}
+        </div>
+      {/if}
+  {/snippet}
 </div>
 
 <style>
