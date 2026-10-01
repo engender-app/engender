@@ -44,7 +44,11 @@ function imeOpen() {
 async function openSheet() {
   await page.locator('[data-add]').click();
   await page.waitForFunction(() => document.activeElement?.closest('[data-sheet]'));
-  await page.locator('.flatpickr-calendar.open').waitFor();
+  await page.locator('#appointment-date').click();
+  await page.locator('[data-date-picker]').waitFor();
+}
+async function pickerGone() {
+  await page.locator('[data-date-picker]').waitFor({ state: 'detached' });
 }
 async function sameRoute() {
   assert.equal(new URL(page.url()).pathname, route);
@@ -56,7 +60,7 @@ try {
   await openSheet();
   assert.equal(imeOpen(), false);
   await back();
-  assert.equal(await page.locator('.flatpickr-calendar.open').count(), 0);
+  await pickerGone();
   assert.equal(await page.locator('[data-sheet]').count(), 1);
   await sameRoute();
   await back();
@@ -65,8 +69,8 @@ try {
   console.log('PASS native Back closes calendar then clean sheet without navigation');
 
   await openSheet();
-  await page.locator('[data-sheet] h3').click();
-  assert.equal(await page.locator('.flatpickr-calendar.open').count(), 0);
+  await page.mouse.click(8, 8);
+  await pickerGone();
   assert.equal(await page.locator('[data-sheet]').count(), 1);
   console.log('PASS completed outside click closes calendar without closing sheet');
   const notes = page.locator('#appointment-note');
@@ -104,7 +108,7 @@ try {
   adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   await sameRoute();
-  assert.equal(await page.locator('.flatpickr-calendar.open').count(), 0);
+  assert.equal(await page.locator('[data-date-picker]').count(), 0);
   console.log('PASS native Back during opening leaves no stale calendar or sheet');
 
   await openSheet();

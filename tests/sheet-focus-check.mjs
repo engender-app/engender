@@ -1,13 +1,14 @@
 /* Real-browser proof for ticket 04's sheet focus contract. Drives actual
    appointment, lab and dose screens because a component fixture cannot prove
-   flatpickr's portalled popup cooperates with the app shell and live routes.
+   the date picker, mounted outside the screen, cooperates with the app shell
+   and live routes.
 
    Pass an output directory to keep sign-off screenshots:
      node tests/sheet-focus-check.mjs .claude/ticket-04-shots */
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createReporter, launchChromium, waitForFlatpickr } from './browser-harness.mjs';
+import { createReporter, launchChromium } from './browser-harness.mjs';
 
 const outDir = process.argv[2] ? resolve(process.argv[2]) : null;
 if (outDir) await mkdir(outDir, { recursive: true });
@@ -45,7 +46,7 @@ const activeState = (page) => page.evaluate(() => {
     id: active?.id ?? '',
     type: active instanceof HTMLInputElement ? active.type : '',
     inSheet: !!active?.closest?.('[data-sheet]'),
-    inCalendar: !!active?.closest?.('.flatpickr-calendar.open'),
+    inCalendar: !!active?.closest?.('[data-date-picker]'),
     visible: !!rect && rect.width > 0 && rect.height > 0
   };
 });
@@ -70,15 +71,12 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   await openSheet(page, '/health/appointments');
   let active = await activeState(page);
-  /* Not the date field: it's a real, typeable `type="text"` input (flatpickr's
-     altInput, opened by a click/keydown handler rather than made readonly),
-     so focusing it the instant the sheet appears would raise the on-screen
-     keyboard before anyone asked to type anything. The sheet itself takes
-     focus instead (Sheet.svelte's `opensKeyboard` gate); Tab still reaches
-     the date field first, below. */
-  if (active.id === '' && active.inSheet && active.visible)
-    ok('appointment sheet announces itself without opening the keyboard on its date field');
-  else fail('appointment sheet announces itself without opening the keyboard on its date field', JSON.stringify(active));
+  /* The date field is readonly (its picker is the control), so it raises no
+     on-screen keyboard and the sheet focuses it as the field the sheet
+     exists to fill (Sheet.svelte's `opensKeyboard` gate). */
+  if (active.id === 'appointment-date' && active.inSheet && active.visible)
+    ok('appointment sheet focuses its readonly date field without opening a keyboard');
+  else fail('appointment sheet focuses its readonly date field without opening a keyboard', JSON.stringify(active));
 
   const dialogName = await page.locator('[data-sheet]').getAttribute('aria-label');
   if (dialogName?.trim()) ok('appointment sheet has a non-empty accessible dialog name');
@@ -86,21 +84,13 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   await shot(page, '01-appointment-sheet-focus');
 
-  /* Traverse the sheet with its nested date popup closed. */
-  if (await page.locator('.flatpickr-calendar.open').count()) {
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.flatpickr-calendar.open', { state: 'detached' });
-  }
-
   const sheetTargets = await page.locator('[data-sheet]').evaluate((sheet) =>
     [...sheet.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
       .filter((node) => node.getClientRects().length > 0).length
   );
   let stayedInSheet = true;
-  /* Empty rather than pre-seeded with the date field: initial focus sits on
-     the sheet itself now (above), a position outside every descendant
-     target, so all `sheetTargets` of them are still unvisited and it takes
-     that many Tabs - not `sheetTargets - 1` - to reach them all once. */
+  /* Focus starts on the date field, so `sheetTargets` Tabs visit every
+     other target and wrap back round to it. */
   const visited = new Set();
   for (let i = 0; i < sheetTargets; i++) {
     await page.keyboard.press('Tab');
@@ -117,7 +107,6 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   stayedInSheet = true;
   await page.locator('#appointment-date').focus();
-  if (await page.locator('.flatpickr-calendar.open').count()) await page.keyboard.press('Escape');
   for (let i = 0; i < sheetTargets - 1; i++) {
     await page.keyboard.press('Shift+Tab');
     const state = await activeState(page);
@@ -126,33 +115,32 @@ await block('ticket 04 sheet focus', 13, async () => {
   if (stayedInSheet) ok('reverse Tab stays inside appointment sheet and skips hidden date input');
   else fail('reverse Tab stays inside appointment sheet and skips hidden date input', JSON.stringify(await activeState(page)));
 
+  /* The picker is a sheet of its own over the appointment sheet: focus
+     lands on its chosen day once it has risen, and Tab stays inside it. */
   await page.locator('#appointment-date').focus();
   await page.keyboard.press('Enter');
-  await page.waitForSelector('.flatpickr-calendar.open');
+  await page.waitForFunction(() => document.activeElement?.closest('[data-date-picker]'));
   await shot(page, '02-appointment-calendar-focus');
-  await page.keyboard.press('ArrowDown');
   const gridFocus = await activeState(page);
   await page.keyboard.press('Tab');
   active = await activeState(page);
-  if (gridFocus.inCalendar && active.inSheet && active.visible && active.type !== 'hidden')
-    ok('calendar portal shares sheet Tab boundary without returning focus behind it');
-  else fail('calendar portal shares sheet Tab boundary without returning focus behind it', JSON.stringify({ gridFocus, active }));
+  if (gridFocus.inCalendar && active.inCalendar && active.visible)
+    ok('picker takes focus on its day and keeps Tab inside itself');
+  else fail('picker takes focus on its day and keeps Tab inside itself', JSON.stringify({ gridFocus, active }));
 
-  await page.locator('#appointment-date').focus();
-  await page.keyboard.press('ArrowDown');
+  await page.locator('[data-date-picker] [data-sheet-focus]').focus();
   await page.keyboard.press('Shift+Tab');
   active = await activeState(page);
-  if ((active.inSheet || active.inCalendar) && active.visible && active.type !== 'hidden')
-    ok('reverse Tab from calendar grid stays within sheet owner');
-  else fail('reverse Tab from calendar grid stays within sheet owner', JSON.stringify(active));
+  if (active.inCalendar && active.visible)
+    ok('reverse Tab from the picker grid stays within the picker');
+  else fail('reverse Tab from the picker grid stays within the picker', JSON.stringify(active));
 
-  await waitForFlatpickr(page, '#appointment-date');
-  await page.evaluate(() => document.querySelector('#appointment-date')._flatpickr.open());
-  await page.waitForSelector('.flatpickr-calendar.open');
-  await page.locator('.flatpickr-day:not(.flatpickr-disabled):not(.prevMonthDay):not(.nextMonthDay)').first().focus();
+  await page.locator('[data-date-picker] [data-sheet-focus]').focus();
   await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-date-picker]', { state: 'detached' });
+  await page.waitForFunction(() => document.activeElement?.id === 'appointment-date');
   const afterFirstEscape = {
-    calendars: await page.locator('.flatpickr-calendar.open').count(),
+    calendars: await page.locator('[data-date-picker]').count(),
     sheets: await page.locator('[data-sheet]').count(),
     active: await activeState(page)
   };
@@ -168,7 +156,6 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   await openSheet(page, '/health/appointments');
   await page.evaluate(() => document.querySelector('[data-add]')?.remove());
-  if (await page.locator('.flatpickr-calendar.open').count()) await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   active = await activeState(page);

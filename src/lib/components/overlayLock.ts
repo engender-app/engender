@@ -112,8 +112,8 @@ export function registerOverlayRegion(
 ): () => void {
   const owner = [...overlayOwners].reverse().find((candidate) => candidate.container.contains(launcher));
   const dismiss = () => {
-    /* Focus before dismissal: focusing a flatpickr launcher after close
-       would immediately reopen its calendar. */
+    /* Focus before dismissal, so the launcher has it back before the
+       popup's own teardown runs. */
     if (options.restoreFocus?.isConnected && isFocusable(options.restoreFocus)) {
       options.restoreFocus.focus({ preventScroll: true });
     }
@@ -231,8 +231,8 @@ export function trapFocus(containers: HTMLElement | HTMLElement[] | null, e: Key
   if (owningRegion === -1) {
     target = e.shiftKey ? last : first;
   } else if (!focusables.includes(active as HTMLElement)) {
-    /* Composite widgets such as flatpickr move focus into grid cells with
-       tabindex=-1. A browser has no next Tab stop from a portalled cell, so
+    /* Composite widgets such as the date picker move focus into grid cells
+       with tabindex=-1. A browser has no next Tab stop from a portalled cell, so
        treat that registered region as the end of the owner's Tab order. */
     target = e.shiftKey ? last : first;
   } else if (e.shiftKey && active === first) {

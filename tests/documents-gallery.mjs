@@ -143,9 +143,6 @@ for (const theme of ['light', 'dark']) {
     await page.locator('[data-add]').click();
     await page.waitForSelector('#document-title');
     await page.locator('#document-title').fill(paper.title);
-    /* The visible field is flatpickr's altInput and the ISO value lives on
-       the hidden original, so a date is set through the picker instance the
-       way walkthrough.test.mjs sets one. */
     await fillDate(page, '#document-day', paper.day);
     return bytes;
   };
