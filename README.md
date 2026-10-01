@@ -48,6 +48,13 @@ npm ci
 npm run dev
 ```
 
+Once per clone, tell git to merge the message catalogues by key, so two
+branches adding neighbouring keys no longer conflict (worktrees share it):
+
+```sh
+git config merge.catalogue.driver "node scripts/merge-catalogue.mjs %O %A %B %P"
+```
+
 The development server includes a demo control bar with sample data. A normal
 production build leaves the demo controls out.
 
