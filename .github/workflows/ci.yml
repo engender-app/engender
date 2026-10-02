@@ -212,13 +212,15 @@ jobs:
           retention-days: 7
 
   guards:
-    name: Regression guards, the real-browser checks tests/PROBES.md lists
+    name: Regression guards (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    # Its own job rather than more steps in the browser one, which already
-    # spends most of its 30 minutes on the walkthrough. About twelve minutes
-    # here: twenty checks against the dev server, then eleven against a demo
-    # build and one against a production build.
+    # The dev and built suites run independently so each keeps its full
+    # 30-minute budget as new regression guards are added.
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [dev, built]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -248,17 +250,21 @@ jobs:
       # Synthetic fixtures and the demo persona only, like the browser job,
       # so the logs are safe to keep.
       - name: Against the dev server
+        if: matrix.suite == 'dev'
         run: |
           mkdir -p ci-logs
           npm run test:guards 2>&1 | tee ci-logs/guards.log
       - name: Against the built app
-        run: npm run test:guards:built 2>&1 | tee ci-logs/guards-built.log
+        if: matrix.suite == 'built'
+        run: |
+          mkdir -p ci-logs
+          npm run test:guards:built 2>&1 | tee ci-logs/guards-built.log
 
       - name: Keep the output of a failed run
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: guards-logs-${{ github.run_id }}
+          name: guards-${{ matrix.suite }}-logs-${{ github.run_id }}
           path: ci-logs/
           retention-days: 7
 
