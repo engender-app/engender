@@ -113,6 +113,16 @@ test('a deep-linked dose is resolved by id whatever the window, and a missing on
   assert.equal(missing.deepLinkedDose, null);
 });
 
+test('the log can expose a saved future dose while schedule comparison still ends today', async () => {
+  const journal = await twoRegimens();
+  const future = await journal.doses.upsertDose(oral('estradiol', TODAY + 3));
+  const log = await readDoseLog(journal, question({ toEpochDay: TODAY + 3 }));
+  assert.deepEqual(log.logRows.map((row) => row.dose.id), [future]);
+  assert.deepEqual(log.scheduleView, await journal.doses.getComparison({
+    fromEpochDay: TODAY - DOSE_LOG_WINDOW_DAYS, toEpochDay: TODAY, drug: 'estradiol'
+  }));
+});
+
 test('only a recent auto-logged dose that was not already skipped offers the one-tap skip', async () => {
   const journal = await twoRegimens();
   const scheduled = (epochDay: number, status: 'taken' | 'skipped') =>
