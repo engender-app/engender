@@ -165,7 +165,8 @@ async function capture(name, zoom) {
   }
   for (const control of await sheet.locator('input, select, button[role="radio"], button[data-close-record], button[data-save-measurement], button[data-save-size-record]').all()) {
     const box = await control.boundingBox();
-    assert.ok(box.width / zoom >= 48 && box.height / zoom >= 48, `${name}: 48px touch target`);
+    const label = await control.evaluate((el) => el.id || el.textContent?.trim() || el.tagName);
+    assert.ok(box.width / zoom >= 48 && box.height / zoom >= 48, `${name}: ${label} touch target is ${box.width / zoom}x${box.height / zoom}px, requires 48px`);
   }
   assert.equal(await sheet.locator('input[readonly]').evaluateAll((inputs) => inputs.every((input) => {
     const style = getComputedStyle(input);
@@ -304,6 +305,7 @@ try {
           const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
           prefs.disguise = zoom === 2;
         }, zoom);
+        await page.waitForFunction((zoom) => Number(getComputedStyle(document.documentElement).zoom) === zoom, zoom);
         await fieldOrder(kind === 'measurement' ? measurementControls() : sizeControls());
         if (kind === 'measurement') {
           assert.equal(await page.locator('[data-sheet]').getByRole('radiogroup', { name: copy.measurement_type_label, exact: true }).count(), 1);
