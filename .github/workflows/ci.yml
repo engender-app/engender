@@ -151,7 +151,8 @@ jobs:
   browser:
     name: Browser tier, walkthroughs and the built app
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Cold Chromium setup can take seven minutes before the four suites start.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
