@@ -1135,7 +1135,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 
 /* ---------- mood picker ---------- */
 .mood-picker { position: relative; }
-.mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
+.mood-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
   /* --space-4, not --space-2, and the extra 8px is all ring (ticket 99 item
      15, "mood icon text too close to the icon"). The face wears a 2px
@@ -1145,7 +1145,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      edge another ~4px and takes the scaled ring down with it - the label
      ended up all but touching the ring it belongs to. 16px clears both and
      leaves the row looking like a row again. */
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
+  flex: 1 0 48px; min-width: 48px; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--r-block);
   transition: transform var(--dur-med) var(--ease-out);

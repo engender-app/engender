@@ -370,7 +370,20 @@ try {
         const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
         prefs.disguise = true;
       }, zoom);
-      assert.equal(await page.locator('.screen').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
+      const moods = page.locator('.mood-picker');
+      await moods.scrollIntoViewIfNeeded();
+      assert.equal(await moods.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true,
+        `${locale} ${zoom}x mood choices fit`);
+      assert.equal(await moods.locator('[data-mood]').evaluateAll((buttons, zoom) => buttons.every((button) => {
+        const box = button.getBoundingClientRect();
+        return box.width / zoom >= 48 && box.height / zoom >= 48;
+      }), zoom), true, `${locale} ${zoom}x mood targets stay 48px`);
+      assert.equal(await page.locator('.screen').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true,
+        JSON.stringify(await page.locator('.screen').evaluate((el) => ({
+          width: el.clientWidth, scrollWidth: el.scrollWidth,
+          overflowing: [...el.querySelectorAll('*')].filter((child) => child.scrollWidth > child.clientWidth + 1)
+            .map((child) => ({ tag: child.tagName, id: child.id, class: child.className, width: child.clientWidth, scrollWidth: child.scrollWidth }))
+        }))));
       await page.locator('[data-save-tryout]').click();
       await page.locator('[data-tryout-saved]').waitFor();
       const visible = await page.locator('[data-tryout-saved]').evaluate((el) => {
