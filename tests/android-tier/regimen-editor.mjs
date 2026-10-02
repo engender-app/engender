@@ -19,6 +19,7 @@ const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { noDe
 const page = browser.contexts()[0].pages()[0];
 page.setDefaultTimeout(30000);
 const errors = [];
+const drug = `Android regimen proof ${Date.now()}`;
 page.on('pageerror', (error) => errors.push(error.message));
 const imeOpen = () => /mInputShown=true|isInputViewShown=true/.test(adb('shell', 'dumpsys', 'input_method'));
 async function navigate(path) {
@@ -50,13 +51,13 @@ try {
   await navigate('/care/regimen');
   await page.locator('[data-add]').click();
   await page.locator('[data-own]').click();
-  await page.locator('#regimen-drug').fill('Android regimen proof');
+  await page.locator('#regimen-drug').fill(drug);
   await page.locator('#regimen-dose').fill('2');
   await page.locator('#regimen-dose-unit').fill('mg');
   await page.locator('#regimen-route').fill('oral');
   await page.locator('[data-save-regimen]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
-  await page.locator('[data-episode]', { hasText: 'Android regimen proof' }).last().click();
+  await page.locator('[data-episode]', { hasText: drug }).last().click();
   await page.locator('#regimen-every').fill('5');
   await page.locator('#regimen-dose').fill('3');
   await page.locator('[data-save-regimen]').click();
@@ -80,7 +81,7 @@ try {
   adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
   await page.locator('[data-discard-record]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
-  await page.locator('[data-episode]', { hasText: 'Android regimen proof' }).last().click();
+  await page.locator('[data-episode]', { hasText: drug }).last().click();
   assert.equal(await page.locator('#regimen-every').inputValue(), '5');
   assert.equal(await page.locator('#regimen-dose').inputValue(), '3');
   await page.locator('.sheet-handle').click();

@@ -12,18 +12,23 @@ const errors = [];
 let shots = 0;
 async function capture(page, name) {
   const sheet = page.locator('[data-sheet]').last();
-  assert.equal(await sheet.evaluate((el) => el.scrollWidth <= el.clientWidth), true, name);
   await sheet.screenshot({ path: `${out}/${name}.png` });
+  const fits = await sheet.evaluate((el) => el.scrollWidth <= el.clientWidth);
+  if (!fits) console.error(name, await sheet.evaluate((el) => [...el.querySelectorAll('*')].filter((child) => child.getBoundingClientRect().right > el.getBoundingClientRect().right + 1).map((child) => ({ tag: child.tagName, class: child.className, text: child.textContent?.slice(0, 65), width: child.getBoundingClientRect().width })).slice(0, 15)));
+  assert.equal(fits, true, name);
   shots++;
 }
 async function groups(page, name) {
   for (const [group, selector] of [['episode', '#regimen-drug'], ['schedule', '#regimen-every'], ['actions', '[data-new-pause]']]) {
-    await page.locator(selector).evaluate((el) => el.closest('section').scrollIntoView({ block: 'start' }));
+    await page.locator(selector).evaluate((el) => {
+      const sheet = el.closest('[data-sheet]');
+      sheet.scrollTop += el.closest('section').getBoundingClientRect().top - sheet.getBoundingClientRect().top - 20;
+    });
     await capture(page, `${name}-${group}`);
   }
 }
 try {
-  for (const locale of ['en', 'pl']) {
+  for (const locale of (process.argv.includes('--pl-only') ? ['pl'] : ['en', 'pl'])) {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     page.on('pageerror', (error) => errors.push(error.message));
     await settlePage(page, base, '/settings', 'light');
