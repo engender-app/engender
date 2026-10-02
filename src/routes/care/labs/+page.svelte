@@ -213,6 +213,8 @@
     timing: LabResult['timing'];
   };
 
+  const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
+
   const record = recordEditor<LabResult, LabDraft>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
@@ -243,9 +245,9 @@
       timing: result.timing
     }),
     async upsert(draft) {
-      const value = parseFloat(draft.value);
+      const value = Number(draft.value);
       const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-      if (isNaN(value) || !resultAnalyte) return false;
+      if (!validValue(draft.value) || !resultAnalyte) return false;
 
       /* Which units this analyte already has, ignoring the result being edited,
          so that changing the unit on an analyte's only result does not announce
@@ -607,6 +609,7 @@
     editTitle={m.labs_edit_sheet()}
     saveLabel={m.labs_save()}
     deleteLabel={m.labs_delete()}
+    canSave={(draft) => !!analyteOf(draft).trim() && validValue(draft.value)}
     confirm={{
       title: m.labs_delete_sheet(),
       question: (result) => m.labs_delete_q({ analyte: result.analyte }),
@@ -616,23 +619,9 @@
     }}
   >
     {#snippet fields(editor)}
-      <div class="cd-endpoints">
-        <Field label={m.labs_date_label()} id="lab-date">
-          {#snippet children(id)}
-            <DatePicker name="lab-date" bind:value={editor.date} {id} />
-          {/snippet}
-        </Field>
-        <!-- Optional, and the hours figure depends on it: a lab slip often
-             carries no time, and day-of-interval does not need one. -->
-        <Field label={m.labs_time_label()} id="lab-time">
-          {#snippet children(id)}
-            <TimePicker {id} name="lab-time" bind:value={editor.time} />
-          {/snippet}
-        </Field>
-      </div>
-      <Field label={m.labs_analyte_label()} id="lab-analyte">
-        {#snippet children(id)}
-          <select class="input" {id} value={editor.analyte} onchange={(e) => changeEditorAnalyte(editor, (e.target as HTMLSelectElement).value)}>
+      <Field label={m.labs_analyte_label()} id="lab-analyte" hint={!editor.analyte ? m.labs_missing_analyte() : undefined}>
+        {#snippet children(id, hintId)}
+          <select class="input" {id} required aria-invalid={!editor.analyte} aria-describedby={hintId} value={editor.analyte} onchange={(e) => changeEditorAnalyte(editor, (e.target as HTMLSelectElement).value)}>
             {#if !editor.analyte}
               <option value="">{m.labs_analyte_choose()}</option>
             {/if}
@@ -645,17 +634,17 @@
       </Field>
       {#if editor.analyte === 'custom'}
         <div class="disclosed" transition:disclose>
-          <Field label={m.labs_custom_label()} id="lab-custom-analyte">
-            {#snippet children(id)}
-              <input class="input" {id} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+          <Field label={m.labs_custom_label()} id="lab-custom-analyte" hint={!editor.customAnalyte.trim() ? m.labs_missing_analyte() : undefined}>
+            {#snippet children(id, hintId)}
+              <input class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
             {/snippet}
           </Field>
         </div>
       {/if}
-      <div class="cd-endpoints">
-        <Field label={m.labs_value_label()} id="lab-value">
-          {#snippet children(id)}
-            <input class="input" type="number" {id} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+      <div class="cd-endpoints lab-pair">
+        <Field label={m.labs_value_label()} id="lab-value" hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
+          {#snippet children(id, hintId)}
+            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
           {/snippet}
         </Field>
         <Field label={m.labs_unit_label()} id="lab-unit">
@@ -669,6 +658,20 @@
           <input class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
         {/snippet}
       </Field>
+      <div class="cd-endpoints lab-pair">
+        <Field label={m.labs_date_label()} id="lab-date">
+          {#snippet children(id)}
+            <DatePicker name="lab-date" bind:value={editor.date} {id} />
+          {/snippet}
+        </Field>
+        <!-- Optional, and the hours figure depends on it: a lab slip often
+             carries no time, and day-of-interval does not need one. -->
+        <Field label={m.labs_time_label()} id="lab-time">
+          {#snippet children(id)}
+            <TimePicker {id} name="lab-time" bind:value={editor.time} />
+          {/snippet}
+        </Field>
+      </div>
       <Field label={m.labs_note_label()} id="lab-note">
         {#snippet children(id)}
           <input class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
@@ -783,7 +786,7 @@
                 <input class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
-            <div class="cd-endpoints">
+            <div class="cd-endpoints lab-pair">
               <Field label={m.labs_value_label()} id={`ocr-value-${i}`}>
                 {#snippet children(id)}
                   <input class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
@@ -815,6 +818,12 @@
 </div>
 
 <style>
+  @container app (max-width: 359px) {
+    .lab-pair {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .kit-row.is-target-lab {
     background: var(--surface-2);
     border-radius: var(--r-block);
