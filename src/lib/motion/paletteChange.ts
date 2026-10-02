@@ -37,6 +37,9 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
     applyPending();
     await tick();
   });
+  /* A skipped transition - a second choice, a viewport resize - rejects
+     `ready` as well, and nothing else reads it. */
+  void transition.ready.catch(() => {});
   void transition.finished.catch(() => {}).finally(() => {
     if (change === latestChange) {
       applyPending();

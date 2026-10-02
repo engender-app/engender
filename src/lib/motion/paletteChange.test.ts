@@ -31,7 +31,7 @@ describe('palette change', () => {
     const finished = new Promise<void>((resolve) => { finish = resolve; });
     const doc = {
       documentElement: root,
-      startViewTransition() { return { finished }; }
+      startViewTransition() { return { ready: Promise.resolve(), finished }; }
     } as unknown as Document;
     let theme = 'system';
 
@@ -54,7 +54,7 @@ describe('palette change', () => {
       documentElement: root,
       startViewTransition(callback: () => Promise<void>) {
         update = callback;
-        return { finished };
+        return { ready: Promise.resolve(), finished };
       }
     } as unknown as Document;
     let palette = 'trans';
@@ -82,7 +82,7 @@ describe('palette change', () => {
       startViewTransition(callback: () => Promise<void>) {
         updates.push(callback);
         const finished = new Promise<void>((resolve) => { finishes.push(resolve); });
-        return { finished };
+        return { ready: Promise.resolve(), finished };
       }
     } as unknown as Document;
     let theme = 'system';
@@ -112,7 +112,7 @@ describe('palette change', () => {
       documentElement: { dataset: {} as DOMStringMap },
       startViewTransition(callback: () => Promise<void>) {
         updates.push(callback);
-        return { finished: Promise.resolve() };
+        return { ready: Promise.resolve(), finished: Promise.resolve() };
       }
     } as unknown as Document;
     let palette = 'trans';
@@ -128,13 +128,34 @@ describe('palette change', () => {
     expect(theme).toBe('dark');
   });
 
+  it('swallows ready rejecting when the browser skips the transition', async () => {
+    /* A viewport resize or a second transition skips this one, and `ready`
+       rejects with nothing reading it; the window got the rejection. */
+    const unhandled: unknown[] = [];
+    const record = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', record);
+    try {
+      const doc = {
+        documentElement: { dataset: {} as DOMStringMap },
+        startViewTransition() {
+          return { ready: Promise.reject(new Error('Viewport size changed')), finished: Promise.resolve() };
+        }
+      } as unknown as Document;
+      changePalette(() => {}, doc);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      process.off('unhandledRejection', record);
+    }
+    expect(unhandled).toEqual([]);
+  });
+
   it('lets a rapid choice return to the saved palette before capture', async () => {
     const updates: (() => Promise<void>)[] = [];
     const doc = {
       documentElement: { dataset: {} as DOMStringMap },
       startViewTransition(callback: () => Promise<void>) {
         updates.push(callback);
-        return { finished: Promise.resolve() };
+        return { ready: Promise.resolve(), finished: Promise.resolve() };
       }
     } as unknown as Document;
     let palette = 'trans';
