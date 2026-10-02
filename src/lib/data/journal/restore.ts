@@ -10,9 +10,9 @@
 
    The order of operations is the whole ticket:
 
-     1. Write every photo file the archive carries. Names are uuid-based
-        (ADR-0008), so a file being written cannot collide with one already
-        there, which is what makes writing before deciding anything safe.
+     1. Write every file the archive carries. Existing names get fresh
+        replacements, including their derived thumbnails, so re-importing
+        an archive cannot overwrite bytes the current journal still owns.
      2. In one transaction: reconcile the built-in vocabulary,
         unconditionally and first, then swap the journal. Key identity makes
         the reconcile idempotent, and it runs before either mode applies
@@ -33,10 +33,10 @@
    resolved promise, because that promise is what the write registry treats
    as permission to announce the tables (live/writes.ts).
 
-   Nothing here deletes a file, ever (ADR-0011). Every failure before the
-   commit is therefore a no-op: the old journal is completely intact and the
-   only cost is dead files until the next boot's orphan sweep reclaims them
-   (photos.ts). Deleting up front would mean a failure part way leaves the
+   Nothing here deletes an existing file (ADR-0011). Unpublished replacements
+   are removed after failure or commit; interrupted cleanup leaves them for
+   the boot sweep. Other new files also wait for that sweep. Deleting existing
+   files up front would mean a failure part way leaves the
    user with neither their old photos nor the new ones, on a device that by
    design has no other copy.
 
@@ -70,6 +70,10 @@ import { openArchive } from '../archive/pack';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
+import { filesOf } from '../photos/names';
+import { documentFilesOf } from './documents';
+import { readFileOwnership } from './fileOwnership';
+import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
@@ -121,6 +125,45 @@ export type OnRestoreProgress = (progress: RestoreProgress) => void;
     and moving it would need a baseline of its own. */
 const FILE_WRITE_CONCURRENCY = 8;
 
+function replacementFileName(name: string): string {
+  const extension = name.lastIndexOf('.');
+  return mintUuid() + (extension < 0 ? '' : name.slice(extension));
+}
+
+function replacementNames(journal: ArchiveJournal, existing: Set<string>, names: Map<string, string>): ArchiveJournal {
+  const rename = (name: string, ownedNames: (name: string) => string[]) => {
+    if (names.has(name)) return names.get(name)!;
+    const owned = ownedNames(name);
+    if (!owned.some((file) => existing.has(file))) return name;
+    const replacement = replacementFileName(name);
+    const replaced = ownedNames(replacement);
+    owned.forEach((file, i) => names.set(file, replaced[i]));
+    return replacement;
+  };
+  const photos = <T extends { fileName: string }>(rows: T[]) =>
+    rows.map((row) => ({ ...row, fileName: rename(row.fileName, filesOf) }));
+  const single = (name: string) => rename(name, (file) => [file]);
+  return {
+    ...journal,
+    entries: journal.entries.map((entry) => ({
+      ...entry,
+      photos: photos(entry.photos),
+      recordings: (entry.recordings ?? []).map((row) => ({ ...row, fileName: single(row.fileName) })),
+      videos: (entry.videos ?? []).map((row) => ({ ...row, fileName: single(row.fileName) }))
+    })),
+    milestones: journal.milestones.map((row) => ({ ...row, photo: row.photo ? photos([row.photo])[0] : null })),
+    hairPhotos: photos(journal.hairPhotos),
+    hairRemovalSessions: journal.hairRemovalSessions.map((row) => ({ ...row, photos: photos(row.photos) })),
+    procedures: journal.procedures.map((row) => ({ ...row, photos: photos(row.photos) })),
+    tryouts: journal.tryouts.map((row) => ({ ...row, photos: photos(row.photos) })),
+    documents: journal.documents.map((row) => ({ ...row, fileName: rename(row.fileName, documentFilesOf) })),
+    voiceBenchmarks: journal.voiceBenchmarks.map((row) => ({
+      ...row, passageFileName: single(row.passageFileName),
+      vowelFileName: row.vowelFileName === null ? null : single(row.vowelFileName)
+    }))
+  };
+}
+
 async function writeArchiveFiles(
   files: PhotoFileStore,
   source: RestoreContents['files'],
@@ -128,27 +171,41 @@ async function writeArchiveFiles(
   onProgress?: OnRestoreProgress
 ): Promise<void> {
   const inFlight = new Set<Promise<void>>();
+  // Settled writes leave inFlight, but their first failure must survive the stream's pauses.
+  let failure: { error: unknown } | undefined;
   /* Counted as each write lands rather than as it is scheduled: up to
      FILE_WRITE_CONCURRENCY are in the air at once, and a count of what has
      been handed to the disk is not a count of what is on it. */
   let written = 0;
+  const throwIfFailed = () => {
+    if (failure) throw failure.error;
+  };
 
   const schedule = (name: string, bytes: Uint8Array) => {
-    const op = files.write(name, bytes).finally(() => {
-      inFlight.delete(op);
-      written += 1;
-      onProgress?.({ stage: 'files', done: written, total: fileCount });
-    });
+    const op = files
+      .write(name, bytes)
+      .then(() => {
+        written += 1;
+        onProgress?.({ stage: 'files', done: written, total: fileCount });
+      })
+      .catch((error: unknown) => {
+        failure ??= { error };
+      })
+      .finally(() => {
+        inFlight.delete(op);
+      });
     inFlight.add(op);
-    return op;
   };
 
   try {
     for await (const file of source) {
+      throwIfFailed();
       schedule(file.name, file.bytes);
       if (inFlight.size >= FILE_WRITE_CONCURRENCY) await Promise.race(inFlight);
+      throwIfFailed();
     }
     await Promise.all(inFlight);
+    throwIfFailed();
   } catch (error) {
     await Promise.allSettled(inFlight);
     throw error;
@@ -210,33 +267,59 @@ async function restoreWithin(
   onProgress?: OnRestoreProgress,
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
-  const journal = aliasLegacyConsults(contents.journal);
-  assertRestorable(journal);
-
-  await writeArchiveFiles(files, contents.files, contents.fileCount ?? 0, onProgress);
-
-  let added: Record<string, number> = {};
-  await driver.transaction(async () => {
-    // Seeding first, unconditionally, and inside this transaction with
-    // everything else (reconcile.ts explains the second entry point).
-    await reconcileBuiltInsWithin(driver);
-    if (mode === 'replace') await discardJournalRows(driver);
-    /* Counted after the reconcile and the discard rather than at the top of
-       the transaction: a built-in this boot seeded, and a Replace's own
-       emptying, are not rows the archive added. */
-    const before = commit ? await countRows(driver, commit.counting) : null;
-    // Which sections there are and what has to be inserted before what are
-    // the registry's (archiveSections.ts), not this function's - and so is
-    // how many there are to count against.
-    await applyArchiveJournal({ driver, mode, journal, ts: Date.now() }, undefined, (done, total) =>
-      onProgress?.({ stage: 'rows', done, total })
-    );
-    if (commit && before) {
-      const after = await countRows(driver, commit.counting);
-      added = Object.fromEntries(Object.keys(before).map((name) => [name, after[name] - before[name]]));
-      await recordImport(driver, commit.source, added);
+  const original = aliasLegacyConsults(contents.journal);
+  assertRestorable(original);
+  const existing = new Set(await files.list());
+  const replacements = new Map<string, string>();
+  const journal = replacementNames(original, existing, replacements);
+  const staged = new Set<string>();
+  const stagedFiles = async function* () {
+    for await (const file of contents.files) {
+      // Even an unreferenced archive file must never overwrite an existing file.
+      if (!replacements.has(file.name) && existing.has(file.name)) {
+        replacements.set(file.name, replacementFileName(file.name));
+      }
+      const name = replacements.get(file.name) ?? file.name;
+      if (name !== file.name) staged.add(name);
+      yield { name, bytes: file.bytes };
     }
-  });
+  };
+  let unpublished = staged;
+  let added: Record<string, number> = {};
+  try {
+    await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
+    await driver.transaction(async () => {
+      // Seeding first, unconditionally, and inside this transaction with
+      // everything else (reconcile.ts explains the second entry point).
+      await reconcileBuiltInsWithin(driver);
+      if (mode === 'replace') await discardJournalRows(driver);
+      /* Counted after the reconcile and the discard rather than at the top of
+         the transaction: a built-in this boot seeded, and a Replace's own
+         emptying, are not rows the archive added. */
+      const before = commit ? await countRows(driver, commit.counting) : null;
+      // Which sections there are and what has to be inserted before what are
+      // the registry's (archiveSections.ts), not this function's - and so is
+      // how many there are to count against.
+      await applyArchiveJournal({ driver, mode, journal, ts: Date.now() }, undefined, (done, total) =>
+        onProgress?.({ stage: 'rows', done, total })
+      );
+      if (commit && before) {
+        const after = await countRows(driver, commit.counting);
+        added = Object.fromEntries(Object.keys(before).map((name) => [name, after[name] - before[name]]));
+        await recordImport(driver, commit.source, added);
+      }
+      if (staged.size > 0) {
+        const owned = new Set((await readFileOwnership(driver, 'cleanup')).names);
+        unpublished = new Set([...staged].filter((name) => !owned.has(name)));
+      }
+    });
+  } catch (error) {
+    unpublished = staged;
+    throw error;
+  } finally {
+    // Cleanup cannot turn a committed restore into a reported failure.
+    await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));
+  }
   return added;
 }
 

@@ -48,7 +48,8 @@
   import DocumentThumb from '$lib/components/DocumentThumb.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -67,49 +68,39 @@
   import { documentsSummaryText } from '$lib/data/vocabulary/documentsSummary';
   import { totalSize } from '$lib/stores/photoFiles';
   import { pickDocument } from '$lib/stores/documentPicking';
-  import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
   let documentsQuery = liveList((j) => j.documents.getDocuments());
 
-  /* The bytes waiting for a title. Held here rather than in the draft
-     because they are not a field somebody edits, and because a sheet closed
-     without them saved would otherwise look like a document with no file. */
-  let picked = $state<DocumentFile | null>(null);
-  let title = $state('');
-  let day = $state(dateInputValueFromEpochDay(todayEpochDay()));
-  let saving = $state(false);
+  type ImportDraft = { id?: string; title: string; day: string; content: DocumentFile | null };
+  let picking = $state(false);
+
+  const record = recordEditor<JournalDocument, ImportDraft>({
+    blank: () => ({ title: '', day: dateInputValueFromEpochDay(todayEpochDay()), content: null }),
+    upsert: async (draft) => {
+      if (!draft.content || !draft.title.trim()) return false;
+      await journal.documents.addDocument(
+        { epochDay: epochDayFromDateInputValueOrToday(draft.day), title: draft.title },
+        draft.content
+      );
+    },
+    remove: (id) => journal.documents.deleteDocument(id),
+    findById: (id) => documentsQuery.rows.find((document) => document.id === id)
+  });
 
   async function startImport() {
-    const content = await pickDocument();
-    // Backing out of the picker, and a refused file, both leave nothing
-    // open (picker.ts's own "backing out is an ordinary outcome"; a
-    // refusal already raised its own toast in documentPicking.ts).
-    if (!content) return;
-    title = '';
-    day = dateInputValueFromEpochDay(todayEpochDay());
-    picked = content;
-  }
-
-  async function saveImport() {
-    if (!picked || title.trim() === '' || saving) return;
-    saving = true;
+    if (picking || record.editor || record.saving) return;
+    picking = true;
     try {
-      await journal.documents.addDocument(
-        { epochDay: epochDayFromDateInputValueOrToday(day), title },
-        picked
-      );
-      picked = null;
-    } catch (error) {
-      /* A full disk or an unwritable store. The sheet stays open with the
-         bytes and the typed title still in it, so the person can try again
-         without picking the file a second time - and the toast says what
-         happened rather than leaving a button that did nothing. */
-      console.error('a document could not be filed', error);
-      toast(m.document_save_failed());
+      const content = await pickDocument();
+      if (!content) return;
+      // Acquire before metadata, but compare against a draft without a file:
+      // selected bytes are pending work even when every field is unchanged.
+      record.openEditor(null);
+      record.editor!.content = content;
     } finally {
-      saving = false;
+      picking = false;
     }
   }
 
@@ -215,6 +206,7 @@
         class="icon-btn press"
         data-add
         aria-label={m.document_add_aria()}
+        disabled={picking}
         onclick={startImport}
       >
         <Icon name="plus" size={22} />
@@ -274,26 +266,43 @@
     {/snippet}
   </ReadGate>
 
-  <Sheet open={picked !== null} title={m.document_new_sheet()} onClose={() => (picked = null)}>
-    <h3>{m.document_new_sheet()}</h3>
-    <!-- No `hint` on either field: Field.svelte concatenates label and
-         hint with no space between them, so both labels carry their own
-         meaning instead. The date's says which day it means, which is the
-         whole reason it is editable. -->
+  <RecordSheet
+    {record}
+    handle="document"
+    newTitle={m.document_new_sheet()}
+    saveLabel={m.document_save()}
+    canSave={(draft) => !!draft.content && !!draft.title.trim()}
+    {fields}
+    confirm={{
+      title: m.document_delete_sheet(),
+      question: (document) => m.document_delete_q({ title: document.title }),
+      hint: () => m.document_delete_hint(),
+      confirmLabel: m.document_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  />
+  {#snippet fields(draft: ImportDraft)}
     <Field label={m.document_title_label()} id="document-title">
       {#snippet children(id)}
-        <input class="input" {id} name="document-title" placeholder={m.document_title_placeholder()} bind:value={title} />
+        <input
+          class="input"
+          {id}
+          name="document-title"
+          placeholder={m.document_title_placeholder()}
+          bind:value={draft.title}
+          required
+          aria-invalid={!draft.title.trim()}
+          aria-describedby={!draft.title.trim() ? 'document-requirements' : undefined}
+        />
       {/snippet}
     </Field>
     <Field label={m.document_day_label()} id="document-day">
       {#snippet children(id)}
-        <DatePicker name="document-day" bind:value={day} {id} />
+        <DatePicker name="document-day" bind:value={draft.day} {id} />
       {/snippet}
     </Field>
-    <div class="stack-3">
-      <button class="btn btn-primary press" data-save-document disabled={title.trim() === ''} onclick={saveImport}>
-        <span>{m.document_save()}</span>
-      </button>
-    </div>
-  </Sheet>
+    <p class="muted small" id="document-requirements" aria-live="polite">
+      {draft.title.trim() ? '' : m.document_title_required()}
+    </p>
+  {/snippet}
 </div>
