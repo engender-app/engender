@@ -151,7 +151,8 @@ jobs:
   browser:
     name: Browser tier, walkthroughs and the built app
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Cold Chromium setup can take seven minutes before the four suites start.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -249,6 +250,12 @@ jobs:
 
       # Synthetic fixtures and the demo persona only, like the browser job,
       # so the logs are safe to keep.
+      - name: Media fixture tools
+        if: matrix.suite == 'built'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg
+
       - name: Against the dev server
         if: matrix.suite == 'dev'
         run: |
