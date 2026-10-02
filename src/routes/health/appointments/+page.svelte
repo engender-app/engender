@@ -602,11 +602,8 @@
 
              Pulled up under the field it belongs to rather than sitting at
              the sheet's own field rhythm, which read as a third control
-             between Kind and Place. The line under them says what they are;
-             it is here rather than in `Field`'s `hint`, which renders at
-             label weight and would put two bold lines above an empty
-             input. Neither exists on a journal that has never named a
-             kind, because there is nothing to explain and nothing ships. -->
+             between Kind and Place. Suggestions appear only after the
+             person has named a kind; nothing ships. -->
         <div class="ap-kinds">
           <div class="tag-row" role="group" aria-label={m.appointments_kind_label()}>
             {#each kindsQuery.rows as kind (kind)}
