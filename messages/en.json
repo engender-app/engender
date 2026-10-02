@@ -3552,6 +3552,7 @@
   "tryout_label_placeholder_presentation_step": "e.g. first time to the shops",
   "tryout_label_placeholder_pronouns": "e.g. she/her, they/them",
   "tryout_label_placeholder_style": "e.g. shorter hair",
+  "tryout_label_required": "Add a label to save this tryout.",
   "tryout_new_title": "New tryout",
   "tryout_none": "No tryouts yet.",
   "tryout_photo_delete": "Delete",
@@ -3560,6 +3561,7 @@
   "tryout_photo_delete_sheet": "Delete photo",
   "tryout_photo_empty_body": "Add a photo to keep it with this tryout.",
   "tryout_photo_empty_title": "No photos yet",
+  "tryout_photo_save_first": "Save this tryout first, then add photos on its detail screen.",
   "tryout_photo_section_title": "Photos",
   "tryout_ran_days": [
     {
@@ -3580,6 +3582,8 @@
   "tryout_running_heading": "Running now",
   "tryout_save": "Save",
   "tryout_save_changes": "Save changes",
+  "tryout_saved_continue": "Open saved tryout",
+  "tryout_saved_navigation_failed": "Your tryout is saved, but its detail screen could not open.",
   "tryout_start_label": "Started",
   "tryout_title": "Tryouts",
   "unit_days": [

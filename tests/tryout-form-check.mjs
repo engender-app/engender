@@ -235,6 +235,7 @@ try {
       await settlePage(page, base, '/transition/tryouts/new', 'light');
       await page.fill('#tr-label', 'Never saved');
       await page.locator('[data-screen-back]').click();
+      await page.locator('[data-discard-record]').click();
       await page.waitForSelector('[data-tryout]');
       const names = await page.locator('[data-tryout]').allTextContents();
       assert.ok(!names.some((n) => n.includes('Never saved')), 'leaving the form without saving writes nothing');
