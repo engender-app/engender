@@ -178,6 +178,8 @@
     return { start, current, change: current - start };
   });
 
+  const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
+
   const record = recordEditor<Measurement, { id?: string; date: string; type: string; value: string; unit: string }>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
@@ -193,8 +195,8 @@
       unit: measurement.unit
     }),
     async upsert(draft) {
-      const value = parseFloat(draft.value);
-      if (isNaN(value)) return false;
+      const value = Number(draft.value);
+      if (!validValue(draft.value)) return false;
 
       await journal.measurements.upsertMeasurement({
         id: draft.id,
@@ -621,6 +623,7 @@
     editTitle={m.measurement_edit_sheet()}
     saveLabel={m.measurement_save()}
     deleteLabel={m.measurement_delete()}
+    canSave={(draft) => validValue(draft.value)}
     confirm={{
       title: m.measurement_delete_sheet(),
       question: (mr) => m.measurement_delete_q({ type: vocabulary.measurementTypeName(mr.type) }),
@@ -635,15 +638,10 @@
           <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor.type = v)} />
         {/snippet}
       </Field>
-      <Field label={m.measurement_date_label()} id="measurement-date">
-        {#snippet children(id)}
-          <DatePicker name="measurement-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
-      <div class="cd-endpoints">
-        <Field label={m.measurement_value_label()} id="measurement-value">
-          {#snippet children(id)}
-            <input class="input" type="number" {id} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+      <div class="cd-endpoints measurement-pair">
+        <Field label={m.measurement_value_label()} id="measurement-value" hint={!validValue(editor.value) ? m.measurement_invalid_value() : undefined}>
+          {#snippet children(id, hintId)}
+            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
           {/snippet}
         </Field>
         <Field label={m.measurement_unit_label()} legend>
@@ -660,6 +658,11 @@
           {/snippet}
         </Field>
       </div>
+      <Field label={m.measurement_date_label()} id="measurement-date">
+        {#snippet children(id)}
+          <DatePicker name="measurement-date" bind:value={editor.date} {id} />
+        {/snippet}
+      </Field>
     {/snippet}
   </RecordSheet>
 
@@ -680,11 +683,6 @@
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.size_log_date_label()} id="size-log-date">
-        {#snippet children(id)}
-          <DatePicker name="size-log-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
       <Field label={m.size_log_category_label()} id="size-log-category">
         {#snippet children(id)}
           <select class="input" {id} bind:value={editor.category}>
@@ -694,9 +692,9 @@
           </select>
         {/snippet}
       </Field>
-      <Field label={m.size_log_size_label()} id="size-log-size">
-        {#snippet children(id)}
-          <input class="input" {id} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
+      <Field label={m.size_log_size_label()} id="size-log-size" hint={!editor.size.trim() ? m.size_log_required_size() : undefined}>
+        {#snippet children(id, hintId)}
+          <input class="input" {id} required aria-invalid={!editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
         {/snippet}
       </Field>
       <Field label={m.size_log_brand_label()} id="size-log-brand">
@@ -707,6 +705,11 @@
       <Field label={m.size_log_fit_note_label()} id="size-log-fit-note">
         {#snippet children(id)}
           <input class="input" {id} name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
+        {/snippet}
+      </Field>
+      <Field label={m.size_log_date_label()} id="size-log-date">
+        {#snippet children(id)}
+          <DatePicker name="size-log-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
     {/snippet}
@@ -751,6 +754,12 @@
 </div>
 
 <style>
+  @container app (max-width: 359px) {
+    .measurement-pair {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* The two change lines, drawn as one idea.
 
      Both are flush (rule 4): text on the page with a hairline under it and

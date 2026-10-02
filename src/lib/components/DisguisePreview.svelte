@@ -28,7 +28,7 @@
   <span>
     <!-- The disguise's own name, from the module every surface that names
          the app reads (disguise/identity.ts). An expression rather than a
-         text node for the reason DecoyNotes gives: check-copy counts bare
+         text node because check-copy counts bare
          text as untranslated, and this word is the same in every
          language. -->
     <strong data-disguise-name>{DECOY_NAME}</strong><br />
