@@ -809,7 +809,7 @@
         },
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 630
+          "line": 631
         }
       ],
       "changedFromAuthor": {
@@ -1566,7 +1566,7 @@
         },
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 621
+          "line": 622
         }
       ],
       "changedFromAuthor": {
@@ -2929,7 +2929,7 @@
       },
       "final": {
         "en": "Anything about today?",
-        "pl": "Coś o dzisiejszym dniu?"
+        "pl": "Coś o tym dniu?"
       },
       "callers": [
         {
@@ -4502,7 +4502,7 @@
       "callers": [
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 628
+          "line": 629
         }
       ],
       "changedFromAuthor": {
@@ -4525,7 +4525,7 @@
       "callers": [
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 627
+          "line": 628
         }
       ],
       "changedFromAuthor": {
@@ -4548,11 +4548,11 @@
       "callers": [
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 626
+          "line": 627
         },
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 629
+          "line": 630
         }
       ],
       "changedFromAuthor": {
@@ -5143,7 +5143,7 @@
       "callers": [
         {
           "file": "src/routes/voice/+page.svelte",
-          "line": 614
+          "line": 615
         }
       ],
       "changedFromAuthor": {
@@ -5730,7 +5730,7 @@
         "pl": "Porównuj z własnymi wcześniejszymi próbami z tym samym tekstem. Zmiana własnego tekstu zaczyna nową serię i najbardziej wpływa właśnie na tempo. Niektórych wczesnych wyników brak: przerwane nagrania zapisywały tempo zbyt szybkie, by było wiarygodne, więc aplikacja je pomija."
       },
       "final": {
-        "en": "Compare with your own earlier takes of the same passage. Editing your passage starts a new series. Some early rates are left out because recordings stopped part-way through gave unreliable results.",
+        "en": "Compare with your own earlier takes of the same passage. Editing your passage starts a new series. Some early rates are left out because recordings that stopped part-way through gave unreliable results.",
         "pl": "Porównuj z własnymi wcześniejszymi próbami z tym samym tekstem. Zmiana tekstu zaczyna nową serię. Niektórych wczesnych wyników brak, bo przerwane nagrania dawały niewiarygodne tempo."
       },
       "callers": [
@@ -5862,14 +5862,14 @@
     {
       "key": "vm_resonance_studied",
       "decision": "shorten",
-      "reason": "Keep measured first-two-formant limitation; remove named study details.",
+      "reason": "Keep measured first-two-formant limitation within available Polish data; remove named study details.",
       "authorBaseline": {
         "en": "Resonance is the strongest known cue, and these two are not the part of it carrying the difference. In the only Polish data split by sex, the first and second formants show no significant difference while the third, the fourth and the spacing between formants all do (Pawelec, Słowik and Lipowicz, Archives of Acoustics 51(1), 2026).",
         "pl": "Rezonans jest najsilniejszą znaną wskazówką genderową, ale te dwa formanty nie odpowiadają za zmierzoną różnicę. W jedynych polskich danych z podziałem na płcie pierwszy i drugi formant nie różniły się istotnie. Różniły się trzeci, czwarty i odstępy między formantami (Pawelec, Słowik i Lipowicz, Archives of Acoustics 51(1), 2026)."
       },
       "final": {
-        "en": "Resonance matters to how a voice is gendered, but the first two formants measured here have not shown a significant difference between sexes.",
-        "pl": "Rezonans ma znaczenie dla tego, jak głos jest genderowany, ale dla dwóch mierzonych tu formantów nie wykazano istotnej różnicy między płciami."
+        "en": "Resonance matters to how a voice is gendered, but the first two formants measured here have not shown a significant difference between sexes in available Polish data.",
+        "pl": "Rezonans ma znaczenie dla tego, jak głos jest genderowany, ale dla dwóch mierzonych tu formantów w dostępnych polskich danych nie wykazano istotnej różnicy między płciami."
       },
       "callers": [
         {
@@ -6184,14 +6184,14 @@
     {
       "key": "vm_scale_studied",
       "decision": "shorten",
-      "reason": "Keep no independent evidence and measured-two-resonance limit; remove named study details.",
+      "reason": "Keep no independent evidence and measured-two-resonance limit within available Polish data; remove named study details.",
       "authorBaseline": {
         "en": "Not studied on its own. It is built from the same two resonances that show no measured sex difference in the only Polish data split by sex (Pawelec, Słowik and Lipowicz, Archives of Acoustics 51(1), 2026), fit together rather than read apart.",
         "pl": "Tego współczynnika nie zbadano osobno jako wskazówki płci głosu. Korzysta z dwóch rezonansów, które w jedynych polskich danych z podziałem na płcie nie wykazały różnicy (Pawelec, Słowik i Lipowicz, Archives of Acoustics 51(1), 2026)."
       },
       "final": {
-        "en": "Not studied on its own as a cue to how a voice is gendered. It combines the same two resonances that have shown no measured difference between sexes.",
-        "pl": "Tego współczynnika nie zbadano osobno jako wskazówki płci głosu. Łączy dwa rezonanse, dla których nie wykazano różnicy między płciami."
+        "en": "Not studied on its own as a cue to how a voice is gendered. It combines two resonances that have shown no measured difference between sexes in available Polish data.",
+        "pl": "Tego współczynnika nie zbadano osobno jako wskazówki płci głosu. Łączy dwa rezonanse, dla których w dostępnych polskich danych nie wykazano różnicy między płciami."
       },
       "callers": [
         {
@@ -6559,7 +6559,7 @@
       },
       "final": {
         "en": "No dependable typical range exists. Pitch movement depends on the passage and language.",
-        "pl": "Brak wiarygodnego typowego zakresu. Ruch wysokości zależy od tekstu i języka."
+        "pl": "Brak wiarygodnego typowego zakresu. Wynik zależy od tekstu i języka."
       },
       "callers": [
         {
@@ -6679,6 +6679,10 @@
         {
           "file": "src/routes/voice/+page.svelte",
           "line": 611
+        },
+        {
+          "file": "src/routes/voice/+page.svelte",
+          "line": 614
         }
       ],
       "changedFromAuthor": {

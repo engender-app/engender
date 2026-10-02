@@ -3765,7 +3765,7 @@
   "vb_mic_unsupported_title": "Ta przeglądarka nie nagrywa dźwięku",
   "vb_not_measured": "Nie zmierzono",
   "vb_note_label": "Notatka",
-  "vb_note_placeholder": "Coś o dzisiejszym dniu?",
+  "vb_note_placeholder": "Coś o tym dniu?",
   "vb_passage": "Północny wiatr i słońce spierały się, które z nich jest silniejsze, kiedy drogą nadszedł podróżny otulony ciepłym płaszczem. Zgodziły się, że za silniejsze zostanie uznane to z nich, które pierwsze zmusi podróżnego do zdjęcia płaszcza. Wtedy północny wiatr zaczął dąć ze wszystkich sił, ale im mocniej dął, tym ciaśniej podróżny owijał się płaszczem. W końcu wiatr dał za wygraną. Potem słońce zaczęło grzać i podróżny od razu zdjął płaszcz. Tak północny wiatr musiał przyznać, że to słońce jest z nich dwojga silniejsze.",
   "vb_passage_ceiling_hint": "Nagrywanie kończy się automatycznie po dwóch minutach.",
   "vb_passage_own": "Przeczytaj własny tekst",
@@ -3905,7 +3905,7 @@
   "vm_resonance_changes": "Na rezonanse wpływają długość i kształt traktu głosowego. Hormony feminizujące nie zmieniają jego długości. Ułożenie języka i warg zmienia te dwa rezonanse, a podniesienie krtani nieco skraca trakt głosowy.",
   "vm_resonance_how": "Aplikacja analizuje równy środek przeciąganej samogłoski metodą interpolacji liniowej. Szacuje rezonanse na podstawie dźwięku, bez pomiaru samego traktu głosowego.",
   "vm_resonance_measures": "Dwa pierwsze rezonanse traktu głosowego podczas przeciąganej samogłoski. Wynikają z kształtu gardła, jamy ustnej i ułożenia języka. Dzięki nim różne samogłoski brzmią inaczej.",
-  "vm_resonance_studied": "Rezonans ma znaczenie dla tego, jak głos jest genderowany, ale dla dwóch mierzonych tu formantów nie wykazano istotnej różnicy między płciami.",
+  "vm_resonance_studied": "Rezonans ma znaczenie dla tego, jak głos jest genderowany, ale dla dwóch mierzonych tu formantów w dostępnych polskich danych nie wykazano istotnej różnicy między płciami.",
   "vm_resonance_tier": "Porównuj z własnymi wcześniejszymi próbami z tego samego telefonu. Po zmianie telefonu wyniki mogą się zmienić bez zmiany głosu.",
   "vm_resonance_typical": "Brak wiarygodnego typowego zakresu dla nagrania z telefonu.",
   "vm_room_cannot": "Ta liczba nie mówi, jak głośno mówisz. Pokazuje tylko różnicę między głosem a tłem. ",
@@ -3919,7 +3919,7 @@
   "vm_scale_changes": "Wpływają na to długość i kształt traktu głosowego oraz ułożenie języka i warg. Hormony feminizujące nie zmieniają długości traktu.",
   "vm_scale_how": "Aplikacja porównuje dwa pierwsze rezonanse każdej samogłoski ze stałym wzorcem, a potem dopasowuje jeden współczynnik do wszystkich trzech.",
   "vm_scale_measures": "Jeden współczynnik dopasowany do rezonansów trzech przeciąganych samogłosek: „a”, „i” i „u”. Wartość powyżej dotyczy jednej samogłoski.",
-  "vm_scale_studied": "Tego współczynnika nie zbadano osobno jako wskazówki płci głosu. Łączy dwa rezonanse, dla których nie wykazano różnicy między płciami.",
+  "vm_scale_studied": "Tego współczynnika nie zbadano osobno jako wskazówki płci głosu. Łączy dwa rezonanse, dla których w dostępnych polskich danych nie wykazano różnicy między płciami.",
   "vm_scale_tier": "Porównuj z własnymi wcześniejszymi próbami z tego samego telefonu. Połączenie wyników z trzech samogłosek ogranicza wpływ zakłóceń pojedynczego nagrania, ale sprzęt nadal wpływa na wynik.",
   "vm_scale_typical": "Brak wiarygodnego typowego zakresu. Współczynnik odnosi się do stałego wzorca w aplikacji, a nie do opublikowanych danych populacyjnych.",
   "vm_span_cannot": "Szeroki zakres nie dowodzi ekspresji, a wąski nie oznacza monotonii. Ten sam tekst przeczytany tak samo da szerszy zakres w hercach przy wyższym głosie, bo odległość między dźwiękami muzycznymi rośnie wraz z ich wysokością.",
@@ -3935,7 +3935,7 @@
   "vm_spread_measures": "Zmiany wysokości głosu względem środka nagrania, w półtonach. Półton to krok muzyczny, więc ta wartość nie zależy od bezwzględnej wysokości głosu.",
   "vm_spread_studied": "Badania czytanych tekstów po polsku i angielsku nie wykazały istotnej różnicy między płciami w rozrzucie w półtonach.",
   "vm_spread_tier": "Porównuj z własnymi wcześniejszymi próbami. Wynik zależy też od tekstu i nastroju podczas czytania.",
-  "vm_spread_typical": "Brak wiarygodnego typowego zakresu. Ruch wysokości zależy od tekstu i języka.",
+  "vm_spread_typical": "Brak wiarygodnego typowego zakresu. Wynik zależy od tekstu i języka.",
   "vm_summary": [
     {
       "declarations": [

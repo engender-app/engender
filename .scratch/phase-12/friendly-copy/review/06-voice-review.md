@@ -37,8 +37,8 @@ keep their units and interpretation limits. Rate keeps its same-passage
 condition; resonance keeps its equipment condition and unavailable third and
 fourth formants. No desired gendered result or medical advice was added.
 
-The repeated reference introduction and visible duplicate title were removed.
-The sheet keeps its accessible title and each figure keeps its own heading.
+The repeated reference introduction was removed. The visible overall title,
+accessible sheet title and each figure heading stay.
 Recordings get a small audition joke. Errors and measurements remain direct.
 
 ## Trigger trace
@@ -60,7 +60,7 @@ keeps the either-side condition and does not invent a different device.
 
 ## Rendered evidence
 
-[06-rendered.json](06-rendered.json) records 92 actual app captures, their
+[06-rendered.json](06-rendered.json) records 172 actual app captures, their
 rendered text and measured paragraph/heading overflow. Screenshots remain in
 `.claude/voice-copy06-shots/` in the main checkout after worktree removal.
 
@@ -78,8 +78,18 @@ removes the request button after exactly two attempts.
 The first Polish 200% capture exposed `uprawnieniach` wider than the notice
 body. Shared notice body now allows word wrapping, preserving the permission
 wording. The first probe also lost CSS zoom after navigation; its 69 partial
-captures were replaced by the complete 92-state rerun with persistent zoom.
-The final run found no overflowing paragraphs/headings and no page errors.
+captures were replaced by the complete 92-state rerun and focused review follow-up with persistent zoom.
+The runs found no overflowing paragraphs/headings and no page errors.
+The follow-up adds unavailable and unsupported microphones in both flows,
+unsteady vowel live/retry feedback, all three vowel instructions, the note
+placeholder attribute, revised reference fields and populated recording
+playback. It uses a short WebM attached to a fixture entry. Final captures
+scroll clipping and unsteady feedback into view. Screenshot inspection also
+found the Polish note placeholder wrapping beyond two rows at 200%; its
+invitation was shortened to `Coś o tym dniu?`. The final capture records the
+placeholder attribute and checks its height against the field in both locales
+and zoom settings. Earlier captures document the intermediate wording; the
+`note-placeholder-fit` and visible-feedback captures show the final state.
 
 Limits: CSS zoom checks layout reflow, not OS text scaling or pinch zoom.
 These are headless Chromium fixtures, not an Android permission dialog,
@@ -106,9 +116,26 @@ catalogue. Final build and checks use the restored messages.
 Svelte analyzer reviewed the route. Its warnings concern existing link and
 effect patterns outside the two removed lines; this ticket does not change
 those patterns. Main's latest CI run was checked with `gh run list`: run
-`37048920055` was in progress. Local final checks provide this ticket's proof.
+`37048920055` was cancelled on the final refresh. Local final checks provide
+this ticket's proof.
 
 ## Review
 
 Standards and Spec reviews run against main after the implementation commit.
-Their findings and resolutions are recorded here before merge.
+Standards found an English relative-clause error and loss of the Polish-data
+qualification in two reference sentences. Both were fixed. Its optional
+Polish suggestion was applied to the new pitch-movement range sentence.
+
+Spec found missing rendered evidence for unsteady-note and unavailable or
+unsupported microphone wording, and the same lost scientific qualification.
+The focused captures close those gaps and record the note placeholder.
+Spec also caught an inaccurate description of the removed reference title:
+the sheet title is accessible only. The visible overall heading was restored;
+only the redundant introduction is removed.
+
+[06-contracts.json](06-contracts.json) checks interpolation contracts, unchanged
+plural forms and protected authored values in both locales. It also records
+20 generated calls across both plural messages, both locales and counts
+0, 1, 2, 5 and 1.5. No selector, declaration, parameter or plural branch changed.
+
+Both axes recheck the final follow-up before merge.
