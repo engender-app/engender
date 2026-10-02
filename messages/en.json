@@ -1729,6 +1729,8 @@
   "labs_empty_body": "Add results as they come in. Each unit keeps its own series.",
   "labs_empty_title": "No results yet",
   "labs_intro": "Add lab results and see how they change over time. No targets or interpretation.",
+  "labs_invalid_value": "Enter a number to save this result.",
+  "labs_missing_analyte": "Choose an analyte or enter a custom name to save.",
   "labs_mixed_body": "These readings were not all taken under the same conditions:",
   "labs_mixed_position": "different points in the dosing interval",
   "labs_mixed_provider": "different labs",
