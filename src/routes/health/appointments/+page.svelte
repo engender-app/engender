@@ -621,7 +621,6 @@
               </button>
             {/each}
           </div>
-          <p class="muted small">{m.appointments_kind_suggestions()}</p>
         </div>
       {/if}
       <Field label={m.appointments_place_label()} id="appointment-place">
@@ -787,9 +786,5 @@
      keeps everywhere else. */
   .ap-kinds {
     margin-top: calc(var(--space-2) * -1);
-  }
-
-  .ap-kinds .muted {
-    margin-top: var(--space-2);
   }
 </style>

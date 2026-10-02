@@ -786,7 +786,6 @@
             {#if editorNeedsDrugPick}
               <Field label={m.dose_drug_label()} legend>
                 {#snippet children(id)}
-                  <p class="muted small">{m.dose_drug_hint()}</p>
                   <div class="tag-row" role="group" aria-labelledby={id}>
                     {#each activeDrugChoices as drug (drug)}
                       <button
@@ -957,7 +956,7 @@
 
             {#if editor.status === 'changed'}
               <div class="disclosed" transition:disclose|local>
-                <FieldGroupHeading legend={m.dose_scheduled_legend()} hint={m.dose_scheduled_hint()} />
+                <FieldGroupHeading legend={m.dose_scheduled_legend()} />
                 <div class="cd-endpoints">
                   <Field label={m.dose_scheduled_amount_label()} id="dose-scheduled-amount">
                     {#snippet children(id)}
