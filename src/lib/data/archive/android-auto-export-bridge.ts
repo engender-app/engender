@@ -25,7 +25,10 @@ interface AndroidAutoExportBridge {
       for one archive rather than the cleartext password. */
   deriveKey(options: { salt: string; kdf: Argon2Params }): Promise<{ key: string | null }>;
   clearPassword(): Promise<void>;
-  writeBackup(options: { fileName: string; base64: string }): Promise<{ writtenAt: number }>;
+  beginBackup(options: { fileName: string }): Promise<{ transferId: string }>;
+  appendBackup(options: { transferId: string; offset: number; base64: string }): Promise<void>;
+  finishBackup(options: { transferId: string; byteLength: number; sha256: string }): Promise<{ writtenAt: number }>;
+  abortBackup(options: { transferId: string }): Promise<void>;
   /** Posts the scheduled-backup failure notice (phase 6 ticket 04). The
       strings arrive from this side now, so the notice is localized and the
       registry's disguise rule can reach it - the plugin used to hold English
