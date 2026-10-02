@@ -1266,7 +1266,6 @@
   >
     <div data-letter-dismiss-sheet>
       <SectionHeading text={m.tile_letter_dismiss_title()} />
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tile_letter_dismiss_hint()}</p>
       <div class="stack-3">
         <button
           class="btn btn-primary btn-block"
@@ -1300,7 +1299,6 @@
   >
     <div data-stock-dismiss-sheet>
       <SectionHeading text={m.notice_stock_dismiss_title()} />
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.notice_stock_dismiss_hint()}</p>
       <div class="stack-3">
         <button
           class="btn btn-primary btn-block"

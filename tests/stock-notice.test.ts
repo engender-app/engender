@@ -233,7 +233,6 @@ describe('Localization keys for stock notice', () => {
     'notice_stock_manage',
     'notice_stock_dismiss_action',
     'notice_stock_dismiss_title',
-    'notice_stock_dismiss_hint',
     'notice_stock_snooze_btn',
     'notice_stock_dont_show_btn',
     'notice_stock_snoozed_toast',
