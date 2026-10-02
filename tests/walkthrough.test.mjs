@@ -6552,7 +6552,7 @@ try {
     throw new Error('the shared file does not carry the edited title');
   }
   if (!ics.includes('DTSTART:20261103T091500')) {
-    throw new Error('the shared file does not carry the day and time that were set');
+    throw new Error(`the shared file does not carry the day and time that were set: ${ics.match(/^DTSTART[^\r\n]*/m)?.[0]}`);
   }
 
   // The editor sheet stayed open behind the handoff sheet the whole time -
