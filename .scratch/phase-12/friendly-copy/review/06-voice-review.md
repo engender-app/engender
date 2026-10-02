@@ -138,4 +138,11 @@ plural forms and protected authored values in both locales. It also records
 20 generated calls across both plural messages, both locales and counts
 0, 1, 2, 5 and 1.5. No selector, declaration, parameter or plural branch changed.
 
-Both axes recheck the final follow-up before merge.
+Final parallel rechecks passed on `cefdb4b7` against pinned main
+`57671ed3`. Standards reported no remaining violations or new code smells.
+Spec reported no missing, incorrect or out-of-scope requirements.
+
+Main advanced while this worktree was active. A paired-key comparison found
+no later voice edits and no conflicting changes to reviewed shared controls.
+Unrelated author edits stay outside this ticket and will remain in the main
+working tree. Human Polish sign-off remains open.
