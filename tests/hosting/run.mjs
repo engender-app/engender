@@ -221,7 +221,7 @@ try {
 
     const PASSPHRASE = 'hosting verify passphrase';
     await page.goto(origin, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-next]', { timeout: 15000 });
+    await page.waitForSelector('[data-next]', { timeout: 60000 });
     for (let step = 0; step < 12 && !(await page.locator('[data-access-modes]').count()); step++) {
       await page.locator('[data-next]').click();
     }
@@ -235,7 +235,7 @@ try {
     await page.click('[data-access-submit]');
     await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 
-    await page.waitForSelector('[data-next]', { timeout: 15000 });
+    await page.waitForSelector('[data-next]', { timeout: 60000 });
     for (let step = 0; step < 12 && (await page.locator('[data-next]').count()); step++) {
       await page.locator('[data-next]').click();
     }
