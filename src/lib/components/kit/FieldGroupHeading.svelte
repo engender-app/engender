@@ -6,10 +6,10 @@
      Four call sites hand-wrote the same three lines with the same
      reasoning in the comment; this is that shape, owning the reasoning
      once. */
-  let { legend, hint }: { legend: string; hint: string } = $props();
+  let { legend, hint }: { legend: string; hint?: string } = $props();
 </script>
 
 <div class="field">
   <span class="field-label">{legend}</span>
-  <p class="muted small">{hint}</p>
+  {#if hint}<p class="muted small">{hint}</p>{/if}
 </div>

@@ -975,7 +975,6 @@
           <DatePicker name="stock-opened" bind:value={stockEditor!.openedDate} {id} />
         {/snippet}
       </Field>
-      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_opened_hint()}</p>
       {#if stockEditor.openedDate}
         <Field label={m.stock_window_legend()} legend>
           {#snippet children()}
