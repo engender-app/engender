@@ -37,6 +37,7 @@ type DetailDraft<TRecord, TDraft> = {
   /** Advance the baseline after a successful write. An independent action
       can supply its committed record while retaining unrelated draft edits. */
   commit(record?: TRecord): void;
+  discard(): void;
   /** True until the read has answered for the id on the route. */
   readonly loading: boolean;
   /** True when that read rejected. */
@@ -101,6 +102,9 @@ export function detailDraft<TRecord, TDraft extends object>(
     },
     commit(record?: TRecord) {
       baseline = snapshotDraft(record === undefined ? draft : options.fromRecord(record));
+    },
+    discard() {
+      if (baseline !== null) draft = snapshotDraft(baseline);
     },
     get loading() {
       return answer === undefined;

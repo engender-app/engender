@@ -88,7 +88,6 @@
   let navigationFailed = $state(false);
   let outcome: HTMLParagraphElement | undefined = $state();
   let pendingDismiss = $state<(() => void) | null>(null);
-  let leaving = false;
 
   $effect(() => {
     detail.id;
@@ -97,7 +96,6 @@
     saved = false;
     saveFailed = false;
     pendingDismiss = null;
-    leaving = false;
   });
 
   $effect(() => {
@@ -105,19 +103,19 @@
   });
 
   beforeNavigate((navigation) => {
-    if (leaving || !saving && !detail.changed) return;
+    if (!saving && !detail.changed) return;
     navigation.cancel();
     if (saving || pendingDismiss || navigation.willUnload) return;
     pendingDismiss = () => {
-      leaving = true;
       if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
-      else if (navigation.to) void goto(navigation.to.url);
+      else if (navigation.to) void goto(navigation.to.url).catch(() => {});
     };
   });
 
   function discard() {
     const after = pendingDismiss;
     pendingDismiss = null;
+    detail.discard();
     after?.();
   }
 
@@ -438,13 +436,17 @@
       <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
     </button>
   </fieldset>
-  {#if saveFailed}
-    <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
-  {:else if navigationFailed && detail.isNew}
-    <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.tryout_saved_navigation_failed()}</p>
-    <button class="btn btn-primary" data-tryout-continue onclick={openCreatedTryout}><span>{m.tryout_saved_continue()}</span></button>
-  {:else if saved}
-    <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.saved()}</p>
+  {#if saveFailed || navigationFailed && detail.isNew || saved}
+    <div class="disclosed" transition:disclose>
+      {#if saveFailed}
+        <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
+      {:else if navigationFailed && detail.isNew}
+        <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.tryout_saved_navigation_failed()}</p>
+        <button class="btn btn-primary" data-tryout-continue onclick={openCreatedTryout}><span>{m.tryout_saved_continue()}</span></button>
+      {:else}
+        <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.saved()}</p>
+      {/if}
+    </div>
   {/if}
 
   {#if detail.isNew}
