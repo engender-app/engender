@@ -123,8 +123,12 @@ try {
       await page.evaluate(() => document.documentElement.style.fontSize = '200%');
       const start = page.locator('#journal-book-start');
       const end = page.locator('#journal-book-end');
-      const a = await start.boundingBox(), b = await end.boundingBox();
-      assert.ok(b.y >= a.y + a.height, 'range fields stack with enlarged text');
+      const [a, b] = await page.evaluate(() =>
+        ['journal-book-start', 'journal-book-end'].map(id => {
+          const { x, y, width, height } = document.getElementById(id).getBoundingClientRect();
+          return { x, y, width, height };
+        }));
+      assert.ok(b.y >= a.y + a.height, `range fields stack with enlarged text: ${JSON.stringify({ a, b })}`);
       for (const field of [start, end]) {
         assert.ok(await field.evaluate(el => el.scrollWidth <= el.clientWidth), 'full numeric date fits field at 200% text');
       }
