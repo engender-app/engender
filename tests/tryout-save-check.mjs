@@ -24,7 +24,7 @@ await page.route(/\/runtime\/client\/client\.js/, async (route) => {
   const signature = 'function goto(url, opts = {}) {';
   assert.ok(body.includes(signature));
   await route.fulfill({ response, body: body.replace(signature, `${signature}
-    if (window.tryoutNavigationFails && String(url).startsWith('/transition/tryouts/')) return Promise.reject(new Error('injected navigation failure'));`) });
+    if (window.tryoutNavigationFails && String(url).startsWith('/transition/tryouts/') || window.tryoutFailedDestination === new URL(url, location.href).pathname) return Promise.reject(new Error('injected navigation failure'));`) });
 });
 async function navigate(path) {
   await page.evaluate((path) => {
@@ -42,6 +42,24 @@ async function capture(name) {
     animation.playState !== 'running' || animation.effect?.getComputedTiming().iterations === Infinity
   ));
   await page.screenshot({ path: `${out}/${name}.png` });
+}
+async function feedbackMotion(action) {
+  await page.evaluate(() => {
+    window.feedbackHeights = [];
+    window.feedbackDone = false;
+    const start = performance.now();
+    function sample() {
+      const status = document.querySelector('[data-tryout-saved]');
+      if (status) window.feedbackHeights.push(status.parentElement.getBoundingClientRect().height);
+      if (performance.now() - start < 900) requestAnimationFrame(sample);
+      else window.feedbackDone = true;
+    }
+    requestAnimationFrame(sample);
+  });
+  await action();
+  await page.waitForFunction(() => window.feedbackDone);
+  const heights = await page.evaluate(() => window.feedbackHeights);
+  assert.ok(new Set(heights.map(Math.round)).size > 2, 'feedback travels through intermediate heights');
 }
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
@@ -142,6 +160,21 @@ try {
   await page.locator('#tr-description').waitFor();
   assert.equal(await page.locator('#tr-description').inputValue(), 'Complete description');
   console.log('PASS changed Back and navigation preserve draft; reverted departure skips prompt; discard writes nothing');
+  await page.locator('#tr-label').fill('Discard before failed navigation');
+  await page.evaluate(() => { window.tryoutFailedDestination = '/more'; });
+  await navigate('/more');
+  await page.locator('[data-discard-record]').click();
+  await page.locator('[data-discard-record]').waitFor({ state: 'detached' });
+  await page.waitForTimeout(300);
+  assert.equal(new URL(page.url()).pathname, savedPath);
+  await page.evaluate(() => { window.tryoutFailedDestination = null; });
+  await page.locator('#tr-label').fill('Protected after navigation failure');
+  await navigate('/more');
+  await page.locator('[data-keep-editing]').click();
+  await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
+  assert.equal(await page.locator('#tr-label').inputValue(), 'Protected after navigation failure');
+  assert.equal(new URL(page.url()).pathname, savedPath);
+  console.log('PASS failed discarded navigation cannot bypass protection on subsequent edits');
   await page.locator('#tr-label').fill('Saved edit');
   await page.locator('#tr-description').fill('Saved description');
   await page.evaluate(() => { window.tryoutFault.mode = 'ok'; });
@@ -348,6 +381,15 @@ try {
     await page.locator('[data-hub-search]').waitFor();
   }
   console.log('PASS English/Polish guidance and saved focus at 390px, 200% zoom and disguise');
+  await navigate(photoOwnerPath);
+  await page.locator('[data-add-photo]').waitFor();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.locator('#tr-label').fill('Motion outcome');
+  await feedbackMotion(() => page.locator('[data-save-tryout]').click());
+  await page.locator('[data-tryout-saved]').waitFor();
+  await feedbackMotion(() => page.locator('#tr-label').fill('Changed after motion'));
+  await page.locator('[data-tryout-saved]').waitFor({ state: 'detached' });
+  console.log('PASS saved feedback opens and closes its height under normal motion');
   assert.deepEqual(errors, []);
 } catch (error) {
   console.error(error, errors, await page.locator('body').innerText());
