@@ -128,6 +128,7 @@ try {
       await Promise.all(node.getAnimations().map((animation) => animation.finished.catch(() => {})));
     });
     assert.deepEqual(await barGeometry(), before, 'pending save keeps bar layout');
+    assert.equal(await page.locator('[data-save]').evaluate((button) => getComputedStyle(button).opacity), '1', 'pending status stays readable');
     assert.equal(await page.getByRole('status').filter({ hasText: locale === 'en' ? 'Saving' : 'Zapisywanie' }).count(), 1);
     for (const palette of PALETTES) {
       for (const theme of ['light', 'dark']) {
@@ -135,6 +136,10 @@ try {
           document.documentElement.dataset.palette = palette;
           document.documentElement.dataset.theme = theme;
         }, { palette, theme });
+        await page.evaluate(async () => {
+          await Promise.all(document.getAnimations().filter((animation) => animation instanceof CSSTransition)
+            .map((animation) => animation.finished.catch(() => {})));
+        });
         await page.screenshot({ path: `${shots}/${locale}-${palette}-${theme}.png` });
       }
     }
