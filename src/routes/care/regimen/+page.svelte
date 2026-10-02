@@ -38,7 +38,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose } from '$lib/motion/reveal';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -403,7 +403,7 @@
 
 {#snippet feedback(group: typeof messageGroup)}
   {#if messageGroup === group}
-    {#if failure}<p class="notice notice-danger" role="alert" data-regimen-failure>{failure}</p>{/if}
+    {#if failure}<p class="notice notice-danger" role="alert" data-regimen-failure transition:collapse>{failure}</p>{/if}
     <p class="muted small" role="status" data-regimen-status>{status ?? ''}</p>
   {/if}
 {/snippet}
@@ -900,6 +900,7 @@
 
 <style>
   .regimen-editor {
+    container: regimen / inline-size;
     border: 0;
     padding: 0;
     margin: 0;
@@ -910,6 +911,12 @@
     margin-top: var(--space-6);
     padding-top: var(--space-5);
     border-top: 1px solid var(--hairline);
+  }
+
+  @container regimen (max-width: 18rem) {
+    .regimen-editor :global(.cd-endpoints) {
+      grid-template-columns: 1fr;
+    }
   }
 
   .discard-actions {

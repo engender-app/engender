@@ -223,6 +223,9 @@ try {
   await auto.click();
   await page.waitForFunction(() => document.querySelector('[data-auto-log-switch] [role="switch"]').getAttribute('aria-checked') === 'false');
   assert.equal((await stored()).schedules[0].autoLogFromEpochDay, null);
+  await page.locator('#regimen-route').fill('Unsaved route');
+  assert.equal(await auto.count(), 1, 'Logging eligibility uses saved oral route');
+  await page.locator('#regimen-route').fill('oral');
   console.log('PASS automatic logging commits current schedule only, preserves opt-in day and rolls back failed controls');
 
   await page.locator('#regimen-dose').fill('12');
