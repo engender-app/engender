@@ -360,7 +360,7 @@
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
-     alias and the quick-exit mirror - now lives behind platform-sync.ts
+     alias and the lock-timing mirror - now lives behind platform-sync.ts
      (phase 5 deepening ticket 04). This effect is what makes it reactive:
      the module itself takes no runes (ADR-0017, so it can run in the Node
      tier), so watching a preference like `disguise` for a change has to
@@ -392,7 +392,7 @@
        launcher icon follows the flag (ticket 50). */
     const palette = prefs.palette;
     const launcherIconShape = prefs.launcherIconShape;
-    const quickExit = prefs.quickExit;
+    const lockAfter = prefs.lockAfter;
     const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready || !isAndroid()) return;
 
@@ -403,7 +403,7 @@
       import('@capacitor/app'),
       import('$lib/reminders/android-bridge'),
       import('$lib/disguise/android-bridge'),
-      import('$lib/lock/quick-exit-bridge'),
+      import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
       import('$lib/reminders/affirmations')
     ]).then(
@@ -412,7 +412,7 @@
         { App: androidBackButton },
         { androidReminders },
         { androidDisguise },
-        { androidQuickExit },
+        { androidLockTiming },
         { androidScreenCapture },
         { affirmationLines }
       ]) => {
@@ -434,7 +434,7 @@
             disguise,
             palette,
             launcherIconShape,
-            quickExit,
+            lockAfter,
             allowScreenCapture
           },
           journal: {
@@ -447,7 +447,7 @@
           onTablesWritten,
           androidReminders,
           androidDisguise,
-          androidQuickExit,
+          androidLockTiming,
           androidScreenCapture,
           androidBackButton,
           // Hidden built-ins and this language's custom lines are read fresh on
