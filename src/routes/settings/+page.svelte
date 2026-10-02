@@ -15,8 +15,6 @@
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { bootState } from '$lib/stores/boot.svelte';
-  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -133,7 +131,6 @@
     prefs.moodPreset = key;
   }
 
-  let hasAccessSecret = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));
 
   const SITE_URL = 'https://engender.dev/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
@@ -515,23 +512,6 @@
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
       <DisguisePreview on={prefs.disguise} />
-      <div class="spread">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.quick_exit_title()}</span>
-          <span class="kit-row-sub">
-            {isAndroid() ? m.quick_exit_sub_android() : m.quick_exit_sub_web()}{hasAccessSecret
-              ? ''
-              : ` · ${m.quick_exit_no_lock()}`}
-          </span>
-        </span>
-        <Switch
-          checked={prefs.quickExit}
-          label={m.quick_exit_title()}
-          onChange={(v) => {
-            prefs.quickExit = v;
-          }}
-        />
-      </div>
     </div>
   </Sheet>
 

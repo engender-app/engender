@@ -1,7 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { beforeNavigate, goto } from '$app/navigation';
-  import { lockState } from '$lib/stores/lock.svelte';
   import { sameDraft, snapshotDraft } from '$lib/components/kit/recordEditor';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* What you are taking, and since when, on the surface kit (phase 5 UX
@@ -195,7 +194,7 @@
   }
 
   beforeNavigate((navigation) => {
-    if (!editor || lockState.blanked || (!changed && !saving)) return;
+    if (!editor || (!changed && !saving)) return;
     navigation.cancel();
     if (navigation.willUnload) return;
     requestDismiss(() => {
@@ -206,7 +205,7 @@
   });
 
   $effect(() => {
-    if (!editor || lockState.blanked) pendingDismiss = null;
+    if (!editor) pendingDismiss = null;
   });
 
   async function write(group: typeof messageGroup, action: () => Promise<unknown>, failedMessage: string): Promise<boolean> {

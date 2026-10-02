@@ -13,7 +13,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 /**
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
  * MainActivity.onCreate can decide FLAG_SECURE before the window has a
- * frame - the same reason QuickExitPlugin mirrors prefs.quickExit. Unlike
+ * frame - the same reason LockTimingPlugin mirrors prefs.lockAfter. Unlike
  * that read-only mirror, setAllowed also flips the flag on the window that
  * is already running: a person who just turned this on in Settings wants to
  * record right now, not after restarting the app.
@@ -21,7 +21,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "ScreenCapture")
 public class ScreenCapturePlugin extends Plugin {
 
-    /** Named rather than private for the same reason as QuickExitPlugin.PREFS:
+    /** Named rather than private for the same reason as LockTimingPlugin.PREFS:
         the reset's test has to name the file it claims to have cleared. */
     public static final String PREFS = "engender-screen-capture";
     private static final String KEY_ALLOWED = "allowed";
