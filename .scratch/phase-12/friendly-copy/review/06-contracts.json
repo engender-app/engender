@@ -1,0 +1,126 @@
+{
+  "checked": 412,
+  "protectedAuthoredValues": "Both locales: analysis-method, microphone-distance question, silence feedback, shortened resonance and room text, bundled passage.",
+  "plurals": [
+    {
+      "locale": "en",
+      "key": "vb_history_run",
+      "count": 0,
+      "text": "Your last 0 takes."
+    },
+    {
+      "locale": "en",
+      "key": "vm_summary",
+      "count": 0,
+      "text": "0 recordings, 0:12 in all"
+    },
+    {
+      "locale": "en",
+      "key": "vb_history_run",
+      "count": 1,
+      "text": "Your last 1 takes."
+    },
+    {
+      "locale": "en",
+      "key": "vm_summary",
+      "count": 1,
+      "text": "1 recording, 0:12 in all"
+    },
+    {
+      "locale": "en",
+      "key": "vb_history_run",
+      "count": 2,
+      "text": "Your last 2 takes."
+    },
+    {
+      "locale": "en",
+      "key": "vm_summary",
+      "count": 2,
+      "text": "2 recordings, 0:12 in all"
+    },
+    {
+      "locale": "en",
+      "key": "vb_history_run",
+      "count": 5,
+      "text": "Your last 5 takes."
+    },
+    {
+      "locale": "en",
+      "key": "vm_summary",
+      "count": 5,
+      "text": "5 recordings, 0:12 in all"
+    },
+    {
+      "locale": "en",
+      "key": "vb_history_run",
+      "count": 1.5,
+      "text": "Your last 1.5 takes."
+    },
+    {
+      "locale": "en",
+      "key": "vm_summary",
+      "count": 1.5,
+      "text": "1.5 recordings, 0:12 in all"
+    },
+    {
+      "locale": "pl",
+      "key": "vb_history_run",
+      "count": 0,
+      "text": "Ostatnie 0 prób."
+    },
+    {
+      "locale": "pl",
+      "key": "vm_summary",
+      "count": 0,
+      "text": "0 nagrań, łącznie 0:12"
+    },
+    {
+      "locale": "pl",
+      "key": "vb_history_run",
+      "count": 1,
+      "text": "Ostatnia 1 próba."
+    },
+    {
+      "locale": "pl",
+      "key": "vm_summary",
+      "count": 1,
+      "text": "1 nagranie, łącznie 0:12"
+    },
+    {
+      "locale": "pl",
+      "key": "vb_history_run",
+      "count": 2,
+      "text": "Ostatnie 2 próby."
+    },
+    {
+      "locale": "pl",
+      "key": "vm_summary",
+      "count": 2,
+      "text": "2 nagrania, łącznie 0:12"
+    },
+    {
+      "locale": "pl",
+      "key": "vb_history_run",
+      "count": 5,
+      "text": "Ostatnie 5 prób."
+    },
+    {
+      "locale": "pl",
+      "key": "vm_summary",
+      "count": 5,
+      "text": "5 nagrań, łącznie 0:12"
+    },
+    {
+      "locale": "pl",
+      "key": "vb_history_run",
+      "count": 1.5,
+      "text": "Ostatnie 1.5 próby."
+    },
+    {
+      "locale": "pl",
+      "key": "vm_summary",
+      "count": 1.5,
+      "text": "1.5 nagrań, łącznie 0:12"
+    }
+  ]
+}
