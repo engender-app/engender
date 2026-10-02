@@ -204,6 +204,13 @@ export function recordingDriver(inner: SqliteDriver): RecordingDriver {
        inner driver's business, and the statements inside the callback reach
        this wrapper anyway because the callback holds it. */
     transaction: <T>(fn: () => T | Promise<T>) => inner.transaction(fn),
+    readSnapshot: (read) => inner.readSnapshot((reader) => read({
+      async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+        const rows = await reader.query<Row>(sql, params);
+        note(sql, rows);
+        return rows;
+      }
+    })),
     close: () => inner.close()
   };
 

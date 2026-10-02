@@ -39,7 +39,7 @@ import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './sqlocal-driver.ts';
-import { oneTransactionAtATime } from './transactor.ts';
+import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
 
 /** What every sequenced call carries (ADR-0089). */
 type Stamp = { session: string; seq: number };
@@ -138,7 +138,7 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
       throw (await opened) ?? error;
     });
 
-  const driver: SqliteDriver = {
+  const driver: SqliteDriver = withReadSnapshots({
     async exec(statements: string) {
       await afterOpen((s) => Sqlite.exec({ sql: statements, ...s }));
     },
@@ -175,7 +175,7 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
     async close() {
       await afterOpen((s) => Sqlite.close(s));
     }
-  };
+  });
 
   const fileOps: MigrationFileOps = {
     async preMigrationCopyIsUsable() {
