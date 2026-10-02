@@ -1,3 +1,20 @@
+<script module lang="ts">
+  import type { EntryDraft } from '$lib/data/entryDraft';
+
+  type EntrySaveRecovery = {
+    entryId: number | undefined;
+    epochDay: number;
+    draft: EntryDraft;
+    starred: boolean;
+    destination: string;
+    settled: Promise<void>;
+  };
+
+  // A privacy gate can unmount the editor while storage still owns its save.
+  // Retain that draft, including media, until the same editor resumes.
+  let detachedEntrySave: EntrySaveRecovery | undefined;
+</script>
+
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -5,7 +22,7 @@
   import { smartBack } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import {
     todayEpochDay,
@@ -16,7 +33,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
+  import { createEntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
   import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
@@ -115,12 +132,30 @@
   // svelte-ignore state_referenced_locally
   let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay(), undefined, seedMood));
 
-  /* Survives an Android process death (ticket 14): mirrored to localStorage
-     on every change below and cleared the moment this editor unmounts, so
-     only a killed-while-backgrounded process ever leaves it to be found on
-     the next mount. A same-process background/resume never unmounts this
-     component at all, so its in-memory state alone already handles that
-     case - this only ever restores after a real process death.
+  let saving = $state(false);
+  let pendingDraftOperations = $state(0);
+  let saveRecovery: EntrySaveRecovery | undefined;
+  let destroyed = false;
+
+  // Media preparation and prefills must finish before the save snapshots the draft.
+  async function prepareDraft(operation: () => Promise<void>) {
+    if (saving || entryDraft.savedId !== undefined) return;
+    pendingDraftOperations++;
+    try {
+      await operation();
+    } finally {
+      pendingDraftOperations--;
+    }
+  }
+
+  beforeNavigate((navigation) => {
+    if (saving) navigation.cancel();
+  });
+
+  /* Mirrored to localStorage on every change. Normal departure discards
+     the mirror; a privacy lock during a pending save retains it until the
+     save succeeds or the editor resumes. A killed process can recover the
+     serializable fields; the in-memory recovery also retains pending media.
 
      What is written there is ciphertext under the open journal's data key
      (sec-audit 02), which makes both halves async. */
@@ -131,27 +166,46 @@
      the very snapshot this is about to restore. */
   let mirrorRead = $state(false);
 
-  async function restoreIfPersisted(target: EntryDraft) {
+  async function restoreIfPersisted(target: EntryDraft): Promise<EntryDraft> {
+    const recovery = detachedEntrySave;
+    if (recovery && recovery.entryId === entryId && (entryId != null || recovery.epochDay === target.epochDay)) {
+      entryDraft = recovery.draft;
+      saving = true;
+      try {
+        await recovery.settled;
+      } finally {
+        saving = false;
+      }
+      if (!destroyed && recovery.draft.savedId !== undefined) draftStore.clear();
+      starred = recovery.starred;
+      savedDestination = recovery.destination;
+      if (!destroyed && detachedEntrySave === recovery) detachedEntrySave = undefined;
+      return recovery.draft;
+    }
+    const persisted = await draftStore.read();
+    if (!persisted) return target;
+    if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
+    else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+    return target;
+  }
+
+  // Existing entries restore once, onto their loaded draft. Mirroring starts
+  // only after that draft is installed, so the blank draft cannot overwrite recovery.
+  // svelte-ignore state_referenced_locally
+  const persistedRestore = entryId == null
+    ? restoreIfPersisted(entryDraft).then((draft) => { entryDraft = draft; }).finally(() => { mirrorRead = true; })
+    : Promise.resolve();
+
+  onFirstResult(loaded, (entry) => prepareDraft(async () => {
+    if (entryId == null) return;
+    const fresh = entry ? createEntryDraft(entry.epochDay, entry) : entryDraft;
     try {
-      const persisted = await draftStore.read();
-      if (!persisted) return;
-      if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
-      else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+      entryDraft = await restoreIfPersisted(fresh);
+      if (entry) starred = entry.starred;
     } finally {
       mirrorRead = true;
     }
-  }
-
-  // svelte-ignore state_referenced_locally
-  const persistedRestore = restoreIfPersisted(entryDraft);
-
-  onFirstResult(loaded, async (entry) => {
-    if (!entry) return;
-    const fresh = createEntryDraft(entry.epochDay, entry);
-    await restoreIfPersisted(fresh);
-    entryDraft = fresh;
-    starred = entry.starred;
-  });
+  }));
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
      `existing` and kept in its own local state rather than `entryDraft`:
@@ -245,10 +299,13 @@
     void draftStore.write(snapshot);
   });
 
-  onDestroy(() => draftStore.clear());
+  onDestroy(() => {
+    destroyed = true;
+    if (saveRecovery) detachedEntrySave = saveRecovery;
+    else if (!saving) draftStore.clear();
+  });
 
   let deleteOpen = $state(false);
-  let saving = $state(false);
   let templateSheetOpen = $state(false);
   let promptDismissed = $state(false);
   /* Guided prompts and templates are entry-creation aids (ticket 17), not
@@ -295,7 +352,7 @@
   if (entryId == null && debriefForAppointment != null) {
     const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
     if (debriefTemplate) applyTemplate(debriefTemplate);
-    void fillDebriefPrefill(debriefForAppointment);
+    void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
   /* What the debrief opens pre-filled with, under its "How did it go?"
@@ -719,6 +776,11 @@
     activeVideo?.stop();
   });
 
+  let draftPreparing = $derived(
+    !mirrorRead || loaded.loading || pendingDraftOperations > 0 ||
+    activeRecording !== null || activeVideo !== null || compressingVideo ||
+    dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
+  );
   let moodMissing = $derived(entryDraft.mood == null);
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
@@ -739,6 +801,7 @@
   }
 
   async function saveEntry() {
+    if (saving || draftPreparing) return;
     if (entryDraft.savedId !== undefined) {
       await leaveSavedEntry();
       return;
@@ -752,8 +815,13 @@
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    if (saving) return; // a second tap while the worker is writing
     saving = true;
+    let settle!: () => void;
+    const recovery: EntrySaveRecovery = {
+      entryId, epochDay: entryDraft.epochDay, draft: entryDraft, starred, destination: '/',
+      settled: new Promise<void>((resolve) => { settle = resolve; })
+    };
+    saveRecovery = recovery;
     const moodOnly = entryDraft.hasMoodOnlyContent;
     const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
     let id: number;
@@ -765,9 +833,13 @@
       return;
     } finally {
       saving = false;
+      saveRecovery = undefined;
+      settle();
     }
     draftStore.clear();
     savedDestination = sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+    recovery.destination = savedDestination;
+    if (destroyed) return;
     if (!await leaveSavedEntry()) return;
     if (!offerDims && prefs.entryNudges && moodOnly) {
       toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
@@ -801,7 +873,8 @@
      huge text transition"). The plain fill grows now; the real content
      sits outside the named element and crossfades in place through the
      screen's own transition instead. -->
-<div class="screen editor">
+<div class="screen editor" inert={saving}>
+  <fieldset class="editor-fields" disabled={saving}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
@@ -945,7 +1018,7 @@
     <p class="editor-hint" data-no-scales>{m.editor_no_scales()}</p>
   {/if}
   {#each dims as { dim, ticked } (dim.key)}
-    <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
+    <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => { if (!saving) entryDraft.setDim(dim.key, v); }} />
     {#if !ticked}
       <p class="editor-hint editor-hint-tight">{m.scale_not_ticked()}</p>
     {/if}
@@ -999,7 +1072,7 @@
         regions={vocabulary.visibleBodyRegions}
         values={entryDraft.bodyRegions}
         onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-        onFeeling={(key, feeling) => entryDraft.setBodyRegionFeeling(key, feeling)}
+        onFeeling={(key, feeling) => { if (!saving) entryDraft.setBodyRegionFeeling(key, feeling); }}
       />
     </div>
   {/if}
@@ -1022,7 +1095,7 @@
                 class:is-starred={p.photo.starred}
                 aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
                 aria-pressed={p.photo.starred}
-                onclick={() => togglePhotoStarred(i)}
+                onclick={() => prepareDraft(() => togglePhotoStarred(i))}
               >
                 <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
               </button>
@@ -1036,10 +1109,10 @@
             </button>
           </div>
         {/each}
-        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={addPhoto}>
+        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={() => prepareDraft(addPhoto)}>
           <Icon name="image" size={22} /><span>{m.add_photo()}</span>
         </button>
-        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
+        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
           <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
         </button>
       </div>
@@ -1068,11 +1141,11 @@
         </div>
       {/if}
       <div class="photo-row">
-        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
+        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={() => prepareDraft(toggleRecording)}>
           <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
           <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
         </button>
-        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={addRecordingFile}>
+        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={() => prepareDraft(addRecordingFile)}>
           <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
         </button>
       </div>
@@ -1114,7 +1187,7 @@
           class="photo-add press"
           disabled={compressingVideo}
           aria-label={activeVideo ? m.stop_video() : m.add_video()}
-          onclick={toggleVideo}
+          onclick={() => prepareDraft(toggleVideo)}
         >
           <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
           <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
@@ -1124,7 +1197,7 @@
           data-add-video-file
           disabled={compressingVideo || !!activeVideo}
           aria-label={m.add_video_file()}
-          onclick={addVideoFile}
+          onclick={() => prepareDraft(addVideoFile)}
         >
           <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
         </button>
@@ -1281,13 +1354,13 @@
           <button
             type="button"
             class="btn btn-ghost photo-add-btn"
-            onclick={async () => {
+            onclick={() => prepareDraft(async () => {
               const picked = await pickPhotos();
               if (picked.length > 0) {
                 procRecoveryPhoto = picked[0];
                 updateProcedureRecovery();
               }
-            }}
+            })}
           >
             <Icon name="camera" size={18} />
             <span>{m.entry_procedure_recovery_add_photo()}</span>
@@ -1357,9 +1430,9 @@
   <SaveBar>
     <!-- Mood stays beside saving, with its own row of full-size targets. -->
     <div class="editor-save-row">
-      <div class="editor-save-moods" data-save-moods bind:this={moodsEl}>
+      <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
         <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
-      </div>
+      </fieldset>
       <button
         class="icon-btn press"
         aria-label={starred ? m.unstar_entry() : m.star_entry()}
@@ -1375,11 +1448,12 @@
         class:btn-primary={!moodMissing}
         class:btn-soft={moodMissing}
         data-save
+        data-entry-saving={saving || undefined}
         data-save-unmet={moodMissing ? 'mood' : undefined}
-        disabled={saving || entryDraft.savedId !== undefined}
+        disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
         onclick={saveEntry}
       >
-        <span>{moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        <span role="status">{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
     </div>
   </SaveBar>
@@ -1483,11 +1557,12 @@
     photo={entryPhotoReview.photo}
     reference={entryPhotoReview.reference}
     onAccept={entryPhotoReview.accept}
-    onRetake={entryPhotoReview.capture}
+    onRetake={() => prepareDraft(entryPhotoReview.capture)}
     onCancel={entryPhotoReview.cancel}
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
+  </fieldset>
 </div>
 
 <style>
@@ -1518,7 +1593,9 @@
     align-items: center;
     gap: var(--space-2);
   }
-  .editor-save-moods { flex: 1 0 100%; min-width: 0; }
+  .editor-save-row [data-entry-saving] { opacity: 1; }
+  .editor-fields { display: contents; }
+  .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
 

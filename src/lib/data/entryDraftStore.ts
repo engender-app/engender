@@ -3,10 +3,11 @@
    store (ADR-0009's mirror-outside-SQLite pattern): the journal stays the
    source of truth for saved entries, this is a throwaway mirror the editor
    keeps in step with itself and clears the moment its own write lands or it
-   unmounts (ticket 16, phase 8 deepening - clearing only on unmount left a
+   leaves normally (a privacy lock during a pending save retains it for
+   recovery; ticket 16, phase 8 deepening - clearing only on unmount left a
    killed process between a successful save and the clear holding a mirror
-   whose removals the save had already actioned), so only a process death
-   mid-edit ever leaves it behind to be found.
+   whose removals the save had already actioned). A process death mid-edit
+   also leaves it behind to be found.
 
    What is left behind is ciphertext (sec-audit 02, finding G-01). The
    snapshot is journal content - the note, the mood, the tags, the region
@@ -37,6 +38,10 @@ export interface EntryDraftStore {
 /* ENTRY_DRAFT_STORE_KEY stays exported for its own test, and cross-checked in
    encryption-probe.ts (AU-09 test-only review). */
 export const ENTRY_DRAFT_STORE_KEY = 'engender-entry-draft';
+
+// One mirror belongs to the latest editor. A detached save must not write
+// over that editor's recovery or clear it when its own storage finishes.
+let activeOwner = 0;
 
 // Hand-editable storage: anything that is not this shape is no draft at
 // all, the same rule attempt-store.ts applies to its own mirror.
@@ -98,6 +103,7 @@ export function localStorageEntryDraft(
      this the mirror could end up holding an older draft than the screen, and
      a write still in flight when the editor unmounts could put one back
      after clear() took it. */
+  const owner = ++activeOwner;
   let latest = 0;
 
   return {
@@ -121,19 +127,21 @@ export function localStorageEntryDraft(
       /* Sequenced before the key is awaited, not after: a write that starts
          while the journal is still opening must still lose to a later edit,
          and both are waiting on the same key. */
+      if (owner !== activeOwner) return;
       const mine = ++latest;
       const key = await journalKey();
-      if (mine !== latest) return; // a later edit, or an unmount, got here first
+      if (owner !== activeOwner || mine !== latest) return; // a later edit, or an unmount, got here first
       try {
         const plaintext = new TextEncoder().encode(JSON.stringify(draft)) as Uint8Array<ArrayBuffer>;
         const stored = await seal(key, plaintext, boundTo);
-        if (mine !== latest) return; // a later edit already wrote itself
+        if (owner !== activeOwner || mine !== latest) return; // a later edit already wrote itself
         localStorage.setItem(ENTRY_DRAFT_STORE_KEY, toBase64(stored));
       } catch {
         /* storage full / private mode - a killed process just loses the draft */
       }
     },
     clear() {
+      if (owner !== activeOwner) return;
       /* Counts as the newest write, so anything still encrypting when the
          editor unmounts is dropped instead of landing after this. The short
          window the mirror is readable in is the whole point of clearing it. */
