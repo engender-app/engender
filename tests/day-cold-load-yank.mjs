@@ -11,6 +11,9 @@
    Sampled from the document's first frame under a slowed CPU, the order a
    phone always sees and the desktop sweep only caught 6 of 6 runs in dark.
 
+   Also checks that content stays visible when Android delivers the reveal's
+   completion callback after its animation ends (ux-carpet ticket 290).
+
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/day-cold-load-yank.mjs [--runs 5] [--cpu 4] [--out <abs dir>]
@@ -21,6 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, settlePage } from './browser-harness.mjs';
 import {
+  DEMO_THEME_EXPRESSION,
   FILL_EVERY_FEATURE_EXPRESSION,
   INIT_HIDE_DEMO_SCRIPT,
   RESET_PERSONA_EXPRESSION,
@@ -35,6 +39,7 @@ const flag = (name, fallback) => {
 };
 const RUNS = Number(flag('runs', '5'));
 const CPU = Number(flag('cpu', '4'));
+const THEME = flag('theme', 'dark');
 const WINDOW_MS = 1800;
 const outDir = resolve(flag('out', resolve(here, '../.claude/day-cold-load')));
 await mkdir(outDir, { recursive: true });
@@ -55,6 +60,20 @@ const SAMPLER = `(() => {
     navigator.storage.persisted = async () => true;
   }
   if (sessionStorage.getItem('day-probe') !== '1') return;
+  /* Keep the real animation, but delay its completion callback as Android
+     can under load. Its last painted frame must hold until the gate clears
+     the CSS that hides the content before the reveal. */
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function(keyframes, options) {
+    const animation = animate.call(this, keyframes, options);
+    if (Array.isArray(keyframes) && keyframes[0]?.opacity === 0 && keyframes.at(-1)?.opacity === 1) {
+      const finished = animation.finished;
+      Object.defineProperty(animation, 'finished', {
+        value: finished.then((result) => new Promise((resolve) => setTimeout(() => resolve(result), 80)))
+      });
+    }
+    return animation;
+  };
   const frames = [];
   window.__dayFrames = frames;
   const t0 = performance.now();
@@ -62,10 +81,15 @@ const SAMPLER = `(() => {
     const add = document.querySelector('[data-add]');
     const era = document.querySelector('[data-start-era]');
     const card = document.querySelector('[data-day-card]');
+    let opacity = card ? 1 : null;
+    for (let node = card; node; node = node.parentElement) {
+      opacity *= Number(getComputedStyle(node).opacity);
+    }
     frames.push({
       at: Math.round(now - t0),
       skeleton: !!document.querySelector('.screen .skeleton-block'),
       card: !!card,
+      opacity,
       noteLists: document.querySelectorAll('.margin-note-list').length,
       noteAdds: document.querySelectorAll('[data-margin-note-add]').length,
       add: add ? Math.round(add.getBoundingClientRect().top) : null,
@@ -80,15 +104,18 @@ const browser = await launchChromium();
 const app = await preview({ root: resolve(here, '..'), preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+await page.emulateMedia({ reducedMotion: args.includes('--reduced-motion') ? 'reduce' : 'no-preference' });
 const errors = [];
 page.on('pageerror', (err) => errors.push(String(err)));
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 await page.addInitScript(SAMPLER);
 
-await settlePage(page, base, '/', 'dark');
+await settlePage(page, base, '/', THEME);
 if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('the persona reset never reached Home');
 await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
 await page.waitForTimeout(1500);
+await page.evaluate(DEMO_THEME_EXPRESSION(THEME));
+await page.waitForTimeout(500);
 
 /* The fixture's own margin notes are a seeded roll (demo-fixture-seeded-
    rolls-can-yield-nothing) - today or yesterday can land with none. Add one
@@ -173,10 +200,14 @@ for (const scene of SCENES) {
     }
 
     const firstCard = frames.find((f) => f.card)?.at ?? null;
+    const firstVisible = frames.findIndex((f) => f.opacity >= 0.98);
+    const dropouts = firstVisible < 0 ? [] : frames.slice(firstVisible + 1).filter((f) => f.opacity === null || f.opacity < 0.5);
     runs.push({
       run,
       frames: frames.length,
       firstCard,
+      visible: firstVisible >= 0,
+      dropouts: dropouts.length,
       worstAddStep,
       worstAddAt,
       worstEraStep,
@@ -188,6 +219,7 @@ for (const scene of SCENES) {
     console.log(
       `${scene.name} run ${run + 1}: ${frames.length} frames, card at ${firstCard}ms, ` +
         `worst settled add-button step ${worstAddStep}px at ${worstAddAt}ms, ` +
+        `${dropouts.length} dropout frame(s) after becoming visible, ` +
         `${noteListsAtCard} note-list(s) with the card, ${noteListsLater} arriving later ` +
         `(add button stepped ${addStepAtNote}px when it did)`
     );
@@ -195,7 +227,7 @@ for (const scene of SCENES) {
   }
   sceneResults[scene.name] = runs;
   const cardless = runs.filter((r) => r.firstCard === null).length;
-  const failed = runs.filter((r) => r.worstAddStep >= 24 || r.worstEraStep >= 24 || r.noteListsLater > 0).length;
+  const failed = runs.filter((r) => !r.visible || r.worstAddStep >= 24 || r.worstEraStep >= 24 || r.noteListsLater > 0 || r.dropouts > 0).length;
   if (cardless) console.log(`${scene.name}: ${cardless} run(s) never drew the day card - not a measurement`);
   console.log(`${scene.name}: ${failed} of ${runs.length} run(s) with a finding`);
   if (failed || cardless) anyFailed = true;
