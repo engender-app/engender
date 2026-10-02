@@ -41,6 +41,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `chart-tick-readout` | what a chart's tick says under a mouse and a finger, across grains, languages and widths |
 | `voice-task-names` | the voice task chooser's labels fit their segments in both languages |
 | `record-dismissal-check` | a cancelled dismissal keeps unsaved record edits and the sheet's position |
+| `letter-composition-check` | letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock and quick exit use real routes |
 | `recovery-key-departure-check` | every way off the recovery key screen asks before the key is lost |
 | `photo-browse-compare` | browsing, selecting and wiping photos on a small library |
 | `photo-grid-batching` | the grid stays whole batches deep at 3000 photos |
@@ -169,3 +170,5 @@ Imported or read by the probes above, never run on their own:
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
 `setup-flow`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`.
+
+`letter-composition-gallery` captures composition and discard across all palettes, both themes, English/Polish, compact widths and 200% zoom. It needs a demo build. `android-tier/letter-composition.mjs` checks native Back and drag on a disposable emulator.
