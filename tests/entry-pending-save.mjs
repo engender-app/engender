@@ -17,6 +17,7 @@ async function attachPhoto(page) {
   if (await page.locator('[data-section-chip="photos"]').getAttribute('aria-expanded') !== 'true') {
     await page.locator('[data-section-chip="photos"]').click();
   }
+  const before = await page.locator('.photo-view').count();
   const buffer = await tinyPhoto(page, '#789abc');
   const chooser = page.waitForEvent('filechooser');
   await page.locator('[data-add-photo]').click();
@@ -25,7 +26,7 @@ async function attachPhoto(page) {
   assert.equal(await page.locator('[data-save]').isDisabled(), true, 'save waits for the photo day');
   await page.locator('[data-photo-day-skip]').click();
   await page.locator('[data-photo-day-skip]').waitFor({ state: 'detached' });
-  await page.locator('.photo-view').waitFor();
+  await page.waitForFunction((before) => document.querySelectorAll('.photo-view').length === before + 1, before);
 }
 
 try {
@@ -34,6 +35,30 @@ try {
     await context.addInitScript(INIT_HIDE_DEMO_SCRIPT);
     await context.addInitScript(STUB_PERSIST_SCRIPT);
     await context.addInitScript(() => {
+      const encrypt = SubtleCrypto.prototype.encrypt;
+      const setItem = Storage.prototype.setItem;
+      const notes = new Map();
+      window.entryMirror = { armed: false, entered: false, release: null, lastNote: null, finished: false };
+      SubtleCrypto.prototype.encrypt = async function (...args) {
+        const boundTo = args[0].additionalData;
+        const mirror = boundTo && new TextDecoder().decode(boundTo) === 'engender-entry-draft';
+        const note = mirror ? JSON.parse(new TextDecoder().decode(args[2])).note : null;
+        const encrypted = await encrypt.apply(this, args);
+        if (mirror) {
+          notes.set(btoa(String.fromCharCode(...new Uint8Array(encrypted))), note);
+          if (window.entryMirror.armed) {
+            window.entryMirror.armed = false;
+            window.entryMirror.entered = true;
+            await new Promise((resolve) => { window.entryMirror.release = resolve; });
+            window.entryMirror.finished = true;
+          }
+        }
+        return encrypted;
+      };
+      Storage.prototype.setItem = function (key, value) {
+        setItem.call(this, key, value);
+        if (key === 'engender-entry-draft') window.entryMirror.lastNote = notes.get(btoa(atob(value).slice(12)));
+      };
       const original = FileSystemFileHandle.prototype.createWritable;
       window.entryWrite = { armed: false, entered: false, release: null, fail: false };
       FileSystemFileHandle.prototype.createWritable = async function (...args) {
@@ -50,7 +75,9 @@ try {
             await new Promise((resolve) => { control.release = resolve; });
             if (control.fail) throw new Error('forced attachment write failure');
           }
-          return write(...args);
+          const result = await write(...args);
+          if (control.entered && name === control.name) control.finished = true;
+          return result;
         };
         return stream;
       };
@@ -167,8 +194,10 @@ try {
     assert.equal(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), null);
     await page.goto(base + '/day/today', { waitUntil: 'networkidle' });
     const entry = page.locator('[data-entry-card]').filter({ hasText: `Pending entry ${locale}` });
+    await entry.waitFor();
     assert.equal(await entry.count(), 1, 'only one entry is saved');
     await entry.click();
+    await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
     assert.equal(await note.inputValue(), `Pending entry ${locale}`);
     assert.equal(await page.locator('[data-mood="4"]').getAttribute('aria-checked'), 'true');
     assert.equal(await scale.getAttribute('aria-valuenow'), '5');
@@ -182,9 +211,13 @@ try {
     assert.equal(await note.inputValue(), '', 'reopening has no unsaved accepted edits');
 
     await note.fill(`Retry entry ${locale}`);
+    await page.waitForFunction((note) => window.entryMirror.lastNote === note, `Retry entry ${locale}`);
     await attachPhoto(page);
     await page.locator('[data-section-chip="tags"]').click();
     await page.locator('[data-tag="g-body-eu"]').click();
+    await page.evaluate(() => { window.entryMirror.armed = true; });
+    await note.fill(`Retry after mirror delay ${locale}`);
+    await page.waitForFunction(() => window.entryMirror.entered);
     await page.evaluate(() => { Object.assign(window.entryWrite, { armed: true, entered: false, fail: true }); });
     await page.locator('[data-save]').click();
     await page.waitForFunction(() => window.entryWrite.entered);
@@ -210,11 +243,18 @@ try {
       await page.evaluate(() => window.entryWrite.release());
     }
     await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
-    assert.equal(await note.inputValue(), `Retry entry ${locale}`);
+    assert.equal(await note.inputValue(), `Retry after mirror delay ${locale}`);
     assert.ok(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), 'failure retains recovery');
     await page.locator('[data-section-chip="photos"]').click();
     assert.equal(await page.locator('.photo-view').count(), 1, 'lock and failed storage retain picked media');
     await note.fill(`Corrected retry ${locale}`);
+    await page.waitForFunction((note) => window.entryMirror.lastNote === note, `Corrected retry ${locale}`);
+    const correctedMirror = await page.evaluate(() => localStorage.getItem('engender-entry-draft'));
+    await page.evaluate(() => window.entryMirror.release());
+    await page.waitForFunction(() => window.entryMirror.finished);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), correctedMirror,
+      'detached encryption cannot overwrite correction after lock and failed save');
     await page.evaluate(() => { window.entryWrite.fail = false; });
     await page.locator('[data-save]').click();
     await page.waitForURL((url) => url.pathname === '/');
@@ -223,9 +263,10 @@ try {
     assert.equal(await note.inputValue(), `Corrected retry ${locale}`);
     await page.locator('[data-section-chip="photos"]').click();
     assert.equal(await page.locator('.photo-view').count(), 1, 'failed save retains attachment for retry');
-    const mirror = await page.evaluate(() => localStorage.getItem('engender-entry-draft'));
     await note.fill(`Recovered edit ${locale}`);
-    await page.waitForFunction((previous) => localStorage.getItem('engender-entry-draft') !== previous, mirror);
+    await page.waitForFunction((note) => window.entryMirror.lastNote === note, `Recovered edit ${locale}`);
+    // Model process loss without the ordinary visibility-lock departure.
+    await page.evaluate(() => Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }));
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
     assert.equal(await note.inputValue(), `Recovered edit ${locale}`, 'reopening restores unsaved draft over saved content');
@@ -247,16 +288,57 @@ try {
     await page.locator('#session-passphrase').fill('demo');
     await page.locator('[data-session-submit]').click();
     await page.locator('[data-entry-saved]').waitFor();
+    await page.locator('[data-save]').waitFor({ state: 'detached' });
     assert.equal(await page.locator('[data-save]').count(), 0, 'completed save resumes readonly fallback');
     await page.locator('[data-entry-saved] a').click();
     await page.waitForURL((url) => url.pathname === '/');
     await page.goto(base + '/day/today', { waitUntil: 'networkidle' });
     const recovered = page.locator('[data-entry-card]').filter({ hasText: `Recovered edit ${locale}` });
+    await recovered.waitFor();
     assert.equal(await recovered.count(), 1);
     await recovered.click();
     assert.equal(await note.inputValue(), `Recovered edit ${locale}`);
     await page.locator('[data-section-chip="photos"]').click();
     assert.equal(await page.locator('.photo-view').count(), 2, 'save completed while locked persists all media');
+    // A route can change behind the lock after the pending editor unmounts.
+    const olderEntryRoute = new URL(page.url()).pathname;
+    await note.fill(`Detached completion ${locale}`);
+    await attachPhoto(page);
+    await page.evaluate(() => { Object.assign(window.entryWrite, { armed: true, entered: false, finished: false, fail: false }); });
+    await page.locator('[data-save]').click();
+    await page.waitForFunction(() => window.entryWrite.entered);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.visibilityState;
+    });
+    await page.locator('[data-applock]').waitFor();
+    await page.locator('[data-save]').waitFor({ state: 'detached' });
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === '/day/today');
+    await page.locator('#session-passphrase').fill('demo');
+    await page.locator('[data-session-submit]').click();
+    await page.locator('[data-applock]').waitFor({ state: 'detached' });
+    await page.locator('[data-entry-card]').filter({ hasText: `Pending entry ${locale}` }).click();
+    await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
+    const newerEntryRoute = new URL(page.url()).pathname;
+    assert.notEqual(newerEntryRoute, olderEntryRoute);
+    await note.fill(`Other editor recovery ${locale}`);
+    await page.waitForFunction((note) => window.entryMirror.lastNote === note, `Other editor recovery ${locale}`);
+    const newerMirror = await page.evaluate(() => localStorage.getItem('engender-entry-draft'));
+    await page.evaluate(() => window.entryWrite.release());
+    await page.waitForFunction(() => window.entryWrite.finished);
+    await page.waitForTimeout(500); // allow the attachment's SQLite commit to settle
+    assert.equal(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), newerMirror,
+      'detached completion cannot clear another editor recovery');
+    await page.evaluate(() => Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }));
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
+    assert.equal(await note.inputValue(), `Other editor recovery ${locale}`, 'different-route draft recovers after old save finishes');
+    await page.goto(base + '/day/today', { waitUntil: 'networkidle' });
+    await page.locator('[data-entry-card]').filter({ hasText: `Detached completion ${locale}` }).waitFor();
+    assert.equal(await page.locator('[data-entry-card]').filter({ hasText: `Detached completion ${locale}` }).count(), 1,
+      'detached save actually committed');
     assert.deepEqual(errors, []);
     console.log(`PASS ${locale}: pending save freezes edits and persists entry and encrypted photo`);
     await context.close();

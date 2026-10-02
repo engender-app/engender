@@ -176,6 +176,7 @@
       } finally {
         saving = false;
       }
+      if (!destroyed && recovery.draft.savedId !== undefined) draftStore.clear();
       starred = recovery.starred;
       savedDestination = recovery.destination;
       if (!destroyed && detachedEntrySave === recovery) detachedEntrySave = undefined;
