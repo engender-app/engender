@@ -200,7 +200,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.hair_removal()} back="/more" subtitle={m.hair_removal_intro()}>
+  <ScreenHeader title={m.hair_removal()} back="/more">
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.hair_removal_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
@@ -396,7 +396,6 @@
               icon="camera"
               key="hair-removal-photos-empty"
               title={m.hair_removal_photo_empty_title()}
-              text={m.hair_removal_photo_empty_body()}
             />
           {/snippet}
         </PhotoSection>
