@@ -74,11 +74,12 @@
         const animations: Animation[] = [];
         for (const child of part.children) {
           if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
-          animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
+          animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS, fill: 'forwards' }));
         }
         playAfterPaint(part, animations);
         void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
           if (version === revealVersion) delete revealedPart.dataset.gateRevealing;
+          for (const animation of animations) animation.cancel();
         });
       } else {
         delete part.dataset.gateRevealing;
