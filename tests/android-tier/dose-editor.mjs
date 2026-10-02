@@ -9,6 +9,7 @@ const serial = process.argv[2];
 if (!/^emulator-\d+$/.test(serial ?? '')) throw new Error('Pass an emulator serial');
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8' });
 const pkg = 'dev.engender.app';
+adb('shell', 'am', 'force-stop', pkg);
 const activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', pkg).trim().split('\n').at(-1);
 adb('shell', 'am', 'start', '-W', '-n', activity);
 await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -38,6 +39,7 @@ try {
   await page.waitForSelector('[data-leave-setup], [data-access-modes], [data-app-root][data-boot="ready"]', { timeout: 60000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.locator('[data-leave-setup]').click();
+    await page.waitForSelector('[data-access-modes], [data-home-hello]');
   }
   if (await page.locator('[data-access-modes]').count()) {
     await page.locator('[data-list-row="unlocked"]').click();
@@ -71,11 +73,15 @@ try {
     const rect = document.querySelector('.sheet-handle').getBoundingClientRect();
     return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, width: innerWidth };
   });
-  const physicalWidth = Number(/Physical size: (\d+)x\d+/.exec(adb('shell', 'wm', 'size'))[1]);
-  const scale = physicalWidth / swipe.width;
-  const x = String(Math.round(swipe.x * scale));
-  const y = String(Math.round(swipe.y * scale));
-  adb('shell', 'input', 'swipe', x, y, x, String(Math.round((swipe.y + 150) * scale)), '350');
+  adb('shell', 'uiautomator', 'dump', '/sdcard/dose-editor-window.xml');
+  const hierarchy = adb('shell', 'cat', '/sdcard/dose-editor-window.xml');
+  const bounds = /resource-id="dev.engender.app:id\/webview"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(hierarchy);
+  assert.ok(bounds, 'Native WebView bounds are available');
+  const [left, top, right] = bounds.slice(1).map(Number);
+  const scale = (right - left) / swipe.width;
+  const x = String(Math.round(left + swipe.x * scale));
+  const y = String(Math.round(top + swipe.y * scale));
+  adb('shell', 'input', 'swipe', x, y, x, String(Math.round(top + (swipe.y + 150) * scale)), '350');
   await page.locator('[data-keep-editing]').waitFor();
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });

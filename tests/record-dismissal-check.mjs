@@ -339,6 +339,25 @@ try {
   console.log('PASS saving from schedule exposes backdated dose beyond initial log window');
 
   await openNew();
+  await page.locator('[data-dose-when]').click();
+  const futureDay = await page.evaluate(async () => {
+    const { todayEpochDay, dateInputValueFromEpochDay } = await import('/src/lib/data/epochDay.ts');
+    return dateInputValueFromEpochDay(todayEpochDay() + 3);
+  });
+  await fillDate(page, '#dose-day', futureDay);
+  await page.locator('[data-save-dose]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  const futureDoseId = await page.evaluate(() => window.doseFault.savedId);
+  await page.locator(`[data-dose="${futureDoseId}"]`).waitFor();
+  await page.locator('[data-segment="schedule"]').click();
+  await page.locator('[data-segment="log"]').click();
+  await page.locator(`[data-dose="${futureDoseId}"]`).click();
+  await page.locator('[data-delete-dose]').click();
+  await page.locator('[data-confirm-delete-dose]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  console.log('PASS successful future-dated save remains visible when reopening log');
+
+  await openNew();
   await page.locator('[data-dose-what]').click();
   await doseAmount.fill('12');
   await requestNavigation('/care/labs');

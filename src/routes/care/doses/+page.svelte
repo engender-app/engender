@@ -87,6 +87,7 @@
 
   let windowDays = $state(DOSE_LOG_WINDOW_DAYS);
   const today = todayEpochDay();
+  let through = $state(today);
   let from = $derived(today - windowDays);
 
   /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
@@ -103,6 +104,7 @@
     readDoseLog(j, {
       today,
       fromEpochDay: from,
+      toEpochDay: through,
       deepLinkedDoseId,
       regimenClaims: [pickedRegimenDrug, page.url.searchParams.get('drug'), prefs.adherenceRegimenPick]
     })
@@ -186,6 +188,7 @@
       const stored = allDoses.find((dose) => dose.id === draft.id);
       await journal.doses.upsertDose(stored?.source === 'schedule' ? { ...input, source: 'schedule' } : input);
       windowDays = Math.max(windowDays, today - epochDayFromTimestamp(input.timestamp));
+      through = Math.max(through, epochDayFromTimestamp(input.timestamp));
       view = 'log';
     },
     remove: (id) => journal.doses.deleteDose(id),
