@@ -67,7 +67,8 @@ try {
        the app, so the fold is measured without it - the bar is not part of
        the screen a person on a short phone gets. */
     await page.evaluate(() => document.querySelector('.demo-bar')?.style.setProperty('display', 'none'));
-    const comfort = page.getByRole('link', { name: comfortName, exact: true });
+    const comfort = page.locator('.screen-safe-space > a[href="/doubt/comfort"]');
+    assert.equal(await comfort.innerText(), comfortName);
     await capture(`${locale}-support-short`);
     await page.waitForFunction(() => {
       const el = document.querySelector('.screen-safe-space > a');
