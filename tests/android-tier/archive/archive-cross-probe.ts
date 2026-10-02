@@ -18,6 +18,7 @@ import { createEncryptedWebSqlite } from '../../../src/lib/data/sqlite/mc-driver
 import { createWebSqlite } from '../../../src/lib/data/sqlite/sqlocal-driver.ts';
 import { openJournal, type Journal } from '../../../src/lib/data/journal/journal.ts';
 import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-store.ts';
+import { androidPhotos } from '../../../src/lib/data/photos/android-bridge.ts';
 import { encryptedFileStore } from '../../../src/lib/data/photos/encrypted-file-store.ts';
 import { opfsPhotoFiles } from '../../../src/lib/data/photos/opfs-file-store.ts';
 import { openArchive, packArchive } from '../../../src/lib/data/archive/pack.ts';
@@ -303,6 +304,9 @@ async function runDirection(
     // The Android bridge is a single native connection. Keeping two target
     // handles open at once lets one open() replace the other's database.
     targetReplace = await openHandle(targetKind, targetEncrypted, `${marker}-replace.sqlite3`, `${marker}-replace-photos`);
+    if (targetKind === 'android') {
+      await androidPhotos.removeDirectory({ directory: `${marker}-replace-photos` });
+    }
     await seedTargetLocalState(targetReplace.driver, targetReplace.journal, marker);
     const localBeforeReplace = await readLocalPrefs(targetReplace.driver);
 
@@ -343,6 +347,9 @@ async function runDirection(
     targetReplace = null;
 
     targetMerge = await openHandle(targetKind, targetEncrypted, `${marker}-merge.sqlite3`, `${marker}-merge-photos`);
+    if (targetKind === 'android') {
+      await androidPhotos.removeDirectory({ directory: `${marker}-merge-photos` });
+    }
     await seedTargetLocalState(targetMerge.driver, targetMerge.journal, marker);
     const localBeforeMerge = await readLocalPrefs(targetMerge.driver);
 
