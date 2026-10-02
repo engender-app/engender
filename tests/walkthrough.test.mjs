@@ -5248,6 +5248,7 @@ try {
 
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="finished"]', { timeout: 8000 });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { state: 'detached', timeout: 8000 });
   if ((await page.locator('[data-list-row="wear"][data-hub-section="transition"]').count()) !== 0) {
     throw new Error('the finished row is drawn in two places at once');
   }
