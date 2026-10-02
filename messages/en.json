@@ -3050,7 +3050,7 @@
   "size_log_fit_note_label": "Fit",
   "size_log_fit_note_placeholder": "e.g. runs small, true to size",
   "size_log_new_sheet": "New size",
-  "size_log_required_size": "Enter a size to save this record.",
+  "size_log_required_size": "Enter a size to save it.",
   "size_log_save": "Save",
   "size_log_size_label": "Size",
   "size_log_size_placeholder": "e.g. M, 32, 8",
