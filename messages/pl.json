@@ -1214,6 +1214,7 @@
   "entry_save_failed": "Nie udało się zapisać tego wpisu.",
   "entry_saved_continue": "Przejdź do ekranu Dzisiaj",
   "entry_saved_navigation_failed": "Wpis jest zapisany, ale nie udało się otworzyć następnego ekranu.",
+  "entry_saving": "Zapisywanie…",
   "entry_template_edit_sheet": "Edytuj szablon",
   "entry_template_hide_aria": "Ukryj {name}",
   "entry_template_name_label": "Nazwa",

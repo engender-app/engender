@@ -81,6 +81,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |
+| `entry-pending-save` | delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |
 | `roadmap-track-summary` | the selected track travels with the goal list it shows |
 | `prep-context-check` | an empty prep list still shows the next visit and keeps every section |
