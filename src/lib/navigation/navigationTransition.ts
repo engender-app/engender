@@ -188,6 +188,10 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
         blind.swap();
       }
     });
+    /* `ready` rejects on its own when the browser skips a transition - a
+       viewport resize mid-transition is one way - and nothing else here
+       reads it, so the rejection reached the window unhandled. */
+    void transition.ready.catch(() => {});
     void transition.finished
       .catch(() => {})
       .finally(() => {

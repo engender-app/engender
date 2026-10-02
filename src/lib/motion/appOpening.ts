@@ -77,6 +77,9 @@ export function openApp(
     }
   });
 
+  /* `ready` rejects too when the transition is skipped, and nothing reads it
+     but this. */
+  void transition.ready.catch(() => {});
   return transition.finished
     /* A transition superseded by another - a lock landing on the frame the
        app opened, which an immediate lock can genuinely do - rejects rather than
@@ -125,7 +128,9 @@ export function crossBootFailure(
     commit();
     await tick();
   });
-  /* Superseded rejects rather than resolves, as for openApp above. */
+  /* Superseded rejects rather than resolves, as for openApp above, `ready`
+     included. */
+  void transition.ready.catch(() => {});
   return transition.finished.catch(() => {}).finally(() => {
     delete root.dataset.nav;
   });

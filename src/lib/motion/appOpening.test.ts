@@ -20,7 +20,7 @@ const el = () => {
 /** A document with one field, a root that records what is stamped on it, and
     a `startViewTransition` that hands back the callback so a test can drive
     the frames itself. */
-function fakeDocument({ present = true } = {}) {
+function fakeDocument({ present = true, readyRejects = false } = {}) {
   const blind = el();
   const field = {
     ...el(),
@@ -52,6 +52,7 @@ function fakeDocument({ present = true } = {}) {
           startViewTransition(update: () => Promise<void>) {
             started.push(update);
             return {
+              ready: readyRejects ? Promise.reject(new Error('Viewport size changed')) : Promise.resolve(),
               finished: new Promise<void>((resolve, no) => {
                 settle = resolve;
                 reject = () => no(new Error('superseded'));
@@ -130,6 +131,20 @@ describe('the app opening', () => {
     await Promise.resolve();
     expect(doc.root.dataset.nav).toBeUndefined();
     expect(doc.blind.style.viewTransitionName).toBe('');
+  });
+
+  it('swallows ready rejecting when the browser skips the transition', async () => {
+    const unhandled: unknown[] = [];
+    const record = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', record);
+    try {
+      const doc = fakeDocument({ readyRejects: true });
+      void openApp(() => {}, doc.as);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      process.off('unhandledRejection', record);
+    }
+    expect(unhandled).toEqual([]);
   });
 
   it('commits straight through where the browser has no view transitions', () => {
