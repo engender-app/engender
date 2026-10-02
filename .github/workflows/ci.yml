@@ -215,9 +215,9 @@ jobs:
   guards:
     name: Regression guards (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    # The dev and built suites run independently so each keeps its full
-    # 30-minute budget as new regression guards are added.
-    timeout-minutes: 30
+    # Built guards rebuild the app and run the full motion sweeps.
+    # Their passing checks can exceed 30 minutes on a hosted runner.
+    timeout-minutes: ${{ matrix.suite == 'built' && 45 || 30 }}
     strategy:
       fail-fast: false
       matrix:
