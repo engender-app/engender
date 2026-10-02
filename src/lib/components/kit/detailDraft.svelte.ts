@@ -12,6 +12,7 @@ import { page } from '$app/state';
 import { liveQuery, type LiveQuery } from '$lib/data/live/journal.svelte';
 import type { Journal } from '$lib/data/journal/journal';
 import { answersFor, draftFor, fillDecision } from './detailDraft.ts';
+import { sameDraft, snapshotDraft } from './recordEditor.ts';
 
 type DetailDraftOptions<TRecord, TDraft> = {
   /** Find the record this id names. Not called for a new one. */
@@ -32,6 +33,10 @@ type DetailDraft<TRecord, TDraft> = {
   readonly record: TRecord | undefined;
   /** The editable draft. Deeply reactive, so a field binds straight to it. */
   draft: TDraft;
+  readonly changed: boolean;
+  /** Advance the baseline after a successful write. An independent action
+      can supply its committed record while retaining unrelated draft edits. */
+  commit(record?: TRecord): void;
   /** True until the read has answered for the id on the route. */
   readonly loading: boolean;
   /** True when that read rejected. */
@@ -64,6 +69,7 @@ export function detailDraft<TRecord, TDraft extends object>(
   const answer = $derived(query.value?.id === routeId() ? query.value : undefined);
 
   let draft = $state<TDraft>(options.blank());
+  let baseline = $state<TDraft | null>(null);
   let filledFor: string | null = null;
 
   $effect(() => {
@@ -71,6 +77,7 @@ export function detailDraft<TRecord, TDraft extends object>(
     if (fillDecision(filledFor, id, answer === undefined) !== 'fill') return;
     filledFor = id;
     draft = draftFor(answer!.record, options.blank, options.fromRecord);
+    baseline = snapshotDraft(draft);
   });
 
   return {
@@ -88,6 +95,12 @@ export function detailDraft<TRecord, TDraft extends object>(
     },
     set draft(value: TDraft) {
       draft = value;
+    },
+    get changed() {
+      return baseline !== null && !sameDraft(draft, baseline);
+    },
+    commit(record?: TRecord) {
+      baseline = snapshotDraft(record === undefined ? draft : options.fromRecord(record));
     },
     get loading() {
       return answer === undefined;
