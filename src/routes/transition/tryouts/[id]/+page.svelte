@@ -11,7 +11,8 @@
      them, on the kit's split row, so a row is one control and the delete
      is another rather than a button floating inside a row that also opens
      something. */
-  import { goto } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
+  import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
@@ -40,11 +41,13 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import { OFFERS, answerOffer, type OfferAnswer, type TryoutAdoption } from '$lib/data/offers';
 
   /* Three areas below the form: how it has felt, what it looked like, and
@@ -79,23 +82,93 @@
     })
   });
   let draft = $derived(detail.draft);
+  let saving = $state(false);
+  let saveFailed = $state(false);
+  let saved = $state(false);
+  let creationId = $state<string | null>(null);
+  let navigationFailed = $state(false);
+  let outcome: HTMLParagraphElement | undefined = $state();
+  let pendingDismiss = $state<(() => void) | null>(null);
+
+  $effect(() => {
+    detail.id;
+    creationId = null;
+    navigationFailed = false;
+    saved = false;
+    saveFailed = false;
+    pendingDismiss = null;
+  });
+
+  $effect(() => {
+    if (detail.changed) saved = false;
+  });
+
+  beforeNavigate((navigation) => {
+    if (!saving && !detail.changed) return;
+    navigation.cancel();
+    if (saving || pendingDismiss || navigation.willUnload) return;
+    pendingDismiss = () => {
+      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
+      else if (navigation.to) void goto(navigation.to.url).catch(() => {});
+    };
+  });
+
+  function discard() {
+    const after = pendingDismiss;
+    pendingDismiss = null;
+    detail.discard();
+    after?.();
+  }
+
+  async function focusOutcome() {
+    await tick();
+    outcome?.focus({ preventScroll: true });
+    outcome?.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
+  }
+
+  async function openCreatedTryout() {
+    if (!creationId) return;
+    try {
+      await goto(`/transition/tryouts/${creationId}`);
+      navigationFailed = detail.isNew;
+    } catch {
+      navigationFailed = true;
+    }
+    if (navigationFailed) await focusOutcome();
+  }
 
   async function saveTryout() {
-    const id = await journal.tryouts.upsertTryout({
-      id: detail.record?.id,
-      kind: draft.kind,
-      label: draft.label,
-      description: hasDescription(draft.kind) ? draft.description : null,
-      startEpochDay: epochDayFromDateInputValueOrToday(draft.start),
-      endEpochDay: draft.end ? epochDayFromDateInputValue(draft.end) : null
-    });
+    if (saving || creationId && detail.isNew || !draft.label.trim()) return;
+    const isNew = detail.isNew;
+    saving = true;
+    saveFailed = false;
+    saved = false;
+    try {
+      const id = await journal.tryouts.upsertTryout({
+        id: detail.record?.id,
+        kind: draft.kind,
+        label: draft.label,
+        description: hasDescription(draft.kind) ? draft.description : null,
+        startEpochDay: epochDayFromDateInputValueOrToday(draft.start),
+        endEpochDay: draft.end ? epochDayFromDateInputValue(draft.end) : null
+      });
+      detail.commit();
+      if (isNew) creationId = id;
+      else saved = true;
+    } catch {
+      saveFailed = true;
+    } finally {
+      saving = false;
+    }
+    if (saveFailed) return;
     /* Straight onto the new tryout, which is where its felt-sense section
        is. This used to go back to the list instead, because navigating
        within the same [id] route reuses this component instance and the
        route parameter was captured in a const that never updated - so the
        section stayed hidden after a create. The parameter is read through
        detailDraft now, which is the module that reads it reactively. */
-    if (detail.isNew) await goto(`/transition/tryouts/${id}`);
+    if (isNew) await openCreatedTryout();
+    else await focusOutcome();
   }
 
   /* Only once a tryout has its own id, the same reasoning hair-removal's
@@ -257,13 +330,23 @@
           }
         : null;
 
-    /* Closed before the write, so a second tap finds no open offer. */
+    if (saving) return;
     adoptOpen = false;
-    if (await answerOffer(ADOPT_OFFER, subject, given, journal)) {
-      if (options?.updateProfileName && draft.kind === 'name') {
-        prefs.name = options.milestoneTitle || draft.label;
+    saving = true;
+    saveFailed = false;
+    try {
+      if (await answerOffer(ADOPT_OFFER, subject, given, journal)) {
+        if (options?.updateProfileName && draft.kind === 'name') {
+          prefs.name = options.milestoneTitle || draft.label;
+        }
+        const endEpochDay = todayEpochDay();
+        draft.end = dateInputValueFromEpochDay(endEpochDay);
+        if (detail.record) detail.commit({ ...detail.record, endEpochDay });
       }
-      draft.end = dateInputValueFromEpochDay(todayEpochDay());
+    } catch {
+      saveFailed = true;
+    } finally {
+      saving = false;
     }
   }
 </script>
@@ -282,7 +365,7 @@
     <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if detail.isNew || detail.record}
 
-  <div>
+  <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
         <Segmented
@@ -293,12 +376,15 @@
         />
       {/snippet}
     </Field>
-    <Field label={m.tryout_label_label()} id="tr-label">
-      {#snippet children(id)}
+    <Field label={m.tryout_label_label()} hint={m.tryout_label_required()} id="tr-label">
+      {#snippet children(id, describedBy)}
         <input
           class="input"
           {id}
           name="tr-label"
+          required
+          aria-invalid={!draft.label.trim()}
+          aria-describedby={describedBy}
           placeholder={labelPlaceholder(draft.kind)}
           bind:value={draft.label}
         />
@@ -350,7 +436,23 @@
     >
       <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
     </button>
-  </div>
+  </fieldset>
+  {#if saveFailed || navigationFailed && detail.isNew || saved}
+    <div class="disclosed" transition:disclose>
+      {#if saveFailed}
+        <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
+      {:else if navigationFailed && detail.isNew}
+        <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.tryout_saved_navigation_failed()}</p>
+        <button class="btn btn-primary" data-tryout-continue onclick={openCreatedTryout}><span>{m.tryout_saved_continue()}</span></button>
+      {:else}
+        <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.saved()}</p>
+      {/if}
+    </div>
+  {/if}
+
+  {#if detail.isNew}
+    <p class="muted" data-tryout-photo-requirement>{m.tryout_photo_save_first()}</p>
+  {/if}
 
   {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
@@ -506,3 +608,26 @@
   />
   {/if}
 </div>
+
+<Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
+  <h3>{m.record_discard_title()}</h3>
+  <p class="muted">{m.record_discard_body()}</p>
+  <div class="discard-actions">
+    <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}><span>{m.record_keep_editing()}</span></button>
+    <button class="btn btn-danger" data-discard-record onclick={discard}><span>{m.vb_practice_discard()}</span></button>
+  </div>
+</Sheet>
+
+<style>
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  .discard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+</style>

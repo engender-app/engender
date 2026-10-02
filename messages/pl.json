@@ -3612,6 +3612,7 @@
   "tryout_label_placeholder_presentation_step": "np. pierwszy raz do sklepu",
   "tryout_label_placeholder_pronouns": "np. ona/jej, onu/jenu",
   "tryout_label_placeholder_style": "np. krótsze włosy",
+  "tryout_label_required": "Dodaj nazwę, żeby zapisać tę próbę.",
   "tryout_new_title": "Nowa próba",
   "tryout_none": "Jeszcze nie ma prób.",
   "tryout_photo_delete": "Usuń",
@@ -3620,6 +3621,7 @@
   "tryout_photo_delete_sheet": "Usuń zdjęcie",
   "tryout_photo_empty_body": "Dodaj zdjęcie do tej próby.",
   "tryout_photo_empty_title": "Jeszcze nie ma zdjęć",
+  "tryout_photo_save_first": "Najpierw zapisz próbę. Zdjęcia można potem dodać na jej ekranie.",
   "tryout_photo_section_title": "Zdjęcia",
   "tryout_ran_days": [
     {
@@ -3642,6 +3644,8 @@
   "tryout_running_heading": "Trwa teraz",
   "tryout_save": "Zapisz",
   "tryout_save_changes": "Zapisz zmiany",
+  "tryout_saved_continue": "Otwórz zapisaną próbę",
+  "tryout_saved_navigation_failed": "Próba jest zapisana, ale nie udało się otworzyć jej ekranu.",
   "tryout_start_label": "Początek",
   "tryout_title": "Próby",
   "unit_days": [
