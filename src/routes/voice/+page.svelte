@@ -611,8 +611,6 @@
     title={m.vm_title()}
     onClose={() => (metricSheetKey = null)}
   >
-    <h3>{m.vm_title()}</h3>
-    <p class="muted small">{m.vm_intro()}</p>
     <p class="muted small" data-metrics-distance>{m.vm_distance()}</p>
     {#each VOICE_METRICS as metric, i (metric.key)}
       <section id={metric.key} class="vm-metric" {...roleAttrs(roleAt(activeFlag.roles, i))}>
