@@ -3,6 +3,29 @@ import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium, settlePage } from './browser-harness.mjs';
 
+/** Resolves once `selector`'s scroll position has held for three frames, so
+    the next scroll does not start while an eased one is still running: two
+    overlapping smooth scrolls leave Chromium short of either target. */
+const scrollSettled = (page, selector) =>
+  page.evaluate(
+    (sel) =>
+      new Promise((resolve) => {
+        let last = NaN;
+        let still = 0;
+        const tick = () => {
+          const el = (sel && document.querySelector(sel)) || document.scrollingElement;
+          const now = el.scrollTop;
+          still = now === last ? still + 1 : 0;
+          last = now;
+          if (still >= 3) resolve(now);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    selector
+  );
+
+
 const server = await createServer({
   server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } }
 });
@@ -103,6 +126,9 @@ try {
     const region = document.querySelector('[data-app-scroll-region]');
     return (region ? region.scrollTop : window.scrollY) > 100;
   });
+  /* The jump eases; going Back while it still runs starts a second eased
+     scroll on top of it. */
+  await scrollSettled(page, '[data-app-scroll-region]');
   const scrolledY = await getScroll();
   assert.ok(scrolledY > initialScroll, `Viewport scrolled down to open section (scrolled ${scrolledY}px)`);
 
