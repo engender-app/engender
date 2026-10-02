@@ -1200,6 +1200,7 @@
   "entry_save_failed": "Couldn’t save this entry.",
   "entry_saved_continue": "Go to Today",
   "entry_saved_navigation_failed": "Your entry is saved, but the next screen couldn’t open.",
+  "entry_saving": "Saving…",
   "entry_template_edit_sheet": "Edit template",
   "entry_template_hide_aria": "Hide {name}",
   "entry_template_name_label": "Name",
