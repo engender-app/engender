@@ -27,7 +27,7 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
     });
 
     it('defines methodology disclosure label in both languages', () => {
-      expect(en.effects_methodology_disclosure).toBe('About the shaded bands');
+      expect(en.effects_methodology_disclosure).toBe('About shaded bands');
       expect(pl.effects_methodology_disclosure).toBe('O zacieniowanych pasach');
     });
 
