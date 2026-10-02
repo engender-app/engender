@@ -1,7 +1,7 @@
 /* Everything that runs while the app is ready on Android and nowhere else:
    reminder schedule sync, medication stock run-out reconciliation, launch-route
    consumption, visibility/focus resync, the back button, the disguise alias and
-   the quick-exit mirror. These seven pieces used to be seven separate effects
+   the lock-timing mirror. These seven pieces used to be seven separate effects
    in +layout.svelte, accumulated one at a time because
    no narrower seam existed for "Android, and the journal is open" - this is that
    seam.
@@ -13,9 +13,9 @@
    +layout.svelte's one platform-sync effect reads every preference this module
    cares about and calls `startAndroidPlatformSync` again on any of their changes.
    Because that effect returns `stop`, Svelte tears the previous run down before
-   the next one starts, so a change to e.g. `quickExit` also re-runs the reminder
+   the next one starts, so a change to e.g. `lockAfter` also re-runs the reminder
    resync and re-attaches the visibility/back-button listeners, not only the
-   quick-exit sync. That is wasted work, not a behaviour change: the bridges are
+   lock-timing sync. That is wasted work, not a behaviour change: the bridges are
    themselves no-ops when nothing actually changed, and re-attaching a listener
    that was just removed is what the original effects already did whenever their
    own dependency changed.
@@ -30,6 +30,7 @@
    `stockReminderListenerAttached`. */
 
 import type { Reminder } from '$lib/data/types';
+import type { LockAfter } from '../data/prefs/catalogue';
 /* Relative, not `$lib/...`: platform-sync.test.ts's vitest config has no
    SvelteKit plugin and cannot resolve the alias, and this pure module
    (unlike buildAndroidReminderPayload below) has no reason to be mocked
@@ -69,7 +70,7 @@ export interface PlatformSyncDeps {
         palette change reaches this module at all. */
     palette: string;
     launcherIconShape: 'current' | 'round';
-    quickExit: boolean;
+    lockAfter: LockAfter;
     allowScreenCapture: boolean;
   };
   journal: {
@@ -92,7 +93,7 @@ export interface PlatformSyncDeps {
     consumeLaunchRoute(): Promise<{ route: string | null }>;
   };
   androidDisguise: { setLauncherIdentity(options: { disguised: boolean; palette: string; shape: 'current' | 'round' }): Promise<void> };
-  androidQuickExit: { setEnabled(options: { enabled: boolean }): Promise<void> };
+  androidLockTiming: { setTiming(options: { timing: LockAfter }): Promise<void> };
   androidScreenCapture: { setAllowed(options: { allowed: boolean }): Promise<void> };
   androidBackButton: {
     addListener(eventName: 'backButton', listener: () => void): Promise<{ remove(): Promise<void> }>;
@@ -353,7 +354,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     palette: deps.prefs.palette,
     shape: deps.prefs.launcherIconShape
   });
-  void deps.androidQuickExit.setEnabled({ enabled: deps.prefs.quickExit });
+  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter });
   void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture });
 
   stopCurrent = () => {

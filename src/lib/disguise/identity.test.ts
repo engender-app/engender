@@ -1,8 +1,8 @@
 /* The disguised identity, at both levels it can be checked at.
 
    Most of this file calls the rule: `tabIdentity` and `appWordmark` are
-   pure, so the cross product of the two flags that decide them is four
-   cases and they are all here.
+   pure, so the disguise preference decides the two
+   cases below.
 
    The last test is a source grep, and deliberately one. What it guards is
    not behaviour but reach - that no surface anywhere in `src/` has written
@@ -44,7 +44,7 @@ describe('what the tab says', () => {
   const chromeIcon = 'favicon-trans.svg';
 
   it('says the app name over the running app', () => {
-    expect(tabIdentity({ disguised: false, blanked: false, appName: 'engender', icon: chromeIcon })).toEqual({
+    expect(tabIdentity({ disguised: false, appName: 'engender', icon: chromeIcon })).toEqual({
       title: 'engender',
       icon: 'favicon-trans.svg'
     });
@@ -52,34 +52,14 @@ describe('what the tab says', () => {
 
   it('says the decoy name over the running app when disguised', () => {
     expect(
-      tabIdentity({ disguised: true, blanked: false, appName: 'engender', icon: 'favicon-notes.svg' })
+      tabIdentity({ disguised: true, appName: 'engender', icon: 'favicon-notes.svg' })
     ).toEqual({
       title: 'Notes',
       icon: 'favicon-notes.svg'
     });
   });
 
-  it('pretends to be an unused tab when quick exit blanks it', () => {
-    /* Undisguised, the quick-exit face is a blank page, so the tab says
-       what a blank page says - and takes the neutral icon with it, since
-       an empty tab wearing the app's flag is not empty. */
-    expect(tabIdentity({ disguised: false, blanked: true, appName: 'engender', icon: chromeIcon })).toEqual({
-      title: 'New tab',
-      icon: 'favicon-notes.svg'
-    });
-  });
 
-  it('keeps the decoy name when quick exit blanks a disguised tab', () => {
-    /* Disguised, quick exit shows the decoy notes screen, so the tab says
-       what the page shows rather than dropping to "New tab" and telling
-       anyone watching that something was closed. */
-    expect(
-      tabIdentity({ disguised: true, blanked: true, appName: 'engender', icon: 'favicon-notes.svg' })
-    ).toEqual({
-      title: 'Notes',
-      icon: 'favicon-notes.svg'
-    });
-  });
 });
 
 describe('where the decoy name is allowed to appear', () => {
@@ -98,8 +78,7 @@ describe('where the decoy name is allowed to appear', () => {
      narrowed to one quoting style: half a dozen files explain the
      disguise in prose, and a check that only caught `'Notes'` would miss
      a new surface writing "Notes" or a bare text node - which is exactly
-     the surface this is here to catch. `DecoyNotes` and the rest of the
-     identifiers are safe on the word boundary. */
+     the surface this is here to catch. Identifiers are safe on the word boundary. */
   const withoutComments = (source: string) =>
     source
       .replace(/<!--[\s\S]*?-->/g, '')
@@ -148,6 +127,5 @@ describe('where the decoy name is allowed to appear', () => {
       expect(readFileSync(root + path, 'utf8'), path).toContain('appWordmark(');
     }
     expect(readFileSync(root + 'src/routes/+layout.svelte', 'utf8')).toContain('tabIdentity({');
-    expect(readFileSync(root + 'src/lib/components/DecoyNotes.svelte', 'utf8')).toContain('DECOY_NAME');
   });
 });

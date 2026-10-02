@@ -63,7 +63,6 @@ export interface PreferenceValues {
       is why no screen asks it there. */
   lockAfter: LockAfter;
   disguise: boolean;
-  quickExit: boolean;
   /** Android only (ticket screen-capture-guard/01): whether this device may
       screenshot or record the app, mirrored into SharedPreferences so
       MainActivity can decide FLAG_SECURE before the window has a frame.
@@ -483,7 +482,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
      answering. */
   lockAfter: 'restart',
   disguise: false,
-  quickExit: false,
   allowScreenCapture: true,
   hideNotificationTitles: true,
   checkInEnabled: false,
@@ -598,7 +596,6 @@ export const DEVICE_LOCAL_KEYS = [
   'a11yMotionReduce',
   'lockAfter',
   'disguise',
-  'quickExit',
   'allowScreenCapture',
   'hideNotificationTitles',
   'entryNudges',
