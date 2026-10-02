@@ -98,11 +98,25 @@ describe('sunRings', () => {
     });
   });
 
-  it('draws intersex purple outside yellow and Polish with two bands', () => {
+  it('draws intersex purple outside yellow', () => {
     expect(palettes.intersex).toEqual(['#7902AA', '#FFD800']);
     expect(sunRings(palettes.intersex, false).map((ring) => ring.color)).toEqual(palettes.intersex);
-    expect(palettes.polish).toEqual(['#FFFFFF', '#DC143C']);
-    expect(sunRings(palettes.polish, false)).toHaveLength(2);
+  });
+
+  it('draws one larger Polish disc and reverses its colour in dark mode', () => {
+    for (const dark of [false, true]) {
+      const rings = sunRings(palettes.polish, dark, 'polish');
+      expect(rings).toEqual([
+        {
+          diameter: SUN_OUTER,
+          color: dark ? '#FFFFFF' : '#DC143C',
+          inDelay: 0,
+          breatheDelay: 0.85
+        }
+      ]);
+      expect(rings[0].diameter).toBe(2 * sunRings(palettes.polish, dark)[1].diameter);
+    }
+    expect(sunRings([], false, 'polish')).toEqual([]);
   });
 
   it("bisexual's doubled stops give two adjacent same-colour rings, its 2:1:2 for free", () => {

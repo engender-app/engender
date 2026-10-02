@@ -36,8 +36,12 @@ export function ringRadii(n: number, outer: number): number[] {
     flag's stripes are all the same width. Bisexual's doubled stops
     (`#D60270, #D60270, #9B4F96, ...`) turn into two adjacent equal rings
     of the same colour, which reads as one thicker band - its 2:1:2
-    proportion for free, no special-casing here. */
-export function sunRings(stripes: string[], dark: boolean): SunRing[] {
+    proportion for free. Polish uses one full-size disc, red on white in
+    light mode and white on red in dark mode. */
+export function sunRings(stripes: string[], dark: boolean, palette?: string): SunRing[] {
+  if (palette === 'polish' && stripes.length > 0) {
+    return [{ diameter: SUN_OUTER, color: stripes[dark ? 0 : 1], inDelay: 0, breatheDelay: 0.85 }];
+  }
   const radii = ringRadii(stripes.length, SUN_OUTER / 2);
   return stripes.map((hex, i) => ({
     diameter: radii[i] * 2,

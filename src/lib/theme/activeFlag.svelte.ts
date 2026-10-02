@@ -42,6 +42,7 @@ import { parseMotifStripes } from '$lib/motion/flagSun';
 import { flagField, readFlagFill, readFlagRoles, type FlagField, type Role } from './roles';
 
 export const activeFlag = $state<{
+  palette: string | undefined;
   /** `--motif-stripes` in stripe order, exactly as the palette writes it. */
   stripes: string[];
   /** The resolved theme, not the preference: `system` has already been
@@ -57,7 +58,7 @@ export const activeFlag = $state<{
       without a component reading the stripes for itself; ticket 23 is
       what paints it. */
   field: FlagField | undefined;
-}>({ stripes: [], dark: true, roles: [], fill: 'none', field: undefined });
+}>({ palette: undefined, stripes: [], dark: true, roles: [], fill: 'none', field: undefined });
 
 /** Under disguise the field falls to the page's own second surface and its
     ink to the text colour (DIRECTION.md rule 3), so a screen that paints
@@ -76,6 +77,7 @@ function publishField(doc: Document, field: FlagField | undefined): void {
     already said what they want. */
 export function refreshActiveFlag(doc: Document = document, disguised = false): void {
   if (disguised) {
+    activeFlag.palette = undefined;
     activeFlag.stripes = [];
     activeFlag.roles = [];
     activeFlag.fill = 'none';
@@ -94,9 +96,12 @@ export function refreshActiveFlag(doc: Document = document, disguised = false): 
   const stripes = parseMotifStripes(
     getComputedStyle(doc.documentElement).getPropertyValue('--motif-stripes')
   );
-  const field = flagField(stripes, doc.documentElement.dataset.palette);
+  const palette = doc.documentElement.dataset.palette;
+  const dark = doc.documentElement.dataset.theme === 'dark';
+  const field = flagField(stripes, palette, dark);
+  activeFlag.palette = palette;
   activeFlag.stripes = stripes;
-  activeFlag.dark = doc.documentElement.dataset.theme === 'dark';
+  activeFlag.dark = dark;
   // readFlagRoles/readFlagFill own the ground list and the stripe read; a
   // second copy of either here is a second thing to keep in step.
   activeFlag.roles = readFlagRoles(doc);

@@ -447,7 +447,8 @@ function readStripes(doc: Document): string[] {
     dark blue rather than its purple (Alicja, 2026-09-07, on ticket 23's
     renders). Where no inner band is chromatic, the first later colour
     becomes the field. A flag with no such band falls back to its first
-    colour, then to its first stripe.
+    colour, then to its first stripe. Polish uses white in light mode and
+    red in dark mode, opposite its single sun disc.
 
     The ink is the dark theme's near-black or white, whichever measures
     higher on the hex. Only large text may sit on the field: nonbinary's
@@ -463,14 +464,14 @@ export interface FlagField {
   ratio: number;
 }
 
-export function flagField(stripes: string[], palette?: string): FlagField | undefined {
+export function flagField(stripes: string[], palette?: string, dark = false): FlagField | undefined {
   const bands = stripes.map((s) => s.trim()).filter(Boolean);
   if (bands.length === 0) return undefined;
   const outer = bands[0].toUpperCase();
   const isColour = (s: string) => chromaOf(s) >= ACHROMATIC;
   const inner = bands.slice(1, -1);
   const hex =
-    (palette && FIELD_NAMED_BAND[palette]) ||
+    (palette === 'polish' ? bands[dark ? 1 : 0] : palette && FIELD_NAMED_BAND[palette]) ||
     inner.find((s) => isColour(s) && s.toUpperCase() !== outer) ||
     bands.slice(1).find((s) => isColour(s) && s.toUpperCase() !== outer) ||
     bands.find(isColour) ||
