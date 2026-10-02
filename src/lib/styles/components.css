@@ -2767,16 +2767,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 .pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
 .pin-wait + .pin-status { margin-top: var(--space-3); }
 
-/* Quick exit's neutral page. Above everything, including the demo bar at
-   60, and painted in the browser's own surface colours rather than the
-   app's - a themed page in the app's palette is exactly what it is trying
-   not to look like. */
-.quick-exit-blank {
-  position: fixed; inset: 0; z-index: 100;
-  border: none; padding: 0;
-  background: #fff; background: Canvas;
-}
-
 /* ---------- misc ---------- */
 .muted { color: var(--text-2); }
 .small { font-size: var(--text-sm); }

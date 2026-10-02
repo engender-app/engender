@@ -41,7 +41,7 @@
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
   import { registerServiceWorker } from '$lib/pwa/register';
-  import { isLocked, lockState, watchLock } from '$lib/stores/lock.svelte';
+  import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath } from '$lib/navigation/chromeless';
@@ -64,7 +64,6 @@
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
-  import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
@@ -225,16 +224,12 @@
        and this is the wiring. */
     const tab = tabIdentity({
       disguised: prefs.disguise,
-      blanked: lockState.blanked,
       appName: m.app_name(),
       icon: chrome.icon
     });
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
-    /* The installed app's identity (ticket 25). Follows the preference and
-       not the blank, because quick exit is a moment and an install is not:
-       what a launcher calls this app should change when someone asks for a
-       disguise, not for as long as a tab is held blank. */
+    /* The installed app's identity follows the disguise preference. */
     const manifest = getLocale() === 'pl' ? chrome.manifest.replace('.webmanifest', '-pl.webmanifest') : chrome.manifest;
     document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${manifest}`);
     document
@@ -601,28 +596,8 @@
                the secret it would ask for is the one that failed. -->
           <PostRecoveryAccessMode />
         {:else if locked}
-          <!-- Instead of the route, not over it: nothing below this renders,
-               so no screen mounts and no query runs while the app is locked.
-
-               What that costs, decided and kept (phase 8 features ticket 49
-               item 3): the route unmounts, so component state and scroll
-               position go with it, and unlocking is not a navigation, so
-               `restoreScroll` never runs either. The app comes back at the top
-               of the screen it was on. Asked to put somebody back exactly where
-               they were reading - pass 3's D5 - the answer here is no, on
-               purpose. Not rendering the journal behind a lock screen is the
-               property the gesture exists for, and quick exit is the gesture
-               for somebody walking in: redrawing the paragraph that was just
-               hidden, a second after the passphrase is typed in front of that
-               person, is not a kindness. The URL is untouched, so what the
-               person does get back is the screen itself.
-
-               A journal with no access secret at all never reaches this branch.
-               It takes `lockState.blanked` instead - an overlay above a tree
-               that stays mounted - and does keep its position, which is where
-               the original "already true, by construction" reading came from.
-               walkthrough.test.mjs flow 18 asserts the passphrase case, since
-               that is every journal this feature exists for. -->
+          <!-- The locked route unmounts, so its reads stop and unlocking
+               returns to the same URL at the top of the screen. -->
           <SessionUnlock mode={bootState.accessMode} />
         {:else if redirectingToOnboarding}
           <!-- The effect above is already navigating here; nothing renders
@@ -644,21 +619,3 @@
     <Toasts />
   </div>
 </div>
-
-{#if lockState.blanked}
-  {#if prefs.disguise}
-    <!-- Disguised, quick exit shows the decoy home screen (ticket 30): the
-         notes app the tab's name and icon already claim to be. -->
-    <DecoyNotes />
-  {:else}
-    <!-- Quick exit (F24): the whole tab, blank, over everything. Dismissing
-         it does not unlock anything - with a PIN set, what is underneath is
-         the lock screen. -->
-    <button
-      class="quick-exit-blank"
-      data-blank
-      aria-label={m.quick_exit_back()}
-      onclick={() => (lockState.blanked = false)}
-    ></button>
-  {/if}
-{/if}

@@ -23,7 +23,6 @@
   import type { Snippet } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { lockState } from '$lib/stores/lock.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ConfirmDeleteSheet from './ConfirmDeleteSheet.svelte';
   import type { recordEditor } from './recordEditor.svelte';
@@ -113,7 +112,7 @@
   }
 
   beforeNavigate((navigation) => {
-    if (!draft || lockState.blanked || (!record.changed && !record.saving)) return;
+    if (!draft || (!record.changed && !record.saving)) return;
     navigation.cancel();
     // Unloading uses the browser's own confirmation; it cannot await a sheet.
     if (navigation.willUnload) return;
@@ -125,7 +124,7 @@
   });
 
   $effect(() => {
-    if (!draft || lockState.blanked) pendingDismiss = null;
+    if (!draft) pendingDismiss = null;
   });
 
   /* Stated outright by most screens, read off the record being deleted by

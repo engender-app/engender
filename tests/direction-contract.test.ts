@@ -199,11 +199,8 @@ describe('rule 5: the radius budget', () => {
      corner or it cuts across it, which is why this exception is a selector
      rather than a value (phase 10 ticket 27, ADR-0077). */
   const moodBlock = /\.mood-face|\.cal-card|\.cal-swatch|\.cal-half/;
-  /* Two files draw something that is deliberately not this app: the decoy
-     notes screen (ADR-0035's disguise has to look like somebody else's notes
-     app, and a 6px world is now this app's tell) and the demo bar, which is
-     development tooling drawn in nobody's palette. */
-  const exempt = /DecoyNotes\.svelte|DemoBar\.svelte/;
+  /* The demo bar is development tooling drawn in nobody's palette. */
+  const exempt = /DemoBar\.svelte/;
 
   function resolve(value: string, t: Record<string, string>): string {
     /* Until nothing is left to substitute, so a component's own
