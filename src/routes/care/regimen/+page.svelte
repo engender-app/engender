@@ -1,5 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { beforeNavigate, goto } from '$app/navigation';
+  import { lockState } from '$lib/stores/lock.svelte';
+  import { sameDraft, snapshotDraft } from '$lib/components/kit/recordEditor';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* What you are taking, and since when, on the surface kit (phase 5 UX
      ticket 25).
@@ -103,7 +106,14 @@
   let templatePicker = $state(false);
 
   function openEditor(episode: RegimenEpisode | null, template: RegimenTemplate | null = null) {
+    if (saving) return;
     templatePicker = false;
+    schedule = null;
+    scheduleBaseline = null;
+    newPause = null;
+    pendingEndReason = null;
+    failure = null;
+    status = null;
     editor = episode
       ? {
           id: episode.id,
@@ -128,44 +138,8 @@
           endDate: '',
           endReason: null
         };
+    episodeBaseline = snapshotDraft(episodeSnapshot);
   }
-
-  async function saveEpisode() {
-    if (!editor) return;
-    const dose = parseFloat(editor.dose);
-    const drug = editor.drug.trim();
-    if (isNaN(dose) || !drug) return;
-
-    await journal.regimen.upsertEpisode({
-      id: editor.id,
-      drug,
-      ester: editor.ester.trim() || null,
-      dose,
-      doseUnit: editor.doseUnit.trim(),
-      route: editor.route.trim(),
-      interval: editor.interval.trim(),
-      startEpochDay: epochDayFromDateInputValueOrToday(editor.startDate),
-      endEpochDay: editor.endDate ? epochDayFromDateInputValue(editor.endDate) : null,
-      endReason: editor.endReason
-    });
-    editor = null;
-  }
-
-  /** The "end this episode" action (phase 5 ticket 38): sets today as the
-      episode's end day, independent of any other episode starting - not a
-      side effect of the general edit form above. Ticket 43: carries
-      whichever reason chip was picked, or none - ending with no reason
-      chosen stays valid. */
-  async function endEpisodeToday() {
-    if (!editor?.id) return;
-    const endEpochDay = todayEpochDay();
-    await journal.regimen.endEpisode(editor.id, endEpochDay, pendingEndReason);
-    editor = { ...editor, endDate: dateInputValueFromEpochDay(endEpochDay), endReason: pendingEndReason };
-  }
-
-  /** Monday-first, matching `weekdayOfEpochDay` (epochDay.ts) and the
-      calendar heat-map's own week. */
-  const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 
   let schedule = $state<{
     recurrenceKind: DoseScheduleRecurrence['kind'];
@@ -186,6 +160,111 @@
       chip picked stays a valid way to end an episode. */
   let pendingEndReason = $state<EpisodeEndReason | null>(null);
 
+  let saving = $state(false);
+  let failure = $state<string | null>(null);
+  let status = $state<string | null>(null);
+  let messageGroup = $state<'episode' | 'schedule' | 'pause' | 'end'>('episode');
+  let pendingDismiss = $state<(() => void) | null>(null);
+  let episodeSnapshot = $derived(editor ? { ...editor, dose: String(editor.dose ?? '') } : null);
+  let episodeBaseline = $state<typeof episodeSnapshot>(null);
+  let scheduleSnapshot = $derived(schedule ? {
+    ...schedule,
+    everyNDays: String(schedule.everyNDays ?? ''),
+    dosesPerDay: String(schedule.dosesPerDay ?? ''),
+    doseAmounts: schedule.doseAmounts.map((amount) => ({ ...amount, dose: String(amount.dose ?? '') }))
+  } : null);
+  let scheduleBaseline = $state<typeof scheduleSnapshot>(null);
+  let episodeChanged = $derived(!sameDraft(episodeSnapshot, episodeBaseline));
+  let scheduleChanged = $derived(!sameDraft(scheduleSnapshot, scheduleBaseline));
+  let changed = $derived(episodeChanged || scheduleChanged || newPause !== null || pendingEndReason !== null);
+  let episodeRequirements = $derived([
+    ...(!editor?.drug.trim() ? [m.regimen_drug_required()] : []),
+    ...(!Number.isFinite(parseFloat(String(editor?.dose ?? ''))) ? [m.regimen_dose_required()] : [])
+  ]);
+
+  function requestDismiss(after: () => void = () => { editor = null; }) {
+    if (saving || pendingDismiss) return;
+    if (changed) pendingDismiss = after;
+    else after();
+  }
+
+  function discard() {
+    const after = pendingDismiss;
+    pendingDismiss = null;
+    after?.();
+  }
+
+  beforeNavigate((navigation) => {
+    if (!editor || lockState.blanked || (!changed && !saving)) return;
+    navigation.cancel();
+    if (navigation.willUnload) return;
+    requestDismiss(() => {
+      editor = null;
+      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
+      else if (navigation.to) void goto(navigation.to.url); // Destination is already a resolved navigation URL.
+    });
+  });
+
+  $effect(() => {
+    if (!editor || lockState.blanked) pendingDismiss = null;
+  });
+
+  async function write(group: typeof messageGroup, action: () => Promise<unknown>, failedMessage: string): Promise<boolean> {
+    if (saving) return false;
+    const draft = editor;
+    messageGroup = group;
+    saving = true;
+    failure = null;
+    status = null;
+    try {
+      await action();
+      return editor === draft;
+    } catch {
+      if (editor === draft) failure = failedMessage;
+      return false;
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function saveEpisode() {
+    if (!editor || episodeRequirements.length || saving) return;
+    const draft = editor;
+    if (!await write('episode', () => journal.regimen.upsertEpisode({
+      id: draft.id,
+      drug: draft.drug.trim(),
+      ester: draft.ester.trim() || null,
+      dose: parseFloat(String(draft.dose)),
+      doseUnit: draft.doseUnit.trim(),
+      route: draft.route.trim(),
+      interval: draft.interval.trim(),
+      startEpochDay: epochDayFromDateInputValueOrToday(draft.startDate),
+      endEpochDay: draft.endDate ? epochDayFromDateInputValue(draft.endDate) : null,
+      endReason: draft.endReason
+    }), m.regimen_episode_save_failed())) return;
+    episodeBaseline = snapshotDraft(episodeSnapshot);
+    if (scheduleChanged) status = m.regimen_episode_saved_schedule_pending();
+    else if (newPause || pendingEndReason) status = m.regimen_episode_saved_drafts_pending();
+    else editor = null;
+  }
+
+  async function endEpisodeToday() {
+    if (!editor?.id || saving) return;
+    const id = editor.id;
+    const endEpochDay = todayEpochDay();
+    const endReason = pendingEndReason;
+    if (!await write('end', () => journal.regimen.endEpisode(id, endEpochDay, endReason), m.regimen_end_failed())) return;
+    editor.endDate = dateInputValueFromEpochDay(endEpochDay);
+    editor.endReason = endReason;
+    episodeBaseline = { ...episodeBaseline!, endDate: editor.endDate, endReason };
+    pendingEndReason = null;
+    status = m.regimen_ended();
+  }
+
+  /** Monday-first, matching `weekdayOfEpochDay` (epochDay.ts) and the
+      calendar heat-map's own week. */
+  const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+
   /* A hash arrived with the navigation (the clinician summary links each
      episode): scroll to it once the rows exist, which the browser's own
      anchor scroll never did - it fires before the liveQuery answers. */
@@ -193,21 +272,14 @@
     if (!episodesQuery.loading) scrollToHash();
   });
 
-  /* Re-seeded whenever the editor opens on a different episode, so the
-     fields show that episode's schedule rather than the last one's. */
+  // Seed once per opening. Live writes must not replace unrelated drafts.
   $effect(() => {
-    const id = editor?.id;
-    if (!id) {
-      schedule = null;
-      newPause = null;
-      pendingEndReason = null;
-      return;
-    }
+    if (!editor?.id || schedule || schedulesQuery.loading || schedulesQuery.failed) return;
     const recurrence = editorSchedule?.recurrence ?? { kind: 'everyNDays' as const, everyNDays: 1 };
     schedule = {
       recurrenceKind: recurrence.kind,
       everyNDays: String(recurrence.kind === 'everyNDays' ? recurrence.everyNDays : 1),
-      weekdays: recurrence.kind === 'weekdays' ? recurrence.weekdays : [],
+      weekdays: recurrence.kind === 'weekdays' ? [...recurrence.weekdays] : [],
       dosesPerDay: String(editorSchedule?.dosesPerDay ?? 1),
       doseAmounts: (editorSchedule?.doseAmounts ?? []).map((amount) => ({
         dose: String(amount.dose),
@@ -215,8 +287,7 @@
       })),
       autoLogFromEpochDay: editorSchedule?.autoLogFromEpochDay ?? null
     };
-    newPause = null;
-    pendingEndReason = null;
+    scheduleBaseline = snapshotDraft(scheduleSnapshot);
   });
 
   function toggleWeekday(day: number) {
@@ -245,36 +316,40 @@
      field existed - so only a *non-empty* list with a bad row blocks saving. */
   let scheduleValues = $derived.by(() => {
     if (!schedule) return null;
-    const dosesPerDay = parseInt(schedule.dosesPerDay, 10);
+    const dosesPerDay = Number(schedule.dosesPerDay);
     const recurrence: DoseScheduleRecurrence =
       schedule.recurrenceKind === 'everyNDays'
-        ? { kind: 'everyNDays', everyNDays: parseInt(schedule.everyNDays, 10) }
+        ? { kind: 'everyNDays', everyNDays: Number(schedule.everyNDays) }
         : { kind: 'weekdays', weekdays: schedule.weekdays };
     const doseAmounts =
       schedule.doseAmounts.length > 0
-        ? schedule.doseAmounts.map((amount) => ({ dose: parseFloat(amount.dose), doseUnit: amount.doseUnit.trim() }))
+        ? schedule.doseAmounts.map((amount) => ({ dose: parseFloat(String(amount.dose)), doseUnit: amount.doseUnit.trim() }))
         : null;
     return { recurrence, dosesPerDay, doseAmounts, autoLogFromEpochDay: schedule.autoLogFromEpochDay };
   });
 
-  let scheduleCanSave = $derived.by(() => {
-    if (!scheduleValues) return false;
+  let scheduleRequirements = $derived.by(() => {
+    if (!scheduleValues) return [];
     const { recurrence, dosesPerDay, doseAmounts } = scheduleValues;
-    if (isNaN(dosesPerDay) || dosesPerDay < 1) return false;
-    if (recurrence.kind === 'everyNDays' && (isNaN(recurrence.everyNDays) || recurrence.everyNDays < 1)) return false;
-    if (recurrence.kind === 'weekdays' && recurrence.weekdays.length === 0) return false;
-    if (doseAmounts && doseAmounts.some((amount) => isNaN(amount.dose) || !amount.doseUnit)) return false;
-    return true;
+    return [
+      ...(!Number.isSafeInteger(dosesPerDay) || dosesPerDay < 1 ? [m.regimen_per_day_required()] : []),
+      ...(recurrence.kind === 'everyNDays' && (!Number.isSafeInteger(recurrence.everyNDays) || recurrence.everyNDays < 1)
+        ? [m.regimen_every_required()] : []),
+      ...(recurrence.kind === 'weekdays' && recurrence.weekdays.length === 0 ? [m.regimen_weekday_required()] : []),
+      ...(doseAmounts?.some((amount) => !Number.isFinite(amount.dose) || !amount.doseUnit)
+        ? [m.regimen_amount_required()] : [])
+    ];
   });
+  let scheduleCanSave = $derived(scheduleValues !== null && scheduleRequirements.length === 0);
 
   /* Whether the auto-log switch is offered at all (ticket 11, ADR-0086):
      only where the fields in front of the person add up to something
      definite to write - a rhythm, an amount, and a route the dose log can
-     record. Read off the draft rather than off the saved schedule, so the
+     record. Read off the schedule draft and the committed episode route, so the
      switch appears as soon as an amount is typed rather than one save later,
      and so it goes away again the moment the last amount is deleted. */
   let autoLogOffered = $derived(
-    scheduleValues !== null && scheduleCanSave && canAutoLog(scheduleValues, editor?.route ?? '', ROUTE_OPTIONS)
+    scheduleValues !== null && scheduleCanSave && canAutoLog(scheduleValues, episodeBaseline?.route ?? '', ROUTE_OPTIONS)
   );
 
   /* Turning it on dates the instruction today, so nothing is written for the
@@ -288,38 +363,50 @@
      switch cannot save a day against a rhythm the person has since edited
      away from what is on screen. */
   async function toggleAutoLog(on: boolean) {
-    if (!schedule || !editor?.id || !scheduleValues) return;
-    schedule.autoLogFromEpochDay = on ? todayEpochDay() : null;
-    /* `scheduleValues` is derived off the draft, so reading it after the
-       line above carries the new day along with the rest of what is on
-       screen - stating the day again here would be the same fact twice. */
-    await journal.doses.upsertSchedule({ episodeId: editor.id, ...scheduleValues });
+    if (!schedule || !editor?.id || !scheduleValues || !scheduleCanSave || saving) return;
+    const values = { episodeId: editor.id, ...snapshotDraft(scheduleValues), autoLogFromEpochDay: on ? todayEpochDay() : null };
+    if (!await write('schedule', () => journal.doses.upsertSchedule(values), m.regimen_schedule_save_failed())) return;
+    schedule.autoLogFromEpochDay = values.autoLogFromEpochDay;
+    scheduleBaseline = snapshotDraft(scheduleSnapshot);
+    status = on ? m.regimen_auto_log_on_saved() : m.regimen_auto_log_off_saved();
   }
 
   async function saveSchedule() {
-    if (!editor?.id || !scheduleValues || !scheduleCanSave) return;
-    await journal.doses.upsertSchedule({ episodeId: editor.id, ...scheduleValues });
+    if (!editor?.id || !scheduleValues || !scheduleCanSave || saving) return;
+    const values = { episodeId: editor.id, ...snapshotDraft(scheduleValues) };
+    if (!await write('schedule', () => journal.doses.upsertSchedule(values), m.regimen_schedule_save_failed())) return;
+    scheduleBaseline = snapshotDraft(scheduleSnapshot);
+    status = m.regimen_schedule_saved();
   }
 
   async function addPause() {
-    if (!editor?.id || !newPause) return;
+    if (!editor?.id || !newPause || saving) return;
     const startEpochDay = epochDayFromDateInputValue(newPause.start);
     if (startEpochDay === null) return;
-    await journal.doses.upsertPause({
+    const values = {
       episodeId: editor.id,
       startEpochDay,
-      // An empty end day is a pause that is still running, not a one-day one.
       endEpochDay: epochDayFromDateInputValue(newPause.end),
       reason: newPause.reason
-    });
+    };
+    if (!await write('pause', () => journal.doses.upsertPause(values), m.regimen_pause_save_failed())) return;
     newPause = null;
+    status = m.regimen_pause_saved();
   }
 
   async function deletePause(id: string) {
-    await journal.doses.deletePause(id);
+    if (!await write('pause', () => journal.doses.deletePause(id), m.regimen_pause_delete_failed())) return;
+    status = m.regimen_pause_deleted();
   }
 
 </script>
+
+{#snippet feedback(group: typeof messageGroup)}
+  {#if messageGroup === group}
+    {#if failure}<p class="notice notice-danger" role="alert" data-regimen-failure>{failure}</p>{/if}
+    <p class="muted small" role="status" data-regimen-status>{status ?? ''}</p>
+  {/if}
+{/snippet}
 
 <div class="screen">
   <ScreenHeader title={m.regimen()} back="/more" subtitle={m.regimen_intro()}>
@@ -427,166 +514,271 @@
     </ListCard>
   </Sheet>
 
-  <Sheet open={editor !== null} title={editor?.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()} onClose={() => (editor = null)}>
+  <Sheet open={editor !== null} title={editor?.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()} onRequestClose={() => requestDismiss()}>
     {#if editor}
-      <h3>{editor.id ? m.regimen_edit_sheet() : m.regimen_new_sheet()}</h3>
-      <Field label={m.regimen_drug_label()} id="regimen-drug">
-        {#snippet children(id)}
-          <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} bind:value={editor!.drug} />
-        {/snippet}
-      </Field>
-      <Field label={m.regimen_ester_label()} id="regimen-ester">
-        {#snippet children(id)}
-          <input class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
-        {/snippet}
-      </Field>
-      <div class="cd-endpoints">
-        <Field label={m.regimen_dose_label()} id="regimen-dose">
-          {#snippet children(id)}
-            <input class="input" type="number" {id} name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" bind:value={editor!.dose} />
-          {/snippet}
-        </Field>
-        <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
-          {#snippet children(id)}
-            <input class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
-          {/snippet}
-        </Field>
-      </div>
-      <Field label={m.regimen_route_label()} id="regimen-route">
-        {#snippet children(id)}
-          <input class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
-        {/snippet}
-      </Field>
-      <Field label={m.regimen_interval_label()} id="regimen-interval">
-        {#snippet children(id)}
-          <input class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
-        {/snippet}
-      </Field>
-      <div class="cd-endpoints">
-        <Field label={m.regimen_start_label()} id="regimen-start">
-          {#snippet children(id)}
-            <DatePicker name="regimen-start" bind:value={editor!.startDate} {id} />
-          {/snippet}
-        </Field>
-        <Field label={m.regimen_end_label()} id="regimen-end">
-          {#snippet children(id)}
-            <DatePicker name="regimen-end" bind:value={editor!.endDate} {id} />
-          {/snippet}
-        </Field>
-      </div>
-      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
-      {#if editor.id}
-        <FieldGroupHeading legend={m.regimen_schedule_legend()} hint={m.regimen_schedule_hint()} />
-        {#if schedule}
-          <div class="disclosed" transition:disclose>
-            <Field label={m.regimen_schedule_kind_label()} legend>
+      <fieldset class="regimen-editor" disabled={saving} aria-busy={saving}>
+        <section class="regimen-group">
+          <FieldGroupHeading legend={m.regimen_episode_legend()} hint={m.regimen_episode_hint()} />
+          <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
+          <Field label={m.regimen_drug_label()} id="regimen-drug">
+            {#snippet children(id)}
+              <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={!editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
+            {/snippet}
+          </Field>
+          <Field label={m.regimen_ester_label()} id="regimen-ester">
+            {#snippet children(id)}
+              <input class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
+            {/snippet}
+          </Field>
+          <div class="cd-endpoints">
+            <Field label={m.regimen_dose_label()} id="regimen-dose">
               {#snippet children(id)}
-                <div class="tag-row" role="group" aria-labelledby={id}>
-                  {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
-                    <button
-                      type="button"
-                      class="tag-chip"
-                      class:is-selected={schedule!.recurrenceKind === kind}
-                      aria-pressed={schedule!.recurrenceKind === kind}
-                      data-schedule-kind={kind}
-                      onclick={() => schedule && (schedule.recurrenceKind = kind)}
-                    >
-                      {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
-                    </button>
-                  {/each}
-                </div>
+                <input class="input" type="number" {id} name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" aria-invalid={!Number.isFinite(parseFloat(String(editor!.dose)))} aria-describedby="regimen-episode-requirements" bind:value={editor!.dose} />
               {/snippet}
             </Field>
+            <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
+              {#snippet children(id)}
+                <input class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
+              {/snippet}
+            </Field>
+          </div>
+          <Field label={m.regimen_route_label()} id="regimen-route">
+            {#snippet children(id)}
+              <input class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
+            {/snippet}
+          </Field>
+          <Field label={m.regimen_interval_label()} id="regimen-interval">
+            {#snippet children(id)}
+              <input class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
+            {/snippet}
+          </Field>
+          <div class="cd-endpoints">
+            <Field label={m.regimen_start_label()} id="regimen-start">
+              {#snippet children(id)}
+                <DatePicker name="regimen-start" bind:value={editor!.startDate} {id} />
+              {/snippet}
+            </Field>
+            <Field label={m.regimen_end_label()} id="regimen-end">
+              {#snippet children(id)}
+                <DatePicker name="regimen-end" bind:value={editor!.endDate} {id} />
+              {/snippet}
+            </Field>
+          </div>
+          <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
+          <div id="regimen-episode-requirements" class="muted small" aria-live="polite">
+            {#each episodeRequirements as requirement (requirement)}<p>{requirement}</p>{/each}
+          </div>
+          <button class="btn btn-primary" data-save-regimen disabled={episodeRequirements.length > 0} onclick={saveEpisode}>
+            <span>{m.regimen_save()}</span>
+          </button>
+          {@render feedback('episode')}
+        </section>
+        {#if !editor.id}<p class="muted small">{m.regimen_schedule_after_episode()}</p>{/if}
+        {#if editor.id}
+          <section class="regimen-group">
+            <FieldGroupHeading legend={m.regimen_schedule_legend()} hint={m.regimen_schedule_hint()} />
+            <p class="muted small" data-schedule-dirty>{scheduleChanged ? m.regimen_schedule_unsaved() : m.regimen_schedule_unchanged()}</p>
+            {#if schedule}
+              <div class="disclosed" transition:disclose>
+                <Field label={m.regimen_schedule_kind_label()} legend>
+                  {#snippet children(id)}
+                    <div class="tag-row" role="group" aria-labelledby={id}>
+                      {#each ['everyNDays', 'weekdays'] as const as kind (kind)}
+                        <button
+                          type="button"
+                          class="tag-chip"
+                          class:is-selected={schedule!.recurrenceKind === kind}
+                          aria-pressed={schedule!.recurrenceKind === kind}
+                          data-schedule-kind={kind}
+                          onclick={() => schedule && (schedule.recurrenceKind = kind)}
+                        >
+                          {kind === 'everyNDays' ? m.regimen_schedule_kind_every_days() : m.regimen_schedule_kind_weekdays()}
+                        </button>
+                      {/each}
+                    </div>
+                  {/snippet}
+                </Field>
 
-            {#if schedule.recurrenceKind === 'everyNDays'}
-              <Field label={m.regimen_schedule_every_label()} id="regimen-every">
-                {#snippet children(id)}
-                  <input
-                    class="input"
-                    type="number"
-                    min="1"
-                    {id}
-                    name="regimen-every"
-                    inputmode="numeric"
-                    bind:value={schedule!.everyNDays}
-                  />
-                {/snippet}
-              </Field>
-            {:else}
-              <Field label={m.regimen_schedule_weekdays_label()} legend>
-                {#snippet children(id)}
-                  <div class="tag-row" role="group" aria-labelledby={id}>
-                    {#each WEEKDAYS as day (day)}
-                      <button
-                        type="button"
-                        class="tag-chip"
-                        class:is-selected={schedule!.weekdays.includes(day)}
-                        aria-pressed={schedule!.weekdays.includes(day)}
-                        data-weekday={day}
-                        onclick={() => toggleWeekday(day)}
-                      >
-                        {fmtDay(4 + day, { weekday: 'short' })}
-                      </button>
+                {#if schedule.recurrenceKind === 'everyNDays'}
+                  <Field label={m.regimen_schedule_every_label()} id="regimen-every">
+                    {#snippet children(id)}
+                      <input
+                        class="input"
+                        type="number"
+                        min="1"
+                        {id}
+                        name="regimen-every"
+                        aria-invalid={!Number.isSafeInteger(Number(schedule!.everyNDays)) || Number(schedule!.everyNDays) < 1}
+                        aria-describedby="regimen-schedule-requirements"
+                        inputmode="numeric"
+                        bind:value={schedule!.everyNDays}
+                      />
+                    {/snippet}
+                  </Field>
+                {:else}
+                  <Field label={m.regimen_schedule_weekdays_label()} legend>
+                    {#snippet children(id)}
+                      <div class="tag-row" role="group" aria-labelledby={id}>
+                        {#each WEEKDAYS as day (day)}
+                          <button
+                            type="button"
+                            class="tag-chip"
+                            class:is-selected={schedule!.weekdays.includes(day)}
+                            aria-pressed={schedule!.weekdays.includes(day)}
+                            data-weekday={day}
+                            onclick={() => toggleWeekday(day)}
+                          >
+                            {fmtDay(4 + day, { weekday: 'short' })}
+                          </button>
+                        {/each}
+                      </div>
+                    {/snippet}
+                  </Field>
+                {/if}
+
+                <Field label={m.regimen_schedule_per_day_label()} id="regimen-per-day">
+                  {#snippet children(id)}
+                    <input
+                      class="input"
+                      type="number"
+                      min="1"
+                      {id}
+                      name="regimen-per-day"
+                      aria-invalid={!Number.isSafeInteger(Number(schedule!.dosesPerDay)) || Number(schedule!.dosesPerDay) < 1}
+                      aria-describedby="regimen-schedule-requirements"
+                      inputmode="numeric"
+                      bind:value={schedule!.dosesPerDay}
+                    />
+                  {/snippet}
+                </Field>
+
+                <FieldGroupHeading legend={m.regimen_schedule_amounts_legend()} hint={m.regimen_schedule_amounts_hint()} />
+                {#if schedule.doseAmounts.length}
+                  <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+                    {#each schedule.doseAmounts as amount, index (index)}
+                      <!-- Hand-rolled rather than `<ListRow static>` (ticket 40):
+                           the row's text is a pair of bound inputs under the
+                           screen's own two-column class, not a title and a
+                           subtitle.
+
+                           The two `.field` spans stay hand-written rather than
+                           Field.svelte (ticket 10): Field renders a div, and a
+                           div inside this row's `<span class="kit-row-text">`
+                           is content a span can't hold. Each already carries a
+                           real aria-label of its own. -->
+                      <div class="kit-row is-static">
+                        <span class="kit-row-text cd-endpoints">
+                          <span class="field">
+                            <input
+                              class="input"
+                              type="number"
+                              inputmode="decimal"
+                              data-amount-dose={index}
+                              aria-label={m.dose_amount_label()}
+                              aria-invalid={!Number.isFinite(parseFloat(String(amount.dose)))}
+                              aria-describedby="regimen-schedule-requirements"
+                              bind:value={amount.dose}
+                            />
+                          </span>
+                          <span class="field">
+                            <input
+                              class="input"
+                              data-amount-unit={index}
+                              aria-label={m.dose_unit_label()}
+                              aria-invalid={!amount.doseUnit.trim()}
+                              aria-describedby="regimen-schedule-requirements"
+                              bind:value={amount.doseUnit}
+                            />
+                          </span>
+                        </span>
+                        <button
+                          class="kit-row-act press"
+                          data-delete-amount={index}
+                          aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
+                          onclick={() => removeDoseAmount(index)}
+                        >
+                          <Icon name="trash" size={18} />
+                        </button>
+                      </div>
                     {/each}
+                  </ListCard>
+                {/if}
+                <button class="btn btn-ghost press" data-add-amount onclick={addDoseAmount}>
+                  <span>{m.regimen_schedule_amount_add()}</span>
+                </button>
+
+                <div id="regimen-schedule-requirements" class="muted small" aria-live="polite">
+                  {#each scheduleRequirements as requirement (requirement)}<p>{requirement}</p>{/each}
+                </div>
+                <button
+                  class="btn btn-primary"
+                  aria-describedby="regimen-schedule-requirements"
+                  data-save-schedule
+                  disabled={!scheduleCanSave}
+                  onclick={saveSchedule}
+                >
+                  <span>{m.regimen_schedule_save()}</span>
+                </button>
+
+                <!-- The standing instruction (ticket 11, ADR-0086). Under the
+                     save button rather than among the fields above it: those
+                     describe the rhythm and are saved together, this one is a
+                     decision about what the app does with that rhythm and takes
+                     effect the moment it is flipped. Absent entirely where the
+                     schedule has nothing definite to write, the same way the
+                     whole block is absent on an unsaved episode. -->
+                {#if autoLogOffered}
+                  <div class="disclosed" data-auto-log-switch transition:disclose>
+                    <Field label={m.regimen_auto_log_label()} legend spread>
+                      {#snippet children()}
+                        <Switch
+                          checked={schedule!.autoLogFromEpochDay !== null}
+                          disabled={saving}
+                          label={m.regimen_auto_log_label()}
+                          onChange={toggleAutoLog}
+                        />
+                      {/snippet}
+                    </Field>
+                    <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
+                      {m.regimen_auto_log_save_hint()}
+                      {m.regimen_auto_log_hint()}
+                    </p>
                   </div>
-                {/snippet}
-              </Field>
+                {/if}
+              </div>
             {/if}
 
-            <Field label={m.regimen_schedule_per_day_label()} id="regimen-per-day">
-              {#snippet children(id)}
-                <input
-                  class="input"
-                  type="number"
-                  min="1"
-                  {id}
-                  name="regimen-per-day"
-                  inputmode="numeric"
-                  bind:value={schedule!.dosesPerDay}
-                />
-              {/snippet}
-            </Field>
-
-            <FieldGroupHeading legend={m.regimen_schedule_amounts_legend()} hint={m.regimen_schedule_amounts_hint()} />
-            {#if schedule.doseAmounts.length}
+            {@render feedback('schedule')}
+          </section>
+          <section class="regimen-group">
+            <FieldGroupHeading legend={m.regimen_pauses_legend()} hint={m.regimen_pauses_hint()} />
+            <p class="muted small">{m.regimen_pause_immediate_hint()}</p>
+            {#if editorPauses.length}
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-                {#each schedule.doseAmounts as amount, index (index)}
-                  <!-- Hand-rolled rather than `<ListRow static>` (ticket 40):
-                       the row's text is a pair of bound inputs under the
-                       screen's own two-column class, not a title and a
-                       subtitle.
-
-                       The two `.field` spans stay hand-written rather than
-                       Field.svelte (ticket 10): Field renders a div, and a
-                       div inside this row's `<span class="kit-row-text">`
-                       is content a span can't hold. Each already carries a
-                       real aria-label of its own. -->
-                  <div class="kit-row is-static">
-                    <span class="kit-row-text cd-endpoints">
-                      <span class="field">
-                        <input
-                          class="input"
-                          type="number"
-                          inputmode="decimal"
-                          data-amount-dose={index}
-                          aria-label={m.dose_amount_label()}
-                          bind:value={amount.dose}
-                        />
+                {#each editorPauses as pause (pause.id)}
+                  <!-- Hand-rolled rather than ListRow's action/is-split shape
+                       (ticket 16): that shape always renders the main span as a
+                       button or a link, and this one names nothing to press -
+                       it only states a pause. Routing it through would add
+                       .kit-row-main's :active wash and a tab stop to text that
+                       does nothing when pressed. -->
+                  <div class="kit-row is-split">
+                    <span class="kit-row-main">
+                      <span class="kit-row-title">
+                        {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {pause.endEpochDay === null
+                          ? `· ${m.regimen_pause_ongoing()}`
+                          : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
                       </span>
-                      <span class="field">
-                        <input
-                          class="input"
-                          data-amount-unit={index}
-                          aria-label={m.dose_unit_label()}
-                          bind:value={amount.doseUnit}
-                        />
-                      </span>
+                      <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
                     </span>
                     <button
                       class="kit-row-act press"
-                      data-delete-amount={index}
-                      aria-label={m.regimen_schedule_amount_delete_aria({ index: index + 1 })}
-                      onclick={() => removeDoseAmount(index)}
+                      data-delete-pause={pause.id}
+                      aria-label={m.regimen_pause_delete_aria({
+                        from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                      })}
+                      onclick={() => deletePause(pause.id)}
                     >
                       <Icon name="trash" size={18} />
                     </button>
@@ -594,177 +786,138 @@
                 {/each}
               </ListCard>
             {/if}
-            <button class="btn btn-ghost press" data-add-amount onclick={addDoseAmount}>
-              <span>{m.regimen_schedule_amount_add()}</span>
-            </button>
-
-            <button
-              class="btn btn-soft"
-              data-save-schedule
-              disabled={!scheduleCanSave}
-              onclick={saveSchedule}
-           
-            >
-              <span>{m.regimen_schedule_save()}</span>
-            </button>
-
-            <!-- The standing instruction (ticket 11, ADR-0086). Under the
-                 save button rather than among the fields above it: those
-                 describe the rhythm and are saved together, this one is a
-                 decision about what the app does with that rhythm and takes
-                 effect the moment it is flipped. Absent entirely where the
-                 schedule has nothing definite to write, the same way the
-                 whole block is absent on an unsaved episode. -->
-            {#if autoLogOffered}
-              <div class="disclosed" data-auto-log-switch transition:disclose>
-                <Field label={m.regimen_auto_log_label()} legend spread>
-                  {#snippet children()}
-                    <Switch
-                      checked={schedule!.autoLogFromEpochDay !== null}
-                      label={m.regimen_auto_log_label()}
-                      onChange={toggleAutoLog}
-                    />
+            {#if newPause}
+              <div class="cd-endpoints">
+                <Field label={m.regimen_pause_start_label()} id="pause-start">
+                  {#snippet children(id)}
+                    <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
                   {/snippet}
                 </Field>
-                <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
-                  {m.regimen_auto_log_hint()}
-                </p>
+                <Field label={m.regimen_pause_end_label()} id="pause-end">
+                  {#snippet children(id)}
+                    <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
+                  {/snippet}
+                </Field>
               </div>
+              <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
+                {m.regimen_pause_end_hint()}
+              </p>
+              <Field label={m.regimen_pause_reason_label()} legend>
+                {#snippet children(id)}
+                  <div class="tag-row" role="group" aria-labelledby={id}>
+                    {#each ['planned', 'accidental'] as const as reason (reason)}
+                      <button
+                        type="button"
+                        class="tag-chip"
+                        class:is-selected={newPause!.reason === reason}
+                        aria-pressed={newPause!.reason === reason}
+                        data-pause-reason={reason}
+                        onclick={() => newPause && (newPause.reason = reason)}
+                      >
+                        {pauseReasonLabel(reason)}
+                      </button>
+                    {/each}
+                  </div>
+                {/snippet}
+              </Field>
+              {#if epochDayFromDateInputValue(newPause.start) === null}
+                <p class="muted small" id="regimen-pause-requirements">{m.regimen_pause_start_required()}</p>
+              {/if}
+              <button
+                class="btn btn-soft"
+                data-add-pause
+                aria-describedby={epochDayFromDateInputValue(newPause.start) === null ? "regimen-pause-requirements" : undefined}
+                disabled={epochDayFromDateInputValue(newPause.start) === null}
+                onclick={addPause}
+              >
+                <span>{m.regimen_pause_add()}</span>
+              </button>
+            {:else}
+              <button
+                class="btn btn-ghost"
+                data-new-pause
+                onclick={() =>
+                  (newPause = { start: dateInputValueFromEpochDay(todayEpochDay()), end: '', reason: 'planned' })}
+              >
+                <span>{m.regimen_pause_add()}</span>
+              </button>
             {/if}
-          </div>
+            {@render feedback('pause')}
+          </section>
         {/if}
-
-        <FieldGroupHeading legend={m.regimen_pauses_legend()} hint={m.regimen_pauses_hint()} />
-        {#if editorPauses.length}
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-            {#each editorPauses as pause (pause.id)}
-              <!-- Hand-rolled rather than ListRow's action/is-split shape
-                   (ticket 16): that shape always renders the main span as a
-                   button or a link, and this one names nothing to press -
-                   it only states a pause. Routing it through would add
-                   .kit-row-main's :active wash and a tab stop to text that
-                   does nothing when pressed. -->
-              <div class="kit-row is-split">
-                <span class="kit-row-main">
-                  <span class="kit-row-title">
-                    {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {pause.endEpochDay === null
-                      ? `· ${m.regimen_pause_ongoing()}`
-                      : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
-                  </span>
-                  <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
-                </span>
-                <button
-                  class="kit-row-act press"
-                  data-delete-pause={pause.id}
-                  aria-label={m.regimen_pause_delete_aria({
-                    from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                  })}
-                  onclick={() => deletePause(pause.id)}
-                >
-                  <Icon name="trash" size={18} />
-                </button>
-              </div>
-            {/each}
-          </ListCard>
-        {/if}
-        {#if newPause}
-          <div class="cd-endpoints">
-            <Field label={m.regimen_pause_start_label()} id="pause-start">
-              {#snippet children(id)}
-                <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
-              {/snippet}
-            </Field>
-            <Field label={m.regimen_pause_end_label()} id="pause-end">
-              {#snippet children(id)}
-                <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
-              {/snippet}
-            </Field>
-          </div>
-          <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
-            {m.regimen_pause_end_hint()}
-          </p>
-          <Field label={m.regimen_pause_reason_label()} legend>
-            {#snippet children(id)}
-              <div class="tag-row" role="group" aria-labelledby={id}>
-                {#each ['planned', 'accidental'] as const as reason (reason)}
-                  <button
-                    type="button"
-                    class="tag-chip"
-                    class:is-selected={newPause!.reason === reason}
-                    aria-pressed={newPause!.reason === reason}
-                    data-pause-reason={reason}
-                    onclick={() => newPause && (newPause.reason = reason)}
-                  >
-                    {pauseReasonLabel(reason)}
-                  </button>
-                {/each}
-              </div>
-            {/snippet}
-          </Field>
-          <button
-            class="btn btn-soft"
-            data-add-pause
-            disabled={epochDayFromDateInputValue(newPause.start) === null}
-            onclick={addPause}
-          >
-            <span>{m.regimen_pause_add()}</span>
-          </button>
-        {:else}
-          <button
-            class="btn btn-ghost"
-            data-new-pause
-            onclick={() =>
-              (newPause = { start: dateInputValueFromEpochDay(todayEpochDay()), end: '', reason: 'planned' })}
-          >
-            <span>{m.regimen_pause_add()}</span>
-          </button>
-        {/if}
-      {/if}
-
-      {#if editor.id && editor.endDate === ''}
-        <Field label={m.regimen_pause_reason_label()} legend>
-          {#snippet children(id)}
-            <div class="tag-row" role="group" aria-labelledby={id}>
-              {#each ['switchedDrugOrRoute', 'pausedForNow', 'decidedToStop'] as const as reason (reason)}
-                <button
-                  type="button"
-                  class="tag-chip"
-                  class:is-selected={pendingEndReason === reason}
-                  aria-pressed={pendingEndReason === reason}
-                  data-end-reason={reason}
-                  onclick={() => (pendingEndReason = pendingEndReason === reason ? null : reason)}
-                >
-                  {episodeEndReasonLabel(reason)}
-                </button>
-              {/each}
-            </div>
-          {/snippet}
-        </Field>
-      {/if}
-
-      {#if editor.id}
-        <!-- The target's own screen lists the documents pointing at it
-             (ticket 56, ADR-0065); the episode stores nothing about the
-             link. -->
-        <LinkedDocuments kind="episode" id={editor.id} />
-      {/if}
-
-      <div class="stack-3">
-        <button class="btn btn-primary" data-save-regimen onclick={saveEpisode}><span>{m.regimen_save()}</span></button>
         {#if editor.id}
-          {#if editor.endDate === ''}
+          <section class="regimen-group">
+            {#if editor.endDate === ''}
+            <FieldGroupHeading legend={m.regimen_end_action()} hint={m.regimen_end_immediate_hint()} />
+            <Field label={m.regimen_pause_reason_label()} legend>
+              {#snippet children(id)}
+                <div class="tag-row" role="group" aria-labelledby={id}>
+                  {#each ['switchedDrugOrRoute', 'pausedForNow', 'decidedToStop'] as const as reason (reason)}
+                    <button
+                      type="button"
+                      class="tag-chip"
+                      class:is-selected={pendingEndReason === reason}
+                      aria-pressed={pendingEndReason === reason}
+                      data-end-reason={reason}
+                      onclick={() => (pendingEndReason = pendingEndReason === reason ? null : reason)}
+                    >
+                      {episodeEndReasonLabel(reason)}
+                    </button>
+                  {/each}
+                </div>
+              {/snippet}
+            </Field>
             <button class="btn btn-ghost" data-end-episode onclick={endEpisodeToday}>
               <span>{m.regimen_end_action()}</span>
             </button>
-          {/if}
+            {/if}
+            {@render feedback('end')}
+          </section>
         {/if}
-      </div>
+
+        {#if editor.id}
+          <!-- The target's own screen lists the documents pointing at it
+               (ticket 56, ADR-0065); the episode stores nothing about the
+               link. -->
+          <LinkedDocuments kind="episode" id={editor.id} />
+        {/if}
+
+      </fieldset>
+      <button class="btn btn-ghost" data-close-regimen disabled={saving} onclick={() => requestDismiss()}>
+        <span>{m.regimen_close()}</span>
+      </button>
     {/if}
+  </Sheet>
+  <Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
+    <h3>{m.record_discard_title()}</h3>
+    <p class="muted">{m.regimen_discard_body()}</p>
+    <div class="discard-actions">
+      <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}><span>{m.record_keep_editing()}</span></button>
+      <button class="btn btn-danger" data-discard-record onclick={discard}><span>{m.vb_practice_discard()}</span></button>
+    </div>
   </Sheet>
 </div>
 
 <style>
+  .regimen-editor {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .regimen-group + .regimen-group {
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .discard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
   .regimen-elsewhere {
     margin-top: var(--space-6);
   }
