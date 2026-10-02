@@ -185,7 +185,6 @@ describe('Localization keys for ready letter live tile', () => {
     'tile_letter_sub',
     'tile_letter_dismiss_action',
     'tile_letter_dismiss_title',
-    'tile_letter_dismiss_hint',
     'tile_letter_snooze_btn',
     'tile_letter_dont_show_btn',
     'tile_letter_snoozed_toast',
