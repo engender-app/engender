@@ -36,6 +36,13 @@ async function navigate(path) {
   }, path);
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(() => requestAnimationFrame(resolve), 0))));
 }
+async function capture(name) {
+  if (!gallery) return;
+  await page.waitForFunction(() => document.getAnimations().every((animation) =>
+    animation.playState !== 'running' || animation.effect?.getComputedTiming().iterations === Infinity
+  ));
+  await page.screenshot({ path: `${out}/${name}.png` });
+}
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
@@ -288,7 +295,7 @@ try {
           const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
           prefs.palette = palette; prefs.theme = theme;
         }, { palette, theme });
-        await page.locator('.screen').screenshot({ path: `${out}/${locale}-${palette}-${theme}-saved.png` });
+        await capture(`${locale}-${palette}-${theme}-saved`);
         await page.locator('#tr-label').fill('Changed tryout');
         await navigate('/more');
         await page.locator('[data-keep-editing]').waitFor();
@@ -320,15 +327,17 @@ try {
         return el === document.activeElement && box.top >= app.top && box.bottom <= Math.min(app.bottom, nav?.top ?? app.bottom);
       });
       assert.equal(visible, true, `${locale} ${zoom}x saved result visible and focused`);
-      if (gallery) await page.screenshot({ path: `${out}/${locale}-${zoom}x-disguise-saved.png` });
+      await capture(`${locale}-${zoom}x-disguise-saved`);
       await navigate('/transition/tryouts/new');
       await page.waitForURL('**/transition/tryouts/new');
       await page.locator('#tr-label').waitFor();
       await page.waitForFunction(() => document.querySelector('#tr-label')?.value === '');
+      await page.locator('[data-tryout-photo-requirement]').waitFor();
       assert.equal(await page.locator('#tr-label').getAttribute('aria-describedby'), 'tr-label-hint');
       assert.equal(await page.locator('.screen').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
       assert.match(await page.locator('#tr-label-hint').innerText(), locale === 'en' ? /Add a label/ : /Dodaj nazwę/);
-      if (gallery) await page.locator('.screen').screenshot({ path: `${out}/${locale}-${zoom}x-requirements.png` });
+      await page.locator('#tr-label').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await capture(`${locale}-${zoom}x-requirements`);
       await navigate(photoOwnerPath);
       await page.locator('[data-add-photo]').waitFor();
       await page.waitForFunction(() => document.querySelector('#tr-label')?.value === 'Navigation retained');
