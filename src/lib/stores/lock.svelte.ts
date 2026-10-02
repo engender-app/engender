@@ -66,8 +66,7 @@ function lockNow() {
 
 /** Two-finger swipe down (F24): lock, and on web put a neutral page over
     the tab as well, so what is on screen when someone glances over is not
-    a lock screen with the app's name on it. On Android the shell's own
-    "leave the app" gesture is the equivalent, and belongs with it. */
+    a lock screen with the app's name on it. */
 export function quickExit() {
   lockNow();
   if (!isAndroid()) lockState.blanked = true;
@@ -113,19 +112,15 @@ export function watchLock(): () => void {
   window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
-  /* The Android equivalent of the two-finger swipe (ticket 15): pressing
-     Home or Recents. MainActivity.onUserLeaveHint calls this straight
-     through evaluateJavascript rather than waiting on watchLeave above,
-     which only runs once the WebView's event loop gets to it - by then the
-     system may already have the recents thumbnail it took at leave time.
-     It answers to quick exit's native flag for now, not to the lock
-     timing; lock-timing ticket 02 moves it onto `immediately`. */
+  /* Immediately must reach the gate before Android takes its Recents
+     thumbnail. MainActivity reads the mirrored timing and calls this hook
+     directly; Quick exit stays with the two-finger gesture above. */
   if (isAndroid()) {
-    (window as unknown as { __quickExitFromNative?: () => void }).__quickExitFromNative = quickExit;
+    (window as unknown as { __lockOnLeaveFromNative?: () => void }).__lockOnLeaveFromNative = lockNow;
   }
 
   return () => {
-    if (isAndroid()) delete (window as unknown as { __quickExitFromNative?: () => void }).__quickExitFromNative;
+    if (isAndroid()) delete (window as unknown as { __lockOnLeaveFromNative?: () => void }).__lockOnLeaveFromNative;
     window.removeEventListener('touchstart', onTouchStart);
     window.removeEventListener('touchmove', onTouchMove);
     window.removeEventListener('touchend', onTouchEnd);

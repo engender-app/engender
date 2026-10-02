@@ -1,4 +1,4 @@
-package dev.engender.app.quickexit;
+package dev.engender.app.lock;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -20,23 +20,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Ticket 15's second acceptance box, on a device: whether the deliberate
- * "leave the app" gesture (Home, Recents - MainActivity.onUserLeaveHint)
- * actually reaches the app's own quickExit(), not whether quickExit() then
- * does the right thing (that's lock.svelte.ts's own tests). The risk this
- * covers is the plumbing, not the policy: the web app's
- * blur/visibilitychange listeners only run once the WebView's event loop
- * gets to them, which is exactly the "visible pause" this ticket's second
- * box rules out, so onUserLeaveHint calls straight into
- * window.__quickExitFromNative instead. Proved by watching that call
- * happen (or not), rather than trusting the source reads synchronously.
+/** Checks that Home/Recents reaches the real lock hook only under Immediately.
+ * The preference is mirrored through the same public bridge as Settings.
  */
 @RunWith(AndroidJUnit4.class)
-public class QuickExitLeaveHintTest {
+public class LockTimingLeaveHintTest {
 
     private static final long TIMEOUT_SECONDS = 60;
-    private static final String PREFS = "engender-quick-exit";
+    private static final String PREFS = LockTimingPlugin.PREFS;
 
     @Before
     public void setUp() {
@@ -45,51 +36,55 @@ public class QuickExitLeaveHintTest {
     }
 
     @Test
-    public void leavingTheAppCallsTheHookWhenQuickExitIsOn() throws Exception {
-        setQuickExitEnabled(true);
-
+    public void leavingTheAppCallsTheHookOnlyUnderImmediately() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            awaitTrue(scenario, "typeof window.__quickExitFromNative === 'function'");
+            awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
+            setTiming(scenario, "immediately");
             installCounter(scenario);
 
             long startedAt = System.nanoTime();
             scenario.onActivity(MainActivity::onUserLeaveHint);
-            assertEquals("1", awaitJs(scenario, "String(window.__quickExitCalls || 0)", "1"));
+            assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
             long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
-            assertTrue("quick exit took too long: " + elapsedMs + "ms", elapsedMs < 1500);
+            assertTrue("leave lock took too long: " + elapsedMs + "ms", elapsedMs < 1500);
         }
     }
 
     @Test
-    public void leavingTheAppDoesNothingWhenQuickExitIsOff() throws Exception {
-        setQuickExitEnabled(false);
-
+    public void leavingTheAppDoesNothingUnderOtherTimings() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            awaitTrue(scenario, "typeof window.__quickExitFromNative === 'function'");
+            awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             installCounter(scenario);
-
-            scenario.onActivity(MainActivity::onUserLeaveHint);
-            Thread.sleep(2000); // long enough for a call that was going to happen to have happened
-
-            assertEquals("0", evalJs(scenario, "String(window.__quickExitCalls || 0)"));
+            for (String timing : new String[] {"one-minute", "five-minutes", "restart"}) {
+                setTiming(scenario, timing);
+                scenario.onActivity(MainActivity::onUserLeaveHint);
+                Thread.sleep(500);
+                assertEquals(timing, "0", evalJs(scenario, "String(window.__leaveLockCalls || 0)"));
+            }
         }
     }
 
-    private void setQuickExitEnabled(boolean enabled) {
+    private void setTiming(ActivityScenario<MainActivity> scenario, String timing) throws Exception {
+        runJs(scenario, "window.Capacitor.Plugins.LockTiming.setTiming({timing: '" + timing + "'})");
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("enabled", enabled).apply();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
+        while (System.nanoTime() < deadline) {
+            if (timing.equals(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("timing", null))) return;
+            Thread.sleep(100);
+        }
+        throw new AssertionError("lock timing did not reach native preferences: " + timing);
     }
 
     /** Wraps the app's own hook so a call through it is observable, without
         replacing what it does - a spy, not a stub, because a stub here
         would only prove that the wiring exists, not that the real
-        quickExit() got a chance to run. */
+        lockNow() got a chance to run. */
     private void installCounter(ActivityScenario<MainActivity> scenario) throws Exception {
         runJs(
             scenario,
-            "window.__quickExitCalls = 0;"
-                + "var original = window.__quickExitFromNative;"
-                + "window.__quickExitFromNative = function() { window.__quickExitCalls++; original(); };"
+            "window.__leaveLockCalls = 0;"
+                + "var original = window.__lockOnLeaveFromNative;"
+                + "window.__lockOnLeaveFromNative = function() { window.__leaveLockCalls++; original(); };"
         );
     }
 

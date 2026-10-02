@@ -8,7 +8,7 @@ import com.getcapacitor.Plugin;
 
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
-import dev.engender.app.quickexit.QuickExitPlugin;
+import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -52,20 +52,14 @@ public class MainActivity extends BridgeActivity {
         captureReminderRoute(intent);
     }
 
-    /** Fires on the deliberate "leave the app" gesture - Home, Recents -
-        and not on a rotation or a system dialog stealing focus. Quick
-        exit's Android equivalent (lock.svelte.ts) is this gesture, not a
-        copy of the web's two-finger swipe, so this is where it locks: a
-        direct call into the WebView's JS rather than waiting on the
-        blur/visibilitychange listeners watchLock() already runs, which
-        only fire once the WebView's own event loop gets to them - by
-        which point the system may already have taken its recents
-        snapshot. */
+    /** Home and Recents lock only under Immediately. Read the native mirror
+        before asking the WebView to render its gate, so visibilitychange
+        does not have to arrive before the system takes its thumbnail. */
     @Override
     public void onUserLeaveHint() {
         super.onUserLeaveHint();
-        if (!QuickExitPlugin.isEnabled(this) || bridge == null || bridge.getWebView() == null) return;
-        bridge.getWebView().evaluateJavascript("window.__quickExitFromNative && window.__quickExitFromNative();", null);
+        if (!LockTimingPlugin.locksImmediately(this) || bridge == null || bridge.getWebView() == null) return;
+        bridge.getWebView().evaluateJavascript("window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative();", null);
     }
 
     private void captureReminderRoute(Intent intent) {

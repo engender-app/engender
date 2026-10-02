@@ -79,7 +79,7 @@ public final class SensitiveClipboard {
      */
     private static final String NO_LABEL = "";
 
-    /** Named rather than private for the same reason as QuickExitPlugin.PREFS:
+    /** Named rather than private for the same reason as LockTimingPlugin.PREFS:
         the reset's test has to name the file it claims to have cleared. */
     public static final String PREFS = "engender-sensitive-clipboard";
 

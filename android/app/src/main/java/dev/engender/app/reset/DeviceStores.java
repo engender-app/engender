@@ -4,7 +4,7 @@ import android.content.Context;
 
 import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.clipboard.SensitiveClipboard;
-import dev.engender.app.quickexit.QuickExitPlugin;
+import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -16,7 +16,7 @@ import dev.engender.app.screencapture.ScreenCapturePlugin;
  * journal - the database file and the Keystore-wrapped data key - and
  * nothing else. What survived a reset was everything the app writes
  * alongside it: the reminder titles and times, the auto-export destination
- * and its wrapped password, whether quick exit was on, whether this device
+ * and its wrapped password, when the app locks, whether this device
  * was allowed to screenshot or record the app, and the alarms themselves,
  * which kept posting the person's own reminder titles on a phone they had
  * just wiped.
@@ -40,7 +40,7 @@ public final class DeviceStores {
      * the reminder payload has a Keystore alias of its own (phase 5 security
      * ticket 02), and the first one to throw used to be the last one that
      * ran - so a keystore that would not delete an alias left the backup
-     * destination, the wrapped backup password and the quick-exit
+     * destination, the wrapped backup password and the lock-timing
      * preference on a phone the person had just wiped. The first failure is
      * the one raised, with any later one attached to it.
      */
@@ -49,7 +49,7 @@ public final class DeviceStores {
         for (Store store : new Store[] {
             ReminderScheduler::wipe,
             AutoExportPlugin::wipe,
-            QuickExitPlugin::wipe,
+            LockTimingPlugin::wipe,
             ScreenCapturePlugin::wipe,
             SensitiveClipboard::wipe
         }) {
