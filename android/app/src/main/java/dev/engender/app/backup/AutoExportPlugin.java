@@ -29,11 +29,13 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -85,6 +87,10 @@ public class AutoExportPlugin extends Plugin {
     private static final int ARCHIVE_KDF_ITERATIONS = 3;
     private static final int ARCHIVE_KDF_PARALLELISM = 1;
     private static final int ARCHIVE_KDF_HASH_LENGTH = 32;
+
+    private StagedBackup pendingBackup;
+    private String pendingTransferId;
+    private String pendingFileName;
 
     @PluginMethod
     public void status(PluginCall call) {
@@ -260,73 +266,145 @@ public class AutoExportPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void writeBackup(PluginCall call) {
+    public synchronized void beginBackup(PluginCall call) {
         String fileName = call.getString("fileName");
-        String base64 = call.getString("base64");
-        if (fileName == null || base64 == null) {
-            call.reject("writeBackup requires fileName and base64");
+        if (fileName == null || fileName.isEmpty()) {
+            call.reject("beginBackup requires fileName");
             return;
         }
-
-        Uri destination = destinationUri();
-        if (destination == null) {
-            disableWithFailure("destination-unavailable");
-            call.reject("destination-unavailable");
+        if (pendingBackup != null) {
+            call.reject("backup-in-progress");
             return;
         }
-
         try {
+            // A new run truncates any staging file left by process death.
+            pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export.pending"));
+            pendingTransferId = UUID.randomUUID().toString();
+            pendingFileName = fileName;
+            JSObject result = new JSObject();
+            result.put("transferId", pendingTransferId);
+            call.resolve(result);
+        } catch (Exception e) {
+            rejectDelivery(call, e);
+        }
+    }
+
+    @PluginMethod
+    public synchronized void appendBackup(PluginCall call) {
+        try {
+            StagedBackup backup = requireTransfer(call);
+            long offset = byteCount(call, "offset");
+            String base64 = call.getString("base64");
+            if (base64 == null || base64.isEmpty()
+                || base64.length() > 4 * ((StagedBackup.MAX_PIECE_BYTES + 2) / 3)) {
+                throw new IllegalStateException("incomplete-archive");
+            }
+            backup.append(offset, Base64.decode(base64, Base64.DEFAULT));
+            call.resolve();
+        } catch (Exception e) {
+            rejectDelivery(call, e);
+        }
+    }
+
+    @PluginMethod
+    public synchronized void finishBackup(PluginCall call) {
+        DocumentFile target = null;
+        try {
+            StagedBackup backup = requireTransfer(call);
+            long expectedLength = byteCount(call, "byteLength");
+            String sha256 = call.getString("sha256");
+            backup.prepare(expectedLength, sha256);
+
+            Uri destination = destinationUri();
+            if (destination == null) throw new IllegalStateException("destination-unavailable");
             DocumentFile folder = DocumentFile.fromTreeUri(getContext(), destination);
-            if (folder == null || !folder.canWrite()) {
-                throw new IllegalStateException("destination-unavailable");
+            if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
+
+            // Always create a new document. Never truncate a recoverable backup.
+            target = folder.createFile("application/octet-stream", pendingFileName);
+            if (target == null) throw new IllegalStateException("destination-unavailable");
+            ContentResolver resolver = getContext().getContentResolver();
+            try (InputStream input = new FileInputStream(backup.file);
+                 OutputStream output = resolver.openOutputStream(target.getUri(), "w")) {
+                if (output == null) throw new IllegalStateException("destination-unavailable");
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+                output.flush();
+            }
+            try (InputStream input = resolver.openInputStream(target.getUri())) {
+                if (input == null) throw new IllegalStateException("destination-unavailable");
+                StagedBackup.verify(input, expectedLength, sha256);
             }
 
-            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            DocumentFile target = folder.createFile("application/octet-stream", fileName);
-            if (target == null) {
-                throw new IllegalStateException("destination-unavailable");
-            }
-
-            Uri targetUri = target.getUri();
-            try (OutputStream out = getContext().getContentResolver().openOutputStream(targetUri, "w")) {
-                if (out == null) throw new IllegalStateException("destination-unavailable");
-                out.write(bytes);
-                out.flush();
-            }
-
-            verifyBytes(targetUri, bytes);
-
+            clearPendingBackup();
             long now = System.currentTimeMillis();
             preferences().edit()
                 .putLong(KEY_LAST_SUCCESS_AT, now)
                 .remove(KEY_LAST_FAILURE_AT)
                 .remove(KEY_LAST_FAILURE_REASON)
                 .apply();
-
             JSObject result = new JSObject();
             result.put("writtenAt", now);
             call.resolve(result);
-        } catch (SecurityException e) {
-            disableWithFailure("destination-revoked");
-            call.reject("destination-revoked", e);
-        } catch (IOException e) {
-            String reason = classifyIoFailure(e);
-            failure(reason);
-            call.reject(reason, e);
-        } catch (IllegalStateException e) {
-            String reason = message(e);
-            if (reason.contains("destination-unavailable")) {
-                disableWithFailure("destination-unavailable");
-                call.reject("destination-unavailable", e);
-                return;
-            }
-            failure(reason);
-            call.reject(reason, e);
         } catch (Exception e) {
-            String reason = message(e);
-            failure(reason);
-            call.reject(reason, e);
+            if (target != null) {
+                try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
+            }
+            rejectDelivery(call, e);
         }
+    }
+
+    @PluginMethod
+    public synchronized void abortBackup(PluginCall call) {
+        try {
+            if (pendingBackup != null && pendingTransferId.equals(call.getString("transferId"))) clearPendingBackup();
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    private static long byteCount(PluginCall call, String field) {
+        // org.json parses small JSON integers as Integer; PluginCall.getLong accepts only Long.
+        Object value = call.getData().opt(field);
+        if (!(value instanceof Integer) && !(value instanceof Long)) throw new IllegalStateException("incomplete-archive");
+        long count = ((Number) value).longValue();
+        if (count < 0 || count > 9007199254740991L) throw new IllegalStateException("incomplete-archive");
+        return count;
+    }
+
+    private StagedBackup requireTransfer(PluginCall call) {
+        if (pendingBackup == null || !pendingTransferId.equals(call.getString("transferId"))) {
+            throw new IllegalStateException("incomplete-archive");
+        }
+        return pendingBackup;
+    }
+
+    private void clearPendingBackup() throws IOException {
+        try {
+            if (pendingBackup != null) pendingBackup.close();
+        } finally {
+            pendingBackup = null;
+            pendingTransferId = null;
+            pendingFileName = null;
+        }
+    }
+
+    @Override protected synchronized void handleOnDestroy() {
+        try { clearPendingBackup(); } catch (IOException ignored) { }
+        super.handleOnDestroy();
+    }
+
+    private void rejectDelivery(PluginCall call, Exception e) {
+        String reason = e instanceof SecurityException ? "destination-revoked"
+            : e instanceof IOException ? classifyIoFailure((IOException) e) : message(e);
+        if (reason.contains("destination-revoked") || reason.contains("destination-unavailable")) {
+            disableWithFailure(reason);
+        } else {
+            failure(reason);
+        }
+        call.reject(reason, e);
     }
 
     /**
@@ -402,25 +480,6 @@ public class AutoExportPlugin extends Plugin {
                 (held.isReadPermission() ? Intent.FLAG_GRANT_READ_URI_PERMISSION : 0)
                     | (held.isWritePermission() ? Intent.FLAG_GRANT_WRITE_URI_PERMISSION : 0);
             if (modes != 0) resolver.releasePersistableUriPermission(held.getUri(), modes);
-        }
-    }
-
-    private void verifyBytes(Uri uri, byte[] expected) throws Exception {
-        byte[] written;
-        try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
-            if (in == null) throw new IllegalStateException("destination-unavailable");
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-            written = out.toByteArray();
-        }
-
-        if (written.length != expected.length) {
-            throw new IllegalStateException("verification-failed");
-        }
-        for (int i = 0; i < expected.length; i++) {
-            if (written[i] != expected[i]) throw new IllegalStateException("verification-failed");
         }
     }
 

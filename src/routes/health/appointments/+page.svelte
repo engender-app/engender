@@ -246,9 +246,8 @@
   let addSheet = $state(false);
   let newItemText = $state('');
 
-  // Ticket 18: the date already sits in the editor's own draft, so the
-  // handoff sheet reads it fresh rather than re-deriving it from the record.
-  let calendarSheet = $state(false);
+  // Calendar handoff snapshots the committed day. Unsaved edits stay in the editor.
+  let calendarDay = $state<number | null>(null);
 
   function openAddSheet() {
     newItemText = '';
@@ -585,11 +584,6 @@
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.appointments_day_label()} id="appointment-date">
-        {#snippet children(id)}
-          <DatePicker name="appointment-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
       <Field label={m.appointments_kind_label()} id="appointment-kind">
         {#snippet children(id)}
           <input
@@ -653,19 +647,24 @@
           ></textarea>
         {/snippet}
       </Field>
+      <Field label={m.appointments_day_label()} id="appointment-date">
+        {#snippet children(id)}
+          <DatePicker name="appointment-date" bind:value={editor.date} {id} />
+        {/snippet}
+      </Field>
     {/snippet}
-    {#snippet extraActions()}
-      <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarSheet = true)}>
+    {#snippet extraActions(editor)}
+      <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarDay = appointments.find((a) => a.id === editor.id)?.epochDay ?? null)}>
         <span>{m.calendar_handoff_button()}</span>
       </button>
     {/snippet}
   </RecordSheet>
 
   <CalendarHandoffSheet
-    open={calendarSheet}
+    open={calendarDay !== null}
     kind="appointment"
-    epochDay={epochDayFromDateInputValueOrToday(record.editor?.date ?? '')}
-    onClose={() => (calendarSheet = false)}
+    epochDay={calendarDay ?? today}
+    onClose={() => (calendarDay = null)}
   />
 </div>
 
