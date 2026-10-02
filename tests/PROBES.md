@@ -48,6 +48,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `photo-export` | the export format and count are stated before anything is selected |
 | `chosen-appointment` | the room's answers stay attached to the appointment they were given in |
 | `appointment-entry-check` | appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff and deletion; English and Polish at 390px and 200% zoom |
+| `content-before-dates-check` | milestone, side-effect, cycle and hair-stage field order, saved edits, photo and anchor retention, preparation handoff, cycle visibility and shared editor safety; English and Polish at 390px and 200% zoom |
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |
 | `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
