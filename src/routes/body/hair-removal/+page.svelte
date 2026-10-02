@@ -68,6 +68,8 @@
 
   let sessionsQuery = liveList((j) => j.hairRemoval.getSessions());
   let sessions = $derived(sessionsQuery.rows);
+  let savedId = $state<string | null>(null);
+  let savedSession = $derived(sessions.find((session) => session.id === savedId));
   let sourceId = $derived(page.url.searchParams.get('session'));
   let sourceSession = $derived(sessions.find((session) => session.id === sourceId));
 
@@ -161,7 +163,7 @@
       provider: session.provider
     }),
     async upsert(draft) {
-      await journal.hairRemoval.upsertSession({
+      const id = await journal.hairRemoval.upsertSession({
         id: draft.id,
         epochDay: epochDayFromDateInputValueOrToday(draft.date),
         area: draft.area,
@@ -170,6 +172,7 @@
         cost: draft.cost,
         provider: draft.provider
       });
+      if (!draft.id) savedId = id;
     },
     remove: (id) => journal.hairRemoval.deleteSession(id),
     findById: (id) => sessions.find((session) => session.id === id)
@@ -204,6 +207,17 @@
       </button>
     {/snippet}
   </ScreenHeader>
+  {#if savedSession}
+    <Notice
+      icon="check"
+      key={savedSession.id}
+      data-hair-removal-saved={savedSession.id}
+      aria-live="polite"
+      title={m.hair_removal_saved()}
+      text={`${hairRemovalAreaName(savedSession.area)} · ${hairRemovalMethodName(savedSession.method)} · ${dayLabel(savedSession.epochDay)}`}
+      action={{ label: m.hair_removal_add_photo(), onclick: () => { if (savedSession) record.openEditor(savedSession); } }}
+    />
+  {/if}
   <SourceRecordHandoff id={sourceId} ready={!sessionsQuery.loading && !sessionsQuery.failed} found={!!sourceSession} onOpen={() => record.openEditor(sourceSession!)} />
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
@@ -301,9 +315,14 @@
     }}
   >
     {#snippet fields(draft)}
-      <Field label={m.hair_removal_date_label()} id="hair-removal-date">
-        {#snippet children(id)}
-          <DatePicker name="hair-removal-date" bind:value={draft.date} {id} />
+      <Field label={m.hair_removal_method_label()} legend>
+        {#snippet children()}
+          <Segmented
+            name={m.hair_removal_method_label()}
+            options={HAIR_REMOVAL_METHODS.map((method) => ({ value: method, label: hairRemovalMethodName(method) }))}
+            value={draft.method}
+            onChange={(v) => (draft.method = v as HairRemovalMethod)}
+          />
         {/snippet}
       </Field>
       <Field label={m.hair_removal_area_label()} id="hair-removal-area">
@@ -313,16 +332,6 @@
               <option value={area}>{hairRemovalAreaName(area)}</option>
             {/each}
           </select>
-        {/snippet}
-      </Field>
-      <Field label={m.hair_removal_method_label()} legend>
-        {#snippet children()}
-          <Segmented
-            name={m.hair_removal_method_label()}
-            options={HAIR_REMOVAL_METHODS.map((method) => ({ value: method, label: hairRemovalMethodName(method) }))}
-            value={draft.method}
-            onChange={(v) => (draft.method = v as HairRemovalMethod)}
-          />
         {/snippet}
       </Field>
       <Field label={m.hair_removal_pain_label()} legend>
@@ -355,6 +364,12 @@
             placeholder={m.hair_removal_provider_placeholder()}
             bind:value={draft.provider}
           />
+        {/snippet}
+      </Field>
+
+      <Field label={m.hair_removal_date_label()} id="hair-removal-date">
+        {#snippet children(id)}
+          <DatePicker name="hair-removal-date" bind:value={draft.date} {id} />
         {/snippet}
       </Field>
 

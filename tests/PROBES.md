@@ -51,6 +51,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |
 | `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
+| `hair-removal-entry-check` | session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
 | `measurements-sizes-jump-check` | the Measurements/Sizes jump moves focus and keeps an open editor's input |
 | `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
@@ -130,6 +131,7 @@ build. Output goes to `.claude/` unless the script takes a directory.
 
 | Script | Shows |
 | --- | --- |
+| `gallery:hair-removal` | new and saved hair-removal editors and saved-session continuation in English and Polish across palettes and themes, with 200% zoom and disguise |
 | `gallery:appointments` | the appointment editor in English and Polish across all palettes and themes, including 200% zoom and disguise |
 
 ### Screens in every state they have (demo build)
