@@ -1402,6 +1402,7 @@
         class:btn-primary={!moodMissing}
         class:btn-soft={moodMissing}
         data-save
+        data-entry-saving={saving || undefined}
         data-save-unmet={moodMissing ? 'mood' : undefined}
         disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
         onclick={saveEntry}
@@ -1546,6 +1547,7 @@
     align-items: center;
     gap: var(--space-2);
   }
+  .editor-save-row [data-entry-saving] { opacity: 1; }
   .editor-fields { display: contents; }
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
