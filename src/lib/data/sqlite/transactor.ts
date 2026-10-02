@@ -1,3 +1,4 @@
+import type { SqliteDriver, SqliteReader } from './driver.ts';
 /* One transaction at a time over one connection (ticket 134).
 
    All three drivers hold a single SQLite connection and implement
@@ -70,5 +71,67 @@ export function oneTransactionAtATime(
        transaction fails every later one. The caller still sees its own. */
     tail = result.catch(() => {});
     return result;
+  };
+}
+
+
+/** Keep multi-query reads separate from other calls on this connection.
+    Ordinary calls still start immediately and preserve platform pipelining. */
+export function withReadSnapshots(driver: Omit<SqliteDriver, 'readSnapshot'>): SqliteDriver {
+  let active = 0;
+  let idle: (() => void)[] = [];
+  let blocked: Promise<void> | null = null;
+  let snapshots: Promise<unknown> = Promise.resolve();
+
+  function finished() {
+    if (--active === 0) {
+      const waiting = idle;
+      idle = [];
+      for (const resolve of waiting) resolve();
+    }
+  }
+
+  function call<T>(work: () => T | Promise<T>): T | Promise<T> {
+    if (blocked) return blocked.then(() => call(work));
+    active++;
+    try {
+      const result = work();
+      if (result instanceof Promise) return result.finally(finished);
+      finished();
+      return result;
+    } catch (error) {
+      finished();
+      throw error;
+    }
+  }
+
+  function readSnapshot<T>(read: (reader: SqliteReader) => Promise<T>): Promise<T> {
+    const result = snapshots.then(async () => {
+      // Existing transactions must finish, including their callback's calls.
+      // Blocking before they finish would deadlock those callbacks.
+      while (active > 0) await new Promise<void>((resolve) => idle.push(resolve));
+      let release!: () => void;
+      blocked = new Promise<void>((resolve) => { release = resolve; });
+      try {
+        return await read({ query: driver.query.bind(driver) });
+      } finally {
+        blocked = null;
+        release();
+      }
+    });
+    snapshots = result.catch(() => {});
+    return result;
+  }
+
+  return {
+    exec: (sql) => call(() => driver.exec(sql)),
+    query: <Row extends Record<string, unknown>>(sql: string, params?: unknown[]) =>
+      Promise.resolve(call(() => driver.query<Row>(sql, params))),
+    run: (sql, params) => Promise.resolve(call(() => driver.run(sql, params))),
+    getUserVersion: () => call(() => driver.getUserVersion()),
+    setUserVersion: (version) => call(() => driver.setUserVersion(version)),
+    transaction: <T>(work: () => T | Promise<T>) => call(() => driver.transaction(work)),
+    close: () => Promise.resolve(call(() => driver.close())),
+    readSnapshot
   };
 }

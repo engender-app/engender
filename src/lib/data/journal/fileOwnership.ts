@@ -1,4 +1,4 @@
-import type { SqliteDriver } from '../sqlite/driver';
+import type { SqliteReader } from '../sqlite/driver';
 import { filesOf } from '../photos/names';
 import { documentFilesOf } from './documents';
 
@@ -29,7 +29,7 @@ function owner<Row extends Record<string, unknown>>(
   return {
     table,
     fileColumns,
-    async read(driver: SqliteDriver, scope: 'archive' | 'cleanup') {
+    async read(driver: SqliteReader, scope: 'archive' | 'cleanup') {
       const rows = await driver.query<Row>(scope === 'archive'
         ? archiveQuery
         : `SELECT ${fileColumns.join(', ')} FROM ${table}`);
@@ -103,7 +103,7 @@ type OwnershipRead = {
   [Key in keyof typeof FILE_OWNERS]: Awaited<ReturnType<(typeof FILE_OWNERS)[Key]['read']>>['rows'];
 };
 
-export async function readFileOwnership(driver: SqliteDriver, scope: 'archive' | 'cleanup') {
+export async function readFileOwnership(driver: SqliteReader, scope: 'archive' | 'cleanup') {
   const entries = await Promise.all(Object.entries(FILE_OWNERS).map(async ([key, owner]) => {
     const result = await owner.read(driver, scope);
     return { key, ...result };

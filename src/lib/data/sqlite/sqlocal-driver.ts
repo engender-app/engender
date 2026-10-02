@@ -25,7 +25,7 @@
 import { SQLocal } from 'sqlocal';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
-import { oneTransactionAtATime } from './transactor.ts';
+import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
 
 export interface WebSqlite {
   driver: SqliteDriver;
@@ -43,7 +43,7 @@ export function createWebSqlite(databasePath: string): WebSqlite {
   const backup = new SQLocal(backupPath);
   const { sql } = primary;
 
-  const driver: SqliteDriver = {
+  const driver: SqliteDriver = withReadSnapshots({
     async exec(statements: string) {
       await sql(statements);
     },
@@ -84,7 +84,7 @@ export function createWebSqlite(databasePath: string): WebSqlite {
       await primary.destroy();
       await backup.destroy();
     }
-  };
+  });
 
   const fileOps: MigrationFileOps = {
     async preMigrationCopyIsUsable() {

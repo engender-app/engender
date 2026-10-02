@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import dev.engender.app.backup.AutoExportPlugin;
+import dev.engender.app.files.FileDeliveryPlugin;
 import dev.engender.app.chrome.StatusBarAppearancePlugin;
 import dev.engender.app.clipboard.SensitiveClipboardPlugin;
 import dev.engender.app.disguise.DisguisePlugin;
@@ -40,6 +41,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Photos", PhotosPlugin.class),
         new PluginEntry("Reminders", RemindersPlugin.class),
         new PluginEntry("AutoExport", AutoExportPlugin.class),
+        new PluginEntry("FileDelivery", FileDeliveryPlugin.class),
         new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
         new PluginEntry("LockTiming", LockTimingPlugin.class),

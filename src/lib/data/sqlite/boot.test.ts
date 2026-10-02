@@ -1,3 +1,4 @@
+import { withReadSnapshots } from './transactor.ts';
 /* Unit tests for the boot sequence's ordering and error handling (ticket
    04). Runs against a fake driver wrapping node:sqlite - the real
    createWebSqlite() (sqlocal-driver.ts) needs a browser and is proven
@@ -14,7 +15,7 @@ import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
 function makeFakeDriver(): SqliteDriver {
   const raw = new DatabaseSync(':memory:');
-  return {
+  return withReadSnapshots({
     async exec(sql) {
       raw.exec(sql);
     },
@@ -42,7 +43,7 @@ function makeFakeDriver(): SqliteDriver {
       throw new Error('boot() should never call run()');
     },
     async close() {}
-  };
+  });
 }
 
 test('opens the database, runs migrations, and reports ready', async () => {
