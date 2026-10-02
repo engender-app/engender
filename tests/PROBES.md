@@ -47,6 +47,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `photo-grid-batching` | the grid stays whole batches deep at 3000 photos |
 | `photo-export` | the export format and count are stated before anything is selected |
 | `chosen-appointment` | the room's answers stay attached to the appointment they were given in |
+| `appointment-entry-check` | appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff and deletion; English and Polish at 390px and 200% zoom |
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |
 | `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
@@ -124,6 +125,12 @@ build. Output goes to `.claude/` unless the script takes a directory.
 | `gallery:progress` | the progress bar and a strip of its indeterminate sweep |
 | `gallery:day` | a day's records in its three shapes, every palette |
 | `gallery:body-map` | the body map's figure in its four data states |
+
+### Screen editors (dev server, no build)
+
+| Script | Shows |
+| --- | --- |
+| `gallery:appointments` | the appointment editor in English and Polish across all palettes and themes, including 200% zoom and disguise |
 
 ### Screens in every state they have (demo build)
 
