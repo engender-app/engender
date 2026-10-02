@@ -127,7 +127,10 @@ async function applyAndSave(journal: Journal, epochDay: number, templateIds: str
   try {
     for (const templateId of templateIds) await applyTemplateThroughTheSheet(target, templateId);
 
-    const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
+    const save = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-save]');
+      return button && !button.disabled ? button : null;
+    }, 'the ready save button');
     save.click();
     /* Waited out on the screen's committed state rather than by polling
        the journal for the entry. A read issued while the save's transaction
@@ -150,7 +153,10 @@ async function saveWithNavigationFailure(journal: Journal) {
   const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: 'visit-1' }, target);
   try {
     (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
-    const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
+    const save = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-save]');
+      return button && !button.disabled ? button : null;
+    }, 'the ready save button');
     failNextNavigation();
     save.click();
     const notice = await until(() => {
