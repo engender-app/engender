@@ -250,6 +250,12 @@ jobs:
 
       # Synthetic fixtures and the demo persona only, like the browser job,
       # so the logs are safe to keep.
+      - name: Media fixture tools
+        if: matrix.suite == 'built'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg
+
       - name: Against the dev server
         if: matrix.suite == 'dev'
         run: |
