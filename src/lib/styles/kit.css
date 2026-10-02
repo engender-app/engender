@@ -1762,6 +1762,7 @@ button.kit-strip-day .kit-strip-cell {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* An explicit line height, because the dismiss is positioned against it:
