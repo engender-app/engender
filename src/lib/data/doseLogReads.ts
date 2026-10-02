@@ -27,6 +27,8 @@ export interface DoseLogQuestion {
   today: number;
   /** The window's first day. */
   fromEpochDay: number;
+  /** Extend the log through a saved future date; comparison still ends today. */
+  toEpochDay?: number;
   /** The dose a link named, resolved by id so one outside the window can be
       reached by widening it, and a deleted one can say so. */
   deepLinkedDoseId: string | null;
@@ -49,13 +51,14 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
     /* The whole log, not the window (ticket 10): a rotation site's last use
        routinely predates the window, and "never used" has to mean never. The
        window and whether anything precedes it are cut from the same rows. */
-    journal.doses.getDoses(0, today),
+    journal.doses.getDoses(0, question.toEpochDay ?? today),
     journal.doses.getSchedules(),
     journal.doses.getPauses(),
     deepLinkedDoseId ? journal.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
   ]);
   const windowStart = startOfDayTimestamp(fromEpochDay);
   const doses = allDoses.filter((dose) => dose.timestamp >= windowStart);
+  const comparisonDoses = doses.filter((dose) => dose.timestamp < startOfDayTimestamp(today + 1));
 
   /* Every episode active today (phase 5 ticket 38): usually one, but a
      concurrent second drug's makes it two. An episode is in effect for whole
@@ -64,7 +67,7 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
   /* The episode a new dose defaults to (ticket 40): the sole active one, or
      whichever schedule's slot sits nearest to now when that is not a tie. */
   const activeEpisode = nearestActiveEpisode(
-    episodes, activeEpisodes, schedules, pauses, doses, today, NEAREST_SLOT_RADIUS_DAYS
+    episodes, activeEpisodes, schedules, pauses, comparisonDoses, today, NEAREST_SLOT_RADIUS_DAYS
   );
   /* The drugs to choose between, for both the editor and the schedule view's
      picker: both ask "which of the concurrently active drugs". */
@@ -74,7 +77,7 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
     activeEpisode?.drug ?? (activeDrugChoices.length > 0 ? activeDrugChoices[0] : null);
   /* `drug` only travels while more than one regimen is active - with at most
      one, the comparison's own default already answers the question. */
-  const scheduleView = compareDoseSchedule(episodes, doses, schedules, pauses, {
+  const scheduleView = compareDoseSchedule(episodes, comparisonDoses, schedules, pauses, {
     fromEpochDay,
     toEpochDay: today,
     drug: activeDrugChoices.length > 1 ? (selectedRegimenDrug ?? undefined) : undefined
@@ -87,10 +90,13 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
   const logRows = [...doses].reverse().map((dose) => {
     const attribution = attributeDose(episodes, dose);
     const drug = attributeDrug(episodes, dose).drug;
+    const schedule = schedules.find((schedule) => schedule.episodeId === attribution.episode?.id);
+    const day = epochDayFromTimestamp(dose.timestamp);
     return {
       dose,
       attribution,
       drug,
+      mayAutoLogAgain: day < today && schedule?.autoLogFromEpochDay != null && day >= schedule.autoLogFromEpochDay,
       /* Whether the trailing text repeats the episode the title already
          named (audit U8, ticket 17). */
       showAttribution: showAttributionLabel(attribution, drug, activeEpisodesAt(episodes, dose.timestamp).length),
