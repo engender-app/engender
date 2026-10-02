@@ -8,7 +8,7 @@ import com.getcapacitor.Plugin;
 
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
-import dev.engender.app.quickexit.QuickExitPlugin;
+import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -52,20 +52,56 @@ public class MainActivity extends BridgeActivity {
         captureReminderRoute(intent);
     }
 
-    /** Fires on the deliberate "leave the app" gesture - Home, Recents -
-        and not on a rotation or a system dialog stealing focus. Quick
-        exit's Android equivalent (lock.svelte.ts) is this gesture, not a
-        copy of the web's two-finger swipe, so this is where it locks: a
-        direct call into the WebView's JS rather than waiting on the
-        blur/visibilitychange listeners watchLock() already runs, which
-        only fire once the WebView's own event loop gets to them - by
-        which point the system may already have taken its recents
-        snapshot. */
+    /** Home gives this hint before pausing; Recents can pause without it. */
     @Override
     public void onUserLeaveHint() {
         super.onUserLeaveHint();
-        if (!QuickExitPlugin.isEnabled(this) || bridge == null || bridge.getWebView() == null) return;
-        bridge.getWebView().evaluateJavascript("window.__quickExitFromNative && window.__quickExitFromNative();", null);
+        lockOnLeave();
+    }
+
+    @Override
+    public void onPause() {
+        // Before Android 10, the visible split-screen pane can be paused.
+        if (!isInMultiWindowMode() && !isChangingConfigurations()) lockOnLeave();
+        super.onPause();
+    }
+
+    @Override
+    public void onStop() {
+        if (!isChangingConfigurations()) lockOnLeave();
+        super.onStop();
+    }
+
+    /** Recents can take focus while this activity remains resumed. */
+    @Override
+    public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
+        super.onTopResumedActivityChanged(isTopResumedActivity);
+        if (isTopResumedActivity) {
+            returnFromLeave();
+        } else if (!isInMultiWindowMode() && !isChangingConfigurations()) {
+            lockOnLeave();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        returnFromLeave();
+    }
+
+    private void lockOnLeave() {
+        if (bridge == null || bridge.getWebView() == null) return;
+        // The native flag protects the thumbnail while the WebView renders
+        // its gate. Capture permission returns when the app resumes.
+        if (LockTimingPlugin.locksImmediately(this)) ScreenCapturePlugin.applyWindowFlags(this, false);
+        bridge.getWebView().evaluateJavascript("window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative();", null);
+    }
+
+    private void returnFromLeave() {
+        if (bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().evaluateJavascript("window.__lockOnReturnFromNative && window.__lockOnReturnFromNative();", null);
+        }
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
     }
 
     private void captureReminderRoute(Intent intent) {

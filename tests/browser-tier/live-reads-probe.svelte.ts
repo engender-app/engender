@@ -32,7 +32,8 @@ import { readWhatIsWaiting, WAITING_TABLES } from '../../src/lib/data/comingBack
 import { entrySearchFiltersOf } from '../../src/lib/data/savedQuestionQuery.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
-import { quickExit } from '../../src/lib/stores/lock.svelte.ts';
+import { watchLock } from '../../src/lib/stores/lock.svelte.ts';
+import { prefs } from '../../src/lib/data/prefs/store.svelte.ts';
 
 const publish = (value: unknown) => {
   (window as unknown as { __liveReadsProbeResult: unknown }).__liveReadsProbeResult = value;
@@ -490,7 +491,14 @@ async function run() {
   const afterWrite = mountEntryCount();
   await until(() => !afterWrite.read.loading, 'the entry count to answer after a write');
   afterWrite.destroy();
-  quickExit();
+  const previousTiming = prefs.lockAfter;
+  prefs.lockAfter = 'immediately';
+  const stopLock = watchLock();
+  Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+  Reflect.deleteProperty(document, 'visibilityState');
+  stopLock();
+  prefs.lockAfter = previousTiming;
   const afterLock = mountEntryCount();
   await until(() => !afterLock.read.loading, 'the entry count to answer after a lock');
   afterLock.destroy();

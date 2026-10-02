@@ -1,7 +1,8 @@
 /* When leaving the app asks for its secret again (lock-timing ticket 01).
 
    The clock starts when the page is hidden - a switched tab, a backgrounded
-   app, a screen turned off - and nothing else. A desktop window losing focus
+   app, a screen turned off - or Android reports leaving through Recents.
+   A desktop window losing focus
    while it is still on screen is not leaving, and used to lock the diary the
    moment somebody clicked the window beside it.
 
@@ -28,14 +29,22 @@ const LOCK_AFTER_MS: Record<Exclude<LockAfter, 'immediately' | 'restart'>, numbe
   'five-minutes': 5 * 60_000
 };
 
+/** Hooks invoked by the Android activity when WebView visibility misses Recents. */
+export type NativeLeaveHooks = {
+  __lockOnLeaveFromNative?: () => void;
+  __lockOnReturnFromNative?: () => void;
+};
+
 export function watchLeave({
   page,
+  native,
   lockAfter,
   lock,
   now = Date.now
 }: {
   /** The document, or anything with its visibility and its event. */
   page: EventTarget & { readonly visibilityState: DocumentVisibilityState };
+  native?: NativeLeaveHooks;
   /** Read at each event rather than once, so a timing changed while the app
       was away applies to that absence. */
   lockAfter: () => LockAfter;
@@ -44,12 +53,11 @@ export function watchLeave({
 }): () => void {
   let hiddenAt: number | null = null;
 
-  const onVisibility = () => {
-    if (page.visibilityState === 'hidden') {
-      if (lockAfter() === 'immediately') lock();
-      else hiddenAt = now();
-      return;
-    }
+  const onLeave = () => {
+    if (lockAfter() === 'immediately') lock();
+    else hiddenAt ??= now();
+  };
+  const onReturn = () => {
     if (hiddenAt === null) return;
     const away = now() - hiddenAt;
     hiddenAt = null;
@@ -58,7 +66,21 @@ export function watchLeave({
     /* Changed to immediately while away: the absence already happened. */
     if (timing === 'immediately' || away >= LOCK_AFTER_MS[timing] || away < 0) lock();
   };
+  const onVisibility = () => {
+    if (page.visibilityState === 'hidden') onLeave();
+    else onReturn();
+  };
 
   page.addEventListener('visibilitychange', onVisibility);
-  return () => page.removeEventListener('visibilitychange', onVisibility);
+  if (native) {
+    native.__lockOnLeaveFromNative = onLeave;
+    native.__lockOnReturnFromNative = onReturn;
+  }
+  return () => {
+    page.removeEventListener('visibilitychange', onVisibility);
+    if (native) {
+      delete native.__lockOnLeaveFromNative;
+      delete native.__lockOnReturnFromNative;
+    }
+  };
 }

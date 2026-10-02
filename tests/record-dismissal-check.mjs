@@ -368,27 +368,20 @@ try {
   assert.equal(await page.locator('[data-dose]').count(), doseCount + 2);
   console.log('PASS dose Discard resumes requested route without saving');
 
-  for (const concealment of ['quick-exit', 'lock']) {
+  {
     await openNew();
     await page.locator('[data-dose-what]').click();
     await doseAmount.fill('11');
     await page.locator('[data-close-record]').click();
     await page.locator('[data-keep-editing]').waitFor();
-    await page.evaluate(async (concealment) => {
+    await page.evaluate(async () => {
       const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
-      const { quickExit, lockState } = await import('/src/lib/stores/lock.svelte.ts');
+      const { lockState } = await import('/src/lib/stores/lock.svelte.ts');
       window.doseAccessMode = bootState.accessMode;
-      if (concealment === 'quick-exit') quickExit();
-      else { bootState.accessMode = 'passphrase'; lockState.unlocked = false; }
-    }, concealment);
-    if (concealment === 'quick-exit') {
-      await page.locator('[data-blank]').waitFor();
-      assert.equal(await page.locator('[data-blank]').evaluate((el) => {
-        const rect = el.getBoundingClientRect();
-        return document.elementFromPoint(rect.width / 2, rect.height / 2) === el;
-      }), true);
-      await page.locator('[data-blank]').click();
-    } else await doseAmount.waitFor({ state: 'detached' });
+      bootState.accessMode = 'passphrase';
+      lockState.unlocked = false;
+    });
+    await doseAmount.waitFor({ state: 'detached' });
     assert.equal(await page.locator('[data-discard-record]').count(), 0);
     await page.evaluate(async () => {
       const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
@@ -400,7 +393,7 @@ try {
       await page.locator('[data-close-record]').click();
       await discard();
     }
-    console.log(`PASS dose ${concealment} conceals journal immediately without draft prompt`);
+    console.log('PASS dose lock conceals journal immediately without draft prompt');
   }
 
   await navigate('/care/labs');
@@ -509,31 +502,6 @@ try {
   console.log('PASS temporary photo survives Keep editing and is released on Discard');
 
   await navigate('/health/appointments');
-  await openNew();
-  await page.locator('#appointment-note').fill('Private appointment details');
-  await page.locator('[data-close-record]').click();
-  await page.locator('[data-keep-editing]').waitFor();
-  await page.evaluate(async () => {
-    const { quickExit } = await import('/src/lib/stores/lock.svelte.ts');
-    quickExit();
-  });
-  await page.locator('[data-blank]').waitFor();
-  assert.equal(await page.locator('[data-discard-record]').count(), 0);
-  assert.equal(await page.locator('[data-blank]').evaluate((el) => {
-    const rect = el.getBoundingClientRect();
-    return document.elementFromPoint(rect.width / 2, rect.height / 2) === el;
-  }), true);
-  await page.locator('[data-blank]').click();
-  await page.evaluate(async () => {
-    const { markUnlocked } = await import('/src/lib/stores/lock.svelte.ts');
-    markUnlocked();
-  });
-  if (await page.locator('[data-close-record]').count()) {
-    await page.locator('[data-close-record]').click();
-    await discard();
-  }
-  console.log('PASS quick exit covers private content immediately without a discard prompt');
-
   await openNew();
   await page.locator('#appointment-note').fill('Private appointment details');
   await page.locator('[data-close-record]').click();

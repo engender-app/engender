@@ -28,7 +28,7 @@ export interface LocalDataTargets {
       (ticket 13). Absent on the web, where the root is everything. */
   wipePlatformStorage?: () => Promise<void>;
   /** What a platform holds that is not the journal and not in that root
-      either: on Android the reminder, auto-export and quick-exit preference
+      either: on Android the reminder, auto-export and lock-timing preference
       files, the alarms scheduled off the first of them, and the Keystore
       alias the backup password is wrapped under. Absent on the web, which
       keeps none of it. */
