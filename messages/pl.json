@@ -1007,7 +1007,7 @@
   "doubt_snapshot_delete_q": "Usunąć tę zapisaną chwilę?",
   "doubt_snapshot_delete_sheet": "Usuń zapisaną chwilę",
   "doubt_snapshots_title": "Zapisane chwile",
-  "editor_no_scales": "Nie wybrano żadnych skal. Nadal możesz zapisać wpis z nastrojem.",
+  "editor_no_scales": "Do zapisania wpisu wystarczy nastrój.",
   "effect_adhd_symptom_change_feminizing": "Zmiana objawów ADHD",
   "effect_adhd_symptom_change_masculinizing": "Zmiana objawów ADHD",
   "effect_appetite_change_feminizing": "Zmiana apetytu",
@@ -1205,7 +1205,7 @@
   "entry_mood_aria": "nastrój: {name}",
   "entry_no_note": "Brak notatki",
   "entry_nudges": "Sugestie szczegółów",
-  "entry_nudges_sub": "Podpowiada dodanie szczegółów po zapisie samego nastroju.",
+  "entry_nudges_sub": "Po zapisaniu samego nastroju podpowiada, że możesz dodać szczegóły.",
   "entry_pick_mood_to_save": "Wybierz nastrój, aby zapisać",
   "entry_procedure_recovery_add_photo": "Dodaj zdjęcie gojenia",
   "entry_procedure_recovery_notes_placeholder": "Jak dziś przebiega gojenie?",
@@ -4114,14 +4114,14 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} wpis w tym okresie. Bilans zaczyna się od {floor}.",
-        "countPlural=few": "{count} wpisy w tym okresie. Bilans zaczyna się od {floor}.",
-        "countPlural=many": "{count} wpisów w tym okresie. Bilans zaczyna się od {floor}.",
-        "countPlural=other": "{count} wpisów w tym okresie. Bilans zaczyna się od {floor}."
+        "countPlural=one": "{count} wpis. Bilans jest dostępny od {floor} wpisów.",
+        "countPlural=few": "{count} wpisy. Bilans jest dostępny od {floor} wpisów.",
+        "countPlural=many": "{count} wpisów. Bilans jest dostępny od {floor} wpisów.",
+        "countPlural=other": "{count} wpisu. Bilans jest dostępny od {floor} wpisów."
       }
     }
   ],
-  "wrapped_thin_title": "Za mało wpisów na to podsumowanie",
+  "wrapped_thin_title": "Brak bilansu",
   "wrapped_unknown_body": "Otwórz Przegląd, aby wybrać okres Bilansu.",
   "wrapped_unknown_title": "Nie ma takiego bilansu",
   "wrapped_week_range": "od {from} do {to}",
