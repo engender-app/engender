@@ -41,22 +41,6 @@ const toBase64 = (bytes: Uint8Array): string => {
 const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
 
-async function collect(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for await (const piece of body) {
-    chunks.push(piece);
-    total += piece.length;
-  }
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return out;
-}
-
 const reasonText = (error: unknown): string => {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
   return 'auto-export failed';
@@ -132,20 +116,32 @@ export async function runAndroidAutoExport(
     deps.watch
   );
 
+  let transferId: string | undefined;
   try {
-    const bytes = await collect(body);
-    const payload = { fileName, base64: toBase64(bytes) };
+    deps.watch?.signal?.throwIfAborted();
+    const { createSHA256 } = await import('hash-wasm');
+    const digest = await createSHA256();
+    ({ transferId } = await androidAutoExport.beginBackup({ fileName }));
+    let byteLength = 0;
+    for await (const piece of body) {
+      deps.watch?.signal?.throwIfAborted();
+      digest.update(piece);
+      await androidAutoExport.appendBackup({ transferId, offset: byteLength, base64: toBase64(piece) });
+      byteLength += piece.length;
+    }
+    deps.watch?.signal?.throwIfAborted();
+    const payload = { transferId, byteLength, sha256: digest.digest('hex') };
     try {
-      await androidAutoExport.writeBackup(payload);
+      await androidAutoExport.finishBackup(payload);
     } catch (error) {
       const first = reasonText(error);
       if (!isTransientFailure(first)) throw error;
-      await androidAutoExport.writeBackup(payload);
+      await androidAutoExport.finishBackup(payload);
     }
     deps.recordBackup(writtenAt);
     return { outcome: 'ok', writtenAt };
   } catch (error) {
-    /* A stopped pack is an answer, not a failure (ADR-0070): nothing
+    /* A stopped pack is an answer, not a failure (ADR-0070): no completed archive
        reached the folder and nothing was stamped, so the screen has
        nothing to apologise for and disabling the schedule on it would be
        wrong. Checked before the reason strings below, because an
@@ -157,5 +153,7 @@ export async function runAndroidAutoExport(
       return { outcome: 'needs-destination' };
     }
     return { outcome: 'failed', reason };
+  } finally {
+    if (transferId) await androidAutoExport.abortBackup({ transferId }).catch(() => {});
   }
 }

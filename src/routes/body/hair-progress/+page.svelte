@@ -496,11 +496,6 @@
     }}
   >
     {#snippet fields(stageEditor)}
-      <Field label={m.hair_stage_date_label()} id="hair-stage-date">
-        {#snippet children(id)}
-          <DatePicker name="hair-stage-date" bind:value={stageEditor.date} {id} />
-        {/snippet}
-      </Field>
       <Field label={m.hair_scale_label()} legend>
         {#snippet children(id)}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
@@ -552,6 +547,11 @@
           {/if}
         </div>
       {/if}
+      <Field label={m.hair_stage_date_label()} id="hair-stage-date">
+        {#snippet children(id)}
+          <DatePicker name="hair-stage-date" bind:value={stageEditor.date} {id} />
+        {/snippet}
+      </Field>
     {/snippet}
   </RecordSheet>
 </div>

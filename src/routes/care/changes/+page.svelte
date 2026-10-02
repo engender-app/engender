@@ -639,11 +639,6 @@
           <input class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
-      <Field label={m.side_effect_date_label()} id="side-effect-date">
-        {#snippet children(id)}
-          <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
       <Field label={m.side_effect_severity_label()} legend>
         {#snippet children()}
           <Segmented
@@ -652,6 +647,11 @@
             value={editor.severity}
             onChange={(v) => (editor.severity = v)}
           />
+        {/snippet}
+      </Field>
+      <Field label={m.side_effect_date_label()} id="side-effect-date">
+        {#snippet children(id)}
+          <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
     {/snippet}
