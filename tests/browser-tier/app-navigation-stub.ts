@@ -21,3 +21,5 @@ export async function goto(_url: string): Promise<void> {
 }
 
 export function afterNavigate(_callback: (navigation: unknown) => void): void {}
+
+export function beforeNavigate(_callback: (navigation: unknown) => void): void {}

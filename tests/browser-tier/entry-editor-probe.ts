@@ -32,10 +32,10 @@
    hidden ones did not land" would pass just as well on a screen that applies
    nothing whatsoever.
 
-   The draft mirror is the one thing here that does not run: it awaits
-   `journalDataKey()`, which only the boot store resolves, and no fixture
-   boots through that store. Nothing in this page's path touches it - the
-   editor mirrors a draft, it never reads one back to apply a template. */
+   The editor's draft mirror uses this fixture's data key through the boot
+   stub. The fixture opens below the keystore, so the real boot store has
+   no session key to release. Waiting for draft restoration before enabling
+   Save needs that same key available to the editor. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -127,7 +127,10 @@ async function applyAndSave(journal: Journal, epochDay: number, templateIds: str
   try {
     for (const templateId of templateIds) await applyTemplateThroughTheSheet(target, templateId);
 
-    const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
+    const save = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-save]');
+      return button && !button.disabled ? button : null;
+    }, 'the ready save button');
     save.click();
     /* Waited out on the screen's committed state rather than by polling
        the journal for the entry. A read issued while the save's transaction
@@ -150,7 +153,10 @@ async function saveWithNavigationFailure(journal: Journal) {
   const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: 'visit-1' }, target);
   try {
     (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
-    const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
+    const save = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-save]');
+      return button && !button.disabled ? button : null;
+    }, 'the ready save button');
     failNextNavigation();
     save.click();
     const notice = await until(() => {
