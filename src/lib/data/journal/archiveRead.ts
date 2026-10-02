@@ -14,7 +14,7 @@
    File-owning rows and their names come from fileOwnership.ts so archive
    sections and the manifest use the same reads. */
 
-import type { SqliteDriver } from '../sqlite/driver';
+import type { SqliteReader } from '../sqlite/driver';
 import type { ProcedureKind } from '../types';
 import type {
   ArchiveAffirmation,
@@ -60,7 +60,7 @@ import type { PhotoRow, RecordingRow, VideoRow } from './fileOwnership';
 
 export type SectionRead = Omit<Awaited<ReturnType<typeof readRowContext>>, 'fileNames'>;
 
-export async function readRowContext(driver: SqliteDriver) {
+export async function readRowContext(driver: SqliteReader) {
   const ownership = await readFileOwnership(driver, 'archive');
   return { driver, ...ownership.rows, fileNames: ownership.names };
 }
@@ -687,7 +687,7 @@ export async function readDosePauses({ driver }: SectionRead): Promise<ArchiveDo
     every other reader here: `ArchiveArea.importLog()` (journal/archive.ts)
     calls this straight, for the settings screen, without paying for the
     seven file-owning tables a section's read is otherwise bundled with. */
-export async function readImportLog(driver: SqliteDriver): Promise<ArchiveImportLogRecord[]> {
+export async function readImportLog(driver: SqliteReader): Promise<ArchiveImportLogRecord[]> {
   const rows = await driver.query<{ uuid: string; source: string; counts: string; imported_at: number }>(
     'SELECT uuid, source, counts, imported_at FROM import_log ORDER BY imported_at, uuid'
   );

@@ -1,3 +1,4 @@
+import { withReadSnapshots } from '../transactor.ts';
 /* Test-only SqliteDriver backed by node:sqlite's DatabaseSync. The real
    drivers need a browser (sqlite3mc over OPFS) or an Android shell (SQLCipher
    behind a local Capacitor plugin), so this is what lets the Node tier run
@@ -14,6 +15,7 @@ export function makeNodeSqliteDb(): SqliteDriver & { raw: DatabaseSync } {
   const raw = new DatabaseSync(':memory:');
   return {
     raw,
+    ...withReadSnapshots({
     exec(sql: string) {
       raw.exec(sql);
     },
@@ -47,5 +49,6 @@ export function makeNodeSqliteDb(): SqliteDriver & { raw: DatabaseSync } {
     async close() {
       raw.close();
     }
+    })
   };
 }
