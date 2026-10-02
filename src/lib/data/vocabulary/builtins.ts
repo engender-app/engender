@@ -149,7 +149,7 @@ export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
    comfort decision as a length one. Genital and sexual in particular names
    ejaculate changes, orgasm changes and genital odour - intimate in a way
    the rest of the catalogue is not, on a screen in an app whose disguise
-   mode and decoy home screen exist because its readers sometimes hand
+   mode exists because its readers sometimes hand
    their phone to someone. Built-in only: no custom-category creation is
    asked for, so unlike a tag group there is no per-row `builtIn` flag. */
 export const BUILT_IN_EFFECT_CATEGORIES = [

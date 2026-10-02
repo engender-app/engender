@@ -3443,9 +3443,7 @@ try {
 
   /* Quick add floating over the lock screen (phase 8 audit ticket 08): opened here and left
      open, so the leave below has something to fail to close if lockNow()
-     stops clearing it. The lock timing rather than the two-finger gesture,
-     because it is the one path with no blank covering the mistake on any
-     platform, and does not exist to hide it on Android. */
+     stops clearing it. Locking must hide the fan on every platform. */
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan]');
 

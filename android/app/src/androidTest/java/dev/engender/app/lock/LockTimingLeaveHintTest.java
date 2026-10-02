@@ -20,7 +20,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Checks that Home/Recents reaches the real lock hook only under Immediately.
+/** Checks that Home/Recents reaches the real timing hooks and protects Immediately.
  * The preference is mirrored through the same public bridge as Settings.
  */
 @RunWith(AndroidJUnit4.class)
@@ -33,10 +33,12 @@ public class LockTimingLeaveHintTest {
     public void setUp() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
+        context.getSharedPreferences(dev.engender.app.screencapture.ScreenCapturePlugin.PREFS, Context.MODE_PRIVATE)
+            .edit().clear().commit();
     }
 
     @Test
-    public void leavingTheAppCallsTheHookOnlyUnderImmediately() throws Exception {
+    public void leavingTheAppCallsTheTimingHookBeforeTheThumbnail() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             setTiming(scenario, "immediately");
@@ -51,19 +53,24 @@ public class LockTimingLeaveHintTest {
     }
 
     @Test
-    public void leavingTheAppDoesNothingUnderOtherTimings() throws Exception {
+    public void otherTimingsNotifyTheClockWithoutBlockingCapture() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             installCounter(scenario);
             for (String timing : new String[] {"one-minute", "five-minutes", "restart"}) {
                 setTiming(scenario, timing);
+                runJs(scenario, "window.__leaveLockCalls = 0");
                 scenario.onActivity(MainActivity::onUserLeaveHint);
                 scenario.onActivity(MainActivity::onPause);
                 if (android.os.Build.VERSION.SDK_INT >= 29) {
                     scenario.onActivity(activity -> activity.onTopResumedActivityChanged(false));
                 }
                 Thread.sleep(500);
-                assertEquals(timing, "0", evalJs(scenario, "String(window.__leaveLockCalls || 0)"));
+                assertEquals(timing, android.os.Build.VERSION.SDK_INT >= 29 ? "3" : "2",
+                    evalJs(scenario, "String(window.__leaveLockCalls || 0)"));
+                scenario.onActivity(activity -> assertEquals(0,
+                    activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE
+                ));
                 scenario.onActivity(MainActivity::onResume);
             }
         }
@@ -92,6 +99,19 @@ public class LockTimingLeaveHintTest {
                     (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
                 ));
             }
+        }
+    }
+
+    @Test
+    public void aStoppedActivityNotifiesTheClockWhenItBecomesHidden() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
+            setTiming(scenario, "restart");
+            installCounter(scenario);
+            scenario.onActivity(MainActivity::onStop);
+            assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
+            scenario.onActivity(MainActivity::onStart);
+            scenario.onActivity(MainActivity::onResume);
         }
     }
 
