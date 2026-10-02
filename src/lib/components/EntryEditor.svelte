@@ -1,3 +1,20 @@
+<script module lang="ts">
+  import type { EntryDraft } from '$lib/data/entryDraft';
+
+  type EntrySaveRecovery = {
+    entryId: number | undefined;
+    epochDay: number;
+    draft: EntryDraft;
+    starred: boolean;
+    destination: string;
+    settled: Promise<void>;
+  };
+
+  // A privacy gate can unmount the editor while storage still owns its save.
+  // Retain that draft, including media, until the same editor resumes.
+  let detachedEntrySave: EntrySaveRecovery | undefined;
+</script>
+
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -16,7 +33,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
+  import { createEntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
   import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
@@ -117,6 +134,8 @@
 
   let saving = $state(false);
   let pendingDraftOperations = $state(0);
+  let saveRecovery: EntrySaveRecovery | undefined;
+  let destroyed = false;
 
   // Media preparation and prefills must finish before the save snapshots the draft.
   async function prepareDraft(operation: () => Promise<void>) {
@@ -133,12 +152,10 @@
     if (saving) navigation.cancel();
   });
 
-  /* Survives an Android process death (ticket 14): mirrored to localStorage
-     on every change below and cleared the moment this editor unmounts, so
-     only a killed-while-backgrounded process ever leaves it to be found on
-     the next mount. A same-process background/resume never unmounts this
-     component at all, so its in-memory state alone already handles that
-     case - this only ever restores after a real process death.
+  /* Mirrored to localStorage on every change. Normal departure discards
+     the mirror; a privacy lock during a pending save retains it until the
+     save succeeds or the editor resumes. A killed process can recover the
+     serializable fields; the in-memory recovery also retains pending media.
 
      What is written there is ciphertext under the open journal's data key
      (sec-audit 02), which makes both halves async. */
@@ -149,26 +166,40 @@
      the very snapshot this is about to restore. */
   let mirrorRead = $state(false);
 
-  async function restoreIfPersisted(target: EntryDraft) {
+  async function restoreIfPersisted(target: EntryDraft): Promise<EntryDraft> {
+    const recovery = detachedEntrySave;
+    if (recovery && recovery.entryId === entryId && (entryId != null || recovery.epochDay === target.epochDay)) {
+      entryDraft = recovery.draft;
+      saving = true;
+      try {
+        await recovery.settled;
+      } finally {
+        saving = false;
+      }
+      starred = recovery.starred;
+      savedDestination = recovery.destination;
+      if (!destroyed && detachedEntrySave === recovery) detachedEntrySave = undefined;
+      return recovery.draft;
+    }
     const persisted = await draftStore.read();
-    if (!persisted) return;
+    if (!persisted) return target;
     if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
     else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+    return target;
   }
 
   // Existing entries restore once, onto their loaded draft. Mirroring starts
   // only after that draft is installed, so the blank draft cannot overwrite recovery.
   // svelte-ignore state_referenced_locally
   const persistedRestore = entryId == null
-    ? restoreIfPersisted(entryDraft).finally(() => { mirrorRead = true; })
+    ? restoreIfPersisted(entryDraft).then((draft) => { entryDraft = draft; }).finally(() => { mirrorRead = true; })
     : Promise.resolve();
 
   onFirstResult(loaded, (entry) => prepareDraft(async () => {
     if (entryId == null) return;
     const fresh = entry ? createEntryDraft(entry.epochDay, entry) : entryDraft;
     try {
-      await restoreIfPersisted(fresh);
-      entryDraft = fresh;
+      entryDraft = await restoreIfPersisted(fresh);
       if (entry) starred = entry.starred;
     } finally {
       mirrorRead = true;
@@ -267,7 +298,11 @@
     void draftStore.write(snapshot);
   });
 
-  onDestroy(() => draftStore.clear());
+  onDestroy(() => {
+    destroyed = true;
+    if (saveRecovery) detachedEntrySave = saveRecovery;
+    else if (!saving) draftStore.clear();
+  });
 
   let deleteOpen = $state(false);
   let templateSheetOpen = $state(false);
@@ -780,6 +815,12 @@
       return;
     }
     saving = true;
+    let settle!: () => void;
+    const recovery: EntrySaveRecovery = {
+      entryId, epochDay: entryDraft.epochDay, draft: entryDraft, starred, destination: '/',
+      settled: new Promise<void>((resolve) => { settle = resolve; })
+    };
+    saveRecovery = recovery;
     const moodOnly = entryDraft.hasMoodOnlyContent;
     const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
     let id: number;
@@ -791,9 +832,13 @@
       return;
     } finally {
       saving = false;
+      saveRecovery = undefined;
+      settle();
     }
     draftStore.clear();
     savedDestination = sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+    recovery.destination = savedDestination;
+    if (destroyed) return;
     if (!await leaveSavedEntry()) return;
     if (!offerDims && prefs.entryNudges && moodOnly) {
       toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });

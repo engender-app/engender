@@ -14,7 +14,9 @@ const shots = '.claude/entry-pending-save-shots';
 await mkdir(shots, { recursive: true });
 
 async function attachPhoto(page) {
-  await page.locator('[data-section-chip="photos"]').click();
+  if (await page.locator('[data-section-chip="photos"]').getAttribute('aria-expanded') !== 'true') {
+    await page.locator('[data-section-chip="photos"]').click();
+  }
   const buffer = await tinyPhoto(page, '#789abc');
   const chooser = page.waitForEvent('filechooser');
   await page.locator('[data-add-photo]').click();
@@ -59,6 +61,8 @@ try {
     await settlePage(page, base, '/settings', locale === 'en' ? 'light' : 'dark');
     await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
+    await page.goto(base + '/settings/access-mode', { waitUntil: 'networkidle' });
+    await page.locator('[data-lock-after-choice="immediately"]').click();
     await page.goto(base + '/entry/new/today?seedMood=4', { waitUntil: 'networkidle' });
     const note = page.locator('#ed-note');
     await note.fill(`Pending entry ${locale}`);
@@ -186,10 +190,30 @@ try {
     await page.waitForFunction(() => window.entryWrite.entered);
     await page.locator('[data-tag="g-body-eu"]').click({ force: true });
     assert.equal(await page.locator('[data-tag="g-body-eu"]').getAttribute('aria-pressed'), 'true');
-    await page.evaluate(() => window.entryWrite.release());
-    await page.waitForFunction(() => !document.querySelector('[data-save]')?.disabled);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.visibilityState;
+    });
+    await page.locator('[data-applock]').waitFor();
+    await note.waitFor({ state: 'detached' });
+    await page.locator('[data-save]').waitFor({ state: 'detached' });
+    assert.equal(await page.locator('[data-save]').count(), 0, 'privacy gate hides editor and hosted save controls');
+    assert.ok(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), 'lock retains pending recovery');
+    if (locale === 'pl') await page.evaluate(() => window.entryWrite.release());
+    await page.locator('#session-passphrase').fill('demo');
+    await page.locator('[data-session-submit]').click();
+    await page.locator('[data-applock]').waitFor({ state: 'detached' });
+    if (locale === 'en') {
+      await page.locator('[data-save]').waitFor();
+      assert.equal(await page.locator('[data-save]').isDisabled(), true, 'unlock cannot duplicate a pending save');
+      await page.evaluate(() => window.entryWrite.release());
+    }
+    await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
     assert.equal(await note.inputValue(), `Retry entry ${locale}`);
     assert.ok(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), 'failure retains recovery');
+    await page.locator('[data-section-chip="photos"]').click();
+    assert.equal(await page.locator('.photo-view').count(), 1, 'lock and failed storage retain picked media');
     await note.fill(`Corrected retry ${locale}`);
     await page.evaluate(() => { window.entryWrite.fail = false; });
     await page.locator('[data-save]').click();
@@ -205,6 +229,34 @@ try {
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
     assert.equal(await note.inputValue(), `Recovered edit ${locale}`, 'reopening restores unsaved draft over saved content');
+    await attachPhoto(page);
+    await page.evaluate(() => { Object.assign(window.entryWrite, { armed: true, entered: false, fail: false }); });
+    await page.locator('[data-save]').click();
+    await page.waitForFunction(() => window.entryWrite.entered);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.visibilityState;
+    });
+    await page.locator('[data-applock]').waitFor();
+    await page.locator('[data-save]').waitFor({ state: 'detached' });
+    const lockedRoute = new URL(page.url()).pathname;
+    await page.evaluate(() => window.entryWrite.release());
+    await page.waitForFunction(() => localStorage.getItem('engender-entry-draft') === null);
+    assert.equal(new URL(page.url()).pathname, lockedRoute, 'detached save does not navigate through gate');
+    await page.locator('#session-passphrase').fill('demo');
+    await page.locator('[data-session-submit]').click();
+    await page.locator('[data-entry-saved]').waitFor();
+    assert.equal(await page.locator('[data-save]').count(), 0, 'completed save resumes readonly fallback');
+    await page.locator('[data-entry-saved] a').click();
+    await page.waitForURL((url) => url.pathname === '/');
+    await page.goto(base + '/day/today', { waitUntil: 'networkidle' });
+    const recovered = page.locator('[data-entry-card]').filter({ hasText: `Recovered edit ${locale}` });
+    assert.equal(await recovered.count(), 1);
+    await recovered.click();
+    assert.equal(await note.inputValue(), `Recovered edit ${locale}`);
+    await page.locator('[data-section-chip="photos"]').click();
+    assert.equal(await page.locator('.photo-view').count(), 2, 'save completed while locked persists all media');
     assert.deepEqual(errors, []);
     console.log(`PASS ${locale}: pending save freezes edits and persists entry and encrypted photo`);
     await context.close();
