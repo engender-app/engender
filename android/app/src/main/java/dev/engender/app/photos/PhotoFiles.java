@@ -25,7 +25,7 @@ final class PhotoFiles {
         }
 
         File directory = new File(context.getFilesDir(), directoryName);
-        if (!directory.exists() && !directory.mkdirs()) {
+        if (!directory.exists() && !directory.mkdirs() && !directory.isDirectory()) {
             throw new IllegalStateException("could not create photo directory " + directory);
         }
         if (!directory.isDirectory()) {
@@ -35,12 +35,14 @@ final class PhotoFiles {
         File noMedia = new File(directory, ".nomedia");
         if (!noMedia.exists()) {
             try {
-                if (!noMedia.createNewFile()) {
-                    throw new IllegalStateException("could not create " + noMedia);
-                }
+                // Another worker may already have created the marker.
+                noMedia.createNewFile();
             } catch (IOException e) {
                 throw new IllegalStateException("could not create " + noMedia, e);
             }
+        }
+        if (!noMedia.isFile()) {
+            throw new IllegalStateException(noMedia + " is not a file");
         }
 
         return directory;
