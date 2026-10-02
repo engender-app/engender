@@ -26,7 +26,7 @@
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './sqlocal-driver.ts';
-import { oneTransactionAtATime } from './transactor.ts';
+import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -253,7 +253,7 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
   // failed, rather than letting one crash on a null database instead).
   post('open', { path: databasePath, hexKey: toHex(dataKey) }).catch(() => {});
 
-  const driver: SqliteDriver = {
+  const driver: SqliteDriver = withReadSnapshots({
     async exec(statements: string) {
       await post('exec', { sql: statements });
     },
@@ -290,7 +290,7 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
       await post('close');
       terminate();
     }
-  };
+  });
 
   /* The copy check and the restore, which are what a failed boot does next
      (ux-carpet 219). boot() closes this driver when migrating fails, and

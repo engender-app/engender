@@ -1,3 +1,4 @@
+import { withReadSnapshots } from '../../sqlite/transactor.ts';
 /* A whole device, faked well enough to kill (ticket 10).
 
    The conversion's every step is a port (conversion.ts), which is what lets
@@ -144,7 +145,7 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
   }
 
   function nodeDriver(raw: DatabaseSync): SqliteDriver {
-    return {
+    return withReadSnapshots({
       async exec(sql) {
         raw.exec(sql);
       },
@@ -175,7 +176,7 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
       async close() {
         raw.close();
       }
-    };
+    });
   }
 
   /** The same census the real port takes, over node:sqlite instead of a
