@@ -29,6 +29,19 @@ export function opfsPhotoFiles(directory = PHOTO_DIRECTORY): PhotoFileStore {
       create: true
     }) as Promise<ListableDirectory>;
 
+  const readOne = async (name: string, directory: Promise<ListableDirectory>): Promise<Uint8Array | null> => {
+    try {
+      const handle = await (await directory).getFileHandle(name);
+      return new Uint8Array(await (await handle.getFile()).arrayBuffer());
+    } catch (error) {
+      // A missing file is an answer, not a failure: the sweep may have
+      // reclaimed it, or the row may be from an archive whose files did
+      // not arrive. The screen falls back to the placeholder.
+      if (isNotFound(error)) return null;
+      throw error;
+    }
+  };
+
   return {
     async write(name, bytes) {
       const handle = await (await dir()).getFileHandle(name, { create: true });
@@ -41,16 +54,13 @@ export function opfsPhotoFiles(directory = PHOTO_DIRECTORY): PhotoFileStore {
     },
 
     async read(name) {
-      try {
-        const handle = await (await dir()).getFileHandle(name);
-        return new Uint8Array(await (await handle.getFile()).arrayBuffer());
-      } catch (error) {
-        // A missing file is an answer, not a failure: the sweep may have
-        // reclaimed it, or the row may be from an archive whose files did
-        // not arrive. The screen falls back to the placeholder.
-        if (isNotFound(error)) return null;
-        throw error;
-      }
+      return readOne(name, dir());
+    },
+
+    async readMany(names) {
+      if (names.length === 0) return [];
+      const directory = dir();
+      return Promise.all(names.map((name) => readOne(name, directory)));
     },
 
     async size(name) {
