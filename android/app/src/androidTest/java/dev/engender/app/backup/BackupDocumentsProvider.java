@@ -15,7 +15,9 @@ import java.util.UUID;
 /** A test-only SAF destination with controlled write and read-back failures. */
 public class BackupDocumentsProvider extends DocumentsProvider {
     public static final String AUTHORITY = "dev.engender.app.test.backups";
-    private String fault = "none";
+    private volatile String fault = "none";
+    private volatile boolean blocked;
+    private volatile java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
 
     public static class Bootstrap extends android.content.BroadcastReceiver {
         @Override public void onReceive(android.content.Context context, android.content.Intent intent) {
@@ -37,8 +39,14 @@ public class BackupDocumentsProvider extends DocumentsProvider {
     }
 
     @Override public Bundle call(String method, String arg, Bundle extras) {
-        if ("fault".equals(method)) { fault = arg; return Bundle.EMPTY; }
+        if ("fault".equals(method)) {
+            fault = arg; blocked = false; release = new java.util.concurrent.CountDownLatch(1);
+            return Bundle.EMPTY;
+        }
+        if ("blocked".equals(method)) { Bundle out = new Bundle(); out.putBoolean("blocked", blocked); return out; }
+        if ("release".equals(method)) { release.countDown(); return Bundle.EMPTY; }
         if ("reset".equals(method)) {
+            release.countDown();
             File[] files = directory().listFiles();
             if (files != null) for (File file : files) file.delete();
             fault = "none";
@@ -105,6 +113,12 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         throws FileNotFoundException {
         File file = file(id);
         if (mode.contains("w") && "full".equals(fault)) throw new FileNotFoundException("ENOSPC");
+        if (mode.contains("w") && "blocked".equals(fault)) {
+            blocked = true;
+            try {
+                if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new FileNotFoundException("provider-timeout");
+            } catch (InterruptedException error) { throw new FileNotFoundException("provider-interrupted"); }
+        }
         if (!mode.contains("w") && "truncated".equals(fault)) {
             try (java.io.RandomAccessFile bytes = new java.io.RandomAccessFile(file, "rw")) {
                 bytes.setLength(Math.max(0, bytes.length() - 1));

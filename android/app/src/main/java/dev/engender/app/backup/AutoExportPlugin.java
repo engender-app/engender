@@ -366,12 +366,8 @@ public class AutoExportPlugin extends Plugin {
     }
 
     private static long byteCount(PluginCall call, String field) {
-        // org.json parses small JSON integers as Integer; PluginCall.getLong accepts only Long.
-        Object value = call.getData().opt(field);
-        if (!(value instanceof Integer) && !(value instanceof Long)) throw new IllegalStateException("incomplete-archive");
-        long count = ((Number) value).longValue();
-        if (count < 0 || count > 9007199254740991L) throw new IllegalStateException("incomplete-archive");
-        return count;
+        try { return dev.engender.app.files.StagedFile.byteCount(call.getData().opt(field)); }
+        catch (IllegalStateException invalid) { throw new IllegalStateException("incomplete-archive", invalid); }
     }
 
     private StagedBackup requireTransfer(PluginCall call) {

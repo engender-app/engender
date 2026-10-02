@@ -1,21 +1,21 @@
 /* Getting an exported file off the device (ticket 13, PRD F14; ticket 15
    for the plain formats).
 
-   The share sheet first, which is what Android's WebView answers with and
-   what makes "send it to my own cloud drive" one tap, then a plain
-   download. A cancelled share sheet is its own answer rather than a
+   Android uses its native save picker. Browsers try the share sheet first,
+   then a plain download. A cancelled share sheet is its own answer rather than a
    failure - the screen must not claim a backup was made.
 
-   The archive is packed as a stream (pack.ts) and this hands all of it to
+   In browsers the archive is packed as a stream (pack.ts) and handed to
    one Blob, which is the limit of what the format's bounded memory buys at
    the last step: chunking means the bytes are never encrypted and held a
    second time, which is what single-shot AES-GCM costs, but both a File to
    share and an object URL to download need the whole archive to exist
    somewhere. A Blob is the least bad somewhere - the browser owns it,
    large ones spill to disk rather than sitting in the renderer's heap.
-   Writing it out as it is produced instead needs a save-file picker, which
-   Android's WebView does not have. */
+   Android streams into app-private native staging before its save picker
+   opens, then verifies the destination before reporting delivery. */
 
+import { isAndroid } from '../../platform';
 import { nameSlug } from '../fold';
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 
@@ -45,6 +45,7 @@ export async function deliverFile(file: {
   type: string;
   body: AsyncIterable<Uint8Array>;
 }): Promise<Delivery> {
+  if (isAndroid()) return (await import('./android-file-delivery')).deliverAndroidFile(file);
   const parts: BlobPart[] = [];
   for await (const piece of file.body) parts.push(piece as BlobPart);
   return deliverBlob(file.fileName, new Blob(parts, { type: file.type }));
@@ -54,6 +55,17 @@ export async function deliverFile(file: {
     collage and timelapse come off a canvas as a Blob, and this is what keeps
     them on the one share path rather than growing a second one. */
 export async function deliverBlob(fileName: string, blob: Blob): Promise<Delivery> {
+  if (isAndroid()) {
+    return (await import('./android-file-delivery')).deliverAndroidFile({
+      fileName,
+      type: blob.type,
+      body: (async function* () {
+        for (let at = 0; at < blob.size; at += 1024 * 1024) {
+          yield new Uint8Array(await blob.slice(at, at + 1024 * 1024).arrayBuffer());
+        }
+      })()
+    });
+  }
   const sharing = navigator as Navigator & Sharing;
   const shared = new File([blob], fileName, { type: blob.type });
   if (sharing.canShare?.({ files: [shared] }) && sharing.share) {

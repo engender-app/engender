@@ -395,11 +395,15 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async snapshot() {
-      const reading = await readRowContext(driver);
-      const archivedFiles = await manifestNames(reading.fileNames);
+      const { journal, archivedFiles } = await driver.readSnapshot(async (reader) => {
+        const reading = await readRowContext(reader);
+        const journal = await readArchiveJournal(reading);
+        const archivedFiles = await manifestNames(reading.fileNames);
+        return { journal, archivedFiles };
+      });
 
       return {
-        journal: await readArchiveJournal(reading),
+        journal,
         files: archivedFiles,
         async readFile(name) {
           const bytes = await files.read(name);
