@@ -549,7 +549,6 @@
             key="tryout-photos-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
             title={m.tryout_photo_empty_title()}
-            text={m.tryout_photo_empty_body()}
           />
         </div>
       {/snippet}
@@ -568,7 +567,6 @@
           key="tryout-entries-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
           title={m.tryout_entries_none()}
-          text={m.tryout_entries_none_body()}
         />
       {/snippet}
     </ReadGate>

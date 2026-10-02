@@ -97,7 +97,7 @@ try {
     const disclosed = page.locator('.effects-methodology .disclosed');
     await disclosed.waitFor({ state: 'visible', timeout: 5000 });
     const content = await disclosed.textContent();
-    ok(content.includes('Endocrine Society') && content.includes('shaded band'), 'sources and methodology text visible');
+    ok(content.includes('published tables') && content.includes('No evidence'), 'timing and variability context visible');
 
     await page.screenshot({ path: '.claude/changes-shots/changes-disclosed.png', fullPage: true });
 
