@@ -71,12 +71,11 @@ await block('ticket 04 sheet focus', 13, async () => {
 
   await openSheet(page, '/health/appointments');
   let active = await activeState(page);
-  /* The date field is readonly (its picker is the control), so it raises no
-     on-screen keyboard and the sheet focuses it as the field the sheet
-     exists to fill (Sheet.svelte's `opensKeyboard` gate). */
-  if (active.id === 'appointment-date' && active.inSheet && active.visible)
-    ok('appointment sheet focuses its readonly date field without opening a keyboard');
-  else fail('appointment sheet focuses its readonly date field without opening a keyboard', JSON.stringify(active));
+  /* Kind is the first field. The dialog takes focus so opening the sheet
+     does not raise the keyboard before a person chooses a text field. */
+  if (active.visible && await page.locator('[data-sheet]').evaluate((sheet) => sheet === document.activeElement))
+    ok('appointment sheet focuses its dialog without opening a keyboard');
+  else fail('appointment sheet focuses its dialog without opening a keyboard', JSON.stringify(active));
 
   const dialogName = await page.locator('[data-sheet]').getAttribute('aria-label');
   if (dialogName?.trim()) ok('appointment sheet has a non-empty accessible dialog name');
@@ -89,8 +88,7 @@ await block('ticket 04 sheet focus', 13, async () => {
       .filter((node) => node.getClientRects().length > 0).length
   );
   let stayedInSheet = true;
-  /* Focus starts on the date field, so `sheetTargets` Tabs visit every
-     other target and wrap back round to it. */
+  /* Focus starts on the dialog, so `sheetTargets` Tabs visit every control. */
   const visited = new Set();
   for (let i = 0; i < sheetTargets; i++) {
     await page.keyboard.press('Tab');

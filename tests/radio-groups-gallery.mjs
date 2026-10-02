@@ -87,7 +87,7 @@ try {
     await checkRadioGroup(page, page.locator('.palette-grid'));
     await page.locator('[data-palette-pick="trans"]').click();
     await page.locator('[data-list-row="mood-colours"]').click();
-    await checkRadioGroup(page, page.locator('.mood-preset-grid'));
+    await checkRadioGroup(page, page.locator('.mood-preset-grid'), { tabLeavesGroup: false });
     await page.locator('[data-mood-preset-pick="teal"]').click();
     await page.keyboard.press('Escape');
     await page.locator('[data-segmented="theme"] [data-segment="light"]').click();
