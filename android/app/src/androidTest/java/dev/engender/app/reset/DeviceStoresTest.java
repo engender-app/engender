@@ -21,7 +21,7 @@ import javax.crypto.KeyGenerator;
 
 import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.clipboard.SensitiveClipboard;
-import dev.engender.app.quickexit.QuickExitPlugin;
+import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.ReminderPayloadStore;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
@@ -32,7 +32,7 @@ import dev.engender.app.screencapture.ScreenCapturePlugin;
  *
  * <p>Everything here was left behind by the reset as shipped: the reminder
  * titles, the auto-export destination and the Keystore alias its password
- * was wrapped under, and the quick-exit preference. The alias is the one no
+ * was wrapped under, and the lock-timing preference. The alias is the one no
  * amount of file deletion reaches - it lives in the platform, not in
  * anything the app owns - so a reset that cleared only the preferences left
  * the password recoverable by anything that could put the ciphertext back.
@@ -48,7 +48,7 @@ public class DeviceStoresTest {
        a copy would keep passing after the app moved its own store. */
     private static final String REMINDERS_PREFS = ReminderScheduler.PREFS;
     private static final String AUTO_EXPORT_PREFS = AutoExportPlugin.PREFS;
-    private static final String QUICK_EXIT_PREFS = QuickExitPlugin.PREFS;
+    private static final String LOCK_TIMING_PREFS = LockTimingPlugin.PREFS;
     private static final String SCREEN_CAPTURE_PREFS = ScreenCapturePlugin.PREFS;
     private static final String SENSITIVE_CLIPBOARD_PREFS = SensitiveClipboard.PREFS;
     private static final String PASSWORD_ALIAS = AutoExportPlugin.PASSWORD_ALIAS;
@@ -72,7 +72,8 @@ public class DeviceStoresTest {
         write(REMINDERS_PREFS, "payload-v1", "{\"reminders\":[{\"title\":\"Estradiol patch\"}]}");
         write(AUTO_EXPORT_PREFS, "destinationLabel", "Journal backups");
         write(AUTO_EXPORT_PREFS, "passwordCiphertext", "not-really-a-ciphertext");
-        write(QUICK_EXIT_PREFS, "enabled", "true");
+        write(LOCK_TIMING_PREFS, "timing", "immediately");
+        write("engender-quick-exit", "enabled", "true");
         write(SCREEN_CAPTURE_PREFS, "allowed", "true");
         write(SENSITIVE_CLIPBOARD_PREFS, "digest", "bm90LXJlYWxseS1hLWRpZ2VzdA==");
 
@@ -80,7 +81,8 @@ public class DeviceStoresTest {
 
         assertEmpty("the reminder titles are still here", REMINDERS_PREFS);
         assertEmpty("the backup destination is still here", AUTO_EXPORT_PREFS);
-        assertEmpty("the quick-exit preference is still here", QUICK_EXIT_PREFS);
+        assertEmpty("the lock-timing preference is still here", LOCK_TIMING_PREFS);
+        assertEmpty("the retired Quick exit flag is still here", "engender-quick-exit");
         assertEmpty("the screen-capture preference is still here", SCREEN_CAPTURE_PREFS);
         assertEmpty("the pending clipboard clear is still here", SENSITIVE_CLIPBOARD_PREFS);
     }

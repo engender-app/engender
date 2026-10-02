@@ -86,7 +86,6 @@ pin-dots
 pin-key
 pin-pad
 pin-wait
-quick-exit-blank
 rail-add
 rive-stage
 screen-back

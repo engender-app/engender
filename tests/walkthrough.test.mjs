@@ -3342,10 +3342,10 @@ try {
 } catch (e) { fail('vocabulary localization', e); }
 });
 
-/* 18. lock on leave, quick exit blank and disguised decoy (tickets 17, 30),
+/* 18. lock on leave and disguise (tickets 17, 30),
    then the forgotten-PIN reset.
    Last, because the reset is the one flow that destroys the journal. */
-await flow('lock on leave, quick exit and reset', async () => {
+await flow('lock on leave and reset', async () => {
 try {
   /* No PIN to set up first any more (ticket 53): mid-session locking now
      re-asks whatever opens the journal, and in the demo build that is the
@@ -3420,8 +3420,6 @@ try {
   }
   if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
-  await page.getByRole('switch', { name: 'Quick exit' }).click();
-
   /* Escaped rather than left open: the disguise sheet's own scrim sits over
      the whole screen, including the add control the next step needs to
      reach. */
@@ -3445,10 +3443,7 @@ try {
 
   /* Quick add floating over the lock screen (phase 8 audit ticket 08): opened here and left
      open, so the leave below has something to fail to close if lockNow()
-     stops clearing it. The lock timing rather than the two-finger gesture,
-     because it is the one path with no blank covering the mistake on any
-     platform - quick exit's blank hides the same bug by accident on the
-     web, and does not exist to hide it on Android. */
+     stops clearing it. Locking must hide the fan on every platform. */
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan]');
 
@@ -3480,25 +3475,8 @@ try {
   await page.waitForSelector('[data-settings-list]');
   if (await page.locator('[data-fan]').count()) throw new Error('unlocking restored the fan');
 
-  /* What quick exit does to where you were (phase 8 features ticket 49 item
-     3), asserted rather than assumed either way.
-
-     The decision this pins down is that the app comes back at the *top* of
-     the screen it was on, not where the person was reading. That falls out
-     of the layout rendering SessionUnlock instead of the route rather than
-     over it - nothing below the gate mounts and no query runs while the app
-     is locked, which is the property worth keeping - and it is the right
-     answer for the gesture besides: quick exit exists because somebody
-     walked in, and re-drawing the exact paragraph that was hidden, a second
-     after the passphrase is typed in front of that person, is the outcome
-     nobody wants. The URL does not move, so the way back is one screen, not
-     a hunt.
-
-     It has to run against a journal that *has* an access secret. One with
-     none takes the overlay path instead - `blanked` over a still-mounted
-     tree - and would keep its scroll position, passing this for exactly the
-     wrong reason. The demo journal is on a passphrase, which is what makes
-     this flow the place for it. */
+  /* Locking unmounts the route. Unlocking keeps its URL and returns at
+     the top, without mounting private reads behind the gate. */
   /* The long entry is written here rather than searched for in the demo
      persona: the onboarding flows above leave this journal near-empty, so
      anything this step needs to read, it has to have written itself. */
@@ -3528,16 +3506,14 @@ try {
   }
 
   await page.evaluate(() => {
-    const at = (y) => [1, 2].map((id) => new Touch({ identifier: id, target: document.body, clientX: 100 + id * 20, clientY: y }));
-    window.dispatchEvent(new TouchEvent('touchstart', { touches: at(100) }));
-    window.dispatchEvent(new TouchEvent('touchmove', { touches: at(320) }));
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
   });
-  await page.waitForSelector('[data-blank]');
-  await page.locator('[data-blank]').click();
   await page.waitForSelector('[data-applock]');
   /* Nothing in the lock path navigates, and this is the half of D5 the app
      does honour: the way back is the screen you were on. */
-  if (page.url() !== reading) throw new Error(`quick exit moved the URL: ${reading} -> ${page.url()}`);
+  if (page.url() !== reading) throw new Error(`locking moved the URL: ${reading} -> ${page.url()}`);
   if (await page.locator('[data-screen-back]').count()) {
     throw new Error('the route is still mounted under the lock screen, so its queries are still running');
   }
@@ -3551,45 +3527,16 @@ try {
   await booted();
   await page.waitForSelector('[data-settings-list]');
 
-  /* Two fingers, dispatched rather than driven: page.touchscreen only has
-     one. What is under test is the gesture the listeners are looking for,
-     not the browser's touch pipeline. */
-  await page.evaluate(() => {
-    const at = (y) => [1, 2].map((id) => new Touch({ identifier: id, target: document.body, clientX: 100 + id * 20, clientY: y }));
-    window.dispatchEvent(new TouchEvent('touchstart', { touches: at(100) }));
-    window.dispatchEvent(new TouchEvent('touchmove', { touches: at(320) }));
-  });
-  await page.waitForSelector('[data-blank]');
-  if ((await page.title()) !== 'New tab') throw new Error('tab title after quick exit: ' + (await page.title()));
-  if (!/favicon-notes\.svg$/.test(await favicon())) throw new Error('tab icon after quick exit: ' + (await favicon()));
-
-  await page.locator('[data-blank]').click();
-  await page.waitForSelector('[data-applock]');
-
-  /* Disguised, the same gesture shows the decoy notes screen instead of the
-     blank (ticket 30), and the tab title matches what the page claims to be.
-     Left on afterwards: the reset below wipes preferences, disguise included. */
-  await sessionPassphrase();
-  await page.waitForSelector('[data-settings-list]');
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
-  /* The same dispatched two-finger gesture as above. */
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet-scrim]', { state: 'detached' });
   await page.evaluate(() => {
-    const at = (y) => [1, 2].map((id) => new Touch({ identifier: id, target: document.body, clientX: 100 + id * 20, clientY: y }));
-    window.dispatchEvent(new TouchEvent('touchstart', { touches: at(100) }));
-    window.dispatchEvent(new TouchEvent('touchmove', { touches: at(320) }));
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
   });
-  await page.waitForSelector('[data-decoy]');
-  if (await page.locator('[data-blank]').count()) throw new Error('the blank showed alongside the decoy');
-  if ((await page.title()) !== 'Notes') throw new Error('tab title over the decoy: ' + (await page.title()));
-  const decoyText = await page.locator('[data-decoy]').innerText();
-  /* A cut of decoy-copy.test.ts's GIVEAWAYS list, over the rendered screen
-     rather than the catalogues - keep the two in step. */
-  if (/gender|trans|journal|diary|dziennik|płe|tranzyc/i.test(decoyText)) {
-    throw new Error('the decoy screen leaks the journal: ' + decoyText);
-  }
-  await page.locator('[data-decoy]').click();
   await page.waitForSelector('[data-applock]');
 
   await page.locator('[data-forgot]').click();
@@ -3613,8 +3560,8 @@ try {
      one. In a production build the first-run gate (flow 13) is what a
      wiped device meets instead. */
   await page.waitForSelector('[data-home-hello]');
-  ok('lock on leave, quick exit blanks and locks the fan away with it, disguised quick exit shows the decoy, the reset clears the gate');
-} catch (e) { fail('lock on leave, quick exit and reset', e); }
+  ok('lock on leave hides the fan and route, disguise remains, reset clears the gate');
+} catch (e) { fail('lock on leave and reset', e); }
 });
 
 /* 19. the About screen shows the version the build was given (ticket 01).

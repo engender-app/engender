@@ -355,7 +355,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       disguise: false,
       palette: 'trans',
       launcherIconShape: 'current',
-      quickExit: false,
+      lockAfter: 'restart',
       allowScreenCapture: false
     },
     journal: {
@@ -371,7 +371,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       consumeLaunchRoute: vi.fn().mockResolvedValue({ route: null })
     },
     androidDisguise: { setLauncherIdentity: vi.fn().mockResolvedValue(undefined) },
-    androidQuickExit: { setEnabled: vi.fn().mockResolvedValue(undefined) },
+    androidLockTiming: { setTiming: vi.fn().mockResolvedValue(undefined) },
     androidScreenCapture: { setAllowed: vi.fn().mockResolvedValue(undefined) },
     androidBackButton: {
       addListener: vi.fn().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) }),
@@ -498,7 +498,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
   });
 
-  test('runs the initial reminder sync, stock reconciliation, disguise, quick-exit and screen-capture sync on start', async () => {
+  test('runs the initial reminder sync, stock reconciliation, disguise, lock-timing and screen-capture sync on start', async () => {
     const deps = makeDeps();
     platformSync.startAndroidPlatformSync(deps);
     await flush();
@@ -506,7 +506,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
-    expect(deps.androidQuickExit.setEnabled).toHaveBeenCalledWith({ enabled: false });
+    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart' });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
   });
 
