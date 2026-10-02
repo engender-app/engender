@@ -416,7 +416,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.measurements_and_sizes()} back="/more" subtitle={m.measurements_intro()}>
+  <ScreenHeader title={m.measurements_and_sizes()} back="/more">
     {#snippet actions()}
       <button class="icon-btn press" data-manage-types aria-label={m.measurement_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />

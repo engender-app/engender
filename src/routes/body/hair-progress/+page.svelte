@@ -289,7 +289,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.hair_progress()} back="/care/changes" subtitle={m.hair_intro()} />
+  <ScreenHeader title={m.hair_progress()} back="/care/changes" />
   <SourceRecordHandoff id={sourceId} ready={!photosQuery.loading && !photosQuery.failed} found={!!sourcePhoto} onOpen={() => { viewing = sourcePhoto!; }} />
   <PhotoViewer photo={viewing} onClose={() => { viewing = null; }} />
 
@@ -391,7 +391,6 @@
           key="hair-photo-due"
           role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
           title={m.hair_photo_time_title()}
-          text={m.hair_photo_due_body()}
         />
       </div>
     {/if}
