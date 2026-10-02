@@ -128,27 +128,41 @@ async function writeArchiveFiles(
   onProgress?: OnRestoreProgress
 ): Promise<void> {
   const inFlight = new Set<Promise<void>>();
+  // Settled writes leave inFlight, but their first failure must survive the stream's pauses.
+  let failure: { error: unknown } | undefined;
   /* Counted as each write lands rather than as it is scheduled: up to
      FILE_WRITE_CONCURRENCY are in the air at once, and a count of what has
      been handed to the disk is not a count of what is on it. */
   let written = 0;
+  const throwIfFailed = () => {
+    if (failure) throw failure.error;
+  };
 
   const schedule = (name: string, bytes: Uint8Array) => {
-    const op = files.write(name, bytes).finally(() => {
-      inFlight.delete(op);
-      written += 1;
-      onProgress?.({ stage: 'files', done: written, total: fileCount });
-    });
+    const op = files
+      .write(name, bytes)
+      .then(() => {
+        written += 1;
+        onProgress?.({ stage: 'files', done: written, total: fileCount });
+      })
+      .catch((error: unknown) => {
+        failure ??= { error };
+      })
+      .finally(() => {
+        inFlight.delete(op);
+      });
     inFlight.add(op);
-    return op;
   };
 
   try {
     for await (const file of source) {
+      throwIfFailed();
       schedule(file.name, file.bytes);
       if (inFlight.size >= FILE_WRITE_CONCURRENCY) await Promise.race(inFlight);
+      throwIfFailed();
     }
     await Promise.all(inFlight);
+    throwIfFailed();
   } catch (error) {
     await Promise.allSettled(inFlight);
     throw error;

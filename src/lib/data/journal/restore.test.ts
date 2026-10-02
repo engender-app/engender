@@ -928,6 +928,105 @@ test('restore overlaps photo file writes rather than waiting on each one', async
   assert.ok(maxActiveWrites > 1, `writes were sequential (max overlap ${maxActiveWrites})`);
 });
 
+test.each([
+  ['replace', 'next file'],
+  ['replace', 'stream end'],
+  ['merge', 'next file'],
+  ['merge', 'stream end']
+] as const)('%s rejects an attachment failure settled before %s', async (mode, pause) => {
+  const source = await populated();
+  const target = await populated();
+  const before = (await target.journal.archive.snapshot()).journal;
+  const contents = await exported(source.journal);
+  target.files.failNthWrite(pause === 'next file' ? 1 : contents.fileCount!);
+  const seen: RestoreProgress[] = [];
+
+  await assert.rejects(target.journal.archive[mode]({
+    ...contents,
+    files: (async function* () {
+      for await (const file of contents.files) {
+        yield file;
+        if (pause === 'next file') await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      if (pause === 'stream end') await new Promise((resolve) => setTimeout(resolve, 0));
+    })()
+  }, (progress) => seen.push(progress)), /disk full/);
+
+  assert.deepEqual((await target.journal.archive.snapshot()).journal, before);
+  assert.ok(seen.every((progress) => progress.stage === 'files'));
+  assert.ok(seen.every((progress) => progress.done < contents.fileCount!));
+});
+
+test.each(['replace', 'merge'] as const)('%s rejects an attachment failure at final drain without changing rows', async (mode) => {
+  const source = await populated();
+  const target = await populated();
+  const before = (await target.journal.archive.snapshot()).journal;
+  const contents = await exported(source.journal);
+  let releaseWrites!: () => void;
+  const writesReady = new Promise<void>((resolve) => { releaseWrites = resolve; });
+  let finishStream!: () => void;
+  const streamDone = new Promise<void>((resolve) => { finishStream = resolve; });
+  const journal = openJournal(target.db, {
+    ...target.files,
+    async write() {
+      await writesReady;
+      throw new Error('disk full');
+    }
+  });
+  const seen: RestoreProgress[] = [];
+  const rejected = assert.rejects(journal.archive[mode]({
+    ...contents,
+    files: (async function* () {
+      for await (const file of contents.files) yield file;
+      finishStream();
+    })()
+  }, (progress) => seen.push(progress)), /disk full/);
+
+  await streamDone;
+  assert.deepEqual((await journal.archive.snapshot()).journal, before);
+  releaseWrites();
+  await rejected;
+  assert.deepEqual((await journal.archive.snapshot()).journal, before);
+  assert.deepEqual(seen, []);
+});
+
+test.each(['replace', 'merge'] as const)('%s waits for successful delayed attachments before importing rows', async (mode) => {
+  const source = await populated();
+  const target = await device();
+  const before = (await target.journal.archive.snapshot()).journal;
+  const contents = await exported(source.journal);
+  let releaseWrites!: () => void;
+  const writesReady = new Promise<void>((resolve) => { releaseWrites = resolve; });
+  let finishStream!: () => void;
+  const streamDone = new Promise<void>((resolve) => { finishStream = resolve; });
+  const journal = openJournal(target.db, {
+    ...target.files,
+    async write(name, data) {
+      await writesReady;
+      await target.files.write(name, data);
+    }
+  });
+  const seen: RestoreProgress[] = [];
+  const restored = journal.archive[mode]({
+    ...contents,
+    files: (async function* () {
+      for await (const file of contents.files) yield file;
+      finishStream();
+    })()
+  }, (progress) => seen.push(progress));
+
+  await streamDone;
+  assert.deepEqual((await journal.archive.snapshot()).journal, before);
+  assert.equal(seen.length, 0);
+  releaseWrites();
+  await restored;
+  const after = (await journal.archive.snapshot()).journal;
+  assert.deepEqual(after.entries, contents.journal.entries);
+  assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
+  assert.equal(seen.filter((progress) => progress.stage === 'files').length, contents.fileCount);
+  assert.equal(seen.findIndex((progress) => progress.stage === 'rows'), contents.fileCount);
+});
+
 /* The one hand-written payload in this file, and it earns the exception the
    header makes: no snapshot this build can take produces an archive without
    a `scale`, because every row has had one since phase 5 ticket 33. This is
