@@ -50,16 +50,17 @@ async function feedbackMotion(action, name) {
     await page.evaluate(() => {
       window.feedbackHeights = [];
       window.feedbackDone = false;
-      const start = performance.now();
+      window.feedbackStopAt = null;
       function sample() {
         const status = document.querySelector('[data-tryout-saved]');
         if (status) window.feedbackHeights.push(status.parentElement.getBoundingClientRect().height);
-        if (performance.now() - start < 900) requestAnimationFrame(sample);
+        if (window.feedbackStopAt === null || performance.now() < window.feedbackStopAt) requestAnimationFrame(sample);
         else window.feedbackDone = true;
       }
       requestAnimationFrame(sample);
     });
     await action();
+    await page.evaluate(() => { window.feedbackStopAt = performance.now() + 900; });
     await page.waitForFunction(() => window.feedbackDone);
     const heights = await page.evaluate(() => window.feedbackHeights);
     assert.ok(new Set(heights.map(Math.round)).size > 2, 'feedback travels through intermediate heights');
