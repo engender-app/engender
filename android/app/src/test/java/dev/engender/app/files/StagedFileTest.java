@@ -22,10 +22,10 @@ public class StagedFileTest {
         byte[] piece = new byte[1024 * 1024];
         java.util.Arrays.fill(piece, (byte) 37);
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        try (StagedFile staged = new StagedFile(file)) {
+        try (StagedFile staged = StagedFile.encrypted(file)) {
             for (int i = 0; i < 405; i++) { staged.append((long) i * piece.length, piece); digest.update(piece); }
             staged.prepare(405L * piece.length, hex(digest.digest()));
-            assertEquals(405L * piece.length, file.length());
+            assertEquals(405L * (piece.length + 32), file.length());
         }
         assertFalse(file.exists());
     }
@@ -51,5 +51,23 @@ public class StagedFileTest {
         for (Object invalid : new Object[] {null, -1, 0.5, "3", 9007199254740992L}) {
             assertThrows(IllegalStateException.class, () -> StagedFile.byteCount(invalid));
         }
+    }
+
+    @Test public void encryptedStagingHidesPlaintextAndAuthenticatesEveryPiece() throws Exception {
+        byte[] body = "private-journal-export-sentinel".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        File file = folder.newFile();
+        String hash = hex(MessageDigest.getInstance("SHA-256").digest(body));
+        try (StagedFile staged = StagedFile.encrypted(file)) {
+            staged.append(0, body);
+            staged.prepare(body.length, hash);
+            byte[] stored = java.nio.file.Files.readAllBytes(file.toPath());
+            assertFalse(new String(stored, java.nio.charset.StandardCharsets.ISO_8859_1)
+                .contains("private-journal-export-sentinel"));
+            try (java.io.RandomAccessFile corrupt = new java.io.RandomAccessFile(file, "rw")) {
+                corrupt.seek(stored.length - 1); corrupt.write(stored[stored.length - 1] ^ 1);
+            }
+            assertThrows(java.io.IOException.class, () -> staged.prepare(body.length, hash));
+        }
+        assertFalse(file.exists());
     }
 }

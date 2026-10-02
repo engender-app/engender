@@ -3,6 +3,7 @@ package dev.engender.app.reset;
 import android.content.Context;
 
 import dev.engender.app.backup.AutoExportPlugin;
+import dev.engender.app.files.FileDeliveryPlugin;
 import dev.engender.app.clipboard.SensitiveClipboard;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.ReminderScheduler;
@@ -49,6 +50,7 @@ public final class DeviceStores {
         for (Store store : new Store[] {
             ReminderScheduler::wipe,
             AutoExportPlugin::wipe,
+            FileDeliveryPlugin::wipe,
             LockTimingPlugin::wipe,
             ScreenCapturePlugin::wipe,
             SensitiveClipboard::wipe

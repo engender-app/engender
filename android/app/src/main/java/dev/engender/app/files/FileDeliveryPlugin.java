@@ -2,6 +2,7 @@ package dev.engender.app.files;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.Context;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.util.Base64;
@@ -13,7 +14,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import java.util.UUID;
 /** Manual exports use the system save picker instead of WebView downloads. */
 @CapacitorPlugin(name = "FileDelivery")
 public final class FileDeliveryPlugin extends Plugin {
+    private static final String STAGING_FILE = "manual-export.pending";
     private StagedFile staged;
     private String transferId;
     private String fileName;
@@ -28,6 +30,16 @@ public final class FileDeliveryPlugin extends Plugin {
     private long byteLength;
     private String sha256;
     private boolean picking;
+
+    @Override public void load() {
+        try { wipe(getContext()); }
+        catch (IOException error) { throw new IllegalStateException("export-staging-cleanup-failed", error); }
+    }
+
+    public static void wipe(Context context) throws IOException {
+        File file = new File(context.getCacheDir(), STAGING_FILE);
+        if (file.exists() && !file.delete()) throw new IOException("export-staging-cleanup-failed");
+    }
 
     @PluginMethod public synchronized void beginFile(PluginCall call) {
         String name = call.getString("fileName");
@@ -37,7 +49,7 @@ public final class FileDeliveryPlugin extends Plugin {
             call.reject("invalid-export-name"); return;
         }
         try {
-            staged = new StagedFile(new File(getContext().getCacheDir(), "manual-export.pending"));
+            staged = StagedFile.encrypted(new File(getContext().getCacheDir(), STAGING_FILE));
             transferId = UUID.randomUUID().toString();
             fileName = name;
             type = mime == null || mime.isEmpty() ? "application/octet-stream" : mime;
@@ -61,23 +73,34 @@ public final class FileDeliveryPlugin extends Plugin {
         } catch (Exception error) { call.reject("export-transfer-failed", error); }
     }
 
-    @PluginMethod public synchronized void finishFile(PluginCall call) {
-        try { requireTransfer(call); }
-        catch (Exception error) { call.reject("unknown-export-transfer", error); return; }
-        if (picking) { call.reject("export-already-prepared"); return; }
+    @PluginMethod public void finishFile(PluginCall call) {
+        final StagedFile delivery;
+        synchronized (this) {
+            try { requireTransfer(call); }
+            catch (Exception error) { call.reject("unknown-export-transfer", error); return; }
+            if (picking) { call.reject("export-already-prepared"); return; }
+            picking = true;
+            delivery = staged;
+        }
         try {
             long length = StagedFile.byteCount(call.getData().opt("byteLength"));
-            sha256 = call.getString("sha256");
-            staged.prepare(length, sha256);
-            byteLength = length;
-            picking = true;
-            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType(type);
-            intent.putExtra(Intent.EXTRA_TITLE, fileName);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            startActivityForResult(call, intent, "savedFile");
-        } catch (Exception error) { cleanup(); call.reject("export-prepare-failed", error); }
+            String hash = call.getString("sha256");
+            delivery.prepare(length, hash);
+            synchronized (this) {
+                if (staged != delivery || delivery.isClosed()) throw new IOException("export-aborted");
+                byteLength = length;
+                sha256 = hash;
+                Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType(type);
+                intent.putExtra(Intent.EXTRA_TITLE, fileName);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                startActivityForResult(call, intent, "savedFile");
+            }
+        } catch (Exception error) {
+            synchronized (this) { if (staged == delivery) cleanup(); }
+            call.reject("export-prepare-failed", error);
+        }
     }
 
     @ActivityCallback private void savedFile(PluginCall call, ActivityResult result) {
@@ -85,33 +108,46 @@ public final class FileDeliveryPlugin extends Plugin {
         getBridge().execute(() -> complete(call, result));
     }
 
-    private synchronized void complete(PluginCall call, ActivityResult result) {
-        if (call == null) { cleanup(); return; }
+    private void complete(PluginCall call, ActivityResult result) {
+        final StagedFile delivery;
+        final long expectedLength;
+        final String expectedHash;
+        synchronized (this) {
+            if (call == null) { cleanup(); return; }
+            try { requireTransfer(call); }
+            catch (Exception error) { call.reject("unknown-export-transfer", error); return; }
+            delivery = staged; expectedLength = byteLength; expectedHash = sha256;
+        }
         Uri uri = result == null || result.getData() == null ? null : result.getData().getData();
         if (result == null || result.getResultCode() != Activity.RESULT_OK || uri == null) {
-            cleanup();
+            synchronized (this) { if (staged == delivery) cleanup(); }
             JSObject out = new JSObject(); out.put("saved", false); call.resolve(out);
             return;
         }
         try {
-            requireTransfer(call);
-            try (InputStream input = new FileInputStream(staged.file);
+            try (InputStream input = delivery.openStream();
                  OutputStream output = getContext().getContentResolver().openOutputStream(uri, "wt")) {
                 if (output == null) throw new IllegalStateException("destination-unavailable");
                 byte[] buffer = new byte[8192];
                 int read;
-                while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+                while ((read = input.read(buffer)) != -1) {
+                    if (delivery.isClosed()) throw new IOException("export-aborted");
+                    output.write(buffer, 0, read);
+                }
             }
             try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
                 if (input == null) throw new IllegalStateException("destination-unavailable");
-                StagedFile.verify(input, byteLength, sha256);
+                StagedFile.verify(input, expectedLength, expectedHash);
             }
-            cleanup();
-            JSObject out = new JSObject(); out.put("saved", true); call.resolve(out);
+            synchronized (this) {
+                if (staged != delivery || delivery.isClosed()) throw new IOException("export-aborted");
+                cleanup();
+                JSObject out = new JSObject(); out.put("saved", true); call.resolve(out);
+            }
         } catch (Exception error) {
             try { DocumentsContract.deleteDocument(getContext().getContentResolver(), uri); }
             catch (Exception ignored) { /* Provider may refuse cleanup; delivery still fails. */ }
-            cleanup();
+            synchronized (this) { if (staged == delivery) cleanup(); }
             call.reject("export-delivery-failed", error);
         }
     }
