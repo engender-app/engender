@@ -5,7 +5,7 @@
   import { smartBack } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import {
     todayEpochDay,
@@ -115,6 +115,24 @@
   // svelte-ignore state_referenced_locally
   let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay(), undefined, seedMood));
 
+  let saving = $state(false);
+  let pendingDraftOperations = $state(0);
+
+  // Media preparation and prefills must finish before the save snapshots the draft.
+  async function prepareDraft(operation: () => Promise<void>) {
+    if (saving || entryDraft.savedId !== undefined) return;
+    pendingDraftOperations++;
+    try {
+      await operation();
+    } finally {
+      pendingDraftOperations--;
+    }
+  }
+
+  beforeNavigate((navigation) => {
+    if (saving) navigation.cancel();
+  });
+
   /* Survives an Android process death (ticket 14): mirrored to localStorage
      on every change below and cleared the moment this editor unmounts, so
      only a killed-while-backgrounded process ever leaves it to be found on
@@ -132,26 +150,30 @@
   let mirrorRead = $state(false);
 
   async function restoreIfPersisted(target: EntryDraft) {
+    const persisted = await draftStore.read();
+    if (!persisted) return;
+    if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
+    else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+  }
+
+  // Existing entries restore once, onto their loaded draft. Mirroring starts
+  // only after that draft is installed, so the blank draft cannot overwrite recovery.
+  // svelte-ignore state_referenced_locally
+  const persistedRestore = entryId == null
+    ? restoreIfPersisted(entryDraft).finally(() => { mirrorRead = true; })
+    : Promise.resolve();
+
+  onFirstResult(loaded, (entry) => prepareDraft(async () => {
+    if (entryId == null) return;
+    const fresh = entry ? createEntryDraft(entry.epochDay, entry) : entryDraft;
     try {
-      const persisted = await draftStore.read();
-      if (!persisted) return;
-      if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
-      else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+      await restoreIfPersisted(fresh);
+      entryDraft = fresh;
+      if (entry) starred = entry.starred;
     } finally {
       mirrorRead = true;
     }
-  }
-
-  // svelte-ignore state_referenced_locally
-  const persistedRestore = restoreIfPersisted(entryDraft);
-
-  onFirstResult(loaded, async (entry) => {
-    if (!entry) return;
-    const fresh = createEntryDraft(entry.epochDay, entry);
-    await restoreIfPersisted(fresh);
-    entryDraft = fresh;
-    starred = entry.starred;
-  });
+  }));
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
      `existing` and kept in its own local state rather than `entryDraft`:
@@ -248,7 +270,6 @@
   onDestroy(() => draftStore.clear());
 
   let deleteOpen = $state(false);
-  let saving = $state(false);
   let templateSheetOpen = $state(false);
   let promptDismissed = $state(false);
   /* Guided prompts and templates are entry-creation aids (ticket 17), not
@@ -295,7 +316,7 @@
   if (entryId == null && debriefForAppointment != null) {
     const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
     if (debriefTemplate) applyTemplate(debriefTemplate);
-    void fillDebriefPrefill(debriefForAppointment);
+    void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
   /* What the debrief opens pre-filled with, under its "How did it go?"
@@ -719,6 +740,11 @@
     activeVideo?.stop();
   });
 
+  let draftPreparing = $derived(
+    !mirrorRead || loaded.loading || pendingDraftOperations > 0 ||
+    activeRecording !== null || activeVideo !== null || compressingVideo ||
+    dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
+  );
   let moodMissing = $derived(entryDraft.mood == null);
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
@@ -739,6 +765,7 @@
   }
 
   async function saveEntry() {
+    if (saving || draftPreparing) return;
     if (entryDraft.savedId !== undefined) {
       await leaveSavedEntry();
       return;
@@ -752,7 +779,6 @@
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    if (saving) return; // a second tap while the worker is writing
     saving = true;
     const moodOnly = entryDraft.hasMoodOnlyContent;
     const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
@@ -801,7 +827,8 @@
      huge text transition"). The plain fill grows now; the real content
      sits outside the named element and crossfades in place through the
      screen's own transition instead. -->
-<div class="screen editor">
+<div class="screen editor" inert={saving}>
+  <fieldset class="editor-fields" disabled={saving}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
@@ -945,7 +972,7 @@
     <p class="editor-hint" data-no-scales>{m.editor_no_scales()}</p>
   {/if}
   {#each dims as { dim, ticked } (dim.key)}
-    <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => entryDraft.setDim(dim.key, v)} />
+    <DimensionSlider {dim} value={entryDraft.dims[dim.key] ?? null} onInput={(v) => { if (!saving) entryDraft.setDim(dim.key, v); }} />
     {#if !ticked}
       <p class="editor-hint editor-hint-tight">{m.scale_not_ticked()}</p>
     {/if}
@@ -999,7 +1026,7 @@
         regions={vocabulary.visibleBodyRegions}
         values={entryDraft.bodyRegions}
         onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-        onFeeling={(key, feeling) => entryDraft.setBodyRegionFeeling(key, feeling)}
+        onFeeling={(key, feeling) => { if (!saving) entryDraft.setBodyRegionFeeling(key, feeling); }}
       />
     </div>
   {/if}
@@ -1022,7 +1049,7 @@
                 class:is-starred={p.photo.starred}
                 aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
                 aria-pressed={p.photo.starred}
-                onclick={() => togglePhotoStarred(i)}
+                onclick={() => prepareDraft(() => togglePhotoStarred(i))}
               >
                 <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
               </button>
@@ -1036,10 +1063,10 @@
             </button>
           </div>
         {/each}
-        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={addPhoto}>
+        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={() => prepareDraft(addPhoto)}>
           <Icon name="image" size={22} /><span>{m.add_photo()}</span>
         </button>
-        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
+        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
           <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
         </button>
       </div>
@@ -1068,11 +1095,11 @@
         </div>
       {/if}
       <div class="photo-row">
-        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={toggleRecording}>
+        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={() => prepareDraft(toggleRecording)}>
           <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
           <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
         </button>
-        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={addRecordingFile}>
+        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={() => prepareDraft(addRecordingFile)}>
           <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
         </button>
       </div>
@@ -1114,7 +1141,7 @@
           class="photo-add press"
           disabled={compressingVideo}
           aria-label={activeVideo ? m.stop_video() : m.add_video()}
-          onclick={toggleVideo}
+          onclick={() => prepareDraft(toggleVideo)}
         >
           <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
           <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
@@ -1124,7 +1151,7 @@
           data-add-video-file
           disabled={compressingVideo || !!activeVideo}
           aria-label={m.add_video_file()}
-          onclick={addVideoFile}
+          onclick={() => prepareDraft(addVideoFile)}
         >
           <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
         </button>
@@ -1281,13 +1308,13 @@
           <button
             type="button"
             class="btn btn-ghost photo-add-btn"
-            onclick={async () => {
+            onclick={() => prepareDraft(async () => {
               const picked = await pickPhotos();
               if (picked.length > 0) {
                 procRecoveryPhoto = picked[0];
                 updateProcedureRecovery();
               }
-            }}
+            })}
           >
             <Icon name="camera" size={18} />
             <span>{m.entry_procedure_recovery_add_photo()}</span>
@@ -1357,9 +1384,9 @@
   <SaveBar>
     <!-- Mood stays beside saving, with its own row of full-size targets. -->
     <div class="editor-save-row">
-      <div class="editor-save-moods" data-save-moods bind:this={moodsEl}>
+      <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
         <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
-      </div>
+      </fieldset>
       <button
         class="icon-btn press"
         aria-label={starred ? m.unstar_entry() : m.star_entry()}
@@ -1376,10 +1403,10 @@
         class:btn-soft={moodMissing}
         data-save
         data-save-unmet={moodMissing ? 'mood' : undefined}
-        disabled={saving || entryDraft.savedId !== undefined}
+        disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
         onclick={saveEntry}
       >
-        <span>{moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        <span role="status">{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
     </div>
   </SaveBar>
@@ -1483,11 +1510,12 @@
     photo={entryPhotoReview.photo}
     reference={entryPhotoReview.reference}
     onAccept={entryPhotoReview.accept}
-    onRetake={entryPhotoReview.capture}
+    onRetake={() => prepareDraft(entryPhotoReview.capture)}
     onCancel={entryPhotoReview.cancel}
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
+  </fieldset>
 </div>
 
 <style>
@@ -1518,7 +1546,8 @@
     align-items: center;
     gap: var(--space-2);
   }
-  .editor-save-moods { flex: 1 0 100%; min-width: 0; }
+  .editor-fields { display: contents; }
+  .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
 

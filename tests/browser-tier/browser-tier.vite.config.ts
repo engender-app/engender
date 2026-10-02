@@ -98,6 +98,7 @@ export default defineConfig({
   plugins: [svelte(), sqlocal(), mutableServiceWorker()],
   resolve: {
     alias: {
+      '$lib/stores/boot.svelte': resolve(import.meta.dirname, 'entry-editor-boot-stub.ts'),
       $lib: resolve(import.meta.dirname, '../../src/lib'),
       /* SvelteKit's own modules, which this tier has no router to provide:
          see app-state-stub.ts and app-navigation-stub.ts. Without the first
