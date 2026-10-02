@@ -178,15 +178,10 @@
     }
   }
 
-  /** The source caption under a tier-2 or tier-3 effect's edit sheet - a
-      tier-1 effect's citation is the shared `effects_source` line under
-      the chart instead, since every tier-1 band comes from the same two
-      guideline tables (ticket 41's own acceptance criterion: a tier-2
-      effect must not read as though it sat under that citation). */
+  /** A community-listed effect has no published timing band. */
   function sourceCaption(e: PersonalEffectCatalogEntry): string | null {
     const tier = effectTier(e);
     if (tier === 2) return m.effect_source_community();
-    if (tier === 3) return m.effect_source_custom();
     return null;
   }
 
@@ -392,10 +387,10 @@
       />
     {/if}
 
-    <!-- All three of these are about the literature's bands, so they keep
+    <!-- These explanations concern the literature's bands, so they keep
          the company of the chart that draws them: with no regimen there is
          no band on the screen for them to be describing. A short limitation
-         stays visible while longer methodology and sources move into an
+         stays visible while longer context stays in an
          accessible disclosure (ticket 20, UX17). -->
     {#if anchorEpochDay !== null}
       <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
@@ -416,7 +411,6 @@
           <div class="disclosed" transition:disclose>
             <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
             <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
-            <p class="muted small">{m.effects_source()}</p>
           </div>
         {/if}
       </div>
@@ -543,7 +537,6 @@
             key="side-effects-empty"
             role={roleAt(activeFlag.roles, 1)}
             title={m.side_effect_empty_title()}
-            text={m.side_effect_empty_body()}
             action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
           />
         {/snippet}
