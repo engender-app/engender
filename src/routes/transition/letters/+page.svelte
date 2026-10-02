@@ -52,7 +52,6 @@
   import LetterArrival from '$lib/components/LetterArrival.svelte';
   import LetterCard from '$lib/components/LetterCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -69,9 +68,20 @@
   const HISTORY_LIMIT = 100;
 
   let today = $derived(todayEpochDay());
-  let text = $state('');
-  let unlockDate = $state(dateInputValueFromEpochDay(todayEpochDay()));
-  let composing = $state(false);
+  type Composition = { id?: string; text: string; unlockDate: string };
+  let sealOutcome = $state('');
+
+  function requirement(draft: Composition): string {
+    if (!draft.text.trim()) return m.letters_text_required();
+    const day = epochDayFromDateInputValue(draft.unlockDate);
+    if (day == null || !Number.isFinite(day)) return m.letters_date_required();
+    return '';
+  }
+
+  function compose() {
+    sealOutcome = '';
+    record.openEditor(null);
+  }
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let milestones = $derived(vocabulary.milestones);
@@ -109,15 +119,6 @@
      again: it is the ordering the folded screen read its letters through,
      and this section is where that screen's readers land now. */
   let opened = $derived(safeSpaceLetters(letters, today));
-
-  async function saveLetter() {
-    const trimmed = text.trim();
-    const unlockEpochDay = epochDayFromDateInputValue(unlockDate);
-    if (!trimmed || unlockEpochDay == null) return;
-    await journal.letters.addLetter({ epochDay: today, text: trimmed, unlockEpochDay });
-    text = '';
-    composing = false;
-  }
 
   /* Which card is unfolded. One at a time: two open letters on one screen is
      two columns of prose to scroll past to reach the third. */
@@ -165,7 +166,16 @@
     }
   });
 
-  const record = recordEditor<Letter>({
+  const record = recordEditor<Letter, Composition>({
+    blank: () => ({ text: '', unlockDate: dateInputValueFromEpochDay(todayEpochDay()) }),
+    upsert: async (draft) => {
+      if (requirement(draft)) return false;
+      const unlockEpochDay = epochDayFromDateInputValue(draft.unlockDate)!;
+      await journal.letters.addLetter({ epochDay: today, text: draft.text.trim(), unlockEpochDay });
+      if (record.editor === draft && unlockEpochDay !== today) {
+        sealOutcome = isLetterSealed({ unlockEpochDay }, today) ? m.letters_seal_done() : m.letters_ready_done();
+      }
+    },
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
@@ -200,7 +210,7 @@
 <div class="screen">
   <ScreenHeader title={m.letters_title()} back="/more" subtitle={m.letters_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.letters_compose_title()} onclick={() => (composing = true)}>
+      <button class="icon-btn press" data-add aria-label={m.letters_compose_title()} onclick={compose}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -284,50 +294,12 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.letters_empty_title()}
         text={m.letters_empty_body()}
-        action={{ label: m.letters_compose_title(), primary: true, onclick: () => (composing = true) }}
+        action={{ label: m.letters_compose_title(), primary: true, onclick: compose }}
       />
     {/snippet}
   </ReadGate>
 
-  <Sheet open={composing} title={m.letters_compose_title()} onClose={() => (composing = false)}>
-    <SectionHeading text={m.letters_compose_title()} />
-    <textarea class="input" rows="6" placeholder={m.letters_compose_placeholder()} bind:value={text}></textarea>
-
-    <Field label={m.letters_unlock_label()} id="letter-unlock">
-      {#snippet children(id)}
-        <DatePicker name="letter-unlock" bind:value={unlockDate} {id} />
-      {/snippet}
-    </Field>
-
-    <!-- The milestones are a shortcut into the date above, not a second way
-         of choosing one, so they sit under it as chips rather than as a list
-         of rows that looked like the screen's own content. -->
-    {#if milestones.length}
-      <div class="letter-anchors">
-        {#each milestones as mi (mi.id)}
-          <button
-            class="tag-chip"
-            class:is-selected={unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
-            data-letter-anchor={mi.id}
-            aria-pressed={unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
-            onclick={() => (unlockDate = dateInputValueFromEpochDay(mi.epochDay))}
-          >
-            <Icon name="flag" size={14} />{mi.name}
-          </button>
-        {/each}
-      </div>
-    {/if}
-
-    <button
-      class="btn btn-primary btn-block"
-
-      data-save-letter
-      disabled={text.trim().length === 0 || !unlockDate}
-      onclick={saveLetter}
-    >
-      <span>{m.letters_save()}</span>
-    </button>
-  </Sheet>
+  <p class="visually-hidden" role="status" data-letter-outcome>{sealOutcome}</p>
 
   {#if calendarFor}
     <CalendarHandoffSheet
@@ -341,6 +313,11 @@
   <RecordSheet
     {record}
     handle="letter"
+    newTitle={m.letters_compose_title()}
+    saveLabel={m.letters_save()}
+    canSave={(draft) => !requirement(draft)}
+    showHeading={false}
+    {fields}
     confirm={{
       title: m.letters_delete_sheet(),
       question: () => m.letters_delete_q(),
@@ -349,6 +326,51 @@
       cancelLabel: m.keep_it()
     }}
   />
+  {#snippet fields(draft: Composition)}
+    <Field label={m.letters_text_label()} id="letter-text">
+      {#snippet children(id)}
+        <textarea
+          class="input"
+          {id}
+          rows="6"
+          placeholder={m.letters_compose_placeholder()}
+          bind:value={draft.text}
+          aria-invalid={!draft.text.trim()}
+          aria-describedby={!draft.text.trim() ? 'letter-requirements' : undefined}
+        ></textarea>
+      {/snippet}
+    </Field>
+
+    <Field label={m.letters_unlock_label()} id="letter-unlock">
+      {#snippet children(id)}
+        <DatePicker
+          name="letter-unlock"
+          bind:value={draft.unlockDate}
+          {id}
+          aria-invalid={!draft.unlockDate || !Number.isFinite(epochDayFromDateInputValue(draft.unlockDate))}
+          describedBy="letter-requirements"
+        />
+      {/snippet}
+    </Field>
+
+    {#if milestones.length}
+      <div class="letter-anchors">
+        {#each milestones as mi (mi.id)}
+          <button
+            class="tag-chip"
+            class:is-selected={draft.unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
+            data-letter-anchor={mi.id}
+            aria-pressed={draft.unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
+            onclick={() => (draft.unlockDate = dateInputValueFromEpochDay(mi.epochDay))}
+          >
+            <Icon name="flag" size={14} />{mi.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    <p class="muted small" id="letter-requirements" aria-live="polite">{requirement(draft)}</p>
+  {/snippet}
 </div>
 
 {#if arrival}
