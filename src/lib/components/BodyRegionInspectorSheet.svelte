@@ -70,7 +70,6 @@
         <Icon name="x" size={20} />
       </button>
     </div>
-    <p class="muted small inspector-subtitle">{m.body_region_inspector_sub()}</p>
   </div>
 
   {#if breakdownQuery.loading}
@@ -232,11 +231,6 @@
     font-size: var(--text-lg);
     line-height: var(--leading-tight);
     text-transform: capitalize;
-  }
-
-  .inspector-subtitle {
-    margin-top: var(--space-1);
-    margin-bottom: 0;
   }
 
   .inspector-loading {
