@@ -11,7 +11,10 @@ vi.mock('./android-auto-export-bridge.ts', () => ({
     status: vi.fn(),
     pickDestination: vi.fn(),
     configure: vi.fn(),
-    writeBackup: vi.fn(),
+    beginBackup: vi.fn(),
+    appendBackup: vi.fn(),
+    abortBackup: vi.fn(),
+    finishBackup: vi.fn(),
     setPassword: vi.fn(),
     deriveKey: vi.fn(),
     clearPassword: vi.fn(),
@@ -44,7 +47,10 @@ describe('runAndroidAutoExport', () => {
     vi.mocked(androidAutoExport.deriveKey).mockResolvedValue({
       key: btoa('01234567890123456789012345678901')
     });
-    vi.mocked(androidAutoExport.writeBackup).mockResolvedValue({ writtenAt: 12345 });
+    vi.mocked(androidAutoExport.beginBackup).mockResolvedValue({ transferId: 'transfer-1' });
+    vi.mocked(androidAutoExport.appendBackup).mockResolvedValue();
+    vi.mocked(androidAutoExport.abortBackup).mockResolvedValue();
+    vi.mocked(androidAutoExport.finishBackup).mockResolvedValue({ writtenAt: 12345 });
     vi.mocked(androidAutoExport.configure).mockResolvedValue({
       enabled: false,
       schedule: 'weekly',
@@ -58,7 +64,7 @@ describe('runAndroidAutoExport', () => {
     });
   });
 
-  test('records backup after a successful write', async () => {
+  test('streams bounded pieces before recording a verified backup', async () => {
     let recorded: number | null = null;
 
     const result = await runAndroidAutoExport(
@@ -76,13 +82,21 @@ describe('runAndroidAutoExport', () => {
 
     expect(result).toEqual({ outcome: 'ok', writtenAt: 17 });
     expect(recorded).toBe(17);
-    expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(1);
+    expect(androidAutoExport.finishBackup).toHaveBeenCalledTimes(1);
+    expect(androidAutoExport.appendBackup).toHaveBeenCalled();
+    const pieces = vi.mocked(androidAutoExport.appendBackup).mock.calls.map(([piece]) => atob(piece.base64));
+    expect(pieces.every((piece) => piece.length > 0 && piece.length <= 1024 * 1024 + 28)).toBe(true);
+    expect(androidAutoExport.finishBackup).toHaveBeenCalledWith({
+      transferId: 'transfer-1',
+      byteLength: pieces.reduce((size, piece) => size + piece.length, 0),
+      sha256: expect.stringMatching(/^[a-f0-9]{64}$/)
+    });
     expect(androidAutoExport.configure).not.toHaveBeenCalled();
     expect(androidAutoExport.notifyFailure).not.toHaveBeenCalled();
   });
 
   test('asks for a new destination and disables schedule when destination access is revoked', async () => {
-    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-revoked'));
+    vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-revoked'));
 
     const result = await runAndroidAutoExport(
       {
@@ -123,12 +137,12 @@ describe('runAndroidAutoExport', () => {
     );
 
     expect(result).toEqual({ outcome: 'needs-destination' });
-    expect(androidAutoExport.writeBackup).not.toHaveBeenCalled();
+    expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
     expect(androidAutoExport.configure).toHaveBeenCalledWith({ enabled: false, schedule: 'monthly' });
   });
 
   test('retries once for transient verification failure', async () => {
-    vi.mocked(androidAutoExport.writeBackup)
+    vi.mocked(androidAutoExport.finishBackup)
       .mockRejectedValueOnce(new Error('verification-failed'))
       .mockResolvedValueOnce({ writtenAt: 12345 });
     let recorded: number | null = null;
@@ -148,7 +162,7 @@ describe('runAndroidAutoExport', () => {
 
     expect(result).toEqual({ outcome: 'ok', writtenAt: 17 });
     expect(recorded).toBe(17);
-    expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(2);
+    expect(androidAutoExport.finishBackup).toHaveBeenCalledTimes(2);
   });
 
   test('leaves the failure notice to the scheduler, whatever the outcome', async () => {
@@ -156,7 +170,7 @@ describe('runAndroidAutoExport', () => {
        job was to gate notifyFailure. The notice answers to the unprompted
        registry now - a preference, quiet hours and the disguise - which is
        auto-export-scheduler.ts's business and failureNotice.test.ts's. */
-    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-revoked'));
+    vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-revoked'));
 
     const result = await runAndroidAutoExport(
       {
@@ -176,7 +190,7 @@ describe('runAndroidAutoExport', () => {
   });
 
   test('unavailable destination disables schedule and returns needs-destination', async () => {
-    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-unavailable'));
+    vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-unavailable'));
 
     const result = await runAndroidAutoExport(
       {
@@ -191,7 +205,7 @@ describe('runAndroidAutoExport', () => {
   });
 
   test('destination-full returns failed and does not disable schedule', async () => {
-    vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-full'));
+    vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-full'));
 
     const result = await runAndroidAutoExport(
       {
@@ -206,7 +220,7 @@ describe('runAndroidAutoExport', () => {
   });
 
   test('partial-write retries once and then fails if both attempts fail', async () => {
-    vi.mocked(androidAutoExport.writeBackup)
+    vi.mocked(androidAutoExport.finishBackup)
       .mockRejectedValueOnce(new Error('partial-write'))
       .mockRejectedValueOnce(new Error('partial-write'));
 
@@ -219,7 +233,33 @@ describe('runAndroidAutoExport', () => {
     );
 
     expect(result).toEqual({ outcome: 'failed', reason: 'partial-write' });
-    expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(2);
+    expect(androidAutoExport.finishBackup).toHaveBeenCalledTimes(2);
+  });
+
+  test('interrupted delivery aborts staging and never stamps success', async () => {
+    vi.mocked(androidAutoExport.appendBackup).mockRejectedValueOnce(new Error('bridge interrupted'));
+    const recordBackup = vi.fn();
+    const result = await runAndroidAutoExport(
+      { snapshot, preferences: PREFERENCE_DEFAULTS }, { recordBackup }
+    );
+    expect(result).toEqual({ outcome: 'failed', reason: 'bridge interrupted' });
+    expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
+    expect(androidAutoExport.abortBackup).toHaveBeenCalledWith({ transferId: 'transfer-1' });
+    expect(recordBackup).not.toHaveBeenCalled();
+  });
+
+  test('an encoding failure aborts staging without stamping success', async () => {
+    const encoder = vi.spyOn(globalThis, 'btoa').mockImplementation(() => { throw new Error('encoding failed'); });
+    const recordBackup = vi.fn();
+    try {
+      const result = await runAndroidAutoExport(
+        { snapshot, preferences: PREFERENCE_DEFAULTS }, { recordBackup }
+      );
+      expect(result).toEqual({ outcome: 'failed', reason: 'encoding failed' });
+      expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
+      expect(androidAutoExport.abortBackup).toHaveBeenCalledWith({ transferId: 'transfer-1' });
+      expect(recordBackup).not.toHaveBeenCalled();
+    } finally { encoder.mockRestore(); }
   });
 
   test('derives key through bridge with fresh salt per archive', async () => {
@@ -305,7 +345,10 @@ describe('runAndroidAutoExport progress and cancellation', () => {
     vi.mocked(androidAutoExport.deriveKey).mockResolvedValue({
       key: btoa('01234567890123456789012345678901')
     });
-    vi.mocked(androidAutoExport.writeBackup).mockResolvedValue({ writtenAt: 12345 });
+    vi.mocked(androidAutoExport.beginBackup).mockResolvedValue({ transferId: 'transfer-1' });
+    vi.mocked(androidAutoExport.appendBackup).mockResolvedValue();
+    vi.mocked(androidAutoExport.abortBackup).mockResolvedValue();
+    vi.mocked(androidAutoExport.finishBackup).mockResolvedValue({ writtenAt: 12345 });
   });
 
   test('reports how much of the archive has been packed', async () => {
@@ -337,7 +380,21 @@ describe('runAndroidAutoExport progress and cancellation', () => {
        'failed', so the screen can stay quiet about it instead of saying
        the backup broke. */
     expect(result.outcome).toBe('cancelled');
-    expect(androidAutoExport.writeBackup).not.toHaveBeenCalled();
+    expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
     expect(recorded).toBe(null);
   });
+  test('cancelling after delivery starts discards staging and stamps nothing', async () => {
+    const stop = new AbortController();
+    const recordBackup = vi.fn();
+    vi.mocked(androidAutoExport.appendBackup).mockImplementationOnce(async () => { stop.abort(); });
+    const result = await runAndroidAutoExport(
+      { snapshot, preferences: PREFERENCE_DEFAULTS },
+      { recordBackup, watch: { signal: stop.signal } }
+    );
+    expect(result.outcome).toBe('cancelled');
+    expect(androidAutoExport.abortBackup).toHaveBeenCalledWith({ transferId: 'transfer-1' });
+    expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
+    expect(recordBackup).not.toHaveBeenCalled();
+  });
+
 });

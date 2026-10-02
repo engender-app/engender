@@ -26,6 +26,7 @@ const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
   /** Ticket 11: the shared journal contract suite over the native driver. */
+  'auto-export': { root: 'auto-export', outDir: `${ASSETS}/auto-export-probe` },
   contract: { root: '.', outDir: `${ASSETS}/probe` },
   /** Ticket 13: seeds a journal so the claim gate can read its bytes. */
   encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` },
