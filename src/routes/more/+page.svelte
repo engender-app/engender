@@ -434,6 +434,7 @@
         <SectionHeading text={hubGroupHeading(section.key)} />
         <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
           {#each section.rows as row (row.spec.key)}
+            <div class="rows-divide" transition:disclose={{ skip: leaving }}>
             <ListRow
               key={row.spec.key}
               icon={row.spec.icon}
@@ -445,6 +446,7 @@
               data-hub-section={section.key}
               data-hub-line={row.line.kind}
             />
+            </div>
           {/each}
         </ListCard>
       {/each}

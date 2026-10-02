@@ -339,10 +339,20 @@ try {
     await lab.page.locator('[data-add]').click();
     await lab.page.locator('#lab-time').click();
     await pickerAtRest(lab.page);
+    await check(`${theme}: finishing a drum move cannot replace a partially typed time`, async () => {
+      await entry(lab.page).fill('23:59');
+      await entry(lab.page).fill('09:');
+      await pickerAtRest(lab.page);
+      assert.equal(await entry(lab.page).inputValue(), '09:');
+      await lab.page.locator('[data-time-picker-apply]').click();
+      assert.equal(await lab.page.locator('[data-time-picker]').count(), 1);
+      assert.equal(await entry(lab.page).evaluate((el) => el.validity.valid), false);
+    });
     await check(`${theme}: an optional field offers Clear and Clear empties it`, async () => {
+      await entry(lab.page).fill('09:15');
       await lab.page.locator('[data-time-picker-apply]').click();
       await lab.page.locator('[data-time-picker]').waitFor({ state: 'detached' });
-      assert.match(await lab.page.locator('#lab-time').inputValue(), /^\d\d:\d\d$/);
+      assert.equal(await lab.page.locator('#lab-time').inputValue(), '09:15');
       await lab.page.locator('#lab-time').click();
       await pickerAtRest(lab.page);
       await lab.page.locator('[data-time-picker-clear]').click();
