@@ -21,3 +21,27 @@ export function findSurfaceYanks(samples) {
   }
   return yanks;
 }
+
+/** @typedef {{ t: number, open: false } | { t: number, open: true, drums: Record<string, { y: number, op: number }> }} DrumSample */
+
+/** @param {DrumSample[]} samples */
+export function findDrumYanks(samples) {
+  const yanks = [];
+  const windowSize = 5 * 48;
+  for (let i = 1; i < samples.length; i++) {
+    const sample = samples[i];
+    const previous = samples[i - 1];
+    if (!sample.open || !previous.open) continue;
+    const elapsed = Math.max(1, sample.t - previous.t);
+    const steps = Math.max(1, elapsed / 16);
+    for (const [key, drum] of Object.entries(sample.drums)) {
+      const before = previous.drums[key];
+      if (!before || drum.op < 0.05 || before.op < 0.05) continue;
+      const distance = Math.abs(drum.y - before.y);
+      if (distance / steps >= windowSize) {
+        yanks.push({ t: sample.t, what: `${key} drum moves ${Math.round(drum.y - before.y)}px over ${elapsed}ms` });
+      }
+    }
+  }
+  return yanks;
+}

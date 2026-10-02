@@ -28,7 +28,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 import { startSampling, stopSampling } from './motion-sampling.mjs';
-import { findSurfaceYanks } from './picker-motion-yanks.mjs';
+import { findDrumYanks, findSurfaceYanks } from './picker-motion-yanks.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -40,7 +40,6 @@ const gate = args.includes('--gate');
 const themes = (flag('themes') ?? 'light,dark').split(',');
 const SCENE_MS = 1100;
 const ROW = 48;
-const WINDOW = 5 * ROW;
 
 if (outDir) await mkdir(outDir, { recursive: true });
 const app = await previewBuild(flag('root') ?? process.cwd());
@@ -70,19 +69,7 @@ const SAMPLE = `
 `;
 
 function findYanks(samples) {
-  const yanks = findSurfaceYanks(samples);
-  for (let i = 0; i < samples.length; i++) {
-    const s = samples[i];
-    const was = samples[i - 1];
-    if (!s.open || !was?.open) continue;
-    for (const [key, d] of Object.entries(s.drums)) {
-      const before = was.drums[key];
-      if (!before) continue;
-      const hidden = d.op < 0.05 || before.op < 0.05;
-      if (!hidden && Math.abs(d.y - before.y) >= WINDOW) yanks.push({ t: s.t, what: `${key} drum moves ${Math.round(d.y - before.y)}px in one frame` });
-    }
-  }
-  return yanks;
+  return [...findSurfaceYanks(samples), ...findDrumYanks(samples)];
 }
 
 async function newPage(width, theme, { reducedMotion } = {}) {
