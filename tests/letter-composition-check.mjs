@@ -186,21 +186,6 @@ try {
   console.log('PASS today date keeps arrival and reading lifecycle');
 
   await open();
-  await page.locator('textarea').fill('Private uncommitted letter');
-  await page.keyboard.press('Escape');
-  await page.locator('[data-keep-editing]').waitFor();
-  await page.evaluate(async () => {
-    const { quickExit } = await import('/src/lib/stores/lock.svelte.ts');
-    quickExit();
-  });
-  await page.locator('textarea').waitFor({ state: 'detached' });
-  assert.equal(await page.locator('[data-discard-record]').count(), 0);
-  await page.locator('[data-blank]').click();
-  await page.evaluate(async () => {
-    const { markUnlocked } = await import('/src/lib/stores/lock.svelte.ts');
-    markUnlocked();
-  });
-  await open();
   await page.locator('textarea').fill('Private lock letter');
   await page.evaluate(async () => {
     const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
@@ -218,7 +203,7 @@ try {
     markUnlocked();
   });
   assert.equal((await stored()).length, 3);
-  console.log('PASS lock and quick exit conceal composition and discard confirmation immediately');
+  console.log('PASS lock conceals composition immediately');
   await navigate('/settings');
   await page.locator('[data-list-row="language"]').click();
   await Promise.all([
@@ -247,13 +232,16 @@ try {
   await keep();
   assert.equal(await page.locator('#letter-text').inputValue(), 'List do mnie z przyszłości');
   await page.evaluate(async () => {
-    const { quickExit } = await import('/src/lib/stores/lock.svelte.ts');
-    quickExit();
+    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+    prefs.lockAfter = 'immediately';
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
   });
   await page.locator('#letter-text').waitFor({ state: 'detached' });
   assert.equal(await page.locator('[data-discard-record]').count(), 0);
   assert.equal((await stored()).length, 3);
-  console.log('PASS Polish labels and discard at 200% zoom; disguise quick exit conceals unsaved text');
+  console.log('PASS Polish labels and discard at 200% zoom; disguise lock conceals unsaved text');
   assert.deepEqual(errors, []);
 } catch (error) {
   console.error(errors, page.url(), await page.locator('body').innerText());

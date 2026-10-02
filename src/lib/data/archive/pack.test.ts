@@ -79,7 +79,6 @@ function everyPreferenceSet(): PreferenceValues {
     lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-ENTRY-ID',
     lockAfter: 'immediately',
     disguise: true,
-    quickExit: true,
     allowScreenCapture: true,
     checkInEnabled: true,
     checkInTime: '07:30',

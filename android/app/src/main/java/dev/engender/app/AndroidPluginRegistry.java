@@ -19,7 +19,7 @@ import dev.engender.app.keystore.PinBindingPlugin;
 import dev.engender.app.permissions.PermissionsPlugin;
 import dev.engender.app.photos.PhotosPlugin;
 import dev.engender.app.print.PrintPlugin;
-import dev.engender.app.quickexit.QuickExitPlugin;
+import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.RemindersPlugin;
 import dev.engender.app.reset.DeviceResetPlugin;
 import dev.engender.app.retrospective.RetrospectiveNotificationsPlugin;
@@ -42,7 +42,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("AutoExport", AutoExportPlugin.class),
         new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
-        new PluginEntry("QuickExit", QuickExitPlugin.class),
+        new PluginEntry("LockTiming", LockTimingPlugin.class),
         new PluginEntry("ScreenCapture", ScreenCapturePlugin.class),
         new PluginEntry("DeviceReset", DeviceResetPlugin.class),
         new PluginEntry("Print", PrintPlugin.class),

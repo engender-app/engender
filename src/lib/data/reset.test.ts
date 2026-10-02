@@ -136,7 +136,7 @@ test('a platform with storage of its own has it wiped too, after the close', asy
 });
 
 test('a platform with device state of its own has it wiped before the files go', async () => {
-  /* Android: the reminder, auto-export and quick-exit preference files, the
+  /* Android: the reminder, auto-export and lock-timing preference files, the
      alarms scheduled off the first of them, and the Keystore alias the
      backup password is wrapped under. Before the journal rather than after,
      so a wipe that fails leaves the journal to try again on instead of
