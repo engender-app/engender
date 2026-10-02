@@ -27,8 +27,8 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
     });
 
     it('defines methodology disclosure label in both languages', () => {
-      expect(en.effects_methodology_disclosure).toBe('Methodology and sources');
-      expect(pl.effects_methodology_disclosure).toBe('Metodologia i źródła');
+      expect(en.effects_methodology_disclosure).toBe('About the shaded bands');
+      expect(pl.effects_methodology_disclosure).toBe('O zacieniowanych pasach');
     });
 
     it('defines explicit record a change action label in both languages', () => {
@@ -81,7 +81,7 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
       expect(changesRoute).toContain('m.effects_methodology_disclosure()');
     });
 
-    it('folds effects_intro, effect_variability_notice, and effects_source into the disclosure', () => {
+    it('keeps timing and variability context inside the disclosure', () => {
       const disclosureToggle = changesRoute.indexOf('data-methodology-toggle');
       const disclosedBody = changesRoute.indexOf('{#if methodologyOpen}');
       expect(disclosureToggle).toBeGreaterThan(-1);
@@ -90,12 +90,10 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
       const disclosureSlice = changesRoute.slice(disclosedBody, changesRoute.indexOf('{/if}', disclosedBody));
       expect(disclosureSlice).toContain('m.effects_intro()');
       expect(disclosureSlice).toContain('m.effect_variability_notice()');
-      expect(disclosureSlice).toContain('m.effects_source()');
     });
 
-    it('does not duplicate effects_source outside the disclosure', () => {
-      const occurrences = (changesRoute.match(/m\.effects_source\(\)/g) || []).length;
-      expect(occurrences).toBe(1);
+    it('does not render the removed paper citation', () => {
+      expect(changesRoute).not.toContain('m.effects_source()');
     });
   });
 });
