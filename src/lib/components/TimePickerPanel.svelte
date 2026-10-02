@@ -85,7 +85,6 @@
     const at = drumIndex(node.scrollTop, rowHeight(node), drum.count);
     if (travellingTo[drum.key] === undefined) {
       write(drum.key, at);
-      lastTouched = 'drums';
     }
     clearTimeout(settleTimers[drum.key]);
     settleTimers[drum.key] = setTimeout(() => settle(drum), SETTLE_QUIET);
@@ -100,8 +99,17 @@
     const at = drumIndex(node.scrollTop, rowHeight(node), drum.count);
     travellingTo[drum.key] = undefined;
     write(drum.key, at);
-    typed = formatTime(hour, minute);
-    entry?.setCustomValidity('');
+    if (lastTouched === 'drums') {
+      typed = formatTime(hour, minute);
+      entry?.setCustomValidity('');
+    }
+  }
+
+  function startDrumInput(drum: Drum) {
+    lastTouched = 'drums';
+    travellingTo[drum.key] = undefined;
+    const fade = fading[drum.key];
+    if (fade) fade.top = nodes[drum.key]?.scrollTop ?? fade.top;
   }
 
   /** Turn a drum to a row. */
@@ -175,12 +183,14 @@
     };
   }
 
-  function onTyped() {
+  function onTyped(event: Event) {
+    typed = (event.currentTarget as HTMLInputElement).value;
     entry?.setCustomValidity('');
     const time = parseTime(typed);
-    if (!time) return;
-    turn(HOURS, time.hour);
-    turn(MINUTES, time.minute);
+    if (time) {
+      turn(HOURS, time.hour);
+      turn(MINUTES, time.minute);
+    }
     lastTouched = 'entry';
   }
 
@@ -216,6 +226,8 @@
           data-sheet-no-drag
           data-sheet-focus={i === 0 ? '' : undefined}
           onscroll={() => onScroll(drum)}
+          onpointerdown={() => startDrumInput(drum)}
+          onwheel={() => startDrumInput(drum)}
           onkeydown={(event) => onDrumKeydown(drum, event)}
           onclick={(event) => onDrumClick(drum, event)}
           {@attach holdDrum(drum)}
