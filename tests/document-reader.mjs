@@ -6,6 +6,29 @@ import { launchChromium } from './browser-harness.mjs';
 import { makeDensePdf } from './pdf-fixture.mjs';
 import { PALETTES } from './palettes.mjs';
 
+/** Resolves once `selector`'s scroll position has held for three frames, so
+    the next scroll does not start while an eased one is still running: two
+    overlapping smooth scrolls leave Chromium short of either target. */
+const scrollSettled = (page, selector) =>
+  page.evaluate(
+    (sel) =>
+      new Promise((resolve) => {
+        let last = NaN;
+        let still = 0;
+        const tick = () => {
+          const el = (sel && document.querySelector(sel)) || document.scrollingElement;
+          const now = el.scrollTop;
+          still = now === last ? still + 1 : 0;
+          last = now;
+          if (still >= 3) resolve(now);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    selector
+  );
+
+
 const server = await createServer({ cacheDir: '.svelte-kit/document-reader-vite', optimizeDeps: { include: ['pdfjs-dist/legacy/build/pdf.worker.mjs'] }, server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
 const browser = await launchChromium();
@@ -79,11 +102,14 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-document-reader]').scrollLeft > 0);
   await page.keyboard.press('End');
   await page.waitForFunction(() => document.querySelector('[data-document-reader]').scrollTop > 0);
+  /* End eases too. At 8x CPU throttling the turn below started while it was
+     still running and the reader stopped at 152px instead of the top. */
+  await scrollSettled(page, '[data-document-reader]');
   await page.locator('[data-page-forward]').click();
   await page.getByText('Page 2 of 3', { exact: true }).waitFor();
   /* The turn scrolls back to the top smoothly - scrollBehavior() asks the
      app's own motion setting, not the emulated media query this page sets -
-     so on a slow machine the label changes before the scroll lands. */
+     so the label can change before the scroll lands. */
   await page.waitForFunction(() => document.querySelector('[data-document-reader]').scrollTop === 0);
   await page.locator('[data-list-row="document-owner"]').click();
   await page.locator('#ms-name').waitFor();
