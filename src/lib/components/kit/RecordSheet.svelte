@@ -37,6 +37,7 @@
     saveLabel,
     deleteLabel,
     canSave,
+    showHeading = true,
     fields,
     extraActions,
     primary,
@@ -64,6 +65,8 @@
     deleteLabel?: string;
     /** Whether the draft can be saved yet. Omitted, it always can. */
     canSave?: (draft: TDraft) => boolean;
+    /** Compact editors can lead with the record; the sheet still has its accessible title. */
+    showHeading?: boolean;
     /** The fields, handed the draft to bind to. */
     fields?: Snippet<[TDraft]>;
     /** Anything else the button row carries, between save and delete -
@@ -146,8 +149,8 @@
     onRequestClose={() => requestDismiss()}
   >
     {#if draft}
-      <h3>{wording(draft.id ? editTitle : newTitle, draft)}</h3>
-      <fieldset disabled={record.saving}>
+      {#if showHeading}<h3>{wording(draft.id ? editTitle : newTitle, draft)}</h3>{/if}
+      <fieldset class:compact={!showHeading} disabled={record.saving} aria-busy={record.saving}>
         {@render fields(draft)}
         {#if record.saveFailed}
           <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
@@ -201,6 +204,10 @@
     padding: 0;
     margin: var(--space-4) 0 0;
     min-width: 0;
+  }
+
+  fieldset.compact {
+    margin-top: 0;
   }
 
   fieldset > :global(* + *) {
