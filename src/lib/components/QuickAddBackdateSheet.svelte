@@ -17,7 +17,6 @@
 
 <Sheet bind:open title={m.another_day()}>
   <h3>{m.another_day()}</h3>
-  <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
   <label class="field-label" for="backdate">{m.another_day()}</label>
   <div class="spread" style="margin-top:var(--space-2)">
     <DatePicker id="backdate" name="backdate" max={dateInputValueFromEpochDay(todayEpochDay())} bind:value={backdate} />
