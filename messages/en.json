@@ -999,7 +999,7 @@
   "doubt_snapshot_delete_q": "Delete this saved moment?",
   "doubt_snapshot_delete_sheet": "Delete saved moment",
   "doubt_snapshots_title": "Saved moments",
-  "editor_no_scales": "No scales are selected. You can still save an entry with a mood.",
+  "editor_no_scales": "A mood is enough to save an entry.",
   "effect_adhd_symptom_change_feminizing": "Change in ADHD symptoms",
   "effect_adhd_symptom_change_masculinizing": "Change in ADHD symptoms",
   "effect_appetite_change_feminizing": "Change in appetite",
@@ -1191,7 +1191,7 @@
   "entry_mood_aria": "mood: {name}",
   "entry_no_note": "No note was added",
   "entry_nudges": "Entry nudges",
-  "entry_nudges_sub": "Suggest adding details after a mood-only save.",
+  "entry_nudges_sub": "Offer to add details after you save just your mood.",
   "entry_pick_mood_to_save": "Pick a mood to save",
   "entry_procedure_recovery_add_photo": "Add healing photo",
   "entry_procedure_recovery_notes_placeholder": "How is healing going today?",
@@ -2955,7 +2955,7 @@
   "saved_question_tag": "Tag: {tag}",
   "saved_questions_title": "Saved questions",
   "scale_custom_note": "Your own scale, from {low} to {high}.",
-  "scale_not_ticked": "Not ticked any more, kept from this entry",
+  "scale_not_ticked": "This scale is unticked. Its saved value stays.",
   "scales_change": "change",
   "scales_none_ticked": "None ticked",
   "scales_note": "Tick the scales to show on entries. Unticking keeps past values.",
@@ -3077,7 +3077,7 @@
   "stats_highest_days_note": "Tap a day to open it.",
   "stats_mood_days": "Days at each mood",
   "stats_range_group": "Range",
-  "stats_reading_days": "How the days fell",
+  "stats_reading_days": "Mood and tags across your days",
   "stats_reading_unknown_body": "The readings are on Look back. Pick one there.",
   "stats_reading_unknown_title": "No such reading",
   "stats_readings_group": "Readings",
@@ -4026,12 +4026,12 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} entry in this period, and a wrapped starts at {floor}.",
-        "countPlural=other": "{count} entries in this period, and a wrapped starts at {floor}."
+        "countPlural=one": "{count} entry. Wrapped is available from {floor} entries.",
+        "countPlural=other": "{count} entries. Wrapped is available from {floor} entries."
       }
     }
   ],
-  "wrapped_thin_title": "Too few entries for this summary",
+  "wrapped_thin_title": "No recap here",
   "wrapped_unknown_body": "Open Look back to choose a period for Wrapped.",
   "wrapped_unknown_title": "Nothing to wrap here",
   "wrapped_week_range": "{from} to {to}",
