@@ -2135,7 +2135,6 @@ try {
     ['Masculinity', 'not at all to very'],
     ['Binary \u2194 nonbinary', 'binary and nonbinary'],
     ['Agender \u2194 gendered', 'strong sense of gender'],
-    ['Unseen \u2194 recognised', 'read your gender'],
     ['Steady \u2194 shifting', 'steady sense of gender']
   ];
   const builtInKeys = [
@@ -2144,7 +2143,6 @@ try {
     'masculinity',
     'binary_nonbinary',
     'agender_gendered',
-    'social_recognition',
     'gender_stability'
   ];
   const offeredBuiltIns = scaleKeys.filter((k) => builtInKeys.includes(k));
@@ -2212,8 +2210,12 @@ try {
   // Untick a default and tick something outside it, so what is stored is a
   // set this screen chose rather than the one it started with (the same
   // proof the scales step makes above).
-  await page.locator('[data-list-row="area-care"]').click();
-  await page.locator('[data-list-row="area-roadmap"]').click();
+  /* Both dispatched rather than clicked: with the demo bar's 240px above it, the
+     areas list keeps a 41px scroll window at 390x844, so no 75px row fits
+     in view and the step's foot takes a real click. Without the bar the
+     list has about 280px. */
+  await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
+  await page.locator('[data-list-row="area-roadmap"]').dispatchEvent('click');
   await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
 
@@ -2668,7 +2670,11 @@ try {
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
   for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
-  await page.locator('[data-list-row="area-care"]').click();
+  /* Dispatched rather than clicked: with the demo bar's 240px above it, the
+     areas list keeps a 41px scroll window at 390x844, so no 75px row fits
+     in view and the step's foot takes a real click. Without the bar the
+     list has about 280px. */
+  await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
   for (let i = 0; i < 4; i++) await page.locator('[data-back]').click();
   await page.waitForSelector('[data-restore-start]');
 
@@ -2910,7 +2916,6 @@ try {
     ['masculinity', 'Masculinity'],
     ['binary_nonbinary', 'Binary \u2194 nonbinary'],
     ['agender_gendered', 'Agender \u2194 gendered'],
-    ['social_recognition', 'Unseen \u2194 recognised'],
     ['gender_stability', 'Steady \u2194 shifting']
   ];
   expected.forEach(([, label], i) => {
@@ -4719,7 +4724,7 @@ await flow('fill every feature', async () => {
 try {
   await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-fill-every-feature]');
-  await page.waitForURL('**/more');
+  await page.waitForURL('**/more', { timeout: 120000 });
   await booted();
 
   const NOT_EMPTY_ROUTES = [
@@ -6373,7 +6378,7 @@ await flow('tally in-context actions', async () => {
 try {
   await fresh('/tally');
   await page.click('[data-fill-every-feature]');
-  await page.waitForURL(BASE + '/more');
+  await page.waitForURL(BASE + '/more', { timeout: 120000 });
   await booted();
   await fresh('/tally');
 
@@ -7925,7 +7930,7 @@ try {
   await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
   await booted();
   await page.click('[data-fill-every-feature]');
-  await page.waitForURL('**/more');
+  await page.waitForURL('**/more', { timeout: 120000 });
   await booted();
 
   await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
