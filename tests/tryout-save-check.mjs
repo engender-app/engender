@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, screencast } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
 const out = '.claude/tryout-save-shots';
+const motionOut = '.claude/tryout-motion-shots';
+const motionScenes = [];
 if (gallery) await mkdir(out, { recursive: true });
 
 const server = await createServer({ cacheDir: '.svelte-kit/tryout-save-vite', server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
@@ -43,23 +45,41 @@ async function capture(name) {
   ));
   await page.screenshot({ path: `${out}/${name}.png` });
 }
-async function feedbackMotion(action) {
-  await page.evaluate(() => {
-    window.feedbackHeights = [];
-    window.feedbackDone = false;
-    const start = performance.now();
-    function sample() {
-      const status = document.querySelector('[data-tryout-saved]');
-      if (status) window.feedbackHeights.push(status.parentElement.getBoundingClientRect().height);
-      if (performance.now() - start < 900) requestAnimationFrame(sample);
-      else window.feedbackDone = true;
+async function feedbackMotion(action, name) {
+  const record = async (frames = []) => {
+    await page.evaluate(() => {
+      window.feedbackHeights = [];
+      window.feedbackDone = false;
+      const start = performance.now();
+      function sample() {
+        const status = document.querySelector('[data-tryout-saved]');
+        if (status) window.feedbackHeights.push(status.parentElement.getBoundingClientRect().height);
+        if (performance.now() - start < 900) requestAnimationFrame(sample);
+        else window.feedbackDone = true;
+      }
+      requestAnimationFrame(sample);
+    });
+    await action();
+    await page.waitForFunction(() => window.feedbackDone);
+    const heights = await page.evaluate(() => window.feedbackHeights);
+    assert.ok(new Set(heights.map(Math.round)).size > 2, 'feedback travels through intermediate heights');
+    if (gallery) {
+      await mkdir(motionOut, { recursive: true });
+      const written = [];
+      const start = frames[0]?.at ?? 0;
+      for (const [i, frame] of frames.entries()) {
+        const at = Math.round(frame.at - start);
+        const file = `${name}-${String(i).padStart(3, '0')}-${at}ms.png`;
+        await writeFile(`${motionOut}/${file}`, Buffer.from(frame.data, 'base64'));
+        written.push({ file, at });
+      }
+      assert.ok(written.length > 2, 'motion scene retains compositor frames');
+      motionScenes.push({ name, crop: { top: 0, height: 844 }, frames: written });
+      await writeFile(`${motionOut}/manifest.json`, JSON.stringify({ scenes: motionScenes }, null, 2));
     }
-    requestAnimationFrame(sample);
-  });
-  await action();
-  await page.waitForFunction(() => window.feedbackDone);
-  const heights = await page.evaluate(() => window.feedbackHeights);
-  assert.ok(new Set(heights.map(Math.round)).size > 2, 'feedback travels through intermediate heights');
+  };
+  if (gallery) await screencast(page, record);
+  else await record();
 }
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
@@ -385,9 +405,9 @@ try {
   await page.locator('[data-add-photo]').waitFor();
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.locator('#tr-label').fill('Motion outcome');
-  await feedbackMotion(() => page.locator('[data-save-tryout]').click());
+  await feedbackMotion(() => page.locator('[data-save-tryout]').click(), 'feedback-arrival');
   await page.locator('[data-tryout-saved]').waitFor();
-  await feedbackMotion(() => page.locator('#tr-label').fill('Changed after motion'));
+  await feedbackMotion(() => page.locator('#tr-label').fill('Changed after motion'), 'feedback-removal');
   await page.locator('[data-tryout-saved]').waitFor({ state: 'detached' });
   console.log('PASS saved feedback opens and closes its height under normal motion');
   assert.deepEqual(errors, []);

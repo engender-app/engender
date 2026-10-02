@@ -41,6 +41,7 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -121,8 +122,8 @@
 
   async function focusOutcome() {
     await tick();
-    outcome?.focus();
-    outcome?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    outcome?.focus({ preventScroll: true });
+    outcome?.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
   }
 
   async function openCreatedTryout() {
