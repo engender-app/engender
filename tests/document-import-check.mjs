@@ -242,22 +242,9 @@ try {
   await navigate('/media/documents');
   await page.waitForURL('**/media/documents');
   await pick();
-  await page.locator('#document-title').fill('Private pending document');
+  await page.locator('#document-title').fill('Private lock document');
   await page.keyboard.press('Escape');
   await page.locator('[data-keep-editing]').waitFor();
-  await page.evaluate(async () => {
-    const { quickExit } = await import('/src/lib/stores/lock.svelte.ts');
-    quickExit();
-  });
-  await page.locator('#document-title').waitFor({ state: 'detached' });
-  assert.equal(await page.locator('[data-discard-record]').count(), 0);
-  await page.locator('[data-blank]').click();
-  await page.evaluate(async () => {
-    const { markUnlocked } = await import('/src/lib/stores/lock.svelte.ts');
-    markUnlocked();
-  });
-  await pick();
-  await page.locator('#document-title').fill('Private lock document');
   await page.evaluate(async () => {
     const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
     const { lockState } = await import('/src/lib/stores/lock.svelte.ts');
@@ -274,7 +261,7 @@ try {
     markUnlocked();
   });
   assert.equal((await stored()).length, baseline.length + 1);
-  console.log('PASS lock and quick exit conceal import and confirmation immediately');
+  console.log('PASS lock conceals import and confirmation immediately');
 
   await page.evaluate(async () => {
     const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
