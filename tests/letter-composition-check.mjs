@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { fillDate, launchChromium } from './browser-harness.mjs';
 
@@ -102,8 +103,10 @@ try {
   await navigate('/more');
   await page.locator('[data-discard-record]').click();
   await page.waitForURL('**/more');
+  await page.locator('[data-hub-search]').waitFor();
   assert.equal((await stored()).length, 0);
   await navigate('/transition/letters');
+  await page.waitForURL('**/transition/letters');
   await open();
   assert.equal(await page.locator('textarea').inputValue(), '');
   assert.equal(await page.locator('#letter-unlock').inputValue(), baseline);
@@ -216,7 +219,45 @@ try {
   });
   assert.equal((await stored()).length, 3);
   console.log('PASS lock and quick exit conceal composition and discard confirmation immediately');
+  await navigate('/settings');
+  await page.locator('[data-list-row="language"]').click();
+  await Promise.all([
+    page.waitForEvent('load'),
+    page.locator('[data-segment="pl"]').click()
+  ]);
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
+  await navigate('/transition/letters');
+  await page.waitForURL('**/transition/letters');
+  await open();
+  assert.equal(await page.getByRole('textbox', { name: 'List', exact: true }).count(), 1);
+  assert.match(await page.locator('#letter-requirements').innerText(), /Napisz coś/);
+  await page.locator('#letter-text').fill('List do mnie z przyszłości');
+  await page.evaluate(async () => {
+    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+    prefs.disguise = true;
+    document.documentElement.style.zoom = '2';
+  });
+  await mkdir('.claude/letter-shots', { recursive: true });
+  await page.locator('[data-sheet]').screenshot({ path: '.claude/letter-shots/pl-disguise-200-compose.png' });
+  assert.equal(await page.locator('[data-sheet]').evaluate((el) => el.scrollWidth <= el.clientWidth), true);
+  await page.keyboard.press('Escape');
+  await page.locator('[data-keep-editing]').waitFor();
+  assert.equal(await page.locator('[data-keep-editing]').innerText(), 'Edytuj dalej');
+  await page.locator('[data-sheet]').last().screenshot({ path: '.claude/letter-shots/pl-disguise-200-discard.png' });
+  await keep();
+  assert.equal(await page.locator('#letter-text').inputValue(), 'List do mnie z przyszłości');
+  await page.evaluate(async () => {
+    const { quickExit } = await import('/src/lib/stores/lock.svelte.ts');
+    quickExit();
+  });
+  await page.locator('#letter-text').waitFor({ state: 'detached' });
+  assert.equal(await page.locator('[data-discard-record]').count(), 0);
+  assert.equal((await stored()).length, 3);
+  console.log('PASS Polish labels and discard at 200% zoom; disguise quick exit conceals unsaved text');
   assert.deepEqual(errors, []);
+} catch (error) {
+  console.error(errors, page.url(), await page.locator('body').innerText());
+  throw error;
 } finally {
   await browser.close();
   await server.close();
