@@ -292,11 +292,6 @@
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.cycle_event_date_label()} id="cycle-event-date">
-        {#snippet children(id)}
-          <DatePicker name="cycle-event-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
       <Field label={m.cycle_event_kind_label()} legend>
         {#snippet children()}
           <Segmented
@@ -305,6 +300,11 @@
             value={editor.kind}
             onChange={(v) => (editor.kind = v as CycleEventKind)}
           />
+        {/snippet}
+      </Field>
+      <Field label={m.cycle_event_date_label()} id="cycle-event-date">
+        {#snippet children(id)}
+          <DatePicker name="cycle-event-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
     {/snippet}

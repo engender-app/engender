@@ -439,11 +439,6 @@
           <input class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
-      <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
-        {#snippet children(id, describedBy)}
-          <DatePicker name="ms-date" bind:value={editor.date} {id} {describedBy} />
-        {/snippet}
-      </Field>
       <Field label={m.ms_description_label()} id="ms-description">
         {#snippet children(id)}
           <textarea
@@ -454,6 +449,11 @@
             placeholder={m.ms_description_placeholder()}
             bind:value={editor.description}
           ></textarea>
+        {/snippet}
+      </Field>
+      <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
+        {#snippet children(id, describedBy)}
+          <DatePicker name="ms-date" bind:value={editor.date} {id} {describedBy} />
         {/snippet}
       </Field>
       <Field label={m.ms_photo_label()} legend>
