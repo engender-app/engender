@@ -116,8 +116,15 @@ try {
   const initialScroll = await getScroll();
   assert.equal(initialScroll, 0, 'Starts at top of waiting list');
 
+  // Clicking may first scroll the link into view. Back restores that position.
+  await jump.evaluate((link) => link.addEventListener('click', () => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    window.__lettersBeforeJump = region ? region.scrollTop : window.scrollY;
+  }, { capture: true, once: true }));
+
   // Click jump to navigate to #opened
   await jump.click();
+  const beforeJump = await page.evaluate(() => window.__lettersBeforeJump);
   await page.waitForFunction(() => window.location.hash === '#opened');
   assert.ok(page.url().includes('#opened'), 'URL carries #opened hash');
 
@@ -130,7 +137,7 @@ try {
      scroll on top of it. */
   await scrollSettled(page, '[data-app-scroll-region]');
   const scrolledY = await getScroll();
-  assert.ok(scrolledY > initialScroll, `Viewport scrolled down to open section (scrolled ${scrolledY}px)`);
+  assert.ok(scrolledY > beforeJump, `Viewport scrolled down to open section (scrolled ${scrolledY}px)`);
 
   // Verify browser back restores previous position
   await page.goBack();
@@ -142,14 +149,14 @@ try {
   await page
     .waitForFunction((limit) => {
       const region = document.querySelector('[data-app-scroll-region]');
-      return (region ? region.scrollTop : window.scrollY) <= limit;
-    }, initialScroll + 50)
+      return Math.abs((region ? region.scrollTop : window.scrollY) - limit) <= 50;
+    }, beforeJump)
     .catch(async (error) => {
-      console.log('back stopped at', await getScroll(), 'on', page.url(), 'from', scrolledY, 'started at', initialScroll);
+      console.log('back stopped at', await getScroll(), 'on', page.url(), 'from', scrolledY, 'started at', beforeJump);
       throw error;
     });
   const returnedScroll = await getScroll();
-  assert.ok(returnedScroll <= initialScroll + 50, 'Back restores list position at waiting section');
+  assert.ok(Math.abs(returnedScroll - beforeJump) <= 50, 'Back restores list position at waiting section');
 
   // 4. Test no-ready state:
   // Delete the 3 ready letters
