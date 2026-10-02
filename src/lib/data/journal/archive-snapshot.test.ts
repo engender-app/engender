@@ -4,6 +4,9 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { makeArchiveArea } from './archive.ts';
 import { makeEntriesArea } from './entries.ts';
+import { packArchive } from '../archive/pack.ts';
+import { portablePreferences } from '../archive/payload.ts';
+import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 
 const photo = { full: new Uint8Array([1, 2]), thumb: new Uint8Array([3]) };
 
@@ -41,5 +44,20 @@ test('a save during attachment metadata cannot add an entry without its attachme
   assert.equal(restored.photos.length, 1);
   for (const file of snapshot.files) assert.deepEqual(await targetFiles.read(file.name), await store.read(file.name));
   await targetDb.close();
+  await db.close();
+});
+
+test('packing fails if an attachment disappears after the snapshot releases SQL access', async () => {
+  const db = await migratedDb();
+  const store = fakeFileStore();
+  const entries = makeEntriesArea(db, store);
+  const id = await entries.upsertEntry({ epochDay: 100, mood: 4, attachPhotos: [photo] });
+  const snapshot = await makeArchiveArea(db, store).snapshot();
+  const attached = (await entries.getEntry(id))!.photos[0];
+  await entries.upsertEntry({ id, epochDay: 100, mood: 4, removePhotoIds: [attached.id] });
+  assert.equal((await entries.getEntry(id))!.photos.length, 0);
+  const packed = packArchive({ ...snapshot, preferences: portablePreferences(PREFERENCE_DEFAULTS) },
+    async () => new Uint8Array(32));
+  await assert.rejects(async () => { for await (const _piece of packed) { /* Drain every attachment. */ } }, /missing/);
   await db.close();
 });
