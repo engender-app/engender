@@ -29,6 +29,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 import { startSampling, stopSampling } from './motion-sampling.mjs';
+import { findSurfaceYanks } from './picker-motion-yanks.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -79,22 +80,13 @@ const SAMPLE = `
 
 /** What the sampler saw, judged frame against frame. */
 function findYanks(samples, { bound = false } = {}) {
-  const yanks = [];
+  const yanks = findSurfaceYanks(samples);
   const open = samples.filter((s) => s.open);
   const visible = (s, p) => p.l < s.vl + s.vw - 2 && p.l + p.w > s.vl + 2;
-  const amount = (s) => Math.min(s.seen, s.shown, s.op);
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i];
     const was = samples[i - 1];
-    if (!s.open) {
-      if (was?.open && amount(was) > 0.45) yanks.push({ t: s.t, what: `surface gone from ${amount(was)}` });
-      continue;
-    }
-    if (!was?.open) {
-      if (i > 0 && amount(s) > 0.45) yanks.push({ t: s.t, what: `surface appears at ${amount(s)}` });
-      continue;
-    }
-    if (Math.abs(amount(s) - amount(was)) > 0.45) yanks.push({ t: s.t, what: `surface ${amount(was)} to ${amount(s)} in one frame` });
+    if (!s.open || !was?.open) continue;
     /* A rebase under the reduced-motion crossfade happens at opacity 0:
        nothing painted moved. */
     const dark = s.vop < 0.05 || was.vop < 0.05;
