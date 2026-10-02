@@ -265,7 +265,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: guards-${{ matrix.suite }}-logs-${{ github.run_id }}
-          path: ci-logs/
+          path: |
+            ci-logs/
+            .claude/yank-sweep/*.frames.json
+            .claude/yank-sweep/report.json
+          include-hidden-files: true
           retention-days: 7
 
   benchmark:
