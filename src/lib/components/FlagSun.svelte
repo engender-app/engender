@@ -1,8 +1,9 @@
 <script lang="ts">
   /* The flag sun (ticket 19, DIRECTION.md's tier 0): the active flag as
-     one concentric ring per stripe, centred on its field's top right
-     corner. Replaces PrideAurora, a blurred wash of the same stripes shown
-     on ten screens, which is deleted rather than restyled (ADR-0035).
+     one concentric ring per stripe, or one disc for Polish, centred on its
+     field's top right corner. Replaces PrideAurora, a blurred wash of the
+     same stripes shown on ten screens, which is deleted rather than
+     restyled (ADR-0035).
 
      The stripes and the theme come from $lib/theme/activeFlag, which the
      shell refreshes in the same effect that stamps the palette on <html>.
@@ -23,7 +24,7 @@
   import { sunRings } from '$lib/motion/flagSun';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
 
-  let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark));
+  let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark, activeFlag.palette));
 
   /* A door change draws the sun's arrival itself, ring by ring on the
      door's own clock (redesign ticket 28): every ring is pulled out of the

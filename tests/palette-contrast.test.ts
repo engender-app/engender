@@ -509,21 +509,30 @@ describe('the field and the fills (phase 10)', () => {
     demiboy: ['#9DD7EA', '#101820', 11.37],
     demigirl: ['#F3B5CD', '#101820', 10.48],
     trigender: ['#B57EDC', '#101820', 5.95],
-    polish: ['#DC143C', '#FFFFFF', 4.99]
+    polish: ['#FFFFFF', '#101820', 17.89]
   };
 
-  it("takes the field from a later band, never its outermost, and inks it to 3:1", () => {
+  it('takes each flag field from its chosen band and inks it to 3:1', () => {
     for (const palette of PALETTES) {
       const field = flagField(stripesOf(palette), palette)!;
       const stripes = stripesOf(palette).map((s) => s.toUpperCase());
-      expect(field.hex.toUpperCase(), palette).not.toBe(stripes[0]);
-      expect(stripes.slice(1), `${palette}: the field comes after the outer band`).toContain(
-        field.hex.toUpperCase()
-      );
+      if (palette !== 'polish') {
+        expect(field.hex.toUpperCase(), palette).not.toBe(stripes[0]);
+        expect(stripes.slice(1), `${palette}: the field comes after the outer band`).toContain(
+          field.hex.toUpperCase()
+        );
+      }
       expect(field.ratio, `${palette}: ${field.ink} on ${field.hex}`).toBeGreaterThanOrEqual(3);
       const [hex, ink, ratio] = FIELD[palette];
       expect([field.hex, field.ink, Number(field.ratio.toFixed(2))], palette).toEqual([hex, ink, ratio]);
     }
+  });
+
+  it('reverses the Polish field colours in dark mode with readable ink', () => {
+    const field = flagField(stripesOf('polish'), 'polish', true)!;
+    expect(field.hex).toBe('#DC143C');
+    expect(field.ink).toBe('#FFFFFF');
+    expect(field.ratio).toBeGreaterThanOrEqual(4.5);
   });
 
   /* Two flags name their own band (Alicja, 2026-09-07: the rainbow on the
