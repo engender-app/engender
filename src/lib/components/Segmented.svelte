@@ -115,6 +115,7 @@
      straight onto a clipped label is not legible either - "Garme>e" on this
      control's own kind picker at 390px. components.css says the rest. */
   let track = $state<HTMLElement | undefined>();
+  let trackSize = $state({ w: 0, h: 0 });
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
   /* Whether the track has anywhere to scroll at all, which is a different
@@ -202,14 +203,19 @@
     if (!track) return;
     const el = track;
     el.addEventListener('scroll', updateScrollFade, { passive: true });
-    window.addEventListener('resize', updateScrollFade);
+    const observer = new ResizeObserver(() => {
+      trackSize = { w: el.clientWidth, h: el.clientHeight };
+      updateScrollFade();
+    });
+    observer.observe(el);
     return () => {
       el.removeEventListener('scroll', updateScrollFade);
-      window.removeEventListener('resize', updateScrollFade);
+      observer.disconnect();
     };
   });
 
   $effect(() => {
+    void trackSize;
     const target = buttons[options.findIndex((o) => o.value === value)];
     if (!target) return;
     /* The active segment answers for itself: a track wider than it is (the
@@ -253,7 +259,11 @@
        used to use: a track that reflows by a third of a pixel is the same
        place, and replaying the travel on every resize tick would turn a
        moment into a loop. indicator.ts's own note on that floor. */
-    if (pill.shown && boxesMatch(pill.box, box)) return;
+    if (pill.shown && boxesMatch(pill.box, box)) {
+      // A narrower track changes the far inset even when the segment stays put.
+      pill.at = at;
+      return;
+    }
     /* The control does not slide into its own initial state, it starts
        there: the first placement moves neither edge (PLACE), so what shows
        is the pill fading in on its segment rather than across the whole
