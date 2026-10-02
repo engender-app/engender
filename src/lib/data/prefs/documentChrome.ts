@@ -42,10 +42,7 @@ export interface SystemPreferences {
   prefersReducedMotion: boolean;
 }
 
-/** The tab icon that says nothing about the app: the disguised face, and
-    also what the quick-exit blank wears over an undisguised tab
-    (disguise/identity.ts). Named because two rules reach for the same
-    asset and neither owns it more than the other. */
+/** The disguised tab icon. */
 export const NEUTRAL_TAB_ICON = 'favicon-notes.svg';
 
 export interface DocumentChrome {

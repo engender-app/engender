@@ -20,8 +20,7 @@ export const lockAfterSub: Record<LockAfter, () => string> = {
   restart: () => m.lock_after_sub_restart()
 };
 
-/** No sentence for a restart: the gate that carries these is only up
-    mid-session under that timing because of a quick exit. */
+/** No sentence for a restart: that timing has no mid-session lock. */
 export const lockAfterNote: Record<Exclude<LockAfter, 'restart'>, () => string> = {
   immediately: () => m.lock_after_note_immediately(),
   'one-minute': () => m.lock_after_note_one_minute(),

@@ -277,26 +277,19 @@ try {
   await discard();
   await page.waitForURL((url) => url.pathname === '/care/doses');
   await navigate('/care/regimen');
-  for (const concealment of ['quick-exit', 'lock']) {
+  {
     await open();
     await page.locator('#regimen-dose').fill('14');
     await page.locator('[data-close-regimen]').click();
     await page.locator('[data-keep-editing]').waitFor();
-    await page.evaluate(async (concealment) => {
+    await page.evaluate(async () => {
       const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
-      const { quickExit, lockState } = await import('/src/lib/stores/lock.svelte.ts');
+      const { lockState } = await import('/src/lib/stores/lock.svelte.ts');
       window.regimenAccessMode = bootState.accessMode;
-      if (concealment === 'quick-exit') quickExit();
-      else { bootState.accessMode = 'passphrase'; lockState.unlocked = false; }
-    }, concealment);
-    if (concealment === 'quick-exit') {
-      await page.locator('[data-blank]').waitFor();
-      assert.equal(await page.locator('[data-blank]').evaluate((el) => {
-        const rect = el.getBoundingClientRect();
-        return document.elementFromPoint(rect.width / 2, rect.height / 2) === el;
-      }), true);
-      await page.locator('[data-blank]').click();
-    } else await page.locator('#regimen-dose').waitFor({ state: 'detached' });
+      bootState.accessMode = 'passphrase';
+      lockState.unlocked = false;
+    });
+    await page.locator('#regimen-dose').waitFor({ state: 'detached' });
     assert.equal(await page.locator('[data-discard-record]').count(), 0);
     await page.evaluate(async () => {
       const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
@@ -309,7 +302,7 @@ try {
       await discard();
     }
   }
-  console.log('PASS route discard continues navigation; lock and quick exit conceal pending prompts immediately');
+  console.log('PASS route discard continues navigation; lock conceals pending prompts immediately');
   assert.deepEqual(errors, []);
 } catch (error) {
   console.error('Route', page.url(), 'Page errors', errors, await page.locator('body').innerText());

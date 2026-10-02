@@ -52,13 +52,41 @@ public class MainActivity extends BridgeActivity {
         captureReminderRoute(intent);
     }
 
-    /** Home and Recents lock only under Immediately. Read the native mirror
-        before asking the WebView to render its gate, so visibilitychange
-        does not have to arrive before the system takes its thumbnail. */
+    /** Home gives this hint before pausing; Recents can pause without it. */
     @Override
     public void onUserLeaveHint() {
         super.onUserLeaveHint();
+        lockOnLeave();
+    }
+
+    @Override
+    public void onPause() {
+        if (!isChangingConfigurations()) lockOnLeave();
+        super.onPause();
+    }
+
+    /** Recents can take focus while this activity remains resumed. */
+    @Override
+    public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
+        super.onTopResumedActivityChanged(isTopResumedActivity);
+        if (isTopResumedActivity) {
+            ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        } else if (!isChangingConfigurations()) {
+            lockOnLeave();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+    }
+
+    private void lockOnLeave() {
         if (!LockTimingPlugin.locksImmediately(this) || bridge == null || bridge.getWebView() == null) return;
+        // The native flag protects the thumbnail while the WebView renders
+        // its gate. Capture permission returns when the app resumes.
+        ScreenCapturePlugin.applyWindowFlags(this, false);
         bridge.getWebView().evaluateJavascript("window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative();", null);
     }
 

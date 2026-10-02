@@ -2,7 +2,7 @@
   /* Getting back in mid-session (ticket 53, replacing LockScreen's unlock
      job).
 
-     Lock-on-leave and quick exit lock the app while the unlocked data key is
+     Lock timing locks the app while the unlocked data key is
      still in memory, so this screen only has to establish that the person in
      front of it is the one who opened the journal. It does that by asking for
      the access mode's own secret and actually re-deriving with it, rather
@@ -17,9 +17,7 @@
      pad, Android's Keystore prompt, and the web biometric's own (ticket 55,
      where the platform prompt is the secret exactly as Keystore's is). Web
      device-bound mode has none, so it never reaches here - isLocked() is
-     false for it, and quick exit's neutral page is the whole of what that
-     combination can do. The settings copy says so rather than letting a
-     switch imply otherwise. The device-bound branch below still checks
+     false for it. The device-bound branch below still checks
      isAndroid() itself even though isLocked() already guarantees it: a
      button that calls Android's Keystore bridge is the wrong failure mode
      for that guarantee ever breaking (final audit U2 - the gallery's own
@@ -242,15 +240,8 @@
     <button class="btn btn-ghost" data-forgot onclick={() => (resetOpen = true)}>
       <span>{wayOut}</span>
     </button>
-    <!-- When this gate comes back, in the words of the timing chosen for it
-         (lock-timing ticket 01). Nothing for a restart: this gate is only
-         here mid-session because of a quick exit then, and "only when the
-         app restarts" above a gate that just appeared would read as wrong. -->
-    {#if prefs.lockAfter !== 'restart' || prefs.quickExit}
-      <p class="gate-note" data-session-lock-note>
-        {prefs.lockAfter !== 'restart' ? lockAfterNote[prefs.lockAfter]() + ' ' : ''}
-        {prefs.quickExit ? m.lock_quick_exit_note() : ''}
-      </p>
+    {#if prefs.lockAfter !== 'restart'}
+      <p class="gate-note" data-session-lock-note>{lockAfterNote[prefs.lockAfter]()}</p>
     {/if}
   </div>
 </GateScreen>

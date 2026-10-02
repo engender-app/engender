@@ -58,9 +58,59 @@ public class LockTimingLeaveHintTest {
             for (String timing : new String[] {"one-minute", "five-minutes", "restart"}) {
                 setTiming(scenario, timing);
                 scenario.onActivity(MainActivity::onUserLeaveHint);
+                scenario.onActivity(MainActivity::onPause);
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    scenario.onActivity(activity -> activity.onTopResumedActivityChanged(false));
+                }
                 Thread.sleep(500);
                 assertEquals(timing, "0", evalJs(scenario, "String(window.__leaveLockCalls || 0)"));
+                scenario.onActivity(MainActivity::onResume);
             }
+        }
+    }
+
+    @Test
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
+    public void recentsLocksWhileResumedAndRestoresTheCaptureChoice() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
+            setTiming(scenario, "immediately");
+            installCounter(scenario);
+            for (boolean allowed : new boolean[] {true, false}) {
+                InstrumentationRegistry.getInstrumentation().getTargetContext()
+                    .getSharedPreferences(dev.engender.app.screencapture.ScreenCapturePlugin.PREFS, Context.MODE_PRIVATE)
+                    .edit().putBoolean("allowed", allowed).commit();
+                runJs(scenario, "window.__leaveLockCalls = 0");
+                scenario.onActivity(activity -> activity.onTopResumedActivityChanged(false));
+                assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
+                scenario.onActivity(activity -> assertTrue(
+                    (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+                ));
+                scenario.onActivity(activity -> activity.onTopResumedActivityChanged(true));
+                scenario.onActivity(activity -> assertEquals(
+                    !allowed,
+                    (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+                ));
+            }
+        }
+    }
+
+    @Test
+    public void recentsPauseLocksWithoutALeaveHintAndProtectsTheThumbnail() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
+            setTiming(scenario, "immediately");
+            installCounter(scenario);
+            scenario.onActivity(MainActivity::onPause);
+            assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
+            scenario.onActivity(activity -> assertTrue(
+                (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+            ));
+            scenario.onActivity(MainActivity::onResume);
+            scenario.onActivity(activity -> assertEquals(
+                !dev.engender.app.screencapture.ScreenCapturePlugin.isAllowed(activity),
+                (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+            ));
         }
     }
 

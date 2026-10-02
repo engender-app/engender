@@ -17,12 +17,7 @@
    catalogue lookup, so callers pass it in and this decides which of the
    two names is the right one. */
 
-import { NEUTRAL_TAB_ICON } from '../data/prefs/documentChrome';
-
-/** The name the app answers to while disguised. A plain notes app is the
-    thing it claims to be, down to the decoy screen quick exit shows
-    (DecoyNotes.svelte), and it is this word in every language - which is
-    why it is a literal here rather than a catalogue entry. */
+/** The disguised name is the same in every language. */
 export const DECOY_NAME = 'Notes';
 
 /** What a surface writes where the app's name goes. `appName` is the
@@ -42,14 +37,11 @@ export function hubTabLabel(disguised: boolean, hubLabel: string, subjectLabel: 
 
 interface TabState {
   disguised: boolean;
-  /** Quick exit is holding the tab over the app. */
-  blanked: boolean;
   /** The app's own name, from the catalogue - the same parameter and the
       same reason as `appWordmark`, so the real name has one owner rather
       than a second copy spelled out here. */
   appName: string;
-  /** The icon the preferences resolved to (documentChrome), which the
-      blank overrides and nothing else does. */
+  /** The icon the preferences resolved to (documentChrome). */
   icon: string;
 }
 
@@ -58,20 +50,7 @@ interface TabIdentity {
   icon: string;
 }
 
-/** The tab's identity, decided once: a tab called "Notes" next to a trans
-    flag is not disguised at all, and the icon is the half of it that
-    survives a narrow tab strip, a background tab and the bookmark list.
-
-    The blank is this side's alone - app.html, which stamps the icon before
-    first paint, has no notion of a quick exit - so it sits on top of the
-    resolved icon rather than inside it. */
+/** Keeps the tab's name and icon consistent with the disguise preference. */
 export function tabIdentity(state: TabState): TabIdentity {
-  if (state.disguised) return { title: DECOY_NAME, icon: state.icon };
-  /* Undisguised, quick exit is a blank page rather than the decoy, so the
-     tab says what an unused tab says and drops the flag with it. English
-     in both catalogues for the reason "Notes" is (docs/ui-copy.md): it is
-     the browser's own wording for an empty tab, and a tab strip that says
-     something else is a tab strip worth a second look. */
-  if (state.blanked) return { title: 'New tab', icon: NEUTRAL_TAB_ICON };
-  return { title: state.appName, icon: state.icon };
+  return { title: appWordmark(state.disguised, state.appName), icon: state.icon };
 }
