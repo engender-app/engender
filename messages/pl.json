@@ -1753,6 +1753,8 @@
   "labs_empty_body": "Dodawaj wyniki, gdy je otrzymasz. Każda jednostka ma osobną serię.",
   "labs_empty_title": "Jeszcze bez wyników",
   "labs_intro": "Dodaj wyniki badań i zobacz, jak zmieniają się w czasie. Bez wartości docelowych i interpretacji.",
+  "labs_invalid_value": "Wpisz liczbę, aby zapisać wynik.",
+  "labs_missing_analyte": "Wybierz badanie lub wpisz własną nazwę, aby zapisać wynik.",
   "labs_mixed_body": "Nie wszystkie powstały w tych samych warunkach:",
   "labs_mixed_position": "różne momenty odstępu między dawkami",
   "labs_mixed_provider": "różne laboratoria",
