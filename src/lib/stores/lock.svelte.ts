@@ -30,7 +30,7 @@ import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-acc
 import { isAndroid } from '../platform';
 import { ui } from './ui.svelte';
 import { forgetLastResults } from '../data/live/lastResults';
-import { watchLeave } from '../lock/leave-lock';
+import { watchLeave, type NativeLeaveHooks } from '../lock/leave-lock';
 
 export const lockState = $state({
   /** Set once the access mode's secret has been given, cleared on every lock. */
@@ -64,15 +64,10 @@ function lockNow() {
 /** Watches page visibility and Android's early leave hook. The preference
     is read when leaving, so changing timing does not replace listeners. */
 export function watchLock(): () => void {
-  const stopLeave = watchLeave({ page: document, lockAfter: () => prefs.lockAfter, lock: lockNow });
-
-  /* MainActivity reads the native timing mirror before invoking this hook. */
-  if (isAndroid()) {
-    (window as unknown as { __lockOnLeaveFromNative?: () => void }).__lockOnLeaveFromNative = lockNow;
-  }
-
-  return () => {
-    if (isAndroid()) delete (window as unknown as { __lockOnLeaveFromNative?: () => void }).__lockOnLeaveFromNative;
-    stopLeave();
-  };
+  return watchLeave({
+    page: document,
+    native: isAndroid() ? (window as unknown as NativeLeaveHooks) : undefined,
+    lockAfter: () => prefs.lockAfter,
+    lock: lockNow
+  });
 }

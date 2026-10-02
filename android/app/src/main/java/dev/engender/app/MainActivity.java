@@ -61,8 +61,15 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onPause() {
-        if (!isChangingConfigurations()) lockOnLeave();
+        // Before Android 10, the visible split-screen pane can be paused.
+        if (!isInMultiWindowMode() && !isChangingConfigurations()) lockOnLeave();
         super.onPause();
+    }
+
+    @Override
+    public void onStop() {
+        if (!isChangingConfigurations()) lockOnLeave();
+        super.onStop();
     }
 
     /** Recents can take focus while this activity remains resumed. */
@@ -70,8 +77,8 @@ public class MainActivity extends BridgeActivity {
     public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
         super.onTopResumedActivityChanged(isTopResumedActivity);
         if (isTopResumedActivity) {
-            ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
-        } else if (!isChangingConfigurations()) {
+            returnFromLeave();
+        } else if (!isInMultiWindowMode() && !isChangingConfigurations()) {
             lockOnLeave();
         }
     }
@@ -79,15 +86,22 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        returnFromLeave();
     }
 
     private void lockOnLeave() {
-        if (!LockTimingPlugin.locksImmediately(this) || bridge == null || bridge.getWebView() == null) return;
+        if (bridge == null || bridge.getWebView() == null) return;
         // The native flag protects the thumbnail while the WebView renders
         // its gate. Capture permission returns when the app resumes.
-        ScreenCapturePlugin.applyWindowFlags(this, false);
+        if (LockTimingPlugin.locksImmediately(this)) ScreenCapturePlugin.applyWindowFlags(this, false);
         bridge.getWebView().evaluateJavascript("window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative();", null);
+    }
+
+    private void returnFromLeave() {
+        if (bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().evaluateJavascript("window.__lockOnReturnFromNative && window.__lockOnReturnFromNative();", null);
+        }
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
     }
 
     private void captureReminderRoute(Intent intent) {

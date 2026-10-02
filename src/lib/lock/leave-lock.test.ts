@@ -13,8 +13,10 @@ function harness(lockAfter: LockAfter) {
   let locks = 0;
   const page = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
   const timing = { value: lockAfter };
+  const native: { __lockOnLeaveFromNative?: () => void; __lockOnReturnFromNative?: () => void } = {};
   const stop = watchLeave({
     page,
+    native,
     lockAfter: () => timing.value,
     lock: () => void locks++,
     now: () => clock
@@ -29,6 +31,8 @@ function harness(lockAfter: LockAfter) {
     locks: () => locks,
     hide: () => show('hidden'),
     reveal: () => show('visible'),
+    nativeLeave: () => native.__lockOnLeaveFromNative?.(),
+    nativeReturn: () => native.__lockOnReturnFromNative?.(),
     wait: (ms: number) => void (clock += ms),
     setClock: (ms: number) => void (clock = ms)
   };
@@ -38,6 +42,50 @@ test('immediately locks the moment the page is hidden, before anything comes bac
   const app = harness('immediately');
   app.hide();
   expect(app.locks()).toBe(1);
+});
+
+test('native Recents counts an absence while the document stays visible', () => {
+  const app = harness('one-minute');
+  app.nativeLeave();
+  app.wait(59_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(0);
+  app.nativeLeave();
+  app.wait(61_000);
+  expect(app.locks()).toBe(0);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+test('native Recents follows Immediately, five minutes and restart', () => {
+  const immediate = harness('immediately');
+  immediate.nativeLeave();
+  expect(immediate.locks()).toBe(1);
+  for (const timing of ['five-minutes', 'restart'] as const) {
+    const app = harness(timing);
+    app.nativeLeave();
+    app.wait(301_000);
+    app.nativeReturn();
+    expect(app.locks()).toBe(timing === 'restart' ? 0 : 1);
+  }
+});
+
+test('overlapping native and visibility leaves keep the first departure time', () => {
+  const app = harness('one-minute');
+  app.nativeLeave();
+  app.wait(30_000);
+  app.hide();
+  app.wait(31_000);
+  app.nativeReturn();
+  app.reveal();
+  expect(app.locks()).toBe(1);
+});
+
+test('stopping removes native leave and return hooks', () => {
+  const app = harness('immediately');
+  app.stop();
+  app.nativeLeave();
+  expect(app.locks()).toBe(0);
 });
 
 test('after a minute, 59 seconds away does not lock', () => {
