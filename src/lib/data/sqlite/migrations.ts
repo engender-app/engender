@@ -8,7 +8,8 @@
    `current === latestVersion` and never even loads this list.
 
    A journal left partway up the old chain cannot be opened by this build. That
-   was the price of squashing, taken deliberately while no release had shipped.
+   was the price of squashing before the 1.0.0 cutoff. From 1.0.0 on, every
+   released migration stays in the chain and cannot be edited or squashed.
    Such a journal is behind, not ahead, so SchemaTooNewError never fires for
    it: the baseline is pending, it runs against tables that are already there,
    and the step fails inside its transaction. Nothing is written and the
