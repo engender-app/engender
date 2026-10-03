@@ -10,9 +10,9 @@ export const CI_CHECKS = {
     { id: 'build', name: 'Production build', command: 'npm', args: ['run', 'build'] },
     { id: 'types', name: 'Svelte and TypeScript', command: 'npm', args: ['run', 'check'], requires: ['build'] },
     { id: 'node', name: 'Node tier', command: 'npm', args: ['test', '--', '--maxWorkers=2'], requires: ['build'] },
-    { id: 'copy', name: 'Message catalogues and user-facing literals', command: 'npm', args: ['run', 'check:copy'], requires: ['build'] },
-    { id: 'licences', name: 'Dependency licences', command: 'npm', args: ['run', 'check:licences'], requires: ['build'] },
-    { id: 'classes', name: 'screens.css single-consumer classes', command: 'npm', args: ['run', 'check:screens-classes'], requires: ['build'] },
+    { id: 'copy', name: 'Message catalogues and user-facing literals', command: 'npm', args: ['run', 'check:copy'] },
+    { id: 'licences', name: 'Dependency licences', command: 'npm', args: ['run', 'check:licences'] },
+    { id: 'classes', name: 'screens.css single-consumer classes', command: 'npm', args: ['run', 'check:screens-classes'] },
     { id: 'budget', name: 'First-load budget', command: 'npm', args: ['run', 'check:first-load-budget'], requires: ['build'] }
   ],
   android: [
@@ -20,6 +20,7 @@ export const CI_CHECKS = {
     { id: 'sync', name: 'Capacitor sync', command: 'npx', args: ['cap', 'sync', 'android'], requires: ['build'] },
     { id: 'policy', name: 'Android dependency policy', command: 'node', args: ['scripts/check-android-dependencies.mjs'], requires: ['sync'] },
     { id: 'apk', name: 'Unsigned debug APK', command: './gradlew', args: [':app:assembleDebug'], cwd: 'android', requires: ['sync'] },
+    { id: 'preserve-apk', name: 'Preserve debug APK', command: 'node', args: ['scripts/preserve-debug-apk.mjs'], requires: ['apk'] },
     { id: 'fdroid', name: 'F-Droid rebuild attempt', command: 'node', args: ['scripts/fdroid-rebuild-report.mjs'], requires: ['sync'] }
   ]
 };
