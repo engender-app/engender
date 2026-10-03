@@ -559,9 +559,13 @@ try {
      the cache agreeing with each other and nothing to load offline. */
   const kinds = {
     "SQLocal's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
-    'the SQLite WASM the worker loads': shell.paths.some(
-      (path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.wasm')
-    ),
+    /* One copy of each file, under assets/ for the client and its workers
+       alike (vite.config.ts's sharedWasmAssets): two names for one file was
+       the duplicate ticket 13 removed, so two sqlite3 files here is the
+       sqlite.org build and the sqlite3mc one, not the same bytes twice. */
+    'the SQLite WASM the workers load': shell.paths.filter(
+      (path) => path.startsWith('/_app/immutable/assets/') && path.endsWith('.wasm')
+    ).length === 2,
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
     /* The PDF renderer's fonts (phase 8 features ticket 55): the fourteen
        standard faces a document may name without carrying. Without them a
