@@ -225,13 +225,31 @@ try {
       if (message.type() === 'error') console.error('Hosted console error:', message.text());
     });
 
+    const waitFor = async (label, selector, timeout = 30000) => {
+      stage = label;
+      console.log(`Hosted wait: ${label} (${selector}) at ${page.url()}`);
+      await page.waitForSelector(selector, { timeout });
+    };
+    const advanceTo = async (selector) => {
+      for (let step = 0; step < 12 && !(await page.locator(selector).isVisible()); step++) {
+        await waitFor(`setup step ${step + 1}`, '[data-next]');
+        await page.waitForFunction(() => document.querySelectorAll('[data-setup-question]').length === 1);
+        const question = await page.locator('[data-setup-question]').innerText();
+        console.log(`Hosted setup: ${question}`);
+        await page.locator('[data-next]').click();
+        stage = `setup transition after ${question}`;
+        await page.waitForFunction(({ question, selector }) => {
+          const headings = document.querySelectorAll('[data-setup-question]');
+          return document.querySelector(selector) || (headings.length === 1 && headings[0].textContent.trim() !== question);
+        }, { question, selector });
+      }
+      await waitFor(`setup reached ${selector}`, selector, 15000);
+    };
+
     const PASSPHRASE = 'hosting verify passphrase';
     await page.goto(origin, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-next]', { timeout: 60000 });
-    for (let step = 0; step < 12 && !(await page.locator('[data-access-modes]').count()); step++) {
-      await page.locator('[data-next]').click();
-    }
-    await page.waitForSelector('[data-access-modes]', { timeout: 15000 });
+    await waitFor('welcome on cold install', '[data-next]', 60000);
+    await advanceTo('[data-access-modes]');
     stage = 'access mode';
     await page.locator('[data-list-row="passphrase"]').click();
     await page.waitForSelector('[data-access-chosen="passphrase"]');
@@ -240,13 +258,11 @@ try {
     await page.fill('#am-passphrase', PASSPHRASE);
     await page.fill('#am-passphrase-confirm', PASSPHRASE);
     await page.click('[data-access-submit]');
-    await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+    await waitFor('journal created after passphrase', '.app[data-boot="ready"]');
 
     stage = 'finish setup';
-    await page.waitForSelector('[data-next]', { timeout: 60000 });
-    for (let step = 0; step < 12 && (await page.locator('[data-next]').count()); step++) {
-      await page.locator('[data-next]').click();
-    }
+    await waitFor('setup after access mode', '[data-next]', 60000);
+    await advanceTo('[data-finish]');
     await page.locator('[data-finish]').click();
     await page.waitForSelector('[data-home-hello]', { timeout: 15000 });
 
