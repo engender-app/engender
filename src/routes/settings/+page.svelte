@@ -253,7 +253,6 @@
       icon="alert"
       title={m.erase_row()}
       chevron={false}
-      class="settings-erase-row"
       onclick={() => (eraseSheet = true)}
     >
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
@@ -573,12 +572,17 @@
         {m.reset_offer_archive_password()}
       </div>
     </div>
-    <p class="ob-text" data-erase-backup>
-      {backupAge != null ? m.erase_backup_age({ days: m.n_days({ n: backupAge }) }) : m.erase_backup_none()}
-      <a href="/settings/export" onclick={() => (eraseSheet = false)}>{m.erase_backup_first()}</a>
-    </p>
-    <p class="pin-status small" role="alert" data-erase-failed>{eraseError}</p>
-    <div class="stack-3" style="margin-top:var(--space-4)">
+    <ListCard>
+      <ListRow
+        key="erase-backup"
+        icon="download"
+        title={m.erase_backup_first()}
+        subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
+        href="/settings/export"
+      />
+    </ListCard>
+    <p class="erase-status small" role="alert" data-erase-failed>{eraseError}</p>
+    <div class="stack-3">
       <button class="btn btn-danger" data-confirm-reset disabled={erasing} onclick={confirmErase}>
         <span>{erasing ? m.reset_running() : m.reset_confirm()}</span>
       </button>
@@ -734,7 +738,15 @@
   /* The one row on the hub that destroys something says so in its type,
      the way .btn-danger does. The disc keeps its role fill and the ink
      proven on it. */
-  :global(.settings-erase-row .kit-row-title) {
+  :global([data-list-row='erase'] .kit-row-title) {
+    color: var(--danger);
+  }
+
+  /* Room for the one sentence a failed wipe leaves, held whether or not
+     there is one so the buttons under it never move. */
+  .erase-status {
+    min-height: 1.25rem;
+    margin: var(--space-2) 0;
     color: var(--danger);
   }
 
