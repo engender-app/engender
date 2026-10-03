@@ -47,6 +47,12 @@ const OCR_ASSETS = [
   '/tesseract/lang-data/pol.traineddata.gz'
 ];
 
+/* The two built files the shell does not install (phase 14 pre-release ticket
+   13; shell-assets.ts has the reasoning). Named by pattern, as it does,
+   because their names carry a hash. */
+const PDF_WORKER = /^\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
+const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
+
 /** Loads the engine's files the way a first recognition does, then sends the
     ask ocr-engine.ts sends once they are in. Returns what each file measured,
     which is what the offline half is compared against - not the bytes on
@@ -496,6 +502,26 @@ try {
     );
   else fail('loading the engine adds it to the release cache', `${cachedOcr} of ${OCR_ASSETS.length} OCR files cached`);
 
+  /* The PDF renderer's worker, kept out of the install and asked for by the
+     first document opened (pdf.ts). Sent the way pdf.ts sends it. Checked on
+     the fresh `shell` listing from above, so the claim is about what a first
+     visit stores, then again after the ask. */
+  const pdfWorkerInShell = shell.paths.filter((path) => PDF_WORKER.test(path) || UNUSED_WORKER.test(path));
+  if (pdfWorkerInShell.length === 0) ok('a fresh install stores neither the PDF worker nor the unused SQLite promiser worker');
+  else fail('a fresh install stores neither the PDF worker nor the unused SQLite promiser worker', pdfWorkerInShell.join(', '));
+
+  await cold.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    registration?.active?.postMessage('engender:cache-pdf-worker');
+  });
+  let pdfWorkerCached = [];
+  for (let attempt = 0; attempt < 30 && pdfWorkerCached.length === 0; attempt++) {
+    pdfWorkerCached = (await measureCache(cold)).paths.filter((path) => PDF_WORKER.test(path));
+    if (pdfWorkerCached.length === 0) await cold.waitForTimeout(1000);
+  }
+  if (pdfWorkerCached.length === 1) ok('opening a document adds the PDF worker to the release cache');
+  else fail('opening a document adds the PDF worker to the release cache', `${pdfWorkerCached.length} found`);
+
   /* The whole release, file by file, against what is actually in the cache.
      Four files are deliberately outside the shell: the fallback document,
      which is cached under / because that is what a navigation asks for; the
@@ -515,7 +541,10 @@ try {
      silently - which is right, since the whole directory is what ships and
      what a page later asks the worker for. */
   const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
-  const release = releasePaths().filter((path) => !outsideShell.has(path) && !path.startsWith('/tesseract/'));
+  const release = releasePaths().filter(
+    (path) =>
+      !outsideShell.has(path) && !path.startsWith('/tesseract/') && !PDF_WORKER.test(path) && !UNUSED_WORKER.test(path)
+  );
   const missing = release.filter((path) => !shell.paths.includes(path));
   if (missing.length === 0 && shell.paths.includes('/'))
     ok(`the precached shell holds the fallback document and all ${release.length} other files of the release`);
@@ -530,19 +559,20 @@ try {
      the cache agreeing with each other and nothing to load offline. */
   const kinds = {
     "SQLocal's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
-    'the SQLite WASM the worker loads': shell.paths.some(
-      (path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.wasm')
-    ),
+    /* One copy of each file, under assets/ for the client and its workers
+       alike (vite.config.ts's sharedWasmAssets): two names for one file was
+       the duplicate ticket 13 removed, so two sqlite3 files here is the
+       sqlite.org build and the sqlite3mc one, not the same bytes twice. */
+    'the SQLite WASM the workers load': shell.paths.filter(
+      (path) => path.startsWith('/_app/immutable/assets/') && path.endsWith('.wasm')
+    ).length === 2,
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
-    /* The PDF renderer, both halves (phase 8 features ticket 55). Its
-       worker only reaches the shell through the emitted-client-assets
-       plugin, since Vite's worker pipeline is invisible to SvelteKit's own
-       manifest - the same reason SQLocal's worker is named above. The
-       fonts are the fourteen standard faces a document may name without
-       carrying: without them a page of an opened document draws blank,
-       and it would draw blank exactly when there is no network, which is
-       when this store matters most (ADR-0065). */
-    "the PDF renderer's worker": shell.paths.some((path) => /\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/.test(path)),
+    /* The PDF renderer's fonts (phase 8 features ticket 55): the fourteen
+       standard faces a document may name without carrying. Without them a
+       page of an opened document draws blank, and it would draw blank
+       exactly when there is no network, which is when this store matters
+       most (ADR-0065). Its worker is not here any more: the first document
+       opened asks for it, and the block after the OCR check proves that. */
     'every standard PDF font': readdirSync(new URL('../../static/pdf-fonts/', import.meta.url)).every((font) =>
       shell.paths.includes(`/pdf-fonts/${font}`)
     ),
@@ -728,6 +758,14 @@ try {
       'with the network gone the standard PDF faces still load whole from the shell',
       shortFonts.map((asset) => `${asset}: ${offlineFonts[asset]} bytes`).join(', ')
     );
+
+  /* And the worker the ask above stored, from an origin that is gone. */
+  const offlinePdfWorker = await deep.evaluate(async (path) => {
+    const response = await fetch(path).catch(() => null);
+    return response && response.ok ? (await response.blob()).size : 0;
+  }, pdfWorkerCached[0]);
+  if (offlinePdfWorker > 0) ok('with the network gone the PDF worker, once asked for, still loads from the shell');
+  else fail('with the network gone the PDF worker, once asked for, still loads from the shell', `${offlinePdfWorker} bytes`);
 
   const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);
   if (offOrigin.length === 0 && offlineRequests.length > 0)
