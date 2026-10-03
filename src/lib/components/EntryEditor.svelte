@@ -18,8 +18,8 @@
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  import { sourceReturnTo } from '$lib/navigation/sourceRecord';
-  import { smartBack } from '$lib/navigation/smart-back';
+  import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
+  import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
@@ -785,22 +785,20 @@
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
 
-  /* Back to the list the entry was opened from (Calendar, Search, a day,
-     On this day), with the list as it was left. An opened entry has a
-     screen behind it in the app's own history; a new one has none worth
-     returning to except the ones that name it (`returnTo`). */
-  function goBackToSource() {
-    const returnTo = sourceReturnTo(page.url);
-    if (returnTo) smartBack(returnTo);
-    else if (entryId != null) smartBack('/');
-    else void goto('/');
+  /* Where saving or deleting goes: the list the entry was opened from
+     (`from`) or the source record that sent it here (`returnTo`), through
+     the app's own history so that list comes back as it was left; anything
+     else replaces the editor with the destination saving chose, so Back
+     does not bounce into it. */
+  async function leave() {
+    const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
+    if (target) await smartBackSettled(target);
+    else await replaceRoute(savedDestination);
   }
 
   async function leaveSavedEntry() {
     try {
-      const returnTo = sourceReturnTo(page.url);
-      if (returnTo || entryId != null) goBackToSource();
-      else await goto(savedDestination);
+      await leave();
       return true;
     } catch (error) {
       console.error('could not navigate after saving the entry', error);
@@ -848,7 +846,7 @@
       settle();
     }
     draftStore.clear();
-    savedDestination = sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+    savedDestination = listReturnTo(page.url) ?? sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
     recovery.destination = savedDestination;
     if (destroyed) return;
     if (!await leaveSavedEntry()) return;
@@ -862,7 +860,7 @@
   async function confirmDelete() {
     deleteOpen = false;
     if (!existing) {
-      goBackToSource();
+      await leave();
       return;
     }
     const id = existing.id;
@@ -873,10 +871,13 @@
       toast(m.entry_delete_failed());
       return;
     }
-    goBackToSource();
+    try {
+      await leave();
+    } catch (error) {
+      console.error('could not leave the editor after deleting the entry', error);
+    }
     toast(m.entry_trashed_toast(), {
       kind: 'trashed',
-      duration: 6000,
       actionLabel: m.trash_restore(),
       onAction: async () => {
         try {

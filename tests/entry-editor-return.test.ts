@@ -36,8 +36,17 @@ describe('entry editor Save, date and delete', () => {
     expect(body).not.toContain("goto('/')");
   });
 
-  it('returns an opened entry to where it came from on save and delete', () => {
-    const body = editor.slice(editor.indexOf('function goBackToSource'), editor.indexOf('async function saveEntry'));
-    expect(body).toContain("smartBack('/')");
+  it('leaves through one function: the list it came from, else the place saving chose', () => {
+    const body = editor.slice(editor.indexOf('async function leave()'), editor.indexOf('async function saveEntry'));
+    expect(body).toContain('listReturnTo(page.url)');
+    expect(body).toContain('smartBackSettled(target)');
+    expect(body).toContain('replaceRoute(savedDestination)');
+    expect(editor).not.toContain('goBackToSource');
+  });
+
+  it('opens an entry with its list named, from every list that shows entries', () => {
+    for (const file of ['src/lib/components/kit/DayEntry.svelte', 'src/lib/components/EntryCard.svelte']) {
+      expect(readFileSync(root + file, 'utf8')).toContain('withListReturn(');
+    }
   });
 });
