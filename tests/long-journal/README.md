@@ -2,8 +2,11 @@
 
 `npm run benchmark:long-journal` generates 365-day and 3,653-day journals
 from the same seed and generator. Each fixture starts empty, closes after
-generation, and reopens before measurement. Every timing line reports the
-one-year time, ten-year time, their ratio, and the existing absolute budget.
+generation, and reopens before measurement. Historical offsets shrink with
+shorter spans while decade dates stay unchanged. Recent tracking stays inside
+the fixture bounds; future letter unlock dates can remain in the future.
+Every timing line reports the one-year time, ten-year time, their ratio,
+and the existing absolute budget.
 Both sizes also retain the statement and byte budgets for screen mounts.
 `--record` reports both sizes but only records the ten-year absolute baseline;
 it skips both budget and scaling failures, as it did for budget failures.
@@ -21,10 +24,13 @@ change when selecting or recording this limit.
 
 That first run took 86.7s, including 11.3s and 70s to generate the fixtures.
 The two-size desktop benchmark stays below the roughly two-minute target.
-A scratch copy added 100 arithmetic rounds per entry pair to the existing
-whole-journal stats read. It grew 71.32x and failed the same 20.50x scaling
-gate, as well as its unchanged 200ms absolute budget. The scratch code does
-not ship with the benchmark.
+With historical dates inside the one-year span, a later paired run takes
+70.9s. Bounds and overlap tests verify that the one-year tryout detail reads
+a full page of entries, and decade dates and counts keep their old values.
+A scratch copy adds 100 arithmetic rounds per entry pair to the existing
+whole-journal stats read. It grows 74.64x and fails the same 20.50x scaling
+gate, as well as its unchanged 200ms absolute budget, in a 73.3s run. The
+scratch code does not ship with the benchmark.
 
 Android uses the same generator, measurements, and scaling policy. Its
 instrumentation consumer logs both times beside native budgets, checks
