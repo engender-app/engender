@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { CACHE_PDF_WORKER } from './pdf-worker-cache';
 import { CACHE_ON_DEMAND, SKIP_WAITING, listenForOnDemandCache, listenForSkipWaiting } from './sw-messages';
 
 /** A scope that records what was registered and can be sent a message. The
@@ -96,5 +97,27 @@ describe('listenForOnDemandCache', () => {
     sw.send(CACHE_ON_DEMAND);
     await expect(Promise.all(sw.held)).resolves.toBeDefined();
     expect(caches.open).toHaveBeenCalledTimes(1);
+  });
+
+  test('the PDF worker has an ask of its own, and neither ask fills the other set', async () => {
+    const sw = fakeScope();
+    const caches = fakeCaches();
+    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/tesseract/worker.min.js'] });
+    listenForOnDemandCache(sw, caches, {
+      cacheName: 'engender-shell-abc',
+      assets: ['/_app/immutable/workers/pdf-worker-X.js'],
+      message: CACHE_PDF_WORKER
+    });
+
+    sw.send(CACHE_PDF_WORKER);
+    await Promise.all(sw.held);
+    expect(caches.added['engender-shell-abc']).toEqual(['/_app/immutable/workers/pdf-worker-X.js']);
+
+    sw.send(CACHE_ON_DEMAND);
+    await Promise.all(sw.held);
+    expect(caches.added['engender-shell-abc']).toEqual([
+      '/_app/immutable/workers/pdf-worker-X.js',
+      '/tesseract/worker.min.js'
+    ]);
   });
 });

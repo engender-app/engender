@@ -52,6 +52,41 @@ function writeEmittedClientAssets() {
   };
 }
 
+/* One copy of each WASM file in the build (phase 14 pre-release ticket 13).
+
+   SvelteKit names an asset `assets/[name].[hash][ext]` in the client bundle
+   and `workers/assets/[name]-[hash][ext]` in the worker bundle, so a file
+   both import - sqlite3.wasm, once for SQLocal's client and once for its
+   worker - was written, precached and stored twice under two names with the
+   same bytes (0.4 MB brotli each). Giving the worker bundle the client's
+   pattern makes the two emit the same path with the same content, which
+   Rollup writes once.
+
+   Only the `.wasm` extension is moved. Everything else a worker emits keeps
+   SvelteKit's own directory, so this changes nothing but the duplicate. */
+function sharedWasmAssets() {
+  return {
+    name: 'engender:shared-wasm-assets',
+    // After sveltekit(), whose config hook sets the pattern this replaces.
+    config() {
+      return {
+        worker: {
+          rollupOptions: {
+            output: {
+              assetFileNames: (asset: { names?: string[]; name?: string }) => {
+                const name = asset.names?.[0] ?? asset.name ?? '';
+                return name.endsWith('.wasm')
+                  ? '_app/immutable/assets/[name].[hash][extname]'
+                  : '_app/immutable/workers/assets/[name]-[hash][extname]';
+              }
+            }
+          }
+        }
+      };
+    }
+  };
+}
+
 /* The syntax floor, taken from the number the Android shell refuses to run
    below rather than written down twice.
 
@@ -106,6 +141,7 @@ export default defineConfig(({ command }) => ({
     // Cross-Origin-Embedder-Policy: require-corp and
     // Cross-Origin-Opener-Policy: same-origin itself.
     sqlocal(),
+    sharedWasmAssets(),
     writeEmittedClientAssets(),
     // `vite preview` is what the walkthrough suite serves the built app
     // from, and it got neither header. Without them this Chromium has no
