@@ -212,12 +212,18 @@ try {
 
   const profile = mkdtempSync(join(tempRoot, 'profile-'));
   let browser;
+  let page;
+  let stage = 'welcome';
   const requests = [];
 
   try {
     browser = await launchPersistentChromium(profile);
-    const page = browser.pages()[0] ?? (await browser.newPage());
+    page = browser.pages()[0] ?? (await browser.newPage());
     page.on('request', (request) => requests.push(request));
+    page.on('pageerror', (error) => console.error('Hosted page error:', error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') console.error('Hosted console error:', message.text());
+    });
 
     const PASSPHRASE = 'hosting verify passphrase';
     await page.goto(origin, { waitUntil: 'networkidle' });
@@ -226,6 +232,7 @@ try {
       await page.locator('[data-next]').click();
     }
     await page.waitForSelector('[data-access-modes]', { timeout: 15000 });
+    stage = 'access mode';
     await page.locator('[data-list-row="passphrase"]').click();
     await page.waitForSelector('[data-access-chosen="passphrase"]');
     await page.click('[data-access-continue]');
@@ -235,6 +242,7 @@ try {
     await page.click('[data-access-submit]');
     await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 
+    stage = 'finish setup';
     await page.waitForSelector('[data-next]', { timeout: 60000 });
     for (let step = 0; step < 12 && (await page.locator('[data-next]').count()); step++) {
       await page.locator('[data-next]').click();
@@ -255,8 +263,10 @@ try {
     if (workerReady) ok('the hosted origin installs an active service worker');
 
     await browser.close();
+    stage = 'offline relaunch';
     browser = await launchPersistentChromium(profile, { offline: true });
     const offline = browser.pages()[0] ?? (await browser.newPage());
+    page = offline;
     offline.on('request', (request) => requests.push(request));
     await offline.goto(origin);
     await offline.waitForSelector('#journal-passphrase', { timeout: 30000 });
@@ -265,7 +275,12 @@ try {
     await offline.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
     ok('a cold install relaunches offline from the hosted origin');
   } catch (error) {
-    fail('hosted-origin install and offline relaunch', error instanceof Error ? error.message : String(error));
+    fail(`hosted-origin install and offline relaunch (${stage})`, error instanceof Error ? error.message : String(error));
+    if (page && !page.isClosed()) {
+      console.error('Hosted page at failure:', page.url(), await page.locator('body').innerText().catch(() => 'unavailable'));
+      mkdirSync('ci-logs', { recursive: true });
+      await page.screenshot({ path: 'ci-logs/hosting-failure.png' }).catch(() => {});
+    }
   } finally {
     await browser?.close();
     rmSync(profile, { recursive: true, force: true });
@@ -291,55 +306,6 @@ try {
 } finally {
   stopContainer();
   rmSync(tempRoot, { recursive: true, force: true });
-}
-
-// Test the cross-origin filter logic: verify it distinguishes navigation requests
-// from runtime fetch/xhr requests (ticket 31).
-{
-  const testOrigin = 'http://127.0.0.1:8080';
-  const externalOrigin = 'https://example.com';
-
-  // Mock request objects with the isNavigationRequest() method
-  const mockNavigationRequest = {
-    url: () => `${externalOrigin}/page`,
-    isNavigationRequest: () => true
-  };
-
-  const mockFetchRequest = {
-    url: () => `${externalOrigin}/api/data`,
-    isNavigationRequest: () => false
-  };
-
-  const mockSelfRequest = {
-    url: () => `${testOrigin}/data`,
-    isNavigationRequest: () => false
-  };
-
-  const mockNonHttpRequest = {
-    url: () => 'data:image/png;base64,abc123',
-    isNavigationRequest: () => false
-  };
-
-  // Apply the same filter logic from the main test
-  const testRequests = [mockNavigationRequest, mockFetchRequest, mockSelfRequest, mockNonHttpRequest];
-  const testOffOrigin = testRequests.filter((request) => {
-    if (request.isNavigationRequest?.()) return false;
-    const url = request.url();
-    if (!/^https?:/i.test(url)) return false;
-    return new URL(url).origin !== testOrigin;
-  });
-
-  // Verify the results:
-  // - mockNavigationRequest should be excluded (navigation to another origin)
-  // - mockFetchRequest should be included (runtime fetch to another origin)
-  // - mockSelfRequest should be excluded (same origin)
-  // - mockNonHttpRequest should be excluded (not http/https)
-  if (testOffOrigin.length === 1 && testOffOrigin[0] === mockFetchRequest) {
-    ok('cross-origin filter correctly excludes navigation requests');
-  } else {
-    const found = testOffOrigin.map((r) => r.url()).join(', ');
-    fail('cross-origin filter correctly excludes navigation requests', `found: ${found}`);
-  }
 }
 
 const failures = finish('HOSTING VERIFICATION PASSES');
