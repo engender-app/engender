@@ -20,6 +20,7 @@
     "verify:build": "node scripts/prepare-vendor-assets.mjs && npm run build && node tests/browser-tier/verify-build.mjs",
     "verify:hosting": "node tests/hosting/run.mjs",
     "render:mark": "node scripts/render-mark.mjs",
+    "render:splash": "node scripts/render-splash.mjs",
     "gallery:kit": "node tests/kit-gallery.mjs",
     "gallery:controls": "node tests/controls-gallery.mjs",
     "gallery:icons": "node tests/icon-gallery.mjs",

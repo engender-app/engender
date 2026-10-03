@@ -1,8 +1,35 @@
 import { dev } from '$app/environment';
 import { base } from '$app/paths';
+import { whenIdle } from '$lib/idle';
 import { isAndroid } from '$lib/platform';
 import { SHELL_CACHE_PREFIX } from './shell-assets';
 import { watchForUpdates } from './update';
+
+let scheduled = false;
+
+/** Registers the worker once boot has reached `ready` or `needs-setup`, and
+    then only when the browser is idle (phase 14 pre-release ticket 13).
+
+    Registered from the layout's first effect, the worker began precaching
+    about 680 files at the moment of first paint, in the same seconds the
+    journal worker was downloading its own SQLite WASM and the first screen
+    was being built, and the two competed for one connection.
+
+    `ready` is a journal open and unlocked, `needs-setup` a first run with a
+    journal to create (boot-state.ts). The others do not count: `booting` has
+    not answered, `needs-unlock`, `needs-authentication` and
+    `needs-device-recovery` are gates a returning person is still standing at
+    (they register after unlocking, when the status becomes `ready`), and
+    `converting`, `conversion-refused`, `schema-too-new` and `error` are
+    states where the offline shell is not what anyone is waiting for.
+
+    Once: the status changes again at every unlock, and each registration
+    would add another update watcher. */
+export function registerServiceWorkerAfterBoot(status: string): void {
+  if (scheduled || (status !== 'ready' && status !== 'needs-setup')) return;
+  scheduled = true;
+  whenIdle(registerServiceWorker);
+}
 
 /** Installs the offline shell (phase 2 ticket 03), which is also what makes
     the app installable: without a worker Chromium offers no install prompt.

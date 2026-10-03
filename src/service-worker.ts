@@ -7,8 +7,10 @@
 
    One directory in static/ is not that, and joins the cache later or never:
    the lab scanner's OCR engine, which shell-assets.ts holds the reasoning and
-   the split for. A page that has loaded it asks for it, and both asks a page
-   can make are in lib/pwa/sw-messages.ts.
+   the split for. A page that has loaded it asks for it, and so does a page
+   that has opened a document, for the PDF renderer's worker, which is the
+   other file kept out of the install. The asks a page can make are in
+   lib/pwa/sw-messages.ts.
 
    This worker still never decides for itself when to take over (phase 2
    ticket 04, which owns that decision): a new release installs quietly and
@@ -25,6 +27,7 @@
 import { base, build, files, version } from '$service-worker';
 import { emittedClientAssets } from './lib/pwa/emitted-client-assets.generated';
 import { SHELL_CACHE_PREFIX, splitShellAssets } from './lib/pwa/shell-assets';
+import { CACHE_PDF_WORKER } from './lib/pwa/pdf-worker-cache';
 import { listenForOnDemandCache, listenForSkipWaiting } from './lib/pwa/sw-messages';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
@@ -41,13 +44,14 @@ const SHELL = `${base}/`;
    derived from Vite's manifest, which omits everything Vite's worker pipeline
    emits; both are here because `build` keeps working if the app directory is
    ever renamed out from under that plugin's filter. */
-const { shell: PRECACHE, onDemand: ON_DEMAND } = splitShellAssets(
+const { shell: PRECACHE, onDemand: ON_DEMAND, pdfWorker: PDF_WORKER } = splitShellAssets(
   [...new Set([...build, ...emittedClientAssets.map((asset) => base + asset), ...files])],
   base
 );
 
 listenForSkipWaiting(sw);
 listenForOnDemandCache(sw, caches, { cacheName: CACHE, assets: ON_DEMAND });
+listenForOnDemandCache(sw, caches, { cacheName: CACHE, assets: PDF_WORKER, message: CACHE_PDF_WORKER });
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(
