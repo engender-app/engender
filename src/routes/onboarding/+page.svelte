@@ -752,7 +752,7 @@
                  pitch is the one exception in the flow and it sits in this
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
-              {#if erasedOnEntry}<p class="setup-line" role="status" data-erased-result>{m.reset_done()}</p>{/if}
+              {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result>{m.reset_done()}</p>{/if}
               <p class="setup-def">{m.ob_welcome_def()}</p>
               <p class="setup-line is-pitch">{m.ob_welcome_body()}</p>
             {:else if line}
@@ -1391,6 +1391,13 @@
      the same voice. */
   .setup-def {
     font-style: italic;
+  }
+  /* What a wipe from Settings left behind (phase 14 ticket 15): a result
+     rather than a description, so it reads in the text colour above the
+     welcome's own muted lines. */
+  .setup-line.is-result {
+    margin-top: 0;
+    color: var(--text);
   }
   .setup-line.is-pitch {
     font-weight: var(--weight-regular);
