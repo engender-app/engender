@@ -31,6 +31,9 @@ jobs:
     # The protected environment. The Android signing credentials belong here,
     # and this is the only job that will ever be able to read them.
     environment: release
+    # Secrets cannot appear directly in step conditions; expose only presence.
+    env:
+      PLAY_UPLOAD_ENABLED: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     permissions:
       contents: write
     steps:
@@ -117,26 +120,7 @@ jobs:
       - name: Build, package, and check what came out
         run: node scripts/package-release.mjs
 
-      # Pinned to a commit SHA, not a tag: this is a third-party action that
-      # already runs with the Play service-account JSON, and a tag can move
-      # under us between one release and the next. First-party actions/*
-      # steps above stay on their major-version tag - GitHub controls those,
-      # so the extra pin buys nothing over the account boundary itself.
-      - name: Upload App Bundle to Google Play internal
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: dev.engender.app
-          releaseFiles: dist/release/engender-android-release-${{ steps.version.outputs.value }}.aab
-          track: internal
-          status: completed
-
-      # Android artifacts join the release here: a job holding the
-      # signing key builds the APK and the App Bundle in this same protected
-      # environment, and puts them in dist/release/ before the step above runs.
-      # The checksums cover everything in that directory and the publish step
-      # attaches all of it, so neither needs changing for them.
-
+      # Publish all signed artifacts and checksums before contacting Play.
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -151,3 +135,22 @@ jobs:
             --title "engender ${{ steps.version.outputs.value }}" \
             --notes-file dist/release-body.md \
             dist/release/*
+
+      # Pinned to a commit SHA, not a tag: this is a third-party action that
+      # already runs with the Play service-account JSON, and a tag can move
+      # under us between one release and the next. First-party actions/*
+      # steps above stay on their major-version tag - GitHub controls those,
+      # so the extra pin buys nothing over the account boundary itself.
+      # First upload the AAB manually in Play Console. Keep drafts until the
+      # account accepts automatic releases; then change status to completed.
+      # Play failure leaves the published GitHub Release and job successful.
+      - name: Upload App Bundle to Google Play internal
+        if: env.PLAY_UPLOAD_ENABLED == 'true'
+        continue-on-error: true
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.engender.app
+          releaseFiles: dist/release/engender-android-release-${{ steps.version.outputs.value }}.aab
+          track: internal
+          status: draft
