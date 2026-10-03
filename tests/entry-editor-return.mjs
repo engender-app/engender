@@ -90,8 +90,8 @@ try {
       for (const target of ['/entry/new/today', 'existing']) {
         if (target === 'existing') {
           await go(page, '/day/today');
-          await page.waitForSelector('a[href^="/entry/"]');
-          await page.locator('a[href^="/entry/"]').first().click();
+          await page.waitForSelector('a[href^="/entry/"]:not([href*="/new"])');
+          await page.locator('a[href^="/entry/"]:not([href*="/new"])').first().click();
         } else {
           await go(page, target);
         }
@@ -127,8 +127,8 @@ try {
       name: 'Calendar',
       path: '/calendar',
       open: async () => {
-        await page.waitForSelector('a[href^="/entry/"]');
-        await page.locator('a[href^="/entry/"]').first().click();
+        await page.waitForSelector('a[href^="/entry/"]:not([href*="/new"])');
+        await page.locator('a[href^="/entry/"]:not([href*="/new"])').first().click();
       },
       back: () => page.url().endsWith('/calendar') || page.url().includes('/calendar?')
     },
@@ -136,8 +136,8 @@ try {
       name: 'Day',
       path: '/day/today',
       open: async () => {
-        await page.waitForSelector('a[href^="/entry/"]');
-        await page.locator('a[href^="/entry/"]').first().click();
+        await page.waitForSelector('a[href^="/entry/"]:not([href*="/new"])');
+        await page.locator('a[href^="/entry/"]:not([href*="/new"])').first().click();
       },
       back: () => /\/day\/(today|\d+)$/.test(new URL(page.url()).pathname)
     },
@@ -146,8 +146,8 @@ try {
       path: '/search',
       open: async () => {
         await page.fill('input[type="search"], [data-search-input], input[name="q"]', 'the');
-        await page.waitForSelector('a[href^="/entry/"]', { timeout: 10000 });
-        await page.locator('a[href^="/entry/"]').first().click();
+        await page.waitForSelector('a[href^="/entry/"]:not([href*="/new"])', { timeout: 10000 });
+        await page.locator('a[href^="/entry/"]:not([href*="/new"])').first().click();
       },
       back: () => new URL(page.url()).pathname === '/search',
       after: async () => {
@@ -197,8 +197,8 @@ try {
     await page.goto(`${base}/`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-home-hello]');
     await go(page, '/day/today');
-    await page.waitForSelector('a[href^="/entry/"]');
-    await page.locator('a[href^="/entry/"]').first().click();
+    await page.waitForSelector('a[href^="/entry/"]:not([href*="/new"])');
+    await page.locator('a[href^="/entry/"]:not([href*="/new"])').first().click();
     await page.waitForSelector('[data-save]');
     await page.waitForTimeout(500);
     /* The delete is one statement through the SQLite worker: make the
