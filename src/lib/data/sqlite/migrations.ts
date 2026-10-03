@@ -174,6 +174,60 @@ const SCHEMA_V84 = `
 ALTER TABLE procedure ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
 `;
 
+/* v85: production connections previously left foreign keys disabled.
+   Remove dangling rows before enforcement starts. Parents come before their
+   children so cleanup also removes rows orphaned by this step. Files stay
+   on disk until the boot orphan sweep can reclaim them. */
+const SCHEMA_V85 = `
+DELETE FROM entry
+WHERE presentation_id IS NOT NULL AND presentation_id NOT IN (SELECT uuid FROM presentation);
+DELETE FROM milestone
+WHERE (procedure_id IS NOT NULL AND procedure_id NOT IN (SELECT uuid FROM procedure))
+   OR (tryout_id IS NOT NULL AND tryout_id NOT IN (SELECT uuid FROM tryout));
+DELETE FROM tag WHERE group_id NOT IN (SELECT id FROM tag_group);
+DELETE FROM dose_schedule WHERE episode_id NOT IN (SELECT id FROM regimen_episode);
+DELETE FROM checklist
+WHERE debrief_entry_id IS NOT NULL AND debrief_entry_id NOT IN (SELECT id FROM entry);
+
+DELETE FROM photo
+WHERE (entry_id IS NOT NULL AND entry_id NOT IN (SELECT id FROM entry))
+   OR (milestone_id IS NOT NULL AND milestone_id NOT IN (SELECT id FROM milestone));
+DELETE FROM voice_recording WHERE entry_id NOT IN (SELECT id FROM entry);
+DELETE FROM video_note WHERE entry_id NOT IN (SELECT id FROM entry);
+DELETE FROM margin_note WHERE entry_id NOT IN (SELECT id FROM entry);
+DELETE FROM entry_body_region WHERE entry_id NOT IN (SELECT id FROM entry);
+DELETE FROM entry_dimension_value
+WHERE entry_id NOT IN (SELECT id FROM entry)
+   OR dimension_id NOT IN (SELECT id FROM gender_dimension);
+DELETE FROM preset_dimension
+WHERE preset_id NOT IN (SELECT id FROM gender_preset)
+   OR dimension_id NOT IN (SELECT id FROM gender_dimension);
+DELETE FROM entry_tag
+WHERE entry_id NOT IN (SELECT id FROM entry) OR tag_id NOT IN (SELECT id FROM tag);
+DELETE FROM entry_template_tag
+WHERE template_id NOT IN (SELECT id FROM entry_template) OR tag_id NOT IN (SELECT id FROM tag);
+DELETE FROM entry_template_dimension_value
+WHERE template_id NOT IN (SELECT id FROM entry_template)
+   OR dimension_id NOT IN (SELECT id FROM gender_dimension);
+DELETE FROM dose_pause WHERE episode_id NOT IN (SELECT id FROM regimen_episode);
+DELETE FROM dose_schedule_weekday WHERE schedule_id NOT IN (SELECT id FROM dose_schedule);
+DELETE FROM dose_schedule_dose_amount WHERE schedule_id NOT IN (SELECT id FROM dose_schedule);
+DELETE FROM hair_removal_photo WHERE session_id NOT IN (SELECT id FROM hair_removal_session);
+DELETE FROM personal_effect_type
+WHERE category_key IS NOT NULL AND category_key NOT IN (SELECT key FROM effect_category);
+DELETE FROM tryout_photo WHERE tryout_id NOT IN (SELECT id FROM tryout);
+DELETE FROM felt_sense
+WHERE (tryout_id IS NOT NULL AND tryout_id NOT IN (SELECT id FROM tryout))
+   OR (milestone_id IS NOT NULL AND milestone_id NOT IN (SELECT id FROM milestone));
+DELETE FROM procedure_photo WHERE procedure_id NOT IN (SELECT id FROM procedure);
+DELETE FROM appointment
+WHERE procedure_id IS NOT NULL AND procedure_id NOT IN (SELECT id FROM procedure);
+DELETE FROM checklist_item WHERE checklist_id NOT IN (SELECT id FROM checklist);
+DELETE FROM doubt_snapshot_entry WHERE snapshot_id NOT IN (SELECT id FROM doubt_snapshot);
+DELETE FROM revisit WHERE entry_id NOT IN (SELECT uuid FROM entry);
+DELETE FROM taper WHERE procedure_id NOT IN (SELECT id FROM procedure);
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA },
   { version: 79, sql: SCHEMA_V79 },
@@ -181,5 +235,6 @@ export const migrations: Migration[] = [
   { version: 81, sql: SCHEMA_V81 },
   { version: 82, sql: SCHEMA_V82 },
   { version: 83, sql: SCHEMA_V83 },
-  { version: 84, sql: SCHEMA_V84 }
+  { version: 84, sql: SCHEMA_V84 },
+  { version: 85, sql: SCHEMA_V85 }
 ];
