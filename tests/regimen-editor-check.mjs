@@ -278,6 +278,7 @@ try {
   await page.waitForURL((url) => url.pathname === '/care/doses');
   await navigate('/care/regimen');
   {
+    await page.waitForURL((url) => url.pathname === '/care/regimen');
     await open();
     await page.locator('#regimen-dose').fill('14');
     await page.locator('[data-close-regimen]').click();
