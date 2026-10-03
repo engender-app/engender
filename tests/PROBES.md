@@ -85,6 +85,7 @@ shards in CI (`--shard 1/2` and `--shard 2/2`); local npm scripts run the whole 
 | `time-picker-check` (`--themes light --gate`) (pickers ticket 02) | the time picker opens on the stored time, steps by arrow, brings a tapped row to the band, rests a flick on a whole row, turns both drums to a typed time, refuses a time that is not one, commits on Use time, leaves the value on Escape and gives focus back, offers Clear only on an optional field, and a downward swipe on a drum at 00 does not move the sheet; no drum moves its whole five-row window in one frame and the surface never arrives or leaves in one; `--out <dir>` keeps the frames for a flipbook |
 | `sheet-focus-check` | a sheet takes focus and gives it back, on appointment, lab and dose screens |
 | `no-auto-keyboard` | no screen, the new-entry editor and search included, arrives with a text field focused, so a phone never opens with the keyboard up |
+| `dose-editor-copy-check` | dose editor labels and field order in English and Polish, without duplicate prompts |
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
 | `sheet-handoff-scroll-check` | a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close |
 | `sheet-touch-drag-check` | a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies) |
@@ -113,7 +114,6 @@ shards in CI (`--shard 1/2` and `--shard 2/2`); local npm scripts run the whole 
 | `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today |
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
-| `dose-editor-copy-check` | dose editor labels and field order in English and Polish, without duplicate prompts |
 
 ### Written as a guard, not in CI yet
 

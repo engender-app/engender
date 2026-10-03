@@ -39,6 +39,9 @@ describe('guard roster', () => {
       expect(files).toContain(`${guard.name}.mjs`);
       expect(guard.build === undefined || guard.build === 'production').toBe(true);
     }
+    const production = roster.findIndex((guard: { build?: string }) => guard.build === 'production');
+    expect(production).toBeGreaterThanOrEqual(0);
+    expect(roster.slice(production).every((guard: { build?: string }) => guard.build === 'production')).toBe(true);
     expect(read('package.json')).not.toMatch(/node tests\/(?:leave-lock-check|date-picker-check)\.mjs/);
     expect(read('.github/workflows/ci.yml')).toContain('node tests/run-guards.mjs --tier');
   });
