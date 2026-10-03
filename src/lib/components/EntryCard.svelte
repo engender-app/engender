@@ -1,5 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
+  import { page } from '$app/state';
+  import { withListReturn } from '$lib/navigation/sourceRecord';
   import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
   import Icon from './Icon.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -41,7 +43,7 @@
 <a
   class="entry-card"
   data-entry-card
-  href="/entry/{entry.id}"
+  href={withListReturn(`/entry/${entry.id}`, page.url)}
   onclick={(event) => { if (opensHere(event)) openEntryContainer(String(entry.id)); }}
 >
   <div class="entry-card-bg" style:view-transition-name={entryContainerName(String(entry.id))}></div>

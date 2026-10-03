@@ -57,6 +57,8 @@
   import Icon from '../Icon.svelte';
   import MoodFace from '../MoodFace.svelte';
   import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
+  import { page } from '$app/state';
+  import { withListReturn } from '$lib/navigation/sourceRecord';
   import type { EntryPresentationLabel } from '$lib/data/vocabulary/entryPresentation';
 
   let {
@@ -146,7 +148,7 @@
     class="kit-entry"
     data-entry-card={key}
     data-no-press
-    {href}
+    href={withListReturn(href, page.url)}
     onclick={(event) => { if (key && opensHere(event)) openEntryContainer(key); }}
   >
     <span class="kit-entry-bg" style:view-transition-name={entryContainerName(key)}></span>

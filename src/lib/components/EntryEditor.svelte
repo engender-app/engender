@@ -18,8 +18,8 @@
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  import { sourceReturnTo } from '$lib/navigation/sourceRecord';
-  import { smartBack } from '$lib/navigation/smart-back';
+  import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
+  import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
@@ -785,11 +785,20 @@
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
 
+  /* Where saving or deleting goes: the list the entry was opened from
+     (`from`) or the source record that sent it here (`returnTo`), through
+     the app's own history so that list comes back as it was left; anything
+     else replaces the editor with the destination saving chose, so Back
+     does not bounce into it. */
+  async function leave() {
+    const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
+    if (target) await smartBackSettled(target);
+    else await replaceRoute(savedDestination);
+  }
+
   async function leaveSavedEntry() {
     try {
-      const returnTo = sourceReturnTo(page.url);
-      if (returnTo) smartBack(returnTo);
-      else await goto(savedDestination);
+      await leave();
       return true;
     } catch (error) {
       console.error('could not navigate after saving the entry', error);
@@ -837,7 +846,7 @@
       settle();
     }
     draftStore.clear();
-    savedDestination = sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+    savedDestination = listReturnTo(page.url) ?? sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
     recovery.destination = savedDestination;
     if (destroyed) return;
     if (!await leaveSavedEntry()) return;
@@ -850,8 +859,36 @@
 
   async function confirmDelete() {
     deleteOpen = false;
-    if (existing) await journal.entries.deleteEntry(existing.id);
-    goto('/');
+    if (!existing) {
+      await leave();
+      return;
+    }
+    const id = existing.id;
+    try {
+      await journal.entries.deleteEntry(id);
+    } catch (error) {
+      console.error('could not delete the entry', error);
+      toast(m.entry_delete_failed());
+      return;
+    }
+    try {
+      await leave();
+    } catch (error) {
+      console.error('could not leave the editor after deleting the entry', error);
+    }
+    toast(m.entry_trashed_toast(), {
+      kind: 'trashed',
+      actionLabel: m.trash_restore(),
+      onAction: async () => {
+        try {
+          await journal.entries.restoreEntry(id);
+          toast(m.trash_restored_toast(), { kind: 'saved' });
+        } catch (error) {
+          console.error('could not restore the entry', error);
+          toast(m.entry_restore_failed());
+        }
+      }
+    });
   }
 </script>
 
@@ -1453,8 +1490,12 @@
         disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
         onclick={saveEntry}
       >
-        <span role="status">{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
+      <!-- Outside the button: a live region inside it empties the button's
+           accessible name, so the label is the button's own text and the
+           saving announcement lives here. -->
+      <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
     </div>
   </SaveBar>
   {/if}
@@ -1585,7 +1626,7 @@
     z-index: -1;
     background: var(--bg);
   }
-  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
 
   .editor-save-row {
     display: flex;
