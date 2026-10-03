@@ -64,7 +64,7 @@ async function* onePiece(text: string): AsyncGenerator<Uint8Array> {
 
 const PRODUCERS: Record<ExportPath, (source: ExportSource, watch: PackWatch) => OutgoingFile> = {
   encrypted: (source, watch) => ({
-    fileName: exportFileName(source.preferences.name, ARCHIVE_FILE_EXTENSION),
+    fileName: exportFileName(source.preferences.name, ARCHIVE_FILE_EXTENSION, undefined, source.preferences.disguise),
     type: 'application/octet-stream',
     body: packArchive(
       {
@@ -82,12 +82,12 @@ const PRODUCERS: Record<ExportPath, (source: ExportSource, watch: PackWatch) => 
     )
   }),
   csv: (source) => ({
-    fileName: exportFileName(source.preferences.name, '.csv'),
+    fileName: exportFileName(source.preferences.name, '.csv', undefined, source.preferences.disguise),
     type: 'text/csv',
     body: onePiece(journalCsv(source.snapshot.journal, source.naming))
   }),
   json: (source) => ({
-    fileName: exportFileName(source.preferences.name, '.json'),
+    fileName: exportFileName(source.preferences.name, '.json', undefined, source.preferences.disguise),
     type: 'application/json',
     body: onePiece(journalJson(source.snapshot.journal, portablePreferences(source.preferences)))
   })
