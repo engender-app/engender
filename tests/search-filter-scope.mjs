@@ -36,8 +36,14 @@ async function counts(entries, other) {
   }, entries + other);
   assert.deepEqual(lines.map((line) => line.trim()), [expected], 'one count line, in one format');
   /* And no second count anywhere on the screen: the audit found "Entries:
-     27" on Search and a count per section on a saved question. */
-  const said = (await page.locator('[data-screen]').innerText()).match(/\b\d+ (results?|wynik\w*)/g) ?? [];
+     27" on Search and a count per section on a saved question. The
+     screen-reader status line says the same count and is not seen. */
+  const visible = await page.evaluate(() => {
+    const screen = document.querySelector('[data-screen]');
+    const status = screen.querySelector('[data-search-status]')?.innerText ?? '';
+    return screen.innerText.replace(status, '');
+  });
+  const said = visible.match(/\b\d+ (results?|wynik\w*)/g) ?? [];
   assert.equal(said.length, 1, `counts on screen: ${JSON.stringify(said)}`);
 }
 /* Each sentence about what a filter covers is said once, in the Filters
