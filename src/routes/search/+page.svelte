@@ -607,7 +607,16 @@
     </div>
   {/if}
 
-  <div class="search-answer" aria-live="polite">
+  <!-- What a screen reader is told when an answer lands: the count, or
+       that nothing matched, once per answer. The whole answer area used to
+       be the live region, so every keystroke's pause read out the whole
+       list of results. In the document while empty, because a live region
+       has to exist before its content changes to be announced. -->
+  <p class="visually-hidden" role="status" data-search-status>
+    {hasCriteria && answered && settled ? (foundNothing ? m.no_results() : m.results_count({ count: foundTotal })) : ''}
+  </p>
+
+  <div class="search-answer">
     {#if !hasCriteria || (!answered && !loading)}
       <!-- Nothing asked yet, or asked and not answered yet: the opening
            state stays until there are results to replace it, so the first
