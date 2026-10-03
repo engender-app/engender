@@ -1,0 +1,116 @@
+{
+  "releaseVersion": "1.0.0",
+  "stages": {
+    "stage1": {
+      "passedAt": "",
+      "releaseMatrix": {
+        "ranAt": "",
+        "checks": {
+          "update": false,
+          "migration": false,
+          "encryptionConversion": false,
+          "archiveRoundTrip": false,
+          "scheduledBackup": false,
+          "rollback": false
+        }
+      },
+      "evidence": {
+        "hostedWebBeta": false,
+        "landingSiteLive": false,
+        "truthfulAvailabilityLabels": false
+      }
+    },
+    "stage2": {
+      "passedAt": "",
+      "releaseMatrix": {
+        "ranAt": "",
+        "checks": {
+          "update": false,
+          "migration": false,
+          "encryptionConversion": false,
+          "archiveRoundTrip": false,
+          "scheduledBackup": false,
+          "rollback": false
+        }
+      },
+      "evidence": {
+        "androidApi26": false,
+        "androidCurrent": false,
+        "aggressiveBackgroundDevice": false
+      }
+    },
+    "stage3": {
+      "passedAt": "",
+      "releaseMatrix": {
+        "ranAt": "",
+        "checks": {
+          "update": false,
+          "migration": false,
+          "encryptionConversion": false,
+          "archiveRoundTrip": false,
+          "scheduledBackup": false,
+          "rollback": false
+        }
+      },
+      "evidence": {
+        "playOpenTesting": false,
+        "signedGithubReleaseApk": false
+      }
+    },
+    "stage4": {
+      "passedAt": "",
+      "releaseMatrix": {
+        "ranAt": "",
+        "checks": {
+          "update": false,
+          "migration": false,
+          "encryptionConversion": false,
+          "archiveRoundTrip": false,
+          "scheduledBackup": false,
+          "rollback": false
+        }
+      },
+      "evidence": {
+        "fdroidSubmission": false,
+        "fdroidRebuildPassed": false,
+        "fdroidDependencyCheckPassed": false
+      }
+    },
+    "stable": {
+      "passedAt": "",
+      "releaseMatrix": {
+        "ranAt": "",
+        "checks": {
+          "update": false,
+          "migration": false,
+          "encryptionConversion": false,
+          "archiveRoundTrip": false,
+          "scheduledBackup": false,
+          "rollback": false
+        }
+      },
+      "evidence": {
+        "update": false,
+        "migration": false,
+        "encryptionConversion": false,
+        "archiveRoundTrip": false,
+        "scheduledBackup": false,
+        "rollback": false
+      }
+    }
+  },
+  "channels": {
+    "web": {
+      "state": "label-only"
+    },
+    "play": {
+      "state": "label-only"
+    },
+    "obtainium": {
+      "state": "label-only"
+    },
+    "fdroid": {
+      "state": "label-only"
+    }
+  }
+}
