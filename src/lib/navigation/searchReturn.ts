@@ -1,8 +1,10 @@
-/* What Search was showing when an entry was opened from it, held in memory
-   so that coming back (editor Save, Delete or the back control) finds the
-   same query and filters instead of an empty box. In memory only, never
-   written anywhere: a query is the person's own typing and survives no
-   longer than the tab does. */
+/* What Search was showing when an entry was opened from it, held for the
+   way back (editor Save, Delete or the back control) so the list returns
+   with the same query and filters instead of an empty box.
+
+   Kept in sessionStorage, not in memory: the editor can be reloaded before
+   it is left, and the person's own typing should still be there. It lives
+   no longer than the tab, and reading it spends it. */
 
 export interface SearchSnapshot {
   query: string;
@@ -15,15 +17,26 @@ export interface SearchSnapshot {
   starredOnly: boolean;
 }
 
-let held: SearchSnapshot | null = null;
+export const EMPTY_SEARCH: SearchSnapshot = {
+  query: '', selectedTagIds: [], selectedMoods: [], startDate: '', endDate: '',
+  hasNote: false, hasPhoto: false, starredOnly: false
+};
+
+const KEY = 'engender-search-return';
 
 export function holdSearch(snapshot: SearchSnapshot): void {
-  held = snapshot;
+  try {
+    sessionStorage.setItem(KEY, JSON.stringify(snapshot));
+  } catch { /* no storage: the search comes back empty */ }
 }
 
 /** The held snapshot, once: reading it spends it. */
 export function takeHeldSearch(): SearchSnapshot | null {
-  const taken = held;
-  held = null;
-  return taken;
+  try {
+    const raw = sessionStorage.getItem(KEY);
+    sessionStorage.removeItem(KEY);
+    return raw ? { ...EMPTY_SEARCH, ...JSON.parse(raw) } : null;
+  } catch {
+    return null;
+  }
 }

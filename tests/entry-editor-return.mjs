@@ -158,9 +158,33 @@ try {
     }
   ];
 
-  for (const source of sources) {
-    for (const action of ['save', 'delete']) {
-      await block(`${action} returns to ${source.name}`, action === 'save' ? 1 + (source.after ? 1 : 0) : 3 + (source.after ? 1 : 0), async () => {
+  const entryLink = 'a[href^="/entry/"]:not([href*="/new"])';
+  sources.push(
+    {
+      name: 'On this day',
+      path: '/on-this-day',
+      open: async () => { await page.waitForSelector(entryLink); await page.locator(entryLink).first().click(); },
+      back: () => new URL(page.url()).pathname === '/on-this-day'
+    },
+    {
+      name: 'Good moments',
+      path: '/doubt/evidence',
+      open: async () => { await page.waitForSelector(entryLink); await page.locator(entryLink).first().click(); },
+      back: () => new URL(page.url()).pathname === '/doubt/evidence'
+    }
+  );
+
+  /* A reload of the editor empties the app's own history (depth 0), which is
+     the case a bare history.back cannot answer: the list is in the address. */
+  const runs = sources.flatMap((source) =>
+    ['save', 'delete'].flatMap((action) =>
+      (['Day', 'Search'].includes(source.name) ? [false, true] : [false]).map((reload) => ({ source, action, reload }))
+    )
+  );
+  for (const { source, action, reload } of runs) {
+    {
+      const reloaded = reload ? ' after a reload' : '';
+      await block(`${action} returns to ${source.name}${reloaded}`, action === 'save' ? 1 + (source.after ? 1 : 0) : 3 + (source.after ? 1 : 0), async () => {
         await page.goto(`${base}/`, { waitUntil: 'networkidle' });
         await page.waitForSelector('[data-home-hello]');
         await go(page, source.path);
@@ -168,6 +192,11 @@ try {
         await source.open();
         await page.waitForSelector('[data-save]');
         await page.waitForTimeout(500);
+        if (reload) {
+          await page.reload({ waitUntil: 'networkidle' });
+          await page.waitForSelector('[data-save]');
+          await page.waitForTimeout(500);
+        }
         if (action === 'save') {
           await page.locator('[data-save]').click();
         } else {
@@ -175,8 +204,8 @@ try {
           await page.locator('[data-sheet] .btn-danger, .sheet .btn-danger').first().click();
         }
         await page.waitForTimeout(1200);
-        if (source.back()) ok(`${action} from ${source.name} lands back on ${source.name}`);
-        else fail(`${action} from ${source.name} lands back on ${source.name}`, page.url());
+        if (source.back()) ok(`${action} from ${source.name}${reloaded} lands back on ${source.name}`);
+        else fail(`${action} from ${source.name}${reloaded} lands back on ${source.name}`, page.url());
         if (source.after) await source.after();
         if (action === 'delete') {
           const toast = page.locator('[data-toast-kind="trashed"]');
