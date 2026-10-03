@@ -34,6 +34,8 @@
   import { changePalette, changeTheme, isAppearancePending } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
+  import { resize } from '$lib/motion/reveal';
   import { bootState, resetApp } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { lockAfterSub } from '$lib/lock/lock-after-words';
@@ -64,6 +66,10 @@
   let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
   let metricName = $derived(vocabulary.metricName);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
+  /* The Export row's reading, which the erase sheet's backup row repeats. */
+  let backupLine = $derived(
+    backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()
+  );
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
      count of the enabled ones - which only the Android build displays at all. */
@@ -110,6 +116,9 @@
   let eraseSheet = $state(false);
   let erasing = $state(false);
   let eraseError = $state('');
+  /* The button's words and the failure line both change in place: the old
+     and new share one grid cell and crossfade, so neither is cut. */
+  const swapFade = (_node: Element) => fadeOnly(crossfadeDuration());
 
   /* The gates' reset (ADR-0014), reached from here too (phase 14 ticket
      15): a journal in a mode with no gate - device-bound on the web,
@@ -239,7 +248,7 @@
       key="export"
       icon="download"
       title={m.export_import()}
-      subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
+      subtitle={backupLine}
       href="/settings/export"
     />
     <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
@@ -577,14 +586,25 @@
         key="erase-backup"
         icon="download"
         title={m.erase_backup_first()}
-        subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
+        subtitle={backupLine}
         href="/settings/export"
       />
     </ListCard>
-    <p class="erase-status small" role="alert" data-erase-failed>{eraseError}</p>
+    <!-- Held at one line whether or not a wipe has failed; a longer
+         sentence grows it through resize rather than pushing the buttons
+         down in one frame. -->
+    <p class="erase-status small" role="alert" data-erase-failed use:resize>
+      {#key eraseError}<span transition:swapFade>{eraseError}</span>{/key}
+    </p>
     <div class="stack-3">
       <button class="btn btn-danger" data-confirm-reset disabled={erasing} onclick={confirmErase}>
-        <span>{erasing ? m.reset_running() : m.reset_confirm()}</span>
+        <!-- Both labels sit in the cell unseen, so the button keeps the
+             width of the longer one, and the shown one crossfades. -->
+        <span class="swap-cell">
+          <span class="swap-sizer" aria-hidden="true">{m.reset_confirm()}</span>
+          <span class="swap-sizer" aria-hidden="true">{m.reset_running()}</span>
+          {#key erasing}<span transition:swapFade>{erasing ? m.reset_running() : m.reset_confirm()}</span>{/key}
+        </span>
       </button>
       <button class="btn btn-ghost" disabled={erasing} onclick={() => (eraseSheet = false)}>
         <span>{m.erase_keep()}</span>
@@ -744,10 +764,24 @@
 
   /* Room for the one sentence a failed wipe leaves, held whether or not
      there is one so the buttons under it never move. */
+  .swap-cell {
+    display: inline-grid;
+  }
+  .swap-cell > * {
+    grid-area: 1 / 1;
+  }
+  .swap-sizer {
+    visibility: hidden;
+  }
+
   .erase-status {
+    display: grid;
     min-height: 1.25rem;
     margin: var(--space-2) 0;
     color: var(--danger);
+  }
+  .erase-status > * {
+    grid-area: 1 / 1;
   }
 
   .settings-icon-preview {
