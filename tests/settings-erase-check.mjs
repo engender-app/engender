@@ -1,13 +1,15 @@
 /* Settings' "Delete everything" (phase 14 ticket 15), against a plain
    build (npm run build) and real browser storage, once per access mode the
-   web offers without a hardware authenticator: passphrase, PIN, and
-   device-bound, the web's Unlocked - the mode with no gate, which had no
-   way to be erased in the app before this row existed.
+   web offers: passphrase, PIN, biometric (WebAuthn PRF, through Chromium's
+   virtual authenticator), and device-bound, the web's Unlocked - the mode
+   with no gate, which had no way to be erased in the app before this row
+   existed. Android's half is reset.test.ts's.
 
    Each mode gets a context of its own: a journal is set up, one entry is
    written, the row's sheet is opened and cancelled (nothing goes), then
    confirmed. The app has to come back at first run saying what happened,
    with no keystore left to open, and a fresh setup has to find no entry.
+   Being a release build, it also holds that no Ko-fi row renders.
 
      npm run build && node tests/settings-erase-check.mjs */
 import assert from 'node:assert/strict';
@@ -55,7 +57,7 @@ const storageReport = (page) =>
 
 async function chooseMode(page, mode) {
   await page.locator(`[data-access-modes] [data-list-row="${mode}"]`).click();
-  if (mode === 'device-bound') {
+  if (mode === 'device-bound' || mode === 'biometric') {
     await page.locator('[data-access-submit]').click();
   } else if (mode === 'passphrase') {
     await page.locator('[data-access-continue]').click();
@@ -115,6 +117,25 @@ async function check(mode) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
+  if (mode === 'biometric') {
+    /* Chromium's virtual authenticator answers the PRF extension, which is
+       all the web's biometric mode needs: a user-verifying platform
+       authenticator with prf, so the mode is offered and its key derives. */
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('WebAuthn.enable');
+    await cdp.send('WebAuthn.addVirtualAuthenticator', {
+      options: {
+        protocol: 'ctap2',
+        ctap2Version: 'ctap2_1',
+        transport: 'internal',
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        hasPrf: true,
+        automaticPresenceSimulation: true
+      }
+    });
+  }
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   try {
@@ -136,6 +157,8 @@ async function check(mode) {
     const row = await page.locator('[data-list-row="erase"]').boundingBox();
     const nav = await page.locator('[data-nav-item="home"]').first().boundingBox();
     assert.ok(row && nav && row.y + row.height <= nav.y, `${mode}: the erase row sits above the tab bar (${row?.y}+${row?.height} vs ${nav?.y})`);
+    /* A release build, so KOFI_URL is empty and no Ko-fi row may render. */
+    assert.equal(await page.locator('[data-list-row="kofi"]').count(), 0, `${mode}: no Ko-fi row in a release build`);
     await page.locator('[data-nav-item="home"]').first().click();
     await page.locator('[data-home-hello]').waitFor();
 
@@ -147,15 +170,23 @@ async function check(mode) {
 
     await page.locator('[data-list-row="erase"]').click();
     await page.locator('[data-confirm-reset]').click();
-    await page.waitForURL('**/onboarding?erased=1');
     await page.locator('[data-erased-result]').waitFor();
     assert.match(await page.locator('[data-erased-result]').innerText(), /Everything on this device was deleted/);
     assert.equal(await page.locator('[data-restore-start]').count(), 1, `${mode}: lands on the welcome, at first run`);
     const after = await storageReport(page);
-    assert.deepEqual(after.files, [], `${mode}: OPFS is empty`);
+    /* The next boot's database worker opens its storage pool straight
+       away, so a fresh mc-pool directory is the new page's, not the old
+       journal's; what the old one held is checked by the search below. */
+    assert.deepEqual(after.files.filter((f) => !f.startsWith('mc-pool')), [], `${mode}: nothing of the journal is left in OPFS (${JSON.stringify(after.files)})`);
     assert.equal(after.deviceKeys, 0, `${mode}: no device key is left (${JSON.stringify(after)})`);
     assert.deepEqual(after.keys.filter((k) => !k.startsWith('engender-boot')), [], `${mode}: no app keys left in localStorage`);
-    console.log(`PASS ${mode}: confirmed erase lands at first run and says so (OPFS after: ${JSON.stringify(after.files)})`);
+    /* Read once and dropped from the address, so a reload mid-setup does
+       not say it again. */
+    await page.waitForURL((url) => url.pathname === '/onboarding' && !url.searchParams.has('erased'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.locator('[data-restore-start]').waitFor();
+    assert.equal(await page.locator('[data-erased-result]').count(), 0, `${mode}: a reload does not repeat the result`);
+    console.log(`PASS ${mode}: confirmed erase lands at first run, says so once, leaves no files, keys or device key`);
 
     /* A fresh start finds no keystore to unlock and no entry from before. */
     await page.locator('[data-leave-setup]').click();
@@ -179,7 +210,7 @@ async function check(mode) {
 }
 
 try {
-  for (const mode of ['device-bound', 'passphrase', 'pin']) await check(mode);
+  for (const mode of ['device-bound', 'passphrase', 'pin', 'biometric']) await check(mode);
 } finally {
   await browser.close();
   app.httpServer.close();

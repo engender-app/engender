@@ -100,7 +100,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today |
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
-| `settings-erase-check` | Settings' Delete everything in passphrase, PIN and device-bound (the web's Unlocked) mode, against a production build: cancelling erases nothing, confirming lands at first run saying so with no device key left, and a new journal finds nothing from before (a control search finds the entry first) |
+| `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; cancelling erases nothing; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
 
 ### Written as a guard, not in CI yet
 

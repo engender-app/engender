@@ -115,6 +115,10 @@ describe('what Settings is built from', () => {
 
   it('draws no Ko-fi row until the link is live (V05)', () => {
     expect(settings).not.toContain('kofi_coming_soon');
+    /* The release value: empty, so the guard below draws nothing. The
+       production-build check (settings-erase-check.mjs) counts the row on
+       the rendered screen. */
+    expect(settings).toMatch(/const KOFI_URL = '';/);
     expect(withoutScript).toMatch(/\{#if KOFI_URL\}\s*<ListRow[\s\S]*?key="kofi"/);
   });
 
