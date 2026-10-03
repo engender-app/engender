@@ -71,7 +71,7 @@ import type { JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles, setVoiceFiles } from './voiceFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
-import { clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData } from '../data/reset';
+import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
@@ -232,6 +232,13 @@ export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
 let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
+/* Where each kind of reset lands, read by resetApp below. */
+const RESET_DESTINATION = {
+  welcome: '/',
+  restore: '/onboarding?restore=1',
+  erased: '/onboarding?erased=1'
+} as const;
+
 /** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
     and comes back up at onboarding. Reloads rather than resetting the
     modules in place - boot() has already run, the journal is attached, and
@@ -241,7 +248,7 @@ const bootCache = localStorageCache();
     `erased` is the same wipe asked for from Settings rather than from a
     gate (phase 14 ticket 15): setup's welcome then says what happened,
     since nobody there forgot anything and the result cannot be undone. */
-export async function resetApp(next: 'welcome' | 'restore' | 'erased' = 'welcome'): Promise<void> {
+export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -256,19 +263,18 @@ export async function resetApp(next: 'welcome' | 'restore' | 'erased' = 'welcome
        the web's reset has to do - reaches neither (ticket 13). Erasing only
        the key would be worse than doing nothing: the ciphertext would stay,
        unopenable, and the next boot would mint a fresh key and meet a
-       database it cannot read. */
-    wipePlatformStorage: isAndroid()
-      ? () =>
-          wipeAndroidJournalFiles({
-            deleteDatabase: () => deleteAndroidDatabase(JOURNAL_DATABASE),
-            deletePhotos: () => androidPhotos.removeDirectory({ directory: 'photos' }),
-            eraseKey: () => androidKeystore.erase()
-          })
-      : undefined,
-    /* The rest of what the phone holds: the three preference files, the
-       alarms scheduled off the reminder one, and the Keystore alias the
-       backup password is wrapped under. The web keeps none of it. */
-    wipeDeviceState: isAndroid() ? () => androidDeviceReset.wipe() : undefined,
+       database it cannot read. The rest of what the phone holds - the
+       three preference files, the alarms scheduled off the reminder one,
+       and the Keystore alias the backup password is wrapped under - goes
+       through the device-reset plugin. The web keeps none of it. */
+    ...(isAndroid()
+      ? androidResetTargets({
+          deleteDatabase: () => deleteAndroidDatabase(JOURNAL_DATABASE),
+          deletePhotos: () => androidPhotos.removeDirectory({ directory: 'photos' }),
+          eraseKey: () => androidKeystore.erase(),
+          wipeDeviceState: () => androidDeviceReset.wipe()
+        })
+      : {}),
     clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
     clearBootCache: () => bootCache.clear()
   });
@@ -301,7 +307,7 @@ export async function resetApp(next: 'welcome' | 'restore' | 'erased' = 'welcome
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
-  location.replace(next === 'restore' ? '/onboarding?restore=1' : next === 'erased' ? '/onboarding?erased=1' : '/');
+  location.replace(RESET_DESTINATION[next]);
 }
 
 /** Puts the pre-migration copy back as the live Journal and starts the app

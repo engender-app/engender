@@ -75,6 +75,21 @@ export async function wipeAndroidJournalFiles(steps: {
   await steps.eraseKey();
 }
 
+/** The two Android-only targets resetApp hands wipeLocalData, built from
+    the native bridges so the wiring can be tested against fakes: the
+    journal's own files (database, photos, key, in that order) and the
+    device-reset plugin that takes everything else the app left on the
+    phone. */
+export function androidResetTargets(bridges: {
+  deleteDatabase: () => Promise<void>;
+  deletePhotos: () => Promise<void>;
+  eraseKey: () => Promise<void>;
+  wipeDeviceState: () => Promise<void>;
+}): Pick<LocalDataTargets, 'wipePlatformStorage' | 'wipeDeviceState'> {
+  const { wipeDeviceState, ...journalFiles } = bridges;
+  return { wipePlatformStorage: () => wipeAndroidJournalFiles(journalFiles), wipeDeviceState };
+}
+
 export async function wipeLocalData(targets: LocalDataTargets): Promise<void> {
   // A worker that is already gone is not a reason to abandon the reset;
   // the delete below will tell us soon enough if the file is still held.
