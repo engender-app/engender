@@ -96,6 +96,12 @@ const config = {
         'media-src': ['self', 'blob:']
       }
     },
+    /* SvelteKit's own registration is a line in the document's start script,
+       run on the window's load event. The layout registers the worker
+       itself, after boot has answered (lib/pwa/register.ts), so the line is
+       switched off: left on, the 680-file precache began at load whatever
+       the layout decided. */
+    serviceWorker: { register: false },
     paths: {
       /* Root-absolute asset URLs, against SvelteKit's default of relative
          ones: the service worker answers every navigation with one precached
