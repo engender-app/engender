@@ -1,12 +1,11 @@
 package dev.engender.app.photos;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Bitmap;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Build;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
@@ -16,13 +15,15 @@ import androidx.activity.result.ActivityResult;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,7 +38,9 @@ import java.util.List;
  * Android types out of the journal code. {@link #pickDocument}
  * reuses the same picker shape for a PDF or an image.
  */
-@CapacitorPlugin(name = "Photos")
+@CapacitorPlugin(name = "Photos", permissions = {
+    @Permission(alias = "camera", strings = { Manifest.permission.CAMERA })
+})
 public class PhotosPlugin extends Plugin {
 
     /** Sits beside documents/limits.ts's DOCUMENT_SIZE_CEILING (25 MB) - the
@@ -61,12 +64,27 @@ public class PhotosPlugin extends Plugin {
 
     @PluginMethod
     public void captureImage(PluginCall call) {
+        if (getPermissionState("camera") != PermissionState.GRANTED) {
+            requestPermissionForAlias("camera", call, "cameraPermissionResult");
+            return;
+        }
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (intent.resolveActivity(getContext().getPackageManager()) == null) {
             call.reject("camera unavailable");
             return;
         }
-        startActivityForResult(call, intent, "capturedImage");
+        try {
+            startActivityForResult(call, CameraCapture.prepare(getContext()), "capturedImage");
+        } catch (Exception e) {
+            CameraCapture.cancel(getContext());
+            call.reject(message(e), e);
+        }
+    }
+
+    @PermissionCallback
+    private void cameraPermissionResult(PluginCall call) {
+        if (getPermissionState("camera") == PermissionState.GRANTED) captureImage(call);
+        else call.reject("camera permission denied");
     }
 
     /**
@@ -121,46 +139,20 @@ public class PhotosPlugin extends Plugin {
 
     @ActivityCallback
     private void capturedImage(PluginCall call, ActivityResult activityResult) {
-        JSObject result = new JSObject();
-
-        if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
-            result.put("token", JSObject.NULL);
-            call.resolve(result);
-            return;
-        }
-
-        Intent data = activityResult.getData();
-        if (data == null) {
-            result.put("token", JSObject.NULL);
-            call.resolve(result);
-            return;
-        }
-
         try {
-            Bundle extras = data.getExtras();
-            if (extras == null) {
+            if (call == null) return;
+            JSObject result = new JSObject();
+            if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
                 result.put("token", JSObject.NULL);
-                call.resolve(result);
-                return;
+            } else {
+                result.put("token", PickedFiles.hold(Collections.singletonList(
+                    PickedFiles.ofBytes(CameraCapture.consume(getContext())))).get(0));
             }
-            Object thumbnail = extras.get("data");
-            if (!(thumbnail instanceof Bitmap)) {
-                result.put("token", JSObject.NULL);
-                call.resolve(result);
-                return;
-            }
-
-            /* The one pick whose bytes exist before anything asks for them:
-               the camera hands back a Bitmap in the activity result, not a
-               URI to reopen, so this is the compressed copy of it. */
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            ((Bitmap) thumbnail).compress(Bitmap.CompressFormat.JPEG, 92, output);
-            result.put(
-                "token",
-                PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(output.toByteArray()))).get(0));
             call.resolve(result);
         } catch (Exception e) {
-            call.reject(message(e), e);
+            if (call != null) call.reject(message(e), e);
+        } finally {
+            CameraCapture.cancel(getContext());
         }
     }
 

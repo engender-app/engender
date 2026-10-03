@@ -163,9 +163,7 @@ public final class PickedFiles {
         }
     }
 
-    /** For bytes that exist already rather than behind a content provider:
-        the camera's thumbnail, which arrives as a Bitmap in the activity
-        result and has no URI to reopen. */
+    /** For camera bytes read before their disposable cache file is deleted. */
     public static Source ofBytes(byte[] bytes) {
         return () -> new ByteArrayInputStream(bytes);
     }
