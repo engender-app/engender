@@ -36,15 +36,24 @@ describe('CI check collection', () => {
       run: async (_command: string, args: string[]) => { calls.push(args.join(' ')); return 1; },
       log: (line: string) => output.push(line)
     });
-    expect(calls).toEqual(['run build', 'run check:copy', 'run check:licences', 'run check:screens-classes']);
+    expect(calls).toEqual(['run build', 'run check:copy', 'run check:licences', 'run check:screens-classes', 'run check:progressive-release']);
     expect(results.filter((result) => result.outcome === 'failed').map((result) => result.id))
-      .toEqual(['build', 'copy', 'licences', 'classes']);
+      .toEqual(['build', 'copy', 'licences', 'classes', 'progressive-release']);
     expect(results.filter((result) => result.outcome === 'blocked').map((result) => result.id))
       .toEqual(['types', 'node', 'budget']);
     expect(output.join('\n')).toContain('FAIL Message catalogues and user-facing literals');
     expect(output.join('\n')).toContain('FAIL Dependency licences');
     expect(output.join('\n')).toContain('FAIL screens.css single-consumer classes');
     expect(results).toHaveLength(CI_CHECKS.node.length);
+  });
+
+  it('validates release evidence independently of build prerequisites', async () => {
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, args: string[]) => args.includes('check:progressive-release') ? 1 : 0,
+      blocked: false, log: () => {}
+    });
+    expect(results.find((result) => result.id === 'progressive-release')?.outcome).toBe('failed');
+    expect(CI_CHECKS.node.find((check) => check.id === 'progressive-release')?.requires).toBeUndefined();
   });
 
   it('keeps the collected debug APK after F-Droid removes Gradle build output', async () => {

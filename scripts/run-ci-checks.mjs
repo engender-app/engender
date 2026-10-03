@@ -13,6 +13,7 @@ export const CI_CHECKS = {
     { id: 'copy', name: 'Message catalogues and user-facing literals', command: 'npm', args: ['run', 'check:copy'] },
     { id: 'licences', name: 'Dependency licences', command: 'npm', args: ['run', 'check:licences'] },
     { id: 'classes', name: 'screens.css single-consumer classes', command: 'npm', args: ['run', 'check:screens-classes'] },
+    { id: 'progressive-release', name: 'Progressive release evidence', command: 'npm', args: ['run', 'check:progressive-release'] },
     { id: 'budget', name: 'First-load budget', command: 'npm', args: ['run', 'check:first-load-budget'], requires: ['build'] }
   ],
   android: [
