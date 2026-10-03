@@ -329,6 +329,8 @@ export async function generateLongJournal(
   const { seed = 1, days = TEN_YEARS_IN_DAYS, lastEpochDay = LAST_EPOCH_DAY, makePhoto } = options;
   const random = mulberry32(seed);
   const firstEpochDay = lastEpochDay - days + 1;
+  // Compress decade offsets into shorter fixtures without moving decade dates.
+  const historicalOffset = (offset: number) => Math.round(offset * Math.min(1, (days - 1) / (TEN_YEARS_IN_DAYS - 1)));
 
   const pick = <T>(from: readonly T[]): T => from[Math.floor(random() * from.length)];
   const between = (low: number, high: number) => low + Math.floor(random() * (high - low + 1));
@@ -516,7 +518,7 @@ export async function generateLongJournal(
   // follow the schedule's own weekdays, one in twenty left unlogged so the
   // adherence view has something to report as missing rather than a
   // perfect record no real journal keeps.
-  const regimenStartEpochDay = firstEpochDay + 30;
+  const regimenStartEpochDay = firstEpochDay + historicalOffset(30);
   const episodeId = await journal.regimen.upsertEpisode({
     drug: 'Estradiol',
     ester: null,
@@ -535,8 +537,8 @@ export async function generateLongJournal(
     doseAmounts: REGIMEN_DOSE_AMOUNTS,
     autoLogFromEpochDay: null
   });
-  const pauseStart = lastEpochDay - 45;
-  const pauseEnd = lastEpochDay - 32;
+  const pauseStart = lastEpochDay - historicalOffset(45);
+  const pauseEnd = lastEpochDay - historicalOffset(32);
   await journal.doses.upsertPause({
     episodeId,
     startEpochDay: pauseStart,
@@ -565,8 +567,8 @@ export async function generateLongJournal(
   // for different drugs, the shape ticket 38's walkthrough test already
   // exercises. Every dose on it names its own drug, the disambiguation a
   // person makes once two episodes can both be active.
-  const secondEpisodeStartEpochDay = regimenStartEpochDay + 800;
-  const secondEpisodeEndEpochDay = secondEpisodeStartEpochDay + 500;
+  const secondEpisodeStartEpochDay = firstEpochDay + historicalOffset(830);
+  const secondEpisodeEndEpochDay = firstEpochDay + historicalOffset(1330);
   const secondEpisodeId = await journal.regimen.upsertEpisode({
     drug: 'Spironolactone',
     ester: null,
@@ -604,7 +606,7 @@ export async function generateLongJournal(
   // decade-long weekly schedule would spend nine and a half years of writes
   // on doses no curve ever reads. Named distinctly from the first episode's
   // "Estradiol" so the two read as a route switch rather than one typo.
-  const thirdEpisodeStartEpochDay = lastEpochDay - 150;
+  const thirdEpisodeStartEpochDay = lastEpochDay - historicalOffset(150);
   const thirdEpisodeId = await journal.regimen.upsertEpisode({
     drug: 'Estradiol valerate',
     ester: 'valerate',
@@ -623,8 +625,8 @@ export async function generateLongJournal(
     doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
     autoLogFromEpochDay: null
   });
-  const thirdPauseStart = lastEpochDay - 25;
-  const thirdPauseEnd = lastEpochDay - 18;
+  const thirdPauseStart = lastEpochDay - historicalOffset(25);
+  const thirdPauseEnd = lastEpochDay - historicalOffset(18);
   await journal.doses.upsertPause({
     episodeId: thirdEpisodeId,
     startEpochDay: thirdPauseStart,
@@ -653,7 +655,7 @@ export async function generateLongJournal(
   // Measurements, sizes and hair-removal sessions: a year each, at an
   // irregular cadence - an evenly spaced series is the one case every
   // chart already handles, so this is deliberately not one.
-  const trackingWindowStart = lastEpochDay - 365;
+  const trackingWindowStart = Math.max(firstEpochDay, lastEpochDay - 365);
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.94) continue;
     const type = pick(MEASUREMENT_TYPES);
@@ -666,8 +668,8 @@ export async function generateLongJournal(
   // A guaranteed second unit on waist - the random 15% above makes it rare
   // enough that a run can land on zero or one 'in' reading, which draws as
   // "two measurements make a trend, add another" rather than a trend.
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - 200, value: 31, unit: 'in' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - 40, value: 30, unit: 'in' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - historicalOffset(200), value: 31, unit: 'in' });
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - historicalOffset(40), value: 30, unit: 'in' });
   summary.measurements += 2;
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.97) continue;
@@ -714,7 +716,10 @@ export async function generateLongJournal(
 
   // Letters: a few, both sealed and already unlockable relative to the
   // fixture's own last day.
-  const letterDays = [firstEpochDay + 200, firstEpochDay + 900, lastEpochDay - 400, lastEpochDay - 30];
+  const letterDays = [
+    firstEpochDay + historicalOffset(200), firstEpochDay + historicalOffset(900),
+    lastEpochDay - historicalOffset(400), lastEpochDay - historicalOffset(30)
+  ];
   for (const [i, day] of letterDays.entries()) {
     await journal.letters.addLetter({
       epochDay: day,
@@ -727,8 +732,8 @@ export async function generateLongJournal(
   // Tryouts: one per kind, dated inside the range entries already cover, so
   // its detail route has real entries to read back by date overlap.
   for (const [i, kind] of TRYOUT_KINDS.entries()) {
-    const startDay = firstEpochDay + 400 + i * 90;
-    const endEpochDay = i % 2 === 0 ? startDay + 60 : null;
+    const startDay = firstEpochDay + historicalOffset(400 + i * 90);
+    const endEpochDay = i % 2 === 0 ? firstEpochDay + historicalOffset(460 + i * 90) : null;
     const tryoutId = await journal.tryouts.upsertTryout({
       kind,
       label: pick(['Alex', 'she/her', 'layered look', 'sundress', 'soft glam', 'first day out']),
@@ -740,8 +745,8 @@ export async function generateLongJournal(
     if (endEpochDay === null && summary.tryoutWideOpenStartEpochDay === 0) {
       summary.tryoutWideOpenStartEpochDay = startDay;
     }
-    if (random() < 0.5) await journal.tryouts.addPhoto(tryoutId, startDay + 5, await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 2000 + i));
-    await journal.feltSense.add({ tryoutId }, { epochDay: startDay + 3, mood: between(2, 5) });
+    if (random() < 0.5) await journal.tryouts.addPhoto(tryoutId, firstEpochDay + historicalOffset(405 + i * 90), await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 2000 + i));
+    await journal.feltSense.add({ tryoutId }, { epochDay: firstEpochDay + historicalOffset(403 + i * 90), mood: between(2, 5) });
   }
 
   // Personal effects: several feminizing markers across categories, plus
@@ -754,7 +759,7 @@ export async function generateLongJournal(
   for (const [i, type] of effectTypes.entries()) {
     await journal.personalEffects.upsertMarker({
       effect: type.key,
-      firstNoticedEpochDay: regimenStartEpochDay + 30 + i * 45
+      firstNoticedEpochDay: firstEpochDay + historicalOffset(60 + i * 45)
     });
     summary.personalEffects++;
   }
@@ -810,16 +815,16 @@ export async function generateLongJournal(
   // checklist - so /settings/surgery has more than an empty timeline.
   const procedureId = await journal.procedures.upsertProcedure({
     name: 'top surgery',
-    surgeryEpochDay: lastEpochDay - 600,
+    surgeryEpochDay: lastEpochDay - historicalOffset(600),
     notes: 'Double incision, drains out on day 5.'
   });
-  await journal.procedures.addConsult(procedureId, lastEpochDay - 650);
-  await journal.procedures.addConsult(procedureId, lastEpochDay - 620);
+  await journal.procedures.addConsult(procedureId, lastEpochDay - historicalOffset(650));
+  await journal.procedures.addConsult(procedureId, lastEpochDay - historicalOffset(620));
   for (const item of ['buy gauze', 'arrange time off work', 'ask about lifting restrictions']) {
     await journal.procedures.addChecklistItem(procedureId, item);
     summary.checklistItems++;
   }
-  await journal.procedures.addPhoto(procedureId, lastEpochDay - 590, await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 3000));
+  await journal.procedures.addPhoto(procedureId, lastEpochDay - historicalOffset(590), await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 3000));
 
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
   for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
@@ -865,9 +870,9 @@ export async function generateLongJournal(
     drug: 'Estradiol',
     quantity: 4000,
     unit: 'tablets',
-    recordedEpochDay: regimenStartEpochDay + 200
+    recordedEpochDay: firstEpochDay + historicalOffset(230)
   });
-  await journal.stock.upsertEntry({ drug: 'Estradiol valerate', quantity: 6, unit: 'mL', recordedEpochDay: lastEpochDay - 3 });
+  await journal.stock.upsertEntry({ drug: 'Estradiol valerate', quantity: 6, unit: 'mL', recordedEpochDay: lastEpochDay - historicalOffset(3) });
   summary.stockEntries += 2;
 
   /* Read back off the episodes that were written rather than derived from
