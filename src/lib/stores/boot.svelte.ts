@@ -236,8 +236,12 @@ const bootCache = localStorageCache();
     and comes back up at onboarding. Reloads rather than resetting the
     modules in place - boot() has already run, the journal is attached, and
     unwinding all of that in the browser is a far bigger surface than
-    starting the page again. */
-export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise<void> {
+    starting the page again.
+
+    `erased` is the same wipe asked for from Settings rather than from a
+    gate (phase 14 ticket 15): setup's welcome then says what happened,
+    since nobody there forgot anything and the result cannot be undone. */
+export async function resetApp(next: 'welcome' | 'restore' | 'erased' = 'welcome'): Promise<void> {
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -297,7 +301,7 @@ export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
-  location.replace(next === 'restore' ? '/onboarding?restore=1' : '/');
+  location.replace(next === 'restore' ? '/onboarding?restore=1' : next === 'erased' ? '/onboarding?erased=1' : '/');
 }
 
 /** Puts the pre-migration copy back as the live Journal and starts the app
