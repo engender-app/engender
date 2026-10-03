@@ -19,9 +19,10 @@ const version = appVersion();
 /** The sha256 of every inline script in `src/app.html`, in CSP's spelling.
 
     SvelteKit hashes the start call it injects itself and nothing else, so
-    without this the boot-preference stamp - the one script that has to run
-    before the first paint, which is why it is inline at all - is the script
-    the policy blocks. The template copies these through verbatim, so hashing
+    without this the boot-preference stamp - the script that has to run
+    before the first paint, which is why it is inline at all, and which also
+    gives the build's held module hints back (src/hooks.server.ts) - is the
+    script the policy blocks. The template copies these through verbatim, so hashing
     the source is hashing what ships; `tests/csp.test.ts` hashes the built
     document instead and fails if that ever stops being true. */
 function appHtmlScriptHashes() {
