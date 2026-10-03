@@ -70,6 +70,8 @@ final class SqliteConnection {
         @Override
         public void postKey(net.zetetic.database.sqlcipher.SQLiteConnection connection) {
             connection.executeForLong("PRAGMA busy_timeout = 5000;", null, null);
+            // Read-only backup connections skip the later configuration pass.
+            connection.execute("PRAGMA foreign_keys = ON;", null, null);
         }
     };
 
@@ -80,6 +82,7 @@ final class SqliteConnection {
             try {
                 database.execSQL("ROLLBACK;");
             } catch (Exception ignored) {}
+            database.execSQL("PRAGMA foreign_keys = ON;");
             return;
         }
         close();
@@ -88,6 +91,9 @@ final class SqliteConnection {
         if (parent != null) parent.mkdirs();
         password = targetPassword;
         database = SQLiteDatabase.openOrCreateDatabase(databaseFile, password, null, null, BUSY_TIMEOUT_HOOK);
+        // SQLCipher applies its configuration after postKey, overwriting a
+        // pragma set in that hook. Enable enforcement on the opened database.
+        database.setForeignKeyConstraintsEnabled(true);
     }
 
     /**

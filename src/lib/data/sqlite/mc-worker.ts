@@ -89,6 +89,7 @@ function keyAndVerify(target: Database, key: string): void {
   target.exec(`PRAGMA cipher='${MC_CIPHER}'`);
   target.exec(`PRAGMA hexkey='${key}'`);
   target.exec('SELECT count(*) FROM sqlite_master');
+  target.exec('PRAGMA foreign_keys = ON');
 }
 
 /** Brings up the wasm module, the pool and the encryption shim, without
@@ -184,6 +185,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     try {
       imported.exec(`PRAGMA cipher='${MC_CIPHER}'`);
       imported.exec(`PRAGMA hexrekey='${args.hexKey}'`);
+      imported.exec('PRAGMA foreign_keys = ON');
     } finally {
       imported.close();
     }

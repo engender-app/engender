@@ -36,8 +36,8 @@ function makeFakeDriver(): SqliteDriver {
         throw err;
       }
     },
-    async query() {
-      throw new Error('boot() should never call query()');
+    async query(sql) {
+      return raw.prepare(sql).all() as never;
     },
     async run() {
       throw new Error('boot() should never call run()');
