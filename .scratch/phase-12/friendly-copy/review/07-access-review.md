@@ -168,3 +168,14 @@ remains open.
 
 Spec recheck passed on `54da25fc` against main at `5683c142`. Standards remains
 clean; the follow-up changed only review records. Both axes are complete.
+
+## Integration
+
+Merged with `--no-ff` in `6378ce7f`. Restoring the catalogue-only stash
+conflicted where the author’s shortened archive warning sits beside this ticket’s
+local-key explanations. The pre-merge snapshot and exact ticket values resolved it.
+Every non-ticket value was compared against that snapshot, including the concurrent
+document-copy work. Author changes remain unstaged; only this ticket’s temporary
+stash was removed. Merged copy checks pass with 3,526 referenced keys and no unused
+keys. Screenshots are retained in the main checkout. Ticket status is done; human
+Polish sign-off remains open.
