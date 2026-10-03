@@ -18,6 +18,7 @@ import { preview } from 'vite';
 import { resolve } from 'node:path';
 import { fillDate, launchChromium } from './browser-harness.mjs';
 import { clearPrepList } from './prep-fixture.mjs';
+import { FILL_EVERY_FEATURE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 
@@ -55,8 +56,7 @@ try {
      This is the jump that puts labs, side effects and stock on it, and it
      resolves by navigating to /more. */
   await settle('/');
-  await page.locator('[data-fill-every-feature]').click();
-  await page.waitForURL('**/more');
+  if (!(await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION))) throw new Error('Full demo fixture did not reach More');
   await page.waitForTimeout(500);
 
   // A visit still ahead, so the date row has a day to name rather than
