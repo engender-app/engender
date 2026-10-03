@@ -81,6 +81,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `care-cold-load-yank` | Care's cold load at 1x and 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail, what it answers with fades in, and the nav pill never paints wider than its tab |
 | `wear-tile-close-yank` | stopping the Home wear-timer tile collapses its own tier's row rather than snapping the agenda up under a still-visible ghost, even when an unrelated fold promotion lands the same tick |
 | `day-cold-load-yank` | The day view's cold load at 4x CPU: margin notes and dose drug names land with the day's records, never after |
+| `entry-editor-return` | The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed |
 | `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |

@@ -88,6 +88,7 @@
      and a mark, and the order Home takes in ticket 63. */
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
+  import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
@@ -387,7 +388,7 @@
          era is a span, and the bridge is one action on a milestone if it is
          ever wanted, not a rule (ADR-0049). -->
     <div class="day-add">
-      <button class="btn btn-soft" data-add onclick={() => goto(`/entry/new/${epochDay}`)}>
+      <button class="btn btn-soft" data-add onclick={() => goto(withListReturn(`/entry/new/${epochDay}`, page.url))}>
         <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
       </button>
       <a class="btn btn-ghost" data-start-era href={`/settings/eras?start=${epochDay}`}>

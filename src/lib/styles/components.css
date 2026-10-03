@@ -2349,6 +2349,10 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   border-radius: var(--r-block);
   padding: var(--space-3) var(--space-4);
   display: flex; align-items: center; gap: var(--space-4);
+  /* Positioned at left: 50%, a toast's shrink-to-fit width is capped at half
+     the screen, which wrapped "Moved to trash" onto two lines beside its
+     action. It takes the width of its text, up to max-width below. */
+  width: max-content;
   font-size: var(--text-sm); font-weight: var(--weight-medium);
   /* No shadow, and none needed: this is already rule 4's ink treatment -
      --text as the ground with --bg as the type - which is the strongest
