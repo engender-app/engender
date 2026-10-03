@@ -9778,6 +9778,82 @@
       ]
     },
     {
+      "key": "settings_access_mode_row",
+      "scope": "shared security/permission navigation",
+      "decision": "keep",
+      "reason": "Keep the concise security heading or named opening-mode navigation label; it identifies the destination and its current choice.",
+      "baseline": {
+        "en": "How your journal opens",
+        "pl": "Jak otwiera się dziennik"
+      },
+      "final": {
+        "en": "How your journal opens",
+        "pl": "Jak otwiera się dziennik"
+      },
+      "changedFromAuthor": {
+        "en": false,
+        "pl": false
+      },
+      "currentCallers": [
+        {
+          "file": "src/routes/settings/security/+page.svelte",
+          "line": 59
+        }
+      ]
+    },
+    {
+      "key": "settings_permissions_sub",
+      "scope": "shared security/permission navigation",
+      "decision": "keep",
+      "reason": "Keep the permission screen’s short invitation to understand device access; the rows name each purpose and state.",
+      "baseline": {
+        "en": "What the app can ask this device for.",
+        "pl": "O co aplikacja może poprosić to urządzenie."
+      },
+      "final": {
+        "en": "What the app can ask this device for.",
+        "pl": "O co aplikacja może poprosić to urządzenie."
+      },
+      "changedFromAuthor": {
+        "en": false,
+        "pl": false
+      },
+      "currentCallers": [
+        {
+          "file": "src/routes/settings/permissions/+page.svelte",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "key": "settings_security_row",
+      "scope": "shared security/permission navigation",
+      "decision": "keep",
+      "reason": "Keep the concise security heading or named opening-mode navigation label; it identifies the destination and its current choice.",
+      "baseline": {
+        "en": "Security",
+        "pl": "Bezpieczeństwo"
+      },
+      "final": {
+        "en": "Security",
+        "pl": "Bezpieczeństwo"
+      },
+      "changedFromAuthor": {
+        "en": false,
+        "pl": false
+      },
+      "currentCallers": [
+        {
+          "file": "src/routes/settings/+page.svelte",
+          "line": 410
+        },
+        {
+          "file": "src/routes/settings/security/+page.svelte",
+          "line": 52
+        }
+      ]
+    },
+    {
       "key": "skip",
       "scope": "access and recovery flow",
       "decision": "keep",

@@ -1,6 +1,6 @@
 {
-  "pairedKeys": 381,
-  "localeChecks": 762,
+  "pairedKeys": 384,
+  "localeChecks": 768,
   "checked": [
     {
       "key": "ak_cancelled",
@@ -4490,6 +4490,42 @@
     },
     {
       "key": "screen_capture_title",
+      "lang": "pl",
+      "parameters": [],
+      "pluralStructureUnchanged": false
+    },
+    {
+      "key": "settings_access_mode_row",
+      "lang": "en",
+      "parameters": [],
+      "pluralStructureUnchanged": false
+    },
+    {
+      "key": "settings_access_mode_row",
+      "lang": "pl",
+      "parameters": [],
+      "pluralStructureUnchanged": false
+    },
+    {
+      "key": "settings_permissions_sub",
+      "lang": "en",
+      "parameters": [],
+      "pluralStructureUnchanged": false
+    },
+    {
+      "key": "settings_permissions_sub",
+      "lang": "pl",
+      "parameters": [],
+      "pluralStructureUnchanged": false
+    },
+    {
+      "key": "settings_security_row",
+      "lang": "en",
+      "parameters": [],
+      "pluralStructureUnchanged": false
+    },
+    {
+      "key": "settings_security_row",
       "lang": "pl",
       "parameters": [],
       "pluralStructureUnchanged": false

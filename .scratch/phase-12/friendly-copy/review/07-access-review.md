@@ -9,10 +9,10 @@ Human Polish sign-off remains open.
 
 ## Paired decisions
 
-[07-access-pairs.json](07-access-pairs.json) records all 381 paired strings in
+[07-access-pairs.json](07-access-pairs.json) records all 384 paired strings in
 this scope, their exact authored baseline and final values, keep/shorten decisions,
 reasons and current callers. It includes all shared accessible names, controls,
-permission states and archive plural branches. There are 370 keep and 11 shorten
+permission states and archive plural branches. There are 373 keep and 11 shorten
 decisions. Keep can include clarifying a subject while retaining the message’s
 purpose; `changedFromAuthor` identifies every wording edit. No key was removed.
 
@@ -129,7 +129,7 @@ Browser servers were closed before the final build, type, full-test and copy che
 Build passed; typecheck found zero errors and zero warnings. Targeted security tests
 passed 59 tests. Copy checks passed serializer order, paired keys, literal ratchet,
 gender-neutral address and caller coverage. [07-contracts.json](07-contracts.json)
-records 762 locale checks and 50 generated plural calls across counts 0, 1, 2, 5 and
+records 768 locale checks and 50 generated plural calls across counts 0, 1, 2, 5 and
 1.5. No parameter, declaration, selector or plural branch changed.
 
 The first full suite included the preserved author working values: 6,628 tests
@@ -151,3 +151,17 @@ scripts and no reviewed caller or catalogue. Latest CI run `37130163278` has pas
 Node/catalogue/licence and Android jobs; walkthrough and built-guard jobs failed.
 This ticket’s recorded local checks provide its proof. Human Polish sign-off stays
 open.
+
+
+## Review
+
+Standards review found no documented-standard violations or applicable code smells.
+Spec review found three omitted paired decisions for the security heading, opening
+mode navigation row and permission-screen subtitle. They were added as keep decisions;
+the existing rendered evidence already contains them. Contracts were refreshed to
+384 paired strings and 768 locale checks. No wording or runtime fix was required.
+
+Main subsequently advanced to `5683c142` with the document-copy ticket. Those edits
+are outside this flow; none of this ticket’s changed keys overlaps them. The author’s
+remaining local catalogue edits will be retained during merge. Human Polish sign-off
+remains open.
