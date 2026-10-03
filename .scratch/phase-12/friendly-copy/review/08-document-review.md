@@ -55,3 +55,14 @@ Final production build passed. Typecheck passed with zero errors and zero warnin
 [Catalogue contracts](08-contracts.json) verify all 127 final pairs, complete document-prefix coverage, unchanged interpolation, unchanged plural objects and no remaining caller for the removed pair. The two existing author working overrides are explicitly distinguished from branch values. No changed string has a plural or select branch; retained branches are checked by exact equality.
 
 Main advanced to `99c2e4be` during verification. Its changes affect three hosting/guard test files, with no catalogue or document caller change. The review comparison uses this current main. Human Polish sign-off remains open; its existing ticket is untouched.
+
+
+## Standards
+
+The parallel Standards review of `0658ecb5` against pinned current main `99c2e4be` found zero documented-standard violations and zero baseline smells. Catalogue wording follows the voice and domain rules. Removing the optional Notice text prop omits its paragraph through the existing component contract, preserving heading and return action.
+
+## Spec
+
+The parallel Spec review found zero missing requirements, scope additions or incorrect implementations. All category pairs and selected shared controls have final wording, decisions and reasons. Targets, creation prerequisite, import/draft behaviour, encryption/sharing limits, deletion, accessible names and catalogue contracts remain intact. The unreachable empty-link fixture and CSS zoom limitations are explicit. Human Polish sign-off remains open.
+
+Review totals: Standards 0 findings; Spec 0 findings. Screenshots and proof scripts are preserved in the original repository's `.claude/ticket08-proof/` before the isolated worktree is removed.
