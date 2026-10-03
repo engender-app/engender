@@ -1,5 +1,6 @@
 package dev.engender.app.longjournal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -84,6 +85,8 @@ public class LongJournalBenchmarkTest {
             }
 
             JSONArray measurements = result.getJSONArray("measurements");
+            JSONObject oneYear = result.getJSONObject("oneYear");
+            JSONObject scaling = result.getJSONObject("scaling");
             int generatedInMs = result.optInt("generatedInMs", -1);
             long photoBytes = result.optLong("photoBytes", -1);
 
@@ -104,12 +107,18 @@ public class LongJournalBenchmarkTest {
                 Log.w(TAG, "Run this test on a real device and copy the logged JSON block into android-budgets.json.");
             }
 
-            logMeasurements(measurements, budgetTable);
+            Log.i(TAG, String.format("One-year fixture: %d entries, generated in %.1fs; %.2fx entries, %.2fx time-growth limit",
+                oneYear.getJSONObject("summary").getInt("entries"), oneYear.getDouble("generatedInMs") / 1000,
+                scaling.getDouble("sizeRatio"), scaling.getDouble("limit")));
+            logMeasurements(measurements, budgetTable, scaling.getJSONArray("measurements"));
             logRecordingBlock(measurements, budgets, budgetTable);
 
             if (!unrecorded) {
+                checkBudgets(oneYear.getJSONArray("measurements"), budgetTable);
                 checkBudgets(measurements, budgetTable);
             }
+            JSONArray growthBreaches = scaling.getJSONArray("breaches");
+            assertTrue("long-journal scaling exceeded: " + growthBreaches, growthBreaches.length() == 0);
         }
     }
 
@@ -123,11 +132,10 @@ public class LongJournalBenchmarkTest {
     }
 
     /** Logs one line per measurement with its time and budget. */
-    private static void logMeasurements(JSONArray measurements, JSONObject budgetTable) throws Exception {
+    private static void logMeasurements(JSONArray measurements, JSONObject budgetTable, JSONArray scaling) throws Exception {
         for (int i = 0; i < measurements.length(); i++) {
             JSONObject m = measurements.getJSONObject(i);
             String name = m.getString("name");
-            long ms = Math.round(m.getDouble("ms"));
             String budget = "";
             if (budgetTable.has(name)) {
                 int budgetMs = budgetTable.getJSONObject(name).getInt("budgetMs");
@@ -135,7 +143,10 @@ public class LongJournalBenchmarkTest {
             } else {
                 budget = "  NO BUDGET";
             }
-            Log.i(TAG, String.format("  %-55s %4dms%s", m.getString("what"), ms, budget));
+            JSONObject pair = scaling.getJSONObject(i);
+            assertEquals("scaling measurement order", name, pair.getString("name"));
+            Log.i(TAG, String.format("  %-55s 1y %.2fms  10y %.2fms  %.2fx%s", m.getString("what"),
+                pair.getDouble("oneYearMs"), pair.getDouble("tenYearMs"), pair.getDouble("ratio"), budget));
             /* A screen mount's own line: what it crossed the driver seam for.
                On this platform a statement is a Capacitor bridge call, so
                the count is the reading and the
@@ -294,11 +305,13 @@ public class LongJournalBenchmarkTest {
     private static void deleteProbeArtifacts() {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         app.deleteDatabase(PROBE_DATABASE);
+        app.deleteDatabase("long-journal-benchmark-one-year.sqlite3");
 
         // The probe writes photos to app-private files under long-journal-photos/.
         // Delete that directory so a re-run does not measure leftover data.
         File photosDir = new File(app.getFilesDir(), "long-journal-photos");
         deleteRecursively(photosDir);
+        deleteRecursively(new File(app.getFilesDir(), "long-journal-photos-one-year"));
     }
 
     private static void copyAssetDirectory(AssetManager assets, String path, File target) throws IOException {

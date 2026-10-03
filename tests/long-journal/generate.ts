@@ -44,9 +44,10 @@ import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
 import { demoAudioBytes, demoVideoBytes } from '../../src/lib/data/demoAudioBytes.ts';
 
-/** Days in ten years, two of them leap. The unit is in the name because the
-    option it is passed to takes days, and `{ days: TEN_YEARS }` read as
+/** Fixture spans: one year and ten years, two of them leap. The unit is
+    in the name because the option it is passed to takes days, and `{ days: TEN_YEARS }` read as
     though it meant ten of them. */
+export const ONE_YEAR_IN_DAYS = 365;
 export const TEN_YEARS_IN_DAYS = 3653;
 
 /** The last day the generated journal holds: 2026-08-11, fixed rather than
