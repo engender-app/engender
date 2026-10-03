@@ -849,7 +849,7 @@
   "document_link_add": "Link it",
   "document_link_change": "Change",
   "document_link_clear": "Remove the link",
-  "document_link_empty_body": "Create a milestone, surgery journey, regimen or roadmap step to link a document to it.",
+  "document_link_empty_body": "First, add a milestone, surgery journey, regimen or roadmap step.",
   "document_link_empty_title": "Nothing to link this to yet",
   "document_link_kind_episode": "Regimen",
   "document_link_kind_goal": "Roadmap step",
@@ -860,7 +860,6 @@
   "document_link_sheet": "Link this document",
   "document_linked_here_title": "Documents linked here",
   "document_missing_action": "Back to documents",
-  "document_missing_body": "This document is no longer available at this address.",
   "document_missing_title": "This document is gone",
   "document_new_sheet": "Name this document",
   "document_page_alt": "The page of {title}",
@@ -880,9 +879,9 @@
   "document_too_large": "Choose a file no larger than 25 MB.",
   "document_unsupported_file": "This file isn’t a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.",
   "documents_empty_action": "Add a document",
-  "documents_empty_body": "Add a photo or PDF. Documents are stored encrypted on this device.",
+  "documents_empty_body": "Photos and PDFs stay encrypted on this device. Paperwork without the paper pile.",
   "documents_empty_title": "No documents yet",
-  "documents_intro": "Only document titles are searchable. The app does not read the text on the pages.",
+  "documents_intro": "Search finds titles only. The app doesn't read the text on the pages.",
   "documents_summary": [
     {
       "declarations": [

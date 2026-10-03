@@ -1,0 +1,4089 @@
+{
+  "metadata": {
+    "baseline_main": "1a828acc",
+    "pairs": 127,
+    "decisions": {
+      "keep": 124,
+      "shorten": 2,
+      "remove": 1
+    },
+    "source_files": [
+      "src/routes/media/documents/+page.svelte",
+      "src/routes/media/documents/[id]/+page.svelte",
+      "src/lib/components/DocumentTargetPicker.svelte",
+      "src/lib/components/LinkedDocuments.svelte",
+      "src/lib/components/documentTargets.svelte.ts",
+      "src/lib/data/vocabulary/documentTargetLabels.ts",
+      "src/lib/data/vocabulary/documentsSummary.ts",
+      "src/lib/data/vocabulary/roadmapLabels.ts",
+      "src/lib/components/DocumentThumb.svelte",
+      "src/lib/stores/documentPicking.ts",
+      "src/lib/components/DatePicker.svelte",
+      "src/lib/components/DatePickerPanel.svelte",
+      "src/lib/components/ScreenHeader.svelte",
+      "src/lib/components/Sheet.svelte",
+      "src/lib/components/kit/RecordSheet.svelte",
+      "src/lib/components/kit/ConfirmDeleteSheet.svelte",
+      "src/lib/components/kit/ReadGate.svelte",
+      "src/lib/components/kit/Notice.svelte",
+      "src/lib/components/pickerField.svelte.ts",
+      "src/lib/components/kit/detailDraft.svelte.ts",
+      "src/lib/components/kit/recordEditor.svelte.ts",
+      "src/lib/data/photos/picker.ts",
+      "src/lib/data/archive/deliver.ts",
+      "src/lib/components/SourceRecordHandoff.svelte"
+    ],
+    "human_polish_signoff": "open",
+    "author_override_keys": [
+      "roadmap_goal_pl_legal_driving_licence",
+      "roadmap_goal_pl_legal_zus_ceidg"
+    ]
+  },
+  "rows": [
+    {
+      "key": "back",
+      "before": {
+        "en": "Back",
+        "pl": "Wstecz"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/AccessModeSetup.svelte",
+          "line": 456
+        },
+        {
+          "file": "src/lib/components/RecoveryKeyEntry.svelte",
+          "line": 96
+        },
+        {
+          "file": "src/lib/components/ScreenHeader.svelte",
+          "line": 167
+        },
+        {
+          "file": "src/lib/components/ScreenHeader.svelte",
+          "line": 173
+        },
+        {
+          "file": "src/routes/onboarding/+page.svelte",
+          "line": 699
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/ScreenHeader.svelte",
+          "line": 167
+        },
+        {
+          "file": "src/lib/components/ScreenHeader.svelte",
+          "line": 173
+        }
+      ],
+      "final": {
+        "en": "Back",
+        "pl": "Wstecz"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "cancel",
+      "before": {
+        "en": "Cancel",
+        "pl": "Anuluj"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 179
+        },
+        {
+          "file": "src/lib/data/labs/ocr-machine.test.ts",
+          "line": 561
+        },
+        {
+          "file": "src/lib/data/labs/ocr-machine.test.ts",
+          "line": 579
+        },
+        {
+          "file": "src/routes/care/doses/+page.svelte",
+          "line": 727
+        },
+        {
+          "file": "src/routes/coming-back/+page.svelte",
+          "line": 630
+        },
+        {
+          "file": "src/routes/coming-back/+page.svelte",
+          "line": 672
+        },
+        {
+          "file": "src/routes/health/dilation/+page.svelte",
+          "line": 328
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 939
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 957
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 1012
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 1101
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 179
+        }
+      ],
+      "final": {
+        "en": "Cancel",
+        "pl": "Anuluj"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "date_picker_apply",
+      "before": {
+        "en": "Use date",
+        "pl": "Ustaw datę"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 574
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 574
+        }
+      ],
+      "final": {
+        "en": "Use date",
+        "pl": "Ustaw datę"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "date_picker_clear",
+      "before": {
+        "en": "Clear date",
+        "pl": "Wyczyść datę"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 579
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 579
+        }
+      ],
+      "final": {
+        "en": "Clear date",
+        "pl": "Wyczyść datę"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "date_picker_entry",
+      "before": {
+        "en": "Date (YYYY-MM-DD)",
+        "pl": "Data (RRRR-MM-DD)"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 558
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 558
+        }
+      ],
+      "final": {
+        "en": "Date (YYYY-MM-DD)",
+        "pl": "Data (RRRR-MM-DD)"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "date_picker_invalid",
+      "before": {
+        "en": "Enter a valid date within the allowed range.",
+        "pl": "Wpisz prawidłową datę z dozwolonego zakresu."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 395
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 395
+        }
+      ],
+      "final": {
+        "en": "Enter a valid date within the allowed range.",
+        "pl": "Wpisz prawidłową datę z dozwolonego zakresu."
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "date_picker_title",
+      "before": {
+        "en": "Choose a date",
+        "pl": "Wybierz datę"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePicker.svelte",
+          "line": 44
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePicker.svelte",
+          "line": 44
+        }
+      ],
+      "final": {
+        "en": "Choose a date",
+        "pl": "Wybierz datę"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "day_document",
+      "before": {
+        "en": "Document",
+        "pl": "Dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/dayRows.ts",
+          "line": 376
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "Document",
+        "pl": "Dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_add_aria",
+      "before": {
+        "en": "Add a document",
+        "pl": "Dodaj dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 208
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 208
+        }
+      ],
+      "final": {
+        "en": "Add a document",
+        "pl": "Dodaj dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_day_label",
+      "before": {
+        "en": "Document date",
+        "pl": "Data dokumentu"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 299
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 597
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 299
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 597
+        }
+      ],
+      "final": {
+        "en": "Document date",
+        "pl": "Data dokumentu"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_delete",
+      "before": {
+        "en": "Delete",
+        "pl": "Usuń"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 280
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 674
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 694
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 280
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 674
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 695
+        }
+      ],
+      "final": {
+        "en": "Delete",
+        "pl": "Usuń"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_delete_hint",
+      "before": {
+        "en": "The document and its file will be permanently deleted. This cannot be undone.",
+        "pl": "Dokument i jego plik zostaną trwale usunięte. Nie da się tego cofnąć."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 279
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 693
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 279
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 694
+        }
+      ],
+      "final": {
+        "en": "The document and its file will be permanently deleted. This cannot be undone.",
+        "pl": "Dokument i jego plik zostaną trwale usunięte. Nie da się tego cofnąć."
+      },
+      "decision": "keep",
+      "reason": "Keep permanent loss of both document and file and inability to undo.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_delete_q",
+      "before": {
+        "en": "Delete {title}?",
+        "pl": "Usunąć {title}?"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 278
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 692
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 278
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 693
+        }
+      ],
+      "final": {
+        "en": "Delete {title}?",
+        "pl": "Usunąć {title}?"
+      },
+      "decision": "keep",
+      "reason": "Keep confirmation naming the document through {title}.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_delete_sheet",
+      "before": {
+        "en": "Delete document",
+        "pl": "Usuń dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 277
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 691
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 277
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 692
+        }
+      ],
+      "final": {
+        "en": "Delete document",
+        "pl": "Usuń dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_edit_failed",
+      "before": {
+        "en": "Couldn’t save that change. The document is as it was.",
+        "pl": "Nie udało się zapisać tej zmiany. Dokument został bez zmian."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 100
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 422
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 100
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 422
+        }
+      ],
+      "final": {
+        "en": "Couldn’t save that change. The document is as it was.",
+        "pl": "Nie udało się zapisać tej zmiany. Dokument został bez zmian."
+      },
+      "decision": "keep",
+      "reason": "Keep failed metadata/link write and unchanged document; no invented successful save.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_enlarge_page",
+      "before": {
+        "en": "Enlarge page",
+        "pl": "Powiększ stronę"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 525
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 525
+        }
+      ],
+      "final": {
+        "en": "Enlarge page",
+        "pl": "Powiększ stronę"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_export",
+      "before": {
+        "en": "Share or save",
+        "pl": "Wyślij albo zapisz"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 585
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 585
+        }
+      ],
+      "final": {
+        "en": "Share or save",
+        "pl": "Wyślij albo zapisz"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_export_hint",
+      "before": {
+        "en": "The shared or saved copy is not encrypted. Anyone who gets it can read it.",
+        "pl": "Udostępniona lub zapisana kopia nie jest zaszyfrowana. Każdy, kto ją dostanie, może ją odczytać."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 587
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 587
+        }
+      ],
+      "final": {
+        "en": "The shared or saved copy is not encrypted. Anyone who gets it can read it.",
+        "pl": "Udostępniona lub zapisana kopia nie jest zaszyfrowana. Każdy, kto ją dostanie, może ją odczytać."
+      },
+      "decision": "keep",
+      "reason": "Keep unencrypted shared/saved copy and readability by anyone receiving it.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_fit_page",
+      "before": {
+        "en": "Fit page",
+        "pl": "Dopasuj stronę"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 525
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 525
+        }
+      ],
+      "final": {
+        "en": "Fit page",
+        "pl": "Dopasuj stronę"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_kind_image",
+      "before": {
+        "en": "Photo",
+        "pl": "Zdjęcie"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 116
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 116
+        }
+      ],
+      "final": {
+        "en": "Photo",
+        "pl": "Zdjęcie"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_kind_pdf",
+      "before": {
+        "en": "PDF",
+        "pl": "PDF"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 115
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 115
+        }
+      ],
+      "final": {
+        "en": "PDF",
+        "pl": "PDF"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_add",
+      "before": {
+        "en": "Link it",
+        "pl": "Powiąż"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 655
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 655
+        }
+      ],
+      "final": {
+        "en": "Link it",
+        "pl": "Powiąż"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_change",
+      "before": {
+        "en": "Change",
+        "pl": "Zmień"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 621
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 644
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 621
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 644
+        }
+      ],
+      "final": {
+        "en": "Change",
+        "pl": "Zmień"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_clear",
+      "before": {
+        "en": "Remove the link",
+        "pl": "Usuń powiązanie"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 57
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 57
+        }
+      ],
+      "final": {
+        "en": "Remove the link",
+        "pl": "Usuń powiązanie"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_empty_body",
+      "before": {
+        "en": "Create a milestone, surgery journey, regimen or roadmap step to link a document to it.",
+        "pl": "Utwórz kamień milowy, dziennik operacji, kurację lub krok na mapie tranzycji, aby powiązać dokument."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 67
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 67
+        }
+      ],
+      "final": {
+        "en": "First, add a milestone, surgery journey, regimen or roadmap step.",
+        "pl": "Najpierw dodaj kamień milowy, dziennik operacji, kurację lub krok na mapie tranzycji."
+      },
+      "decision": "shorten",
+      "reason": "Keep all four eligible target kinds and first-create prerequisite. The heading already names linking, so remove its repeated explanation.",
+      "changed_locales": [
+        "en",
+        "pl"
+      ]
+    },
+    {
+      "key": "document_link_empty_title",
+      "before": {
+        "en": "Nothing to link this to yet",
+        "pl": "Nie ma jeszcze z czym powiązać"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 67
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 67
+        }
+      ],
+      "final": {
+        "en": "Nothing to link this to yet",
+        "pl": "Nie ma jeszcze z czym powiązać"
+      },
+      "decision": "keep",
+      "reason": "Useful empty-picker heading; keep natural Polish and existing English. Currently unreachable with bundled roadmap goals; fixture evidence is recorded separately.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_kind_episode",
+      "before": {
+        "en": "Regimen",
+        "pl": "Kuracja"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 19
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 19
+        }
+      ],
+      "final": {
+        "en": "Regimen",
+        "pl": "Kuracja"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_kind_goal",
+      "before": {
+        "en": "Roadmap step",
+        "pl": "Krok z mapy tranzycji"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 20
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 20
+        }
+      ],
+      "final": {
+        "en": "Roadmap step",
+        "pl": "Krok z mapy tranzycji"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_kind_milestone",
+      "before": {
+        "en": "Milestone",
+        "pl": "Kamień milowy"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 17
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 17
+        }
+      ],
+      "final": {
+        "en": "Milestone",
+        "pl": "Kamień milowy"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_kind_procedure",
+      "before": {
+        "en": "Surgery journey",
+        "pl": "Dziennik operacji"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 18
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 18
+        }
+      ],
+      "final": {
+        "en": "Surgery journey",
+        "pl": "Dziennik operacji"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_label",
+      "before": {
+        "en": "Linked to",
+        "pl": "Powiązany z"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 608
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 608
+        }
+      ],
+      "final": {
+        "en": "Linked to",
+        "pl": "Powiązany z"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_none",
+      "before": {
+        "en": "Not linked to anything",
+        "pl": "Bez powiązania"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 142
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 462
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 656
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 142
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 462
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 656
+        }
+      ],
+      "final": {
+        "en": "Not linked to anything",
+        "pl": "Bez powiązania"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_link_sheet",
+      "before": {
+        "en": "Link this document",
+        "pl": "Powiąż ten dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 47
+        },
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 48
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 47
+        },
+        {
+          "file": "src/lib/components/DocumentTargetPicker.svelte",
+          "line": 48
+        }
+      ],
+      "final": {
+        "en": "Link this document",
+        "pl": "Powiąż ten dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_linked_here_title",
+      "before": {
+        "en": "Documents linked here",
+        "pl": "Powiązane dokumenty"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/LinkedDocuments.svelte",
+          "line": 28
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/LinkedDocuments.svelte",
+          "line": 28
+        }
+      ],
+      "final": {
+        "en": "Documents linked here",
+        "pl": "Powiązane dokumenty"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_missing_action",
+      "before": {
+        "en": "Back to documents",
+        "pl": "Wróć do dokumentów"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 684
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 685
+        }
+      ],
+      "final": {
+        "en": "Back to documents",
+        "pl": "Wróć do dokumentów"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_missing_body",
+      "before": {
+        "en": "This document is no longer available at this address.",
+        "pl": "Ten dokument nie jest już dostępny pod tym adresem."
+      },
+      "current_callers": [],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 684
+        }
+      ],
+      "final": {
+        "en": null,
+        "pl": null
+      },
+      "decision": "remove",
+      "reason": "Repeats the missing-document heading. Remove Notice text prop, its conditional paragraph and both unused keys; keep heading and return action.",
+      "changed_locales": [
+        "en",
+        "pl"
+      ]
+    },
+    {
+      "key": "document_missing_title",
+      "before": {
+        "en": "This document is gone",
+        "pl": "Tego dokumentu już nie ma"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 683
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 683
+        }
+      ],
+      "final": {
+        "en": "This document is gone",
+        "pl": "Tego dokumentu już nie ma"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_new_sheet",
+      "before": {
+        "en": "Name this document",
+        "pl": "Nazwij ten dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 272
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 272
+        }
+      ],
+      "final": {
+        "en": "Name this document",
+        "pl": "Nazwij ten dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_page_alt",
+      "before": {
+        "en": "The page of {title}",
+        "pl": "Strona dokumentu {title}"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 490
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 498
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 503
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 515
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 490
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 498
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 503
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 515
+        }
+      ],
+      "final": {
+        "en": "The page of {title}",
+        "pl": "Strona dokumentu {title}"
+      },
+      "decision": "keep",
+      "reason": "Keep {title} accessible name for reader, canvas fallback and image.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_page_count",
+      "before": {
+        "en": "Page {page} of {pages}",
+        "pl": "Strona {page} z {pages}"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 550
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 550
+        }
+      ],
+      "final": {
+        "en": "Page {page} of {pages}",
+        "pl": "Strona {page} z {pages}"
+      },
+      "decision": "keep",
+      "reason": "Keep {page}/{pages} live page count, including one-page PDFs.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_page_failed",
+      "before": {
+        "en": "Couldn't display this page. You can still share or save the stored file.",
+        "pl": "Nie udało się wyświetlić tej strony. Zapisany plik nadal można udostępnić lub zapisać."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 580
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 580
+        }
+      ],
+      "final": {
+        "en": "Couldn't display this page. You can still share or save the stored file.",
+        "pl": "Nie udało się wyświetlić tej strony. Zapisany plik nadal można udostępnić lub zapisać."
+      },
+      "decision": "keep",
+      "reason": "Keep failed page and available export fallback; does not claim the whole PDF failed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_page_next",
+      "before": {
+        "en": "Next page",
+        "pl": "Następna strona"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 556
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 556
+        }
+      ],
+      "final": {
+        "en": "Next page",
+        "pl": "Następna strona"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_page_prev",
+      "before": {
+        "en": "Previous page",
+        "pl": "Poprzednia strona"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 542
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 542
+        }
+      ],
+      "final": {
+        "en": "Previous page",
+        "pl": "Poprzednia strona"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_pdf_unreadable",
+      "before": {
+        "en": "Couldn't display this PDF. The stored file is unchanged; you can share or save it to open elsewhere.",
+        "pl": "Nie udało się wyświetlić tego PDF-a. Zapisany plik pozostaje bez zmian. Możesz go udostępnić lub zapisać, aby otworzyć gdzie indziej."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 578
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 578
+        }
+      ],
+      "final": {
+        "en": "Couldn't display this PDF. The stored file is unchanged; you can share or save it to open elsewhere.",
+        "pl": "Nie udało się wyświetlić tego PDF-a. Zapisany plik pozostaje bez zmian. Możesz go udostępnić lub zapisać, aby otworzyć gdzie indziej."
+      },
+      "decision": "keep",
+      "reason": "Keep display failure, unchanged stored bytes and share/save fallback to open elsewhere.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_picker_failed",
+      "before": {
+        "en": "Couldn’t open the file picker.",
+        "pl": "Nie udało się otworzyć okna wyboru pliku."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 45
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 45
+        }
+      ],
+      "final": {
+        "en": "Couldn’t open the file picker.",
+        "pl": "Nie udało się otworzyć okna wyboru pliku."
+      },
+      "decision": "keep",
+      "reason": "Keep actual file-picker opening failure; no fabricated permission action.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_save",
+      "before": {
+        "en": "Save",
+        "pl": "Zapisz"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 273
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 273
+        }
+      ],
+      "final": {
+        "en": "Save",
+        "pl": "Zapisz"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_save_changes",
+      "before": {
+        "en": "Save changes",
+        "pl": "Zapisz zmiany"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 670
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 670
+        }
+      ],
+      "final": {
+        "en": "Save changes",
+        "pl": "Zapisz zmiany"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_target_gone",
+      "before": {
+        "en": "Linked to something that’s gone",
+        "pl": "Powiązany z czymś, czego już nie ma"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 131
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 462
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 641
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 131
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 462
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 641
+        }
+      ],
+      "final": {
+        "en": "Linked to something that’s gone",
+        "pl": "Powiązany z czymś, czego już nie ma"
+      },
+      "decision": "keep",
+      "reason": "Keep unresolved restored link distinct from unlinked and still-loading states.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_title",
+      "before": {
+        "en": "Document",
+        "pl": "Dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 437
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 437
+        }
+      ],
+      "final": {
+        "en": "Document",
+        "pl": "Dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_title_label",
+      "before": {
+        "en": "What it is",
+        "pl": "Co to jest"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 285
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 592
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 285
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 592
+        }
+      ],
+      "final": {
+        "en": "What it is",
+        "pl": "Co to jest"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_title_placeholder",
+      "before": {
+        "en": "Psychiatric opinion",
+        "pl": "Opinia psychiatryczna"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 291
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 291
+        }
+      ],
+      "final": {
+        "en": "Psychiatric opinion",
+        "pl": "Opinia psychiatryczna"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_title_required",
+      "before": {
+        "en": "Add a title to save this document.",
+        "pl": "Dodaj tytuł, żeby zapisać dokument."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 305
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 305
+        }
+      ],
+      "final": {
+        "en": "Add a title to save this document.",
+        "pl": "Dodaj tytuł, żeby zapisać dokument."
+      },
+      "decision": "keep",
+      "reason": "Keep title prerequisite, disabled Save explanation and live/field-linked guidance.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_too_large",
+      "before": {
+        "en": "Choose a file no larger than 25 MB.",
+        "pl": "Wybierz plik o rozmiarze do 25 MB."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 29
+        },
+        {
+          "file": "src/lib/stores/photoPicking.ts",
+          "line": 43
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 29
+        }
+      ],
+      "final": {
+        "en": "Choose a file no larger than 25 MB.",
+        "pl": "Wybierz plik o rozmiarze do 25 MB."
+      },
+      "decision": "keep",
+      "reason": "Keep exact 25 MB inclusive limit and actionable alternative.",
+      "changed_locales": []
+    },
+    {
+      "key": "document_unsupported_file",
+      "before": {
+        "en": "This file isn’t a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.",
+        "pl": "To nie jest PDF ani obraz, który aplikacja może odczytać. Spróbuj pliku PDF, JPEG lub PNG."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 29
+        },
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 64
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 29
+        },
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 64
+        }
+      ],
+      "final": {
+        "en": "This file isn’t a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.",
+        "pl": "To nie jest PDF ani obraz, który aplikacja może odczytać. Spróbuj pliku PDF, JPEG lub PNG."
+      },
+      "decision": "keep",
+      "reason": "Keep unsupported-file refusal and supported PDF/JPEG/PNG alternatives.",
+      "changed_locales": []
+    },
+    {
+      "key": "documents_empty_action",
+      "before": {
+        "en": "Add a document",
+        "pl": "Dodaj dokument"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 264
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 264
+        }
+      ],
+      "final": {
+        "en": "Add a document",
+        "pl": "Dodaj dokument"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "documents_empty_body",
+      "before": {
+        "en": "Add a photo or PDF. Documents are stored encrypted on this device.",
+        "pl": "Dodaj zdjęcie lub PDF. Dokumenty są przechowywane w zaszyfrowanej postaci na tym urządzeniu."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 263
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 263
+        }
+      ],
+      "final": {
+        "en": "Photos and PDFs stay encrypted on this device. Paperwork without the paper pile.",
+        "pl": "Zdjęcia i PDF-y zostają zaszyfrowane na tym urządzeniu. Papierologia bez sterty papierów."
+      },
+      "decision": "keep",
+      "reason": "Keep supported formats and encrypted storage on this device. Replace repeated Add instruction and passive storage phrasing with a paperwork aside; humour concerns paperwork, not the reader.",
+      "changed_locales": [
+        "en",
+        "pl"
+      ]
+    },
+    {
+      "key": "documents_empty_title",
+      "before": {
+        "en": "No documents yet",
+        "pl": "Brak dokumentów"
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 262
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 262
+        }
+      ],
+      "final": {
+        "en": "No documents yet",
+        "pl": "Jeszcze nie ma tu dokumentów"
+      },
+      "decision": "keep",
+      "reason": "English already invites without judgement. Replace the inventory-style Polish absence with an ordinary sentence; retain documents vocabulary.",
+      "changed_locales": [
+        "pl"
+      ]
+    },
+    {
+      "key": "documents_intro",
+      "before": {
+        "en": "Only document titles are searchable. The app does not read the text on the pages.",
+        "pl": "Wyszukiwać można tylko tytuły dokumentów. Aplikacja nie odczytuje tekstu na stronach."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 203
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 203
+        }
+      ],
+      "final": {
+        "en": "Search finds titles only. The app doesn't read the text on the pages.",
+        "pl": "Dokumenty wyszukasz tylko po tytule. Aplikacja nie czyta tekstu na stronach."
+      },
+      "decision": "shorten",
+      "reason": "Keep title-only search and the fact that the app does not read page text. Use ordinary English and independent Polish syntax.",
+      "changed_locales": [
+        "en",
+        "pl"
+      ]
+    },
+    {
+      "key": "documents_summary",
+      "before": {
+        "en": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} document · {size}",
+              "countPlural=other": "{count} documents · {size}"
+            }
+          }
+        ],
+        "pl": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} dokument · {size}",
+              "countPlural=few": "{count} dokumenty · {size}",
+              "countPlural=many": "{count} dokumentów · {size}",
+              "countPlural=other": "{count} dokumentów · {size}"
+            }
+          }
+        ]
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentsSummary.ts",
+          "line": 20
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentsSummary.ts",
+          "line": 20
+        }
+      ],
+      "final": {
+        "en": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} document · {size}",
+              "countPlural=other": "{count} documents · {size}"
+            }
+          }
+        ],
+        "pl": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} dokument · {size}",
+              "countPlural=few": "{count} dokumenty · {size}",
+              "countPlural=many": "{count} dokumentów · {size}",
+              "countPlural=other": "{count} dokumentów · {size}"
+            }
+          }
+        ]
+      },
+      "decision": "keep",
+      "reason": "Keep count/size interpolation and every EN/PL plural branch.",
+      "changed_locales": []
+    },
+    {
+      "key": "documents_title",
+      "before": {
+        "en": "Documents",
+        "pl": "Dokumenty"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/searchHitRows.ts",
+          "line": 130
+        },
+        {
+          "file": "src/lib/data/vocabulary/hubLabels.ts",
+          "line": 61
+        },
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 203
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 203
+        }
+      ],
+      "final": {
+        "en": "Documents",
+        "pl": "Dokumenty"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "exp_cancelled",
+      "before": {
+        "en": "Export cancelled. Nothing left the app.",
+        "pl": "Eksport przerwany. Nic nie opuściło aplikacji."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/CalendarHandoffSheet.svelte",
+          "line": 70
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 395
+        },
+        {
+          "file": "src/routes/media/photos/export/+page.svelte",
+          "line": 247
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 285
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 387
+        },
+        {
+          "file": "src/routes/settings/export/+page.svelte",
+          "line": 398
+        },
+        {
+          "file": "src/routes/wrapped/[cadence]/share/+page.svelte",
+          "line": 111
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 395
+        }
+      ],
+      "final": {
+        "en": "Export cancelled. Nothing left the app.",
+        "pl": "Eksport przerwany. Nic nie opuściło aplikacji."
+      },
+      "decision": "keep",
+      "reason": "Keep cancelled export and nothing leaving the app.",
+      "changed_locales": []
+    },
+    {
+      "key": "hub_sub_documents",
+      "before": {
+        "en": "Opinions, referrals and rulings you have been given",
+        "pl": "Opinie, skierowania i postanowienia, które dostajesz"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/hubLabels.ts",
+          "line": 93
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "Opinions, referrals and rulings you have been given",
+        "pl": "Opinie, skierowania i postanowienia, które dostajesz"
+      },
+      "decision": "keep",
+      "reason": "Keep concrete examples and the authored Polish invitation.",
+      "changed_locales": []
+    },
+    {
+      "key": "keep_it",
+      "before": {
+        "en": "Keep it",
+        "pl": "Zostaw"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/EntryEditor.svelte",
+          "line": 1493
+        },
+        {
+          "file": "src/lib/components/MarginNotes.svelte",
+          "line": 115
+        },
+        {
+          "file": "src/lib/components/VoicePracticeTakes.svelte",
+          "line": 121
+        },
+        {
+          "file": "src/lib/data/offers.ts",
+          "line": 294
+        },
+        {
+          "file": "src/lib/data/offers.ts",
+          "line": 311
+        },
+        {
+          "file": "src/routes/body/hair-progress/+page.svelte",
+          "line": 442
+        },
+        {
+          "file": "src/routes/body/hair-progress/+page.svelte",
+          "line": 494
+        },
+        {
+          "file": "src/routes/body/hair-removal/+page.svelte",
+          "line": 314
+        },
+        {
+          "file": "src/routes/body/hair-removal/+page.svelte",
+          "line": 391
+        },
+        {
+          "file": "src/routes/body/measurements/+page.svelte",
+          "line": 632
+        },
+        {
+          "file": "src/routes/body/measurements/+page.svelte",
+          "line": 682
+        },
+        {
+          "file": "src/routes/body/wear/+page.svelte",
+          "line": 698
+        },
+        {
+          "file": "src/routes/care/changes/+page.svelte",
+          "line": 626
+        },
+        {
+          "file": "src/routes/care/labs/+page.svelte",
+          "line": 618
+        },
+        {
+          "file": "src/routes/doubt/comfort/+page.svelte",
+          "line": 111
+        },
+        {
+          "file": "src/routes/doubt/evidence/+page.svelte",
+          "line": 191
+        },
+        {
+          "file": "src/routes/health/appointments/+page.svelte",
+          "line": 567
+        },
+        {
+          "file": "src/routes/health/appointments/+page.svelte",
+          "line": 583
+        },
+        {
+          "file": "src/routes/health/cycle-events/+page.svelte",
+          "line": 291
+        },
+        {
+          "file": "src/routes/health/dilation/+page.svelte",
+          "line": 455
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 588
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 636
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 677
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 840
+        },
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 281
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 695
+        },
+        {
+          "file": "src/routes/search/questions/[id]/+page.svelte",
+          "line": 350
+        },
+        {
+          "file": "src/routes/settings/affirmations/+page.svelte",
+          "line": 177
+        },
+        {
+          "file": "src/routes/settings/eras/+page.svelte",
+          "line": 249
+        },
+        {
+          "file": "src/routes/settings/reminders/+page.svelte",
+          "line": 149
+        },
+        {
+          "file": "src/routes/settings/tags/+page.svelte",
+          "line": 158
+        },
+        {
+          "file": "src/routes/transition/letters/+page.svelte",
+          "line": 326
+        },
+        {
+          "file": "src/routes/transition/milestones/+page.svelte",
+          "line": 425
+        },
+        {
+          "file": "src/routes/transition/milestones/+page.svelte",
+          "line": 531
+        },
+        {
+          "file": "src/routes/transition/roadmap/+page.svelte",
+          "line": 648
+        },
+        {
+          "file": "src/routes/transition/tryouts/+page.svelte",
+          "line": 167
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 542
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 595
+        },
+        {
+          "file": "src/routes/voice/+page.svelte",
+          "line": 631
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/+page.svelte",
+          "line": 281
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 696
+        }
+      ],
+      "final": {
+        "en": "Keep it",
+        "pl": "Zostaw"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "milestones",
+      "before": {
+        "en": "Milestones",
+        "pl": "Kamienie milowe"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/searchHitRows.ts",
+          "line": 78
+        },
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 38
+        },
+        {
+          "file": "src/lib/data/vocabulary/hubLabels.ts",
+          "line": 46
+        },
+        {
+          "file": "src/lib/data/vocabulary/journalBookLabels.ts",
+          "line": 22
+        },
+        {
+          "file": "src/routes/settings/journal-book/+page.svelte",
+          "line": 198
+        },
+        {
+          "file": "src/routes/transition/milestones/+page.svelte",
+          "line": 291
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 38
+        }
+      ],
+      "final": {
+        "en": "Milestones",
+        "pl": "Kamienie milowe"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "next_month",
+      "before": {
+        "en": "Next month",
+        "pl": "Następny miesiąc"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 459
+        },
+        {
+          "file": "src/routes/calendar/+page.svelte",
+          "line": 452
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 459
+        }
+      ],
+      "final": {
+        "en": "Next month",
+        "pl": "Następny miesiąc"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "photo_heic",
+      "before": {
+        "en": "This looks like a HEIC photo, which this app can’t read yet. Convert it to JPEG first, or set your camera to save photos as JPEG.",
+        "pl": "To wygląda na zdjęcie HEIC, którego aplikacja jeszcze nie odczytuje. Zamień je na JPEG albo ustaw aparat tak, by zapisywał zdjęcia jako JPEG."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 59
+        },
+        {
+          "file": "src/lib/stores/photoPicking.ts",
+          "line": 65
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/stores/documentPicking.ts",
+          "line": 59
+        }
+      ],
+      "final": {
+        "en": "This looks like a HEIC photo, which this app can’t read yet. Convert it to JPEG first, or set your camera to save photos as JPEG.",
+        "pl": "To wygląda na zdjęcie HEIC, którego aplikacja jeszcze nie odczytuje. Zamień je na JPEG albo ustaw aparat tak, by zapisywał zdjęcia jako JPEG."
+      },
+      "decision": "keep",
+      "reason": "Keep HEIC refusal and JPEG conversion or camera-setting alternatives.",
+      "changed_locales": []
+    },
+    {
+      "key": "pj_downloaded",
+      "before": {
+        "en": "Saved. Check your downloads.",
+        "pl": "Zapisano. Sprawdź pobrane pliki."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/CalendarHandoffSheet.svelte",
+          "line": 73
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 398
+        },
+        {
+          "file": "src/routes/media/photos/export/+page.svelte",
+          "line": 250
+        },
+        {
+          "file": "src/routes/wrapped/[cadence]/share/+page.svelte",
+          "line": 114
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 398
+        }
+      ],
+      "final": {
+        "en": "Saved. Check your downloads.",
+        "pl": "Zapisano. Sprawdź pobrane pliki."
+      },
+      "decision": "keep",
+      "reason": "Keep successful download and where to look; do not imply sharing.",
+      "changed_locales": []
+    },
+    {
+      "key": "pj_failed",
+      "before": {
+        "en": "That didn't work. Nothing was shared.",
+        "pl": "Nie udało się. Nic nie udostępniono."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/CalendarHandoffSheet.svelte",
+          "line": 77
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 401
+        },
+        {
+          "file": "src/routes/media/photos/export/+page.svelte",
+          "line": 231
+        },
+        {
+          "file": "src/routes/media/photos/export/+page.svelte",
+          "line": 253
+        },
+        {
+          "file": "src/routes/wrapped/[cadence]/share/+page.svelte",
+          "line": 98
+        },
+        {
+          "file": "src/routes/wrapped/[cadence]/share/+page.svelte",
+          "line": 117
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 401
+        }
+      ],
+      "final": {
+        "en": "That didn't work. Nothing was shared.",
+        "pl": "Nie udało się. Nic nie udostępniono."
+      },
+      "decision": "keep",
+      "reason": "Keep delivery failure and nothing shared; no invented recovery promise.",
+      "changed_locales": []
+    },
+    {
+      "key": "pj_shared",
+      "before": {
+        "en": "Shared.",
+        "pl": "Udostępniono."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/CalendarHandoffSheet.svelte",
+          "line": 73
+        },
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 398
+        },
+        {
+          "file": "src/routes/media/photos/export/+page.svelte",
+          "line": 250
+        },
+        {
+          "file": "src/routes/wrapped/[cadence]/share/+page.svelte",
+          "line": 114
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/routes/media/documents/[id]/+page.svelte",
+          "line": 398
+        }
+      ],
+      "final": {
+        "en": "Shared.",
+        "pl": "Udostępniono."
+      },
+      "decision": "keep",
+      "reason": "Keep factual completed sharing status, without praise.",
+      "changed_locales": []
+    },
+    {
+      "key": "prev_month",
+      "before": {
+        "en": "Previous month",
+        "pl": "Poprzedni miesiąc"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 449
+        },
+        {
+          "file": "src/routes/calendar/+page.svelte",
+          "line": 449
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 449
+        }
+      ],
+      "final": {
+        "en": "Previous month",
+        "pl": "Poprzedni miesiąc"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "read_failed",
+      "before": {
+        "en": "Couldn't read your journal",
+        "pl": "Nie można odczytać dziennika"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/EntryEditor.svelte",
+          "line": 954
+        },
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 113
+        },
+        {
+          "file": "src/routes/search/questions/[id]/+page.svelte",
+          "line": 260
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 360
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 113
+        }
+      ],
+      "final": {
+        "en": "Couldn't read your journal",
+        "pl": "Nie można odczytać dziennika"
+      },
+      "decision": "keep",
+      "reason": "Keep read failure, last-result limitation or retry action; live status describes the actual query state.",
+      "changed_locales": []
+    },
+    {
+      "key": "read_refresh_failed",
+      "before": {
+        "en": "Couldn't refresh your journal",
+        "pl": "Nie można odświeżyć dziennika"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 113
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 360
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 113
+        }
+      ],
+      "final": {
+        "en": "Couldn't refresh your journal",
+        "pl": "Nie można odświeżyć dziennika"
+      },
+      "decision": "keep",
+      "reason": "Keep read failure, last-result limitation or retry action; live status describes the actual query state.",
+      "changed_locales": []
+    },
+    {
+      "key": "read_retry",
+      "before": {
+        "en": "Try again",
+        "pl": "Spróbuj ponownie"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/EntryEditor.svelte",
+          "line": 954
+        },
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 115
+        },
+        {
+          "file": "src/routes/search/questions/[id]/+page.svelte",
+          "line": 261
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 362
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 115
+        }
+      ],
+      "final": {
+        "en": "Try again",
+        "pl": "Spróbuj ponownie"
+      },
+      "decision": "keep",
+      "reason": "Keep read failure, last-result limitation or retry action; live status describes the actual query state.",
+      "changed_locales": []
+    },
+    {
+      "key": "read_stale_body",
+      "before": {
+        "en": "Showing the last result. Recent changes may be missing.",
+        "pl": "Pokazany jest ostatni wynik. Może brakować najnowszych zmian."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 114
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 361
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/ReadGate.svelte",
+          "line": 114
+        }
+      ],
+      "final": {
+        "en": "Showing the last result. Recent changes may be missing.",
+        "pl": "Pokazany jest ostatni wynik. Może brakować najnowszych zmian."
+      },
+      "decision": "keep",
+      "reason": "Keep read failure, last-result limitation or retry action; live status describes the actual query state.",
+      "changed_locales": []
+    },
+    {
+      "key": "record_discard_body",
+      "before": {
+        "en": "Your changes have not been saved.",
+        "pl": "Zmiany nie zostały zapisane."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 189
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 612
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 189
+        }
+      ],
+      "final": {
+        "en": "Your changes have not been saved.",
+        "pl": "Zmiany nie zostały zapisane."
+      },
+      "decision": "keep",
+      "reason": "Keep warning that selected bytes/metadata are not saved before discarding.",
+      "changed_locales": []
+    },
+    {
+      "key": "record_discard_title",
+      "before": {
+        "en": "Discard unsaved changes?",
+        "pl": "Odrzucić niezapisane zmiany?"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 187
+        },
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 188
+        },
+        {
+          "file": "src/routes/care/regimen/+page.svelte",
+          "line": 890
+        },
+        {
+          "file": "src/routes/care/regimen/+page.svelte",
+          "line": 891
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 610
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 611
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 187
+        },
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 188
+        }
+      ],
+      "final": {
+        "en": "Discard unsaved changes?",
+        "pl": "Odrzucić niezapisane zmiany?"
+      },
+      "decision": "keep",
+      "reason": "Keep shared draft protection and explicit continue/discard action; selected file counts as unsaved work.",
+      "changed_locales": []
+    },
+    {
+      "key": "record_keep_editing",
+      "before": {
+        "en": "Keep editing",
+        "pl": "Edytuj dalej"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 192
+        },
+        {
+          "file": "src/routes/care/regimen/+page.svelte",
+          "line": 894
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 614
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 192
+        }
+      ],
+      "final": {
+        "en": "Keep editing",
+        "pl": "Edytuj dalej"
+      },
+      "decision": "keep",
+      "reason": "Keep shared draft protection and explicit continue/discard action; selected file counts as unsaved work.",
+      "changed_locales": []
+    },
+    {
+      "key": "record_save_failed",
+      "before": {
+        "en": "Could not save. Your changes are still here. Try again.",
+        "pl": "Nie udało się zapisać. Zmiany nadal tu są. Spróbuj ponownie."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 155
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 443
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 155
+        }
+      ],
+      "final": {
+        "en": "Could not save. Your changes are still here. Try again.",
+        "pl": "Nie udało się zapisać. Zmiany nadal tu są. Spróbuj ponownie."
+      },
+      "decision": "keep",
+      "reason": "Keep failure, retained draft and retry; import failure stays an alert beside Save.",
+      "changed_locales": []
+    },
+    {
+      "key": "regimen",
+      "before": {
+        "en": "Regimen",
+        "pl": "Kuracja"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/searchHitRows.ts",
+          "line": 155
+        },
+        {
+          "file": "src/lib/data/vocabulary/clinicianSummaryLabels.ts",
+          "line": 19
+        },
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 40
+        },
+        {
+          "file": "src/routes/care/regimen/+page.svelte",
+          "line": 411
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 40
+        }
+      ],
+      "final": {
+        "en": "Regimen",
+        "pl": "Kuracja"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_delete_documents",
+      "before": {
+        "en": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} document filed here is kept and stops being filed under this step. This cannot be undone.",
+              "countPlural=other": "{count} documents filed here are kept and stop being filed under this step. This cannot be undone."
+            }
+          }
+        ],
+        "pl": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} dokument złożony tutaj zostaje, ale przestaje być przypisany do tego kroku. Tego nie da się cofnąć.",
+              "countPlural=few": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć.",
+              "countPlural=many": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć.",
+              "countPlural=other": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć."
+            }
+          }
+        ]
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/transition/roadmap/+page.svelte",
+          "line": 645
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} document filed here is kept and stops being filed under this step. This cannot be undone.",
+              "countPlural=other": "{count} documents filed here are kept and stop being filed under this step. This cannot be undone."
+            }
+          }
+        ],
+        "pl": [
+          {
+            "declarations": [
+              "input count",
+              "local countPlural = count: plural"
+            ],
+            "selectors": [
+              "countPlural"
+            ],
+            "match": {
+              "countPlural=one": "{count} dokument złożony tutaj zostaje, ale przestaje być przypisany do tego kroku. Tego nie da się cofnąć.",
+              "countPlural=few": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć.",
+              "countPlural=many": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć.",
+              "countPlural=other": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć."
+            }
+          }
+        ]
+      },
+      "decision": "keep",
+      "reason": "Keep documents surviving target deletion, removed links and irreversible unlinking; all plural forms stay.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_appeal",
+      "before": {
+        "en": "Two weeks to appeal to the sąd okręgowy",
+        "pl": "Apelacja do sądu okręgowego w dwa tygodnie"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 92
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 92
+        }
+      ],
+      "final": {
+        "en": "Two weeks to appeal to the sąd okręgowy",
+        "pl": "Apelacja do sądu okręgowego w dwa tygodnie"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_application",
+      "before": {
+        "en": "The application to change the sex marker on your birth certificate",
+        "pl": "Wniosek o zmianę oznaczenia płci w akcie urodzenia"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 84
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 84
+        }
+      ],
+      "final": {
+        "en": "The application to change the sex marker on your birth certificate",
+        "pl": "Wniosek o zmianę oznaczenia płci w akcie urodzenia"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_birth_certificate",
+      "before": {
+        "en": "An abridged copy of your birth certificate from the USC",
+        "pl": "Odpis skrócony aktu urodzenia z USC"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 81
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 81
+        }
+      ],
+      "final": {
+        "en": "An abridged copy of your birth certificate from the USC",
+        "pl": "Odpis skrócony aktu urodzenia z USC"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_closed_hearing",
+      "before": {
+        "en": "Asking for the hearing to be closed",
+        "pl": "Wniosek o wyłączenie jawności rozprawy"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 88
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 88
+        }
+      ],
+      "final": {
+        "en": "Asking for the hearing to be closed",
+        "pl": "Wniosek o wyłączenie jawności rozprawy"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_court_fee",
+      "before": {
+        "en": "The 100 zł fee to the court account",
+        "pl": "Opłata 100 zł na konto sądu"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 83
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 83
+        }
+      ],
+      "final": {
+        "en": "The 100 zł fee to the court account",
+        "pl": "Opłata 100 zł na konto sądu"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_diplomas",
+      "before": {
+        "en": "Diplomas, school certificates, personnel files",
+        "pl": "Dyplom, świadectwa, akta osobowe"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 101
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 101
+        }
+      ],
+      "final": {
+        "en": "Diplomas, school certificates, personnel files",
+        "pl": "Dyplom, świadectwa, akta osobowe"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_document_set",
+      "before": {
+        "en": "The set of documents to carry",
+        "pl": "Zestaw dokumentów do okazywania"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 103
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 103
+        }
+      ],
+      "final": {
+        "en": "The set of documents to carry",
+        "pl": "Zestaw dokumentów do okazywania"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_driving_licence",
+      "before": {
+        "en": "The driving licence, within 30 days",
+        "pl": "Prawo jazdy w ciągu 30 dni"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 99
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 99
+        }
+      ],
+      "final": {
+        "en": "The driving licence, within 30 days",
+        "pl": "Prawo jazdy w ciągu 30 dni"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": [],
+      "committed_final": {
+        "en": "The driving licence, within 30 days",
+        "pl": "Prawo jazdy w 30 dni"
+      },
+      "author_working_override": "Existing main working-tree edit stays uncommitted. Merge preserves this final author wording."
+    },
+    {
+      "key": "roadmap_goal_pl_legal_expert",
+      "before": {
+        "en": "If the court appoints an expert",
+        "pl": "Jeśli sąd powoła biegłego"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 90
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 90
+        }
+      ],
+      "final": {
+        "en": "If the court appoints an expert",
+        "pl": "Jeśli sąd powoła biegłego"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_fee_waiver",
+      "before": {
+        "en": "A fee waiver, and its two seven-day deadlines",
+        "pl": "Zwolnienie od kosztów i dwa terminy po 7 dni"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 89
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 89
+        }
+      ],
+      "final": {
+        "en": "A fee waiver, and its two seven-day deadlines",
+        "pl": "Zwolnienie od kosztów i dwa terminy po 7 dni"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_file_it",
+      "before": {
+        "en": "Filing it at the court desk, or by registered post",
+        "pl": "Złożenie wniosku w sądzie albo wysłanie go listem poleconym"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 85
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 85
+        }
+      ],
+      "final": {
+        "en": "Filing it at the court desk, or by registered post",
+        "pl": "Złożenie wniosku w sądzie albo wysłanie go listem poleconym"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_final_copy",
+      "before": {
+        "en": "A copy of the final ruling",
+        "pl": "Odpis prawomocnego postanowienia"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 93
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 93
+        }
+      ],
+      "final": {
+        "en": "A copy of the final ruling",
+        "pl": "Odpis prawomocnego postanowienia"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_formal_defects",
+      "before": {
+        "en": "Seven days to fix formal defects",
+        "pl": "7 dni na uzupełnienie braków formalnych"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 86
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 86
+        }
+      ],
+      "final": {
+        "en": "Seven days to fix formal defects",
+        "pl": "7 dni na uzupełnienie braków formalnych"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_id_card",
+      "before": {
+        "en": "A new ID card",
+        "pl": "Nowy dowód osobisty"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 97
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 97
+        }
+      ],
+      "final": {
+        "en": "A new ID card",
+        "pl": "Nowy dowód osobisty"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_institutions",
+      "before": {
+        "en": "Bank, insurers, clinic, phone operator",
+        "pl": "Bank, ubezpieczyciele, przychodnia, operator telefonu"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 102
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 102
+        }
+      ],
+      "final": {
+        "en": "Bank, insurers, clinic, phone operator",
+        "pl": "Bank, ubezpieczyciele, przychodnia, operator telefonu"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_name_usc",
+      "before": {
+        "en": "The USC decision changing your first name",
+        "pl": "Decyzja USC o zmianie imienia"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 96
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 96
+        }
+      ],
+      "final": {
+        "en": "The USC decision changing your first name",
+        "pl": "Decyzja USC o zmianie imienia"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_new_birth_copy",
+      "before": {
+        "en": "A fresh copy of the birth certificate",
+        "pl": "Nowy odpis aktu urodzenia"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 95
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 95
+        }
+      ],
+      "final": {
+        "en": "A fresh copy of the birth certificate",
+        "pl": "Nowy odpis aktu urodzenia"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_passport",
+      "before": {
+        "en": "A new passport",
+        "pl": "Nowy paszport"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 98
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 98
+        }
+      ],
+      "final": {
+        "en": "A new passport",
+        "pl": "Nowy paszport"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_pesel",
+      "before": {
+        "en": "The annotation on the birth certificate, and a new PESEL",
+        "pl": "Wzmianka w akcie urodzenia i nowy PESEL"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 94
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 94
+        }
+      ],
+      "final": {
+        "en": "The annotation on the birth certificate, and a new PESEL",
+        "pl": "Wzmianka w akcie urodzenia i nowy PESEL"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_remote_hearing",
+      "before": {
+        "en": "Seven days to ask for a remote hearing",
+        "pl": "7 dni na wniosek o rozprawę zdalną"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 87
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 87
+        }
+      ],
+      "final": {
+        "en": "Seven days to ask for a remote hearing",
+        "pl": "7 dni na wniosek o rozprawę zdalną"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_which_court",
+      "before": {
+        "en": "Which sąd rejonowy is yours",
+        "pl": "Właściwy sąd rejonowy"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 82
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 82
+        }
+      ],
+      "final": {
+        "en": "Which sąd rejonowy is yours",
+        "pl": "Właściwy sąd rejonowy"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_written_reasons",
+      "before": {
+        "en": "Seven days to ask for the reasons behind the ruling",
+        "pl": "7 dni na wniosek o uzasadnienie postanowienia"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 91
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 91
+        }
+      ],
+      "final": {
+        "en": "Seven days to ask for the reasons behind the ruling",
+        "pl": "7 dni na wniosek o uzasadnienie postanowienia"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_legal_zus_ceidg",
+      "before": {
+        "en": "ZUS and CEIDG, within seven days",
+        "pl": "ZUS i CEIDG w ciągu 7 dni"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 100
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 100
+        }
+      ],
+      "final": {
+        "en": "ZUS and CEIDG, within seven days",
+        "pl": "ZUS i CEIDG w ciągu 7 dni"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": [],
+      "committed_final": {
+        "en": "ZUS and CEIDG, within seven days",
+        "pl": "ZUS i CEIDG w 7 dni"
+      },
+      "author_working_override": "Existing main working-tree edit stays uncommitted. Merge preserves this final author wording."
+    },
+    {
+      "key": "roadmap_goal_pl_medical_bloodwork",
+      "before": {
+        "en": "Bloodwork before hormones",
+        "pl": "Badania krwi przed hormonami"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 79
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 79
+        }
+      ],
+      "final": {
+        "en": "Bloodwork before hormones",
+        "pl": "Badania krwi przed hormonami"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_medical_diagnosis_code",
+      "before": {
+        "en": "The diagnosis code, in both opinions",
+        "pl": "Kod rozpoznania w obu opiniach"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 78
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 78
+        }
+      ],
+      "final": {
+        "en": "The diagnosis code, in both opinions",
+        "pl": "Kod rozpoznania w obu opiniach"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_medical_doctor_opinion",
+      "before": {
+        "en": "An opinion from a psychiatrist or sexologist",
+        "pl": "Opinia psychiatry albo seksuologa"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 77
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 77
+        }
+      ],
+      "final": {
+        "en": "An opinion from a psychiatrist or sexologist",
+        "pl": "Opinia psychiatry albo seksuologa"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_medical_keep_opinions",
+      "before": {
+        "en": "Originals, and copies for the court",
+        "pl": "Oryginały opinii i kopie dla sądu"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 80
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 80
+        }
+      ],
+      "final": {
+        "en": "Originals, and copies for the court",
+        "pl": "Oryginały opinii i kopie dla sądu"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_medical_psych_opinion",
+      "before": {
+        "en": "A written opinion from the psychologist",
+        "pl": "Opinia psychologiczna na piśmie"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 76
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 76
+        }
+      ],
+      "final": {
+        "en": "A written opinion from the psychologist",
+        "pl": "Opinia psychologiczna na piśmie"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_medical_psychologist",
+      "before": {
+        "en": "Consultations with a psychologist",
+        "pl": "Konsultacje u psychologa"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 75
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 75
+        }
+      ],
+      "final": {
+        "en": "Consultations with a psychologist",
+        "pl": "Konsultacje u psychologa"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_medical_two_specialists",
+      "before": {
+        "en": "Two specialists for the diagnosis: a doctor and a psychologist",
+        "pl": "Dwie osoby do diagnozy: lekarz i psycholog"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 74
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 74
+        }
+      ],
+      "final": {
+        "en": "Two specialists for the diagnosis: a doctor and a psychologist",
+        "pl": "Dwie osoby do diagnozy: lekarz i psycholog"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_presentational_clothes",
+      "before": {
+        "en": "Clothes you feel like yourself in",
+        "pl": "Ubrania, w których czujesz się sobą"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 70
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 70
+        }
+      ],
+      "final": {
+        "en": "Clothes you feel like yourself in",
+        "pl": "Ubrania, w których czujesz się sobą"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_presentational_hair",
+      "before": {
+        "en": "Hair removal, or hair treatments",
+        "pl": "Depilacja albo zabiegi na włosy"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 72
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 72
+        }
+      ],
+      "final": {
+        "en": "Hair removal, or hair treatments",
+        "pl": "Depilacja albo zabiegi na włosy"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_presentational_photo",
+      "before": {
+        "en": "A new photo for your documents",
+        "pl": "Nowe zdjęcie do dokumentów"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 73
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 73
+        }
+      ],
+      "final": {
+        "en": "A new photo for your documents",
+        "pl": "Nowe zdjęcie do dokumentów"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_presentational_voice",
+      "before": {
+        "en": "Working on your voice",
+        "pl": "Praca nad głosem"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 71
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 71
+        }
+      ],
+      "final": {
+        "en": "Working on your voice",
+        "pl": "Praca nad głosem"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_social_close_people",
+      "before": {
+        "en": "Family, or whoever you live with",
+        "pl": "Rodzina albo osoby, z którymi mieszkasz"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 67
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 67
+        }
+      ],
+      "final": {
+        "en": "Family, or whoever you live with",
+        "pl": "Rodzina albo osoby, z którymi mieszkasz"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_social_community",
+      "before": {
+        "en": "A support group, or a community",
+        "pl": "Grupa wsparcia albo społeczność"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 69
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 69
+        }
+      ],
+      "final": {
+        "en": "A support group, or a community",
+        "pl": "Grupa wsparcia albo społeczność"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_social_name_at_work",
+      "before": {
+        "en": "How you are addressed at work or school",
+        "pl": "Jak zwracają się do ciebie w pracy albo w szkole"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 68
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 68
+        }
+      ],
+      "final": {
+        "en": "How you are addressed at work or school",
+        "pl": "Jak zwracają się do ciebie w pracy albo w szkole"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_goal_pl_social_tell_one_person",
+      "before": {
+        "en": "The first person you tell",
+        "pl": "Pierwsza osoba, której o sobie mówisz"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 66
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/roadmapLabels.ts",
+          "line": 66
+        }
+      ],
+      "final": {
+        "en": "The first person you tell",
+        "pl": "Pierwsza osoba, której o sobie mówisz"
+      },
+      "decision": "keep",
+      "reason": "Keep bundled target title, authored vocabulary and exact legal/medical timing; picker shows the title, not roadmap study/source details.",
+      "changed_locales": []
+    },
+    {
+      "key": "roadmap_title",
+      "before": {
+        "en": "Transition roadmap",
+        "pl": "Mapa tranzycji"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/searchHitRows.ts",
+          "line": 119
+        },
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 41
+        },
+        {
+          "file": "src/lib/data/vocabulary/hubLabels.ts",
+          "line": 47
+        },
+        {
+          "file": "src/routes/transition/roadmap/+page.svelte",
+          "line": 315
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "Transition roadmap",
+        "pl": "Mapa tranzycji"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "search_hint",
+      "before": {
+        "en": "Search journal text and document titles. Accents are optional.",
+        "pl": "Szukaj w tekstach dziennika i tytułach dokumentów. Możesz pominąć znaki diakrytyczne."
+      },
+      "current_callers": [
+        {
+          "file": "src/routes/search/+page.svelte",
+          "line": 524
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "Search journal text and document titles. Accents are optional.",
+        "pl": "Szukaj w tekstach dziennika i tytułach dokumentów. Możesz pominąć znaki diakrytyczne."
+      },
+      "decision": "keep",
+      "reason": "Keep title-search capability and accent-insensitive guidance.",
+      "changed_locales": []
+    },
+    {
+      "key": "source_record_return",
+      "before": {
+        "en": "Back to source",
+        "pl": "Wróć do źródła"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/SourceRecordHandoff.svelte",
+          "line": 40
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "Back to source",
+        "pl": "Wróć do źródła"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "source_record_unavailable",
+      "before": {
+        "en": "This record is unavailable",
+        "pl": "Ten zapis jest niedostępny"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/SourceRecordHandoff.svelte",
+          "line": 37
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "This record is unavailable",
+        "pl": "Ten zapis jest niedostępny"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "source_record_unavailable_hint",
+      "before": {
+        "en": "It may have been deleted from this journal.",
+        "pl": "Być może został usunięty z dziennika."
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/SourceRecordHandoff.svelte",
+          "line": 37
+        }
+      ],
+      "flow_callers": [],
+      "final": {
+        "en": "It may have been deleted from this journal.",
+        "pl": "Być może został usunięty z dziennika."
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "surgery_day_unscheduled",
+      "before": {
+        "en": "No surgery date yet",
+        "pl": "Termin jeszcze nieustalony"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/documentTargets.svelte.ts",
+          "line": 55
+        },
+        {
+          "file": "src/lib/data/liveTiles.ts",
+          "line": 766
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 134
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 475
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/documentTargets.svelte.ts",
+          "line": 55
+        }
+      ],
+      "final": {
+        "en": "No surgery date yet",
+        "pl": "Termin jeszcze nieustalony"
+      },
+      "decision": "keep",
+      "reason": "Keep clear existing label, example, accessible name or factual feedback; no additional explanation needed.",
+      "changed_locales": []
+    },
+    {
+      "key": "surgery_journey_title",
+      "before": {
+        "en": "Surgery journey",
+        "pl": "Operacje"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/searchHitRows.ts",
+          "line": 79
+        },
+        {
+          "file": "src/lib/data/vocabulary/clinicianSummaryLabels.ts",
+          "line": 24
+        },
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 39
+        },
+        {
+          "file": "src/lib/data/vocabulary/hubLabels.ts",
+          "line": 43
+        },
+        {
+          "file": "src/routes/health/surgery/+page.svelte",
+          "line": 284
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/data/vocabulary/documentTargetLabels.ts",
+          "line": 39
+        }
+      ],
+      "final": {
+        "en": "Surgery journey",
+        "pl": "Operacje"
+      },
+      "decision": "keep",
+      "reason": "Keep current link action or target vocabulary; choices and accessible names describe the shipped target flow.",
+      "changed_locales": []
+    },
+    {
+      "key": "today",
+      "before": {
+        "en": "Today",
+        "pl": "Dzisiaj"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/AppNav.svelte",
+          "line": 51
+        },
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 578
+        },
+        {
+          "file": "src/lib/components/EntryEditor.svelte",
+          "line": 921
+        },
+        {
+          "file": "src/lib/components/ProcedureRecoveryCard.svelte",
+          "line": 110
+        },
+        {
+          "file": "src/lib/data/vocabulary/reminderLabel.ts",
+          "line": 34
+        },
+        {
+          "file": "src/routes/+page.svelte",
+          "line": 324
+        },
+        {
+          "file": "src/routes/body/wear/+page.svelte",
+          "line": 546
+        },
+        {
+          "file": "src/routes/day/[day]/+page.svelte",
+          "line": 310
+        },
+        {
+          "file": "src/routes/health/cycle-events/+page.svelte",
+          "line": 193
+        },
+        {
+          "file": "src/routes/health/dilation/+page.svelte",
+          "line": 365
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/DatePickerPanel.svelte",
+          "line": 578
+        }
+      ],
+      "final": {
+        "en": "Today",
+        "pl": "Dzisiaj"
+      },
+      "decision": "keep",
+      "reason": "Keep date-picker label, valid-date guidance or accessible navigation; title/date editing retains its current controls.",
+      "changed_locales": []
+    },
+    {
+      "key": "vb_practice_discard",
+      "before": {
+        "en": "Discard",
+        "pl": "Odrzuć"
+      },
+      "current_callers": [
+        {
+          "file": "src/lib/components/VoicePractice.svelte",
+          "line": 220
+        },
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 195
+        },
+        {
+          "file": "src/routes/care/regimen/+page.svelte",
+          "line": 895
+        },
+        {
+          "file": "src/routes/transition/tryouts/[id]/+page.svelte",
+          "line": 615
+        }
+      ],
+      "flow_callers": [
+        {
+          "file": "src/lib/components/kit/RecordSheet.svelte",
+          "line": 195
+        }
+      ],
+      "final": {
+        "en": "Discard",
+        "pl": "Odrzuć"
+      },
+      "decision": "keep",
+      "reason": "Keep shared draft protection and explicit continue/discard action; selected file counts as unsaved work.",
+      "changed_locales": []
+    }
+  ]
+}

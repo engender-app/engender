@@ -1,0 +1,22 @@
+{
+  "checks": [
+    {
+      "locale": "en",
+      "reviewed": 127,
+      "all_pair_values_match": true,
+      "interpolation_unchanged": true,
+      "plural_objects_unchanged": true,
+      "removed_keys_have_no_caller": true
+    },
+    {
+      "locale": "pl",
+      "reviewed": 127,
+      "all_pair_values_match": true,
+      "interpolation_unchanged": true,
+      "plural_objects_unchanged": true,
+      "removed_keys_have_no_caller": true
+    }
+  ],
+  "category_key_coverage": true,
+  "human_polish_signoff": "open"
+}
