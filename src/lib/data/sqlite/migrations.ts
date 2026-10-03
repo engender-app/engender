@@ -175,18 +175,19 @@ ALTER TABLE procedure ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
 `;
 
 /* v85: production connections previously left foreign keys disabled.
-   Remove dangling rows before enforcement starts. Parents come before their
-   children so cleanup also removes rows orphaned by this step. Files stay
-   on disk until the boot orphan sweep can reclaim them. */
+   Clear broken optional links without deleting independent content. Owning
+   parents come before children so cleanup also removes rows orphaned by this
+   step. Files stay on disk until the boot orphan sweep can reclaim them. */
 const SCHEMA_V85 = `
-DELETE FROM entry
+UPDATE entry SET presentation_id = NULL
 WHERE presentation_id IS NOT NULL AND presentation_id NOT IN (SELECT uuid FROM presentation);
-DELETE FROM milestone
-WHERE (procedure_id IS NOT NULL AND procedure_id NOT IN (SELECT uuid FROM procedure))
-   OR (tryout_id IS NOT NULL AND tryout_id NOT IN (SELECT uuid FROM tryout));
+UPDATE milestone SET procedure_id = NULL
+WHERE procedure_id IS NOT NULL AND procedure_id NOT IN (SELECT uuid FROM procedure);
+UPDATE milestone SET tryout_id = NULL
+WHERE tryout_id IS NOT NULL AND tryout_id NOT IN (SELECT uuid FROM tryout);
 DELETE FROM tag WHERE group_id NOT IN (SELECT id FROM tag_group);
 DELETE FROM dose_schedule WHERE episode_id NOT IN (SELECT id FROM regimen_episode);
-DELETE FROM checklist
+UPDATE checklist SET debrief_entry_id = NULL
 WHERE debrief_entry_id IS NOT NULL AND debrief_entry_id NOT IN (SELECT id FROM entry);
 
 DELETE FROM photo
@@ -213,7 +214,7 @@ DELETE FROM dose_pause WHERE episode_id NOT IN (SELECT id FROM regimen_episode);
 DELETE FROM dose_schedule_weekday WHERE schedule_id NOT IN (SELECT id FROM dose_schedule);
 DELETE FROM dose_schedule_dose_amount WHERE schedule_id NOT IN (SELECT id FROM dose_schedule);
 DELETE FROM hair_removal_photo WHERE session_id NOT IN (SELECT id FROM hair_removal_session);
-DELETE FROM personal_effect_type
+UPDATE personal_effect_type SET category_key = NULL
 WHERE category_key IS NOT NULL AND category_key NOT IN (SELECT key FROM effect_category);
 DELETE FROM tryout_photo WHERE tryout_id NOT IN (SELECT id FROM tryout);
 DELETE FROM felt_sense
