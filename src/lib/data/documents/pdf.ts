@@ -32,7 +32,7 @@
    way, and what lets an import render a thumbnail with no screen open. */
 
 import './pdf-floor';
-import { CACHE_PDF_WORKER } from '../../pwa/sw-messages';
+import { CACHE_PDF_WORKER } from '../../pwa/pdf-worker-cache';
 import { THUMB_EDGE, THUMB_QUALITY } from '../photos/normalize';
 
 type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
