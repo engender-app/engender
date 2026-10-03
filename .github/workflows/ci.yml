@@ -52,29 +52,27 @@ jobs:
       # whatever the registry offers today.
       - run: npm ci
 
-      # First, because svelte-check cannot resolve two imports until a build
-      # writes them: paraglide's generated message runtime, and the list of
-      # emitted client assets the service worker precaches. Neither is
-      # committed. It is where a malformed catalogue fails, and the production
-      # build check in its own right.
-      - name: Production build
-        run: npm run build
-      - name: Svelte and TypeScript
-        run: npm run check
-      - name: Node tier
-        run: npm test
-      - name: Message catalogues and user-facing literals
-        run: npm run check:copy
-      - name: Dependency licences
-        run: npm run check:licences
-      - name: screens.css single-consumer classes
-        run: npm run check:screens-classes
-      # Reads the build the "Production build" step above already wrote -
-      # every /_app/immutable URL build/index.html asks for, gzipped
-      # (phase 9 audit ticket 01). No browser needed, so this job rather
-      # than the browser tier's.
-      - name: First-load budget
-        run: npm run check:first-load-budget
+      - name: Collect every Node check
+        id: node-checks
+        run: |
+          mkdir -p ci-logs
+          node scripts/run-ci-checks.mjs --tier node 2>&1 | tee ci-logs/node-checks.log
+      - name: Report checks blocked by setup
+        if: ${{ always() && steps.node-checks.outcome == 'skipped' }}
+        run: |
+          if [ -f scripts/run-ci-checks.mjs ]; then
+            node scripts/run-ci-checks.mjs --tier node --blocked
+          else
+            echo 'BLOCKED all Node checks: repository checkout unavailable'
+            exit 1
+          fi
+      - name: Keep Node check results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-logs-${{ github.run_id }}
+          path: ci-logs/
+          retention-days: 7
       # The other half of the dependency policy the spec asks of CI - no
       # Firebase, Play Services, analytics or proprietary runtime SDK in the
       # Android graph - runs in the Android job where Gradle can resolve the
@@ -117,42 +115,56 @@ jobs:
           java-version: '21'
       - run: npm ci
 
-      - name: Build web app and sync Android shell
+      - name: Collect every Android build check
+        id: android-checks
         run: |
-          npm run build
-          npx cap sync android
-
-      - name: Android dependency policy
-        run: node scripts/check-android-dependencies.mjs
-
-      - name: Build unsigned debug APK
-        run: cd android && ./gradlew :app:assembleDebug
+          mkdir -p ci-logs
+          node scripts/run-ci-checks.mjs --tier android 2>&1 | tee ci-logs/android-checks.log
+      - name: Report checks blocked by setup
+        if: ${{ always() && steps.android-checks.outcome == 'skipped' }}
+        run: |
+          if [ -f scripts/run-ci-checks.mjs ]; then
+            node scripts/run-ci-checks.mjs --tier android --blocked
+          else
+            echo 'BLOCKED all Android checks: repository checkout unavailable'
+            exit 1
+          fi
 
       - name: Keep PR debug APK
-        if: github.event_name == 'pull_request'
+        if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           # Name cannot collide with the release APK the release workflow publishes.
           name: engender-android-debug-${{ github.run_id }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: ci-logs/app-debug.apk
           retention-days: 7
-
-      - name: F-Droid rebuild attempt
-        run: node scripts/fdroid-rebuild-report.mjs
 
       - name: Keep F-Droid rebuild report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: fdroid-rebuild-report-${{ github.run_id }}
-          path: ci-logs/fdroid-rebuild.md
+          path: ci-logs/
           retention-days: 30
 
   browser:
-    name: Browser tier, walkthroughs and the built app
+    name: Browser verification (${{ matrix.name }})
     runs-on: ubuntu-latest
-    # Cold Chromium setup can take seven minutes before the four suites start.
+    # Each tier owns its build and journal. A failed walkthrough cannot skip
+    # installed-PWA or nginx verification.
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: browser-tier
+            entry: tests/browser-tier/run.mjs
+          - name: walkthrough
+            entry: tests/walkthrough.test.mjs
+          - name: installed-pwa
+            entry: tests/browser-tier/verify-build.mjs
+          - name: hosting
+            entry: tests/hosting/run.mjs
     steps:
       - uses: actions/checkout@v4
         with:
@@ -169,18 +181,17 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # tests/browser-tier/browser-tier.vite.config.ts has no paraglideVitePlugin
-      # of its own - it only serves probe pages over COOP/COEP and was never meant
-      # to run a full app build - so every probe that imports $lib/paraglide/messages
-      # needs the compiled runtime sitting on disk before this job's first request.
-      # The Checks job gets that for free from its own "Production build" step
-      # running first; this job never builds anything until "Walkthroughs" below,
-      # one step too late for "Browser tier" above it, which failed on every probe
-      # touching that import on every run until now (phase 9 audit ticket 12).
+      # Browser fixture pages have no Paraglide Vite plugin. Compile before
+      # the first request; the other tiers compile again as part of their build.
       - name: Compile message catalogues
+        if: matrix.name == 'browser-tier'
         run: npx paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 
-      # playwright-core ships no browser, and the three suites drive a real one
+      - name: Sync browser fixtures
+        if: matrix.name == 'browser-tier'
+        run: npx svelte-kit sync
+
+      # playwright-core ships no browser, and these tiers drive a real one
       # for OPFS, WASM SQLite and the service worker. Installing through the
       # pinned playwright-core gets the Chromium that version was built
       # against, rather than whatever the runner image happens to carry.
@@ -189,39 +200,53 @@ jobs:
           npx playwright-core install --with-deps chromium
           echo "CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
 
-      # Every fixture these three drive is synthetic: the probe pages build
+      # Every fixture these tiers drive is synthetic: the probe pages build
       # their own tables, and the walkthrough runs on the Alice demo persona.
       # Nothing in this job holds a real Journal, a key or a password, which is
       # what makes the logs safe to keep after a failure.
-      - name: Browser tier
+      - name: Build the verification bundle
+        if: matrix.name != 'browser-tier'
+        env:
+          VITE_DEMO: ${{ matrix.name == 'walkthrough' && '1' || '0' }}
+          ENGENDER_VERSION: ${{ matrix.name == 'walkthrough' && '9.9.9-walkthrough' || '' }}
+        run: npm run build
+      - name: Verify ${{ matrix.name }}
+        id: browser-check
         run: |
           mkdir -p ci-logs
-          npm run test:browser 2>&1 | tee ci-logs/browser-tier.log
-      - name: Walkthroughs
-        run: npm run test:walkthrough 2>&1 | tee ci-logs/walkthrough.log
-      - name: Built app
-        run: npm run verify:build 2>&1 | tee ci-logs/verify-build.log
-      - name: Hosted origin (nginx)
-        run: npm run verify:hosting 2>&1 | tee ci-logs/verify-hosting.log
+          node ${{ matrix.entry }} 2>&1 | tee ci-logs/${{ matrix.name }}.log
+
+      - name: Report verification blocked by setup
+        if: ${{ always() && steps.browser-check.outcome == 'skipped' }}
+        run: |
+          echo 'BLOCKED ${{ matrix.name }}: prerequisite setup or build failed'
+          echo 'BLOCKED ${{ matrix.name }}: prerequisite setup or build failed' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: Keep the output of a failed run
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-logs-${{ github.run_id }}
+          name: browser-${{ matrix.name }}-logs-${{ github.run_id }}
           path: ci-logs/
           retention-days: 7
 
   guards:
-    name: Regression guards (${{ matrix.suite }})
+    name: Regression guards (${{ matrix.tier }} ${{ matrix.shard }})
     runs-on: ubuntu-latest
     # Built guards rebuild the app and run the full motion sweeps.
     # Their passing checks can exceed 30 minutes on a hosted runner.
-    timeout-minutes: ${{ matrix.suite == 'built' && 45 || 30 }}
+    timeout-minutes: ${{ matrix.tier == 'built' && 45 || 30 }}
     strategy:
       fail-fast: false
       matrix:
-        suite: [dev, built]
+        include:
+          - tier: dev
+            shard: 1/1
+          - tier: built
+            shard: 1/2
+          - tier: built
+            shard: 2/2
     steps:
       - uses: actions/checkout@v4
         with:
@@ -236,11 +261,13 @@ jobs:
       # The same reason as the browser job's step of the same name: the dev
       # server these checks start has to find the compiled runtime on disk.
       - name: Compile message catalogues
+        if: matrix.tier == 'dev'
         run: npx paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 
       # tsconfig.json extends .svelte-kit/tsconfig.json, which only exists
       # after a sync; without it the dev server cannot resolve its config.
       - name: Sync SvelteKit
+        if: matrix.tier == 'dev'
         run: npx svelte-kit sync
 
       - name: Chromium
@@ -251,27 +278,32 @@ jobs:
       # Synthetic fixtures and the demo persona only, like the browser job,
       # so the logs are safe to keep.
       - name: Media fixture tools
-        if: matrix.suite == 'built'
+        if: matrix.tier == 'built'
         run: |
           sudo apt-get update
           sudo apt-get install -y espeak-ng ffmpeg
 
-      - name: Against the dev server
-        if: matrix.suite == 'dev'
+      - name: Run every regression guard
+        id: guard-checks
         run: |
           mkdir -p ci-logs
-          npm run test:guards 2>&1 | tee ci-logs/guards.log
-      - name: Against the built app
-        if: matrix.suite == 'built'
+          node tests/run-guards.mjs --tier ${{ matrix.tier }} --shard ${{ matrix.shard }} 2>&1 | tee ci-logs/guards.log
+
+      - name: Report guards blocked by setup
+        if: ${{ always() && steps.guard-checks.outcome == 'skipped' }}
         run: |
-          mkdir -p ci-logs
-          npm run test:guards:built 2>&1 | tee ci-logs/guards-built.log
+          if [ -f tests/run-guards.mjs ]; then
+            node tests/run-guards.mjs --tier ${{ matrix.tier }} --shard ${{ matrix.shard }} --blocked
+          else
+            echo 'BLOCKED regression guards: repository checkout unavailable'
+            exit 1
+          fi
 
       - name: Keep the output of a failed run
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: guards-${{ matrix.suite }}-logs-${{ github.run_id }}
+          name: guards-${{ matrix.tier }}-${{ strategy.job-index }}-logs-${{ github.run_id }}
           path: |
             ci-logs/
             .claude/yank-sweep/*.frames.json
@@ -308,9 +340,17 @@ jobs:
       # runner is slower by an unknown factor, so the gate is sized to catch
       # work that grew with the journal rather than a slow afternoon.
       - name: Long-Journal benchmark
+        id: benchmark-check
         run: |
           mkdir -p ci-logs
           npm run benchmark:long-journal 2>&1 | tee ci-logs/long-journal.log
+
+      - name: Report benchmark blocked by setup
+        if: ${{ always() && steps.benchmark-check.outcome == 'skipped' }}
+        run: |
+          echo 'BLOCKED ten-year Journal benchmark: prerequisite setup failed'
+          echo 'BLOCKED ten-year Journal benchmark: prerequisite setup failed' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: Keep the output of a failed run
         if: failure()
@@ -319,3 +359,27 @@ jobs:
           name: long-journal-log-${{ github.run_id }}
           path: ci-logs/
           retention-days: 7
+
+  results:
+    name: All required checks
+    needs: [node, android, browser, guards, benchmark]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report every required tier
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const jobs = JSON.parse(process.env.RESULTS);
+          const lines = ['| Required tier | Result |', '| --- | --- |'];
+          let failed = false;
+          for (const [name, job] of Object.entries(jobs)) {
+            lines.push(`| ${name} | ${job.result} |`);
+            console.log(`${job.result === 'success' ? 'PASS' : 'FAIL'} ${name}: ${job.result}`);
+            if (job.result !== 'success') failed = true;
+          }
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          process.exitCode = failed ? 1 : 0;
+          JS

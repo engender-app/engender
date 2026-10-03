@@ -180,7 +180,7 @@ function teleports(series, label, samples) {
     for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
     for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
     if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
-      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, in a ${run}-frame move`);
+      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, in a ${run}-frame move (${Math.round(samples[i].at - samples[i - 1].at)}ms between samples)`);
   }
   return out;
 }
