@@ -373,7 +373,8 @@ export async function verifyArchive(
     functions can read them. */
 function assertRestorable(journal: ArchiveJournal): void {
   for (const section of Object.keys(journal ?? {})) {
-    if (!(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
+    // ADR-0037 retired this known pre-release section and deliberately drops it.
+    if (section !== 'doubtEntries' && !(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
       throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
     }
   }
