@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createReporter, launchPersistentChromium } from '../browser-harness.mjs';
+import { startContainer, templateCheckArgs } from './container.mjs';
 
 function walk(path, files = []) {
   for (const entry of readdirSync(path, { withFileTypes: true })) {
@@ -59,11 +60,6 @@ async function waitForHttp(origin, attempts = 30) {
   throw new Error(`nginx did not answer on ${origin}`);
 }
 
-function choosePort() {
-  const value = 18080 + Math.floor(Math.random() * 2000);
-  return value;
-}
-
 const IMAGE = 'engender-hosting-verify';
 
 const { ok, fail, finish } = createReporter();
@@ -79,6 +75,7 @@ const stopContainer = () => {
 
 try {
   assertDockerAvailable();
+  const interfacesBefore = readdirSync('/sys/class/net').sort();
   ensureBuild();
 
   /* The self-hosting image (phase 13 self-hosting ticket 01) carries the same
@@ -102,31 +99,23 @@ try {
   ]);
   const templateCheck = spawnSync(
     'docker',
-    [
-      'run', '--rm',
-      '-v', `${template}:/etc/nginx/conf.d/default.conf:ro,z`,
-      '-v', `${certs}:/etc/ssl/engender:ro,z`,
-      IMAGE, 'nginx', '-t'
-    ],
+    templateCheckArgs(IMAGE, template, certs),
     { encoding: 'utf8' }
   );
   if (templateCheck.status === 0) ok('the bare-nginx template passes nginx -t once its placeholders are filled');
   else fail('the bare-nginx template passes nginx -t once its placeholders are filled', templateCheck.stderr);
 
-  const port = choosePort();
-  containerId = run('docker', [
-    'run',
-    '--rm',
-    '-d',
-    '-p',
-    `127.0.0.1:${port}:80`,
-    '-v',
-    `${current}:/srv/engender:ro,z`,
-    IMAGE
-  ]);
+  const hosted = await startContainer(IMAGE, current, tempRoot, run);
+  containerId = hosted.containerId;
   containerUp = true;
+  const interfacesAfter = readdirSync('/sys/class/net').sort();
+  if (JSON.stringify(interfacesBefore) === JSON.stringify(interfacesAfter)) {
+    ok('hosting setup leaves host network interfaces unchanged');
+  } else {
+    fail('hosting setup leaves host network interfaces unchanged', JSON.stringify({ before: interfacesBefore, after: interfacesAfter }));
+  }
 
-  const origin = `http://127.0.0.1:${port}`;
+  const origin = hosted.origin;
   await waitForHttp(origin);
 
   const rootResponse = await fetch(`${origin}/`);
