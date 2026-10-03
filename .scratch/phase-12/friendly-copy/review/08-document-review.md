@@ -66,3 +66,12 @@ The parallel Standards review of `0658ecb5` against pinned current main `99c2e4b
 The parallel Spec review found zero missing requirements, scope additions or incorrect implementations. All category pairs and selected shared controls have final wording, decisions and reasons. Targets, creation prerequisite, import/draft behaviour, encryption/sharing limits, deletion, accessible names and catalogue contracts remain intact. The unreachable empty-link fixture and CSS zoom limitations are explicit. Human Polish sign-off remains open.
 
 Review totals: Standards 0 findings; Spec 0 findings. Screenshots and proof scripts are preserved in the original repository's `.claude/ticket08-proof/` before the isolated worktree is removed.
+
+
+## Merge and handoff
+
+Merged into main as `f460600e` with `--no-ff`. Autostash restored the author's catalogue edits. Every edited key in the premerge snapshot and the initial author snapshot was checked against the resulting working tree; all values survived. Every final value in the 127-pair ledger also matches the merged working tree.
+
+Ticket 08 is marked done in the local tracker. Human Polish sign-off remains open. The latest CI refresh before merge was run `37130163278`, in progress at `99c2e4be`; no local verification failure is attributed to main.
+
+All 52 screenshots, runnable capture/contract/check scripts and final verification logs are preserved in the original repository's `.claude/ticket08-proof/`. Cleanup removes only this ticket's isolated worktree and branch.

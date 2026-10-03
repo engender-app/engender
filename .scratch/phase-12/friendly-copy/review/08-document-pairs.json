@@ -37,7 +37,9 @@
     "author_override_keys": [
       "roadmap_goal_pl_legal_driving_licence",
       "roadmap_goal_pl_legal_zus_ceidg"
-    ]
+    ],
+    "merge_commit": "f460600e",
+    "implementation_status": "done"
   },
   "rows": [
     {
