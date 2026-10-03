@@ -43,7 +43,7 @@ export async function runGuards(guards, { run = execute, log = console.log, bloc
     results.push({ name: guard.name, passed: !buildFailed && attempts.at(-1)?.code === 0, buildFailed, attempts, durationMs: performance.now() - start });
   }
   log('\nGuard results:');
-  log('Result | Guard | Seconds | Attempts (exit code, seconds)');
+  log('Result and guard | Seconds | Attempts (exit code, seconds)');
   for (const row of results) {
     const attempts = row.buildFailed ? (blocked ? 'job setup failed; guard did not run' : 'build failed; guard did not run') : row.attempts.map((attempt) => `${attempt.code}, ${(attempt.durationMs / 1000).toFixed(2)}s`).join(' / ');
     log(`${row.buildFailed ? 'BLOCKED' : row.passed ? 'PASS' : 'FAIL'} ${row.name} | ${(row.durationMs / 1000).toFixed(2)} | ${attempts}`);

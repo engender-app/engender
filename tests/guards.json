@@ -205,6 +205,11 @@
     "holds": "no screen, the new-entry editor and search included, arrives with a text field focused, so a phone never opens with the keyboard up"
   },
   {
+    "name": "dose-editor-copy-check",
+    "tier": "built",
+    "holds": "dose editor labels and field order in English and Polish, without duplicate prompts"
+  },
+  {
     "name": "sheet-navigation-leftover-check",
     "tier": "built",
     "holds": "a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one"
@@ -356,10 +361,5 @@
     "tier": "built",
     "holds": "recovery after real key loss, against a production build, where the first run is real",
     "build": "production"
-  },
-  {
-    "name": "dose-editor-copy-check",
-    "tier": "built",
-    "holds": "dose editor labels and field order in English and Polish, without duplicate prompts"
   }
 ]
