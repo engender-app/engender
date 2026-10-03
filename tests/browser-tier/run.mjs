@@ -95,6 +95,24 @@ await block('ticket 03 browser tier', 5, async () => {
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
 });
 
+await block('production foreign key enforcement', 5, async () => {
+  const r = await load('/foreign-keys.html', 'foreign-keys-probe');
+  if (r.error) throw new Error(r.error);
+  if (r.encryptedOpen === 1) ok('sqlite3mc enables foreign keys before migrations');
+  else fail('sqlite3mc enables foreign keys before migrations', String(r.encryptedOpen));
+  if (r.sqlocalOpen === 1 && r.sqlocalRestoredOpen === 1 && r.plaintextOpen === 1)
+    ok('SQLocal enables foreign keys on initial, restored and plaintext opens');
+  else fail('SQLocal enables foreign keys on every open', JSON.stringify(r));
+  if (r.encryptedAfterMigration === 1 && r.violations.length === 0)
+    ok('migrations leave enforcement on and no foreign key violations');
+  else fail('migrations leave enforcement on and no foreign key violations', JSON.stringify(r));
+  if (Object.values(r.children).every((count) => count === 0))
+    ok('session, procedure and checklist deletions remove their child rows');
+  else fail('session, procedure and checklist deletions remove their child rows', JSON.stringify(r.children));
+  if (r.manifest.length === 0) ok('deleted session photos do not travel in the next archive');
+  else fail('deleted session photos do not travel in the next archive', JSON.stringify(r.manifest));
+});
+
 // --- Ticket 04: the real driver + boot() against the real schema -----------
 await block('ticket 04 browser tier', 8, async () => {
   const first = await load('/driver.html', 'driver-probe');
