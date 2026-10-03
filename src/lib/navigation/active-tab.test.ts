@@ -51,11 +51,12 @@ describe('activeTabKey', () => {
     /* Settings is chrome (ADR-0076), reached from a persistent gear rather
        than a tab of its own - lighting the fourth tab for it read as
        having left whichever tab the gear was pressed from. With nothing
-       to borrow it lights none, and with an origin it borrows exactly
+       to borrow (a cold load) it lights Today, where the gear lives, and
+       with an origin it borrows exactly
        that, whatever it is - the caller (chrome-tab-origin.ts) decides
        which tab counts as "came from", not this table. */
-    expect(activeTabKey('/settings')).toBe('');
-    expect(activeTabKey('/settings/security')).toBe('');
+    expect(activeTabKey('/settings')).toBe('home');
+    expect(activeTabKey('/settings/security')).toBe('home');
     expect(activeTabKey('/settings', 'home')).toBe('home');
     expect(activeTabKey('/settings/access-mode', 'calendar')).toBe('calendar');
   });
@@ -65,12 +66,12 @@ describe('activeTabKey', () => {
      ignore list lit Look back whatever the person had come from, while
      tags and affirmations borrowed - four subpages of one hub answering
      three different ways. Each of them now lights the tab the gear (or the
-     link) was pressed from, which is also where its back arrow returns. */
+     link) was pressed from, and Today on a cold load, like the hub. */
   it('lets every settings subpage borrow its origin, eras and the ignore list included', () => {
     for (const path of ['/settings/eras', '/settings/words', '/settings/tags', '/settings/affirmations', '/settings/trash']) {
       expect(activeTabKey(path, 'calendar'), path).toBe('calendar');
       expect(activeTabKey(path, 'stats'), path).toBe('stats');
-      expect(activeTabKey(path), path).toBe('');
+      expect(activeTabKey(path), path).toBe('home');
     }
   });
 
