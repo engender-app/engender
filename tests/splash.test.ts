@@ -3,8 +3,10 @@
    adds the one class the CSS reads. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { SPLASH_BEGIN, SPLASH_END, holdModulePreloads, readSplashPalettes, splashBlock, sunStops } from '../src/lib/theme/splash.ts';
-import { dismissSplash } from '../src/lib/splash.ts';
+import { SPLASH_INK, SPLASH_BEGIN, SPLASH_END, readSplashPalettes, splashBlock, sunStops } from '../src/lib/theme/splash.ts';
+import { MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS } from '../src/lib/components/mark.ts';
+import { holdModulePreloads } from '../src/lib/document/holdModulePreloads.ts';
+import { answerSplash, releaseSplash } from '../src/lib/splash.ts';
 
 const html = readFileSync(new URL('../src/app.html', import.meta.url), 'utf8');
 const palettesCss = readFileSync(new URL('../src/lib/theme/palettes.css', import.meta.url), 'utf8');
@@ -36,6 +38,24 @@ describe('the generated block', () => {
   });
 });
 
+describe("the first frame is the mark's own numbers", () => {
+  const markSource = readFileSync(new URL('../src/lib/components/mark.ts', import.meta.url), 'utf8');
+
+  it('draws the edge as mark.ts does: inset half a seam, a seam wide, in the same ink', () => {
+    const inset = MARK_SEAM / 2;
+    const rect = html.match(/<div id="splash"[\s\S]*?<rect ([^>]*)\/>/)![1];
+    expect(rect).toContain(`x="${inset}" y="${inset}" width="${100 - MARK_SEAM}" height="${100 - MARK_SEAM}"`);
+    expect(rect).toContain(`rx="${MARK_TILE_RADIUS - inset}"`);
+    expect(rect).toContain(`stroke-width="${MARK_SEAM}"`);
+    expect(markSource).toContain(`stroke="${SPLASH_INK}"`);
+  });
+
+  it('takes the tile colour and radius from the generated block, not from literals', () => {
+    expect(shipped).toContain(`--splash-tile:${MARK_TILE};--splash-ink:${SPLASH_INK};--splash-radius:${MARK_TILE_RADIUS}%`);
+    expect(handwritten).not.toMatch(/#fff\b|#000\b/i);
+  });
+});
+
 describe('the first frame holds still', () => {
   it('has no animation, keyframes or transform: it only fades', () => {
     expect(handwritten).not.toMatch(/@keyframes|animation|transform\s*:/);
@@ -64,48 +84,59 @@ describe('the held module hints', () => {
   });
 });
 
-describe('dismissSplash', () => {
+describe('the handover', () => {
   function fakeSplash() {
     const classes = new Set<string>();
     return {
       classes,
       removed: false,
-      classList: { add: (c: string) => classes.add(c), contains: (c: string) => classes.has(c) },
+      classList: {
+        add: (...names: string[]) => names.forEach((name) => classes.add(name)),
+        contains: (name: string) => classes.has(name)
+      },
       remove() {
         this.removed = true;
       }
     };
   }
+  const docOf = (splash: unknown) => ({ getElementById: () => splash }) as unknown as Document;
 
-  it('waits two frames, adds the class, then takes the element out', () => {
-    vi.useFakeTimers();
-    const frames: Array<() => void> = [];
-    vi.stubGlobal('requestAnimationFrame', (cb: () => void) => void frames.push(cb));
+  it('starts leaving the moment the layout mounts, in that same call', () => {
     const splash = fakeSplash();
-    const doc = { getElementById: () => splash } as unknown as Document;
-
-    dismissSplash(doc);
-    expect(splash.classes.has('is-leaving')).toBe(false);
-    frames.shift()!();
-    expect(splash.classes.has('is-leaving')).toBe(false);
-    frames.shift()!();
+    releaseSplash(docOf(splash));
     expect(splash.classes.has('is-leaving')).toBe(true);
+    expect(splash.classes.has('is-answered')).toBe(false);
     expect(splash.removed).toBe(false);
-    vi.advanceTimersByTime(800);
-    expect(splash.removed).toBe(true);
+  });
 
-    vi.unstubAllGlobals();
+  it('is gone 800 ms after boot answers, and not before', () => {
+    vi.useFakeTimers();
+    const splash = fakeSplash();
+    releaseSplash(docOf(splash));
+    answerSplash(docOf(splash));
+    expect(splash.classes.has('is-answered')).toBe(true);
+    vi.advanceTimersByTime(799);
+    expect(splash.removed).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(splash.removed).toBe(true);
     vi.useRealTimers();
   });
 
-  it('is a no-op with no first frame, and on a second call', () => {
-    const frames: Array<() => void> = [];
-    vi.stubGlobal('requestAnimationFrame', (cb: () => void) => void frames.push(cb));
-    dismissSplash({ getElementById: () => null } as unknown as Document);
+  it('answering with no release first still leaves, and a second answer does nothing', () => {
+    vi.useFakeTimers();
     const splash = fakeSplash();
-    splash.classes.add('is-leaving');
-    dismissSplash({ getElementById: () => splash } as unknown as Document);
-    expect(frames).toHaveLength(0);
-    vi.unstubAllGlobals();
+    answerSplash(docOf(splash));
+    expect(splash.classes.has('is-leaving')).toBe(true);
+    const timers = vi.getTimerCount();
+    answerSplash(docOf(splash));
+    expect(vi.getTimerCount()).toBe(timers);
+    vi.useRealTimers();
+  });
+
+  it('does nothing when there is no first frame', () => {
+    expect(() => {
+      releaseSplash(docOf(null));
+      answerSplash(docOf(null));
+    }).not.toThrow();
   });
 });
