@@ -165,3 +165,6 @@ Main subsequently advanced to `5683c142` with the document-copy ticket. Those ed
 are outside this flow; none of this ticket’s changed keys overlaps them. The author’s
 remaining local catalogue edits will be retained during merge. Human Polish sign-off
 remains open.
+
+Spec recheck passed on `54da25fc` against main at `5683c142`. Standards remains
+clean; the follow-up changed only review records. Both axes are complete.
