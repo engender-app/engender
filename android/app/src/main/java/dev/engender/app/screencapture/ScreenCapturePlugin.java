@@ -3,12 +3,15 @@ package dev.engender.app.screencapture;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.view.WindowManager;
 
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import dev.engender.app.lock.LockTimingPlugin;
 
 /**
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
@@ -41,12 +44,12 @@ public class ScreenCapturePlugin extends Plugin {
         return prefs(context).getBoolean(KEY_ALLOWED, true);
     }
 
-    /** One flag either way: Android ties the recents thumbnail, screenshots
-        and screen recording together under FLAG_SECURE, with no finer
-        control to ask for. Shared between the live toggle above and
-        MainActivity's cold-start read, so the two can never disagree about
-        what "allowed" means. */
+    /** Android 13 separates Recents thumbnails from screenshots. Older Android
+        needs a temporary secure flag while a locked journal is out of sight. */
     public static void applyWindowFlags(Activity activity, boolean allowed) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            activity.setRecentsScreenshotEnabled(allowed && !LockTimingPlugin.isEnabled(activity));
+        }
         if (allowed) {
             activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
         } else {

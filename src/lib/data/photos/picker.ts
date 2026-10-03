@@ -165,9 +165,10 @@ export function documentPicker(): PhotoPicker {
     normalize step doesn't need to know which one supplied the bytes.
 
     On Android this is android-bridge.ts's captureImage(), which opens the
-    camera app through an implicit intent with no output URI - nothing is
-    ever written to MediaStore, so there is no gallery write to undo. On the
-    web, the file input's `capture` hint opens the device camera instead of
+    camera app with an app-private output URI. The app reads the full photo
+    and deletes that cache file; it never writes to MediaStore. A camera app
+    may keep its own copy, so gallery behaviour depends on that camera. On
+    the web, the file input's `capture` hint opens the device camera instead of
     the usual chooser (ticket 12). */
 export function cameraPhotoPicker(): PhotoPicker {
   return {

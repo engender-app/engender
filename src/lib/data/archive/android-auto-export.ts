@@ -64,8 +64,8 @@ export function isDue(status: Pick<AutoExportStatus, 'enabled' | 'destinationUri
   return now >= nextDueAt(status);
 }
 
-function timestampedFileName(name: string, at: number): string {
-  const base = exportFileName(name, ARCHIVE_FILE_EXTENSION).slice(0, -ARCHIVE_FILE_EXTENSION.length);
+function timestampedFileName(name: string, at: number, disguised: boolean): string {
+  const base = exportFileName(name, ARCHIVE_FILE_EXTENSION, undefined, disguised).slice(0, -ARCHIVE_FILE_EXTENSION.length);
   const stamp = new Date(at).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
   return `${base}-${stamp}${ARCHIVE_FILE_EXTENSION}`;
 }
@@ -94,7 +94,7 @@ export async function runAndroidAutoExport(
   }
 
   const writtenAt = deps.now?.() ?? Date.now();
-  const fileName = timestampedFileName(source.preferences.name, writtenAt);
+  const fileName = timestampedFileName(source.preferences.name, writtenAt, source.preferences.disguise);
   const derivation: KeyDerivation = async (salt, kdf) => {
     const { key } = await androidAutoExport.deriveKey({
       salt: toBase64(salt),

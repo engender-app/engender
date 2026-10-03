@@ -5,7 +5,7 @@ import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-
 import type { LockAfter } from '../data/prefs/catalogue';
 
 interface LockTimingBridge {
-  setTiming(options: { timing: LockAfter }): Promise<void>;
+  setTiming(options: { timing: LockAfter; enabled: boolean }): Promise<void>;
 }
 
 export const androidLockTiming = registerAndroidPlugin<LockTimingBridge>(androidPluginOwners.lockTiming);
