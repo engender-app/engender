@@ -16,6 +16,11 @@ for `app.engender.dev` is in [README.md](README.md).
   and passkeys only work in a secure context. Over plain HTTP the app will
   not start. `http://localhost` counts as secure, which is fine for trying
   it out and nothing else.
+- **Serve it over HTTP/2.** A first visit loads about a hundred files. Over
+  HTTP/1.1 a browser fetches six at a time, and on a slow phone that
+  put the first screen about 2.5 s later than HTTP/2 did in our measurements. Caddy and the nginx template below speak HTTP/2 already. The
+  Docker image listens on plain port 80, so the proxy in front of it is the
+  place that matters: don't put it in front of the browser as HTTP/1.1.
 - **Serve it from the root of a host name.** `journal.example.org` works.
   `example.org/engender/` does not: the offline shell answers every
   navigation with one cached document, and the asset paths in it assume `/`.
