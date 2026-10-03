@@ -59,7 +59,7 @@ try {
     await browse.click();
     await page.waitForURL('**/calendar');
     await visit('/doubt/evidence');
-    await page.getByRole('link', { name: comfortName, exact: true }).click();
+    await page.getByRole('link', { name: comfortName, exact: true }).and(page.locator('a.btn[href="/doubt/comfort"]')).click();
     await page.waitForURL('**/doubt/comfort');
     await page.setViewportSize({ width: 320, height: 568 });
     await visit('/doubt');
