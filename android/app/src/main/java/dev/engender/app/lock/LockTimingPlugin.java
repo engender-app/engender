@@ -1,5 +1,6 @@
 package dev.engender.app.lock;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -8,6 +9,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import dev.engender.app.screencapture.ScreenCapturePlugin;
+
 /** Mirrors lock timing for MainActivity's synchronous Home/Recents decision. */
 @CapacitorPlugin(name = "LockTiming")
 public class LockTimingPlugin extends Plugin {
@@ -15,6 +18,7 @@ public class LockTimingPlugin extends Plugin {
     /** The reset test names the file this plugin owns. */
     public static final String PREFS = "engender-lock-timing";
     private static final String KEY_TIMING = "timing";
+    private static final String KEY_ENABLED = "enabled";
     private static final String LEGACY_PREFS = "engender-quick-exit";
 
     @PluginMethod
@@ -25,13 +29,18 @@ public class LockTimingPlugin extends Plugin {
             call.reject("Invalid lock timing");
             return;
         }
-        prefs(getContext()).edit().putString(KEY_TIMING, timing).apply();
+        prefs(getContext()).edit().putString(KEY_TIMING, timing)
+            .putBoolean(KEY_ENABLED, Boolean.TRUE.equals(call.getBoolean("enabled", true))).apply();
+        Activity activity = getActivity();
+        if (activity != null) activity.runOnUiThread(() ->
+            ScreenCapturePlugin.applyWindowFlags(activity, ScreenCapturePlugin.isAllowed(getContext())));
         getContext().deleteSharedPreferences(LEGACY_PREFS);
         call.resolve();
     }
 
-    public static boolean locksImmediately(Context context) {
-        return "immediately".equals(prefs(context).getString(KEY_TIMING, "restart"));
+    /** Older installs protect Recents until their access mode reaches this mirror. */
+    public static boolean isEnabled(Context context) {
+        return prefs(context).getBoolean(KEY_ENABLED, true);
     }
 
     /** Also removes the unused Quick exit flag left by older versions. */
