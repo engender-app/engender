@@ -1,7 +1,7 @@
 # The probes in tests/*.mjs
 
 Every `.mjs` file directly under `tests/` is a guard, a gallery, or a helper
-the other two import, plus `walkthrough.test.mjs`, which has its own npm
+the other two import, plus `walkthrough.test` (`walkthrough.test.mjs`), which has its own npm
 script and its own rules (ADR-0029). A probe written for one ticket's
 sign-off does not stay by default. Either this file gets a line for it
 before the ticket merges, or the probe is deleted before the merge.
@@ -23,10 +23,18 @@ SvelteKit's preview reads the built server from the working directory, so a
 `--root` alone used to serve the checkout the probe was started in (ticket
 226).
 
+CI's Node and Android jobs use `scripts/run-ci-checks.mjs`. Independent
+checks continue after a failure; failed prerequisites leave named blocked
+results. Browser fixtures, walkthroughs, installed PWA and hosting run in
+separate jobs. The final required-checks job fails if any tier fails or is
+blocked.
+
 ## Guards
 
 Pass/fail checks: each exits non-zero when what it holds stops being true.
-CI's `guards` job runs both sets. To run one on its own, use
+CI's regression jobs run both sets from `guards.json`. The runner retries each
+failed guard once and prints every result. The built tier is split into two
+shards in CI (`--shard 1/2` and `--shard 2/2`); local npm scripts run the whole tier. To run one on its own, use
 `node tests/<name>.mjs`, with the right build on disk first.
 
 ### `npm run test:guards` (dev server, no build)
@@ -61,20 +69,27 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `getting-started-cross-check` | Home's Getting started rows cross when done, frame by frame, and are static on a cold arrival |
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
 | `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
+| `tryout-save-check` | tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes |
+| `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
+| `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
+| `lab-entry-check` | lab result field order, saved values, draft dismissal, failures and privacy in English and Polish |
+| `measurements-entry-check` | measurement field order, saved values, draft dismissal, failures and privacy in English and Polish |
+| `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
 | Probe | Holds |
 | --- | --- |
 | `date-picker-check` | the date picker's day targets are 48px and own their edges; arrows, PageUp/PageDown, Shift and Enter work; typed entry refuses a day the calendar lacks; the arrows and the month drum turn months; Escape closes the drum before the picker and the picker before its sheet, at 320-430px, 200% text and 200% pinch |
-| `date-picker-motion --themes light --gate` (pickers ticket 01) | the date picker opens, closes, turns a month by arrow, finger and trackpad, springs back, stretches at a bound, jumps to Today and through the month drum without a yank in any sampled frame, and a swipe past the threshold turns the month while a short one and one past a bound do not; `--out <dir>` keeps the frames for a flipbook |
-| `time-picker-check --themes light --gate` (pickers ticket 02) | the time picker opens on the stored time, steps by arrow, brings a tapped row to the band, rests a flick on a whole row, turns both drums to a typed time, refuses a time that is not one, commits on Use time, leaves the value on Escape and gives focus back, offers Clear only on an optional field, and a downward swipe on a drum at 00 does not move the sheet; no drum moves its whole five-row window in one frame and the surface never arrives or leaves in one; `--out <dir>` keeps the frames for a flipbook |
+| `date-picker-motion` (`--themes light --gate`) (pickers ticket 01) | the date picker opens, closes, turns a month by arrow, finger and trackpad, springs back, stretches at a bound, jumps to Today and through the month drum without a yank in any sampled frame, and a swipe past the threshold turns the month while a short one and one past a bound do not; `--out <dir>` keeps the frames for a flipbook |
+| `time-picker-check` (`--themes light --gate`) (pickers ticket 02) | the time picker opens on the stored time, steps by arrow, brings a tapped row to the band, rests a flick on a whole row, turns both drums to a typed time, refuses a time that is not one, commits on Use time, leaves the value on Escape and gives focus back, offers Clear only on an optional field, and a downward swipe on a drum at 00 does not move the sheet; no drum moves its whole five-row window in one frame and the surface never arrives or leaves in one; `--out <dir>` keeps the frames for a flipbook |
 | `sheet-focus-check` | a sheet takes focus and gives it back, on appointment, lab and dose screens |
 | `no-auto-keyboard` | no screen, the new-entry editor and search included, arrives with a text field focused, so a phone never opens with the keyboard up |
+| `dose-editor-copy-check` | dose editor labels and field order in English and Polish, without duplicate prompts |
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
 | `sheet-handoff-scroll-check` | a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close |
 | `sheet-touch-drag-check` | a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies) |
-| `yank-sweep --scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate` (ticket 244) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |
+| `yank-sweep` (`--scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate`) (ticket 244) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |
 | `tryout-form-check` | what a screen reader is handed for the tryout form's fields |
 | `media-transport-check` | both players' transports work by keyboard, speak their position, go full screen and run offline |
 | `care-lane-labels` | three Care lanes' captions do not collide at 390px in Polish |
@@ -180,8 +195,27 @@ Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
-`setup-flow`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`.
+`setup-flow`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`, `device-evidence`, `picker-motion-yanks`.
+
+`run-guards` runs the roster; its Node tests check retry, builds and sharding.
 
 `letter-composition-gallery` captures composition and discard across all palettes, both themes, English/Polish, compact widths and 200% zoom. It needs a demo build. `android-tier/letter-composition.mjs` checks native Back and drag on a disposable emulator.
 
 `tryout-save-check` checks label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real tryout routes. `gallery:tryouts` also captures saved details and discard controls across every palette, both themes, English and Polish, with compact and 200% zoom checks. Its feedback arrival/removal scenes reuse the browser harness screencast and write timestamped frames plus a manifest for `panel-motion-flipbook`.
+
+## Other retained probes
+
+These tools have direct commands rather than gallery npm scripts. Each remains
+available for the surface or device it measures.
+
+| Probe | Purpose |
+| --- | --- |
+| `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
+| `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
+| `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
+| `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
+| `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
+| `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
+| `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
+| `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
+| `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |

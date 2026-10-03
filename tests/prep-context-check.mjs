@@ -12,7 +12,7 @@
    through the screen's own delete control: the state a person is in the day
    they tick the last thing off.
 
-   Not wired into any npm script. Expects a VITE_DEMO=1 build in build/.
+   Runs in the built guard tier. Expects a VITE_DEMO=1 build in build/.
    Run: node tests/prep-context-check.mjs */
 import { preview } from 'vite';
 import { resolve } from 'node:path';
@@ -57,7 +57,7 @@ try {
      resolves by navigating to /more. */
   await settle('/');
   if (!(await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION))) throw new Error('Full demo fixture did not reach More');
-  await page.waitForTimeout(500);
+  await page.locator('[data-hub-search]').waitFor();
 
   // A visit still ahead, so the date row has a day to name rather than
   // falling back to "Not set" - which would pass the check below for the
@@ -128,6 +128,8 @@ try {
 } catch (error) {
   failures += 1;
   console.log('SCRIPT ERROR:', error.message);
+  console.log('Prep page at failure:', page.url(), await page.locator('body').innerText().catch(() => 'unavailable'));
+  console.log('Demo jump still busy:', await page.locator('[data-demo-busy]').count());
   await page.screenshot({ path: resolve(root, '.claude/prep-context-failure.png') }).catch(() => {});
 } finally {
   await page.close().catch(() => {});

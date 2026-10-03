@@ -2767,7 +2767,7 @@ try {
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
   await waitingFor("today's entries, after the restore", () =>
-    page.waitForSelector('[data-entry-note]', { timeout: 30000 })
+    page.locator('[data-entry-card] [data-entry-note]').filter({ hasText: 'The entry that came back.' }).waitFor({ timeout: 30000 }) // text-under-test: this flow's restored fixture note, not app copy
   );
   const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
   if (!notes.some((note) => note.includes('The entry that came back'))) {
