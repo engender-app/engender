@@ -855,7 +855,7 @@
   "document_link_add": "Powiąż",
   "document_link_change": "Zmień",
   "document_link_clear": "Usuń powiązanie",
-  "document_link_empty_body": "Utwórz kamień milowy, dziennik operacji, kurację lub krok na mapie tranzycji, aby powiązać dokument.",
+  "document_link_empty_body": "Najpierw dodaj kamień milowy, dziennik operacji, kurację lub krok na mapie tranzycji.",
   "document_link_empty_title": "Nie ma jeszcze z czym powiązać",
   "document_link_kind_episode": "Kuracja",
   "document_link_kind_goal": "Krok z mapy tranzycji",
@@ -866,7 +866,6 @@
   "document_link_sheet": "Powiąż ten dokument",
   "document_linked_here_title": "Powiązane dokumenty",
   "document_missing_action": "Wróć do dokumentów",
-  "document_missing_body": "Ten dokument nie jest już dostępny pod tym adresem.",
   "document_missing_title": "Tego dokumentu już nie ma",
   "document_new_sheet": "Nazwij ten dokument",
   "document_page_alt": "Strona dokumentu {title}",
@@ -886,9 +885,9 @@
   "document_too_large": "Wybierz plik o rozmiarze do 25 MB.",
   "document_unsupported_file": "To nie jest PDF ani obraz, który aplikacja może odczytać. Spróbuj pliku PDF, JPEG lub PNG.",
   "documents_empty_action": "Dodaj dokument",
-  "documents_empty_body": "Dodaj zdjęcie lub PDF. Dokumenty są przechowywane w zaszyfrowanej postaci na tym urządzeniu.",
-  "documents_empty_title": "Brak dokumentów",
-  "documents_intro": "Wyszukiwać można tylko tytuły dokumentów. Aplikacja nie odczytuje tekstu na stronach.",
+  "documents_empty_body": "Zdjęcia i PDF-y zostają zaszyfrowane na tym urządzeniu. Papierologia bez sterty papierów.",
+  "documents_empty_title": "Jeszcze nie ma tu dokumentów",
+  "documents_intro": "Dokumenty wyszukasz tylko po tytule. Aplikacja nie czyta tekstu na stronach.",
   "documents_summary": [
     {
       "declarations": [
