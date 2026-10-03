@@ -65,7 +65,7 @@
    TypeError that reads like a bug in this file rather than like a damaged
    file on disk. */
 
-import { CorruptArchiveError } from '../archive/container';
+import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -367,11 +367,16 @@ export async function verifyArchive(
   while (!(await iterator.next()).done) onProgress?.((done += 1), total);
 }
 
-/** Only the payload's shape, and only the sections the registry says an
-    archive carries: a section that is not an array would otherwise fail deep
-    inside an apply function as a TypeError that reads like a bug here rather
-    than like a damaged file on disk. */
+/** Reject unknown sections before writing any files or rows, even when the
+    archive declares a known format version. Ignoring a section would silently
+    lose the data it carries. Known sections must be arrays before their apply
+    functions can read them. */
 function assertRestorable(journal: ArchiveJournal): void {
+  for (const section of Object.keys(journal ?? {})) {
+    if (!(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
+      throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
+    }
+  }
   for (const section of ARCHIVE_SECTION_NAMES) {
     if (!Array.isArray(journal?.[section])) {
       throw new CorruptArchiveError(`the archive's ${section} are not readable`);
