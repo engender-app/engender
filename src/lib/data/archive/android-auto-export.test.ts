@@ -95,6 +95,16 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.notifyFailure).not.toHaveBeenCalled();
   });
 
+  test('scheduled backups use a neutral file name while disguised', async () => {
+    await runAndroidAutoExport(
+      { snapshot, preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja', disguise: true } },
+      { now: () => 17, recordBackup: () => {} }
+    );
+    expect(androidAutoExport.beginBackup).toHaveBeenCalledWith({
+      fileName: expect.stringMatching(/^backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.ttbackup$/)
+    });
+  });
+
   test('asks for a new destination and disables schedule when destination access is revoked', async () => {
     vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-revoked'));
 
