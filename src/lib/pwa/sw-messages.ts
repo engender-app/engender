@@ -60,10 +60,11 @@ export function listenForSkipWaiting(sw: SkipWaitingScope): void {
 export function listenForOnDemandCache(
   sw: MessageScope,
   cacheStore: CacheStore,
-  onDemand: { cacheName: string; assets: string[] }
+  onDemand: { cacheName: string; assets: string[]; message?: string }
 ): void {
+  const message = onDemand.message ?? CACHE_ON_DEMAND;
   sw.addEventListener('message', (event) => {
-    if (event.data !== CACHE_ON_DEMAND) return;
+    if (event.data !== message) return;
     event.waitUntil(
       (async () => {
         const cache = await cacheStore.open(onDemand.cacheName);

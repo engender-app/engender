@@ -40,7 +40,8 @@
     midSessionLockApplies,
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
-  import { registerServiceWorker } from '$lib/pwa/register';
+  import { registerServiceWorkerAfterBoot } from '$lib/pwa/register';
+  import { answerSplash, releaseSplash } from '$lib/splash';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
@@ -94,11 +95,22 @@
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
   $effect(() => watchLock());
 
+  /* The first frame in app.html starts leaving when this layout mounts, the
+     frame the screen's own entrances begin, and is gone once boot has
+     something to show: a journal, a gate, a first run or a failure are all a
+     screen (lib/splash.ts). */
+  $effect(() => releaseSplash());
+  $effect(() => {
+    if (bootState.status !== 'booting') answerSplash();
+  });
+
   /* A side effect with nothing above it to order against, unlike startBoot():
      the registration is not awaited and the worker precaches the shell in the
-     background, whenever it gets there. */
+     background, whenever it gets there - which is after boot has answered and
+     the browser is idle, so the precache does not compete with the first
+     screen for the connection (phase 14 pre-release ticket 13). */
   $effect(() => {
-    registerServiceWorker();
+    registerServiceWorkerAfterBoot(bootState.status);
   });
 
   /* The passphrase gate (ticket 09) renders before the database can even
