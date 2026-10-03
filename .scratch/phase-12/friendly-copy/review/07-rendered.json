@@ -1,0 +1,5868 @@
+{
+  "records": [
+    {
+      "state": "security-no-key",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-security-no-key.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "Security\nHow your journal opens\nPassphrase · locks only when the app restarts\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-timing",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-settings-timing.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "How your journal opens\n\nChanges take effect immediately. Your journal stays encrypted.\n\nUnlocked\nencrypted on disk, opens with no prompt\n4-digit PIN\nencrypts with a PIN and a device key\n\nNow: Passphrase\n\nWhen your journal locks\nImmediately\nAfter 1 minute\nAfter 5 minutes\nOnly when the app restarts\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Immediately     After 1 minute     After 5 minutes     Only when the app restarts",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Immediately",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 1 minute",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 5 minutes",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Only when the app restarts",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-immediately",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-security-immediately.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "Security\nHow your journal opens\nPassphrase · locks as soon as you leave\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-one-minute",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-security-one-minute.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "Security\nHow your journal opens\nPassphrase · locks after 1 minute away\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-five-minutes",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-security-five-minutes.png",
+      "observedToasts": [],
+      "text": "Security\nHow your journal opens\nPassphrase · locks after 5 minutes away\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-restart",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-security-restart.png",
+      "observedToasts": [],
+      "text": "Security\nHow your journal opens\nPassphrase · locks only when the app restarts\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-lock-off",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-settings-lock-off.png",
+      "observedToasts": [],
+      "text": "How your journal opens\n\nChanges take effect immediately. Your journal stays encrypted.\n\n4-digit PIN\nencrypts with a PIN and a device key\nPassphrase\nencryption with a secret you choose\n\nNow: Unlocked\n\nYour journal opens without a lock. Pick another way above to change that.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Passphrase encryption with a secret you choose",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "passphrase-change",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-passphrase-change.png",
+      "observedToasts": [],
+      "text": "Journal passphrase\n\nThe old passphrase stops opening this journal immediately. Existing copies keep their own passphrases. Save the new one in a password manager: nobody can recover it if you forget it.\n\nCurrent passphrase \nNew passphrase \nNew passphrase, once more \n\nChange passphrase",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Change passphrase",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "secret-changed-offer",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-secret-changed-offer.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "Journal passphrase\nMake a recovery key?\n\nThis journal has no recovery key. A recovery key is 25 characters you keep somewhere else. It opens the journal if you cannot use your passphrase or PIN.\n\nMake one now\nNot now",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Not now",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-none",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-none.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "Recovery key\n\nA recovery key opens this journal without your passphrase, PIN or fingerprint. Anyone with the key and the journal data can read it.\n\nThe 25 characters appear once and cannot be shown again. Keep them on paper or in a password manager on another device, not in a photo or note on this phone. You can remove the key later.\n\nMake a recovery key",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Make a recovery key",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-shown",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-shown.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "Recovery key\nWrite this down now\n\nTJ67Y-DVAM0-SZZM1-BHP30-G3JNQ\n\nThese characters cannot be shown again. If you lose them, you will need to make a new key.\n\nKeep it on paper or in a password manager on another device. Do not save a photo or note on this phone.\n\nCopy\nPrint\nI have written it down",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Copy",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Print",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "I have written it down",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-departure",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-departure.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "If you leave, reload this page or close the app, these characters disappear. The key stays active, but you will need to replace it if you did not save it.\n\nKeep writing it down\nLeave",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Keep writing it down",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Leave",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-active",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-active.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. ",
+        "Recovery key made. "
+      ],
+      "text": "Recovery key\n\nYour recovery key can't be shown again. If you're not sure you still have it, replace it.\n\nReplace this key\nRemove this key",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Replace this key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Remove this key",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-replace",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-replace.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. ",
+        "Recovery key made. "
+      ],
+      "text": "The old key stops working immediately. Save the new key when it appears: it will only be shown once.\n\nReplace it",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Replace it",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-remove",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-remove.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "This key will stop opening the journal immediately. If your usual unlock then fails, you will need a saved archive to restore its data. Removing the key cannot be undone.\n\nRemove it",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Remove it",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-recovery-active",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-settings-recovery-active.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "How your journal opens\n\nChanges take effect immediately. Your journal stays encrypted.\n\nUnlocked\nencrypted on disk, opens with no prompt\n4-digit PIN\nencrypts with a PIN and a device key\n\nNow: Passphrase\n\nYour recovery key keeps working whichever opening mode you choose.\n\nWhen your journal locks\nImmediately\nAfter 1 minute\nAfter 5 minutes\nOnly when the app restarts\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Immediately     After 1 minute     After 5 minutes     Only when the app restarts",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Immediately",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 1 minute",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 5 minutes",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Only when the app restarts",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-unlocked-detail",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-web-unlocked-detail.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "How your journal opens\n\nThis browser profile holds the key. Anyone who copies the profile can open your journal without a secret. Losing the profile or clearing its data loses the journal.\n\nKeep an encrypted backup off this device. A recovery key cannot restore data from a lost device or cleared storage.\n\nKeep unlocked\n\nPick another way\n\nYour recovery key keeps working whichever opening mode you choose.\n\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Keep unlocked",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pick another way",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-pin-detail",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-web-pin-detail.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "How your journal opens\n\nYour PIN encrypts the journal together with a key in this browser profile. The journal file alone is not enough to guess the PIN. Copying the whole profile exposes the device key: all 10,000 PINs can then be tried in about five seconds on a fast graphics card. Choose a passphrase if someone could copy your profile. A forgotten PIN requires a recovery key or a reset that deletes local data.\n\nKeep an encrypted backup off this device. A recovery key cannot restore data from a lost device or cleared storage.\n\nContinue\nPick another way\n\nYour recovery key keeps working whichever opening mode you choose.\n\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Continue",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pick another way",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-permissions",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-web-permissions.png",
+      "observedToasts": [],
+      "text": "Permissions\n\nWhat the app can ask this device for.\n\nPermissions\n\nNotifications\nHow a reminder or the daily check-in reaches you.\nAndroid only\nExact timing\nA reminder rings at the minute you set.\nAndroid only\nMicrophone\nVoice notes, voice practice and video sound.\nAllow\nCamera\nVideo notes.\nAllow\n\nOther device access\n\nTaking a photo\nThe system camera hands back that one picture.\nPicking a photo or a file\nThe picker hands over one file. The app never sees the rest.\nPrinting\nThe system print dialog decides where the page goes.\nThe clipboard\nCopies the recovery key. The app does not clear the browser clipboard.\nYour fingerprint or face\nChecked by the system, never by the app. All the app learns is whether it matched.\n\nYour browser downloads the app and text recognition files. Journal content is processed on this device. Exporting, sharing or opening external links can involve other services.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Allow Microphone",
+          "labelledby": null,
+          "text": "Allow",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Allow Camera",
+          "labelledby": null,
+          "text": "Allow",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-timing",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-onboarding-timing.png",
+      "observedToasts": [],
+      "text": "When should your journal lock?\n\nHow long the app can be out of sight before you unlock it again.\n\nImmediately\nAfter 1 minute\nAfter 5 minutes\nOnly when the app restarts\nContinue\nSkip\nStraight to the app",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Back",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": "When should your journal lock?",
+          "labelledby": null,
+          "text": "Immediately     After 1 minute     After 5 minutes     Only when the app restarts",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Immediately",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 1 minute",
+          "disabled": false,
+          "checked": "true"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 5 minutes",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Only when the app restarts",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Continue",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Skip",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Straight to the app",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-lock-off",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-onboarding-lock-off.png",
+      "observedToasts": [],
+      "text": "Lock off\n\nYour journal opens without a lock. You can change that later in Settings.\n\nContinue\nSkip\nStraight to the app",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Back",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Continue",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Skip",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Straight to the app",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-access-choice",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-100-onboarding-access-choice.png",
+      "observedToasts": [],
+      "text": "How should your journal open?\n\nEverything you write is encrypted. You can change how your journal opens later in Settings.\n\nUnlocked\nencrypted on disk, opens with no prompt\n4-digit PIN\nencrypts with a PIN and a device key\nPassphrase\nencryption with a secret you choose",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Passphrase encryption with a secret you choose",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "gate-access-choice",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-gate-access-choice.png",
+      "observedToasts": [],
+      "text": "How should your journal open?\n\nEverything you write is encrypted. You can change how your journal opens later in Settings.\n\nUnlocked\nencrypted on disk, opens with no prompt\nYour device unlock\nthe fingerprint or face this device already asks for\n4-digit PIN\nencrypts with a PIN and a device key\nPassphrase\nencryption with a secret you choose",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Your device unlock the fingerprint or face this device already asks for",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Passphrase encryption with a secret you choose",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-biometric-detail",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-web-biometric-detail.png",
+      "observedToasts": [],
+      "text": "Your device unlock\n\nYour fingerprint or face opens the journal. Losing the device, removing the enrolled fingerprint or face, or clearing this browser profile can remove access. A saved recovery key helps only if the journal data remains.\n\nKeep an encrypted backup off this device. A recovery key cannot restore data from a lost device or cleared storage.\n\nUse your device unlock\n\nPick another way",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use your device unlock",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pick another way",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-no-lock",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-android-key-no-lock.png",
+      "observedToasts": [],
+      "text": "Set a screen lock first\n\nAndroid's key store needs a screen lock to hold your journal key. Set a PIN, pattern or password in the device settings, then come back here.\n\nCheck again",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Check again",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-android-key-invalidated.png",
+      "observedToasts": [],
+      "text": "The journal’s key is gone\n\nRemoving the screen lock destroys your journal's Android key. It cannot be recovered. Your entries are still on this phone, but nothing can open them. If you have a saved archive, you can start over and restore its contents.\n\nDelete everything and start over",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Delete everything and start over",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated-with-key",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-android-key-invalidated-with-key.png",
+      "observedToasts": [],
+      "text": "The journal’s key is gone\n\nRemoving the screen lock destroys your journal's Android key. It cannot be recovered. Your entries are still on this phone, and your recovery key can open them.\n\nUse a recovery key\nDelete everything and start over",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use a recovery key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Delete everything and start over",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-device-recovery.png",
+      "observedToasts": [],
+      "text": "This journal was tied to this device\n\nThis journal opened without a passphrase. This browser or device has lost its local key. engender cannot recover that key, so this copy cannot be reopened.\n\nNo recovery key is set up for this journal.\n\nIf you have a saved archive, you can restore what it contains using its own password. Anything saved only on this device cannot be recovered without the local key or a recovery key.\n\nRestore from a saved archive\nStart over on this device",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Restore from a saved archive",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Start over on this device",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery-with-key",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-device-recovery-with-key.png",
+      "observedToasts": [],
+      "text": "This journal was tied to this device\n\nThis journal opened without a passphrase. This browser or device has lost its local key. engender cannot recover that key. Your recovery key can still open this journal.\n\nUse a recovery key\n\nIf you have a saved archive, you can restore what it contains using its own password. Anything saved only on this device cannot be recovered without the local key or a recovery key.\n\nRestore from a saved archive\nStart over on this device",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use a recovery key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Restore from a saved archive",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Start over on this device",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-cancelled",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-android-cancelled.png",
+      "observedToasts": [],
+      "text": "engender\n\nCancelled.\n\nUnlock\nUse your device PIN\nCan’t get in?",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlock",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use your device PIN",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Can’t get in?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": null,
+          "live": "polite",
+          "text": "Cancelled."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-mistyped",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-recovery-mistyped.png",
+      "observedToasts": [],
+      "text": "Recovery key\n\nType the 25 characters you wrote down. Capitals and the dashes do not matter.\n\nRecovery key \n\nCheck the recovery key for missing or mistyped characters.\n\nOpen my journal\nBack",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Open my journal",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Back",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": "Check the recovery key for missing or mistyped characters."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-immediately",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-session-immediately.png",
+      "observedToasts": [],
+      "text": "engender\n\nEnter your PIN to open your journal.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nForgotten your PIN?\n\nYour journal locks as soon as you leave the app.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Delete digit",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Forgotten your PIN?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-one-minute",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-session-one-minute.png",
+      "observedToasts": [],
+      "text": "engender\n\nEnter your PIN to open your journal.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nForgotten your PIN?\n\nYour journal locks after a minute away from the app.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Delete digit",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Forgotten your PIN?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-five-minutes",
+      "lang": "en",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-100-session-five-minutes.png",
+      "observedToasts": [],
+      "text": "engender\n\nEnter your PIN to open your journal.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nForgotten your PIN?\n\nYour journal locks after 5 minutes away from the app.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Delete digit",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Forgotten your PIN?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-no-key",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-security-no-key.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "Security\nHow your journal opens\nPassphrase · locks only when the app restarts\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-timing",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-settings-timing.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "How your journal opens\n\nChanges take effect immediately. Your journal stays encrypted.\n\nUnlocked\nencrypted on disk, opens with no prompt\n4-digit PIN\nencrypts with a PIN and a device key\n\nNow: Passphrase\n\nWhen your journal locks\nImmediately\nAfter 1 minute\nAfter 5 minutes\nOnly when the app restarts\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Immediately     After 1 minute     After 5 minutes     Only when the app restarts",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Immediately",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 1 minute",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 5 minutes",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Only when the app restarts",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-immediately",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-security-immediately.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "Security\nHow your journal opens\nPassphrase · locks as soon as you leave\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-one-minute",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-security-one-minute.png",
+      "observedToasts": [
+        "This browser may clear your journal to free space. Keep an encrypted backup outside this browser. "
+      ],
+      "text": "Security\nHow your journal opens\nPassphrase · locks after 1 minute away\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-five-minutes",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-security-five-minutes.png",
+      "observedToasts": [],
+      "text": "Security\nHow your journal opens\nPassphrase · locks after 5 minutes away\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-restart",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-security-restart.png",
+      "observedToasts": [],
+      "text": "Security\nHow your journal opens\nPassphrase · locks only when the app restarts\nRecovery key\nnot set up\nA saved archive is the fallback if your usual unlock stops working.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-lock-off",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-settings-lock-off.png",
+      "observedToasts": [],
+      "text": "How your journal opens\n\nChanges take effect immediately. Your journal stays encrypted.\n\n4-digit PIN\nencrypts with a PIN and a device key\nPassphrase\nencryption with a secret you choose\n\nNow: Unlocked\n\nYour journal opens without a lock. Pick another way above to change that.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Passphrase encryption with a secret you choose",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "passphrase-change",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-passphrase-change.png",
+      "observedToasts": [],
+      "text": "Journal passphrase\n\nThe old passphrase stops opening this journal immediately. Existing copies keep their own passphrases. Save the new one in a password manager: nobody can recover it if you forget it.\n\nCurrent passphrase \nNew passphrase \nNew passphrase, once more \n\nChange passphrase",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Change passphrase",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "secret-changed-offer",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-secret-changed-offer.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "Journal passphrase\nMake a recovery key?\n\nThis journal has no recovery key. A recovery key is 25 characters you keep somewhere else. It opens the journal if you cannot use your passphrase or PIN.\n\nMake one now\nNot now",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Not now",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-none",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-none.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "Recovery key\n\nA recovery key opens this journal without your passphrase, PIN or fingerprint. Anyone with the key and the journal data can read it.\n\nThe 25 characters appear once and cannot be shown again. Keep them on paper or in a password manager on another device, not in a photo or note on this phone. You can remove the key later.\n\nMake a recovery key",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Make a recovery key",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-shown",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-shown.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "Recovery key\nWrite this down now\n\nK9QCR-1T711-6HVM3-0VQEM-Y3DAN\n\nThese characters cannot be shown again. If you lose them, you will need to make a new key.\n\nKeep it on paper or in a password manager on another device. Do not save a photo or note on this phone.\n\nCopy\nPrint\nI have written it down",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Copy",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Print",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "I have written it down",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-departure",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-departure.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. "
+      ],
+      "text": "If you leave, reload this page or close the app, these characters disappear. The key stays active, but you will need to replace it if you did not save it.\n\nKeep writing it down\nLeave",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Keep writing it down",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Leave",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-active",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-active.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. ",
+        "Recovery key made. "
+      ],
+      "text": "Recovery key\n\nYour recovery key can't be shown again. If you're not sure you still have it, replace it.\n\nReplace this key\nRemove this key",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Replace this key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Remove this key",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-replace",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-replace.png",
+      "observedToasts": [
+        "Passphrase changed. Update it in your password manager too. ",
+        "Recovery key made. "
+      ],
+      "text": "The old key stops working immediately. Save the new key when it appears: it will only be shown once.\n\nReplace it",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Replace it",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-remove",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-remove.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "This key will stop opening the journal immediately. If your usual unlock then fails, you will need a saved archive to restore its data. Removing the key cannot be undone.\n\nRemove it",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Remove it",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-recovery-active",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-settings-recovery-active.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "How your journal opens\n\nChanges take effect immediately. Your journal stays encrypted.\n\nUnlocked\nencrypted on disk, opens with no prompt\n4-digit PIN\nencrypts with a PIN and a device key\n\nNow: Passphrase\n\nYour recovery key keeps working whichever opening mode you choose.\n\nWhen your journal locks\nImmediately\nAfter 1 minute\nAfter 5 minutes\nOnly when the app restarts\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Immediately     After 1 minute     After 5 minutes     Only when the app restarts",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Immediately",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 1 minute",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 5 minutes",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Only when the app restarts",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-unlocked-detail",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-web-unlocked-detail.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "How your journal opens\n\nThis browser profile holds the key. Anyone who copies the profile can open your journal without a secret. Losing the profile or clearing its data loses the journal.\n\nKeep an encrypted backup off this device. A recovery key cannot restore data from a lost device or cleared storage.\n\nKeep unlocked\n\nPick another way\n\nYour recovery key keeps working whichever opening mode you choose.\n\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Keep unlocked",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pick another way",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-pin-detail",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-web-pin-detail.png",
+      "observedToasts": [
+        "Recovery key made. "
+      ],
+      "text": "How your journal opens\n\nYour PIN encrypts the journal together with a key in this browser profile. The journal file alone is not enough to guess the PIN. Copying the whole profile exposes the device key: all 10,000 PINs can then be tried in about five seconds on a fast graphics card. Choose a passphrase if someone could copy your profile. A forgotten PIN requires a recovery key or a reset that deletes local data.\n\nKeep an encrypted backup off this device. A recovery key cannot restore data from a lost device or cleared storage.\n\nContinue\nPick another way\n\nYour recovery key keeps working whichever opening mode you choose.\n\nJournal passphrase\nat least 8 characters",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Continue",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pick another way",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-permissions",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-web-permissions.png",
+      "observedToasts": [],
+      "text": "Permissions\n\nWhat the app can ask this device for.\n\nPermissions\n\nNotifications\nHow a reminder or the daily check-in reaches you.\nAndroid only\nExact timing\nA reminder rings at the minute you set.\nAndroid only\nMicrophone\nVoice notes, voice practice and video sound.\nAllow\nCamera\nVideo notes.\nAllow\n\nOther device access\n\nTaking a photo\nThe system camera hands back that one picture.\nPicking a photo or a file\nThe picker hands over one file. The app never sees the rest.\nPrinting\nThe system print dialog decides where the page goes.\nThe clipboard\nCopies the recovery key. The app does not clear the browser clipboard.\nYour fingerprint or face\nChecked by the system, never by the app. All the app learns is whether it matched.\n\nYour browser downloads the app and text recognition files. Journal content is processed on this device. Exporting, sharing or opening external links can involve other services.",
+      "overflow": [
+        {
+          "text": "Notifications",
+          "client": 2,
+          "scroll": 13
+        },
+        {
+          "text": "Exact timing",
+          "client": 2,
+          "scroll": 15
+        }
+      ],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Allow Microphone",
+          "labelledby": null,
+          "text": "Allow",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Allow Camera",
+          "labelledby": null,
+          "text": "Allow",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-timing",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-onboarding-timing.png",
+      "observedToasts": [],
+      "text": "When should your journal lock?\n\nHow long the app can be out of sight before you unlock it again.\n\nImmediately\nAfter 1 minute\nAfter 5 minutes\nOnly when the app restarts\nContinue\nSkip\nStraight to the app",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Back",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": "When should your journal lock?",
+          "labelledby": null,
+          "text": "Immediately     After 1 minute     After 5 minutes     Only when the app restarts",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Immediately",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 1 minute",
+          "disabled": false,
+          "checked": "true"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "After 5 minutes",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Only when the app restarts",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Continue",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Skip",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Straight to the app",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-lock-off",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-onboarding-lock-off.png",
+      "observedToasts": [],
+      "text": "Lock off\n\nYour journal opens without a lock. You can change that later in Settings.\n\nContinue\nSkip\nStraight to the app",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Back",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Continue",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Skip",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Straight to the app",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-access-choice",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/en-200-onboarding-access-choice.png",
+      "observedToasts": [],
+      "text": "How should your journal open?\n\nEverything you write is encrypted. You can change how your journal opens later in Settings.\n\nUnlocked\nencrypted on disk, opens with no prompt\n4-digit PIN\nencrypts with a PIN and a device key\nPassphrase\nencryption with a secret you choose",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Passphrase encryption with a secret you choose",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "gate-access-choice",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-gate-access-choice.png",
+      "observedToasts": [],
+      "text": "How should your journal open?\n\nEverything you write is encrypted. You can change how your journal opens later in Settings.\n\nUnlocked\nencrypted on disk, opens with no prompt\nYour device unlock\nthe fingerprint or face this device already asks for\n4-digit PIN\nencrypts with a PIN and a device key\nPassphrase\nencryption with a secret you choose",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlocked encrypted on disk, opens with no prompt",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Your device unlock the fingerprint or face this device already asks for",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4-digit PIN encrypts with a PIN and a device key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Passphrase encryption with a secret you choose",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-biometric-detail",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-web-biometric-detail.png",
+      "observedToasts": [],
+      "text": "Your device unlock\n\nYour fingerprint or face opens the journal. Losing the device, removing the enrolled fingerprint or face, or clearing this browser profile can remove access. A saved recovery key helps only if the journal data remains.\n\nKeep an encrypted backup off this device. A recovery key cannot restore data from a lost device or cleared storage.\n\nUse your device unlock\n\nPick another way",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use your device unlock",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pick another way",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-no-lock",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-android-key-no-lock.png",
+      "observedToasts": [],
+      "text": "Set a screen lock first\n\nAndroid's key store needs a screen lock to hold your journal key. Set a PIN, pattern or password in the device settings, then come back here.\n\nCheck again",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Check again",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-android-key-invalidated.png",
+      "observedToasts": [],
+      "text": "The journal’s key is gone\n\nRemoving the screen lock destroys your journal's Android key. It cannot be recovered. Your entries are still on this phone, but nothing can open them. If you have a saved archive, you can start over and restore its contents.\n\nDelete everything and start over",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Delete everything and start over",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated-with-key",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-android-key-invalidated-with-key.png",
+      "observedToasts": [],
+      "text": "The journal’s key is gone\n\nRemoving the screen lock destroys your journal's Android key. It cannot be recovered. Your entries are still on this phone, and your recovery key can open them.\n\nUse a recovery key\nDelete everything and start over",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use a recovery key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Delete everything and start over",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-device-recovery.png",
+      "observedToasts": [],
+      "text": "This journal was tied to this device\n\nThis journal opened without a passphrase. This browser or device has lost its local key. engender cannot recover that key, so this copy cannot be reopened.\n\nNo recovery key is set up for this journal.\n\nIf you have a saved archive, you can restore what it contains using its own password. Anything saved only on this device cannot be recovered without the local key or a recovery key.\n\nRestore from a saved archive\nStart over on this device",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Restore from a saved archive",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Start over on this device",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery-with-key",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-device-recovery-with-key.png",
+      "observedToasts": [],
+      "text": "This journal was tied to this device\n\nThis journal opened without a passphrase. This browser or device has lost its local key. engender cannot recover that key. Your recovery key can still open this journal.\n\nUse a recovery key\n\nIf you have a saved archive, you can restore what it contains using its own password. Anything saved only on this device cannot be recovered without the local key or a recovery key.\n\nRestore from a saved archive\nStart over on this device",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use a recovery key",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Restore from a saved archive",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Start over on this device",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-cancelled",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-android-cancelled.png",
+      "observedToasts": [],
+      "text": "engender\n\nCancelled.\n\nUnlock\nUse your device PIN\nCan’t get in?",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Unlock",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Use your device PIN",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Can’t get in?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": null,
+          "live": "polite",
+          "text": "Cancelled."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-mistyped",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-recovery-mistyped.png",
+      "observedToasts": [],
+      "text": "Recovery key\n\nType the 25 characters you wrote down. Capitals and the dashes do not matter.\n\nRecovery key \n\nCheck the recovery key for missing or mistyped characters.\n\nOpen my journal\nBack",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Open my journal",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Back",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": "Check the recovery key for missing or mistyped characters."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-immediately",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-session-immediately.png",
+      "observedToasts": [],
+      "text": "engender\n\nEnter your PIN to open your journal.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nForgotten your PIN?\n\nYour journal locks as soon as you leave the app.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Delete digit",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Forgotten your PIN?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-one-minute",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-session-one-minute.png",
+      "observedToasts": [],
+      "text": "engender\n\nEnter your PIN to open your journal.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nForgotten your PIN?\n\nYour journal locks after a minute away from the app.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Delete digit",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Forgotten your PIN?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-five-minutes",
+      "lang": "en",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/en-200-session-five-minutes.png",
+      "observedToasts": [],
+      "text": "engender\n\nEnter your PIN to open your journal.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nForgotten your PIN?\n\nYour journal locks after 5 minutes away from the app.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Delete digit",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Forgotten your PIN?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-no-key",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-security-no-key.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada dopiero po ponownym uruchomieniu\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-timing",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-settings-timing.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nZmiana działa od razu. Dziennik pozostaje zaszyfrowany.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\n\nTeraz: Hasło\n\nKiedy dziennik się zablokuje\nOd razu\nPo 1 minucie\nPo 5 minutach\nDopiero po ponownym uruchomieniu\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Od razu     Po 1 minucie     Po 5 minutach     Dopiero po ponownym uruchomieniu",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 1 minucie",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 5 minutach",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Dopiero po ponownym uruchomieniu",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-immediately",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-security-immediately.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada gdy tylko wyjdziesz\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-one-minute",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-security-one-minute.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada po 1 minucie\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-five-minutes",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-security-five-minutes.png",
+      "observedToasts": [],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada po 5 minutach\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-restart",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-security-restart.png",
+      "observedToasts": [],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada dopiero po ponownym uruchomieniu\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-lock-off",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-settings-lock-off.png",
+      "observedToasts": [],
+      "text": "Jak otwiera się dziennik\n\nZmiana działa od razu. Dziennik pozostaje zaszyfrowany.\n\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\nHasło\nszyfrowanie wybranym przez ciebie hasłem\n\nTeraz: Bez blokady\n\nOtwieranie dziennika bez blokady. Żeby to zmienić, wybierz wyżej inny sposób.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Hasło szyfrowanie wybranym przez ciebie hasłem",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "passphrase-change",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-passphrase-change.png",
+      "observedToasts": [],
+      "text": "Hasło do dziennika\n\nStare hasło od razu przestaje otwierać ten dziennik. Istniejące kopie zachowują własne hasła. Zapisz nowe w menedżerze haseł: nikt go nie odzyska, jeśli je zapomnisz.\n\nObecne hasło \nNowe hasło \nNowe hasło jeszcze raz \n\nZmień hasło",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zmień hasło",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "secret-changed-offer",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-secret-changed-offer.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Hasło do dziennika\nUtworzyć klucz odzyskiwania?\n\nTen dziennik nie ma klucza odzyskiwania. To 25 znaków, które przechowujesz osobno. Pozwalają otworzyć dziennik, gdy nie możesz użyć hasła ani PIN-u.\n\nUtwórz teraz\nNie teraz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie teraz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-none",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-none.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Klucz odzyskiwania\n\nKlucz odzyskiwania otwiera ten dziennik bez hasła, kodu PIN ani odcisku palca. Każdy, kto ma klucz i dane dziennika, może je odczytać.\n\nTe 25 znaków pojawi się tylko raz. Zapisz je na papierze lub w menedżerze haseł na innym urządzeniu. Nie rób zdjęcia ani notatki na tym telefonie. Klucz możesz później usunąć.\n\nUtwórz klucz odzyskiwania",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Utwórz klucz odzyskiwania",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-shown",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-shown.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Klucz odzyskiwania\nZapisz to teraz\n\n9C5DJ-4DGZA-DVPT8-QTK1D-5NNA8\n\nTych znaków nie da się wyświetlić ponownie. Jeśli je zgubisz, trzeba będzie utworzyć nowy klucz.\n\nZapisz klucz na papierze lub w menedżerze haseł na innym urządzeniu. Nie rób zdjęcia ani notatki na tym telefonie.\n\nKopiuj\nDrukuj\nMam to zapisane",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Kopiuj",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Drukuj",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Mam to zapisane",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-departure",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-departure.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Jeśli wyjdziesz, odświeżysz stronę lub zamkniesz aplikację, te znaki znikną. Klucz pozostanie aktywny. Jeśli go nie zapiszesz, trzeba będzie go wymienić.\n\nZapisuję dalej\nWyjdź",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zapisuję dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wyjdź",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-active",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-active.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. ",
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Klucz odzyskiwania\n\nKlucza odzyskiwania nie da się pokazać ponownie. Jeśli nie masz pewności, czy nadal masz zapisany klucz, wymień go.\n\nWymień ten klucz\nUsuń ten klucz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wymień ten klucz",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń ten klucz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-replace",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-replace.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. ",
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Stary klucz od razu przestanie działać. Zapisz nowy, gdy się pojawi: zobaczysz go tylko raz.\n\nWymień",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wymień",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-remove",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-remove.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Ten klucz od razu przestanie otwierać dziennik. Jeśli później nie uda się go zwykle odblokować, dane przywrócisz tylko z zapisanej kopii zapasowej. Usunięcia klucza nie można cofnąć.\n\nUsuń",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-recovery-active",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-settings-recovery-active.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nZmiana działa od razu. Dziennik pozostaje zaszyfrowany.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\n\nTeraz: Hasło\n\nTen dziennik ma też klucz odzyskiwania, który otwiera go niezależnie od tego ustawienia.\n\nKiedy dziennik się zablokuje\nOd razu\nPo 1 minucie\nPo 5 minutach\nDopiero po ponownym uruchomieniu\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Od razu     Po 1 minucie     Po 5 minutach     Dopiero po ponownym uruchomieniu",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 1 minucie",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 5 minutach",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Dopiero po ponownym uruchomieniu",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-unlocked-detail",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-web-unlocked-detail.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nKlucz jest zapisany w tym profilu przeglądarki. Każdy, kto skopiuje profil, może otworzyć dziennik bez hasła. Po utracie profilu lub wyczyszczeniu jego danych ta kopia dziennika będzie niedostępna.\n\nPrzechowuj zaszyfrowaną kopię zapasową poza tym urządzeniem. Klucz odzyskiwania nie przywróci danych z utraconego urządzenia ani wyczyszczonej pamięci.\n\nZostaw bez blokady\n\nWybierz inny sposób\n\nTen dziennik ma też klucz odzyskiwania, który otwiera go niezależnie od tego ustawienia.\n\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zostaw bez blokady",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wybierz inny sposób",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-pin-detail",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-web-pin-detail.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nPIN szyfruje dziennik razem z kluczem w tym profilu przeglądarki. Sam plik dziennika nie wystarczy do odgadnięcia kodu PIN. Kopia całego profilu ujawnia klucz urządzenia: szybka karta graficzna może wtedy sprawdzić wszystkie 10 000 kodów w około pięć sekund. Wybierz hasło, jeśli ktoś może skopiować twój profil. Zapomniany PIN wymaga klucza odzyskiwania lub resetu usuwającego lokalne dane.\n\nPrzechowuj zaszyfrowaną kopię zapasową poza tym urządzeniem. Klucz odzyskiwania nie przywróci danych z utraconego urządzenia ani wyczyszczonej pamięci.\n\nDalej\nWybierz inny sposób\n\nTen dziennik ma też klucz odzyskiwania, który otwiera go niezależnie od tego ustawienia.\n\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wybierz inny sposób",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-permissions",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-web-permissions.png",
+      "observedToasts": [],
+      "text": "Uprawnienia\n\nO co aplikacja może poprosić to urządzenie.\n\nUprawnienia\n\nPowiadomienia\nTak dociera przypomnienie i codzienne pytanie.\nTylko na Androidzie\nDokładna godzina\nPrzypomnienie dzwoni o ustawionej minucie.\nTylko na Androidzie\nMikrofon\nNotatki głosowe, ćwiczenia głosu i dźwięk wideo.\nZezwól\nKamera\nNotatki wideo.\nZezwól\n\nPozostały dostęp do urządzenia\n\nZrobienie zdjęcia\nAparat systemowy przekazuje aplikacji tylko zrobione zdjęcie.\nWybranie zdjęcia albo pliku\nAplikacja dostaje tylko wybrany plik. Pozostałych nie widzi.\nDrukowanie\nSystemowe okno drukowania decyduje, gdzie trafi strona.\nSchowek\nKopiuje klucz odzyskiwania. Aplikacja nie czyści schowka przeglądarki.\nOdcisk palca albo twarz\nSprawdza to system, nie aplikacja. Aplikacja dowiaduje się tylko, czy się zgadza.\n\nPrzeglądarka pobiera aplikację i pliki do rozpoznawania tekstu. Treść dziennika jest przetwarzana na tym urządzeniu. Eksport, udostępnianie lub otwieranie linków może korzystać z innych usług.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Zezwól: Mikrofon",
+          "labelledby": null,
+          "text": "Zezwól",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Zezwól: Kamera",
+          "labelledby": null,
+          "text": "Zezwól",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-timing",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-onboarding-timing.png",
+      "observedToasts": [],
+      "text": "Kiedy dziennik ma się zablokować?\n\nJak długo aplikacja może być w tle, zanim trzeba będzie ją znowu odblokować.\n\nOd razu\nPo 1 minucie\nPo 5 minutach\nDopiero po ponownym uruchomieniu\nDalej\nPomiń\nOd razu do aplikacji",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Wstecz",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": "Kiedy dziennik ma się zablokować?",
+          "labelledby": null,
+          "text": "Od razu     Po 1 minucie     Po 5 minutach     Dopiero po ponownym uruchomieniu",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 1 minucie",
+          "disabled": false,
+          "checked": "true"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 5 minutach",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Dopiero po ponownym uruchomieniu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pomiń",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu do aplikacji",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-lock-off",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-onboarding-lock-off.png",
+      "observedToasts": [],
+      "text": "Blokada wyłączona\n\nOtwieranie dziennika bez blokady. Możesz to zmienić później w Ustawieniach.\n\nDalej\nPomiń\nOd razu do aplikacji",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Wstecz",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pomiń",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu do aplikacji",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-access-choice",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-100-onboarding-access-choice.png",
+      "observedToasts": [],
+      "text": "Jak ma się otwierać dziennik?\n\nWszystko, co zapisujesz, jest zaszyfrowane. Sposób otwierania dziennika możesz później zmienić w Ustawieniach.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\nHasło\nszyfrowanie wybranym przez ciebie hasłem",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Hasło szyfrowanie wybranym przez ciebie hasłem",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "gate-access-choice",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-gate-access-choice.png",
+      "observedToasts": [],
+      "text": "Jak ma się otwierać dziennik?\n\nWszystko, co zapisujesz, jest zaszyfrowane. Sposób otwierania dziennika możesz później zmienić w Ustawieniach.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nOdblokowanie urządzeniem\nodcisk palca lub twarz używane do odblokowania urządzenia\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\nHasło\nszyfrowanie wybranym przez ciebie hasłem",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odblokowanie urządzeniem odcisk palca lub twarz używane do odblokowania urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Hasło szyfrowanie wybranym przez ciebie hasłem",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-biometric-detail",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-web-biometric-detail.png",
+      "observedToasts": [],
+      "text": "Odblokowanie urządzeniem\n\nOdcisk palca lub skan twarzy pozwala otworzyć dziennik. Utrata urządzenia, usunięcie zapisanego odcisku lub twarzy albo wyczyszczenie profilu przeglądarki może odciąć dostęp. Klucz odzyskiwania pomoże tylko wtedy, gdy dane dziennika nadal są na urządzeniu.\n\nPrzechowuj zaszyfrowaną kopię zapasową poza tym urządzeniem. Klucz odzyskiwania nie przywróci danych z utraconego urządzenia ani wyczyszczonej pamięci.\n\nUżyj odblokowania urządzeniem\n\nWybierz inny sposób",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj odblokowania urządzeniem",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wybierz inny sposób",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-no-lock",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-android-key-no-lock.png",
+      "observedToasts": [],
+      "text": "Najpierw ustaw blokadę ekranu\n\nKlucz dziennika jest przechowywany w Android key store. Android nie przechowuje go bez blokady ekranu. Ustaw PIN, wzór lub hasło w ustawieniach urządzenia i wróć tutaj.\n\nSprawdź jeszcze raz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Sprawdź jeszcze raz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-android-key-invalidated.png",
+      "observedToasts": [],
+      "text": "Klucz do dziennika przepadł\n\nPo usunięciu blokady ekranu Android niszczy klucz dziennika. Nie da się go odzyskać. Wpisy nadal są na telefonie, ale nie można ich już otworzyć. Jeśli masz archiwum z wcześniejszego eksportu, możesz zacząć od nowa i przywrócić zawarte w nim dane.\n\nUsuń wszystko i zacznij od nowa",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń wszystko i zacznij od nowa",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated-with-key",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-android-key-invalidated-with-key.png",
+      "observedToasts": [],
+      "text": "Klucz do dziennika przepadł\n\nPo usunięciu blokady ekranu Android niszczy klucz dziennika. Nie da się go odzyskać. Wpisy nadal są na telefonie i można je otworzyć kluczem odzyskiwania.\n\nUżyj klucza odzyskiwania\nUsuń wszystko i zacznij od nowa",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj klucza odzyskiwania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń wszystko i zacznij od nowa",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-device-recovery.png",
+      "observedToasts": [],
+      "text": "Ten dziennik był przypięty do tego urządzenia\n\nTen dziennik otwierał się bez hasła. Przeglądarka lub urządzenie utraciły jego lokalny klucz. engender nie może go odzyskać, więc tej kopii dziennika nie da się już otworzyć.\n\nTen dziennik nie ma klucza odzyskiwania.\n\nJeśli masz zapisane archiwum, możesz odtworzyć jego zawartość, używając hasła. Danych zapisanych tylko na tym urządzeniu nie da się odzyskać bez klucza lokalnego lub klucza odzyskiwania.\n\nOdtwórz z zapisanego archiwum\nZacznij od nowa na tym urządzeniu",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odtwórz z zapisanego archiwum",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zacznij od nowa na tym urządzeniu",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery-with-key",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-device-recovery-with-key.png",
+      "observedToasts": [],
+      "text": "Ten dziennik był przypięty do tego urządzenia\n\nTen dziennik otwierał się bez hasła. Przeglądarka lub urządzenie utraciły jego lokalny klucz. engender nie może go odzyskać. Klucz odzyskiwania nadal może otworzyć ten dziennik.\n\nUżyj klucza odzyskiwania\n\nJeśli masz zapisane archiwum, możesz odtworzyć jego zawartość, używając hasła. Danych zapisanych tylko na tym urządzeniu nie da się odzyskać bez klucza lokalnego lub klucza odzyskiwania.\n\nOdtwórz z zapisanego archiwum\nZacznij od nowa na tym urządzeniu",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj klucza odzyskiwania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odtwórz z zapisanego archiwum",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zacznij od nowa na tym urządzeniu",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-cancelled",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-android-cancelled.png",
+      "observedToasts": [],
+      "text": "engender\n\nAnulowane.\n\nOdblokuj\nUżyj PIN-u urządzenia\nNie możesz wejść?",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odblokuj",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj PIN-u urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie możesz wejść?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": null,
+          "live": "polite",
+          "text": "Anulowane."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-mistyped",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-recovery-mistyped.png",
+      "observedToasts": [],
+      "text": "Klucz odzyskiwania\n\nWpisz zapisane 25 znaków. Wielkość liter i kreski nie mają znaczenia.\n\nKlucz odzyskiwania \n\nSprawdź, czy w kluczu odzyskiwania nie brakuje znaków albo nie ma literówki.\n\nOtwórz dziennik\nWstecz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Otwórz dziennik",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wstecz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": "Sprawdź, czy w kluczu odzyskiwania nie brakuje znaków albo nie ma literówki."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-immediately",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-session-immediately.png",
+      "observedToasts": [],
+      "text": "engender\n\nWpisz PIN, żeby otworzyć dziennik.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nNie pamiętasz PIN-u?\n\nBlokada gdy tylko wyjdziesz z aplikacji.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Usuń cyfrę",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie pamiętasz PIN-u?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-one-minute",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-session-one-minute.png",
+      "observedToasts": [],
+      "text": "engender\n\nWpisz PIN, żeby otworzyć dziennik.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nNie pamiętasz PIN-u?\n\nBlokada po minucie poza aplikacją.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Usuń cyfrę",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie pamiętasz PIN-u?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-five-minutes",
+      "lang": "pl",
+      "zoom": 1,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-100-session-five-minutes.png",
+      "observedToasts": [],
+      "text": "engender\n\nWpisz PIN, żeby otworzyć dziennik.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nNie pamiętasz PIN-u?\n\nBlokada po 5 minutach poza aplikacją.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Usuń cyfrę",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie pamiętasz PIN-u?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-no-key",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-security-no-key.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada dopiero po ponownym uruchomieniu\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-timing",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-settings-timing.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nZmiana działa od razu. Dziennik pozostaje zaszyfrowany.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\n\nTeraz: Hasło\n\nKiedy dziennik się zablokuje\nOd razu\nPo 1 minucie\nPo 5 minutach\nDopiero po ponownym uruchomieniu\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Od razu     Po 1 minucie     Po 5 minutach     Dopiero po ponownym uruchomieniu",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 1 minucie",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 5 minutach",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Dopiero po ponownym uruchomieniu",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-immediately",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-security-immediately.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada gdy tylko wyjdziesz\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-one-minute",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-security-one-minute.png",
+      "observedToasts": [
+        "Ta przeglądarka może usunąć dziennik, aby zwolnić miejsce. engender nie ma na to wpływu. Przechowuj zaszyfrowaną kopię poza przeglądarką. "
+      ],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada po 1 minucie\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-five-minutes",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-security-five-minutes.png",
+      "observedToasts": [],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada po 5 minutach\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "security-restart",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-security-restart.png",
+      "observedToasts": [],
+      "text": "Bezpieczeństwo\nJak otwiera się dziennik\nHasło · Blokada dopiero po ponownym uruchomieniu\nKlucz odzyskiwania\nbrak\nGdy zwykłe odblokowanie zawiedzie, pozostaje przywrócenie zapisanej kopii zapasowej.",
+      "overflow": [],
+      "controls": [],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-lock-off",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-settings-lock-off.png",
+      "observedToasts": [],
+      "text": "Jak otwiera się dziennik\n\nZmiana działa od razu. Dziennik pozostaje zaszyfrowany.\n\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\nHasło\nszyfrowanie wybranym przez ciebie hasłem\n\nTeraz: Bez blokady\n\nOtwieranie dziennika bez blokady. Żeby to zmienić, wybierz wyżej inny sposób.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Hasło szyfrowanie wybranym przez ciebie hasłem",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "passphrase-change",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-passphrase-change.png",
+      "observedToasts": [],
+      "text": "Hasło do dziennika\n\nStare hasło od razu przestaje otwierać ten dziennik. Istniejące kopie zachowują własne hasła. Zapisz nowe w menedżerze haseł: nikt go nie odzyska, jeśli je zapomnisz.\n\nObecne hasło \nNowe hasło \nNowe hasło jeszcze raz \n\nZmień hasło",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zmień hasło",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "secret-changed-offer",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-secret-changed-offer.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Hasło do dziennika\nUtworzyć klucz odzyskiwania?\n\nTen dziennik nie ma klucza odzyskiwania. To 25 znaków, które przechowujesz osobno. Pozwalają otworzyć dziennik, gdy nie możesz użyć hasła ani PIN-u.\n\nUtwórz teraz\nNie teraz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie teraz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-none",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-none.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Klucz odzyskiwania\n\nKlucz odzyskiwania otwiera ten dziennik bez hasła, kodu PIN ani odcisku palca. Każdy, kto ma klucz i dane dziennika, może je odczytać.\n\nTe 25 znaków pojawi się tylko raz. Zapisz je na papierze lub w menedżerze haseł na innym urządzeniu. Nie rób zdjęcia ani notatki na tym telefonie. Klucz możesz później usunąć.\n\nUtwórz klucz odzyskiwania",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Utwórz klucz odzyskiwania",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-shown",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-shown.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Klucz odzyskiwania\nZapisz to teraz\n\nN4YET-SQKFN-GRFYK-1KWW7-8PGSD\n\nTych znaków nie da się wyświetlić ponownie. Jeśli je zgubisz, trzeba będzie utworzyć nowy klucz.\n\nZapisz klucz na papierze lub w menedżerze haseł na innym urządzeniu. Nie rób zdjęcia ani notatki na tym telefonie.\n\nKopiuj\nDrukuj\nMam to zapisane",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Kopiuj",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Drukuj",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Mam to zapisane",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-departure",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-departure.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. "
+      ],
+      "text": "Jeśli wyjdziesz, odświeżysz stronę lub zamkniesz aplikację, te znaki znikną. Klucz pozostanie aktywny. Jeśli go nie zapiszesz, trzeba będzie go wymienić.\n\nZapisuję dalej\nWyjdź",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zapisuję dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wyjdź",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-active",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-active.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. ",
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Klucz odzyskiwania\n\nKlucza odzyskiwania nie da się pokazać ponownie. Jeśli nie masz pewności, czy nadal masz zapisany klucz, wymień go.\n\nWymień ten klucz\nUsuń ten klucz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wymień ten klucz",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń ten klucz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-replace",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-replace.png",
+      "observedToasts": [
+        "Hasło zmienione. Zmień je też w menedżerze haseł. ",
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Stary klucz od razu przestanie działać. Zapisz nowy, gdy się pojawi: zobaczysz go tylko raz.\n\nWymień",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wymień",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-remove",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-remove.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Ten klucz od razu przestanie otwierać dziennik. Jeśli później nie uda się go zwykle odblokować, dane przywrócisz tylko z zapisanej kopii zapasowej. Usunięcia klucza nie można cofnąć.\n\nUsuń",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "settings-recovery-active",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-settings-recovery-active.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nZmiana działa od razu. Dziennik pozostaje zaszyfrowany.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\n\nTeraz: Hasło\n\nTen dziennik ma też klucz odzyskiwania, który otwiera go niezależnie od tego ustawienia.\n\nKiedy dziennik się zablokuje\nOd razu\nPo 1 minucie\nPo 5 minutach\nDopiero po ponownym uruchomieniu\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": null,
+          "labelledby": "lock-after-title",
+          "text": "Od razu     Po 1 minucie     Po 5 minutach     Dopiero po ponownym uruchomieniu",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 1 minucie",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 5 minutach",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Dopiero po ponownym uruchomieniu",
+          "disabled": false,
+          "checked": "true"
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-unlocked-detail",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-web-unlocked-detail.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nKlucz jest zapisany w tym profilu przeglądarki. Każdy, kto skopiuje profil, może otworzyć dziennik bez hasła. Po utracie profilu lub wyczyszczeniu jego danych ta kopia dziennika będzie niedostępna.\n\nPrzechowuj zaszyfrowaną kopię zapasową poza tym urządzeniem. Klucz odzyskiwania nie przywróci danych z utraconego urządzenia ani wyczyszczonej pamięci.\n\nZostaw bez blokady\n\nWybierz inny sposób\n\nTen dziennik ma też klucz odzyskiwania, który otwiera go niezależnie od tego ustawienia.\n\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zostaw bez blokady",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wybierz inny sposób",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-pin-detail",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-web-pin-detail.png",
+      "observedToasts": [
+        "Klucz odzyskiwania utworzony. "
+      ],
+      "text": "Jak otwiera się dziennik\n\nPIN szyfruje dziennik razem z kluczem w tym profilu przeglądarki. Sam plik dziennika nie wystarczy do odgadnięcia kodu PIN. Kopia całego profilu ujawnia klucz urządzenia: szybka karta graficzna może wtedy sprawdzić wszystkie 10 000 kodów w około pięć sekund. Wybierz hasło, jeśli ktoś może skopiować twój profil. Zapomniany PIN wymaga klucza odzyskiwania lub resetu usuwającego lokalne dane.\n\nPrzechowuj zaszyfrowaną kopię zapasową poza tym urządzeniem. Klucz odzyskiwania nie przywróci danych z utraconego urządzenia ani wyczyszczonej pamięci.\n\nDalej\nWybierz inny sposób\n\nTen dziennik ma też klucz odzyskiwania, który otwiera go niezależnie od tego ustawienia.\n\nHasło do dziennika\nco najmniej 8 znaków",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wybierz inny sposób",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-permissions",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-web-permissions.png",
+      "observedToasts": [],
+      "text": "Uprawnienia\n\nO co aplikacja może poprosić to urządzenie.\n\nUprawnienia\n\nPowiadomienia\nTak dociera przypomnienie i codzienne pytanie.\nTylko na Androidzie\nDokładna godzina\nPrzypomnienie dzwoni o ustawionej minucie.\nTylko na Androidzie\nMikrofon\nNotatki głosowe, ćwiczenia głosu i dźwięk wideo.\nZezwól\nKamera\nNotatki wideo.\nZezwól\n\nPozostały dostęp do urządzenia\n\nZrobienie zdjęcia\nAparat systemowy przekazuje aplikacji tylko zrobione zdjęcie.\nWybranie zdjęcia albo pliku\nAplikacja dostaje tylko wybrany plik. Pozostałych nie widzi.\nDrukowanie\nSystemowe okno drukowania decyduje, gdzie trafi strona.\nSchowek\nKopiuje klucz odzyskiwania. Aplikacja nie czyści schowka przeglądarki.\nOdcisk palca albo twarz\nSprawdza to system, nie aplikacja. Aplikacja dowiaduje się tylko, czy się zgadza.\n\nPrzeglądarka pobiera aplikację i pliki do rozpoznawania tekstu. Treść dziennika jest przetwarzana na tym urządzeniu. Eksport, udostępnianie lub otwieranie linków może korzystać z innych usług.",
+      "overflow": [
+        {
+          "text": "Powiadomienia",
+          "client": 0,
+          "scroll": 15
+        },
+        {
+          "text": "Dokładna godzina",
+          "client": 0,
+          "scroll": 13
+        }
+      ],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Zezwól: Mikrofon",
+          "labelledby": null,
+          "text": "Zezwól",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Zezwól: Kamera",
+          "labelledby": null,
+          "text": "Zezwól",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-timing",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-onboarding-timing.png",
+      "observedToasts": [],
+      "text": "Kiedy dziennik ma się zablokować?\n\nJak długo aplikacja może być w tle, zanim trzeba będzie ją znowu odblokować.\n\nOd razu\nPo 1 minucie\nPo 5 minutach\nDopiero po ponownym uruchomieniu\nDalej\nPomiń\nOd razu do aplikacji",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Wstecz",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "radiogroup",
+          "label": "Kiedy dziennik ma się zablokować?",
+          "labelledby": null,
+          "text": "Od razu     Po 1 minucie     Po 5 minutach     Dopiero po ponownym uruchomieniu",
+          "checked": null
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 1 minucie",
+          "disabled": false,
+          "checked": "true"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Po 5 minutach",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "radio",
+          "label": null,
+          "labelledby": null,
+          "text": "Dopiero po ponownym uruchomieniu",
+          "disabled": false,
+          "checked": "false"
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pomiń",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu do aplikacji",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-lock-off",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-onboarding-lock-off.png",
+      "observedToasts": [],
+      "text": "Blokada wyłączona\n\nOtwieranie dziennika bez blokady. Możesz to zmienić później w Ustawieniach.\n\nDalej\nPomiń\nOd razu do aplikacji",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": "Wstecz",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Dalej",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Pomiń",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Od razu do aplikacji",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "onboarding-access-choice",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "app",
+      "screenshot": ".claude/access-copy07-shots/pl-200-onboarding-access-choice.png",
+      "observedToasts": [],
+      "text": "Jak ma się otwierać dziennik?\n\nWszystko, co zapisujesz, jest zaszyfrowane. Sposób otwierania dziennika możesz później zmienić w Ustawieniach.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\nHasło\nszyfrowanie wybranym przez ciebie hasłem",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Hasło szyfrowanie wybranym przez ciebie hasłem",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "gate-access-choice",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-gate-access-choice.png",
+      "observedToasts": [],
+      "text": "Jak ma się otwierać dziennik?\n\nWszystko, co zapisujesz, jest zaszyfrowane. Sposób otwierania dziennika możesz później zmienić w Ustawieniach.\n\nBez blokady\nszyfrowany na dysku, otwiera się bez pytania\nOdblokowanie urządzeniem\nodcisk palca lub twarz używane do odblokowania urządzenia\nPIN z 4 cyfr\nszyfruje kodem PIN i kluczem urządzenia\nHasło\nszyfrowanie wybranym przez ciebie hasłem",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Bez blokady szyfrowany na dysku, otwiera się bez pytania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odblokowanie urządzeniem odcisk palca lub twarz używane do odblokowania urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "PIN z 4 cyfr szyfruje kodem PIN i kluczem urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Hasło szyfrowanie wybranym przez ciebie hasłem",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "web-biometric-detail",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-web-biometric-detail.png",
+      "observedToasts": [],
+      "text": "Odblokowanie urządzeniem\n\nOdcisk palca lub skan twarzy pozwala otworzyć dziennik. Utrata urządzenia, usunięcie zapisanego odcisku lub twarzy albo wyczyszczenie profilu przeglądarki może odciąć dostęp. Klucz odzyskiwania pomoże tylko wtedy, gdy dane dziennika nadal są na urządzeniu.\n\nPrzechowuj zaszyfrowaną kopię zapasową poza tym urządzeniem. Klucz odzyskiwania nie przywróci danych z utraconego urządzenia ani wyczyszczonej pamięci.\n\nUżyj odblokowania urządzeniem\n\nWybierz inny sposób",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj odblokowania urządzeniem",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wybierz inny sposób",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-no-lock",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-android-key-no-lock.png",
+      "observedToasts": [],
+      "text": "Najpierw ustaw blokadę ekranu\n\nKlucz dziennika jest przechowywany w Android key store. Android nie przechowuje go bez blokady ekranu. Ustaw PIN, wzór lub hasło w ustawieniach urządzenia i wróć tutaj.\n\nSprawdź jeszcze raz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Sprawdź jeszcze raz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-android-key-invalidated.png",
+      "observedToasts": [],
+      "text": "Klucz do dziennika przepadł\n\nPo usunięciu blokady ekranu Android niszczy klucz dziennika. Nie da się go odzyskać. Wpisy nadal są na telefonie, ale nie można ich już otworzyć. Jeśli masz archiwum z wcześniejszego eksportu, możesz zacząć od nowa i przywrócić zawarte w nim dane.\n\nUsuń wszystko i zacznij od nowa",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń wszystko i zacznij od nowa",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-key-invalidated-with-key",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-android-key-invalidated-with-key.png",
+      "observedToasts": [],
+      "text": "Klucz do dziennika przepadł\n\nPo usunięciu blokady ekranu Android niszczy klucz dziennika. Nie da się go odzyskać. Wpisy nadal są na telefonie i można je otworzyć kluczem odzyskiwania.\n\nUżyj klucza odzyskiwania\nUsuń wszystko i zacznij od nowa",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj klucza odzyskiwania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Usuń wszystko i zacznij od nowa",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-device-recovery.png",
+      "observedToasts": [],
+      "text": "Ten dziennik był przypięty do tego urządzenia\n\nTen dziennik otwierał się bez hasła. Przeglądarka lub urządzenie utraciły jego lokalny klucz. engender nie może go odzyskać, więc tej kopii dziennika nie da się już otworzyć.\n\nTen dziennik nie ma klucza odzyskiwania.\n\nJeśli masz zapisane archiwum, możesz odtworzyć jego zawartość, używając hasła. Danych zapisanych tylko na tym urządzeniu nie da się odzyskać bez klucza lokalnego lub klucza odzyskiwania.\n\nOdtwórz z zapisanego archiwum\nZacznij od nowa na tym urządzeniu",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odtwórz z zapisanego archiwum",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zacznij od nowa na tym urządzeniu",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "device-recovery-with-key",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-device-recovery-with-key.png",
+      "observedToasts": [],
+      "text": "Ten dziennik był przypięty do tego urządzenia\n\nTen dziennik otwierał się bez hasła. Przeglądarka lub urządzenie utraciły jego lokalny klucz. engender nie może go odzyskać. Klucz odzyskiwania nadal może otworzyć ten dziennik.\n\nUżyj klucza odzyskiwania\n\nJeśli masz zapisane archiwum, możesz odtworzyć jego zawartość, używając hasła. Danych zapisanych tylko na tym urządzeniu nie da się odzyskać bez klucza lokalnego lub klucza odzyskiwania.\n\nOdtwórz z zapisanego archiwum\nZacznij od nowa na tym urządzeniu",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj klucza odzyskiwania",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odtwórz z zapisanego archiwum",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Zacznij od nowa na tym urządzeniu",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [],
+      "pageOverflow": 0
+    },
+    {
+      "state": "android-cancelled",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-android-cancelled.png",
+      "observedToasts": [],
+      "text": "engender\n\nAnulowane.\n\nOdblokuj\nUżyj PIN-u urządzenia\nNie możesz wejść?",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Odblokuj",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Użyj PIN-u urządzenia",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie możesz wejść?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": null,
+          "live": "polite",
+          "text": "Anulowane."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "recovery-mistyped",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-recovery-mistyped.png",
+      "observedToasts": [],
+      "text": "Klucz odzyskiwania\n\nWpisz zapisane 25 znaków. Wielkość liter i kreski nie mają znaczenia.\n\nKlucz odzyskiwania \n\nSprawdź, czy w kluczu odzyskiwania nie brakuje znaków albo nie ma literówki.\n\nOtwórz dziennik\nWstecz",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "input",
+          "label": null,
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Otwórz dziennik",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Wstecz",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": "Sprawdź, czy w kluczu odzyskiwania nie brakuje znaków albo nie ma literówki."
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-immediately",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-session-immediately.png",
+      "observedToasts": [],
+      "text": "engender\n\nWpisz PIN, żeby otworzyć dziennik.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nNie pamiętasz PIN-u?\n\nBlokada gdy tylko wyjdziesz z aplikacji.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Usuń cyfrę",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie pamiętasz PIN-u?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-one-minute",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-session-one-minute.png",
+      "observedToasts": [],
+      "text": "engender\n\nWpisz PIN, żeby otworzyć dziennik.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nNie pamiętasz PIN-u?\n\nBlokada po minucie poza aplikacją.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Usuń cyfrę",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie pamiętasz PIN-u?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    },
+    {
+      "state": "session-five-minutes",
+      "lang": "pl",
+      "zoom": 2,
+      "width": 390,
+      "source": "gate fixture",
+      "screenshot": ".claude/access-copy07-shots/pl-200-session-five-minutes.png",
+      "observedToasts": [],
+      "text": "engender\n\nWpisz PIN, żeby otworzyć dziennik.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n\nNie pamiętasz PIN-u?\n\nBlokada po 5 minutach poza aplikacją.",
+      "overflow": [],
+      "controls": [
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "1",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "2",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "3",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "4",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "5",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "6",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "7",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "8",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "9",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "0",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": "Usuń cyfrę",
+          "labelledby": null,
+          "text": "",
+          "disabled": false,
+          "checked": null
+        },
+        {
+          "role": "button",
+          "label": null,
+          "labelledby": null,
+          "text": "Nie pamiętasz PIN-u?",
+          "disabled": false,
+          "checked": null
+        }
+      ],
+      "alerts": [
+        {
+          "role": "alert",
+          "live": null,
+          "text": ""
+        }
+      ],
+      "pageOverflow": 0
+    }
+  ],
+  "errors": [],
+  "serversClosed": true
+}
