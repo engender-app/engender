@@ -99,7 +99,8 @@
      `recentSearches.ts` for what "recent" means, since a search's own
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import { EMPTY_SEARCH, holdSearch, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
@@ -240,6 +241,25 @@
       recentSearchList = listRecentSearches();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
+  });
+
+  /* Back from an entry opened out of these results: the same search, with
+     the same filters (searchReturn.ts). Arriving any other way, the held
+     snapshot was stale and the search starts empty. */
+  const current = (): SearchSnapshot => ({
+    query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly
+  });
+  const restore = (s: SearchSnapshot) => {
+    ({ query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly } = s);
+    debouncedQuery = s.query.trim();
+  };
+  const held = takeHeldSearch();
+  if (held) restore(held);
+  beforeNavigate(({ to }) => {
+    if (to?.url.pathname.startsWith('/entry/')) holdSearch(current());
+  });
+  afterNavigate(({ from }) => {
+    if (held && !from?.url.pathname.startsWith('/entry/')) restore(EMPTY_SEARCH);
   });
 
   /* Off the debounced query, not the box: what this gates - the idle/results

@@ -99,3 +99,19 @@ export function smartBack(fallback: string): void {
   if (depth > 0) history.back();
   else void replaceRoute(fallback);
 }
+
+/**
+ * `smartBack`, resolved once the screen it went to has landed. A caller that
+ * raises something on the destination (a toast) waits for this, so that it
+ * arrives on the screen it belongs to and not in the middle of the route
+ * change.
+ */
+export async function smartBackSettled(fallback: string): Promise<void> {
+  if (depth === 0) return replaceRoute(fallback);
+  const from = location.href;
+  history.back();
+  for (let frame = 0; frame < 90 && location.href === from; frame += 1) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
