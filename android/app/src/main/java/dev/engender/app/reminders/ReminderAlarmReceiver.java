@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import dev.engender.app.R;
+import dev.engender.app.disguise.DisguiseAlias;
 import dev.engender.app.launch.AppLaunch;
 
 import org.json.JSONArray;
@@ -70,7 +71,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
 
         String route = "/settings/reminders" + (id.isBlank() ? "" : "/" + id);
         Notification notification = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(DisguiseAlias.isDisguised(context)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(time)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -104,7 +106,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         String body = texts != null ? texts.optString("checkInBody", "How are you today?") : "How are you today?";
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_CHECK_IN)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(DisguiseAlias.isDisguised(context)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

@@ -341,6 +341,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
   return {
     isAndroid: () => true,
     isReady: () => true,
+    lockEnabled: true,
     todayEpochDay: () => 20313,
     prefs: {
       checkInEnabled: true,
@@ -506,8 +507,14 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
-    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart' });
+    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart', enabled: true });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
+  });
+
+  test('unlocked mode clears the native Recents lock policy', () => {
+    const deps = makeDeps({ lockEnabled: false });
+    platformSync.startAndroidPlatformSync(deps);
+    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart', enabled: false });
   });
 
   test('hands the launcher both halves of its identity, so the icon follows the flag', async () => {
