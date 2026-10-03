@@ -32,6 +32,7 @@
    way, and what lets an import render a thumbnail with no screen open. */
 
 import './pdf-floor';
+import { CACHE_PDF_WORKER } from '../../pwa/sw-messages';
 import { THUMB_EDGE, THUMB_QUALITY } from '../photos/normalize';
 
 type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -63,9 +64,22 @@ function pdfjs(): Promise<PdfjsModule> {
     claimed). `PDFWorker.destroy()` does not terminate this `port` itself,
     though - it only reaches `_webWorker`, which `fromPort` never sets - so
     the raw `Worker` comes back too, and this module is the one that has to
-    call `terminate()` on it. */
+    call `terminate()` on it.
+
+    The worker is not in the offline shell's install (shell-assets.ts): the
+    first one built here asks the service worker to keep it, the way a
+    loaded OCR engine does. Not awaited and not repeated within a session,
+    since the cache is keyed per release and a repeat ask is a few reads. */
+let askedToCache = false;
 function workerFor(module: PdfjsModule) {
   const port = new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' });
+  if (!askedToCache) {
+    askedToCache = true;
+    void navigator.serviceWorker
+      ?.getRegistration()
+      .then((registration) => registration?.active?.postMessage(CACHE_PDF_WORKER))
+      .catch(() => {});
+  }
   return { worker: module.PDFWorker.fromPort({ port }), port };
 }
 

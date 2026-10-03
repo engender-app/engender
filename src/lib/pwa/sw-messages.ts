@@ -20,6 +20,12 @@ export const SKIP_WAITING = 'engender:skip-waiting';
     cannot name what gets stored under the app's key. */
 export const CACHE_ON_DEMAND = 'engender:cache-on-demand';
 
+/** Sent once a document has been opened and the PDF renderer's worker has
+    loaded: the same kind of ask as the one above, for the one built file the
+    shell leaves out (shell-assets.ts). A message of its own, because the OCR
+    ask would pull the scanner's 21 MB along with a 0.4 MB worker. */
+export const CACHE_PDF_WORKER = 'engender:cache-pdf-worker';
+
 /** Just the part of ServiceWorkerGlobalScope these need, so the worker's own
     reference-lib declarations do not have to reach into here. `waitUntil` is
     what a real ExtendableMessageEvent carries. */
@@ -60,10 +66,11 @@ export function listenForSkipWaiting(sw: SkipWaitingScope): void {
 export function listenForOnDemandCache(
   sw: MessageScope,
   cacheStore: CacheStore,
-  onDemand: { cacheName: string; assets: string[] }
+  onDemand: { cacheName: string; assets: string[]; message?: string }
 ): void {
+  const message = onDemand.message ?? CACHE_ON_DEMAND;
   sw.addEventListener('message', (event) => {
-    if (event.data !== CACHE_ON_DEMAND) return;
+    if (event.data !== message) return;
     event.waitUntil(
       (async () => {
         const cache = await cacheStore.open(onDemand.cacheName);
