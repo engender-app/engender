@@ -24,6 +24,7 @@ type MigrationSource =
 
 export interface MigrationDb {
   exec(sql: string): void | Promise<void>;
+  query<Row extends Record<string, unknown> = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]>;
   getUserVersion(): number | Promise<number>;
   setUserVersion(version: number): void | Promise<void>;
   transaction<T>(fn: () => T | Promise<T>): T | Promise<T>;
@@ -149,7 +150,15 @@ export async function runMigrations(
       ? []
       : [...(await load())].sort((a, b) => a.version - b.version).filter((m) => m.version > current);
 
+  async function checkForeignKeys(): Promise<void> {
+    const violations = await db.query('PRAGMA foreign_key_check');
+    if (violations.length > 0) {
+      throw new Error(`Foreign key violations after migration: ${JSON.stringify(violations)}`);
+    }
+  }
+
   if (pending.length === 0) {
+    await checkForeignKeys();
     // A clean boot: nothing to migrate, so any copy left over from a past
     // migration has been proven safe and can go.
     await fileOps.cleanupPreMigrationCopy();
@@ -166,12 +175,20 @@ export async function runMigrations(
     await fileOps.copyDatabaseFile();
   }
 
-  for (const migration of pending) {
-    await db.transaction(async () => {
-      await db.exec(migration.sql);
-      await db.setUserVersion(migration.version);
-    });
+  // Rebuilding a parent must not cascade into the children being copied.
+  // SQLite ignores this pragma inside a transaction, so suspend it first.
+  await db.exec('PRAGMA foreign_keys = OFF');
+  try {
+    for (const migration of pending) {
+      await db.transaction(async () => {
+        await db.exec(migration.sql);
+        await db.setUserVersion(migration.version);
+      });
+    }
+  } finally {
+    await db.exec('PRAGMA foreign_keys = ON');
   }
+  await checkForeignKeys();
   // The copy stays on disk through this boot even though migration
   // succeeded; ADR-0006 only retires it once a later boot comes up clean.
 }

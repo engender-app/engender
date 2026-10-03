@@ -1363,6 +1363,8 @@ async function purgeTrashedBefore(
     await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM video_note WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM margin_note WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM revisit WHERE entry_id IN (SELECT uuid FROM entry WHERE id IN (${placeholders}))`, ids);
     await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);
