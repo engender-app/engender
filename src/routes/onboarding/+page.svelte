@@ -119,6 +119,10 @@
   ];
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
+  /* Settings' "Delete everything" lands here (phase 14 ticket 15). The
+     wipe cannot be undone, so its result stays on the welcome as a line
+     rather than a toast that fades. */
+  const erasedOnEntry = untrack(() => page.url.searchParams.get('erased') === '1');
   let step = $state<OnboardingStep>(restoreOnEntry ? 'restore' : 'welcome');
 
   let name = $state('');
@@ -748,6 +752,7 @@
                  pitch is the one exception in the flow and it sits in this
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
+              {#if erasedOnEntry}<p class="setup-line" role="status" data-erased-result>{m.reset_done()}</p>{/if}
               <p class="setup-def">{m.ob_welcome_def()}</p>
               <p class="setup-line is-pitch">{m.ob_welcome_body()}</p>
             {:else if line}
