@@ -21,10 +21,37 @@ async function visit(path) {
     toasts.splice(0);
   });
 }
+/* What the screen found, read off the rows it drew rather than off a count
+   per section: ticket 16 left one count line, the total, in the same words
+   on Search and on a saved question. So the rows are counted here and the
+   one line is checked to state their sum in `results_count`'s own wording. */
 async function counts(entries, other) {
   await page.waitForFunction(([entries, other]) =>
-    document.querySelector('[data-search-entry-count]')?.textContent.includes(String(entries)) &&
-    document.querySelector('[data-search-other-count]')?.textContent.includes(String(other)), [entries, other]);
+    document.querySelectorAll('[data-entry-card]').length === entries &&
+    document.querySelectorAll('[data-search-hit]').length === other, [entries, other]);
+  const lines = await page.locator('[data-search-count]').allInnerTexts();
+  const expected = await page.evaluate(async (count) => {
+    const { m } = await import('/src/lib/paraglide/messages.js');
+    return m.results_count({ count });
+  }, entries + other);
+  assert.deepEqual(lines.map((line) => line.trim()), [expected], 'one count line, in one format');
+  /* And no second count anywhere on the screen: the audit found "Entries:
+     27" on Search and a count per section on a saved question. */
+  const said = (await page.locator('[data-screen]').innerText()).match(/\b\d+ (results?|wynik\w*)/g) ?? [];
+  assert.equal(said.length, 1, `counts on screen: ${JSON.stringify(said)}`);
+}
+/* Each sentence about what a filter covers is said once, in the Filters
+   sheet, and nowhere on the screen behind it (ticket 16, audit U7). */
+async function scopeSaidOnce(where) {
+  const sentences = await page.evaluate(async () => {
+    const { m } = await import('/src/lib/paraglide/messages.js');
+    return [m.search_filters_entries_only(), m.search_filters_date_scope()];
+  });
+  const text = await page.locator('body').innerText();
+  for (const sentence of sentences) {
+    const said = text.split(sentence).length - 1;
+    assert.equal(said, where === 'sheet' ? 1 : 0, `"${sentence}" said ${said} times ${where === 'sheet' ? 'with the sheet open' : 'on the screen'}`);
+  }
 }
 try {
   await visit('/');
@@ -44,6 +71,14 @@ try {
     await visit('/search');
     await page.locator('#q').fill('scopeprobe');
     await counts(1, 1);
+    await scopeSaidOnce('screen');
+    /* Results come straight under the field: the first one - its day card,
+       which is the result's own top edge - starts inside the first third of
+       a 390x844 phone, measured from the app's own top. */
+    const firstTop = await page.evaluate(() =>
+      document.querySelector('[data-day-card]').getBoundingClientRect().top -
+      document.querySelector('[data-app-root]').getBoundingClientRect().top);
+    assert.ok(firstTop <= 844 / 3, `first result at ${Math.round(firstTop)}px, below the first third`);
     assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('scopeprobe'))), false);
     if (process.argv.includes('--gallery')) {
       await mkdir('.claude/u23-shots', { recursive: true });
@@ -56,11 +91,13 @@ try {
     const toggle = page.locator('[data-filter-toggle]');
     assert.match(await toggle.innerText(), locale === 'en' ? /Filters/ : /Filtry/);
     await toggle.click();
+    await page.locator('[data-search-scope]').waitFor({ state: 'visible' });
+    await scopeSaidOnce('sheet');
     await page.locator('[data-filter-mood="1"]').click();
     await page.keyboard.press('Escape');
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
     await counts(0, 1);
     assert.match(await toggle.innerText(), /1/);
-    await page.locator('[data-search-scope]').waitFor({ state: 'visible' });
     assert.equal(await page.locator('[data-search-hit="documents"]').count(), 1);
     await page.locator('[data-search-save]').click();
     const title = locale === 'en' ? 'My long personal question about appointments and the papers I want to find again' : 'Moje długie osobiste pytanie o wizyty i dokumenty, do których chcę jeszcze wrócić';
@@ -78,7 +115,7 @@ try {
     await page.keyboard.press('Enter');
     await page.locator('[data-saved-question-definition]').waitFor({ state: 'visible' });
     assert.match(await page.locator('[data-saved-question-definition]').innerText(), /scopeprobe/);
-    await page.locator('[data-search-scope]').waitFor({ state: 'visible' });
+    await scopeSaidOnce('screen');
     for (const width of [320, 390, 430, 1280]) {
       await page.setViewportSize({ width, height: 844 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -133,11 +170,14 @@ try {
     await visit('/search');
     await page.locator('#q').fill('nothingmatchesu23');
     await page.locator('[data-notice="search-none"]').waitFor();
+    // Nothing matched, so there is no question worth saving (ticket 16).
+    await page.waitForTimeout(500);
+    assert.equal(await page.locator('[data-search-save]').count(), 0, 'Save offered for zero results');
     await page.locator('#q').fill('');
     await page.locator('[data-search-idle]').waitFor();
   }
   assert.deepEqual(errors, []);
-  console.log('PASS: mixed-area filtering, clear, save/reopen criteria, empty states, EN/PL and narrow layouts');
+  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, no save for nothing, save/reopen criteria, EN/PL and narrow layouts');
 } catch (error) {
   console.error('FAILED AT', page.url(), (await page.locator('body').innerText()).slice(0, 2500));
   throw error;
