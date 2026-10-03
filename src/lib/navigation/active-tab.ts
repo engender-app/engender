@@ -80,28 +80,24 @@ const TAB_ROUTES: TabRoute[] = [
   }
 ];
 
-/* Audit item 4: `/settings` used to sit in the table above, in the fourth
-   door's own group, so opening it from Today's gear (ADR-0076 - settings
-   is chrome, reached from a persistent control, not a tab) lit the fourth
-   tab and read as having left Today. Settings itself has no tab of its
-   own: it borrows whichever one was lit before the gear was pressed,
-   which the caller carries in `chromeOrigin` (chrome-tab-origin.ts) since
-   this function stays pure for its own tests. A fresh deep link, with
-   nothing to borrow, lights none.
+/* Settings is chrome (ADR-0076): reached from Today's gear, not a tab of
+   its own. Every path under /settings, the hub and each subpage alike,
+   lights the tab that was lit before it was opened, which the caller
+   carries in `chromeOrigin` (chrome-tab-origin.ts) so this function stays
+   pure. Opened cold, with nothing to borrow, it lights Today: the gear lives
+   in Today's foot and the hub's back arrow goes there.
 
-   The rule holds for every screen under /settings, without exceptions
-   (phase 14 ticket 15). Eras used to keep the fourth door and the ignore
-   list Look back whatever the person came from, so four subpages of one
-   hub lit three different things. The person reaches the ignore list from
-   Look back's words card anyway, and borrowing lights Look back for it
-   there. The body map stays in Look back's group above for the same
-   reason a subpage borrows: it is reached from Look back's body-map
-   reading and its back arrow returns to /stats, so it lights the door the
-   person is in, even though the /body/* screens belong to the fourth one. */
+   The body map sits in Look back's group above, apart from the /body/*
+   screens in the fourth door's, by the same rule the rest of this table
+   follows: a screen lights the door it is reached from. The body map is
+   one of Look back's readings (BodyMapTile on /stats), its back arrow goes
+   to /stats, and nothing in the fourth door links to it. Lighting the
+   fourth door there would move the tab under the person on every visit. */
 const CHROME_PREFIX = '/settings';
+const CHROME_FALLBACK = 'home';
 
 export function activeTabKey(path: string, chromeOrigin = ''): string {
   if (path === '/') return 'home';
-  if (path.startsWith(CHROME_PREFIX)) return chromeOrigin;
+  if (path.startsWith(CHROME_PREFIX)) return chromeOrigin || CHROME_FALLBACK;
   return TAB_ROUTES.find((route) => route.prefixes.some((prefix) => path.startsWith(prefix)))?.key ?? '';
 }
