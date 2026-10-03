@@ -136,7 +136,7 @@ jobs:
         with:
           # Name cannot collide with the release APK the release workflow publishes.
           name: engender-android-debug-${{ github.run_id }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: ci-logs/app-debug.apk
           retention-days: 7
 
       - name: Keep F-Droid rebuild report
