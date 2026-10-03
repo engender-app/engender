@@ -152,6 +152,7 @@ async function check(mode) {
     assert.match(await page.locator('[data-erased-result]').innerText(), /Everything on this device was deleted/);
     assert.equal(await page.locator('[data-restore-start]').count(), 1, `${mode}: lands on the welcome, at first run`);
     const after = await storageReport(page);
+    assert.deepEqual(after.files, [], `${mode}: OPFS is empty`);
     assert.equal(after.deviceKeys, 0, `${mode}: no device key is left (${JSON.stringify(after)})`);
     assert.deepEqual(after.keys.filter((k) => !k.startsWith('engender-boot')), [], `${mode}: no app keys left in localStorage`);
     console.log(`PASS ${mode}: confirmed erase lands at first run and says so (OPFS after: ${JSON.stringify(after.files)})`);
