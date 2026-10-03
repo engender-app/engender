@@ -1139,7 +1139,12 @@ try {
   // ticket says is not waited out, so the previous results have to be gone
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
-  if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
+  /* The results are on their way out by then, not gone: they fade where
+     they stood (ticket 16), marked `data-leaving` for the length of the
+     fade. What must not be there is a result that is staying. */
+  const staying = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-entry-card]')].filter((card) => !card.closest('[data-leaving]')).length);
+  if (staying) throw new Error('clearing left the previous results on screen');
   // The idle Notice this waited on is gone (ticket 18): the opening state
   // is real content now, named as a whole by `data-search-idle`.
   if (!(await page.locator('[data-search-idle]').count())) throw new Error('clearing did not bring back the opening state');

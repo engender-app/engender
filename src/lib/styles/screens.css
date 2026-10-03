@@ -314,7 +314,7 @@
   margin: var(--space-3) 0 0;
   }
 /* One run of day cards, whichever screen is drawing it (EntryDays.svelte). */
-.entry-days { display: grid; gap: var(--space-3); }
+.entry-days { display: block; }
 /* When a hit was recorded, at the trailing edge of its row. The month and
    the year rather than the exact day: a search result wants placing in
    time, and the record's own screen is where the full date lives (the
