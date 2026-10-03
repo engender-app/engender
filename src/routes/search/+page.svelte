@@ -99,7 +99,8 @@
      `recentSearches.ts` for what "recent" means, since a search's own
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import { holdSearch, takeHeldSearch } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
@@ -135,22 +136,24 @@
   const PAGE = 30;
   const MOOD_VALUES = [1, 2, 3, 4, 5] as const;
 
-  let query = $state('');
+  /* Back from an entry opened out of these results: the same search. */
+  const held = takeHeldSearch();
+  let query = $state(held?.query ?? '');
   /** How long the search waits after the last keystroke before it asks
       (phase 8 audit ticket 15) - long enough that typing at speed never
       fires a run per key, short enough that a pause reads as instant. */
   const SEARCH_DEBOUNCE_MS = 250;
   let filtersOpen = $state(false);
-  let selectedTagIds = $state<string[]>([]);
-  let selectedMoods = $state<number[]>([]);
-  let startDate = $state('');
-  let endDate = $state('');
-  let hasNote = $state(false);
-  let hasPhoto = $state(false);
+  let selectedTagIds = $state<string[]>(held?.selectedTagIds ?? []);
+  let selectedMoods = $state<number[]>(held?.selectedMoods ?? []);
+  let startDate = $state(held?.startDate ?? '');
+  let endDate = $state(held?.endDate ?? '');
+  let hasNote = $state(held?.hasNote ?? false);
+  let hasPhoto = $state(held?.hasPhoto ?? false);
   /* On by default when the address itself asks for it - ticket 18's
      `/search/starred` redirect stub, so a stale bookmark still lands on
      the shelf it pointed at rather than on a bare, unfiltered screen. */
-  let starredOnly = $state(page.url.searchParams.has('starred'));
+  let starredOnly = $state(held?.starredOnly ?? page.url.searchParams.has('starred'));
   /* Saving a question keeps the query and every filter that is on, never
      today's results (ticket 06's own acceptance criterion: a saved
      question is read the same way an ad hoc search is, not frozen). */
@@ -227,7 +230,19 @@
      that is not waited out: an empty query drops the pending timer and
      lands on `debouncedQuery` at once, so clearing clears the results
      without the wait (the ticket's own acceptance criterion). */
-  let debouncedQuery = $state('');
+  beforeNavigate(({ to }) => {
+    if (!to?.url.pathname.startsWith('/entry/')) return;
+    holdSearch({ query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly });
+  });
+  /* A snapshot is for the way back only; arriving any other way starts empty. */
+  afterNavigate(({ type }) => {
+    if (held && type !== 'popstate') {
+      query = '';
+      debouncedQuery = '';
+      clearAllFilters();
+    }
+  });
+  let debouncedQuery = $state(held?.query.trim() ?? '');
   $effect(() => {
     const typed = query.trim();
     if (!typed) {
