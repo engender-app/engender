@@ -28,10 +28,10 @@ describe('the generated block', () => {
     }
   });
 
-  it('draws one ring and one seam per stripe, innermost first, ending on the outer edge', () => {
+  it('draws one ring and one seam per stripe, innermost first, ending on the outer edge and the white tile beyond it', () => {
     const stops = sunStops(['#111111', '#222222', '#333333']);
     expect(stops).toBe(
-      '#333333 0% 30.33%,#000 30.33% 33.33%,#222222 33.33% 63.67%,#000 63.67% 66.67%,#111111 66.67% 97%,#000 97% 100%'
+      '#333333 0% 30.33%,#000 30.33% 33.33%,#222222 33.33% 63.67%,#000 63.67% 66.67%,#111111 66.67% 97%,#000 97% 100%,#FFFFFF 100%'
     );
   });
 });
