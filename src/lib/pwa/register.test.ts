@@ -14,13 +14,22 @@ describe('registerServiceWorkerAfterBoot', () => {
     vi.resetModules();
   });
 
-  test('waits while the journal is still booting', async () => {
+  test.each([
+    'booting',
+    'needs-unlock',
+    'needs-authentication',
+    'needs-device-recovery',
+    'converting',
+    'conversion-refused',
+    'schema-too-new',
+    'error'
+  ])('does not register on %s', async (status) => {
     const { registerServiceWorkerAfterBoot } = await import('./register');
-    registerServiceWorkerAfterBoot('booting');
+    registerServiceWorkerAfterBoot(status);
     expect(whenIdle).not.toHaveBeenCalled();
   });
 
-  test.each(['needs-setup', 'needs-unlock', 'ready', 'error'])('hands over to idle time once boot says %s', async (status) => {
+  test.each(['needs-setup', 'ready'])('hands over to idle time once boot says %s', async (status) => {
     const { registerServiceWorkerAfterBoot } = await import('./register');
     registerServiceWorkerAfterBoot('booting');
     registerServiceWorkerAfterBoot(status);
@@ -32,6 +41,7 @@ describe('registerServiceWorkerAfterBoot', () => {
     registerServiceWorkerAfterBoot('needs-unlock');
     registerServiceWorkerAfterBoot('ready');
     registerServiceWorkerAfterBoot('ready');
+    registerServiceWorkerAfterBoot('needs-setup');
     expect(whenIdle).toHaveBeenCalledTimes(1);
   });
 });

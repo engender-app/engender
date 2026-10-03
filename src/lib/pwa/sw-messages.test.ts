@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
-import { CACHE_ON_DEMAND, CACHE_PDF_WORKER, SKIP_WAITING, listenForOnDemandCache, listenForSkipWaiting } from './sw-messages';
+import { CACHE_PDF_WORKER } from './pdf-worker-cache';
+import { CACHE_ON_DEMAND, SKIP_WAITING, listenForOnDemandCache, listenForSkipWaiting } from './sw-messages';
 
 /** A scope that records what was registered and can be sent a message. The
     `waitUntil` it hands the listener is the one a real message event carries,

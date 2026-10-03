@@ -27,7 +27,8 @@
 import { base, build, files, version } from '$service-worker';
 import { emittedClientAssets } from './lib/pwa/emitted-client-assets.generated';
 import { SHELL_CACHE_PREFIX, splitShellAssets } from './lib/pwa/shell-assets';
-import { CACHE_PDF_WORKER, listenForOnDemandCache, listenForSkipWaiting } from './lib/pwa/sw-messages';
+import { CACHE_PDF_WORKER } from './lib/pwa/pdf-worker-cache';
+import { listenForOnDemandCache, listenForSkipWaiting } from './lib/pwa/sw-messages';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
