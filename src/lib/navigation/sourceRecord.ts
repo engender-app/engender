@@ -5,7 +5,8 @@ export function sourceReturnTo(url: URL): string | null {
   const target = new URL(value, url.origin);
   if (target.origin !== url.origin) return null;
   if (target.pathname !== '/media/photos' && target.pathname !== '/transition/milestones'
-    && !/^\/media\/documents\/[^/]+$/.test(target.pathname)) return null;
+    && !/^\/media\/documents\/[^/]+$/.test(target.pathname)
+    && !/^\/day\/(\d+|today)$/.test(target.pathname)) return null;
   return target.pathname + target.search + target.hash;
 }
 

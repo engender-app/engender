@@ -785,10 +785,21 @@
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
 
+  /* Back to the list the entry was opened from (Calendar, Search, a day,
+     On this day), with the list as it was left. An opened entry has a
+     screen behind it in the app's own history; a new one has none worth
+     returning to except the ones that name it (`returnTo`). */
+  function goBackToSource() {
+    const returnTo = sourceReturnTo(page.url);
+    if (returnTo) smartBack(returnTo);
+    else if (entryId != null) smartBack('/');
+    else void goto('/');
+  }
+
   async function leaveSavedEntry() {
     try {
       const returnTo = sourceReturnTo(page.url);
-      if (returnTo) smartBack(returnTo);
+      if (returnTo || entryId != null) goBackToSource();
       else await goto(savedDestination);
       return true;
     } catch (error) {
@@ -850,8 +861,33 @@
 
   async function confirmDelete() {
     deleteOpen = false;
-    if (existing) await journal.entries.deleteEntry(existing.id);
-    goto('/');
+    if (!existing) {
+      goBackToSource();
+      return;
+    }
+    const id = existing.id;
+    try {
+      await journal.entries.deleteEntry(id);
+    } catch (error) {
+      console.error('could not delete the entry', error);
+      toast(m.entry_delete_failed());
+      return;
+    }
+    goBackToSource();
+    toast(m.entry_trashed_toast(), {
+      kind: 'trashed',
+      duration: 6000,
+      actionLabel: m.trash_restore(),
+      onAction: async () => {
+        try {
+          await journal.entries.restoreEntry(id);
+          toast(m.trash_restored_toast(), { kind: 'saved' });
+        } catch (error) {
+          console.error('could not restore the entry', error);
+          toast(m.entry_restore_failed());
+        }
+      }
+    });
   }
 </script>
 
@@ -1453,8 +1489,12 @@
         disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
         onclick={saveEntry}
       >
-        <span role="status">{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
       </button>
+      <!-- Outside the button: a live region inside it empties the button's
+           accessible name, so the label is the button's own text and the
+           saving announcement lives here. -->
+      <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
     </div>
   </SaveBar>
   {/if}
@@ -1585,7 +1625,7 @@
     z-index: -1;
     background: var(--bg);
   }
-  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
 
   .editor-save-row {
     display: flex;
