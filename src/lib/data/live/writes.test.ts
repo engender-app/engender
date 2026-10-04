@@ -151,6 +151,41 @@ test('a run-out reconcile with nothing to change announces nothing (ux-carpet 19
   assert.deepEqual(announced, [], 'a count with nothing to project from');
 });
 
+test('an auto-log pass that writes no doses keeps its zero result without announcing a write', async () => {
+  const { journal, announced } = await observed();
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 0);
+  assert.deepEqual(announced, []);
+});
+
+test('an auto-log pass announces new doses once and stays quiet when those slots are already filled', async () => {
+  const { journal, announced } = await observed();
+  const episodeId = await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 19000,
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 3, doseUnit: 'mg' }],
+    autoLogFromEpochDay: 19098
+  });
+  announced.length = 0;
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 2);
+  assert.deepEqual(announced, [['dose']]);
+  announced.length = 0;
+  assert.equal(await journal.doses.autoLogDueDoses(19100, []), 0);
+  assert.deepEqual(announced, []);
+  assert.equal((await journal.doses.getDoses(19000, 19100)).length, 2);
+});
+
 test('a run-out reconcile that does change something still announces it', async () => {
   const { journal, announced } = await observed();
   await journal.regimen.upsertEpisode({
