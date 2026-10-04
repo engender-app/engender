@@ -53,6 +53,7 @@
   import BarRows from './kit/BarRows.svelte';
   import type { BarRow } from './kit/barRow';
   import YearRows from './kit/YearRows.svelte';
+  import YearDaysList, { type YearDaysFormat } from './kit/YearDaysList.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -133,6 +134,14 @@
   const dayLabel = (epochDay: number, value: number | null) => {
     const day = fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
     return value === null ? day : `${day} · ${nativeValue(metric, value)}`;
+  };
+
+  /* The list under the rows names its month once in its heading, so a day
+     there is its weekday and date alone. */
+  const daysFormat: YearDaysFormat = {
+    monthTitle: (month) => fmtMonthName(year, month),
+    dayName: (epochDay) => fmtDay(epochDay, { weekday: 'short', day: 'numeric' }),
+    valueName: (value) => nativeValue(metric, value)
   };
 
   /* Which scale the insight bars are of, named once in the heading. The
@@ -220,6 +229,7 @@
        fifth of the grid's width spent on labels the reader already knows the
        order of. -->
   <YearRows {grid} monthName={shortMonth} {dayLabel} {fillAt} />
+  <YearDaysList {grid} format={daysFormat} {fillAt} />
 </ChartCard>
 
 {#if insightRows.length}
