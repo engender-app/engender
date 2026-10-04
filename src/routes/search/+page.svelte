@@ -855,6 +855,14 @@
 </div>
 
 <style>
+  /* Search's own hint lines; the screen is their one reader, so they live
+     here rather than in screens.css (check-screens-classes). */
+  .search-hint {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 0;
+  }
+
   /* The notice arrives by its own `collapse`, which pulls it up by its
      height and lets it travel down. Here that margin collapsed through every
      block above it, so the whole answer area, the outgoing results too,
