@@ -15,8 +15,6 @@ import { prefs } from '../prefs/store.svelte';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
-import { seedFullFixture } from './fullFixture';
-import { seedReturnGap } from './returnGap';
 
 /* The device sweep records which demo profile it prepared. Any journal
    write outside that preparation makes the record stale. The sweep stamps
@@ -72,6 +70,7 @@ export async function resetDemo(): Promise<void> {
     state" still leaves every one of those areas in its designed empty
     state for a reviewer who wants to see that instead. */
 export async function resetDemoFull(): Promise<void> {
+  const { seedFullFixture } = await import('./fullFixture');
   await reseed(async () => {
     await seedPersonaJournal(journal);
     await seedFullFixture(journal);
@@ -84,6 +83,7 @@ export async function resetDemoFull(): Promise<void> {
     is the wrong state for reviewing anything else: every screen's "recent"
     is empty in it. returnGap.ts says what it adds and why. */
 export async function resetDemoComingBack(): Promise<void> {
+  const { seedReturnGap } = await import('./returnGap');
   await reseed(() => seedReturnGap(journal));
 }
 
