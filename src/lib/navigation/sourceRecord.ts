@@ -9,6 +9,25 @@ export function sourceReturnTo(url: URL): string | null {
   return target.pathname + target.search + target.hash;
 }
 
+/** The list an entry was opened from (Calendar, Search, a day, On this day,
+    Good moments, a tag's entries), carried in `from` so it survives a reload
+    of the editor. Kept apart from `returnTo`: that one also makes the editor
+    show its "back to the source record" button, which an ordinary list is
+    not. Any in-app path but another entry will do. */
+export function listReturnTo(url: URL): string | null {
+  const value = url.searchParams.get('from');
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null;
+  const target = new URL(value, url.origin);
+  if (target.origin !== url.origin || target.pathname.startsWith('/entry/')) return null;
+  return target.pathname + target.search + target.hash;
+}
+
+export function withListReturn(href: string, list: URL): string {
+  const target = new URL(href, list.origin);
+  target.searchParams.set('from', list.pathname + list.search + list.hash);
+  return target.pathname + target.search + target.hash;
+}
+
 export function withSourceReturn(href: string, source: URL): string {
   const target = new URL(href, source.origin);
   target.searchParams.set('returnTo', source.pathname + source.search + source.hash);

@@ -37,7 +37,7 @@ async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<str
     reconcile that fails part-way leaves the old stamp and the next boot
     tries again. */
 export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): Promise<void> {
-  await driver.transaction(async () => {
+  await driver.transaction(async (driver) => {
     await reconcileBuiltInsWithin(driver);
     /* exec, not run: a PRAGMA takes no bound parameter, and Android's
        run() goes through execSQL(sql, bindArgs) where setUserVersion

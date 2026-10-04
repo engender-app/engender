@@ -138,3 +138,12 @@ test('a cancelled export never records a backup', async () => {
   );
   assert.equal(recorded, null);
 });
+
+for (const path of EXPORT_PATHS) {
+  test(`the disguised ${path} export has a neutral file name`, async () => {
+    const { deliver, delivered } = fakeDelivery();
+    await runExport(path, { ...source, preferences: { ...source.preferences, disguise: true } },
+      { deliver, recordBackup: () => {} });
+    assert.match(delivered[0].fileName, /^backup-\d{4}-\d{2}-\d{2}\.(ttbackup|csv|json)$/);
+  });
+}

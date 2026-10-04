@@ -8,7 +8,7 @@ details in public first.
 
 Use GitHub private vulnerability reporting for this repository:
 
-- https://github.com/barankiewicz/gender-diary/security/advisories/new
+- https://github.com/engender-app/engender/security/advisories/new
 
 That channel is private between the reporter and maintainers.
 

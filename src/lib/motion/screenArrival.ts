@@ -25,7 +25,11 @@ export function readRevealDuration(token: '--dur-fast' | '--dur-med'): number {
 /** Fit nested entrances, including their stagger, into the field's remaining movement. */
 export function fitReadArrival(animations: Animation[]): void {
   if (tabRevealBy === undefined) return;
-  const remaining = Math.max(0, tabRevealBy - performance.now());
+  fitBefore(animations, tabRevealBy);
+}
+
+function fitBefore(animations: Animation[], deadline: number): void {
+  const remaining = Math.max(0, deadline - performance.now());
   for (const animation of animations) {
     const timing = animation.effect?.getComputedTiming();
     if (!timing || timing.iterations === Infinity || animation.playState === 'finished') continue;
@@ -38,13 +42,21 @@ export function fitReadArrival(animations: Animation[]): void {
   }
 }
 
-/** Keep new layers at their first position while Android prepares their paint. */
-export function playAfterPaint(owner: HTMLElement, animations: Animation[]): void {
+/** Keep new layers at their first position while Android prepares their paint.
+    Read fades can share the field's deadline; the field keeps its authored speed. */
+export function playAfterPaint(
+  owner: HTMLElement,
+  animations: Animation[],
+  { fitArrival = false }: { fitArrival?: boolean } = {}
+): void {
+  const deadline = fitArrival ? tabRevealBy : undefined;
   for (const animation of animations) {
     animation.pause();
     animation.currentTime = 0;
   }
   requestAnimationFrame(() => requestAnimationFrame(() => {
+    // Paint preparation spends part of the field's remaining arrival.
+    if (deadline !== undefined && owner.isConnected) fitBefore(animations, deadline);
     for (const animation of animations) {
       if (owner.isConnected) {
         if (animation.playState !== 'finished' && animation.playState !== 'idle') animation.play();

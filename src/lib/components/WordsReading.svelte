@@ -197,19 +197,21 @@
 </script>
 
 {#if view === 'tile'}
+  <!-- The tile says what its one word is, in the person's terms: the
+       word that stands out in the stretch it names. "Era: ... · Whole
+       journal baseline" was the reading's method (release audit U14); it
+       stays on the card, where the cloud it qualifies is. -->
   {#if !entriesQuery.loading && !erasQuery.loading && weighted.length}
     <ReadingTile
       key="words"
       name={m.words_reading_title()}
       href={tileHref}
       headline={weighted[0].word}
-      note={dimension === 'era'
-        ? m.words_scope_era({ name: selectionLabel })
-        : m.words_scope_mode({ name: selectionLabel })}
+      note={m.words_tile_note({ name: selectionLabel })}
     />
   {/if}
 {:else}
-<ChartCard heading={m.words_reading_title()} kind="words" {role}>
+<ChartCard level={2} heading={m.words_reading_title()} kind="words" {role}>
   {#if dimensions.length === 0}
     <ChartEmpty>{m.words_reading_needs_stretch()}</ChartEmpty>
   {:else}

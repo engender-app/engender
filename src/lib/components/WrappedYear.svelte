@@ -53,6 +53,7 @@
   import BarRows from './kit/BarRows.svelte';
   import type { BarRow } from './kit/barRow';
   import YearRows from './kit/YearRows.svelte';
+  import YearDaysList, { type YearDaysFormat } from './kit/YearDaysList.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -135,6 +136,14 @@
     return value === null ? day : `${day} · ${nativeValue(metric, value)}`;
   };
 
+  /* The list under the rows names its month once in its heading, so a day
+     there is its weekday and date alone. */
+  const daysFormat: YearDaysFormat = {
+    monthTitle: (month) => fmtMonthName(year, month),
+    dayName: (epochDay) => fmtDay(epochDay, { weekday: 'short', day: 'numeric' }),
+    valueName: (value) => nativeValue(metric, value)
+  };
+
   /* Which scale the insight bars are of, named once in the heading. The
      rows carry only their counts (wrappedDisplay.ts): a wrapped draws these
      against whichever metric the preference held, and unlike /stats it has
@@ -215,15 +224,16 @@
   {/each}
 </ListCard>
 
-<ChartCard heading={m.wrapped_year_months()} kind="wrapped-months" role={rowsRole}>
+<ChartCard level={3} heading={m.wrapped_year_months()} kind="wrapped-months" role={rowsRole}>
   <!-- Short month names: full ones took 70px of a 340px card, which is a
        fifth of the grid's width spent on labels the reader already knows the
        order of. -->
   <YearRows {grid} monthName={shortMonth} {dayLabel} {fillAt} />
+  <YearDaysList {grid} format={daysFormat} {fillAt} />
 </ChartCard>
 
 {#if insightRows.length}
-  <ChartCard
+  <ChartCard level={3}
     heading={m.tag_insights_of({ metric: vocabulary.metricNameOf(metric) })}
     kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={insightRows} />
@@ -232,7 +242,7 @@
 {/if}
 
 {#if tally_rows.length}
-  <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+  <ChartCard level={3} heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={tally_rows} />
   </ChartCard>
 {/if}

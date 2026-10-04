@@ -22,7 +22,7 @@
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { localStorageAttempts } from '$lib/lock/attempt-store';
-  import { createAttemptThrottle } from '$lib/lock/throttle';
+  import { createPinThrottle } from '$lib/lock/pin-throttle';
   import type { Snippet } from 'svelte';
   import PinPad from './PinPad.svelte';
 
@@ -44,7 +44,7 @@
 
   let pin = $state('');
   let error = $state('');
-  let busy = $state(false);
+  let busy = $state(true);
   let refusals = $state(0);
   let waitMs = $state(0);
   /** The whole wait, taken the moment it starts, so the rail under the status
@@ -53,7 +53,7 @@
       at the top of a penalty, so its first reading is the penalty. */
   let waitTotalMs = $state(0);
 
-  const throttle = createAttemptThrottle(localStorageAttempts());
+  let throttle: Awaited<ReturnType<typeof createPinThrottle>> | null = null;
   let countdown: ReturnType<typeof setInterval> | null = null;
 
   /* These write `waitMs` and never read it. An effect that reads it would
@@ -66,13 +66,13 @@
   }
 
   function tickWait() {
-    const remaining = throttle.remainingMs(Date.now());
+    const remaining = throttle?.remainingMs(Date.now()) ?? 0;
     waitMs = remaining;
     if (remaining === 0) stopCountdown();
   }
 
   function startCountdown() {
-    const remaining = throttle.remainingMs(Date.now());
+    const remaining = throttle?.remainingMs(Date.now()) ?? 0;
     waitMs = remaining;
     if (remaining > 0 && !countdown) {
       waitTotalMs = remaining;
@@ -84,18 +84,24 @@
      thing a guesser can do, so the count outlives the page rather than the
      attempt. */
   $effect(() => {
-    startCountdown();
-    return stopCountdown;
+    let mounted = true;
+    void createPinThrottle(localStorageAttempts()).then((ready) => {
+      if (!mounted) return;
+      throttle = ready;
+      startCountdown();
+      busy = false;
+    }).catch(() => { if (mounted) error = m.ak_failed(); });
+    return () => { mounted = false; stopCountdown(); };
   });
 
   async function submit(entered: string) {
-    if (busy || waitMs > 0) return;
+    if (busy || !throttle || throttle.remainingMs(Date.now()) > 0) return;
     busy = true;
     error = '';
     try {
       const outcome = await onVerify(entered);
       if (outcome === 'ok') {
-        throttle.reset();
+        await throttle.reset();
         pin = '';
         return;
       }
@@ -110,7 +116,7 @@
         error = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
         return;
       }
-      throttle.recordWrong(Date.now());
+      await throttle.recordWrong(Date.now());
       error = m.pin_wrong();
       refusals++;
       startCountdown();

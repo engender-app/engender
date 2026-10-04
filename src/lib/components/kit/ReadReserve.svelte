@@ -78,7 +78,7 @@
     const duration = readRevealDuration('--dur-fast');
     if (duration === 0) return;
     const animation = node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
-    playAfterPaint(node, [animation]);
+    playAfterPaint(node, [animation], { fitArrival: true });
     return { destroy: () => animation.cancel() };
   }
 
@@ -163,13 +163,22 @@
        of its own after it arrives" (a size record added or the last one
        removed flips `.read-reserve:has(...)`), and nothing else re-runs
        this effect to re-animate it. `releaseWhenDone` below cancels each animation
-       once its own `.finished` promise resolves - a *JS* microtask, the
-       same timing class `settle()` runs in, rather than the compositor's
-       immediate native revert - so cancelling reliably lands after
-       `settle()` rather than racing it, and once cancelled the property is
-       plain CSS again, free to answer a later change normally. */
+       after both the margin and height mask finish. Native start times can
+       differ by a frame, so the margin's own promise may resolve while the
+       height still blocks the child's margin from collapsing out. Waiting
+       for the mask's cleanup keeps Home's 20px gap from dipping to the next
+       heading's 16px for one frame. Cancellation then gives CSS control
+       back, so later content changes can still adjust the margin. */
+    const owner = new AbortController();
+    const margins: Animation[] = [];
+    const cleanup = () => {
+      owner.abort();
+      for (const animation of margins) animation.cancel();
+    };
+    let travel = Promise.resolve();
     const releaseWhenDone = (animation: Animation) => {
-      animation.finished.then(() => animation.cancel()).catch(() => {});
+      margins.push(animation);
+      animation.finished.then(() => travel).then(() => animation.cancel()).catch(() => {});
       return animation;
     };
     /* The content's first block may bring a top margin the placeholder did
@@ -209,8 +218,8 @@
         })
       );
     }
-    if (!travels) return;
-    maskHeight(wrapper, from, duration);
+    if (!travels) return cleanup;
+    travel = maskHeight(wrapper, from, duration, { signal: owner.signal });
     /* A block that had nothing in it, or is left with nothing, also gains
        or loses its own margin: empty, its margins collapse through it into
        its neighbours'; holding a height, they do not. That is the screen's
@@ -229,6 +238,7 @@
         })
       );
     }
+    return cleanup;
   });
 </script>
 

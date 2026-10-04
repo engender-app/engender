@@ -1,3 +1,8 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   normalizeVersionArg,
@@ -70,5 +75,40 @@ describe('RELEASE_VERSION_RE', () => {
     expect(RELEASE_VERSION_RE.test('1.2.3')).toBe(true);
     expect(RELEASE_VERSION_RE.test('v1.2.3-alpha.1')).toBe(true);
     expect(RELEASE_VERSION_RE.test('alpha-2026-08-14')).toBe(false);
+  });
+});
+
+describe('release tag dry run', () => {
+  it('passes on clean main at origin without creating or pushing a tag', () => {
+    const root = mkdtempSync(join(tmpdir(), 'release-tag-'));
+    const checkout = join(root, 'checkout');
+    const origin = join(root, 'origin.git');
+    mkdirSync(checkout);
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: checkout, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    try {
+      git('init', '--initial-branch=main');
+      git('config', 'user.name', 'Release test');
+      git('config', 'user.email', 'release-test@example.invalid');
+      writeFileSync(join(checkout, 'CHANGELOG.md'), `## 1.0.0
+
+- Schema changes: first release
+- Archive format changes: first release
+- Security migrations: none
+- Minimum supported version: first release
+`);
+      git('add', 'CHANGELOG.md');
+      git('-c', 'commit.gpgsign=false', 'commit', '-m', 'Prepare release notes');
+      git('clone', '--bare', checkout, origin);
+      git('remote', 'add', 'origin', origin);
+      const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/cut-release-tag.mjs', import.meta.url)), '1.0.0', '--dry-run'], { cwd: checkout, encoding: 'utf8' });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain('PASS checks for v1.0.0');
+      expect(result.stdout).toContain('Would create signed tag v1.0.0');
+      expect(git('tag', '--list')).toBe('');
+      expect(git('ls-remote', '--tags', 'origin')).toBe('');
+      expect(git('status', '--porcelain')).toBe('');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

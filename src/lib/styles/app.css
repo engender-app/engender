@@ -31,9 +31,8 @@ body {
   user-select: none;
 }
 
-/* The opt-in. A journal entry's own note (`.entry-note`, EntryCard and the
-   doubt journal's own quoting of the same notes; `.kit-entry-note`,
-   DayEntry), the printed journal book's copy of it (`.book-note`), a
+/* The opt-in. A journal entry's own note (`.kit-entry-note`, DayEntry and
+   the doubt journal's own quoting of the same notes), the printed journal book's copy of it (`.book-note`), a
    letter's body once unsealed (`.letter-text`), a lab result's value
    (`.lab-value`), and the clinician summary in full - the one screen whose
    entire purpose is being handed to someone else and read, so
@@ -41,10 +40,9 @@ body {
    fields keep the browser's own selection regardless, restated below for
    engines that need it said again once an ancestor has turned it off.
 
-   Plain classes throughout rather than `data-*` attributes, on purpose: two
-   of these elements (DayEntry's and EntryCard's own note) already carry
-   `data-entry-note` as a walkthrough locator, and ADR-0029 holds those
-   handles to carrying "no styling and no behavior" so a rename never has to
+   Plain classes throughout rather than `data-*` attributes, on purpose:
+   DayEntry's own note already carries `data-entry-note` as a walkthrough
+   locator, and ADR-0029 holds those handles to carrying "no styling and no behavior" so a rename never has to
    consider a second, unrelated reader. Reaching for that same attribute
    here to save a selector would have broken the one thing the ADR is for.
 
@@ -54,7 +52,6 @@ body {
    those are computed summaries the app wrote, not something the person
    typed, and belong with the rest of the app's chrome. */
 :is(
-  .entry-note,
   .kit-entry-note,
   .book-note,
   .letter-text,
@@ -85,7 +82,8 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  overflow: hidden;
+  /* The fixed frame must not scroll to reveal a sheet's extended edge. */
+  overflow: clip;
   /* An identity transform, so a `position: fixed` descendant - a sheet's
      scrim (components.css) - is contained by this box instead of the real
      window. Normally the two are the same size; in the demo bar's

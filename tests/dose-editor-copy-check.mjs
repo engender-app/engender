@@ -19,6 +19,10 @@ try {
     await page.locator('[data-add]').click();
     await page.locator('#dose-amount').waitFor();
     assert.equal(await page.locator('[data-save-dose]').isDisabled(), true);
+    assert.equal(await page.locator('#dose-requirements').count(), 0);
+    assert.equal(await page.locator('#dose-amount').getAttribute('aria-invalid'), 'false');
+    await page.locator('#dose-amount').focus();
+    await page.locator('#dose-unit').focus();
     assert.equal(await page.locator('#dose-amount').getAttribute('aria-invalid'), 'true');
     assert.equal(await page.locator('#dose-amount').getAttribute('aria-describedby'), 'dose-requirements');
     assert.match(await page.locator('#dose-requirements').innerText(), locale === 'en' ? /Enter a dose amount/ : /Wpisz ilość dawki/);

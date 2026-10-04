@@ -77,6 +77,43 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
   assert.deepEqual(forDay.map((e) => e.id), [id]);
 });
 
+test('entry hydration issues independent reads together and keeps their rows', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  await journal.reconcileBuiltIns();
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100, timestamp: 8_640_000_000, mood: 4, note: 'Hydrated entry',
+    dims: { femininity: 55 }, tags: ['e-happy'], bodyRegions: { chest: 20 },
+    attachPhotos: [{ full: new Uint8Array([1]), thumb: new Uint8Array([2]) }],
+    attachRecordings: [new Uint8Array([3])], attachVideos: [new Uint8Array([4])]
+  });
+  const expected = await journal.entries.getEntry(id);
+  let release!: () => void;
+  const answers = new Promise<void>((resolve) => { release = resolve; });
+  const issued: string[] = [];
+  const delayed = openJournal({
+    ...db,
+    async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      const rows = await db.query<Row>(sql, params);
+      if (/entry_id IN/.test(sql)) {
+        issued.push(sql);
+        await answers;
+      }
+      return rows;
+    }
+  }, files);
+  const reading = delayed.entries.getEntry(id);
+  try {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(issued.length, 6, 'every child read starts before any child answer lands');
+  } finally {
+    release();
+    assert.deepEqual(await reading, expected);
+    await db.close();
+  }
+});
+
 test('a new entry never arrives with a presentation pre-filled', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.presentations.addPresentation('femme', 0);
@@ -380,7 +417,7 @@ test('restoreEntry brings a trashed entry back, photos and recordings included; 
   assert.equal((await journal.entries.getEntry(id))?.id, id);
 });
 
-test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher trash alone', async () => {
+test.each(['ON', 'OFF'])('purgeExpiredTrash reclaims expired children and keeps fresh trash with foreign keys %s', async (foreignKeys) => {
   const db = await migratedDb();
   const files = fakeFileStore(['old.jpg', 'old-thumb.jpg']);
   const journal = openJournal(db, files);
@@ -391,6 +428,11 @@ test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher
     .prepare("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('old', ?, 'old.jpg', 0)")
     .run(expiredId);
   const freshId = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'just trashed' });
+  await journal.marginNotes.add({ entryId: expiredId, epochDay: 102, text: 'old reflection' });
+  await journal.marginNotes.add({ entryId: freshId, epochDay: 103, text: 'keep this reflection' });
+  await journal.revisits.setRevisit({ entryId: expiredId, createdEpochDay: 100, targetEpochDay: 200 });
+  await journal.revisits.setRevisit({ entryId: freshId, createdEpochDay: 101, targetEpochDay: 201 });
+  db.raw.exec(`PRAGMA foreign_keys = ${foreignKeys}`);
 
   await journal.entries.deleteEntry(expiredId);
   await journal.entries.deleteEntry(freshId);
@@ -403,9 +445,15 @@ test('purgeExpiredTrash reclaims trash past the 30-day window and leaves fresher
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(expiredId) as { n: number }).n, 0);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0);
   assert.deepEqual(files.names(), [], 'the expired entry’s photo and thumbnail go with it');
+  assert.deepEqual((await db.query('SELECT entry_id, text FROM margin_note')).map((row) => ({ ...row })), [
+    { entry_id: freshId, text: 'keep this reflection' }
+  ], 'margin notes are purged explicitly even when foreign keys are off');
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(freshId) as { n: number }).n, 1);
   assert.deepEqual((await journal.entries.trashedEntries()).map((e) => e.id), [freshId]);
+  assert.equal(await journal.revisits.getRevisitForEntry(expiredId), null);
+  assert.ok(await journal.revisits.getRevisitForEntry(freshId));
+  assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 
   assert.equal(await purgeExpiredTrash(db, files), 0, 'and nothing to take is nothing to announce');
 });

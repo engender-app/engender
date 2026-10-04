@@ -23,7 +23,7 @@
    screen to render already has a vocabulary. */
 
 import { m } from '$lib/paraglide/messages';
-import { boot } from '../data/sqlite/boot';
+import { boot, migrateJournal } from '../data/sqlite/boot';
 import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
 import { prewarmArgon2 } from '../crypto/argon2id';
 import { forgetLastResults } from '../data/live/lastResults';
@@ -71,7 +71,7 @@ import type { JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles, setVoiceFiles } from './voiceFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
-import { clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData } from '../data/reset';
+import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
@@ -80,7 +80,7 @@ import { markUnlocked } from './lock.svelte';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
-import { demoPreferences } from '../data/demo/persona';
+import { demoPreferences, persona } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, type BootState } from './boot-state';
 import { crossBootFailure, openApp } from '../motion/appOpening';
@@ -232,12 +232,23 @@ export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
 let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
+/* Where each kind of reset lands, read by resetApp below. */
+const RESET_DESTINATION = {
+  welcome: '/',
+  restore: '/onboarding?restore=1',
+  erased: '/onboarding?erased=1'
+} as const;
+
 /** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
     and comes back up at onboarding. Reloads rather than resetting the
     modules in place - boot() has already run, the journal is attached, and
     unwinding all of that in the browser is a far bigger surface than
-    starting the page again. */
-export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise<void> {
+    starting the page again.
+
+    `erased` is the same wipe asked for from Settings rather than from a
+    gate (phase 14 ticket 15): setup's welcome then says what happened,
+    since nobody there forgot anything and the result cannot be undone. */
+export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -252,19 +263,18 @@ export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise
        the web's reset has to do - reaches neither (ticket 13). Erasing only
        the key would be worse than doing nothing: the ciphertext would stay,
        unopenable, and the next boot would mint a fresh key and meet a
-       database it cannot read. */
-    wipePlatformStorage: isAndroid()
-      ? () =>
-          wipeAndroidJournalFiles({
-            deleteDatabase: () => deleteAndroidDatabase(JOURNAL_DATABASE),
-            deletePhotos: () => androidPhotos.removeDirectory({ directory: 'photos' }),
-            eraseKey: () => androidKeystore.erase()
-          })
-      : undefined,
-    /* The rest of what the phone holds: the three preference files, the
-       alarms scheduled off the reminder one, and the Keystore alias the
-       backup password is wrapped under. The web keeps none of it. */
-    wipeDeviceState: isAndroid() ? () => androidDeviceReset.wipe() : undefined,
+       database it cannot read. The rest of what the phone holds - the
+       three preference files, the alarms scheduled off the reminder one,
+       and the Keystore alias the backup password is wrapped under - goes
+       through the device-reset plugin. The web keeps none of it. */
+    ...(isAndroid()
+      ? androidResetTargets({
+          deleteDatabase: () => deleteAndroidDatabase(JOURNAL_DATABASE),
+          deletePhotos: () => androidPhotos.removeDirectory({ directory: 'photos' }),
+          eraseKey: () => androidKeystore.erase(),
+          wipeDeviceState: () => androidDeviceReset.wipe()
+        })
+      : {}),
     clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
     clearBootCache: () => bootCache.clear()
   });
@@ -297,7 +307,7 @@ export async function resetApp(next: 'welcome' | 'restore' = 'welcome'): Promise
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
-  location.replace(next === 'restore' ? '/onboarding?restore=1' : '/');
+  location.replace(RESET_DESTINATION[next]);
 }
 
 /** Puts the pre-migration copy back as the live Journal and starts the app
@@ -698,16 +708,24 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
 
   let activeSqlite: WebSqlite | null = null;
   let journal: Journal | null = null;
+  let personaPrepared = false;
 
   const result = await boot({
     createDriver: () => {
       activeSqlite = createJournalSqlite(dataKey);
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
-      setActiveDriver(activeSqlite.driver, activeSqlite.fileOps);
+      setActiveDriver(activeSqlite.driver);
       journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
       return activeSqlite.driver;
     },
+    prepareDatabase: __DEMO__ ? async (driver, fileOps) => {
+      if (activeSqlite!.prepareDemoPersona) {
+        personaPrepared = await activeSqlite!.prepareDemoPersona(persona());
+      } else {
+        await migrateJournal(driver, fileOps);
+      }
+    } : undefined,
     fileOps: {
       preMigrationCopyIsUsable: () => activeSqlite!.fileOps.preMigrationCopyIsUsable(),
       copyDatabaseFile: () => activeSqlite!.fileOps.copyDatabaseFile(),
@@ -752,8 +770,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
        dose log and Today are live while this runs. */
     autoLogDueDoses: async () => {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
-      const written = await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
-      if (written > 0) bump(tablesWrittenBy('doses', 'autoLogDueDoses'));
+      await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
     },
     scheduleHousekeeping: whenIdle
   });
@@ -779,16 +796,13 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
      which empties the journal on purpose - is not undone by the next
      reload. Dropped whole from a production build (ticket 05). */
   if (__DEMO__ && preferences.openedEmpty()) {
-    const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
-    /* Cleared first, and the preferences written last, so an interrupted
-       seed heals itself. Writing the persona is a few thousand statements
-       through a worker, and a tab closed part-way through would otherwise
-       leave a demo that is permanently half-seeded: the preferences would
-       say it had been done, while the journal held only the oldest entries -
-       the persona writes 150 days oldest-first, so what goes missing is
-       exactly the recent data every screen shows. */
-    await clearJournal(journal!);
-    await seedPersonaJournal(journal!);
+    /* The worker prepared the persona before reference hydration. Android and
+       older web canvases keep clear-first, preferences-last journal writes. */
+    if (!personaPrepared) {
+      const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
+      await clearJournal(journal!);
+      await seedPersonaJournal(journal!);
+    }
     for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
       await preferences.set(key, value);
     }

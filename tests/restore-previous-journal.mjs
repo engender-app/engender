@@ -45,6 +45,7 @@ const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 
 let failures = 0;
+const FAULT_RECEIPT = 'restore-previous-journal: refused migration SQL inside an opened transaction';
 const check = (ok, line) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${line}`);
   if (!ok) failures++;
@@ -57,8 +58,17 @@ const failAMigration = (stamp) => `
   const handle = self.onmessage;
   const answer = self.postMessage.bind(self);
   const understated = new Set();
+  const transactions = new Map();
+  let copyRequest = null;
   let copied = false;
+  let inTransaction = false;
   self.postMessage = (message, transfer) => {
+    if (message.id === copyRequest) copied = message.ok;
+    const transaction = transactions.get(message.id);
+    if (transaction) {
+      transactions.delete(message.id);
+      if (message.ok) inTransaction = transaction === 'BEGIN';
+    }
     if (understated.has(message.id) && message.ok && Array.isArray(message.result)) {
       understated.delete(message.id);
       message = { ...message, result: message.result.map((row) => ({ ...row, user_version: row.user_version - 1 })) };
@@ -68,9 +78,10 @@ const failAMigration = (stamp) => `
   self.onmessage = (event) => {
     const { id, op, args } = event.data;
     const sql = args && typeof args.sql === 'string' ? args.sql : '';
+    if (op === 'exec' && /^(BEGIN|COMMIT|ROLLBACK)$/i.test(sql.trim())) transactions.set(id, sql.trim().toUpperCase());
     if (op === 'query' && /user_version/i.test(sql) && !copied) understated.add(id);
     if (op === 'copyDatabaseFile') {
-      copied = true;
+      copyRequest = id;
       handle(event);
       /* Marks the live file as the copy's opposite, outside any transaction
          so the failed migration's rollback cannot undo it: a journal on
@@ -79,7 +90,8 @@ const failAMigration = (stamp) => `
       if (${stamp} !== null) handle({ data: { id: -1, op: 'exec', args: { sql: 'PRAGMA user_version = ${stamp}' } } });
       return;
     }
-    if (copied && (op === 'exec' || op === 'run') && !/^(BEGIN|COMMIT|ROLLBACK)$/i.test(sql.trim())) {
+    if (copied && inTransaction && (op === 'exec' || op === 'run') && !/^(BEGIN|COMMIT|ROLLBACK)$/i.test(sql.trim())) {
+      console.info(${JSON.stringify(FAULT_RECEIPT)});
       answer({ id, ok: false, error: 'forced migration failure (restore-previous-journal probe)' });
       return;
     }
@@ -102,6 +114,10 @@ async function failedMigration(label, stamp = 1, retryAtOnce = false) {
   const wrap = wrapWith(stamp);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const page = await context.newPage();
+  let faultInjected = false;
+  page.on('console', (message) => {
+    if (message.text() === FAULT_RECEIPT) faultInjected = true;
+  });
   await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
   const bootOf = () => page.evaluate(() => document.querySelector('[data-app-root]')?.dataset.boot);
   const settled = (timeout = 60000) =>
@@ -113,6 +129,10 @@ async function failedMigration(label, stamp = 1, retryAtOnce = false) {
   await page.goto(base + '/');
   await settled();
   check((await bootOf()) === 'ready', `${label}: the demo journal boots before anything is broken`);
+  /* The worker-local demo preparation runs migrations without port messages.
+     After seeding, use the capability fallback so the fault and recovery
+     exercise the production migration path through the scoped driver. */
+  await page.addInitScript(() => { delete window.OffscreenCanvas; });
   /* Once, when retrying at once: the failed boot's worker is the only one
      that should be wrapped, and the copy check's and the retry's are stock. */
   await context.route(worker, wrap, retryAtOnce ? { times: 1 } : undefined);
@@ -135,9 +155,11 @@ async function failedMigration(label, stamp = 1, retryAtOnce = false) {
     await page
       .waitForFunction(() => document.querySelector('[data-app-root]')?.dataset.boot === 'ready', null, { timeout: 30000 })
       .catch(() => {});
-    return { context, page, bootOf, settled };
+  } else {
+    await settled();
   }
-  await settled();
+  check(faultInjected, `${label}: the probe rejects migration SQL inside an opened transaction`);
+  if (retryAtOnce) return { context, page, bootOf, settled };
   check((await bootOf()) === 'error', `${label}: a migration that fails after its copy ends in the boot error (boot=${await bootOf()})`);
   await context.unroute(worker, wrap);
   return { context, page, bootOf, settled };

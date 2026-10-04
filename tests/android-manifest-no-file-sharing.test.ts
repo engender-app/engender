@@ -1,15 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-/* Phase 5 security ticket 07 (G-07). The manifest declared a FileProvider
-   with grantUriPermissions and a paths file mapping all of external storage,
-   for a share mechanism the app never used - exports leave through the share
-   sheet as a Blob-backed File. And left unset, capacitor.config.ts's
-   cordova.accessOrigins defaults to a wildcard <access origin="*" /> every
-   time `cap sync` regenerates the gitignored res/xml/config.xml, a
-   Cordova-compat file no plugin here reads. Both are dead surface a reader
-   stops on and a future feature could reach for by accident - this is what
-   catches either coming back. */
+/* The unused provider for all of external storage was removed in phase 5.
+   Camera capture now needs a provider, limited to its disposable cache path.
+   Cordova's accessOrigins still stays empty, so cap sync cannot restore the
+   wildcard access tag no plugin uses. */
 
 const root = new URL('../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
@@ -18,8 +13,16 @@ const manifest = read('android/app/src/main/AndroidManifest.xml');
 const capacitorConfig = read('capacitor.config.ts');
 
 describe('android dead cordova/file-sharing surface', () => {
-  it('declares no FileProvider', () => {
-    expect(manifest).not.toContain('FileProvider');
+  it('shares only the disposable camera cache through a non-exported provider', () => {
+    const providers = [...manifest.matchAll(/<provider\b[\s\S]*?<\/provider>/g)];
+    expect(providers).toHaveLength(1);
+    expect(providers[0][0]).toContain('androidx.core.content.FileProvider');
+    expect(providers[0][0]).toContain('android:authorities="${applicationId}.camera-files"');
+    expect(providers[0][0]).toContain('android:exported="false"');
+    expect(providers[0][0]).toContain('android:resource="@xml/camera_file_paths"');
+    const paths = read('android/app/src/main/res/xml/camera_file_paths.xml');
+    expect([...paths.matchAll(/<(?:cache|external|root|files)[-a-z]*path\b/g)]).toHaveLength(1);
+    expect(paths).toContain('<cache-path name="capture" path="camera-capture/" />');
   });
 
   it('keeps cordova.accessOrigins empty, so cap sync writes no wildcard access tag', () => {

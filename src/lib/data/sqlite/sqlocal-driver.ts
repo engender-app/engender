@@ -13,19 +13,22 @@
 
    Transactions are implemented as manual BEGIN/COMMIT/ROLLBACK over the
    same `sql` calls exec/query/run use, rather than SQLocal's own tx-scoped
-   `transaction()` helper: migration-runner.ts's callback calls back into
-   the driver's own exec/setUserVersion (not a separate transaction
-   handle), and SQLocal serializes every call through one worker
-   connection, so manual BEGIN/COMMIT/ROLLBACK composes correctly with that
+   `transaction()` helper. The public wrapper supplies a driver scope for
+   exec/setUserVersion and keeps unrelated calls outside the transaction.
+   SQLocal serializes every raw call through one worker connection, so
+   manual BEGIN/COMMIT/ROLLBACK composes correctly with that
    - verified directly against a running SQLocal instance. Two of them at
    once is what that ordering cannot compose, so they queue behind each
    other through oneTransactionAtATime() (ticket 134), as on the two
    drivers the app actually ships. */
 
-import { SQLocal } from 'sqlocal';
+import { SQLocal, type SqlTag } from 'sqlocal';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
+
+// SQLocal runs this again when overwriting or deleting a database reopens it.
+const enforceForeignKeys = (sql: SqlTag) => [sql`PRAGMA foreign_keys = ON`];
 
 export interface WebSqlite {
   driver: SqliteDriver;
@@ -33,14 +36,16 @@ export interface WebSqlite {
   /** Requests persistent storage so OPFS isn't subject to eviction (PRD).
       Resolves to whether it was granted. */
   requestPersistentStorage: () => Promise<boolean>;
+  /** Demo builds only. Uses the worker's connection without SQL round trips. */
+  prepareDemoPersona?: (source: ReturnType<typeof import('../demo/persona').persona>) => Promise<boolean>;
 }
 
 /* createWebSqlite stays exported only for archive-cross-probe.ts,
    conversion-probe.ts, which cross-check against it (AU-09 test-only review). */
 export function createWebSqlite(databasePath: string): WebSqlite {
-  const primary = new SQLocal(databasePath);
+  const primary = new SQLocal({ databasePath, onInit: enforceForeignKeys });
   const backupPath = `${databasePath}.pre-migration-backup`;
-  const backup = new SQLocal(backupPath);
+  const backup = new SQLocal({ databasePath: backupPath, onInit: enforceForeignKeys });
   const { sql } = primary;
 
   const driver: SqliteDriver = withReadSnapshots({
@@ -142,7 +147,7 @@ export interface PlaintextEraJournal {
 }
 
 export function openPlaintextEraJournal(databasePath: string): PlaintextEraJournal {
-  const client = new SQLocal(databasePath);
+  const client = new SQLocal({ databasePath, onInit: enforceForeignKeys });
 
   return {
     query: (statement, params = []) => client.sql(statement, ...params) as never,

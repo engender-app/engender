@@ -15,6 +15,7 @@
   import type { TallyKind } from '$lib/data/types';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { liveList, liveQuery, journal } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
@@ -95,13 +96,17 @@
      today, no context - CONTEXT: "Tally event"), plus the existing undo,
      which is the flat area's delete. Nothing here combines, edits or
      backdates a count: a tap is logged and never edited, so the only thing
-     to reverse is the last tap of that kind, which `latestEvent` names.
+     to reverse is today's last tap of that kind, which `latestEvent` names.
+     Never an earlier day's (release audit U6): that undo used to reach back
+     and hard-delete a weeks-old record with only a spoken count to show
+     for it, so now an earlier day is out of reach and the toast names the
+     day that lost a tap.
 
      Reading never writes: both actions run from a button's onclick and
      nothing else - the charts, the range switch and the presentation chip
      all stay reads. */
-  let misLatestQuery = liveQuery((j) => j.tally.latestEvent('misgendered'));
-  let correctLatestQuery = liveQuery((j) => j.tally.latestEvent('correctly_gendered'));
+  let misLatestQuery = liveQuery((j) => j.tally.latestEvent('misgendered', today));
+  let correctLatestQuery = liveQuery((j) => j.tally.latestEvent('correctly_gendered', today));
 
   let announcement = $state('');
   /* The kind with a write in flight. Both of one kind's buttons wait on it,
@@ -144,14 +149,23 @@
   const logTally = (kind: TallyKind) =>
     void run(kind, () => journal.tally.log({ epochDay: todayEpochDay(), kind }));
 
-  /* Undo is whichever event is that kind's newest - never an id captured
+  /* Undo is whichever event is that kind's newest today - never an id captured
      when the component mounted, so it stays correct across actions from
      quick add or Home while this screen is open: the live query re-reads on
      every tally write, whoever made it. */
   const undoTally = (kind: TallyKind) => {
     const latest = kind === 'misgendered' ? misLatestQuery.value : correctLatestQuery.value;
     if (!latest) return;
-    void run(kind, () => journal.tally.deleteEvent(latest.id));
+    void run(kind, async () => {
+      await journal.tally.deleteEvent(latest.id);
+      /* The day is named even though undo is today's only: `today` is read
+         once, when the screen opens, so a screen left open past midnight
+         still undoes the day it opened on - and then "today" would be the
+         wrong word. */
+      toast(m.tally_undone({ kind: kindName(kind), date: fmtDay(latest.epochDay, { day: 'numeric', month: 'long' }) }), {
+        kind: 'tally-undone'
+      });
+    });
   };
 
 
@@ -180,7 +194,7 @@
 
   <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
-    <ChartCard heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
+    <ChartCard level={2} heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
       <AreaChart
         scrubLabel={grainLabel(plottedMis.grain)}
         points={plottedMis.points}
@@ -197,9 +211,9 @@
 
     <!-- This counter's own actions, under this counter's chart: the row sits
          beside the count it changes, so no label has to say which of the two
-         it moves. Undo is enabled exactly while that kind has an event to
-         remove - a zero count has nothing to undo, and a disabled button is
-         how that is shown (.btn:disabled). -->
+         it moves. Undo is enabled exactly while that kind has an event
+         logged today to remove - an earlier day's taps are not undo's to
+         take, and a disabled button is how that is shown (.btn:disabled). -->
     <div class="tally-actions">
       <button
         class="btn btn-soft"
@@ -219,7 +233,7 @@
       </button>
     </div>
 
-    <ChartCard
+    <ChartCard level={2}
       heading={m.tally_correctly_gendered()}
       kind="tally-correctly-gendered"
       role={roleAt(activeFlag.roles, 0)}

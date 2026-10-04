@@ -113,6 +113,21 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
     }
 
+    @Test
+    public void disguisedNotificationsUseTheNotesIcon() throws Exception {
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            ReminderScheduler.saveAndSchedule(context, payload(true));
+            fireReminderAlarm();
+            Notification notification = findNotification();
+            assertNotNull("no reminder notification was posted", notification);
+            assertEquals(dev.engender.app.R.drawable.ic_launcher_disguised_foreground,
+                notification.getSmallIcon().getResId());
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
     private JSONObject checkInPayload() throws Exception {
         return payload(false)
             .put("checkInEnabled", true)

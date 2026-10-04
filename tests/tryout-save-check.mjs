@@ -60,10 +60,14 @@ async function feedbackMotion(action, name) {
       requestAnimationFrame(sample);
     });
     await action();
+    await page.locator('[data-tryout-saved]').waitFor({
+      state: name === 'feedback-arrival' ? 'attached' : 'detached'
+    });
     await page.evaluate(() => { window.feedbackStopAt = performance.now() + 900; });
     await page.waitForFunction(() => window.feedbackDone);
     const heights = await page.evaluate(() => window.feedbackHeights);
-    assert.ok(new Set(heights.map(Math.round)).size > 2, 'feedback travels through intermediate heights');
+    assert.ok(new Set(heights.map(Math.round)).size > 2,
+      `feedback travels through intermediate heights: ${JSON.stringify(heights)}`);
     if (gallery) {
       await mkdir(motionOut, { recursive: true });
       const written = [];
@@ -418,8 +422,24 @@ try {
   await navigate(photoOwnerPath);
   await page.locator('[data-add-photo]').waitFor();
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.waitForFunction(() => document.documentElement.dataset.a11yMotion === 'normal');
   await page.locator('#tr-label').fill('Motion outcome');
-  await feedbackMotion(() => page.locator('[data-save-tryout]').click(), 'feedback-arrival');
+  await page.evaluate(async () => {
+    const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+    const original = bootState.journal.tryouts.upsertTryout.bind(bootState.journal.tryouts);
+    bootState.journal.tryouts.upsertTryout = async (draft) => {
+      await new Promise((resolve) => { window.feedbackWriteResolve = resolve; });
+      return original(draft);
+    };
+    const { attachJournal, journalIsOpen } = await import('/src/lib/data/live/journal.svelte.ts');
+    attachJournal(bootState.journal);
+    journalIsOpen();
+  });
+  await feedbackMotion(async () => {
+    await page.locator('[data-save-tryout]').click();
+    await page.waitForFunction(() => window.feedbackWriteResolve);
+    await page.evaluate(() => setTimeout(() => window.feedbackWriteResolve(), 1200));
+  }, 'feedback-arrival');
   await page.locator('[data-tryout-saved]').waitFor();
   await feedbackMotion(() => page.locator('#tr-label').fill('Changed after motion'), 'feedback-removal');
   await page.locator('[data-tryout-saved]').waitFor({ state: 'detached' });

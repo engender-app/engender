@@ -133,7 +133,7 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
       const row = await byDomainId(id);
       if (!row) return; // already gone
       if (row.key !== null) throw new Error(`built-in tags hide, not delete: ${id}`);
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         await driver.run('DELETE FROM entry_tag WHERE tag_id = ?', [row.id]);
         await driver.run('DELETE FROM tag WHERE id = ?', [row.id]);
       });
@@ -149,7 +149,7 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
       if (orderedIds.length !== rows.length || !orderedIds.every((id) => current.has(id))) {
         throw new Error(`reorder of ${groupKey} does not permute its tags`);
       }
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         for (const [orderIndex, id] of orderedIds.entries()) {
           await driver.run('UPDATE tag SET order_index = ?, updated_at = ? WHERE key = ? OR uuid = ?', [
             orderIndex,

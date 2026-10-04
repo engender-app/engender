@@ -229,7 +229,10 @@
     </ReadingTile>
   {/if}
 {:else}
-  <ChartCard heading={m.stats_day_by_day()} kind="day-by-day" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+  <!-- Its own heading rather than the screen's title a second time
+       (release audit U14): this card is one scale across the days, and the
+       card under it is every scale across the period. -->
+  <ChartCard level={2} heading={m.stats_scale_each_day()} kind="day-by-day" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#snippet control()}
       <ChartPicker
         key="stats-metric"
@@ -302,7 +305,7 @@
     </ul>
   {/if}
 
-  <ChartCard heading={m.stats_scales_now()} kind="scales" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+  <ChartCard level={2} heading={m.stats_scales_now()} kind="scales" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#if seriesQuery.loading}
       <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}

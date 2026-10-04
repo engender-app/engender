@@ -14,10 +14,8 @@
    sits behind `__DEMO__`, which vite.config.ts folds to `false` in a
    production build (ticket 05).
 
-   Not wrapped in a transaction: the journal's own writes open one each, and
-   SQLite has no nested transactions. It is a few thousand statements through
-   a worker, which is the price of the persona being real rows rather than a
-   fixture, and it runs once per fresh demo install. */
+   State jumps use the journal's individual transactions. Cold web boot runs
+   these same writes inside one worker transaction (worker-seed.ts). */
 
 import type { Journal } from '../journal/journal';
 import type { NormalizedPhoto } from '../journal/photos';
@@ -50,8 +48,16 @@ export async function clearJournal(journal: Journal): Promise<void> {
 }
 
 export async function seedPersonaJournal(journal: Journal, today: number = todayEpochDay()): Promise<void> {
+  await writePersonaJournal(journal, persona(today));
+}
+
+export async function writePersonaJournal(
+  journal: Journal,
+  source: ReturnType<typeof persona>,
+  makePhoto: typeof demoPhoto = demoPhoto
+): Promise<void> {
   const { customTag, presentations, entries, milestones, eras, reminders, appointments, documents, labResults, tallyEvents } =
-    persona(today);
+    source;
 
   /* What the journal held before this ran, so the check at the end reads a
      delta rather than assuming an empty journal - the callers all clear
@@ -78,13 +84,13 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
     });
     written++;
     for (let i = 0; i < photoCount; i++) {
-      await journal.photos.attach({ entryId }, await demoPhoto(entry.epochDay + i));
+      await journal.photos.attach({ entryId }, await makePhoto(entry.epochDay + i));
     }
   }
 
   for (const { hasPhoto, ...milestone } of milestones) {
     const milestoneId = await journal.milestones.upsertMilestone(milestone);
-    if (hasPhoto) await journal.photos.attach({ milestoneId }, await demoPhoto(milestone.epochDay));
+    if (hasPhoto) await journal.photos.attach({ milestoneId }, await makePhoto(milestone.epochDay));
   }
 
   for (const era of eras) await journal.eras.upsertEra(era);
@@ -106,7 +112,7 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
     }
   }
 
-  for (const document of documents) await journal.documents.addDocument(document, await demoPhoto(document.epochDay));
+  for (const document of documents) await journal.documents.addDocument(document, await makePhoto(document.epochDay));
 
   for (const result of labResults) await journal.labs.upsertResult(result);
   for (const event of tallyEvents) await journal.tally.log(event);
@@ -141,17 +147,21 @@ export async function demoPhoto(seed: number): Promise<NormalizedPhoto> {
 }
 
 async function gradientJpeg(hue: number, size: number): Promise<Uint8Array> {
-  const canvas = document.createElement('canvas');
+  const canvas = typeof document === 'undefined'
+    ? new OffscreenCanvas(size, size)
+    : document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-  const context = canvas.getContext('2d')!;
+  const context = canvas.getContext('2d')! as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   const gradient = context.createLinearGradient(0, 0, size, size);
   gradient.addColorStop(0, `hsl(${hue} 45% 72%)`);
   gradient.addColorStop(1, `hsl(${(hue + 40) % 360} 40% 55%)`);
   context.fillStyle = gradient;
   context.fillRect(0, 0, size, size);
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+  const blob = 'convertToBlob' in canvas
+    ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 })
+    : await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
   if (!blob) throw new Error('the demo could not encode a photo');
   return new Uint8Array(await blob.arrayBuffer());
 }

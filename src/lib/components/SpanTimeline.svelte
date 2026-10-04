@@ -307,6 +307,13 @@
      starts, not when the write lands. */
   let hintGone = $state(false);
   let showHint = $derived(!hintSeen && !hintGone);
+  /* Latched like a reserve: once the hint's line is drawn it keeps its
+     place for the visit, so the preference write that answers it (which
+     flips `hintSeen`) fades the words without taking the line away. */
+  let hintDrawn = $state(false);
+  $effect.pre(() => {
+    if (!hintSeen) hintDrawn = true;
+  });
   /* Crossfade date and day count together. The leaving text leaves flow so
      two long ranges cannot wrap the line. Skip the first mount's fade. */
   let dateFirstRun = true;
@@ -372,20 +379,6 @@
      drawing; date values and selection ranges remain exact. */
   const segment = (from: number, to: number) =>
     visibleSegment(x(from), x(to), railWidth);
-  /* Between the two handles, and held inside the rail by its own half-width
-     so a span sitting at either end does not push the line off the screen -
-     which is what the default span, the last thirty days against today's
-     edge, does every first time. */
-  let hintWidth = $state(0);
-  let hintX = $derived(
-    Math.min(railWidth - hintWidth / 2, Math.max(hintWidth / 2, (startX + endX) / 2))
-  );
-  /* Keep the hint at its last painted position when a milestone tap moves
-     both handles. It fades there instead of jumping to the new midpoint. */
-  let hintXAtDismiss = $state(0);
-  $effect(() => {
-    if (showHint) hintXAtDismiss = hintX;
-  });
   /* The clip that lifts the span out of the history: the far edge of the
      end handle's day, so a one-day span is still a visible stretch. */
   let clipRight = $derived(Math.max(0, railWidth - Math.min(railWidth, endX + Math.max(2, pxPerDayAt(live.end)))));
@@ -533,7 +526,6 @@
   style:--tl-start="{handleXs.start}px"
   style:--tl-end="{handleXs.end}px"
   style:--tl-span-start="{startX}px"
-  style:--tl-hint-x="{hintXAtDismiss}px"
   style:--tl-clip-right="{clipRight}px"
   style:--tl-has-regimen={hasRow('regimen')}
   style:--tl-has-tryout={hasRow('tryout')}
@@ -616,9 +608,20 @@
       {/each}
     </div>
 
-    <!-- The eras as controls: one transparent button per era, the rail's
+    <!-- The eras as targets: one transparent button per era, the rail's
          full height across the era's stretch, inside the span or out of it.
-         Pointing anywhere in an era's column selects the era whole. -->
+         Pointing anywhere in an era's column selects the era whole.
+
+         This one and every other target drawn on the rail below - the
+         history bands and the day marks - is for a finger or a pointer
+         only: out of the tab order and hidden from assistive tech (phase 14
+         ticket 29, accessibility audit A04). They cannot all be 48px, and
+         most cannot be 24: a band is 8px or 6px high and two milestones a
+         fortnight apart are three pixels apart. The list under the rail
+         (SpanFacts) holds every one of these facts as a row at the target
+         floor, with its dates written out, and sets the same span; that is
+         the way in for Tab and TalkBack. The rail's own controls for them
+         are the two handles, which are 48px. -->
     <div class="span-tl-targets">
       {#each bands as band (band.id)}
         {@const shape = segment(band.start, band.end)}
@@ -629,6 +632,8 @@
           style:width="{shape.width}%"
           data-span-era={band.id}
           data-no-press
+          tabindex="-1"
+          aria-hidden="true"
           aria-label={m.lookback_era_aria({ name: band.name })}
           onclick={() => pickStretch(band)}
         ></button>
@@ -649,6 +654,8 @@
         style:width="{shape.width}%"
         data-span-band={band.kind}
         data-no-press
+        tabindex="-1"
+        aria-hidden="true"
         aria-label={m.lookback_band_aria({
           name: bandName(band),
           from: valueText(band.start),
@@ -667,6 +674,8 @@
         style:--mark-reach={reachOf(`milestone:${mark.id}`)}
         data-span-milestone={mark.id}
         data-no-press
+        tabindex="-1"
+        aria-hidden="true"
         aria-label={m.lookback_mark_aria({ name: mark.name })}
         onclick={() => pickMark(mark.epochDay)}
       ></button>
@@ -683,6 +692,8 @@
         style:--mark-reach={reachOf(`surgery:${mark.id}`)}
         data-span-surgery={mark.id}
         data-no-press
+        tabindex="-1"
+        aria-hidden="true"
         aria-label={m.lookback_mark_aria({ name: mark.name ?? m.lookback_legend_surgery() })}
         onclick={() => pickMark(mark.epochDay)}
       ></button>
@@ -717,18 +728,6 @@
         <span class="span-tl-grip" aria-hidden="true"></span>
       </button>
     {/each}
-
-    <!-- The one-time hint, between the handles it is about, gone on the
-         first move of either. Not a control and not announced: the handles
-         already carry their own names, and a slider that read out "drag the
-         ends" every time it took focus would be worse than silent. -->
-    <span
-      class="span-tl-hint"
-      class:is-hidden={!showHint}
-      bind:clientWidth={hintWidth}
-      data-span-hint
-      aria-hidden="true">{m.lookback_drag_hint()}</span
-    >
   </div>
 
   <!-- What the rail is showing, against the handles rather than two
@@ -737,6 +736,20 @@
   <p class="span-tl-state" data-span-state-line>
     {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
+
+  <!-- The one-time hint, gone on the first move of either handle. Under
+       the rail's own reading rather than on the rail (release audit U14:
+       at rest it sat over the lanes it is about). In flow, and it fades
+       where it stands rather than leaving: its line stays for the rest of
+       this visit, so nothing under it moves, and the next visit never
+       draws it. Not a control and not announced: the handles already
+       carry their own names, and a slider that read out "drag the ends"
+       every time it took focus would be worse than silent. -->
+  {#if hintDrawn}
+    <p class="span-tl-hint" class:is-hidden={!showHint} data-span-hint aria-hidden="true">
+      {m.lookback_drag_hint()}
+    </p>
+  {/if}
 
   {#if legend.length}
     <ul class="span-tl-legend" data-span-legend aria-label={m.lookback_legend_group()}>
@@ -948,10 +961,6 @@
     cursor: pointer;
     z-index: 1;
   }
-  .span-tl-era-target:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: -2px;
-  }
 
   /* A history band: a lane's worth of stripe, drawn and tapped by the same
      element. The 1px edge every block on this rail wears is what keeps two
@@ -964,9 +973,9 @@
      those 3px to come from: the regimen row and the tryout row meet, so
      the two extensions overlapped by 6px wherever a tryout ran during an
      episode, and two episodes that meet on consecutive days overlapped
-     along their shared edge. A band still carries a name and a tab stop,
-     which is the path that does not depend on aim, and the list under the
-     rail carries the same fact as a row at the target floor. */
+     along their shared edge. The path that does not depend on aim is the
+     list under the rail, which carries the same fact as a row at the
+     target floor; the band itself takes no tab stop (ticket 29). */
   .span-tl-hband {
     position: absolute;
     box-sizing: border-box;
@@ -1005,11 +1014,6 @@
   }
   .span-tl-hband.is-open-start { border-left: 0; }
   .span-tl-hband.is-open-end { border-right: 0; }
-  .span-tl-hband:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 1px;
-    z-index: 2;
-  }
 
   /* A milestone: a 12px block of ink on the axis, edged in the page so it
      reads on any band. Ink rather than a stripe, because it sits on the
@@ -1061,18 +1065,24 @@
     z-index: 2;
   }
 
-  /* The handles: the grip of ink is the element, centred on its day and
-     placed by transform alone so a move is a transform and nothing else;
-     the 48px target is a pseudo-element reaching away from the span - left
-     of the start's grip, right of the end's - so at a short span the two
-     targets meet at the grips rather than lying on top of each other, and
-     a finger on either grip gets the handle it can see. */
+  /* The handles: the grip of ink is drawn in the middle of its day, and
+     the button around it is the 48px target, reaching away from the span -
+     left of the start's grip, right of the end's - so at a short span the
+     two targets meet at the grips rather than lying on top of each other,
+     and a finger on either grip gets the handle it can see. Placed by
+     transform alone, so a move is a transform and nothing else.
+
+     The target is the button's own box rather than a pseudo element
+     around a 14px button (phase 14 ticket 29, accessibility audit A04):
+     a hit area drawn by `::before` answers a finger, but the box an
+     accessibility service measures and announces is the element's, and
+     that was 14px wide. Same geometry as before: the handle's width plus
+     the 6px the grip's far side carried, from the same left edge. */
   .span-tl-handle {
     position: absolute;
     top: -6px;
     bottom: -6px;
-    left: calc(var(--grip) / -2);
-    width: var(--grip);
+    width: calc(var(--handle) + 6px);
     padding: 0;
     margin: 0;
     border: 0;
@@ -1082,20 +1092,20 @@
     touch-action: none;
     transition: transform var(--dur-med) var(--ease-out);
   }
-  .span-tl-handle::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
+  .span-tl-handle.is-start {
+    left: calc(var(--grip) / 2 - var(--handle));
+    transform: translateX(var(--tl-start));
   }
-  .span-tl-handle.is-start { transform: translateX(var(--tl-start)); }
-  .span-tl-handle.is-start::before { left: calc(var(--grip) - var(--handle)); right: -6px; }
-  .span-tl-handle.is-end { transform: translateX(var(--tl-end)); }
-  .span-tl-handle.is-end::before { left: -6px; right: calc(var(--grip) - var(--handle)); }
+  .span-tl-handle.is-end {
+    left: calc(var(--grip) / -2 - 6px);
+    transform: translateX(var(--tl-end));
+  }
 
   .span-tl-grip {
     position: absolute;
-    inset: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--grip);
     background: var(--text);
     border-radius: var(--r-block);
     clip-path: inset(calc(100% - var(--rest-grip)) 0 0 0 round var(--r-block));
@@ -1103,6 +1113,8 @@
       clip-path var(--dur-med) var(--ease-out),
       transform var(--dur-fast) var(--ease-out);
   }
+  .is-start .span-tl-grip { left: calc(var(--handle) - var(--grip)); }
+  .is-end .span-tl-grip { left: 6px; }
   .is-active .span-tl-grip {
     clip-path: inset(0 round var(--r-block));
   }
@@ -1135,29 +1147,12 @@
     outline-offset: 2px;
   }
 
-  /* The one-time hint, sitting between the two grips it is about, on the
-     page's second surface inside the outline every kit element separates
-     with (the kit refuses shadows). At the top of the rail rather than
-     across it: that band is the part of the lifted layer the rest state
-     leaves empty, so the hint covers nothing a resting rail is drawing, and
-     it is gone by the time a drag raises the layer into it. */
+  /* The one-time hint, a line of small type under the reading. */
   .span-tl-hint {
-    position: absolute;
-    top: -1px;
-    left: var(--tl-hint-x);
-    transform: translateX(-50%);
-    max-width: 100%;
-    padding: 2px 8px;
-    background: var(--surface-2);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
+    margin: var(--space-1) 0 0;
     color: var(--text-2);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
-    line-height: 1.2;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 4;
     transition: opacity var(--dur-med) var(--ease-out);
   }
   .span-tl-hint.is-hidden {

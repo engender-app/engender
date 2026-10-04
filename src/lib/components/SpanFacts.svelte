@@ -71,13 +71,13 @@
 <div class="span-facts" data-span-facts>
   <button
     type="button"
-    class="span-facts-toggle"
+    class="disclosure-toggle"
     aria-expanded={open}
     data-span-facts-toggle
     onclick={() => (open = !open)}
   >
     <span>{m.lookback_pick_disclosure()}</span>
-    <span class="span-facts-chev"><Icon name="chevronDown" size={18} /></span>
+    <span class="disclosure-chev"><Icon name="chevronDown" size={18} /></span>
   </button>
 
   {#if open}
@@ -126,34 +126,6 @@
 </div>
 
 <style>
-  /* The same fold the dose log's own attribution note wears: a full-width
-     row of the secondary ink with its chevron at the far edge, so the two
-     disclosures in the app read as one control. */
-  .span-facts-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    width: 100%;
-    min-height: var(--touch-target);
-    padding: var(--space-2) 0;
-    border: 0;
-    background: none;
-    color: var(--text-2);
-    font: inherit;
-    font-size: var(--text-sm);
-    text-align: left;
-    cursor: pointer;
-  }
-  .span-facts-chev {
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    transition: transform var(--dur-med) var(--ease-out);
-  }
-  .span-facts-toggle[aria-expanded='true'] .span-facts-chev {
-    transform: rotate(180deg);
-  }
   /* The mark on the row the span came from, in the area's own ink. */
   .span-facts :global(.span-fact-mark) {
     color: var(--role-ink);

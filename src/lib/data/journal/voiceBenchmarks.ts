@@ -203,6 +203,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
         row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path]
       );
       await removeRecordingFilesAfterCommit(
+        driver,
         files,
         filePaths.map((file_path) => ({ file_path }))
       );

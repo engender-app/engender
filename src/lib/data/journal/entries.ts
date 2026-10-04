@@ -317,7 +317,7 @@ type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
 export function makeEntriesArea(
   driver: SqliteDriver,
   files: PhotoFileStore,
-  checklists?: Pick<ChecklistsArea, 'recordDebriefEntry'>
+  checklistsFor?: (driver: SqliteDriver) => Pick<ChecklistsArea, 'recordDebriefEntry'>
 ): EntriesArea {
   const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
     const entries = Object.entries(dims);
@@ -358,6 +358,7 @@ export function makeEntriesArea(
   };
 
   const upsertDimensionValues = async (
+    driver: SqliteDriver,
     entryId: number,
     dimensionValues: readonly (readonly [number, number])[]
   ): Promise<void> => {
@@ -372,7 +373,7 @@ export function makeEntriesArea(
     );
   };
 
-  const insertEntryTags = async (entryId: number, tagIds: readonly number[]): Promise<void> => {
+  const insertEntryTags = async (driver: SqliteDriver, entryId: number, tagIds: readonly number[]): Promise<void> => {
     if (tagIds.length === 0) return;
     const values = tagIds.map(() => '(?, ?)').join(', ');
     const params = tagIds.flatMap((tagId) => [entryId, tagId]);
@@ -420,7 +421,7 @@ export function makeEntriesArea(
   // anyway. The editor keeps such a region on screen while it is being
   // filled in; dropping it here is what stops a picked-then-ignored region
   // from being saved as a blank row.
-  const insertBodyRegions = async (entryId: number, bodyRegions: Record<string, number>): Promise<void> => {
+  const insertBodyRegions = async (driver: SqliteDriver, entryId: number, bodyRegions: Record<string, number>): Promise<void> => {
     const entries = Object.entries(bodyRegions).filter(([, value]) => value !== BODY_REGION_MIDPOINT);
     if (entries.length === 0) return;
     const values = entries.map(() => '(?, ?, ?)').join(', ');
@@ -541,39 +542,42 @@ export function makeEntriesArea(
       const ids = rows.slice(from, from + ID_CHUNK).map((row) => row.id);
       const placeholders = ids.map(() => '?').join(', ');
 
-      const dimRows = await driver.query<{ entry_id: number; key: string; value: number }>(
-        `SELECT edv.entry_id, gd.key, edv.value FROM entry_dimension_value edv
-         JOIN gender_dimension gd ON gd.id = edv.dimension_id
-         WHERE edv.entry_id IN (${placeholders})`,
-        ids
-      );
+      const [dimRows, tagRows, photoRows, recordingRows, videoRows, bodyRegionRows] = await Promise.all([
+        driver.query<{ entry_id: number; key: string; value: number }>(
+          `SELECT edv.entry_id, gd.key, edv.value FROM entry_dimension_value edv
+           JOIN gender_dimension gd ON gd.id = edv.dimension_id
+           WHERE edv.entry_id IN (${placeholders})`,
+          ids
+        ),
+        // ORDER BY t.id, as tagsOf has it: the order a tag list arrives in is
+        // what the entry editor renders.
+        driver.query<{ entry_id: number; key: string | null; uuid: string | null }>(
+          `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+           WHERE et.entry_id IN (${placeholders}) ORDER BY t.id`,
+          ids
+        ),
+        photosByEntry(driver, ids),
+        recordingsByEntry(driver, ids),
+        videosByEntry(driver, ids),
+        driver.query<{ entry_id: number; region: string; value: number }>(
+          `SELECT entry_id, region, value FROM entry_body_region WHERE entry_id IN (${placeholders})`,
+          ids
+        )
+      ]);
       for (const row of dimRows) {
         const forEntry = dims.get(row.entry_id) ?? {};
         forEntry[row.key] = row.value;
         dims.set(row.entry_id, forEntry);
       }
-
-      // ORDER BY t.id, as tagsOf has it: the order a tag list arrives in is
-      // what the entry editor renders.
-      const tagRows = await driver.query<{ entry_id: number; key: string | null; uuid: string | null }>(
-        `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-         WHERE et.entry_id IN (${placeholders}) ORDER BY t.id`,
-        ids
-      );
       for (const row of tagRows) {
         const forEntry = tags.get(row.entry_id) ?? [];
         forEntry.push(domainIdOf(row, 'tag'));
         tags.set(row.entry_id, forEntry);
       }
+      for (const [entryId, forEntry] of photoRows) photos.set(entryId, forEntry);
+      for (const [entryId, forEntry] of recordingRows) recordings.set(entryId, forEntry);
+      for (const [entryId, forEntry] of videoRows) videos.set(entryId, forEntry);
 
-      for (const [entryId, forEntry] of await photosByEntry(driver, ids)) photos.set(entryId, forEntry);
-      for (const [entryId, forEntry] of await recordingsByEntry(driver, ids)) recordings.set(entryId, forEntry);
-      for (const [entryId, forEntry] of await videosByEntry(driver, ids)) videos.set(entryId, forEntry);
-
-      const bodyRegionRows = await driver.query<{ entry_id: number; region: string; value: number }>(
-        `SELECT entry_id, region, value FROM entry_body_region WHERE entry_id IN (${placeholders})`,
-        ids
-      );
       for (const row of bodyRegionRows) {
         const forEntry = bodyRegions.get(row.entry_id) ?? {};
         forEntry[row.region] = row.value;
@@ -708,7 +712,7 @@ export function makeEntriesArea(
     return { filters: filtersOrLimit ?? {}, limit };
   };
 
-  const indexEntry = async (entryId: number, note: string) => {
+  const indexEntry = async (driver: SqliteDriver, entryId: number, note: string) => {
     await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [entryId]);
     await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
   };
@@ -746,6 +750,7 @@ export function makeEntriesArea(
   };
 
   const commitContextual = async (
+    driver: SqliteDriver,
     input: EntryInput,
     resolved: { tryoutRowId: number | null; procedureRowId: number | null; stagedProcedurePhoto: StagedPhoto | null },
     epochDay: number
@@ -1119,7 +1124,7 @@ export function makeEntriesArea(
         for (const bytes of attachingVideos) stagedVideos.push(await stageVideo(files, bytes));
 
         const targetEpochDay = input.epochDay ?? current.epoch_day;
-        await driver.transaction(async () => {
+        await driver.transaction(async (driver) => {
           await driver.run(
             'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, presentation_id = ?, updated_at = ? WHERE id = ?',
             [
@@ -1132,15 +1137,15 @@ export function makeEntriesArea(
               current.id
             ]
           );
-          await indexEntry(current.id, note);
-          await upsertDimensionValues(current.id, dimIds);
+          await indexEntry(driver, current.id, note);
+          await upsertDimensionValues(driver, current.id, dimIds);
           if (tagIds) {
             await driver.run('DELETE FROM entry_tag WHERE entry_id = ?', [current.id]);
-            await insertEntryTags(current.id, tagIds);
+            await insertEntryTags(driver, current.id, tagIds);
           }
           if (input.bodyRegions) {
             await driver.run('DELETE FROM entry_body_region WHERE entry_id = ?', [current.id]);
-            await insertBodyRegions(current.id, input.bodyRegions);
+            await insertBodyRegions(driver, current.id, input.bodyRegions);
           }
           for (const photo of removedPhotos) {
             await driver.run('DELETE FROM photo WHERE uuid = ? AND entry_id = ?', [photo.uuid, current.id]);
@@ -1168,11 +1173,11 @@ export function makeEntriesArea(
           for (const video of stagedVideos) {
             await insertStagedVideo(driver, current.id, video);
           }
-          await commitContextual(input, contextual, targetEpochDay);
+          await commitContextual(driver, input, contextual, targetEpochDay);
         });
-        await removeFilesAfterCommit(files, removedPhotos);
-        await removeRecordingFilesAfterCommit(files, removedRecordings);
-        await removeVideoFilesAfterCommit(files, removedVideos);
+        await removeFilesAfterCommit(driver, files, removedPhotos);
+        await removeRecordingFilesAfterCommit(driver, files, removedRecordings);
+        await removeVideoFilesAfterCommit(driver, files, removedVideos);
         return current.id;
       }
 
@@ -1212,16 +1217,16 @@ export function makeEntriesArea(
       for (const bytes of attachingVideosNew) stagedVideos.push(await stageVideo(files, bytes));
 
       const uuid = mintUuid();
-      return driver.transaction(async () => {
+      return driver.transaction(async (driver) => {
         await driver.run(
           'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_id, starred, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
           [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', presentationId, input.starred ? 1 : 0, now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
-        await indexEntry(entryId, input.note ?? '');
-        await upsertDimensionValues(entryId, dimIds);
-        await insertEntryTags(entryId, tagIds);
-        await insertBodyRegions(entryId, bodyRegions);
+        await indexEntry(driver, entryId, input.note ?? '');
+        await upsertDimensionValues(driver, entryId, dimIds);
+        await insertEntryTags(driver, entryId, tagIds);
+        await insertBodyRegions(driver, entryId, bodyRegions);
         for (const [i, photo] of stagedPhotos.entries()) {
           await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo, attachingNew[i].epochDayOverride ?? null);
         }
@@ -1231,9 +1236,9 @@ export function makeEntriesArea(
         for (const video of stagedVideos) {
           await insertStagedVideo(driver, entryId, video);
         }
-        await commitContextual(input, contextual, input.epochDay!);
-        if (input.debriefForAppointment != null && checklists) {
-          await checklists.recordDebriefEntry(entryId, input.debriefForAppointment);
+        await commitContextual(driver, input, contextual, input.epochDay!);
+        if (input.debriefForAppointment != null && checklistsFor) {
+          await checklistsFor(driver).recordDebriefEntry(entryId, input.debriefForAppointment);
         }
         return entryId;
       });
@@ -1256,7 +1261,7 @@ export function makeEntriesArea(
       ))[0];
       if (!current) return;
       await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
-      await indexEntry(id, current.note ?? '');
+      await indexEntry(driver, id, current.note ?? '');
     },
 
     async setEntryStarred(id, starred) {
@@ -1359,10 +1364,12 @@ async function purgeTrashedBefore(
 
   // The last moment before this is irreversible.
   if (sawWrite()) return 0;
-  await driver.transaction(async () => {
+  await driver.transaction(async (driver) => {
     await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM video_note WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM margin_note WHERE entry_id IN (${placeholders})`, ids);
+    await driver.run(`DELETE FROM revisit WHERE entry_id IN (SELECT uuid FROM entry WHERE id IN (${placeholders}))`, ids);
     await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);
@@ -1371,8 +1378,8 @@ async function purgeTrashedBefore(
   // After the commit, the same reasoning deleteEntry's old hard delete gave:
   // a failed file removal must not resurrect rows, and an orphaned file is
   // what the boot orphan sweep (sweepOrphanPhotos) reclaims next.
-  await removeFilesOf(files, photos);
-  await removeRecordingFilesOf(files, recordings);
-  await removeVideoFilesOf(files, videos);
+  await removeFilesOf(driver, files, photos);
+  await removeRecordingFilesOf(driver, files, recordings);
+  await removeVideoFilesOf(driver, files, videos);
   return ids.length;
 }
