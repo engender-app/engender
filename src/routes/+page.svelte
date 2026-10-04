@@ -48,7 +48,7 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery, liveQueryWhen } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
@@ -290,8 +290,7 @@
      its first read is not repeated when the grid finishes composing.
      The answer carries that input so the reserve also waits for later
      coverage changes. An unanswered grid leaves no settled agenda. */
-  let agendaQuery = liveQuery(async (j) => {
-    if (!liveTiles.ready) return undefined;
+  let agendaQuery = liveQueryWhen(() => liveTiles.ready, async (j) => {
     const covered = dosePanelCoversEveryDose;
     const agenda = await readAgenda(
       { dayAhead: j.dayAhead, doses: j.doses },
