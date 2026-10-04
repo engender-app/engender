@@ -98,6 +98,7 @@ const SAMPLER = `(() => {
   const tick = () => {
     const at = performance.now() - t0;
     const row = { at, vt, boxes: {}, ops: {} };
+    const opacity = new Map();
     for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *, .read-reserve-body > *, .read-reserve-body > .screen-part > [data-protocol]')) {
       if (el.hasAttribute('data-gate-skeleton') || el.hasAttribute('data-read-reserve-hold')) continue;
       const box = el.getBoundingClientRect();
@@ -107,7 +108,10 @@ const SAMPLER = `(() => {
       if (box.height === 0) continue;
       row.boxes[name(el)] = Math.round(box.top * 10) / 10;
       let o = 1;
-      for (let n = el; n && n.nodeType === 1; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+      for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+        if (!opacity.has(n)) opacity.set(n, Number(getComputedStyle(n).opacity));
+        o *= opacity.get(n);
+      }
       row.ops[name(el)] = Math.round(o * 100) / 100;
     }
     out.push(row);
