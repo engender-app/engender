@@ -77,7 +77,7 @@
   import { m } from '$lib/paraglide/messages';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtMonthYear } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { eraCoversDay } from '$lib/data/eras';
   import type { Era } from '$lib/data/types';
@@ -255,6 +255,8 @@
 
   type MonthView = {
     key: string;
+    /** The month in words, which names the list of its days. */
+    label: string;
     metric: string;
     isMood: boolean;
     startDow: number;
@@ -328,7 +330,7 @@
         isPastOrToday: epochDay <= today
       });
     }
-    return { key: `${year}-${month}`, metric, isMood, startDow, loading, days };
+    return { key: `${year}-${month}`, label: fmtMonthYear(year, month), metric, isMood, startDow, loading, days };
   }
 
   /* The picture on screen: rebuilt whenever every read has answered the
@@ -520,15 +522,23 @@
      another arriving over the same slots (waveIn/waveOut). A keyed #each
      rather than #key because an each item keeps its last value once it is
      gone: the leaving block goes on drawing its own month for as long as it
-     is fading, where a #key block would redraw itself as the new one. -->
+     is fading, where a #key block would redraw itself as the new one.
+
+     The month is a list of its days, named by the month, and not a grid
+     (phase 14 ticket 28, audit finding A03). It used to say role="grid"
+     over plain links, with no rows or cells under it, which promises arrow
+     keys and a single tab stop it never had. Every day here is a link to a
+     page or has nowhere to go, nothing is selected, and each link's name is
+     the whole date - so a list of links is the true description, and Tab
+     walks the days in order. -->
 <div class="cal-months" bind:this={months}>
   {#each [view] as v (v.key)}
-    <div
+    <ol
       class="cal-grid"
       class:is-compact={compact}
       class:is-round={v.isMood}
       class:is-opening={opening}
-      role="grid"
+      aria-label={v.label}
       data-cal-grid
       data-cal-month-state={compact ? 'strip' : 'grid'}
       aria-busy={v.loading}
@@ -539,40 +549,46 @@
       out:waveOut
     >
       {#each v.days as c (c.epochDay)}
-        {#if c.count}
-          <a class="cal-day has-entries press" class:is-today={c.isToday} class:is-split={c.shape?.kind === 'split'}
-            tabindex={compact ? -1 : undefined} data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
-            data-hm-cell-filled href="/day/{c.epochDay}" aria-label={c.label}>
-            {@render cell(c, v.isMood)}
-          </a>
-        {:else if c.hasMark}
-          <!-- A future day with something coming up (ADR-0067): a link, the
-               same as a logged day, to the same route - `/day/[day]` reads
-               `dayAhead` for what to show there (ticket 62); this cell only
-               says that there is something. -->
-          <a class="cal-day has-mark press" tabindex={compact ? -1 : undefined}
-            data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
-            data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
-            {@render cell(c, v.isMood)}
-          </a>
-        {:else if c.isPastOrToday}
-          <!-- A past or today cell with nothing on it opens a new entry for
-               that day (ticket 99 item 13) - the same route the "+" affordances
-               elsewhere in the app seed a day for, rather than leaving an empty
-               cell with nothing to tap. -->
-          <a class="cal-day press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
-            data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
-            data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
-            {@render cell(c, v.isMood)}
-          </a>
-        {:else}
-          <span class="cal-day is-ahead" class:is-today={c.isToday}
-            data-cal-wave={c.diagonal} data-cal-day={c.day - 1} aria-label={c.label}>
-            {@render cell(c, v.isMood)}
-          </span>
-        {/if}
+        <li>
+          {#if c.count}
+            <a class="cal-day has-entries press" class:is-today={c.isToday} class:is-split={c.shape?.kind === 'split'}
+              tabindex={compact ? -1 : undefined} data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
+              data-hm-cell-filled href="/day/{c.epochDay}" aria-label={c.label}>
+              {@render cell(c, v.isMood)}
+            </a>
+          {:else if c.hasMark}
+            <!-- A future day with something coming up (ADR-0067): a link, the
+                 same as a logged day, to the same route - `/day/[day]` reads
+                 `dayAhead` for what to show there (ticket 62); this cell only
+                 says that there is something. -->
+            <a class="cal-day has-mark press" tabindex={compact ? -1 : undefined}
+              data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
+              data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+              {@render cell(c, v.isMood)}
+            </a>
+          {:else if c.isPastOrToday}
+            <!-- A past or today cell with nothing on it opens a new entry for
+                 that day (ticket 99 item 13) - the same route the "+" affordances
+                 elsewhere in the app seed a day for, rather than leaving an empty
+                 cell with nothing to tap. -->
+            <a class="cal-day press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
+              data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
+              data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
+              {@render cell(c, v.isMood)}
+            </a>
+          {:else}
+            <!-- Nowhere to go yet, so no link: the item says its date in
+                 words, which an aria-label on a plain span would not (a
+                 generic element's name is not read out). -->
+            <span class="cal-day is-ahead" class:is-today={c.isToday}
+              data-cal-wave={c.diagonal} data-cal-day={c.day - 1}>
+              {@render cell(c, v.isMood)}
+              <span class="visually-hidden">{c.label}</span>
+            </span>
+          {/if}
+        </li>
       {/each}
-    </div>
+    </ol>
   {/each}
 </div>
 
@@ -630,7 +646,7 @@
      (`data-cal-cell`, `data-cal-date`). -->
 {#snippet cell(c: Cell, isMood: boolean)}
   {@const split = c.shape?.kind === 'split' ? c.shape : null}
-  <span class="cal-cell" data-cal-cell={c.epochDay}>
+  <span class="cal-cell" data-cal-cell={c.epochDay} aria-hidden="true">
     <!-- Every layer is the whole cell, and a half is that whole cell cut: a
          clip rather than a box half as wide, so a half keeps the cell's own
          corner whatever the radius is doing, and the 2px gutter between the
@@ -666,7 +682,7 @@
     <span class="cal-highlight" class:is-on={!!c.highlightMark} data-cal-sits-out data-hm-cell-highlight={c.highlightMark ? '' : undefined}
       style={c.highlightMark ? `background:${c.highlightMark}` : undefined}></span>
   </span>
-  <span class="cal-date" data-cal-date={c.epochDay}>
+  <span class="cal-date" data-cal-date={c.epochDay} aria-hidden="true">
     <span class="cal-num">{c.day}</span>
     <!-- Dots rather than a numeral, which would read as a second date. Two
          are always drawn so a day gaining its second entry fades them in
@@ -705,7 +721,28 @@
      slots (waveOut). */
   .cal-months { position: relative; }
 
+  /* Room for seven 48px targets (phase 14 ticket 28, audit finding A10).
+     A day's link takes its column and half the gap either side, so the
+     links are as wide as the column pitch, (width + gap) / 7, and that is
+     48px once the row is 7 x 48 - 8 = 328px. A 390px phone gives the month
+     350 and needs nothing. A 360px one gives 320, so there the month - the
+     day letters with it, or they would stop lining up - reaches 4px into
+     each side of the screen's 20px gutter, which leaves 16. That is as far
+     as it goes: on a 320px screen the pitch is about 42px, and no cell
+     drawing changes that. */
+  .cal-dows,
+  .cal-months {
+    margin-inline: clamp(
+      calc(var(--space-4) - var(--space-5)),
+      calc((100% - (7 * var(--touch-target) - 8px)) / 2),
+      0px
+    );
+  }
+
   .cal-grid {
+    margin: 0;
+    padding: 0;
+    list-style: none;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     /* The row gap is the space between one day and the next; the gap inside
@@ -747,6 +784,13 @@
        around. */
     padding-bottom: 6px;
   }
+  /* A day's list item is only its slot; the link or the span in it fills
+     it. min-width 0 so the strip's 31 columns can be as narrow as they
+     need to be. */
+  .cal-grid > li {
+    display: grid;
+    min-width: 0;
+  }
   .cal-grid.is-compact > :first-child { grid-column-start: auto; }
   .cal-grid.is-compact .cal-day {
     gap: 0;
@@ -775,6 +819,15 @@
     gap: 2px;
     text-decoration: none;
     color: inherit;
+  }
+  /* The target is the whole column pitch: the link reaches half the 8px
+     column gap out on each side and pads it back in, so the day it draws
+     stays exactly where and as big as it was (see .cal-months above for the
+     width that makes the pitch 48px). Neighbours meet in the middle of the
+     gap and never overlap. Only open: the strip takes no pointer. */
+  .cal-grid:not(.is-compact) .cal-day {
+    margin-inline: -4px;
+    padding-inline: 4px;
   }
 
   .cal-cell {
