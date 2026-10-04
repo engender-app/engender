@@ -159,6 +159,9 @@ and restore an Archive to move between origins.
 
 ## Run from source
 
+Before submitting a change, read [Contributing](CONTRIBUTING.md) for the
+integration path and required checks.
+
 Use Node.js 24, the version used in CI, and install from the lockfile:
 
 ```sh
