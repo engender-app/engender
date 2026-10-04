@@ -158,6 +158,10 @@
     if (!latest) return;
     void run(kind, async () => {
       await journal.tally.deleteEvent(latest.id);
+      /* The day is named even though undo is today's only: `today` is read
+         once, when the screen opens, so a screen left open past midnight
+         still undoes the day it opened on - and then "today" would be the
+         wrong word. */
       toast(m.tally_undone({ kind: kindName(kind), date: fmtDay(latest.epochDay, { day: 'numeric', month: 'long' }) }), {
         kind: 'tally-undone'
       });
@@ -283,15 +287,5 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
-  }
-
-  /* A button going disabled - undo once today has nothing left, both while
-     a write is in flight - fades to .btn:disabled's 0.45 rather than
-     dropping to it in one frame. .btn's own transitions, restated with
-     opacity added. */
-  .tally-actions .btn {
-    transition-property: transform, background, filter, opacity;
-    transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
-    transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out);
   }
 </style>

@@ -116,7 +116,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { fmtDay } from '$lib/data/dates';
+  import { photoCaptionDate } from '$lib/data/dates';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -678,7 +678,7 @@
               {#each starredPhotos as p (p.id)}
                 <div class="starred-photo-cell">
                   <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                  <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                  <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                   <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
                     <Icon name="star" size={16} cls="is-starred" />
                   </button>

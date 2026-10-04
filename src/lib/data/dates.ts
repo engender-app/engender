@@ -53,6 +53,13 @@ export function fmtTime(ts: number): string {
   return formatter({ hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
 }
 
+/** "Jun 2026": a photograph's caption, and a search hit's place in time.
+    The year whole, because "Jun 26" reads as the 26th of June (release
+    audit U12). */
+export function photoCaptionDate(epochDay: number): string {
+  return fmtDay(epochDay, { month: 'short', year: 'numeric' });
+}
+
 export function fmtMonthName(year: number, month: number): string {
   return formatter({ month: 'long' }).format(new Date(year, month, 1));
 }

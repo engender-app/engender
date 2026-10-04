@@ -34,7 +34,7 @@
    screen is honest where inventing a deep link would not be. */
 
 import { m } from '$lib/paraglide/messages';
-import { fmtDay } from '$lib/data/dates';
+import { photoCaptionDate } from '$lib/data/dates';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
@@ -202,7 +202,7 @@ export function searchHitRows(hits: readonly SearchHit[], query: string): Search
         label: declared.label(),
         ...literalIcon(declared.icon),
         href: declared.href(hit),
-        date: hit.epochDay === null ? undefined : fmtDay(hit.epochDay, { month: 'short', year: 'numeric' }),
+        date: hit.epochDay === null ? undefined : photoCaptionDate(hit.epochDay),
         excerpt: excerptOf(hit.value, query)
       }
     ];

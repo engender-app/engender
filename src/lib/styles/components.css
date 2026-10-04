@@ -492,9 +492,9 @@
   /* Longhands: only the press is on --ease-press, and a shorthand naming
      that token strands the background with it on an old WebView. The
      mechanism is at --ease-press in theme/base.css. */
-  transition-property: transform, background;
-  transition-duration: var(--dur-press), var(--dur-fast);
-  transition-timing-function: var(--ease-press), var(--ease-out);
+  transition-property: transform, background, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out);
   text-decoration: none;
 }
 .icon-btn:hover { background: var(--surface-2); }
@@ -525,10 +525,13 @@
      three down on an old WebView. The mechanism is at --ease-press in
      theme/base.css. filter has no curve of its own, same as before.
      box-shadow left this list with ticket 37: .btn-primary was its one
-     consumer in the family and it takes no shadow now. */
-  transition-property: transform, background, filter;
-  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
-  transition-timing-function: var(--ease-press), var(--ease-out), ease;
+     consumer in the family and it takes no shadow now. Opacity is the
+     disabled state below: without it a button going disabled (a write in
+     flight, an undo with nothing left) dropped to 0.45 in one frame
+     (phase 14 ticket 18). */
+  transition-property: transform, background, filter, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out);
 }
 /* The wide depth itself - which is the 0.97 chosen on a Pixel 10a by ticket
    29, after the stuck-hover bug below was fixed - is set in press.css, the

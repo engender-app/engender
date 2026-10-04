@@ -16,7 +16,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, photoCaptionDate } from '$lib/data/dates';
   import {
     customInclusiveRange,
     dateInputValueFromEpochDay,
@@ -289,8 +289,8 @@
              row, where two read-only text boxes used to show "2024-09-18". -->
         <div>
           {#each [
-            { id: 'pj-start', label: m.recap_custom_start_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput) },
-            { id: 'pj-end', label: m.recap_custom_end_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined }
+            { id: 'pj-start', label: m.recap_custom_start_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
+            { id: 'pj-end', label: m.recap_custom_end_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined, set: (next: string) => (endInput = next) }
           ] as field (field.id)}
             {@const day = epochDayFromDateInputValue(field.value)}
             <div class="rows-divide date-row">
@@ -308,10 +308,7 @@
                 min={field.min}
                 max={field.max}
                 invis
-                onchange={(next) => {
-                  if (field.id === 'pj-start') startInput = next;
-                  else endInput = next;
-                }}
+                onchange={field.set}
               />
             </div>
           {/each}
@@ -350,7 +347,7 @@
                   onclick={() => toggle(p.id)}
                 >
                   <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                  <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
+                  <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                   {#if included}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
                 </button>
               </div>
