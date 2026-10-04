@@ -120,3 +120,102 @@ test('both web explanations name the system clipboard and best-effort clearing',
   expect(pl.perm_clipboard_why_web).toContain('schowka systemowego');
   expect(pl.perm_clipboard_why_web).toContain('próbuje');
 });
+
+test('an old pending cleanup cannot erase a newer successful copy', async () => {
+  vi.useFakeTimers();
+  isAndroid.mockReturnValue(false);
+  let text = '';
+  let finishRead!: (value: string) => void;
+  const readText = vi.fn(() => new Promise<string>((resolve) => { finishRead = resolve; }));
+  const writeText = vi.fn(async (value: string) => { text = value; });
+  vi.stubGlobal('navigator', { clipboard: { writeText, readText } });
+  await copyRecoveryKey('first recovery key');
+  // A synchronous timer advance leaves its asynchronous read pending.
+  vi.advanceTimersByTime(60_000);
+  expect(readText).toHaveBeenCalledTimes(1);
+  await copyRecoveryKey('second recovery key');
+  finishRead('first recovery key');
+  await Promise.resolve();
+  expect(text).toBe('second recovery key');
+  expect(writeText).toHaveBeenCalledTimes(2);
+});
+
+test('a failed recopy preserves the first successful copy\'s cleanup deadline', async () => {
+  vi.useFakeTimers();
+  isAndroid.mockReturnValue(false);
+  let text = '';
+  const writeText = vi.fn(async (value: string) => { text = value; });
+  vi.stubGlobal('navigator', { clipboard: { writeText, readText: async () => text } });
+  await copyRecoveryKey('first recovery key');
+  await vi.advanceTimersByTimeAsync(30_000);
+  writeText.mockRejectedValueOnce(new Error('copy denied'));
+  await expect(copyRecoveryKey('second recovery key')).rejects.toThrow('copy denied');
+  await vi.advanceTimersByTimeAsync(29_999);
+  expect(text).toBe('first recovery key');
+  await vi.advanceTimersByTimeAsync(1);
+  expect(text).toBe('');
+});
+
+test('a newer copy waits for an already pending clear so its key is not erased', async () => {
+  vi.useFakeTimers();
+  isAndroid.mockReturnValue(false);
+  let text = '';
+  let finishClear!: () => void;
+  const writeText = vi.fn((value: string) => {
+    if (value === '') return new Promise<void>((resolve) => {
+      finishClear = () => { text = ''; resolve(); };
+    });
+    text = value;
+    return Promise.resolve();
+  });
+  vi.stubGlobal('navigator', { clipboard: { writeText, readText: async () => text } });
+  await copyRecoveryKey('first recovery key');
+  vi.advanceTimersByTime(60_000);
+  await Promise.resolve();
+  expect(writeText).toHaveBeenLastCalledWith('');
+  const newer = copyRecoveryKey('second recovery key');
+  finishClear();
+  await newer;
+  expect(text).toBe('second recovery key');
+});
+
+test('recopying the same key starts a fresh minute and keeps only one cleanup timer', async () => {
+  vi.useFakeTimers();
+  isAndroid.mockReturnValue(false);
+  let text = '';
+  vi.stubGlobal('navigator', { clipboard: {
+    writeText: async (value: string) => { text = value; }, readText: async () => text
+  } });
+  await copyRecoveryKey('same recovery key');
+  await vi.advanceTimersByTimeAsync(30_000);
+  await copyRecoveryKey('same recovery key');
+  expect(vi.getTimerCount()).toBe(1);
+  await vi.advanceTimersByTimeAsync(59_999);
+  expect(text).toBe('same recovery key');
+  await vi.advanceTimersByTimeAsync(1);
+  expect(text).toBe('');
+});
+
+test('overlapping requested copies write in request order and clean up the final key', async () => {
+  vi.useFakeTimers();
+  isAndroid.mockReturnValue(false);
+  let text = '';
+  let finishFirst!: () => void;
+  const writeText = vi.fn((value: string) => {
+    if (value === 'first recovery key') return new Promise<void>((resolve) => {
+      finishFirst = () => { text = value; resolve(); };
+    });
+    text = value;
+    return Promise.resolve();
+  });
+  vi.stubGlobal('navigator', { clipboard: { writeText, readText: async () => text } });
+  const first = copyRecoveryKey('first recovery key');
+  const second = copyRecoveryKey('second recovery key');
+  expect(writeText).toHaveBeenCalledTimes(1);
+  finishFirst();
+  await Promise.all([first, second]);
+  expect(text).toBe('second recovery key');
+  expect(vi.getTimerCount()).toBe(1);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(text).toBe('');
+});
