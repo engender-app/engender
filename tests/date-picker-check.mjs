@@ -172,6 +172,14 @@ try {
   await closed(page);
   assert.equal(await page.locator('#lab-date').inputValue(), '2001-09-30', 'historical action reachable in short viewport');
   await page.locator('#lab-date').click();
+  /* fill() does not wait for a stable position. Let the sheet finish its
+     entrance before measuring the pinch-zoomed action; its fallback can
+     give the day focus while a delayed entrance is still running. */
+  await page.waitForFunction(() => {
+    const day = document.activeElement;
+    return day?.matches('[data-date-picker] .dp-day')
+      && day.closest('[data-sheet]').getAnimations().every(animation => animation.playState === 'finished');
+  });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
   assert.equal(await page.evaluate(() => visualViewport.scale), 2);
