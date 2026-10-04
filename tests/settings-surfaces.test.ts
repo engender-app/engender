@@ -75,6 +75,53 @@ describe('what Settings is built from', () => {
     }
   });
 
+  /* Phase 14 ticket 15 (V04). Privacy and data sat fifth, at 2251px on a
+     390px phone, behind sixteen flags and every tracking option. It leads
+     now, so the lock, disguise, backup, trash and the way to erase the
+     journal are on the first screen. */
+  it('opens on Privacy & data, ahead of Appearance', () => {
+    const headings = [...withoutScript.matchAll(/<SectionHeading text=\{m\.(\w+)\(\)\} \/>/g)].map((mm) => mm[1]);
+    expect(headings[0]).toBe('settings_privacy');
+    expect(headings).toContain('settings_appearance');
+  });
+
+  it('names the lock in its row and gives disguise an icon of its own', () => {
+    const lockRow = /<ListRow\s+key="security"[^>]*>/s.exec(outsideSheets)?.[0] ?? '';
+    expect(lockRow).toContain('icon="lock"');
+    expect(lockRow).toContain('title={m.settings_lock_row()}');
+    const disguiseRow = /<ListRow\s+key="disguise"[\s\S]*?>/.exec(outsideSheets)?.[0] ?? '';
+    expect(disguiseRow).toContain('icon="eyeOff"');
+    expect(read('messages/en.json')).toMatch(/"settings_lock_row": "Lock\b/);
+  });
+
+  it('ends the privacy rows with erasing everything, behind a confirmation', () => {
+    const privacy = outsideSheets.slice(
+      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />'),
+      outsideSheets.indexOf('<SectionHeading text={m.settings_appearance()} />')
+    );
+    const order = ['key="security"', 'key="disguise"', 'key="export"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
+    expect(order.every((at) => at > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[4]);
+    /* The same deliberate step the unlock gates take before resetApp: a
+       sheet stating the loss, then one danger button with the gates' own
+       words on it. */
+    const sheet = /<Sheet bind:open=\{eraseSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    expect(sheet).toContain('data-confirm-reset');
+    expect(sheet).toContain('m.reset_confirm()');
+    expect(sheet).toContain('m.reset_offer_archive_password()');
+    expect(settings).toContain("resetApp('erased')");
+  });
+
+  it('draws no Ko-fi row until the link is live (V05)', () => {
+    expect(settings).not.toContain('kofi_coming_soon');
+    /* The release value: empty, so the guard below draws nothing. The
+       production-build check (settings-erase-check.mjs) counts the row on
+       the rendered screen. */
+    expect(settings).toMatch(/const KOFI_URL = '';/);
+    expect(withoutScript).toMatch(/\{#if KOFI_URL\}\s*<ListRow[\s\S]*?key="kofi"/);
+  });
+
   it('draws the flag picker inline, not behind a dropdown or a sheet', () => {
     const grid = outsideSheets.indexOf('class="palette-grid"');
     expect(grid).toBeGreaterThan(-1);

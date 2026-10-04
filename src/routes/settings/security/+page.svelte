@@ -49,7 +49,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.settings_security_row()} back="/settings" />
+  <ScreenHeader title={m.settings_lock_row()} back="/settings" />
 
   <div data-security-list use:resize>
     <ListCard>

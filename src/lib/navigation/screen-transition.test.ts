@@ -65,8 +65,10 @@ describe('choosing a tier-2 pattern', () => {
 
   it('does not read reaching Home as a step up out of a tab', () => {
     /* Every path starts with "/", so a naive prefix test would call every
-       navigation to Home a back. It is a tab change. */
-    expect(screenTransition(nav({ from: '/settings/labs', to: '/' }))).toBe('fade-through');
+       navigation to Home a back. It is a tab change. (Not from a
+       /settings path: Settings borrows Today when it has nothing else to
+       borrow, so leaving it for Home stays inside one tab.) */
+    expect(screenTransition(nav({ from: '/care/labs', to: '/' }))).toBe('fade-through');
   });
 
   it('does not mistake a sibling whose name starts the same way', () => {
