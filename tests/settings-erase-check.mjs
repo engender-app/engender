@@ -6,15 +6,16 @@
    existed. Android's half is reset.test.ts's.
 
    Each mode gets a context of its own: a journal is set up, one entry is
-   written, the row's sheet is opened and cancelled (nothing goes), then
-   confirmed. The app has to come back at first run saying what happened,
-   with no keystore left to open, and a fresh setup has to find no entry.
+   written with a photo, the row's sheet is opened and cancelled (nothing
+   goes), then confirmed. The app has to come back at first run saying what
+   happened, with no keystore left to open, and a fresh setup has to find no entry.
    Being a release build, it also holds that no Ko-fi row renders.
 
      npm run build && node tests/settings-erase-check.mjs */
 import assert from 'node:assert/strict';
 import { preview } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
+import { tinyPhoto } from './photo-fixture.mjs';
 
 const NOTE = 'erase-proof-7f3a';
 const PASSPHRASE = 'correct horse battery';
@@ -31,6 +32,15 @@ const storageReport = (page) =>
     const root = await navigator.storage.getDirectory();
     const files = [];
     for await (const name of root.keys()) files.push(name);
+    const photos = [];
+    if (files.includes('photos')) {
+      const directory = await root.getDirectoryHandle('photos');
+      for await (const name of directory.keys()) {
+        const file = await (await directory.getFileHandle(name)).getFile();
+        photos.push({ name, bytes: Array.from(new Uint8Array(await file.arrayBuffer())) });
+      }
+      photos.sort((a, b) => a.name.localeCompare(b.name));
+    }
     const databases = (await indexedDB.databases()).map((d) => d.name);
     const keys = Object.keys(localStorage).filter((k) => k.startsWith('engender-'));
     /* The device key database can be opened again by the boot that
@@ -52,7 +62,7 @@ const storageReport = (page) =>
         };
       });
     }
-    return { files, databases, keys, deviceKeys };
+    return { files, photos, databases, keys, deviceKeys };
   });
 
 async function chooseMode(page, mode) {
@@ -91,6 +101,16 @@ async function writeEntry(page) {
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
   await page.locator('#ed-note').fill(NOTE);
+  /* A saved attachment makes the photo directory part of the fixture before
+     boot's deferred orphan sweep can create it during a later reload. */
+  await page.locator('[data-section-chip="photos"]').click();
+  const buffer = await tinyPhoto(page, '#789abc');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('[data-add-photo]').click();
+  await (await chooser).setFiles({ name: 'erase-proof.png', mimeType: 'image/png', buffer });
+  await page.locator('[data-photo-day-skip]').click();
+  await page.locator('[data-photo-day-skip]').waitFor({ state: 'detached' });
+  await page.locator('.photo-wrap img').waitFor();
   await page.locator('[data-save]').click();
   await page.locator('[data-home-log]').waitFor();
 }
@@ -143,6 +163,7 @@ async function check(mode) {
     await writeEntry(page);
     const before = await storageReport(page);
     assert.ok(before.files.length > 0, `${mode}: a journal was written to OPFS (${JSON.stringify(before)})`);
+    assert.ok(before.photos.length > 0 && before.photos.every((photo) => photo.bytes.length > 0), `${mode}: photo bytes were written to OPFS`);
     if (mode === 'device-bound') {
       assert.ok(before.deviceKeys > 0, `${mode}: the browser holds its key before the erase`);
       /* The control for the last check: before the erase, search finds it.
@@ -165,7 +186,9 @@ async function check(mode) {
     await openErase(page);
     await page.keyboard.press('Escape');
     await page.locator('[data-sheet]').waitFor({ state: 'hidden' });
-    assert.deepEqual((await storageReport(page)).files, before.files, `${mode}: cancelling leaves every file`);
+    const cancelled = await storageReport(page);
+    assert.deepEqual(cancelled.files, before.files, `${mode}: cancelling leaves every file`);
+    assert.deepEqual(cancelled.photos, before.photos, `${mode}: cancelling leaves every photo byte`);
     console.log(`PASS ${mode}: cancelling the sheet erases nothing`);
 
     await page.locator('[data-list-row="erase"]').click();
