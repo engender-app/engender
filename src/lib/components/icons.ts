@@ -113,6 +113,7 @@ export const PATHS: Record<string, string> = {
   curve: '<path d="M3 17.22h18"/><path d="M4 14.22c3.5 0 4-9 8-9s4.5 9 8 9"/>',
   timeline: '<circle cx="12" cy="5" r="2.2"/><circle cx="12" cy="19" r="2.2"/><path d="M12 7.2v9.6"/>',
   shuffle: '<path d="M1.5 18h4a4 4 0 0 0 3.2-1.6l6.6-8.8A4 4 0 0 1 18.5 6H21"/><path d="M1.5 6h4a4 4 0 0 1 3.2 1.6l.9 1.2M14 15l1.3 1.4a4 4 0 0 0 3.2 1.6H21"/><path d="m18.6 3.6 2.4 2.4-2.4 2.4M18.6 15.6l2.4 2.4-2.4 2.4"/>',
+  print: '<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6zM18 12h.01"/>',
   share: '<circle cx="5.26" cy="12" r="2.5"/><circle cx="17.26" cy="6" r="2.5"/><circle cx="17.26" cy="18" r="2.5"/><path d="m7.56 10.8 7.4-3.6M7.56 13.2l7.4 3.6"/>',
   key: '<circle cx="8.72" cy="15.13" r="4.5"/><path d="m12.22 11.63 8-8M17.72 6.13l2.5 2.5M14.72 9.13l2 2"/>',
   backspace: '<path d="M7.8 5H19.3a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19.3 19H7.8L1.8 12z"/><path d="m10.3 9.5 5 5M15.3 9.5l-5 5"/>',

@@ -11,6 +11,7 @@
      printed, since a clinician reading the page on paper has nowhere to
      click it. */
 
+  import DossierTable from './DossierTable.svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { epochDayFromTimestamp, todayEpochDay } from '$lib/data/epochDay';
@@ -28,7 +29,7 @@
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
   import type { ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
-  import type { DoseEvent, RegimenEpisode } from '$lib/data/types';
+  import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
   import '$lib/styles/clinician-print.css';
 
   interface Props {
@@ -91,6 +92,11 @@
   );
 </script>
 
+{#snippet routeName(route: string)}
+  <span class="no-print">{routeLabel(route as DoseRoute)}</span>
+  <span class="dossier-route-print">{route}</span>
+{/snippet}
+
 {#snippet truncateNote(hidden: number)}
   <p class="dossier-truncate-note no-print" data-dossier-truncate>
     {m.clinician_summary_section_truncated({ count: hidden })}
@@ -146,7 +152,7 @@
       <!-- Current Regimen -->
       <h3 class="sub-heading">{m.clinician_summary_current_regimen()}</h3>
       {#if dossier.regimen.current.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_current_regimen()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -165,14 +171,14 @@
                     {#if ep.ester}<span class="muted small">({ep.ester})</span>{/if}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{ep.route}</td>
+                  <td>{@render routeName(ep.route)}</td>
                   <td>{ep.interval}</td>
                   <td class="num">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.regimen.current) > 0}
           {@render truncateNote(overflowCount(dossier.regimen.current))}
         {/if}
@@ -184,7 +190,7 @@
       {#if dossier.regimen.history.some((ep) => ep.endEpochDay !== null && ep.endEpochDay < dossier.toEpochDay)}
         {@const pastEpisodes = dossier.regimen.history.filter((ep) => ep.endEpochDay !== null && ep.endEpochDay < dossier.toEpochDay)}
         <h3 class="sub-heading" style="margin-top: var(--space-3);">{m.clinician_summary_past_regimen()}</h3>
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_past_regimen()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -204,14 +210,14 @@
                       : ''}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{ep.route}</td>
+                  <td>{@render routeName(ep.route)}</td>
                   <td>{ep.interval}</td>
                   <td class="num">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(pastEpisodes) > 0}
           {@render truncateNote(overflowCount(pastEpisodes))}
         {/if}
@@ -220,7 +226,7 @@
       <!-- Dosage Log -->
       <h3 class="sub-heading" style="margin-top: var(--space-3);">{m.clinician_summary_dose_history()}</h3>
       {#if dossier.regimen.doses.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_dose_history()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -269,7 +275,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if dossier.regimen.doses.some((dose) => dose.source === 'schedule')}
           <p class="dossier-footnote" data-dossier-auto-logged-legend>
             {AUTO_LOGGED_MARK}
@@ -294,7 +300,7 @@
 
       {#if dossier.exposure.doseTotals.length}
         <h3 class="sub-heading">{m.exposure_dose_totals_title()}</h3>
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.exposure_dose_totals_title()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -313,7 +319,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.exposure.doseTotals) > 0}
           {@render truncateNote(overflowCount(dossier.exposure.doseTotals))}
         {/if}
@@ -321,7 +327,7 @@
 
       {#if dossier.exposure.routeDays.length}
         <h3 class="sub-heading" style="margin-top: var(--space-3);">{m.exposure_route_days_title()}</h3>
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.exposure_route_days_title()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -332,13 +338,13 @@
             <tbody>
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>{rd.route}</td>
+                  <td>{@render routeName(rd.route)}</td>
                   <td class="num">{m.exposure_medication_days_count({ days: String(rd.days) })}</td>
                 </tr>
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.exposure.routeDays) > 0}
           {@render truncateNote(overflowCount(dossier.exposure.routeDays))}
         {/if}
@@ -349,7 +355,7 @@
 
       {#if dossier.exposure.regimenDays.length}
         <h3 class="sub-heading" style="margin-top: var(--space-3);">{m.exposure_regimen_days_title()}</h3>
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.exposure_regimen_days_title()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -364,13 +370,13 @@
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td><strong>{regd.drug}</strong></td>
                   <td class="num">{regd.dose} {regd.doseUnit}</td>
-                  <td>{regd.route}</td>
+                  <td>{@render routeName(regd.route)}</td>
                   <td class="num">{m.exposure_medication_days_count({ days: String(regd.days) })}</td>
                 </tr>
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.exposure.regimenDays) > 0}
           {@render truncateNote(overflowCount(dossier.exposure.regimenDays))}
         {/if}
@@ -389,7 +395,7 @@
       </div>
 
       {#if dossier.labs.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_section_labs()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -425,7 +431,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.labs) > 0}
           {@render truncateNote(overflowCount(dossier.labs))}
         {/if}
@@ -443,7 +449,7 @@
       </div>
 
       {#if dossier.sideEffects.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_section_side_effects()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -468,7 +474,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.sideEffects) > 0}
           {@render truncateNote(overflowCount(dossier.sideEffects))}
         {/if}
@@ -486,7 +492,7 @@
       </div>
 
       {#if dossier.cycleEvents.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_section_cycle_events()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -503,7 +509,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.cycleEvents) > 0}
           {@render truncateNote(overflowCount(dossier.cycleEvents))}
         {/if}
@@ -521,7 +527,7 @@
       </div>
 
       {#if dossier.appointmentPrep.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_section_appointment_prep()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -549,7 +555,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.appointmentPrep) > 0}
           {@render truncateNote(overflowCount(dossier.appointmentPrep))}
         {/if}
@@ -566,7 +572,7 @@
         <h2 class="dossier-section-title">{m.clinician_summary_section_procedures()}</h2>
       </div>
 
-      <div class="dossier-table-wrap">
+      <DossierTable label={m.clinician_summary_section_procedures()}>
         <table class="dossier-table">
           <thead>
             <tr>
@@ -618,7 +624,7 @@
             {/each}
           </tbody>
         </table>
-      </div>
+      </DossierTable>
       {#if overflowCount(dossier.procedures) > 0}
         {@render truncateNote(overflowCount(dossier.procedures))}
       {/if}
@@ -635,7 +641,7 @@
       </div>
 
       {#if dossier.finishedAreas.length}
-        <div class="dossier-table-wrap">
+        <DossierTable label={m.clinician_summary_section_finished_areas()}>
           <table class="dossier-table">
             <thead>
               <tr>
@@ -652,7 +658,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </DossierTable>
         {#if overflowCount(dossier.finishedAreas) > 0}
           {@render truncateNote(overflowCount(dossier.finishedAreas))}
         {/if}
