@@ -25,7 +25,7 @@
      (regimenEpisode.ts). */
   import { flip } from 'svelte/animate';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
-  import { batchesFor, shownCount, nextCount } from '$lib/components/kit/batchedList';
+  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -69,7 +69,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import { hashRowId, scrollToHash, restoredBatches, rememberBatches } from '$lib/navigation/scroll-region';
+  import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import Segmented from '$lib/components/Segmented.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -128,21 +128,6 @@
   let deepLinkedDoseIndex = $derived(
     deepLinkedDoseId ? logRows.findIndex(({ dose }) => dose.id === deepLinkedDoseId) : -1
   );
-
-  const logPath = page.url.pathname;
-  let batches = $state(restoredBatches(logPath, 'doses'));
-  let shownRows = $derived(logRows.slice(0, shownCount(batches, logRows.length)));
-  let nextBatch = $derived(nextCount(batches, logRows.length));
-  // Keep a linked row mounted after scrollToHash clears the arrival hash.
-  $effect(() => {
-    if (deepLinkedDoseIndex >= 0 && batchesFor(deepLinkedDoseIndex) > batches) {
-      batches = batchesFor(deepLinkedDoseIndex);
-    }
-  });
-  function showMore() {
-    batches += 1;
-    rememberBatches(logPath, 'doses', batches);
-  }
 
   function loadEarlier() {
     windowDays += DOSE_LOG_WINDOW_DAYS;
@@ -478,63 +463,59 @@
       {#if doses.length}
         <div class="screen-part">
           <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
-          <div data-batched-list="doses" data-dose-log>
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
-              {#each shownRows as { dose, attribution, drug, showAttribution, offersSkip }, index (dose.id)}
-                {@const day = epochDayFromTimestamp(dose.timestamp)}
-                {@const startsDay = index === 0 || epochDayFromTimestamp(shownRows[index - 1].dose.timestamp) !== day}
-                {@const site = siteOf(dose)}
-                {@const sourceNote = sourceNoteOf(dose)}
-                <div class="dose-day-row rows-divide" data-dose-row={dose.id} use:resize transition:disclose
-                  animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
-                  {#if startsDay}
-                    <div transition:disclose><h2 class="dose-day" data-dose-day={day}>{fmtDayLong(day)}</h2></div>
-                  {/if}
-                  {#key sourceNote}
-                    <div class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
-                      <ListRow
-                        key={dose.id}
-                        data-dose={dose.id}
-                        id={dose.id}
-                        title={`${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}`}
-                        subtitle={[
-                          [fmtTime(dose.timestamp), routeLabel(dose.route), site,
-                            isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '']
-                            .filter(Boolean).join(' · '),
-                          sourceNote,
-                          showAttribution ? attributionLabel(attribution) : '',
-                          dose.scheduled ? `${m.dose_scheduled_legend()}: ${dose.scheduled.dose} ${dose.doseUnit} · ${routeLabel(dose.scheduled.route)} · ${fmtTime(dose.scheduled.timestamp)}` : ''
-                        ]}
-                        chevron={false}
-                        onclick={() => openEditor(dose)}
-                        action={offersSkip
-                          ? {
-                              text: statusLabel('skipped'),
-                              label: m.dose_from_schedule_skip_action(),
-                              attrs: { 'data-dose-skip': dose.id },
-                              onclick: () => skipAutoLoggedDose(dose)
-                            }
-                          : undefined}
-                      >
-                        {#snippet trailing()}
-                          {#if dose.status !== 'taken' && !sourceNote}
-                            <span class="dose-status">{statusLabel(dose.status)}</span>
-                          {/if}
+          <div data-dose-log>
+            <BatchedList items={logRows} key="doses" autoGrow={false}
+              focusIndex={deepLinkedDoseIndex} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
+              {#snippet rows(shownRows)}
+                {#each shownRows as { dose, attribution, drug, showAttribution, offersSkip }, index (dose.id)}
+                  {@const day = epochDayFromTimestamp(dose.timestamp)}
+                  {@const startsDay = index === 0 || epochDayFromTimestamp(shownRows[index - 1].dose.timestamp) !== day}
+                  {@const site = siteOf(dose)}
+                  {@const sourceNote = sourceNoteOf(dose)}
+                  <div class="dose-day-row rows-divide" data-dose-row={dose.id} use:resize transition:disclose
+                    animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
+                    {#if startsDay}
+                      <div transition:disclose><h2 class="dose-day" data-dose-day={day}>{fmtDayLong(day)}</h2></div>
+                    {/if}
+                    {#key sourceNote}
+                      <div class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
+                        <ListRow
+                          key={dose.id}
+                          data-dose={dose.id}
+                          id={dose.id}
+                          title={`${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}`}
+                          subtitle={[
+                            [fmtTime(dose.timestamp), routeLabel(dose.route), site,
+                              isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '']
+                              .filter(Boolean).join(' · '),
+                            sourceNote,
+                            showAttribution ? attributionLabel(attribution) : '',
+                            dose.scheduled ? `${m.dose_scheduled_legend()}: ${dose.scheduled.dose} ${dose.doseUnit} · ${routeLabel(dose.scheduled.route)} · ${fmtTime(dose.scheduled.timestamp)}` : ''
+                          ]}
+                          chevron={false}
+                          onclick={() => openEditor(dose)}
+                          action={offersSkip
+                            ? {
+                                text: statusLabel('skipped'),
+                                label: m.dose_from_schedule_skip_action(),
+                                attrs: { 'data-dose-skip': dose.id },
+                                onclick: () => skipAutoLoggedDose(dose)
+                              }
+                            : undefined}
+                        >
+                          {#snippet trailing()}
+                            {#if dose.status !== 'taken' && !sourceNote}
+                              <span class="dose-status">{statusLabel(dose.status)}</span>
+                            {/if}
                         {/snippet}
                       </ListRow>
                     </div>
                   {/key}
                 </div>
               {/each}
-            </ListCard>
+              {/snippet}
+            </BatchedList>
           </div>
-          {#if nextBatch > 0}
-            <div transition:disclose>
-              <button class="btn btn-soft" data-batched-more="doses" onclick={showMore}>
-                <span>{m.list_more({ count: nextBatch })}</span>
-              </button>
-            </div>
-          {/if}
           {#if hasOlderDoses}
             {@render earlierControl()}
           {/if}
@@ -1076,7 +1057,6 @@
   .dose-day {
     padding: var(--space-3) var(--space-4);
     margin: 0;
-    background: var(--surface-2);
     color: var(--text-2);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);

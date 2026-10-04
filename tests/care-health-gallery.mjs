@@ -66,9 +66,13 @@ const readMotion = `
         x: box.x, y: box.y, h: box.height, opacity: Number(style.opacity),
         transform: style.transform, clip: style.clipPath, wrapper: (() => { const wrap = node.closest('[data-procedure-group]') ?? node; const box = wrap.getBoundingClientRect(); const style = getComputedStyle(wrap); return { y: box.y, h: box.height, transform: style.transform, clip: style.clipPath }; })() };
     }),
-    headings: [...document.querySelectorAll('[data-procedure-group] h2, [data-dose-day]')].map((node) => {
+    headings: [...document.querySelectorAll('[data-procedure-heading], [data-dose-day], [data-section-heading]')]
+      .filter((node) => !node.closest('[data-procedure-heading]') || node.matches('[data-procedure-heading]')).map((node) => {
+      if (!node.__ticket17Stamp) { window.__ticket17StampCounter = (window.__ticket17StampCounter ?? 0) + 1; node.__ticket17Stamp = window.__ticket17StampCounter; }
       const box = node.getBoundingClientRect();
-      return { text: node.textContent, y: box.y, h: box.height };
+      return { id: node.dataset.procedureHeading ?? node.dataset.doseDay ?? node.textContent,
+        stamp: node.__ticket17Stamp, text: node.textContent, y: box.y, h: box.height,
+        opacity: Number(getComputedStyle(node).opacity), transform: getComputedStyle(node).transform };
     }) };
 `;
 
@@ -109,7 +113,7 @@ function proveMotion(scene) {
     const first = sequence[0];
     const last = sequence.at(-1);
     const identity = new Set(sequence.map((row) => row.stamp)).size === 1;
-    if (scene.name.startsWith('surgery')) {
+    if (scene.name.startsWith('surgery') || scene.name.startsWith('dose-regroup')) {
       const distance = Math.abs(last.y - first.y);
       const middles = sequence.filter((row) => Math.abs(row.y - first.y) > 1 && Math.abs(row.y - last.y) > 1).length;
       const step = Math.max(...sequence.slice(1).map((row, index) => Math.abs(row.y - sequence[index].y)));
@@ -120,13 +124,25 @@ function proveMotion(scene) {
     }
   }
   scene.metrics = metrics;
-  if (scene.name.startsWith('surgery')) {
+  if (scene.name.startsWith('surgery') || scene.name.startsWith('dose-regroup')) {
     check(`${scene.name}: record identity persists every frame`, metrics.every((row) => row.identity && row.presentEveryFrame), metrics);
     const moving = metrics.filter((row) => row.distance > 20);
     check(`${scene.name}: regroup travels through intermediate positions`, moving.length > 0 && moving.every((row) => row.middles >= 3 && row.maxStep / row.distance < 0.6), moving);
+    check(`${scene.name}: headings sampled every frame`, scene.samples.every((sample) => sample.headings.length > 0));
   } else {
     check(`${scene.name}: new rows disclose through intermediate heights`, metrics.length > 0 && metrics.every((row) => row.identity && row.middles >= 3 && row.firstHeight < row.finalHeight * 0.8), metrics);
   }
+}
+
+async function editDoseDay(id, day) {
+  await page.locator(`[data-dose="${id}"]`).click();
+  await page.locator('[data-dose-when]').click();
+  const previous = await page.locator('#dose-day').inputValue();
+  await page.locator('#dose-day').click();
+  await page.locator('[data-date-picker-entry]').fill(day);
+  await page.locator('[data-date-picker-apply]').click();
+  await page.waitForSelector('[data-date-picker]', { state: 'detached' });
+  return previous;
 }
 
 try {
@@ -173,6 +189,12 @@ try {
       button.click();
     }));
     if (stage === 'after') check(`Show more adds one batch (${theme})`, await page.locator('[data-dose]').count() === count + 30);
+    const movingDose = await page.locator('[data-dose]').first().getAttribute('data-dose');
+    const oldDay = await editDoseDay(movingDose, '2026-10-02');
+    await scene(`dose-regroup-${theme}`, () => page.locator('[data-save-dose]').click());
+    await editDoseDay(movingDose, oldDay);
+    await page.locator('[data-save-dose]').click();
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
 
     await go('/care/changes');
     await crop(`changes-${theme}`, '[data-noticed-axis]', 440);
@@ -184,7 +206,8 @@ try {
     const bandGroup = page.locator('[data-effect-group]').first();
     await bandGroup.locator('button[aria-expanded]').first().click();
     await page.waitForTimeout(700);
-    await crop(`changes-bands-${theme}`, '[data-effect-group]', 440);
+    if (stage === 'after') check(`expanded chart shows bands sentence (${theme})`, await page.locator('[data-bands-context]').count() === 1);
+    await crop(`changes-bands-${theme}`, '[data-noticed-axis]', 1000);
 
     await go('/care');
     await crop(`care-charts-${theme}`, '[data-chart-card="interval-mood"]', 800);
