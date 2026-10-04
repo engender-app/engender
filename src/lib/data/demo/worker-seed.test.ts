@@ -6,6 +6,8 @@ import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver';
 import { openPreferences } from '../prefs/preferences';
 import { InterruptedRestoreError, SchemaTooNewError } from '../sqlite/migration-runner';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
+import { runMigrations } from '../sqlite/migration-runner';
+import { migrations } from '../sqlite/migrations';
 import { openJournal } from '../journal/journal';
 import { persona } from './persona';
 import { preparePersonaJournal, seedPersonaInTransaction } from './worker-seed';
@@ -27,16 +29,20 @@ function withoutRandomIdentity(value: unknown): unknown {
 test('one seed keeps the persona rows and dates relative to its anchor', async () => {
   vi.stubEnv('TZ', 'Europe/Warsaw');
   vi.spyOn(Date, 'now').mockReturnValue(1_791_115_200_000);
-  const db = await migratedDb();
+  const db = makeNodeSqliteDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);
   const baselineDb = await migratedDb();
   const baseline = openJournal(baselineDb, fakeFileStore());
   try {
-    await journal.reconcileBuiltIns();
     await baseline.reconcileBuiltIns();
     await writePersonaJournal(baseline, persona(20_730), photo);
     await preparePersonaJournal(db, files, noopFileOps(), persona(20_730), photo);
+    assert.equal(await db.getUserVersion(), await baselineDb.getUserVersion());
+    assert.deepEqual(
+      await db.query("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name"),
+      await baselineDb.query("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name")
+    );
     assert.deepEqual(
       withoutRandomIdentity((await journal.archive.snapshot()).journal),
       withoutRandomIdentity((await baseline.archive.snapshot()).journal)
@@ -167,6 +173,48 @@ test('failed cold preparation retains migrated schema and leaves the persona and
     assert.equal(await openJournal(db, files).entries.countAll(), 0);
     assert.equal((await openJournal(db, files).photos.inJournal()).length, 0);
     assert.equal((await openPreferences(db)).openedEmpty(), true);
+  } finally {
+    await db.close();
+  }
+});
+
+
+test('an authored schema keeps the ordinary upgrade boundary after failure', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 78));
+  await db.run(
+    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ['00000000-0000-4000-8000-000000000001', 20_730, 1_791_104_400_000, 2, 'Keep this authored note', 0]
+  );
+  await (await openPreferences(db)).set('name', 'Existing journal');
+  const originalExec = db.exec.bind(db);
+  db.exec = async (sql) => originalExec(sql.replace(
+    'ALTER TABLE medication_stock ADD COLUMN lead_time_days',
+    'SELECT * FROM missing_demo_migration; ALTER TABLE medication_stock ADD COLUMN lead_time_days'
+  ));
+  try {
+    await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo),
+      /no such table: missing_demo_migration/);
+    assert.equal(await db.getUserVersion(), 78);
+    assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+    assert.equal((await db.query('SELECT note FROM entry'))[0].note, 'Keep this authored note');
+    db.exec = originalExec;
+    assert.equal(await preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo), false);
+    assert.equal((await db.query('SELECT note FROM entry'))[0].note, 'Keep this authored note');
+    assert.equal(await db.getUserVersion(), LATEST_SCHEMA_VERSION);
+  } finally {
+    await db.close();
+  }
+});
+
+test('an empty file claiming a nonzero version keeps the ordinary refusal', async () => {
+  const db = makeNodeSqliteDb();
+  try {
+    await db.setUserVersion(78);
+    await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo),
+      /no such table: medication_stock/);
+    assert.equal(await db.getUserVersion(), 78);
+    assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
   } finally {
     await db.close();
   }
