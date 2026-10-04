@@ -1,9 +1,11 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { appendFileSync, copyFileSync, globSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { execute, writeSummary } from '../scripts/check-process.mjs';
 
-/** @typedef {{ name: string, tier: string, holds: string, args?: string[], build?: string }} Guard */
+/** @typedef {{ name: string, tier: string, holds: string, args?: string[], build?: string, diagnostics?: string[] }} Guard */
 
 /** @typedef {{ guards: Record<string, number>, builds: Record<string, number> }} Timings */
 
@@ -34,9 +36,9 @@ export function selectGuards(guards, tier, shard, timings) {
 
 /**
  * @param {Guard[]} guards
- * @param {{ run?: typeof execute, log?: (line: string) => void, blocked?: boolean }} options
+ * @param {{ run?: typeof execute, log?: (line: string) => void, blocked?: boolean, evidenceDir?: string, revision?: string }} options
  */
-export async function runGuards(guards, { run = execute, log = console.log, blocked = false } = {}) {
+export async function runGuards(guards, { run = execute, log = console.log, blocked = false, evidenceDir, revision = 'unavailable' } = {}) {
   const builds = new Map();
   const results = [];
   for (const guard of guards) {
@@ -51,22 +53,62 @@ export async function runGuards(guards, { run = execute, log = console.log, bloc
     if (!buildFailed) {
       for (let attempt = 1; attempt <= 2; attempt += 1) {
         log(`\nGuard: ${guard.name}, attempt ${attempt}/2`);
+        const directory = evidenceDir ? join(evidenceDir, guard.name, `attempt-${attempt}`) : undefined;
+        const logFile = directory ? join(directory, 'output.log') : undefined;
+        const before = directory ? diagnosticFiles(guard.diagnostics ?? []) : new Map();
+        const startedAt = new Date().toISOString();
+        if (directory && logFile) {
+          mkdirSync(directory, { recursive: true });
+          writeFileSync(logFile, `${JSON.stringify({ name: guard.name, revision, attempt, startedAt })}\n`);
+        }
         const attemptStart = performance.now();
-        const code = await run(process.execPath, [`tests/${guard.name}.mjs`, ...(guard.args ?? [])], {});
-        attempts.push({ code, durationMs: performance.now() - attemptStart });
+        const code = await run(process.execPath, [`tests/${guard.name}.mjs`, ...(guard.args ?? [])], {}, process.cwd(), logFile);
+        const result = { name: guard.name, revision, attempt, code, startedAt, finishedAt: new Date().toISOString(), durationMs: performance.now() - attemptStart };
+        if (directory && logFile) {
+          for (const [path, signature] of diagnosticFiles(guard.diagnostics ?? [])) {
+            if (before.get(path) === signature) continue;
+            const target = join(directory, 'diagnostics', isAbsolute(path) ? path.slice(1) : path);
+            mkdirSync(dirname(target), { recursive: true });
+            copyFileSync(path, target);
+          }
+          appendFileSync(logFile, `\n${JSON.stringify(result)}\n`);
+          writeFileSync(join(directory, 'result.json'), JSON.stringify(result, null, 2) + '\n');
+        }
+        attempts.push(result);
         if (code === 0) break;
       }
     }
-    results.push({ name: guard.name, passed: !buildFailed && attempts.at(-1)?.code === 0, buildFailed, attempts, durationMs: performance.now() - start });
+    const passed = !buildFailed && attempts.at(-1)?.code === 0;
+    const outcome = buildFailed ? 'blocked' : !passed ? 'failed' : attempts.length > 1 ? 'recovered' : 'passed';
+    results.push({ name: guard.name, passed, outcome, buildFailed, attempts, durationMs: performance.now() - start });
   }
   log('\nGuard results:');
   log('Result and guard | Seconds | Attempts (exit code, seconds)');
   for (const row of results) {
     const attempts = row.buildFailed ? (blocked ? 'job setup failed; guard did not run' : 'build failed; guard did not run') : row.attempts.map((attempt) => `${attempt.code}, ${(attempt.durationMs / 1000).toFixed(2)}s`).join(' / ');
-    log(`${row.buildFailed ? 'BLOCKED' : row.passed ? 'PASS' : 'FAIL'} ${row.name} | ${(row.durationMs / 1000).toFixed(2)} | ${attempts}`);
+    log(`${row.outcome === 'passed' ? 'PASS' : row.outcome === 'failed' ? 'FAIL' : row.outcome.toUpperCase()} ${row.name} | ${(row.durationMs / 1000).toFixed(2)} | ${attempts}`);
   }
-  log(`${results.filter((row) => !row.passed).length} failed or blocked, ${results.filter((row) => row.passed).length} passed`);
+  log(`${results.filter((row) => !row.passed).length} failed or blocked, ${results.filter((row) => row.outcome === 'recovered').length} recovered, ${results.filter((row) => row.outcome === 'passed').length} passed`);
   return results;
+}
+
+/** @param {string[]} patterns */
+function diagnosticFiles(patterns) {
+  const files = new Map();
+  for (const path of globSync(patterns)) {
+    const stat = lstatSync(path, { bigint: true });
+    if (stat.isFile()) files.set(path, `${stat.mtimeNs}:${stat.ctimeNs}:${stat.size}`);
+  }
+  return files;
+}
+
+/** @param {string} logFile */
+function failureExcerpt(logFile) {
+  const lines = stripVTControlCharacters(readFileSync(logFile, 'utf8')).trimEnd().split('\n').slice(1, -1);
+  const firstFailure = lines.findIndex((line) => /\bFAIL(?:ED)?\b|\b\w*Error(?: \[[^\]]+\])?:|\bERROR\b|stopped by SIG|\b[1-9]\d* style \/ \d+ render yank\(s\)/i.test(line));
+  return lines.slice(firstFailure < 0 ? -12 : firstFailure, firstFailure < 0 ? undefined : firstFailure + 12)
+    .filter((line) => !/\b0 style \/ \d+ render yank\(s\)/.test(line))
+    .join('\n').slice(0, 2400).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -76,11 +118,26 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     if (!args.includes('--tier') || !tier || (args.includes('--shard') && !shard)) throw new Error('Usage: node tests/run-guards.mjs --tier dev|built [--shard N/M] [--blocked]');
     const guards = JSON.parse(readFileSync(new URL('./guards.json', import.meta.url), 'utf8'));
-    const results = await runGuards(selectGuards(guards, tier, shard), { blocked: args.includes('--blocked') });
+    const revision = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout?.trim() || 'unavailable';
+    mkdirSync('ci-logs/guards', { recursive: true });
+    const evidenceDir = mkdtempSync('ci-logs/guards/run-');
+    const results = await runGuards(selectGuards(guards, tier, shard), { blocked: args.includes('--blocked'), evidenceDir, revision });
+    writeFileSync(join(evidenceDir, 'results.json'), JSON.stringify({ revision, tier, shard, results }, null, 2) + '\n');
     writeSummary([
-      '| Guard | Result | Seconds | Attempts (exit codes) |', '| --- | --- | --- | --- |',
-      ...results.map((row) => `| ${row.name} | ${row.buildFailed ? 'blocked' : row.passed ? 'passed' : 'failed'} | ${(row.durationMs / 1000).toFixed(2)} | ${row.attempts.map((attempt) => attempt.code).join(', ')} |`)
+      `Tested revision: \`${revision}\``, '', `Attempt logs and diagnostics: \`${evidenceDir}\``, '',
+      '| Guard | Result | Seconds | Attempts (exit code, seconds) |', '| --- | --- | --- | --- |',
+      ...results.map((row) => `| ${row.name} | ${row.outcome} | ${(row.durationMs / 1000).toFixed(2)} | ${row.buildFailed ? (args.includes('--blocked') ? 'job setup failed; guard did not run' : 'build failed; guard did not run') : row.attempts.map((attempt) => `attempt ${attempt.attempt}: exit ${attempt.code}, ${(attempt.durationMs / 1000).toFixed(2)}s`).join('; ')} |`)
     ]);
+    for (const row of results) {
+      for (const attempt of row.attempts.filter((attempt) => attempt.code !== 0)) {
+        const logFile = join(evidenceDir, row.name, `attempt-${attempt.attempt}`, 'output.log');
+        writeSummary([
+          '', `Failed case output: ${row.name}, attempt ${attempt.attempt}`, '',
+          `Full log in the artifact: \`${relative('ci-logs', logFile)}\``, '',
+          '<pre>', failureExcerpt(logFile), '</pre>'
+        ]);
+      }
+    }
     process.exitCode = results.some((row) => !row.passed) ? 1 : 0;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
