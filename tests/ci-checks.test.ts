@@ -36,15 +36,25 @@ describe('CI check collection', () => {
       run: async (_command: string, args: string[]) => { calls.push(args.join(' ')); return 1; },
       log: (line: string) => output.push(line)
     });
-    expect(calls).toEqual(['run build', 'run check:copy', 'run check:licences', 'run check:screens-classes', 'run check:progressive-release']);
+    expect(calls).toEqual(['run check:ai-directories', 'run build', 'run check:copy', 'run check:licences', 'run check:screens-classes', 'run check:progressive-release']);
     expect(results.filter((result) => result.outcome === 'failed').map((result) => result.id))
-      .toEqual(['build', 'copy', 'licences', 'classes', 'progressive-release']);
+      .toEqual(['ai-directories', 'build', 'copy', 'licences', 'classes', 'progressive-release']);
     expect(results.filter((result) => result.outcome === 'blocked').map((result) => result.id))
       .toEqual(['types', 'node', 'budget']);
     expect(output.join('\n')).toContain('FAIL Message catalogues and user-facing literals');
     expect(output.join('\n')).toContain('FAIL Dependency licences');
     expect(output.join('\n')).toContain('FAIL screens.css single-consumer classes');
     expect(results).toHaveLength(CI_CHECKS.node.length);
+  });
+
+  it('runs the AI directory guard through its local npm command without build prerequisites', async () => {
+    const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(manifest.scripts['check:ai-directories']).toBe('node scripts/check-ai-directories.mjs');
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, args: string[]) => args.includes('check:ai-directories') ? 1 : 0,
+      log: () => {}
+    });
+    expect(results.find((result) => result.id === 'ai-directories')?.outcome).toBe('failed');
   });
 
   it('validates release evidence independently of build prerequisites', async () => {
