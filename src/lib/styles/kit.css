@@ -739,12 +739,6 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   letter-spacing: 0.02em;
 }
 
-.kit-day-aside {
-  margin-left: auto;
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-}
-
 .kit-day-body {
   padding: var(--space-2) 0 var(--space-3);
 }

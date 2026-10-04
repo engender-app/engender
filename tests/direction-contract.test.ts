@@ -562,7 +562,6 @@ describe('rule 4: surfaces are flush, block or ink', () => {
     expect(body).toMatch(/background:\s*var\(--text\)/);
     expect(body).toMatch(/color:\s*var\(--bg\)/);
     expect(body).not.toMatch(/--role|border(-(top|right|bottom|left|inline|block)[a-z-]*)?:/);
-    expect(ruleFor(kit, '.kit-day-aside')?.body ?? '').not.toMatch(/color:/);
   });
 
   it("sets the notice's mark as a 40px square of ink", () => {

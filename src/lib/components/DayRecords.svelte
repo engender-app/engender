@@ -113,11 +113,13 @@
 {/snippet}
 
 {#if entries.length > 0}
+  <!-- The bar counts the entries and leaves the date to the screen's own
+       header, one line above it (release audit U17: "1 October 2026 · 1
+       entry this day" under a header that already said 1 October). -->
   <DayCard
     key={String(epochDay)}
     role={entriesRole}
-    date={fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-    aside={m.entries_this_day({ count: entries.length })}
+    date={m.entries_this_day({ count: entries.length })}
   >
     {#each entries as e (e.id)}
       {@const presentation = entryPresentation(e)}

@@ -151,6 +151,21 @@ try {
   await page.evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION);
   await page.waitForSelector('[data-getting-started]');
 
+  /* An offer whose area is already pinned is left out (phase 14 ticket 18),
+     and day one's default pins include milestones and care. Pinned there,
+     Milestones and Care are not offered a second time. This check needs
+     all five rows, so it pins only tryouts and comes back to Home. */
+  const offered = await page.$$eval('[data-getting-started] [data-list-row]', (rows) => rows.map((r) => r.dataset.listRow));
+  assert.deepEqual(offered, ['letters', 'photos', 'more'], 'the default pins are not offered again');
+  console.log('PASS day one leaves out the offers its default pins already show');
+  await page.evaluate(async () => {
+    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+    prefs.pinnedRows = ['tryouts'];
+  });
+  await page.waitForTimeout(300);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-getting-started]');
+
   // Day one: five rows, nothing crossed, `more` has no check to cross to.
   const keys = await page.$$eval('[data-getting-started] [data-list-row]', (rows) => rows.map((r) => r.dataset.listRow));
   assert.deepEqual(keys, ['milestones', 'regimen', 'letters', 'photos', 'more']);
