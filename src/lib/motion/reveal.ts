@@ -1242,7 +1242,12 @@ const masks = new WeakMap<HTMLElement, { count: number; overflow: string; rows: 
  * whether to animate the marks inside the box; there is nothing here to
  * substitute a fade for.
  */
-export function maskHeight(node: HTMLElement, from: number, duration: number): void {
+export function maskHeight(
+  node: HTMLElement,
+  from: number,
+  duration: number,
+  signal?: AbortSignal
+): Promise<void> {
   /* A second travel can start inside the first (a month tapped twice). The
      box's own styles are saved once, by the first, and put back by the last
      to settle: saved per call, the second took the first's clip and pinned
@@ -1259,17 +1264,22 @@ export function maskHeight(node: HTMLElement, from: number, duration: number): v
   node.style.gridTemplateRows = own.rows;
   node.style.gridTemplateRows = getComputedStyle(node).gridTemplateRows;
   const settle = () => {
+    signal?.removeEventListener('abort', cancel);
     if (--own.count > 0) return;
     masks.delete(node);
     node.style.overflow = own.overflow;
     node.style.gridTemplateRows = own.rows;
   };
-  node
+  const animation = node
     .animate([{ height: `${from}px` }, { height: `${node.getBoundingClientRect().height}px` }], {
       duration,
       easing: EASE_OUT_CSS
-    })
-    .finished.then(settle, settle);
+    });
+  const cancel = () => animation.cancel();
+  const settled = animation.finished.then(settle, settle);
+  signal?.addEventListener('abort', cancel, { once: true });
+  if (signal?.aborted) cancel();
+  return settled;
 }
 
 /**
