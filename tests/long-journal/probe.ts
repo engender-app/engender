@@ -193,7 +193,10 @@ async function run(days: number) {
   });
 
   await reopened.driver.close();
-  return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes };
+  return {
+    summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes,
+    bootWindow: { startedAt: bootStartedAt, readyAt: bootStartedAt + bootReadyMs }
+  };
 }
 
 async function main() {
