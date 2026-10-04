@@ -43,7 +43,7 @@ if (process.env.VITE_DEMO === '1') {
   const entry = JSON.parse(readFileSync('.svelte-kit/demo-prewarm.json', 'utf8'));
   // Reuse the worker's emitted binary rather than emitting a second copy.
   const binary = readFileSync(createRequire(import.meta.url).resolve('@evolu/sqlite-wasm/sqlite3.wasm'));
-  const directory = '_app/immutable/workers/assets';
+  const directory = '_app/immutable/assets';
   const wasm = readdirSync(`build/${directory}`).find((name) =>
     name.endsWith('.wasm') && readFileSync(`build/${directory}/${name}`).equals(binary)
   );
