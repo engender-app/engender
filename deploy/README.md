@@ -61,6 +61,7 @@ Install these files:
 
 - `deploy/nginx/journal-headers.conf` -> `/etc/nginx/snippets/engender-journal-headers.conf`
 - `deploy/nginx/journal-site.conf` -> `/etc/nginx/snippets/engender-journal-site.conf`
+- `deploy/nginx/journal-http.conf` -> `/etc/nginx/snippets/engender-journal-http.conf`
 - `deploy/nginx/journal.conf` -> `/etc/nginx/sites-available/engender-journal.conf`
 
 `deploy/nginx/journal-brotli.conf` is optional and goes in last, because it
