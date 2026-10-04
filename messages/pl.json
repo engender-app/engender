@@ -2741,7 +2741,7 @@
       ],
       "match": {
         "countPlural=one": "{count} wynik",
-        "countPlural=few": "{count} wyniky",
+        "countPlural=few": "{count} wyniki",
         "countPlural=many": "{count} wyników",
         "countPlural=other": "{count} wyników"
       }
@@ -3006,7 +3006,6 @@
   "search": "Szukaj",
   "search_area_felt_sense": "Odczucia",
   "search_elsewhere_heading": "Poza wpisami",
-  "search_entries_count": "Wpisy: {count}",
   "search_entries_heading": "Wpisy",
   "search_filter_end_chip": "Do: {date}",
   "search_filter_end_label": "Do dnia",
@@ -3023,7 +3022,7 @@
   "search_filters_count": "Filtry ({count})",
   "search_filters_date_scope": "Zakres dat filtruje też zapisy z datą w innych obszarach.",
   "search_filters_entries_only": "Tagi, nastrój, notatki, zdjęcia i gwiazdki filtrują tylko wpisy.",
-  "search_hint": "Szukaj w tekstach dziennika i tytułach dokumentów. Możesz pominąć znaki diakrytyczne.",
+  "search_hint": "Przeszukuje notatki i tytuły dokumentów.",
   "search_no_results_filtered": "Żaden wpis nie pasuje jeszcze do tych filtrów.",
   "search_placeholder": "Szukaj",
   "search_recent_label": "Ostatnie wyszukiwania",
