@@ -195,7 +195,7 @@ Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
-`setup-flow`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`, `device-evidence`, `picker-motion-yanks`.
+`setup-flow`, `frame-band-distances`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`, `device-evidence`, `picker-motion-yanks`.
 
 `run-guards` runs the roster; its Node tests check retry, builds and sharding.
 
