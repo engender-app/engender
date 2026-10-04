@@ -78,11 +78,11 @@ try {
     await page.locator('#q').fill('scopeprobe');
     await counts(1, 1);
     await scopeSaidOnce('screen');
-    /* Results come straight under the field: the first one - its day card,
-       which is the result's own top edge - starts inside the first third of
-       a 390x844 phone, measured from the app's own top. */
+    /* Results come straight under the field: the first entry row starts
+       inside the first third of a 390x844 phone, measured from the app's
+       own top. */
     const firstTop = await page.evaluate(() =>
-      document.querySelector('[data-day-card]').getBoundingClientRect().top -
+      document.querySelector('[data-entry-card]').getBoundingClientRect().top -
       document.querySelector('[data-app-root]').getBoundingClientRect().top);
     assert.ok(firstTop <= 844 / 3, `first result at ${Math.round(firstTop)}px, below the first third`);
     assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('scopeprobe'))), false);
