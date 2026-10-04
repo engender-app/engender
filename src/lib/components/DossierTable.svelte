@@ -1,10 +1,15 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import Icon from './Icon.svelte';
 
   let { label, children }: { label: string; children: Snippet } = $props();
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
+
+  function fadeEdge() {
+    return fadeOnly(crossfadeDuration());
+  }
 
   function observeScroll(node: HTMLElement) {
     function measure() {
@@ -30,10 +35,10 @@
     {@render children()}
   </div>
   {#if canScrollStart}
-    <span class="dossier-edge dossier-edge-start no-print" aria-hidden="true"><Icon name="chevronLeft" size={18} /></span>
+    <span class="dossier-edge dossier-edge-start no-print" aria-hidden="true" transition:fadeEdge><Icon name="chevronLeft" size={18} /></span>
   {/if}
   {#if canScrollEnd}
-    <span class="dossier-edge dossier-edge-end no-print" aria-hidden="true"><Icon name="chevronRight" size={18} /></span>
+    <span class="dossier-edge dossier-edge-end no-print" aria-hidden="true" transition:fadeEdge><Icon name="chevronRight" size={18} /></span>
   {/if}
 </div>
 
