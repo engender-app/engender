@@ -48,8 +48,8 @@ test('a failed commit preserves an edited draft and its removals for retry', asy
   let failCommit = false;
   const journal = openJournal({
     ...db,
-    transaction: (work) => db.transaction(async () => {
-      const result = await work();
+    transaction: (work) => db.transaction(async (scope) => {
+      const result = await work(scope);
       if (failCommit) throw new Error('injected commit failure');
       return result;
     })

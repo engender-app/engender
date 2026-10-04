@@ -13,10 +13,10 @@
 
    Transactions are implemented as manual BEGIN/COMMIT/ROLLBACK over the
    same `sql` calls exec/query/run use, rather than SQLocal's own tx-scoped
-   `transaction()` helper: migration-runner.ts's callback calls back into
-   the driver's own exec/setUserVersion (not a separate transaction
-   handle), and SQLocal serializes every call through one worker
-   connection, so manual BEGIN/COMMIT/ROLLBACK composes correctly with that
+   `transaction()` helper. The public wrapper supplies a driver scope for
+   exec/setUserVersion and keeps unrelated calls outside the transaction.
+   SQLocal serializes every raw call through one worker connection, so
+   manual BEGIN/COMMIT/ROLLBACK composes correctly with that
    - verified directly against a running SQLocal instance. Two of them at
    once is what that ordering cannot compose, so they queue behind each
    other through oneTransactionAtATime() (ticket 134), as on the two

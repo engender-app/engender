@@ -288,7 +288,7 @@ async function restoreWithin(
   let added: Record<string, number> = {};
   try {
     await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
-    await driver.transaction(async () => {
+    await driver.transaction(async (driver) => {
       // Seeding first, unconditionally, and inside this transaction with
       // everything else (reconcile.ts explains the second entry point).
       await reconcileBuiltInsWithin(driver);

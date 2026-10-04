@@ -29,6 +29,7 @@ import type { Journal } from './journal.ts';
 import { openJournal } from './journal.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
+import { restoreArchive } from './restore.ts';
 
 interface ContractCheck {
   name: string;
@@ -108,7 +109,7 @@ export async function runJournalContract(
   await r.section('transactions roll back', async () => {
     const before = await countEntries(driver);
     try {
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         await driver.run(
           "INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('contract-rollback', 2, 1, 1)"
         );
@@ -119,6 +120,148 @@ export async function runJournalContract(
     }
     r.equal('a failed transaction leaves nothing behind', await countEntries(driver), before);
   });
+
+  await r.section('transaction ownership', async () => {
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let captured!: SqliteDriver;
+    const failed = driver.transaction(async (scope) => {
+      captured = scope;
+      entered();
+      await held;
+      await scope.run("INSERT INTO pref VALUES ('contract-owned', 'rollback')");
+      throw new Error('deliberate ownership rollback');
+    }).then(() => '', (error) => String(error.message));
+    await started;
+    let saved = false;
+    const outside = driver.run("INSERT INTO pref VALUES ('contract-outside', 'committed')")
+      .then(() => { saved = true; });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    r.equal('an outside write waits for transaction rollback', saved, false);
+    release();
+    r.equal('the transaction reports its own rollback', await failed, 'deliberate ownership rollback');
+    await outside;
+    r.equal('the outside write survives another transaction rollback',
+      await driver.query("SELECT key FROM pref WHERE key IN ('contract-owned', 'contract-outside') ORDER BY key"),
+      [{ key: 'contract-outside' }]);
+    await driver.run("DELETE FROM pref WHERE key IN ('contract-owned', 'contract-outside')");
+    r.equal('the transaction callback receives a scoped driver', captured !== undefined && captured !== driver, true);
+    if (captured) {
+      const expired = await captured.query('SELECT 1').then(() => false, (error) => error.message.includes('scope has expired'));
+      r.equal('a rolled-back transaction scope cannot query later', expired, true);
+    }
+  });
+
+  await r.section('a hair-removal save survives a failed Merge', async () => {
+    const first = await journal.entries.upsertEntry({ epochDay: 29000, mood: 3, note: 'merge first' });
+    const last = await journal.entries.upsertEntry({ epochDay: 29001, mood: 3, note: 'merge last' });
+    const snapshot = await journal.archive.snapshot();
+    const bad = { ...snapshot.journal, entries: snapshot.journal.entries.map((entry) =>
+      entry.epochDay === 29001 ? { ...entry, epochDay: null } : entry) };
+    await driver.run('DELETE FROM entry WHERE id IN (?, ?)', [first, last]);
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const restoring = restoreArchive({
+      ...driver,
+      transaction: (work) => driver.transaction(async (scope) => {
+        entered();
+        await held;
+        return work(scope);
+      })
+    }, files, 'merge', {
+      journal: bad as typeof snapshot.journal, files: (async function* () {})()
+    }).then(() => '', (error) => String(error.message));
+    await started;
+    const saving = journal.hairRemoval.upsertSession({
+      epochDay: 29003, area: 'chin', method: 'laser', painRating: 2
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    release();
+    r.equal('the invalid Merge refuses an entry without a day', (await restoring).includes('entry.epoch_day'), true);
+    const sessionId = await saving;
+    r.equal('a fulfilled hair-removal save survives the failed Merge rollback',
+      await driver.query('SELECT uuid FROM hair_removal_session WHERE uuid = ?', [sessionId]), [{ uuid: sessionId }]);
+    r.equal('the failed Merge leaves no imported entry rows',
+      await driver.query('SELECT id FROM entry WHERE epoch_day IN (29000, 29001)'), []);
+    await journal.hairRemoval.deleteSession(sessionId);
+  });
+
+  await r.section('transaction scope lifetime', async () => {
+    let captured!: SqliteDriver;
+    await driver.transaction(async (scope) => {
+      captured = scope;
+      r.equal('public nested transactions reject', await scope.transaction(() => {})
+        .then(() => false, (error) => error.message.includes('nested transactions')), true);
+      r.equal('transaction scopes cannot close their connection', await scope.close()
+        .then(() => false, (error) => error.message.includes('cannot close')), true);
+      await scope.query('SELECT 1');
+    });
+    r.equal('a committed transaction scope cannot write later', await captured.run("DELETE FROM pref WHERE key = 'contract-unused'")
+      .then(() => false, (error) => error.message.includes('scope has expired')), true);
+    let reader!: import('../sqlite/driver.ts').SqliteReader;
+    await driver.readSnapshot(async (scope) => { reader = scope; });
+    r.equal('a snapshot reader cannot query later', await reader.query('SELECT 1')
+      .then(() => false, (error) => error.message.includes('scope has expired')), true);
+  });
+
+  await r.section('photo removal rollback', async () => {
+    const entryId = await journal.entries.upsertEntry({ epochDay: 20500, mood: 3 });
+    const photoId = await journal.photos.attach({ entryId }, {
+      full: new Uint8Array([1, 2]), thumb: new Uint8Array([3])
+    });
+    const [photo] = (await journal.entries.getEntry(entryId))!.photos;
+    const refusing = openJournal({
+      ...driver,
+      transaction: (work) => driver.transaction(async (scope) => {
+        await work(scope);
+        throw new Error('deliberate photo commit failure');
+      })
+    }, files);
+    r.equal('photo removal reports a failed row commit', await refusing.photos.remove(photoId)
+      .then(() => false, (error) => error.message === 'deliberate photo commit failure'), true);
+    r.equal('a photo rollback keeps its row', (await journal.entries.getEntry(entryId))!.photos.map((row) => row.id), [photoId]);
+    r.equal('a photo rollback keeps full bytes', [...(await files.read(photo.fileName!)) ?? []], [1, 2]);
+    r.equal('a photo rollback keeps thumbnail bytes', [...(await files.read(thumbFileName(photo.fileName!))) ?? []], [3]);
+    await journal.photos.remove(photoId);
+    await journal.entries.deleteEntry(entryId);
+  });
+
+  for (const rollback of [false, true]) {
+    await r.section(`scoped attachment cleanup after ${rollback ? 'rollback' : 'commit'}`, async () => {
+      const entryId = await journal.entries.upsertEntry({
+        epochDay: 20501, mood: 3,
+        attachPhotos: [
+          { full: new Uint8Array([4]), thumb: new Uint8Array([5]) },
+          { full: new Uint8Array([6]), thumb: new Uint8Array([7]) }
+        ]
+      });
+      const photos = (await journal.entries.getEntry(entryId))!.photos;
+      const names = photos.flatMap((photo) => [photo.fileName!, thumbFileName(photo.fileName!)]);
+      const writing = driver.transaction(async (scope) => {
+        // Only the worker seed joins area writes into an already owned transaction.
+        const joined: SqliteDriver = { ...scope, transaction: async (work) => work(joined) };
+        await openJournal(joined, files).entries.upsertEntry({ id: entryId, removePhotoIds: [photos[0].id] });
+        await openJournal(scope, files).photos.remove(photos[1].id);
+        r.equal('scoped attachment cleanup keeps bytes before outer commit',
+          await Promise.all(names.map(async (name) => await files.read(name) !== null)), [true, true, true, true]);
+        if (rollback) throw new Error('deliberate outer rollback');
+      }).then(() => false, (error) => {
+        if (error.message !== 'deliberate outer rollback') throw error;
+        return true;
+      });
+      r.equal('the outer attachment transaction reports its outcome', await writing, rollback);
+      r.equal('outer rollback preserves attachment rows; commit deletes them',
+        (await journal.entries.getEntry(entryId))!.photos.map((photo) => photo.id), rollback ? photos.map((photo) => photo.id) : []);
+      r.equal('outer rollback preserves attachment bytes; commit deletes them',
+        await Promise.all(names.map(async (name) => await files.read(name) !== null)), [rollback, rollback, rollback, rollback]);
+      if (rollback) for (const photo of photos) await journal.photos.remove(photo.id);
+      await journal.entries.deleteEntry(entryId);
+    });
+  }
 
   /* The reason the fold exists (ADR-0005): ł has no Unicode decomposition,
      so neither NFD folding nor FTS5's remove_diacritics reaches it, and the

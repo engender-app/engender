@@ -114,7 +114,7 @@ await block('production foreign key enforcement', 5, async () => {
 });
 
 // --- Ticket 04: the real driver + boot() against the real schema -----------
-await block('ticket 04 browser tier', 8, async () => {
+await block('ticket 04 browser tier', 9, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
@@ -155,6 +155,11 @@ await block('ticket 04 browser tier', 8, async () => {
   if (ct.rejected.length === 0 && ct.committed === 2)
     ok('two transactions started at once both commit, one after the other');
   else fail('two transactions started at once both commit, one after the other', JSON.stringify(ct));
+
+  const contract = first.driverContractChecks;
+  if (contract.length >= 20 && contract.every((check) => check.ok))
+    ok('the production web driver passes the shared journal and ownership contract');
+  else fail('the production web driver passes the shared journal and ownership contract', JSON.stringify(contract.filter((check) => !check.ok)));
 
   // Ticket 10: the recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.

@@ -61,7 +61,7 @@ export function makeComfortItemsArea(driver: SqliteDriver): ComfortItemsArea {
       if (orderedIds.length !== rows.length || !orderedIds.every((id) => current.has(id))) {
         throw new Error('reorder of the comfort list does not permute its items');
       }
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         for (const [position, id] of orderedIds.entries()) {
           await driver.run('UPDATE comfort_item SET position = ?, updated_at = ? WHERE uuid = ?', [
             position,

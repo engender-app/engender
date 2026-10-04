@@ -34,7 +34,7 @@ function makeFts5UnavailableDb(): MigrationDb {
     async query() { return []; },
     setUserVersion() {},
     transaction(fn) {
-      return fn();
+      return fn(this);
     }
   };
 }
@@ -289,7 +289,7 @@ test('assertFts5Available does not misclassify a locked database as missing FTS5
     async query() { return []; },
     setUserVersion() {},
     transaction(fn) {
-      return fn();
+      return fn(this);
     }
   };
 
