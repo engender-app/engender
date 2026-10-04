@@ -2,6 +2,8 @@ package dev.engender.app.photos;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -12,6 +14,11 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.SyncFailedException;
+import android.system.Os;
+import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -87,6 +94,53 @@ public class PhotoWriteChannelTest {
             JSONObject ack = new JSONObject(raw);
 
             assertEquals(false, ack.getBoolean("ok"));
+        }
+    }
+
+    @Test public void syncFailureRejectsWriteChannel() throws Exception {
+        syncFailureIsRejected(true);
+    }
+
+    @Test public void syncFailureRejectsBase64Bridge() throws Exception {
+        syncFailureIsRejected(false);
+    }
+
+    private void syncFailureIsRejected(boolean useChannel) throws Exception {
+        File target = PhotoFiles.fileFor(InstrumentationRegistry.getInstrumentation().getTargetContext(),
+            "write-channel-test", "sync-failure.bin");
+        target.delete();
+        Os.symlink("/dev/null", target.getAbsolutePath());
+        try {
+            // This destination accepts bytes but cannot make them durable.
+            try (FileOutputStream output = new FileOutputStream(target, false)) {
+                output.write(new byte[] {1});
+                assertThrows(SyncFailedException.class, () -> output.getFD().sync());
+            }
+            try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+                assertTrue(awaitBoolean(scenario, "typeof window.androidPhotoWriteChannel !== 'undefined'"));
+                if (useChannel) {
+                    String channelScript = "(function(){"
+                        + "var channel = new MessageChannel();"
+                        + "channel.port1.onmessage = function(e){ window.__syncChannelResult = e.data; };"
+                        + "window.androidPhotoWriteChannel.postMessage("
+                        + "JSON.stringify({name:'sync-failure.bin',directory:'write-channel-test'}), [channel.port2]);"
+                        + "var bytes = new Uint8Array([1]); channel.port1.postMessage(bytes.buffer, [bytes.buffer]);"
+                        + "})();";
+                    JSONObject channel = new JSONObject(awaitResult(scenario, channelScript, "window.__syncChannelResult"));
+                    assertFalse(channel.toString(), channel.getBoolean("ok"));
+                    assertTrue(channel.toString(), channel.getString("error").toLowerCase().contains("sync"));
+                } else {
+                    String bridgeScript = "window.Capacitor.Plugins.Photos.writeFile("
+                        + "{name:'sync-failure.bin',directory:'write-channel-test',base64:'AQ=='})"
+                        + ".then(function(){window.__syncBridgeResult=JSON.stringify({ok:true});})"
+                        + ".catch(function(error){window.__syncBridgeResult=JSON.stringify({ok:false,error:String(error)});});";
+                    JSONObject bridge = new JSONObject(awaitResult(scenario, bridgeScript, "window.__syncBridgeResult"));
+                    assertFalse(bridge.toString(), bridge.getBoolean("ok"));
+                    assertTrue(bridge.toString(), bridge.getString("error").toLowerCase().contains("sync"));
+                }
+            }
+        } finally {
+            target.delete();
         }
     }
 

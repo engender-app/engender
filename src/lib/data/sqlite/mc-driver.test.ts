@@ -1,7 +1,7 @@
 /* The database worker started ahead of the key (ux-carpet ticket 209), over
    a stand-in Worker: what reaches the worker and when, not what SQLite does
    with it (the browser tier opens real databases). */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createConversionTarget,
   createEncryptedWebSqlite,
@@ -9,26 +9,30 @@ import {
   releaseOnPageHide,
   releasePrewarmedJournalWorker
 } from './mc-driver';
+import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
 
 type Posted = { id: number; op: string; args: Record<string, unknown> };
 
 class FakeWorker {
   static made: FakeWorker[] = [];
   static silent = false;
+  static seedResult: unknown = true;
   posted: Posted[] = [];
   terminated = false;
+  transferred: Transferable[][] = [];
   onmessage: ((event: { data: unknown }) => void) | null = null;
   onerror: ((event: { message: string }) => void) | null = null;
   constructor() {
     FakeWorker.made.push(this);
   }
-  postMessage(message: Posted) {
+  postMessage(message: Posted, transfer: Transferable[] = []) {
     this.posted.push(message);
+    this.transferred.push(transfer);
     /* A terminated worker answers nothing, as a real one does. */
     if (FakeWorker.silent || this.terminated) return;
     /* Answers every message at once, the way a worker that has already
        attached does. */
-    queueMicrotask(() => this.onmessage?.({ data: { id: message.id, ok: true, result: undefined } }));
+    queueMicrotask(() => this.onmessage?.({ data: { id: message.id, ok: true, result: message.op === 'seedDemoPersona' ? FakeWorker.seedResult : undefined } }));
   }
   terminate() {
     this.terminated = true;
@@ -43,12 +47,14 @@ beforeEach(() => {
   g.Worker = FakeWorker;
   FakeWorker.made = [];
   FakeWorker.silent = false;
+  FakeWorker.seedResult = true;
 });
 
 afterEach(async () => {
   FakeWorker.silent = false;
   await releasePrewarmedJournalWorker();
   g.Worker = prior;
+  vi.unstubAllGlobals();
 });
 
 const key = new Uint8Array([1, 2, 3]);
@@ -67,6 +73,39 @@ describe('the database worker started ahead of the key', () => {
     expect(FakeWorker.made).toHaveLength(1);
     expect(FakeWorker.made[0].posted.map((m) => m.op)).toEqual(['attach', 'open']);
     expect(FakeWorker.made[0].posted[1].args.hexKey).toBe('010203');
+  });
+
+  it('shares an early HTML prewarm with the later boot prewarm', () => {
+    const early = prewarmJournalWorker('journal.sqlite3');
+    const later = prewarmJournalWorker('journal.sqlite3');
+    expect(later).toBe(early);
+    createEncryptedWebSqlite('journal.sqlite3', key);
+    expect(FakeWorker.made).toHaveLength(1);
+    expect(FakeWorker.made[0].posted.map((m) => m.op)).toEqual(['attach', 'open']);
+  });
+
+  it('attaches supplied module bytes before any boot message reaches the worker', async () => {
+    let supply!: (bytes: ArrayBuffer) => void;
+    const bytes = new ArrayBuffer(8);
+    const early = prewarmJournalWorker('journal.sqlite3', new Promise((resolve) => { supply = resolve; }));
+    expect(prewarmJournalWorker('journal.sqlite3')).toBe(early);
+    createEncryptedWebSqlite('journal.sqlite3', key);
+    const [worker] = FakeWorker.made;
+    expect(worker.posted).toHaveLength(0);
+    supply(bytes);
+    await early;
+    expect(worker.posted.map((m) => m.op)).toEqual(['attach', 'open']);
+    expect(worker.posted[0].args.wasmBinary).toBe(bytes);
+    expect(worker.transferred[0]).toEqual([bytes]);
+    expect(worker.transferred[1]).toEqual([]);
+  });
+
+  it('reports a failed module download through later boot reads', async () => {
+    const early = prewarmJournalWorker('journal.sqlite3', Promise.reject(new Error('download failed')));
+    const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await expect(early).rejects.toThrow('download failed');
+    await expect(driver.query('SELECT 1')).rejects.toThrow('download failed');
+    expect(FakeWorker.made[0].posted).toHaveLength(0);
   });
 
   it('is not handed to a different database', () => {
@@ -225,5 +264,24 @@ describe('releasing every live connection on pagehide', () => {
        (mc-driver.ts), so there is nothing left here to post a second
        close to. */
     expect(worker.posted.map((m) => m.op)).toEqual(['open', 'close']);
+  });
+});
+
+describe('demo preparation migration errors', () => {
+  it('preserves the newer-schema error and its versions for the boot reducer', async () => {
+    vi.stubGlobal('__DEMO__', true);
+    vi.stubGlobal('OffscreenCanvas', class {});
+    FakeWorker.seedResult = { foundVersion: 85, knownVersion: 84 };
+    const { prepareDemoPersona } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await expect(prepareDemoPersona!({} as never)).rejects.toBeInstanceOf(SchemaTooNewError);
+    await expect(prepareDemoPersona!({} as never)).rejects.toMatchObject({ foundVersion: 85, knownVersion: 84 });
+  });
+
+  it('preserves the interrupted-restore error for automatic recovery', async () => {
+    vi.stubGlobal('__DEMO__', true);
+    vi.stubGlobal('OffscreenCanvas', class {});
+    FakeWorker.seedResult = { interruptedRestore: true };
+    const { prepareDemoPersona } = createEncryptedWebSqlite('journal.sqlite3', key);
+    await expect(prepareDemoPersona!({} as never)).rejects.toBeInstanceOf(InterruptedRestoreError);
   });
 });

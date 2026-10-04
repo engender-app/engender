@@ -44,10 +44,9 @@ export interface ArchivePhoto {
   /** The opaque `<uuid>.jpg` of ticket 11, resolved against whatever root
       the importing platform uses. Never a path. */
   fileName: string;
-  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). No
-      format version step for the addition, the same reasoning
-      ArchiveLabResult's header gives: no release has shipped, so no
-      archive in existence predates it. */
+  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Added
+      before the 1.0.0 format cutoff without a version step. From 1.0.0 on,
+      wire changes require a format version and payload migration. */
   starred: boolean;
   /** The day this photo shows on, when it overrides its owner's
       (ticket 47, ADR-0008/0015). Null on every photo before this ticket
@@ -193,11 +192,10 @@ export interface ArchiveMilestone {
    These five are required here, so that whatever writes an archive has to
    fill them, but the importer coalesces them anyway (restore.ts): this
    interface is a cast over JSON.parse output, and a lab row written before
-   ticket 03 will not have them however the type is spelled. No format
-   version step for the addition, following ticket 02, which added four whole
-   collections without one - no release has shipped, so no archive in
-   existence predates either. A real v1 ladder step, filling in both tickets'
-   additions, is worth its own ticket rather than half of one here. */
+   ticket 03 will not have them however the type is spelled. These fields and
+   ticket 02's four collections were added before the 1.0.0 format cutoff
+   without a version step. From 1.0.0 on, wire changes require a format version
+   and payload migration. */
 interface ArchiveLabResult {
   id: string;
   epochDay: number;

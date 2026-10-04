@@ -13,7 +13,8 @@ import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../../src/lib/data/journal/test-support.ts';
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import { readCare } from '../../src/lib/data/careReads.ts';
-import { generateLongJournal, type LongJournalSummary } from './generate.ts';
+import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
+import { epochDayFromTimestamp } from '../../src/lib/data/epochDay.ts';
 import { bytePatternPhoto } from './test-support.ts';
 
 /** Everything a run wrote, in a form two runs can be compared by.
@@ -320,4 +321,61 @@ test('the fixture exercises concurrent Care episodes, schedules, pauses, stock, 
   expect(pauses.length).toBeGreaterThan(1);
   const pausedEpisodeIds = new Set(pauses.map((p) => p.episodeId));
   expect(pausedEpisodeIds.size).toBeGreaterThan(1);
+});
+
+
+test('one-year fixture keeps every historical date inside its entry span', async () => {
+  const { journal, summary } = await generate({ seed: 1, days: ONE_YEAR_IN_DAYS });
+  const { journal: snapshot } = await journal.archive.snapshot();
+  const outside: { field: string; day: number }[] = [];
+  let dates = 0;
+  const visit = (value: unknown, path: string) => {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      const field = `${path}.${key}`;
+      if (typeof child === 'number' && key !== 'unlockEpochDay' &&
+          (key === 'epochDay' || key.endsWith('EpochDay') || key === 'timestamp' || key === 'startTimestamp')) {
+        const day = key.endsWith('Timestamp') || key === 'timestamp' ? epochDayFromTimestamp(child) : child;
+        dates++;
+        if (day < summary.firstEpochDay || day > summary.lastEpochDay) outside.push({ field, day });
+      } else {
+        visit(child, field);
+      }
+    }
+  };
+  visit(snapshot, 'journal');
+  expect(dates).toBeGreaterThan(summary.entries);
+  expect(outside).toEqual([]);
+});
+
+test('one-year tryouts overlap entries and the measured open span fills a page', async () => {
+  const { journal, summary } = await generate({ seed: 1, days: ONE_YEAR_IN_DAYS });
+  for (const tryout of await journal.tryouts.getTryouts()) {
+    expect(await journal.entries.countSearchMatches('', [], tryout), tryout.kind).toBeGreaterThan(0);
+  }
+  const range = { startEpochDay: summary.tryoutWideOpenStartEpochDay, endEpochDay: null };
+  expect(await journal.entries.searchEntries('', [], range, 5)).toHaveLength(5);
+  expect(await journal.entries.countSearchMatches('', [], range)).toBeGreaterThan(5);
+});
+
+
+test('decade fixture retains its regimen, letter and tryout dates', async () => {
+  const { journal, summary } = await generate({ seed: 1, days: TEN_YEARS_IN_DAYS });
+  const first = summary.firstEpochDay;
+  const last = summary.lastEpochDay;
+  const episodes = await journal.regimen.getEpisodes();
+  const datesFor = (drug: string) => {
+    const episode = episodes.find((e) => e.drug === drug)!;
+    return [episode.startEpochDay, episode.endEpochDay];
+  };
+  expect(datesFor('Estradiol')).toEqual([first + 30, null]);
+  expect(datesFor('Spironolactone')).toEqual([first + 830, first + 1330]);
+  expect(datesFor('Estradiol valerate')).toEqual([last - 150, null]);
+  expect((await journal.letters.getLetters(100)).map((l) => l.epochDay).sort((a, b) => a - b))
+    .toEqual([first + 200, first + 900, last - 400, last - 30]);
+  expect((await journal.tryouts.getTryouts()).map((t) => t.startEpochDay).sort((a, b) => a - b))
+    .toEqual([400, 490, 580, 670, 760, 850].map((offset) => first + offset));
+  expect(summary.entries).toBe(3300);
+  expect(summary.photos).toBe(391);
+  expect(summary.doseEvents).toBe(1466);
 });

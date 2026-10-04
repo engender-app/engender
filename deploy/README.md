@@ -27,7 +27,7 @@ needs a module stock nginx does not have. Install the module first, check that
 nginx still starts, and only then copy the snippet in:
 
 ```bash
-sudo apt install libnginx-mod-http-brotli
+sudo apt install libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static
 sudo cp deploy/nginx/journal-brotli.conf /etc/nginx/snippets/engender-journal-brotli.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -37,6 +37,14 @@ includes the snippet by wildcard, so its absence is not an error, and the
 origin serves gzip as before. Getting the order wrong is what to avoid: the
 snippet without the module is an unknown directive, and nginx refuses to start
 rather than ignoring it.
+
+For a hosted demo, `npm run build:demo-hosting` writes Brotli quality 11
+sidecars into `build/` after the PWA asset list has been generated. Upload
+the whole directory. The optional snippet serves those files to clients
+accepting Brotli and keeps quality 5 dynamic compression as the fallback.
+Compression adds build time and release storage; the decoded bytes stay the
+same. Use `npm run build` for Android: hosting sidecars do not belong in the
+APK. Production builds and walkthrough builds use that default command too.
 
 Enable the site and reload nginx:
 

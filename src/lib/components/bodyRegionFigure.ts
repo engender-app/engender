@@ -329,7 +329,7 @@ export function markBand(bands: Box[]): Box {
 
 /** The centre of the body a band covers, weighted by how much of it there
     is at each height. */
-export function bandCentroid(area: Box): Pt {
+function bandCentroid(area: Box): Pt {
   let x = 0;
   let y = 0;
   let total = 0;

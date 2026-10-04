@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect, vi, afterEach } from 'vitest';
 import {
   createAttemptThrottle,
   delayAfterWrongAttempts,
@@ -6,6 +6,10 @@ import {
   type AttemptState,
   type AttemptStore
 } from './throttle.ts';
+
+let elapsed = 0;
+vi.stubGlobal('performance', { now: () => elapsed });
+afterEach(() => { elapsed = 0; });
 
 function fakeStore(initial: AttemptState | null = null) {
   let held = initial;
@@ -50,7 +54,9 @@ test('the wait counts down and reaches zero on its own', () => {
   throttle.recordWrong(0);
   const owed = delayAfterWrongAttempts(2);
 
+  elapsed = owed / 2;
   expect(throttle.remainingMs(owed / 2)).toBe(owed / 2);
+  elapsed = owed;
   expect(throttle.remainingMs(owed)).toBe(0);
   expect(throttle.remainingMs(owed + 10_000)).toBe(0);
 });
@@ -98,4 +104,23 @@ test('a correct PIN clears both the wait and the growth', () => {
   throttle.recordWrong(0);
   throttle.recordWrong(0);
   expect(throttle.remainingMs(0)).toBe(delayAfterWrongAttempts(2));
+});
+
+
+test('a forward wall clock jump cannot shorten a wait earned in this session', () => {
+  const throttle = createAttemptThrottle();
+  throttle.recordWrong(1000);
+  throttle.recordWrong(1000);
+  elapsed = 250;
+  expect(throttle.remainingMs(1000 + 86_400_000)).toBe(750);
+  elapsed = 1000;
+  expect(throttle.remainingMs(1000 + 86_400_000)).toBe(0);
+});
+
+test('a restored wait uses elapsed time after its first reading', () => {
+  const { store } = fakeStore({ wrongAttempts: 2, acceptingFrom: 2000 });
+  const throttle = createAttemptThrottle(store);
+  expect(throttle.remainingMs(1000)).toBe(1000);
+  elapsed = 400;
+  expect(throttle.remainingMs(86_400_000)).toBe(600);
 });

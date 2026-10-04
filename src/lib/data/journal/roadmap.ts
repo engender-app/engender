@@ -129,7 +129,7 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
     },
 
     async deleteCustomGoal(id) {
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         // A document's link is a (kind, id) pair rather than a foreign key
         // (documents.ts), so nothing cascades it - the same UPDATE before
         // the DELETE that deleteMilestone and deleteProcedure run. Matched

@@ -95,8 +95,26 @@ await block('ticket 03 browser tier', 5, async () => {
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
 });
 
+await block('production foreign key enforcement', 5, async () => {
+  const r = await load('/foreign-keys.html', 'foreign-keys-probe');
+  if (r.error) throw new Error(r.error);
+  if (r.encryptedOpen === 1) ok('sqlite3mc enables foreign keys before migrations');
+  else fail('sqlite3mc enables foreign keys before migrations', String(r.encryptedOpen));
+  if (r.sqlocalOpen === 1 && r.sqlocalRestoredOpen === 1 && r.plaintextOpen === 1)
+    ok('SQLocal enables foreign keys on initial, restored and plaintext opens');
+  else fail('SQLocal enables foreign keys on every open', JSON.stringify(r));
+  if (r.encryptedAfterMigration === 1 && r.violations.length === 0)
+    ok('migrations leave enforcement on and no foreign key violations');
+  else fail('migrations leave enforcement on and no foreign key violations', JSON.stringify(r));
+  if (Object.values(r.children).every((count) => count === 0))
+    ok('session, procedure and checklist deletions remove their child rows');
+  else fail('session, procedure and checklist deletions remove their child rows', JSON.stringify(r.children));
+  if (r.manifest.length === 0) ok('deleted session photos do not travel in the next archive');
+  else fail('deleted session photos do not travel in the next archive', JSON.stringify(r.manifest));
+});
+
 // --- Ticket 04: the real driver + boot() against the real schema -----------
-await block('ticket 04 browser tier', 8, async () => {
+await block('ticket 04 browser tier', 9, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
@@ -137,6 +155,11 @@ await block('ticket 04 browser tier', 8, async () => {
   if (ct.rejected.length === 0 && ct.committed === 2)
     ok('two transactions started at once both commit, one after the other');
   else fail('two transactions started at once both commit, one after the other', JSON.stringify(ct));
+
+  const contract = first.driverContractChecks;
+  if (contract.length >= 20 && contract.every((check) => check.ok))
+    ok('the production web driver passes the shared journal and ownership contract');
+  else fail('the production web driver passes the shared journal and ownership contract', JSON.stringify(contract.filter((check) => !check.ok)));
 
   // Ticket 10: the recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.
@@ -1381,6 +1404,20 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
+  const gate = live.readinessGate;
+  if (gate.disabledCalls === 0 && gate.pendingWhileDisabled)
+    ok('a gated query stays pending without calling its read while disabled');
+  else fail('a gated query stays pending without calling its read while disabled', JSON.stringify(gate));
+  if (gate.firstAttempts === 2 && gate.firstRetryDelayMs >= 45 && !gate.failedDuringFirstRetry)
+    ok('a gated query preserves the first real read rejection retry');
+  else fail('a gated query preserves the first real read rejection retry', JSON.stringify(gate));
+  if (gate.valueAfterMountedWrite === gate.expectedAfterMountedWrite && gate.laterFailureAttempts === 1 && gate.staleAfterLaterFailure)
+    ok('a mounted gated query follows writes and reports later rejections without another retry');
+  else fail('a mounted gated query follows writes and reports later rejections without another retry', JSON.stringify(gate));
+  if (gate.disabledResultIgnored && gate.disposedResultIgnored)
+    ok('disabling or disposing a gated query rejects its older in-flight answer');
+  else fail('disabling or disposing a gated query rejects its older in-flight answer', JSON.stringify(gate));
+
   // The stock screen's read, against the write it used to miss: a projection
   // reads the episode history through regimen.getEpisodes().
   if (live.projection.runsAfter > live.projection.runsBefore)
@@ -2563,6 +2600,12 @@ await block('Care spine links keep drug and date context', 1, async () => {
 await block('Timeline facts are selectable without precision tapping', 1, async () => {
   await import('../timeline-fact-selection.mjs');
   ok('care captions at the 48px floor, lane jumps, rail targets that own only what they draw, and the fact list');
+});
+
+await block('PIN count status', 1, async () => {
+  const { verifyPinProgressStatus } = await import('../pin-progress-status.mjs');
+  await verifyPinProgressStatus();
+  ok('EN/PL count-only status updates through keyboard entry, backspace and refusal');
 });
 
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');

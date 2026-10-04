@@ -25,8 +25,9 @@ import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-sto
 import { purgeExpiredTrash } from '../../src/lib/data/journal/entries.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
-import { generateLongJournal, TEN_YEARS_IN_DAYS } from './generate.ts';
+import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
+import { compareJournalSizes } from './scaling.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 import { publish as publishResult } from '../probe-handshake.mjs';
 
@@ -89,7 +90,7 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   };
 }
 
-async function run() {
+async function run(days: number) {
   await freshOrigin();
 
   const rawFiles = opfsPhotoFiles('long-journal-photos');
@@ -102,7 +103,7 @@ async function run() {
   await journal.reconcileBuiltIns();
 
   const startedAt = performance.now();
-  const summary = await generateLongJournal(journal, { days: TEN_YEARS_IN_DAYS, makePhoto: photoMaker() });
+  const summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
   const generatedInMs = Math.round(performance.now() - startedAt);
 
   // On raw OPFS rather than through the encrypting store: what the fixture
@@ -123,7 +124,7 @@ async function run() {
 
   const reopenedSqlite = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
   const reopenedFiles = encryptedFileStore(rawFiles, PROBE_DATA_KEY);
-  const fixtureDetail = `decade fixture already present, schema current; ${summary.entries} entries across ${summary.daysWithEntries} days`;
+  const fixtureDetail = `${days}-day fixture already present, schema current; ${summary.entries} entries across ${summary.daysWithEntries} days`;
   const startup: Measurement[] = [];
   // From the constant, so the names the budgets are checked against and the
   // names a run publishes cannot drift apart.
@@ -192,7 +193,16 @@ async function run() {
   });
 
   await reopened.driver.close();
-  publish({ summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes });
+  return {
+    summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes,
+    bootWindow: { startedAt: bootStartedAt, readyAt: bootStartedAt + bootReadyMs }
+  };
 }
 
-run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));
+async function main() {
+  const oneYear = await run(ONE_YEAR_IN_DAYS);
+  const tenYears = await run(TEN_YEARS_IN_DAYS);
+  publish({ ...tenYears, oneYear, scaling: compareJournalSizes(oneYear, tenYears) });
+}
+
+main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));

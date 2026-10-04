@@ -24,9 +24,9 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
-import dev.engender.app.MainActivity;
+import dev.engender.app.launch.AppLaunch;
 import dev.engender.app.R;
-import dev.engender.app.reminders.ReminderScheduler;
+import dev.engender.app.disguise.DisguiseAlias;
 
 /**
  * Opt-in local notifications for wrapped and on-this-day (phase 4 features
@@ -108,7 +108,8 @@ public class RetrospectiveNotificationsPlugin extends Plugin {
             ensureChannel(channelId, channelName);
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(getContext(), channelId)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(DisguiseAlias.isDisguised(getContext())
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_launcher_foreground)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -124,17 +125,7 @@ public class RetrospectiveNotificationsPlugin extends Plugin {
     }
 
     private PendingIntent openAppIntent(String route, int requestCode) {
-        Intent open = new Intent(getContext(), MainActivity.class)
-            .setAction(Intent.ACTION_VIEW)
-            .setData(Uri.parse("engender://open/retrospective-" + requestCode))
-            .putExtra(ReminderScheduler.EXTRA_ROUTE, route)
-            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        return PendingIntent.getActivity(
-            getContext(),
-            9100 + requestCode,
-            open,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+        return AppLaunch.openAppIntent(getContext(), route, "retrospective-" + requestCode, 100 + requestCode);
     }
 
     /* Recreated on every notification, like RemindersPlugin.ensureChannels -
