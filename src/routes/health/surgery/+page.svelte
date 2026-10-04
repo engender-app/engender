@@ -26,7 +26,7 @@
   import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
-  import { disclose, resize } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
@@ -66,8 +66,8 @@
     { key: 'archive', title: m.surgery_archive_title(), procedures: archivedProcedures }
   ].filter((group) => group.procedures.length));
 
-  let procedureRows = $derived(procedureGroups.flatMap((group) => [
-    { key: `heading-${group.key}`, group: group.key, heading: group.title, procedure: null },
+  let procedureRows = $derived(procedureGroups.flatMap((group, index) => [
+    { key: `heading-${index}`, group: group.key, heading: group.title, procedure: null },
     ...group.procedures.map((procedure) => ({
       key: procedure.id, group: group.key, heading: null, procedure
     }))
@@ -305,7 +305,11 @@
         <div data-procedure-group={procedure ? group : undefined} use:resize transition:disclose
           animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
           {#if heading}
-            <SectionHeading text={heading} />
+            <div class="procedure-heading" data-procedure-heading={key}>
+              {#key heading}
+                <div transition:crossfade><SectionHeading text={heading} /></div>
+              {/key}
+            </div>
           {:else if procedure}
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
               <ProcedureRecoveryCard
@@ -854,6 +858,14 @@
 </div>
 
 <style>
+  .procedure-heading {
+    display: grid;
+  }
+
+  .procedure-heading > div {
+    grid-area: 1 / 1;
+  }
+
   .recovery {
     margin-top: var(--space-4);
   }
