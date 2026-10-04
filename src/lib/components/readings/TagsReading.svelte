@@ -22,7 +22,8 @@
   import type { PairedRow } from '$lib/components/kit/pairedRow';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import EntryCard from '$lib/components/EntryCard.svelte';
+  import EntryDays from '$lib/components/EntryDays.svelte';
+  import { entryDayGroups } from '$lib/data/recentEntries';
   import Sheet from '$lib/components/Sheet.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
@@ -162,11 +163,9 @@
           {m.insight_sheet_capped({ shown: String(INSIGHT_ENTRIES) })}
         </p>
       {/if}
-      <div class="stack-3">
-        {#each insightEntries as e (e.id)}
-          <EntryCard entry={e} />
-        {/each}
-      </div>
+      <!-- Days of entries, the drawing every list of entries uses (release
+           audit U9). -->
+      <EntryDays groups={entryDayGroups(insightEntries)} />
       <button class="btn btn-ghost" onclick={() => (insightSheet = null)}>
         <span>{m.done()}</span>
       </button>

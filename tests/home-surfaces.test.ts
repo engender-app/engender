@@ -527,7 +527,5 @@ describe('the handles the walkthrough grips', () => {
   it('calls an entry the same thing on a day card as on a list', () => {
     expect(read('src/lib/components/kit/DayEntry.svelte')).toContain('data-entry-card=');
     expect(read('src/lib/components/kit/DayEntry.svelte')).toContain('data-entry-note');
-    expect(read('src/lib/components/EntryCard.svelte')).toContain('data-entry-card');
-    expect(read('src/lib/components/EntryCard.svelte')).toContain('data-entry-note');
   });
 });

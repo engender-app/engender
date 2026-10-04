@@ -902,7 +902,7 @@
      which entry this is without asking anybody.
 
      The name itself lives on `.editor-bg`, not on this element - see
-     EntryCard.svelte's comment, the other half of the same fix: a view
+     DayEntry.svelte's comment, the other half of the same fix: a view
      transition scales its named element's whole rasterised image between
      the card's rect and this screen's, and this screen's own heading and
      fields rode inside that image too, at whatever size the small card
