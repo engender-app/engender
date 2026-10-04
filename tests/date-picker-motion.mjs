@@ -186,6 +186,11 @@ async function record(session, name, act, { crop, bound = false, note } = {}) {
     await cdp.send('Page.stopScreencast');
     cdp.off('Page.screencastFrame', onFrame);
   }
+  if (/^(today|drum-pick)-/.test(name)) {
+    console.log(`MONTH_SAMPLES ${name} ${JSON.stringify(samples)}`);
+    const sparse = findYanks(samples.filter((_, index) => index % 2 === 0), { bound });
+    console.log(`MONTH_SPARSE_REPLAY ${name} ${JSON.stringify(sparse.yanks)}`);
+  }
   const { yanks, frames: counted } = findYanks(samples, { bound });
   const written = [];
   if (outDir) {
