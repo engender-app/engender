@@ -24,7 +24,7 @@
      keyboard cannot raise, and the ramp's steps are told apart by shade
      alone (WCAG 1.4.1). So the picture leaves the accessibility tree and a
      fold under it holds the year a month at a time, every day written out
-     with its value or with "Nothing logged" - the words are the non-colour
+     with its value or with "Not logged" - the words are the non-colour
      cue, and the empty days keep the hairline they already had in the
      picture. A month at a time rather than all 365 rows: two buttons step
      it, so the card is three tab stops rather than 365, and the fold stays
@@ -166,7 +166,7 @@
                 <span class="year-day-swatch" style={`background: ${fillAt(cell.step)}`} aria-hidden="true"></span>
                 <span class="year-day-name">{dayName(cell.epochDay)}</span>
                 <span class="year-day-value">
-                  {cell.value === null ? m.adherence_nothing_logged() : valueName(cell.value)}
+                  {cell.value === null ? m.wrapped_year_day_none() : valueName(cell.value)}
                 </span>
               </li>
             {/each}

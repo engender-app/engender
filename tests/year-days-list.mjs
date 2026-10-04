@@ -124,7 +124,7 @@ try {
         const date = new Date(fixture.year, month, day);
         const epochDay = fixture.startEpochDay + Math.round((date - new Date(fixture.year, 0, 1)) / 86400000);
         const value = fixture.values[epochDay];
-        const want = value === undefined ? 'Nothing logged' : value.toFixed(1);
+        const want = value === undefined ? 'Not logged' : value.toFixed(1);
         const dayText = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' });
         const line = items[day - 1] ?? '';
         check(line.includes(dayText) && line.includes(want), `${expected} ${day} reads "${dayText}" and "${want}" (${line.trim()})`);
