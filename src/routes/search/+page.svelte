@@ -101,7 +101,7 @@
   import { m } from '$lib/paraglide/messages';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { EMPTY_SEARCH, holdSearch, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
-  import { navigating, page } from '$app/state';
+  import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -120,6 +120,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import SearchActions from '$lib/components/SearchActions.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -130,7 +131,8 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
-  import { collapse, crossfade, disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { whileStaying } from '$lib/motion/whileStaying';
   import { fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
 
   /** One page of hits, and what the "show more" control asks for again. */
@@ -447,9 +449,6 @@
      records from elsewhere only under entries or photos. A heading over the
      first list pushed the first result below the first third of a phone. */
   let photosShown = $derived(starredOnly && starredPhotos.length > 0);
-  /* A Svelte transition on the page's own nodes still runs when the page
-     unmounts, so leaving the screen skips them (reveal.ts's `skip`). */
-  let leaving = $derived(navigating.to !== null);
   /* The count's words change in place as the answer changes: the old line
      fades off (crossfade, out of flow) while the new one fades up in flow. */
   const fadeUp = (_node: Element) => (isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast')));
@@ -529,39 +528,14 @@
 </script>
 
 <div class="screen" data-screen>
-  <!-- Save and Random live in the header, on the back control's line, so
-       the results start straight under the field (ticket 16, audit U7: the
-       two full-width buttons put the first result at y 530 of 844). Both
-       open their own width from nothing and give it back (`collapse`), and
-       the snippet is always passed, so the header's layout never changes
-       with them. -->
+  <!-- The actions snippet is always passed, so the header's layout never
+       changes as its buttons come and go (SearchActions.svelte). -->
   <ScreenHeader title={m.search()} screen="search" back="/calendar">
     {#snippet actions()}
-      {#if canSave}
-        <button
-          class="icon-btn press"
-          data-search-save
-          aria-label={m.saved_question_save()}
-          aria-haspopup="dialog"
-          transition:collapse={{ skip: leaving }}
-          onclick={() => (savingOpen = true)}
-        >
-          <Icon name="bookmark" />
-        </button>
-      {/if}
-      {#if answered && hits.length > 0}
-        <!-- A draw from the question currently being asked, not a mode of
-             its own (spec.md's own line). -->
-        <button
-          class="icon-btn press"
-          data-search-random
-          aria-label={m.random_draw_label()}
-          transition:collapse={{ skip: leaving }}
-          onclick={drawRandom}
-        >
-          <Icon name="shuffle" />
-        </button>
-      {/if}
+      <SearchActions
+        save={canSave ? () => (savingOpen = true) : undefined}
+        draw={answered && hits.length > 0 ? drawRandom : undefined}
+      />
     {/snippet}
   </ScreenHeader>
 
@@ -596,7 +570,7 @@
     <!-- The one thing that has to stay on the screen once the filters left
          it: with the panel in a sheet, these chips are the only place the
          state of the query is visible. -->
-    <div class="search-chips" transition:disclose={{ skip: leaving }}>
+    <div class="search-chips" transition:disclose={whileStaying}>
       {#each activeFilterChips as chip (chip.key)}
         <button class="tag-chip is-selected press" data-active-filter-chip onclick={chip.remove}>
           <Icon name="x" size={14} />
@@ -616,17 +590,18 @@
     {hasCriteria && answered && settled ? (foundNothing ? m.no_results() : m.results_count({ count: foundTotal })) : ''}
   </p>
 
+  <!-- One block at a time, each swapping for the next in place by one
+       crossfade: the opening state, the first read's skeleton, nothing
+       found, or the results. A crossfade rather than a height travel,
+       because the results run past the bottom of the phone and opening
+       their height swept the whole visible screen in three frames; nothing
+       sits under this area to be pushed. The opening state stays until the
+       first answer, so the box empties into results rather than into a gap
+       or a notice. `data-search-idle` names the whole opening state - what
+       the walkthrough waits to see gone once typing starts, and back once
+       the field clears. -->
   <div class="search-answer">
     {#if !hasCriteria || (!answered && !loading)}
-      <!-- Nothing asked yet, or asked and not answered yet: the opening
-           state stays until there are results to replace it, so the first
-           search swaps one for the other in place instead of passing
-           through a gap or a notice. A crossfade rather than a height
-           travel: the results run past the bottom of the phone, so opening
-           their height swept the whole visible screen in three frames.
-           Nothing sits under this block to be pushed. `data-search-idle`
-           names the whole state - what the walkthrough waits to see gone
-           once typing starts, and back once the field clears. -->
       <div data-search-idle in:fadeUp out:crossfade>
         <!-- One plain line about what is searched. What each filter covers
              is said once, in the Filters sheet, where the filters are
@@ -669,36 +644,24 @@
            entry, or an address that asks one): every later question keeps
            the previous answer up until its own lands. -->
       <div out:crossfade><Skeleton variant="card" count={3} /></div>
+    {:else if foundNothing}
+      <div class="search-nothing" in:fadeUp out:crossfade>
+        <Notice
+          icon="search"
+          key="search-none"
+          title={m.no_results()}
+          text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
+        />
+      </div>
     {:else}
-      <div data-search-results in:fadeUp out:crossfade>
-        <!-- Found something, or nothing: the two swap in place by the same
-           crossfade as the opening state, for the same reason - the found
-           block is taller than the phone. Inside it, each list opens and
-           gives back its own height as a refined question adds or drops
-           one. -->
-        {#if foundNothing}
-          <div class="search-nothing" in:fadeUp out:crossfade>
-            <Notice
-              icon="search"
-              key="search-none"
-              title={m.no_results()}
-              text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
-            />
-          </div>
-        {:else}
-        <div in:fadeUp out:crossfade>
-        <!-- One count, the total, above the results and in the same words
-             as a saved question's (ticket 16: "Entries: 27" here and
-             "35 results ... Entries 21 results" there). -->
-        <p class="search-count" data-search-count>
-          {#key foundTotal}<span in:fadeUp out:crossfade>{m.results_count({ count: foundTotal })}</span>{/key}
-        </p>
-
+      <!-- Inside the results, each list opens and gives back its own height
+           as a refined question adds or drops one. -->
+      <div in:fadeUp out:crossfade>
         {#if starredOnly && starredPhotos.length}
           <!-- Ported from the old /search/starred (ticket 18): the same grid,
                the same unstar affordance, shown now under this screen's own
                Starred toggle instead of behind a second door. -->
-          <div transition:disclose={{ skip: leaving }}>
+          <div transition:disclose={whileStaying}>
             {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
             <p class="search-hint">{m.search_starred_photos_scope()}</p>
             <div class="photo-grid" data-starred-photos>
@@ -716,13 +679,13 @@
         {/if}
 
         {#if hits.length}
-          <div transition:disclose={{ skip: leaving }}>
+          <div transition:disclose={whileStaying}>
             {#if photosShown}
-              <div transition:disclose={{ skip: leaving }}><SectionHeading text={m.search_entries_heading()} /></div>
+              <div transition:disclose={whileStaying}><SectionHeading text={m.search_entries_heading()} /></div>
             {/if}
             <EntryDays {groups} {role} {marginNotesByEntry} />
             {#if remaining > 0}
-              <button class="btn btn-soft search-more" data-search-more transition:disclose={{ skip: leaving }} onclick={() => (pages += 1)}>
+              <button class="btn btn-soft search-more" data-search-more transition:disclose={whileStaying} onclick={() => (pages += 1)}>
                 <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
               </button>
             {/if}
@@ -730,16 +693,16 @@
         {/if}
 
         {#if hitRows.length}
-          <div transition:disclose={{ skip: leaving }}>
+          <div transition:disclose={whileStaying}>
             {#if hits.length || photosShown}
-              <div transition:disclose={{ skip: leaving }}><SectionHeading text={m.search_elsewhere_heading()} /></div>
+              <div transition:disclose={whileStaying}><SectionHeading text={m.search_elsewhere_heading()} /></div>
             {/if}
             <ListCard role={hitsRole}>
               {#each hitRows as row (row.key)}
                 <!-- Each row opens and gives back its own height as the
                      answer changes under the typing (the Transition door's
                      rows, rule 10). -->
-                <div class="rows-divide" transition:disclose={{ skip: leaving }}>
+                <div class="rows-divide" transition:disclose={whileStaying}>
                   <ListRow
                     key={row.key}
                     icon={row.icon}
@@ -756,15 +719,23 @@
               {/each}
             </ListCard>
             {#if hitsRemaining > 0}
-              <button class="btn btn-soft search-more" data-search-hits-more transition:disclose={{ skip: leaving }} onclick={() => (hitPages += 1)}>
+              <button class="btn btn-soft search-more" data-search-hits-more transition:disclose={whileStaying} onclick={() => (hitPages += 1)}>
                 <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
               </button>
             {/if}
           </div>
         {/if}
 
-        </div>
-        {/if}
+        <!-- One count, the total, in the same words as a saved question's
+             (ticket 16: "Entries: 27" here and "35 results ... Entries 21
+             results" there). Under the results rather than over them: a
+             line of its own above the first day put the first entry at
+             y 316 of 844, past the first third, where the results are
+             meant to start. The screen reader hears it first anyway, from
+             the status line above. -->
+        <p class="search-count" data-search-count>
+          {#key foundTotal}<span in:fadeUp out:crossfade>{m.results_count({ count: foundTotal })}</span>{/key}
+        </p>
       </div>
     {/if}
   </div>
@@ -874,11 +845,6 @@
 </div>
 
 <style>
-  /* The count's outgoing words are lifted out of flow by `crossfade`, and
-     sit over the incoming ones rather than at the column's top. */
-  .search-count {
-    position: relative;
-  }
   /* The notice arrives by its own `collapse`, which pulls it up by its
      height and lets it travel down. Here that margin collapsed through every
      block above it, so the whole answer area, the outgoing results too,
@@ -888,7 +854,12 @@
     display: flow-root;
     overflow: clip;
   }
+  /* 8 under the controls rather than the screen's 24, and a tight day card
+     (EntryDays), so the first entry row starts inside the first third of a
+     390x844 phone (ticket 16): 316 with a count line over the results,
+     289 without one, 277 with both. */
   .search-controls {
+    margin-bottom: var(--space-2);
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);

@@ -18,7 +18,7 @@
      same way, because both renderings exist on the same data and only the
      entries' own density is the open question the ticket names. */
   import { goto } from '$app/navigation';
-  import { navigating, page } from '$app/state';
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -26,13 +26,15 @@
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { collapse, disclose } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
+  import { whileStaying } from '$lib/motion/whileStaying';
   import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
+  import SearchActions from '$lib/components/SearchActions.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
@@ -180,7 +182,6 @@
 
   let role = $derived(roleAt(activeFlag.roles, 0));
   let hitsRole = $derived(roleAt(activeFlag.roles, 1));
-  let leaving = $derived(navigating.to !== null);
 
   let renamingOpen = $state(false);
   let renamingName = $state('');
@@ -212,19 +213,8 @@
     <ScreenHeader title={question.name} back="/search/questions">
       {#snippet actions()}
         <!-- Random sits with the question's other actions rather than over
-             its results, as on /search (ticket 16), and opens its own width
-             once the run has entries to draw from. -->
-        {#if revealedCriteria === stableSearch && hits.length > 0}
-          <button
-            class="icon-btn press"
-            data-search-random
-            aria-label={m.random_draw_label()}
-            transition:collapse={{ skip: leaving }}
-            onclick={drawRandom}
-          >
-            <Icon name="shuffle" />
-          </button>
-        {/if}
+             its results, as on /search (ticket 16). -->
+        <SearchActions draw={revealedCriteria === stableSearch && hits.length > 0 ? drawRandom : undefined} />
         <button class="icon-btn" aria-label={m.saved_question_rename_aria()} data-saved-question-rename onclick={openRename}>
           <Icon name="pencil" />
         </button>
@@ -275,12 +265,9 @@
         />
       {/if}
       {#if !foundNothing}
-        <!-- One count, the total, in the same words /search uses (ticket
-             16). -->
-        <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 
         {#if hits.length}
-          <div transition:disclose={{ skip: leaving }}>
+          <div transition:disclose={whileStaying}>
             <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
             {#if remaining > 0}
               <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
@@ -291,7 +278,7 @@
         {/if}
 
         {#if hitRows.length}
-          <div transition:disclose={{ skip: leaving }}>
+          <div transition:disclose={whileStaying}>
             <!-- Named only under entries, to be elsewhere from: the call
                  /search makes about the same two lists (ticket 16). -->
             {#if hits.length}<SectionHeading text={m.search_elsewhere_heading()} />{/if}
@@ -318,6 +305,10 @@
             {/if}
           </div>
         {/if}
+
+        <!-- One count, the total, in the same words and the same place as
+             /search's: under the results (ticket 16). -->
+        <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
       {:else if !search.failed && !elsewhere.failed}
         <Notice icon="bookmark" key="saved-question-none" title={m.no_results()} text={m.saved_question_no_results()} />
       {/if}

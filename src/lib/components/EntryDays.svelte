@@ -23,7 +23,9 @@
      16, "rows animate in; no row painted in place before it arrives"). A
      day stays one card while the entries on it come and go. The
      transitions are local, so a list arriving as a whole rides its
-     caller's own transition instead of opening every row at once. */
+     caller's own transition instead of opening every row at once. Each
+     entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
+     where a card's first and last entry are (kit.css). */
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { disclose } from '$lib/motion/reveal';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
@@ -63,11 +65,12 @@
     <DayCard
       key={String(group.epochDay)}
       {role}
+      tight
       date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
     >
       {#each group.entries as entry (entry.id)}
         {@const presentation = entryPresentation(entry)}
-        <div class="entry-days-row" transition:disclose>
+        <div class="kit-entry-row" transition:disclose>
         <DayEntry
           key={String(entry.id)}
           href={`/entry/${entry.id}`}
@@ -100,19 +103,5 @@
      siblings moves to the next day when the first one goes. */
   .entry-days-day {
     margin-bottom: var(--space-3);
-  }
-  /* Each entry sits in its own wrapper now, so the rail's
-     first-of-type/last-of-type rule (kit.css) would end the line at every
-     entry. The run of wrappers says where the card's first and last entry
-     are instead. */
-  .entry-days-row :global(.kit-entry .kit-entry-mark::before) {
-    top: 0;
-    bottom: 0;
-  }
-  .entry-days-row:first-child :global(.kit-entry .kit-entry-mark::before) {
-    top: 13px;
-  }
-  .entry-days-row:last-child :global(.kit-entry .kit-entry-mark::before) {
-    bottom: calc(100% - 13px);
   }
 </style>
