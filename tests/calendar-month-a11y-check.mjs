@@ -83,9 +83,14 @@ async function openMonth({ width, mobile }) {
   await page.waitForTimeout(1500);
   await settlePage(page, base, '/calendar', 'light');
   await page.waitForSelector('[data-cal-open]');
+  await page.waitForTimeout(500);
+  /* Folded, the strip is 31 bars that take no pointer and no focus, so it
+     must say nothing either: "Show month" is the way in. */
+  const folded = await page.locator('[data-cal-month-body]').ariaSnapshot();
   await page.locator('[data-cal-open]').click();
   await page.waitForSelector('[data-cal-month-state="grid"]');
   await page.waitForTimeout(900);
+  return folded;
 }
 
 /** Every link in the open month, with its box and name. */
@@ -105,8 +110,9 @@ const report = (label, problems) => {
 };
 
 for (const layout of LAYOUTS) {
-  const name = layout.label;
-  await openMonth(layout);
+  const where = layout.label;
+  const folded = await openMonth(layout);
+  report(`${where} folded strip says nothing`, /- (link|listitem|list)\b/.test(folded) ? [`the strip is exposed: ${folded.split('\n').slice(0, 3).join(' | ')}`] : []);
   const boxes = await links();
   const small = boxes.filter((b) => b.right - b.left < FLOOR - 0.01 || b.bottom - b.top < FLOOR - 0.01);
   const overlaps = [];
@@ -121,11 +127,11 @@ for (const layout of LAYOUTS) {
   const sizes = boxes.map((b) => `${(b.right - b.left).toFixed(1)} x ${(b.bottom - b.top).toFixed(1)}`);
   const sizeLine = `smallest link ${[...new Set(sizes)].sort()[0] ?? 'none'}`;
   if (layout.reportOnly) {
-    console.log(`${name} (reported only): ${sizeLine}, ${small.length} of ${boxes.length} under ${FLOOR}px, ${overlaps.length} overlaps`);
+    console.log(`${where} (reported only): ${sizeLine}, ${small.length} of ${boxes.length} under ${FLOOR}px, ${overlaps.length} overlaps`);
     await page.context().close();
     continue;
   }
-  report(`${name} targets, ${sizeLine}`, [
+  report(`${where} targets, ${sizeLine}`, [
     ...(boxes.length ? [] : ['no links in the open month']),
     ...small.slice(0, 3).map((b) => `"${b.name}" is ${(b.right - b.left).toFixed(1)} x ${(b.bottom - b.top).toFixed(1)}`),
     ...(small.length > 3 ? [`and ${small.length - 3} more under ${FLOOR}px`] : []),
@@ -141,7 +147,7 @@ for (const layout of LAYOUTS) {
     );
     return result.violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.html.slice(0, 120)}`);
   });
-  report(`${name} axe on the open month`, violations);
+  report(`${where} axe on the open month`, violations);
 
   /* Names, read off the accessibility tree rather than the attributes. */
   const tree = await page.locator('[data-cal-month-state="grid"]').ariaSnapshot();
@@ -153,7 +159,7 @@ for (const layout of LAYOUTS) {
      under it; one holding only text prints that text on its own line. */
   const named = tree.split('\n').filter((line) => /^\s*- (link|listitem)/.test(line) && !/listitem:\s*$/.test(line));
   const unnamed = named.filter((line) => !line.includes(monthName));
-  report(`${name} list of days`, [
+  report(`${where} list of days`, [
     ...(/^- list\b/m.test(tree) ? [] : [`the open month is not a list: ${tree.split('\n')[0]}`]),
     ...(items === days ? [] : [`${items} list items for ${days} days`]),
     ...unnamed.slice(0, 3).map((line) => `no date in "${line.trim()}"`)
@@ -172,8 +178,8 @@ for (const layout of LAYOUTS) {
     );
   }
   const expected = boxes.map((b) => b.name);
-  report(`${name} Tab order`, [
-    ...expected.flatMap((name, i) => (order[i] === name ? [] : [`stop ${i + 1} was "${order[i]}", expected "${name}"`])).slice(0, 3),
+  report(`${where} Tab order`, [
+    ...expected.flatMap((day, i) => (order[i] === day ? [] : [`stop ${i + 1} was "${order[i]}", expected "${day}"`])).slice(0, 3),
     ...(order[expected.length] === null ? [] : [`Tab stayed in the month after the last day: "${order[expected.length]}"`])
   ]);
   await page.context().close();
