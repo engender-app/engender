@@ -2833,7 +2833,12 @@ try {
   try {
     diagnostic.page = await bounded(page.evaluate(() => {
       const now = new Date();
-      const geometry = [...document.querySelectorAll('[data-back], [data-next], [data-setup-question], [data-setup-field], [data-field-blind], .step-field-host, .step-field-ask, .step-field-below, .setup-head, .setup-stage, .setup-step')].map((node) => {
+      const frame = document.querySelector('[data-setup-frame]');
+      const nodes = new Set(frame?.querySelectorAll('[data-back], [data-next], [data-setup-question], [data-setup-field], [data-field-blind], [data-setup-answers]') ?? []);
+      for (const node of nodes) {
+        for (let parent = node.parentElement; parent && frame.contains(parent); parent = parent.parentElement) nodes.add(parent);
+      }
+      const geometry = [...nodes].map((node) => {
         const style = getComputedStyle(node);
         const properties = ['translate', 'transform', 'opacity', 'pointer-events', 'position', 'z-index', 'height', 'overflow', 'clip-path', '--blind-edge', '--own-rest', '--part-delta', '--blind-delta', '--part-travel'];
         return {
