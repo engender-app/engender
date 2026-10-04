@@ -1931,6 +1931,7 @@ button.kit-strip-day .kit-strip-cell {
   gap: var(--space-3);
 }
 
+.kit-chart-head h2,
 .kit-chart-head h3 {
   flex: 1;
   min-width: 0;

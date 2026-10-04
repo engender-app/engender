@@ -494,7 +494,7 @@
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
         {#snippet rows()}
           <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-          <ChartCard heading={m.vc_trend_heading()} kind="voice-benchmark-trend" role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}>
+          <ChartCard level={2} heading={m.vc_trend_heading()} kind="voice-benchmark-trend" role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}>
             {#if trend}
               {@const ends = fmtRangeEnds(trend.from, trend.to)}
               <AreaChart

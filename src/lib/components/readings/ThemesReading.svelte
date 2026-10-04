@@ -67,7 +67,7 @@
     </ReadingTile>
   {/if}
 {:else}
-  <ChartCard heading={m.safe_space_chart_themes_title()} kind="affirming-themes" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+  <ChartCard level={2} heading={m.safe_space_chart_themes_title()} kind="affirming-themes" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     <ReadGate read={poolQuery} variant="line" count={3}>
       {#snippet rows()}
         {#if themes.length}
