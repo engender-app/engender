@@ -1166,23 +1166,39 @@ describe('tier 3, a panel uncovering its new height', () => {
   function panel(height: number, rows = '40px 20px') {
     const style: Record<string, string> = { overflow: '', gridTemplateRows: '' };
     const settles: (() => void)[] = [];
+    const cancellations: (() => void)[] = [];
+    let cancelled = 0;
     const calls: { keyframes: Keyframe[]; options: KeyframeAnimationOptions }[] = [];
     const node = {
       style,
       getBoundingClientRect: () => ({ height }) as DOMRect,
       animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+        const index = calls.length;
         calls.push({ keyframes, options });
         return {
+          cancel: () => {
+            cancelled++;
+            cancellations[index]?.();
+          },
           finished: {
-            then: (done: () => void) => {
-              settles.push(done);
+            then: (done: () => void, rejected: () => void) => {
+              return new Promise<void>((resolve) => {
+                settles.push(() => {
+                  done();
+                  resolve();
+                });
+                cancellations.push(() => {
+                  rejected();
+                  resolve();
+                });
+              });
             }
           }
         };
       }
     } as unknown as HTMLElement;
     (globalThis as Record<string, unknown>).getComputedStyle = () => ({ gridTemplateRows: rows });
-    return { node, style, calls, finish: (i = settles.length - 1) => settles[i]?.() };
+    return { node, style, calls, finish: (i = settles.length - 1) => settles[i]?.(), cancelled: () => cancelled };
   }
 
   it('travels from the height the caller measured to the one the box now has', () => {
@@ -1201,6 +1217,48 @@ describe('tier 3, a panel uncovering its new height', () => {
     finish();
     expect(style.overflow).toBe('');
     expect(style.gridTemplateRows).toBe('');
+  });
+
+  it('resolves after restoring the layout that compensated margins depend on', async () => {
+    const { node, style, finish } = panel(420);
+    const settled = maskHeight(node, 36, 380);
+    expect(settled).toBeInstanceOf(Promise);
+    let released = false;
+    settled.then(() => {
+      expect(style.overflow).toBe('');
+      expect(style.gridTemplateRows).toBe('');
+      released = true;
+    });
+    await Promise.resolve();
+    expect(released).toBe(false);
+    finish();
+    await settled;
+    expect(released).toBe(true);
+  });
+
+  it('cancels and restores its owned mask when the caller is destroyed', async () => {
+    const { node, style, cancelled } = panel(420);
+    const owner = new AbortController();
+    const settled = maskHeight(node, 36, 380, owner.signal);
+    owner.abort();
+    expect(cancelled()).toBe(1);
+    await expect(settled).resolves.toBeUndefined();
+    expect(style.overflow).toBe('');
+    expect(style.gridTemplateRows).toBe('');
+  });
+
+  it('keeps a replacement mask after the previous caller is destroyed', async () => {
+    const { node, style, finish, cancelled } = panel(420);
+    const owner = new AbortController();
+    const previous = maskHeight(node, 36, 380, owner.signal);
+    const replacement = maskHeight(node, 420, 380);
+    owner.abort();
+    expect(cancelled()).toBe(1);
+    await previous;
+    expect(style.overflow).toBe('clip');
+    finish(1);
+    await replacement;
+    expect(style.overflow).toBe('');
   });
 
   it('gives back whatever the box was already saying about its own overflow', () => {
