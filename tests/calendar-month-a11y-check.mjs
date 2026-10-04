@@ -29,7 +29,7 @@
 
    Against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/calendar-month-a11y-check.mjs [--root <built tree>] [--url <running server>] */
+     node tests/calendar-month-a11y-check.mjs [--root <built tree>] [--url <running server>] [--axe <axe.min.js>] */
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
@@ -55,7 +55,9 @@ const LAYOUTS = [
   { label: 'phone 320', width: 320, mobile: true, reportOnly: true }
 ];
 
-const axeSource = await readFile(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
+/* The repo's own axe by default; `--axe <file>` runs another build of it,
+   such as the 4.10.3 the audit used. */
+const axeSource = await readFile(flag('axe', createRequire(import.meta.url).resolve('axe-core/axe.min.js')), 'utf8');
 const browser = await launchChromium();
 const app = flag('url', null) ? null : await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = flag('url', null) ?? `http://localhost:${app.httpServer.address().port}`;
