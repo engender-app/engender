@@ -82,7 +82,8 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  overflow: hidden;
+  /* The fixed frame must not scroll to reveal a sheet's extended edge. */
+  overflow: clip;
   /* An identity transform, so a `position: fixed` descendant - a sheet's
      scrim (components.css) - is contained by this box instead of the real
      window. Normally the two are the same size; in the demo bar's
