@@ -592,7 +592,7 @@
           {#each starredPhotos as p (p.id)}
             <div class="starred-photo-cell">
               <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
               <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
                 <Icon name="star" size={16} cls="is-starred" />
               </button>

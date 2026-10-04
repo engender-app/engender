@@ -272,6 +272,32 @@
     };
   });
 
+  /* The rail shows while the page is moving and for a moment after, and
+     fades away at rest (release audit U12): standing over the grid's last
+     column all the time, its pills covered x 313 to 360 of every third
+     photograph at 390px. A scrubber that answers a scroll is the shape the
+     photo apps use, and it is the scroll the rail is for - the ticket's
+     own rule above only offers it once the grid outgrows a screen. Hover
+     and keyboard focus hold it (CSS, :hover and :focus-within), so a mouse
+     on its way to a year and a Tab through them never chase a fading
+     target. */
+  const RAIL_REST_MS = 1500;
+  let railAwake = $state(false);
+  $effect(() => {
+    if (!gridTall) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const wake = () => {
+      railAwake = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => (railAwake = false), RAIL_REST_MS);
+    };
+    document.addEventListener('scroll', wake, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('scroll', wake, { capture: true });
+      clearTimeout(timer);
+    };
+  });
+
   /* A year the scrubber names can sit past what the grid has painted, so
      the jump grows the batch that holds it before scrolling - the same
      expansion BatchedList gives a deep link (batchedList.ts, batchesFor). */
@@ -383,7 +409,7 @@
                       <Icon name="play" size={26} />
                       <span class="photo-label">{photoSourceLabel(p.source)}</span>
                     </span>
-                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
                   </button>
                 {:else}
                   <div class="photo-cell-controls">
@@ -397,7 +423,7 @@
                     onclick={() => selecting ? toggle(p.id) : viewPhoto(p.id)}
                   >
                     <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
                     {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
                   </button>
                   {#if datedByItsOwner(p)}
@@ -423,7 +449,7 @@
           {/if}
 
           {#if gridTall && marks.length}
-            <div class="photo-years" data-photo-years>
+            <div class="photo-years" class:is-awake={railAwake} data-photo-years>
               <div class="photo-years-inner" role="group" aria-label={m.ph_years_label()}>
                 {#each marks as mark (mark.year)}
                   <button
@@ -581,9 +607,22 @@
     top: 0; bottom: 0; right: 0;
     pointer-events: none;
   }
+  /* At rest the rail is not there to be seen or pressed (no pointer
+     events, inherited from .photo-years); it fades in on a scroll and out
+     again when the scroll has stopped. Hover and focus keep it, so the
+     target someone is reaching for stays put. */
   .photo-years-inner {
     position: sticky; top: var(--space-4);
     display: flex; flex-direction: column; gap: var(--space-1);
+    opacity: 0;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+  /* Still in the tab order at rest (opacity, never visibility), so focus
+     reaching a year is what brings the rail back for a keyboard. */
+  .photo-years.is-awake .photo-years-inner,
+  .photo-years-inner:hover,
+  .photo-years-inner:focus-within {
+    opacity: 1;
     pointer-events: auto;
   }
   /* A year stands on a photograph, so it carries its own surface the way
