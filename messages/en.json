@@ -937,6 +937,7 @@
   "dose_route_sc": "Subcutaneous",
   "dose_route_sublingual": "Sublingual",
   "dose_save": "Save dose",
+  "dose_saved": "Dose saved.",
   "dose_scheduled_amount_label": "Scheduled dose",
   "dose_scheduled_legend": "What was scheduled",
   "dose_scheduled_route_label": "Scheduled route",
