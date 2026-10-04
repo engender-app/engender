@@ -66,7 +66,7 @@ export function makeDoubtJournalArea(driver: SqliteDriver): DoubtJournalArea {
     async saveSnapshot(epochDay, items) {
       const uuid = mintUuid();
       const ts = now();
-      return driver.transaction(async () => {
+      return driver.transaction(async (driver) => {
         await driver.run('INSERT INTO doubt_snapshot (uuid, epoch_day, timestamp, updated_at) VALUES (?, ?, ?, ?)', [
           uuid,
           epochDay,

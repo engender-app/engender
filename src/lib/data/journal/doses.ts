@@ -691,7 +691,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       );
       const everyNDays = input.recurrence.kind === 'everyNDays' ? input.recurrence.everyNDays : null;
 
-      return driver.transaction(async () => {
+      return driver.transaction(async (driver) => {
         let scheduleRowId: number;
         let uuid: string;
         if (existing.length > 0) {
