@@ -14,18 +14,11 @@
     /** The key of the gathered mark that is open in the readout. */
     selectedMarker?: string | null;
     onSelectMarker?: (mark: Mark) => void;
-    /** The accessible name for one mark. A control with no name cannot be
-        announced, and every one of these is a control. */
-    markLabel?: (mark: Mark) => string;
   }
 
   /** Whether a chart handed those props has a layer to draw. */
   export function drawsMarkers(props: CurveMarkerProps): boolean {
-    return (
-      props.onSelectMarker !== undefined &&
-      props.markLabel !== undefined &&
-      (props.markers?.length ?? 0) > 0
-    );
+    return props.onSelectMarker !== undefined && (props.markers?.length ?? 0) > 0;
   }
 </script>
 
@@ -39,14 +32,21 @@
      gathering), same ink, same proportion off the baseline.
 
      Not that component reused, for one reason that runs through everything
-     here: these marks are tapped, and the kit's are not. The kit layer is
-     aria-hidden decoration whose words arrive on hover and are read as a
-     list beside the chart, which is right for a milestone somebody cannot
-     do anything about. Every mark here stands for a record with a screen,
-     so each one is a control: focusable, named, and answering a tap by
-     handing the record's address to the readout under the card. Teaching
-     the kit layer to be both would put an interaction model five other
-     charts do not want into all of them.
+     here: these marks are tapped, and the kit's are not. Every mark here
+     stands for a record with a screen, so a tap hands the record's address
+     to the readout under the card. Teaching the kit layer to do that would
+     put an interaction model five other charts do not want into all of
+     them.
+
+     A tap, and not a tab stop or a screen reader's focus (phase 14 ticket
+     29, accessibility audit A05). These sat inside the chart's image as
+     focusable buttons, which an image may flatten away, and as targets
+     they could never be large enough: two marks five pixels apart gather,
+     but six apart are two targets six pixels wide. So the layer is hidden
+     from assistive tech and out of the tab order, the way the kit's own
+     marks are, and the curve screen lists every marked thing beside the
+     chart as a named link at the 48px floor, opening its record. A finger
+     can still tap a tick here and get the readout.
 
      One register and no hue. Six kinds land here and none of them is drawn
      differently from the others, which is the same call the kit layer's own
@@ -72,8 +72,7 @@
     bottom,
     plotHeight,
     selected = null,
-    onSelect,
-    markLabel
+    onSelect
   }: {
     /** Already selected for the range and ordered by where they sit. */
     markers: readonly ChartAnnotation[];
@@ -98,7 +97,6 @@
         where CurveMarkerProps has it optional - a host decides whether to
         draw a layer at all, and by the time it does there is a handler. */
     onSelect: (mark: AnnotationMark) => void;
-    markLabel: (mark: AnnotationMark) => string;
   } = $props();
 
   /** How far a mark rises off the baseline, as a share of the plot's height.
@@ -152,14 +150,9 @@
      component's copy with a regex that cannot see past a nested brace, and
      the same trap is worth staying out of anywhere. */
   const activate = (mark: AnnotationMark) => () => onSelect(mark);
-  const activateOnKey = (mark: AnnotationMark) => (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    onSelect(mark);
-  };
 </script>
 
-<g class="curve-markers">
+<g class="curve-markers" aria-hidden="true">
   {#each placed as mark, i (mark.key)}
     {@const hit = hitBounds(i)}
     <line
@@ -182,22 +175,20 @@
     {/if}
     <!-- components.css's own hit target, the one the lab-point marks in
          HormoneBandChart already use: transparent fill so the whole
-         rectangle answers, and a focus ring in the accent when it is
-         tabbed to. data-no-press because there is nothing visible here for
-         a press to move. -->
+         rectangle answers. data-no-press because there is nothing visible
+         here for a press to move. Pointer only: the list beside the chart
+         is the keyboard's and the screen reader's way to the same records
+         (see the header). -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <rect
       class="chart-hit"
       x={hit.x}
       y={head - HIT_LIFT}
       width={hit.width}
       height={bottom - head + HIT_LIFT * 2}
-      role="button"
       data-no-press
-      tabindex="0"
-      aria-label={markLabel(mark)}
-      aria-pressed={mark.key === selected}
+      data-curve-mark={mark.key}
       onclick={activate(mark)}
-      onkeydown={activateOnKey(mark)}
     />
   {/each}
 </g>
