@@ -110,9 +110,9 @@
       under the axis step down with it. It stays a step because animating it
       is animating `height`, which the performance contract admits only with
       an entry in motion-system.test.ts's LAYOUT_EXEMPT and a benchmark
-      behind it (materials.css) - 18px once, under the sheet that is closing
+      behind it (materials.css) - one lane once, under the sheet that is closing
       over it, is not what that budget is for. */
-  const LANE_H = 18;
+  const LANE_H = 24;
   const PLOT_BASE = 22;
   let plotHeight = $derived(PLOT_BASE + Math.max(axis.lanes - 1, 0) * LANE_H);
 
@@ -248,7 +248,7 @@
      day sits on the line rather than half off it - ProcedurePhaseRail's
      --rail-inset, same arithmetic. */
   .noticed-axis {
-    --na-inset: 11px;
+    --na-inset: 12px;
   }
 
   .na-header {
@@ -271,7 +271,7 @@
   .na-plot {
     position: relative;
     /* Its own inline-size container, so a mark's placement is a translate
-       measured in `cqw` - a percentage would measure the 22px mark. */
+       measured in `cqw` - a percentage would measure the 24px mark. */
     container-type: inline-size;
   }
 
@@ -322,21 +322,27 @@
   /* A mark is a control and carries its own tap target, which is smaller
      than the app's 48px floor for the reason CurveMarkers' own targets are:
      at 48px two changes noticed a fortnight apart steal each other's taps,
-     and the row for this record is on the same screen at full size.
+     and the row for this record is on the same screen at full size - that
+     row is the floor's answer, and the list under the line holds one for
+     every mark.
 
-     22 by 18, and both halves are the same rule - a target reaches halfway
-     to its neighbour and no further. Across, the lanes guarantee
-     MARK_MIN_GAP of the line between two marks in one lane, which is 24px
-     at 320px, the narrowest width the app supports; up and down, a lane is
-     18px, so half of it each way is the whole box. Measured at 320 and 390:
-     no two targets overlap on the demo's own crowded month. */
+     24 by 24, which is WCAG 2.5.8's own minimum, and both halves are the
+     same rule - a target reaches halfway to its neighbour and no further.
+     Across, the lanes guarantee MARK_MIN_GAP of the line between two marks
+     in one lane, which is 24px at 320px, the narrowest width the app
+     supports; up and down, a lane is 24px, so half of it each way is the
+     whole box. It was 22 by 18 until phase 14 ticket 29 (accessibility
+     audit A04): 18px lanes put two marks in one month closer than 24px and
+     axe reported target-size on the whole line. Measured at 320 and 390 by
+     tests/chart-a11y-check.mjs: no two targets overlap and none sits
+     within 24px of another. */
   .na-mark {
     position: absolute;
     left: 0;
     bottom: 0;
-    width: 22px;
+    width: 24px;
     height: var(--lane-h);
-    margin: 0 0 calc(var(--lane-h) / -2) -11px;
+    margin: 0 0 calc(var(--lane-h) / -2) -12px;
     padding: 0;
     border: 0;
     background: none;
@@ -424,7 +430,7 @@
     height: 18px;
     /* A mark on the line hangs half its height below the plot's box, and
        this row is the next sibling, so it paints over that half and took
-       the tap there - eleven of the mark's twenty-two pixels. Nothing in
+       the tap there - half of the mark's own height. Nothing in
        here is a control, so it takes no pointer at all. */
     pointer-events: none;
   }
