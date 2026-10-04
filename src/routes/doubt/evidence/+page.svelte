@@ -142,8 +142,8 @@
       {/if}
 
       {#if expanded}
-        <div class="evidence-rest" data-evidence-rest>
-          <EntryDays groups={held} />
+        <div data-evidence-rest>
+          <EntryDays groups={held} arrive />
         </div>
       {/if}
     {/snippet}
@@ -198,31 +198,3 @@
   />
 </div>
 
-<style>
-  /* The days the control disclosed, in the gap the screen gives its own
-     children, so a disclosed day sits where a day above it would. */
-  .evidence-rest {
-    display: grid;
-    gap: var(--space-4);
-  }
-
-  /* Each day arrives as every block in the app does: clipped open from its own
-     left edge over --dur-slow, one --stagger-step behind the one above it
-     (rule 10, ADR-0078). Nothing is painted where it lands before it has
-     travelled there.
-
-     The stagger is written out and capped the way kit.css writes the tile
-     grid's, and for the same reason: a fourteenth card counting its own way
-     up would wait most of a second for a turn nobody is watching for, so
-     everything past the sixth day arrives with the sixth. */
-  .evidence-rest :global(.entry-days > *) {
-    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
-    animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
-  }
-
-  .evidence-rest :global(.entry-days > :nth-child(2)) { --row-index: 1; }
-  .evidence-rest :global(.entry-days > :nth-child(3)) { --row-index: 2; }
-  .evidence-rest :global(.entry-days > :nth-child(4)) { --row-index: 3; }
-  .evidence-rest :global(.entry-days > :nth-child(5)) { --row-index: 4; }
-  .evidence-rest :global(.entry-days > :nth-child(n + 6)) { --row-index: 5; }
-</style>

@@ -36,7 +36,7 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { fmtDay, fmtDuration } from '$lib/data/dates';
+  import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
   import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
   import type { ComparePair } from '$lib/data/photos/compare-state';
   import {
@@ -409,7 +409,7 @@
                       <Icon name="play" size={26} />
                       <span class="photo-label">{photoSourceLabel(p.source)}</span>
                     </span>
-                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
+                    <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                   </button>
                 {:else}
                   <div class="photo-cell-controls">
@@ -423,7 +423,7 @@
                     onclick={() => selecting ? toggle(p.id) : viewPhoto(p.id)}
                   >
                     <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
+                    <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                     {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
                   </button>
                   {#if datedByItsOwner(p)}

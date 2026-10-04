@@ -209,7 +209,7 @@
   <ReadGate read={comfortItemsQuery} variant="line" count={3}>
     {#snippet rows()}
       {#if arranging}
-        <p class="comfort-hint" id="comfort-arrange-hint" transition:disclose>{m.home_edit_hint()}</p>
+        <p class="comfort-hint" id="comfort-arrange-hint" transition:disclose>{m.comfort_list_arrange_hint()}</p>
       {/if}
       <div class="comfort-list" class:is-arranging={arranging} class:is-dragging={drag !== null} bind:this={listEl}>
         <ListCard role={roleAt(activeFlag.roles, 0)}>
@@ -244,7 +244,7 @@
                   class="kit-row-act comfort-grip"
                   data-comfort-grip={item.id}
                   data-no-press
-                  aria-label={m.home_edit_move({ row: item.text })}
+                  aria-label={m.comfort_list_move({ text: item.text })}
                   aria-describedby="comfort-arrange-hint"
                   transition:trailWidth
                   onpointerdown={(event) => grab(event, item.id)}

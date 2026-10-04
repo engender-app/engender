@@ -254,7 +254,7 @@ describe('what spec 08 took off Home', () => {
     expect(home).toMatch(/entryCount != null && entryCount < GETTING_STARTED_UNTIL/);
     expect(markup).toContain('data-getting-started');
     // Every row goes somewhere, and the last hands the inventory to the hub.
-    const rows = home.match(/const GETTING_STARTED = \[[\s\S]*?\];/)?.[0] ?? '';
+    const rows = home.match(/const GETTING_STARTED(?:: \w+\[\])? = \[[\s\S]*?\];/)?.[0] ?? '';
     expect(rows, 'the offers are one list').not.toBe('');
     expect((rows.match(/href: '/g) ?? []).length).toBe(5);
     expect(rows).toContain("href: '/more'");

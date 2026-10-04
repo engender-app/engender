@@ -138,7 +138,9 @@ describe('what Safe Space is built from', () => {
        open from their own left edge and the control itself collapses,
        rather than either cutting into place. */
     expect(evidence).toContain('out:disclose');
-    expect(evidence).toContain('animation: kit-block-in');
+    // The held days arrive through EntryDays' own `arrive` (phase 14 ticket 18).
+    expect(evidence).toContain('<EntryDays groups={held} arrive />');
+    expect(read('src/lib/components/EntryDays.svelte')).toContain('animation: kit-block-in');
   });
 
   /* Ticket 15 again: the subtitle is the qualification rule in the

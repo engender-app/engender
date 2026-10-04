@@ -537,7 +537,7 @@
             <DayCard
               key={String(group.epochDay)}
               role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
-              date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+              heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
             >
               {#each group.entries as entry (entry.id)}
                 {@const presentation = entryPresentation(entry)}
