@@ -91,3 +91,53 @@ the worktree had an uncommitted change to `tests/tryout-save-check.mjs` plus an
 untracked `tests/.ci-tryout-feedback-red.mjs`. Both are saved in
 `../ci-green-leftovers/` (`uncommitted-tryout-save-check.patch`, the red probe,
 `unmerged-commit.txt`). Read them before fixing the tryout-save-check flake.
+
+**3 October 2026, worktree cleanup.** The stale `ci-green` worktree held CI
+flake work that never merged: branch `ci-green` (kept) has one commit not on
+main, `d9f2c1c6` "Test document import concealment through leave locking", and
+the worktree had an uncommitted change to `tests/tryout-save-check.mjs` plus an
+untracked `tests/.ci-tryout-feedback-red.mjs`. Both are saved in
+`../ci-green-leftovers/` (`uncommitted-tryout-save-check.patch`, the red probe,
+`unmerged-commit.txt`). Read them before fixing the tryout-save-check flake.
+
+
+**4 October 2026, paused handoff.** Implementation is paused at the user's
+request. Do not resume without an explicit request. Worktree:
+`.claude/worktrees/p14-04-final-ci`, branch `ticket-04-ci-final-cause`.
+
+Repair `c4bd2af4490689995bb9214fb96e7f7afd6da1a6` pipelines the six independent
+entry-hydration reads within each existing ID chunk. The parent integrated it
+into the unified tree at `2cd975e9bbda17d6a57100a1efa7f90e88ba2bb1`.
+Independent Standards and Spec reviews both passed with zero findings.
+Focused tests passed 103/103, the full Node suite passed 6749/6749, and
+svelte-check reported zero errors or warnings. The serialized CPU4 five-run
+proof passed: warm medians were 183/222ms against the unchanged 250ms budget,
+and cold medians were 69/68ms against 300ms. The remaining arrival checks passed.
+
+PR 6 CI run `37219290035`, pinned to that integrated head, exposed a different
+build failure. Built shard 1 and walkthrough both stopped at
+`scripts/release-metadata.mjs:47` with
+`ENOENT: no such file or directory, scandir 'build/_app/immutable/workers/assets'`.
+The integrated `sharedWasmAssets()` change puts WASM in
+`_app/immutable/assets`, while demo metadata still scans the old directory.
+The 19 guards were blocked and walkthrough did not run. This run therefore
+provides no new verdict on the earlier walkthrough failures.
+
+The uncommitted `tests/release-metadata.test.ts` in the ticket worktree preserves
+a failing regression: the old layout passes; the shared layout and missing
+correct binary cases fail. No production fix was applied before the stop.
+Earlier focused CPU4 walkthrough replays passed, but the causes of the remote
+starred-entry note, measurements-after-skip, and restore-Back failures remain
+unproven. Owned queued Back-loop and held-clear probes were cancelled; other
+agents' jobs were left alone. Ticket acceptance still needs a green CI run on
+the integrated main tip.
+
+Resume from
+`.claude/orchestration/phase14-no-ui-20261003/reports/04-final-ci-diagnosis/takeover-checkpoint.json`
+and adjacent `progress.json`, both marked `paused_by_user`. That directory
+contains `metadata-red.log`, `tile-cpu4-c4bd2af4-takeover.log`,
+`review-standards-c4bd2af4.md`, `review-spec-c4bd2af4.md`, and the preserved
+walkthrough probes and logs. Exact new CI logs are in
+`.claude/orchestration/phase14-no-ui-20261003/reports/ci-37219290035/`, jobs
+`111486159341` and `111486159516`. The parent owns integration, remote-run
+cancellation, and status updates.

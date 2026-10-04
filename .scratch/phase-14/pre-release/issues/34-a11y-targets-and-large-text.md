@@ -38,3 +38,78 @@ Evidence: `docs/accessibility-audit-2026-09-30.html` (report) and `docs/accessib
       at 200% text.
 - [ ] At Android font scale 2.0 all navigation names are legible in full.
 - [ ] The audit's own acceptance check for each finding passes on web (axe, keyboard) and on Android (TalkBack tree), rerun with the audit's scripts.
+
+## Comments
+
+Stopped at the user's request on 2026-10-04 at 17:35 UTC. Ticket remains
+incomplete; do not merge its implementation or mark acceptance complete.
+
+Preserved worktree:
+/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-b72ebde47027
+Branch: ticket-34-a11y-targets-and-large-text
+Source SHA: 6ba77f4c18338b75c6ff6d7baf3270d7e8d0d96c
+Source and tests are committed. No uncommitted source changes remained
+before this stop note. No source fixes or reviews continued after stop.
+
+Evidence: .claude/review-34/ in that worktree. Production build passed at
+47acbe072c4161dc12849385bf78a8edb0901691. Later commits change two tests
+only; production-subtree-equivalence.json proves identical src, messages,
+static, package and configuration objects at the preserved source SHA.
+Final typecheck: 0 errors, 0 warnings. All seven Svelte autofixer analyses
+completed. Focused Node motion checks: 50 passed after the recorded
+top/bottom allowlist RED. Corrected nested-era baseline: eight completed
+captures, real 20px overlapping targets, component bytes verified against
+4e83245f6c44d71e5720b9c07e204e3d892030eb.
+
+Earlier evidence covers the original implementation: 153 scoped web
+checks, eight after nested-era checks, 6685 Node tests, copy/classes checks,
+and 152 native scenes, including 76 after scenes. Actual TalkBack was
+bound; native settings were restored. APK hashes verify 703 web assets
+per original APK, including the two documented gzip decompressions.
+history-repair.json proves the earlier commit-message repair preserved
+source trees. These checks do not establish final motion-commit closure.
+
+Independent Standards review covers the preserved source SHA: zero open
+manual violations, zero smells, zero open tooling findings. Review stays
+open for final full/browser/native evidence. Independent Spec review:
+zero production findings, one P2 visual-proof finding still open. Original
+era motion captures were blank. Viewport RED reproduced this; the fixed
+overlay and legacy baseline selector remedies are committed, but visible
+opening/closing recapture has not passed. Blank evidence remains under
+iterations/blank-era-frames. The last baseline-motion run timed out on the
+old missing data attribute; 6ba77f4c fixes that selector without changing
+the pinned component. Resume must verify this fix.
+
+Resource limitation: light-browser.py counted launcher sessions, missing
+detached Chromium descendants. Earlier RSS peaks cannot establish the
+1 GiB cap. Raw runs and resource-guard-limitation.md are preserved. Light
+runs remain paused until ownership counting and cleanup are corrected and
+independently validated. Normal heavy runs remain valid. No performance
+acceptance relies on the light captures. No owned Chrome/Node/esbuild
+process survived the completed or stopped light runs.
+
+Stopped queued heavy helper PID 564946, session 70262, before admission;
+final-stack-resume.log records the wait. No owned build, browser or native
+job remains. No light reservation remains. emulator-5568 is absent; the
+focused final native runner never started. The physical phone and real
+application package were untouched. Peer processes were not terminated.
+
+Remaining acceptance: visible four era motion pairs; all eight final
+navigation/segment recordings; expanded EN/PL 100/200% compact-consumer
+sweep; final 153-case web/keyboard/scoped axe matrix; exact original-audit
+before/after attribution, including clinician print occlusion; full final
+Node/copy/classes checks; final APK asset proof and focused native matrix;
+updated gallery/audit/polish records; both final review closures and human
+visual sign-off. Existing gallery/index.html is provisional.
+
+Resume only after the user asks. From the preserved worktree:
+python3 /home/alice/_projekty/priv/gender-diary/.claude/orchestration/phase14-no-ui-20261003/heavy.py -- bash .claude/review-34/final-stack.sh
+The scratch stack resumes baseline motion onward and includes final
+browser, original audit, full Node, copy/classes, APK and owned-emulator
+checks. Preserve successful build/typecheck/autofixer/baseline records.
+After completion, run assess-final-proof.py and make-review.mjs from the
+same evidence directory, inspect frames, then update independent reports:
+review-final-standards.md and review-final-spec.md. Reviewer task IDs:
+01a107dc-39a3-76b2-bd4f-911d81911f4f (Standards)
+01a107dc-3c0c-7930-91f6-76092e941adc (Spec)
+Both received STOP. Root owns canonical note copy, integration and merges.
