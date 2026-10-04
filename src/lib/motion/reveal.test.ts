@@ -992,6 +992,30 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
+  it('starts from the painted height when the first observer notification arrives late', async () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    let firstPaint: (() => void) | undefined;
+    g.requestAnimationFrame = (callback: () => void) => { firstPaint = callback; };
+    const { node, calls, setHeight, trigger, restore } = resizingNode(69.1);
+    try {
+      resize(node);
+      // The completed header has already painted, but its observer has not
+      // delivered. Replaying the mount height would pull visible rows up.
+      setHeight(153.6);
+      firstPaint!();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      trigger();
+      expect(calls).toEqual([]);
+      setHeight(180);
+      trigger();
+      expect(calls).toEqual([[153.6, 180]]);
+    } finally {
+      restore();
+      delete g.requestAnimationFrame;
+    }
+  });
+
   it('does not travel from a height the box had before it was ever painted (ux-carpet 201)', async () => {
     stubDocument(false);
     const g = globalThis as Record<string, unknown>;
