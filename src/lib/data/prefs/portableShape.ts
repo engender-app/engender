@@ -83,7 +83,8 @@ export function portableValueForKey<K extends PortableKey>(
     device's value" behaviour has something to test against a whole
     archive payload, not only one key's validator in isolation -
     store.svelte.ts's `$state` cannot be node-tested directly, but this can. */
-export function portablePreferencePatch(portable: Partial<PortablePreferences>): Partial<PortablePreferences> {
+export function portablePreferencePatch(portable: Partial<PortablePreferences> | null | undefined): Partial<PortablePreferences> {
+  portable ??= {};
   const patch: Partial<PortablePreferences> = {};
   for (const key of PORTABLE_KEYS) {
     const value = portableValueForKey(key, portable?.[key]);

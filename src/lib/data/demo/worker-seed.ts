@@ -14,11 +14,10 @@ export async function seedPersonaInTransaction(
   source: Parameters<typeof writePersonaJournal>[1],
   makePhoto: typeof demoPhoto = demoPhoto
 ): Promise<void> {
-  await driver.transaction(() => writePersonaJournal(
-    openJournal({ ...driver, transaction: (write) => write() }, files),
-    source,
-    makePhoto
-  ));
+  await driver.transaction(async (scope) => {
+    const joined: SqliteDriver = { ...scope, transaction: async (write) => write(joined) };
+    await writePersonaJournal(openJournal(joined, files), source, makePhoto);
+  });
 }
 
 /** Same cold boot steps, over the worker's local connection. Preferences stay

@@ -75,6 +75,7 @@ const resolveDimensionIds = async (
 
 export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea {
   const writeChildren = async (
+    driver: SqliteDriver,
     templateId: number,
     tags: string[],
     dims: Record<string, number>
@@ -121,13 +122,13 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
 
     async addEntryTemplate(input) {
       const uuid = mintUuid();
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         const result = await driver.run(
           `INSERT INTO entry_template (uuid, name, note_scaffold, presentation_id, updated_at)
            VALUES (?, ?, ?, ?, ?)`,
           [uuid, input.name, input.noteScaffold, input.presentationId, now()]
         );
-        await writeChildren(result.lastInsertRowid, input.tags, input.dims);
+        await writeChildren(driver, result.lastInsertRowid, input.tags, input.dims);
       });
       return {
         id: uuid,
@@ -142,7 +143,7 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
     },
 
     async updateEntryTemplate(id, input) {
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         const result = await driver.run(
           `UPDATE entry_template SET name = ?, note_scaffold = ?, presentation_id = ?, updated_at = ?
            WHERE key = ? OR uuid = ?`,
@@ -157,7 +158,7 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
         const templateId = rows[0].id;
         await driver.run('DELETE FROM entry_template_tag WHERE template_id = ?', [templateId]);
         await driver.run('DELETE FROM entry_template_dimension_value WHERE template_id = ?', [templateId]);
-        await writeChildren(templateId, input.tags, input.dims);
+        await writeChildren(driver, templateId, input.tags, input.dims);
       });
     },
 

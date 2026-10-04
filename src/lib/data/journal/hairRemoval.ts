@@ -214,7 +214,7 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
         id
       ]);
       await driver.run('DELETE FROM hair_removal_photo WHERE uuid = ?', [id]);
-      await removeFilesOf(files, rows);
+      await removeFilesOf(driver, files, rows);
     }
   };
 }

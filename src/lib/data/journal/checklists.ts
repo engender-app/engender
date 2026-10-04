@@ -278,7 +278,7 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
       if (orderedItemIds.length !== rows.length || !orderedItemIds.every((id) => current.has(id))) {
         throw new Error(`reorder of checklist ${checklistId} does not permute its items`);
       }
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         for (const [orderIndex, id] of orderedItemIds.entries()) {
           await driver.run('UPDATE checklist_item SET order_index = ?, updated_at = ? WHERE uuid = ?', [
             orderIndex,

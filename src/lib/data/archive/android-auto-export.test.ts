@@ -101,7 +101,7 @@ describe('runAndroidAutoExport', () => {
       { now: () => 17, recordBackup: () => {} }
     );
     expect(androidAutoExport.beginBackup).toHaveBeenCalledWith({
-      fileName: expect.stringMatching(/^backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.ttbackup$/)
+      fileName: expect.stringMatching(/^auto-backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.ttbackup$/)
     });
   });
 

@@ -27,7 +27,7 @@ export interface MigrationDb {
   query<Row extends Record<string, unknown> = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]>;
   getUserVersion(): number | Promise<number>;
   setUserVersion(version: number): void | Promise<void>;
-  transaction<T>(fn: () => T | Promise<T>): T | Promise<T>;
+  transaction<T>(fn: (db: MigrationDb) => T | Promise<T>): T | Promise<T>;
 }
 
 export interface MigrationFileOps {
@@ -180,7 +180,7 @@ export async function runMigrations(
   await db.exec('PRAGMA foreign_keys = OFF');
   try {
     for (const migration of pending) {
-      await db.transaction(async () => {
+      await db.transaction(async (db) => {
         await db.exec(migration.sql);
         await db.setUserVersion(migration.version);
       });
