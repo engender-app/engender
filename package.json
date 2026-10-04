@@ -61,6 +61,7 @@
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",
     "release:tag": "node scripts/cut-release-tag.mjs",
+    "check:ai-directories": "node scripts/check-ai-directories.mjs",
     "check:copy": "node scripts/check-copy.mjs",
     "check:licences": "node scripts/check-licences.mjs",
     "check:screens-classes": "node scripts/check-screens-classes.mjs",
