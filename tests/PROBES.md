@@ -39,6 +39,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `body-map-selected-context` | the figure and the cluster select one region, and each case gets an honest sentence |
 | `body-map-figure-yank` | nothing on the body map's figure is painted at its destination first or in neither place |
 | `chart-tick-readout` | what a chart's tick says under a mouse and a finger, across grains, languages and widths |
+| `year-days-list` | the yearly grid's days as a list: the painted cells out of the accessibility tree, every day's value (or "Not logged") read off it a month at a time, three tab stops, a tap or Enter to open and step, and the fold and a month change never moving anything in one frame |
 | `voice-task-names` | the voice task chooser's labels fit their segments in both languages |
 | `record-dismissal-check` | a cancelled dismissal keeps unsaved record edits and the sheet's position |
 | `letter-composition-check` | letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock uses real routes |
