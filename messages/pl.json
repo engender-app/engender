@@ -4112,6 +4112,7 @@
   "wrapped_week_range": "od {from} do {to}",
   "wrapped_week_title": "Twój tydzień",
   "wrapped_year_close": "To był {year}, zapisany twoimi słowami.",
+  "wrapped_year_day_none": "Brak",
   "wrapped_year_days_disclosure": "Każdy dzień na liście",
   "wrapped_year_figures": "Rok w liczbach",
   "wrapped_year_intro": "Dwanaście miesięcy genderu!",
