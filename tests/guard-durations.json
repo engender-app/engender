@@ -83,9 +83,9 @@
       ]
     },
     "local": {
-      "revision": "07809ee5ac9c6acaec8c349529a20f48db606e92",
+      "revision": "90dac6f01321d116424b06f457acdb2737be95e3",
       "date": "2026-10-04",
-      "note": "Local demo bundle; hosted demo build failed before these guards. Seed measurements only, replace after first hosted candidate.",
+      "note": "Local demo bundle from this code revision, with the prewarm metadata repair applied during the run. Hosted demo build failed before these guards. Seed measurements only; replace after first hosted candidate.",
       "guards": [
         "dose-save-check",
         "entry-editor-return",
