@@ -6,9 +6,7 @@ name: Checks
 
 on:
   pull_request:
-  # And main, because tickets here merge locally with `git merge --no-ff` and go
-  # straight to main. A pull-request-only workflow would be watching a door
-  # nobody uses.
+  # Verify main after integration as well as each pull request.
   push:
     branches: [main]
   workflow_call:
