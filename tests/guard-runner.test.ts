@@ -57,7 +57,16 @@ describe('guard runner', () => {
     }
   });
 
-  it('CLI reports recovery with the checkout revision and preserves overwritten diagnostics from both attempts', () => {
+  it.each([
+    { failure: 'FAIL synthetic case', caseName: 'FAIL synthetic case' },
+    {
+      failure: '[demo-light] passing-first p1: 10 frames, 0 style / 0 render yank(s)\n' +
+        '[demo-light] doses-sheet p1: 10 frames, 1 style / 0 render yank(s)\n  style position edge @10ms - moved 8px\n' +
+        Array.from({ length: 20 }, (_, i) => `[demo-light] passing-${i} p1: 10 frames, 0 style / 0 render yank(s)`).join('\n') +
+        '\ngate FAILED: 1 style yank(s) across the scenes run - see the report above.',
+      caseName: '[demo-light] doses-sheet p1'
+    }
+  ])('CLI identifies $caseName and preserves both recovered attempts', ({ failure, caseName }) => {
     const root = mkdtempSync(join(tmpdir(), 'guard-recovery-'));
     try {
       mkdirSync(join(root, 'tests'));
@@ -74,7 +83,7 @@ describe('guard runner', () => {
         const first = !existsSync('attempted');
         writeFileSync('attempted', 'yes');
         writeFileSync('.claude/shots/report.json', first ? 'failed case evidence' : 'recovered case evidence');
-        console.log(first ? 'FAIL synthetic case' : 'PASS synthetic case');
+        console.log(first ? ${JSON.stringify(failure)} : 'PASS synthetic case');
         console.error(first ? 'first attempt stderr' : 'second attempt stderr');
         process.exit(first ? 1 : 0);
       `);
@@ -92,7 +101,8 @@ describe('guard runner', () => {
       expect(summary).toContain('| first | recovered |');
       expect(summary).toContain('| second | passed |');
       expect(summary).toContain(revision);
-      expect(summary).toContain('FAIL synthetic case');
+      expect(summary).toContain(caseName);
+      expect(summary).not.toContain('passing-');
       expect(summary).toMatch(/first\/attempt-1\/output\.log/);
       expect(summary).toMatch(/attempt 1: exit 1, [0-9.]+s/);
       expect(summary).toMatch(/attempt 2: exit 0, [0-9.]+s/);
