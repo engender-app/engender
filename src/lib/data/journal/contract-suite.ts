@@ -29,6 +29,7 @@ import type { Journal } from './journal.ts';
 import { openJournal } from './journal.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
+import { restoreArchive } from './restore.ts';
 
 interface ContractCheck {
   name: string;
@@ -151,6 +152,42 @@ export async function runJournalContract(
       const expired = await captured.query('SELECT 1').then(() => false, (error) => error.message.includes('scope has expired'));
       r.equal('a rolled-back transaction scope cannot query later', expired, true);
     }
+  });
+
+  await r.section('a hair-removal save survives a failed Merge', async () => {
+    const first = await journal.entries.upsertEntry({ epochDay: 29000, mood: 3, note: 'merge first' });
+    const last = await journal.entries.upsertEntry({ epochDay: 29001, mood: 3, note: 'merge last' });
+    const snapshot = await journal.archive.snapshot();
+    const bad = { ...snapshot.journal, entries: snapshot.journal.entries.map((entry) =>
+      entry.epochDay === 29001 ? { ...entry, epochDay: null } : entry) };
+    await driver.run('DELETE FROM entry WHERE id IN (?, ?)', [first, last]);
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const restoring = restoreArchive({
+      ...driver,
+      transaction: (work) => driver.transaction(async (scope) => {
+        entered();
+        await held;
+        return work(scope);
+      })
+    }, files, 'merge', {
+      journal: bad as typeof snapshot.journal, files: (async function* () {})()
+    }).then(() => '', (error) => String(error.message));
+    await started;
+    const saving = journal.hairRemoval.upsertSession({
+      epochDay: 29003, area: 'chin', method: 'laser', painRating: 2
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    release();
+    r.equal('the invalid Merge refuses an entry without a day', (await restoring).includes('entry.epoch_day'), true);
+    const sessionId = await saving;
+    r.equal('a fulfilled hair-removal save survives the failed Merge rollback',
+      await driver.query('SELECT uuid FROM hair_removal_session WHERE uuid = ?', [sessionId]), [{ uuid: sessionId }]);
+    r.equal('the failed Merge leaves no imported entry rows',
+      await driver.query('SELECT id FROM entry WHERE epoch_day IN (29000, 29001)'), []);
+    await journal.hairRemoval.deleteSession(sessionId);
   });
 
   await r.section('transaction scope lifetime', async () => {
