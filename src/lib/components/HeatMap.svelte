@@ -698,7 +698,7 @@
   .cal-dows {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0 8px;
+    gap: 0 var(--cal-col-gap);
     transition: opacity var(--dur-med) var(--ease-out);
   }
   .cal-dow {
@@ -732,9 +732,12 @@
      drawing changes that. */
   .cal-dows,
   .cal-months {
+    /* The gap between two days' columns, which the day letters, the grid,
+       a day's reach and this room all read. */
+    --cal-col-gap: 8px;
     margin-inline: clamp(
       calc(var(--space-4) - var(--space-5)),
-      calc((100% - (7 * var(--touch-target) - 8px)) / 2),
+      calc((100% - (7 * var(--touch-target) - var(--cal-col-gap))) / 2),
       0px
     );
   }
@@ -749,7 +752,7 @@
        a day, between its surface and its date, is 2px (.cal-day). Wide here
        and tight there is what makes a surface and its number read as one
        unit rather than as a date belonging to the cell underneath it. */
-    gap: 10px 8px;
+    gap: 10px var(--cal-col-gap);
     --r: var(--r-block);
   }
   /* Mood is the same rounded square every other mood face in the app draws
@@ -820,19 +823,19 @@
     text-decoration: none;
     color: inherit;
   }
-  /* The target is the whole column pitch: the link reaches half the 8px
+  /* The target is the whole column pitch: the link reaches half the
      column gap out on each side and pads it back in, so the day it draws
      stays exactly where and as big as it was (see .cal-months above for the
      width that makes the pitch 48px). Neighbours meet in the middle of the
      gap and never overlap. Only open: the strip takes no pointer. */
   .cal-grid:not(.is-compact) .cal-day {
-    margin-inline: -4px;
-    padding-inline: 4px;
+    margin-inline: calc(var(--cal-col-gap) / -2);
+    padding-inline: calc(var(--cal-col-gap) / 2);
   }
   /* The focus ring stays round the day it was round before, 2px out from
      the drawn column, rather than following the link out to the middle of
      the gap, where it all but touched the next day's swatch. */
-  .cal-grid:not(.is-compact) .cal-day:focus-visible { outline-offset: -2px; }
+  .cal-grid:not(.is-compact) .cal-day:focus-visible { outline-offset: calc(2px - var(--cal-col-gap) / 2); }
 
   .cal-cell {
     position: relative;
