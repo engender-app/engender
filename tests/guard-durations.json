@@ -1,0 +1,413 @@
+{
+  "sources": {
+    "baseline": {
+      "run": "https://github.com/engender-app/engender/actions/runs/37188235861",
+      "revision": "3dfa9cdfe2922dcdfd9e14d577eb4301ff05d071",
+      "guards": [
+        "date-picker-check",
+        "date-picker-motion",
+        "time-picker-check",
+        "sheet-focus-check",
+        "no-auto-keyboard",
+        "dose-editor-copy-check",
+        "sheet-navigation-leftover-check",
+        "sheet-handoff-scroll-check",
+        "sheet-touch-drag-check",
+        "yank-sweep",
+        "tryout-form-check",
+        "media-transport-check",
+        "care-lane-labels",
+        "care-cold-load-yank",
+        "wear-tile-close-yank",
+        "day-cold-load-yank",
+        "tally-chip-row-yank",
+        "changes-methodology-check",
+        "words-reading-scope-check",
+        "entry-pending-save",
+        "radio-groups-gallery",
+        "roadmap-track-summary",
+        "prep-context-check",
+        "debrief-offer-check",
+        "home-fold-reserve",
+        "cold-screen-moves",
+        "screen-part-last-row",
+        "more-search-nothing-found",
+        "documents-rows-settle",
+        "tile-arrival-timing",
+        "home-idle-raster",
+        "boot-error-alone",
+        "restore-previous-journal"
+      ]
+    },
+    "latestMain": {
+      "run": "https://github.com/engender-app/engender/actions/runs/37221482998",
+      "revision": "90dac6f01321d116424b06f457acdb2737be95e3",
+      "guards": [
+        "blind-edge-padding-check",
+        "dilation-schedule-action",
+        "letters-ready-jump",
+        "body-map-selected-context",
+        "body-map-figure-yank",
+        "chart-tick-readout",
+        "year-days-list",
+        "voice-task-names",
+        "record-dismissal-check",
+        "letter-composition-check",
+        "recovery-key-departure-check",
+        "photo-browse-compare",
+        "photo-grid-batching",
+        "photo-export",
+        "chosen-appointment",
+        "appointment-entry-check",
+        "content-before-dates-check",
+        "document-reader",
+        "empty-reflection",
+        "hair-progress-photo-jump-check",
+        "hair-removal-entry-check",
+        "hair-removal-recency-handoff-check",
+        "measurements-sizes-jump-check",
+        "roadmap-tick-motion-check",
+        "search-filter-scope",
+        "mark-edge-fringe",
+        "getting-started-cross-check",
+        "noticed-effects-picker-check",
+        "breathing-frames",
+        "tryout-save-check",
+        "regimen-editor-check",
+        "document-import-check",
+        "lab-entry-check",
+        "measurements-entry-check",
+        "leave-lock-check",
+        "device-recovery-check",
+        "settings-erase-check"
+      ]
+    },
+    "local": {
+      "revision": "07809ee5ac9c6acaec8c349529a20f48db606e92",
+      "date": "2026-10-04",
+      "note": "Local demo bundle; hosted demo build failed before these guards. Seed measurements only, replace after first hosted candidate.",
+      "guards": [
+        "dose-save-check",
+        "entry-editor-return",
+        "calendar-month-a11y-check",
+        "chart-a11y-check"
+      ]
+    }
+  },
+  "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round up measured total minus attempt durations.",
+  "builds": {
+    "demo": 71,
+    "production": 65
+  },
+  "setupSeconds": {
+    "baseline": {
+      "dev 1/1": 37,
+      "built 1/2": 83,
+      "built 2/2": 44
+    }
+  },
+  "guards": {
+    "blind-edge-padding-check": 2.94,
+    "dilation-schedule-action": 10.37,
+    "letters-ready-jump": 8.38,
+    "body-map-selected-context": 11.66,
+    "body-map-figure-yank": 6.87,
+    "chart-tick-readout": 62.98,
+    "year-days-list": 7.06,
+    "voice-task-names": 61.03,
+    "record-dismissal-check": 49.85,
+    "letter-composition-check": 12.78,
+    "recovery-key-departure-check": 6.9,
+    "photo-browse-compare": 7.29,
+    "photo-grid-batching": 71.17,
+    "photo-export": 19.54,
+    "chosen-appointment": 6.85,
+    "appointment-entry-check": 13.09,
+    "content-before-dates-check": 47.09,
+    "document-reader": 12.77,
+    "empty-reflection": 28.55,
+    "hair-progress-photo-jump-check": 8.09,
+    "hair-removal-entry-check": 15.64,
+    "hair-removal-recency-handoff-check": 7.33,
+    "measurements-sizes-jump-check": 10.3,
+    "roadmap-tick-motion-check": 7.97,
+    "search-filter-scope": 15.43,
+    "mark-edge-fringe": 0.92,
+    "getting-started-cross-check": 20.21,
+    "noticed-effects-picker-check": 28.72,
+    "breathing-frames": 72.93,
+    "tryout-save-check": 24.45,
+    "regimen-editor-check": 12.51,
+    "document-import-check": 11.89,
+    "lab-entry-check": 13.16,
+    "measurements-entry-check": 17.23,
+    "leave-lock-check": 7.78,
+    "date-picker-check": 146.33,
+    "date-picker-motion": 32.02,
+    "time-picker-check": 36.91,
+    "sheet-focus-check": 24.27,
+    "no-auto-keyboard": 26.12,
+    "dose-editor-copy-check": 10.58,
+    "dose-save-check": 13.09,
+    "sheet-navigation-leftover-check": 12.91,
+    "sheet-handoff-scroll-check": 9.63,
+    "sheet-touch-drag-check": 8.84,
+    "yank-sweep": 342.9,
+    "tryout-form-check": 35.04,
+    "media-transport-check": 18.66,
+    "care-lane-labels": 41.23,
+    "care-cold-load-yank": 77.2,
+    "wear-tile-close-yank": 170.18,
+    "day-cold-load-yank": 87.02,
+    "entry-editor-return": 104.07,
+    "calendar-month-a11y-check": 84.11,
+    "chart-a11y-check": 130.07,
+    "tally-chip-row-yank": 63.22,
+    "changes-methodology-check": 11.2,
+    "words-reading-scope-check": 10.27,
+    "entry-pending-save": 76.42,
+    "radio-groups-gallery": 35.57,
+    "roadmap-track-summary": 5.42,
+    "prep-context-check": 46.72,
+    "debrief-offer-check": 80.56,
+    "home-fold-reserve": 296.0,
+    "cold-screen-moves": 539.71,
+    "screen-part-last-row": 63.58,
+    "more-search-nothing-found": 85.33,
+    "documents-rows-settle": 107.29,
+    "tile-arrival-timing": 142.43,
+    "home-idle-raster": 90.07,
+    "boot-error-alone": 20.49,
+    "restore-previous-journal": 41.34,
+    "device-recovery-check": 13.71,
+    "settings-erase-check": 117.89
+  },
+  "attempts": {
+    "blind-edge-padding-check": [
+      2.94
+    ],
+    "dilation-schedule-action": [
+      10.37
+    ],
+    "letters-ready-jump": [
+      8.38
+    ],
+    "body-map-selected-context": [
+      11.66
+    ],
+    "body-map-figure-yank": [
+      6.87
+    ],
+    "chart-tick-readout": [
+      62.98
+    ],
+    "year-days-list": [
+      7.06
+    ],
+    "voice-task-names": [
+      61.03
+    ],
+    "record-dismissal-check": [
+      25.56,
+      24.29
+    ],
+    "letter-composition-check": [
+      12.78
+    ],
+    "recovery-key-departure-check": [
+      6.9
+    ],
+    "photo-browse-compare": [
+      7.29
+    ],
+    "photo-grid-batching": [
+      71.17
+    ],
+    "photo-export": [
+      19.54
+    ],
+    "chosen-appointment": [
+      6.85
+    ],
+    "appointment-entry-check": [
+      13.09
+    ],
+    "content-before-dates-check": [
+      47.09
+    ],
+    "document-reader": [
+      12.77
+    ],
+    "empty-reflection": [
+      28.55
+    ],
+    "hair-progress-photo-jump-check": [
+      8.09
+    ],
+    "hair-removal-entry-check": [
+      15.64
+    ],
+    "hair-removal-recency-handoff-check": [
+      7.33
+    ],
+    "measurements-sizes-jump-check": [
+      10.3
+    ],
+    "roadmap-tick-motion-check": [
+      7.97
+    ],
+    "search-filter-scope": [
+      15.43
+    ],
+    "mark-edge-fringe": [
+      0.92
+    ],
+    "getting-started-cross-check": [
+      20.21
+    ],
+    "noticed-effects-picker-check": [
+      28.72
+    ],
+    "breathing-frames": [
+      72.93
+    ],
+    "tryout-save-check": [
+      24.45
+    ],
+    "regimen-editor-check": [
+      12.51
+    ],
+    "document-import-check": [
+      11.89
+    ],
+    "lab-entry-check": [
+      13.16
+    ],
+    "measurements-entry-check": [
+      17.23
+    ],
+    "leave-lock-check": [
+      7.78
+    ],
+    "date-picker-check": [
+      146.33
+    ],
+    "date-picker-motion": [
+      32.02
+    ],
+    "time-picker-check": [
+      36.91
+    ],
+    "sheet-focus-check": [
+      24.27
+    ],
+    "no-auto-keyboard": [
+      26.12
+    ],
+    "dose-editor-copy-check": [
+      10.58
+    ],
+    "dose-save-check": [
+      13.09
+    ],
+    "sheet-navigation-leftover-check": [
+      12.91
+    ],
+    "sheet-handoff-scroll-check": [
+      9.63
+    ],
+    "sheet-touch-drag-check": [
+      8.84
+    ],
+    "yank-sweep": [
+      172.0,
+      170.9
+    ],
+    "tryout-form-check": [
+      35.04
+    ],
+    "media-transport-check": [
+      18.66
+    ],
+    "care-lane-labels": [
+      41.23
+    ],
+    "care-cold-load-yank": [
+      77.2
+    ],
+    "wear-tile-close-yank": [
+      170.18
+    ],
+    "day-cold-load-yank": [
+      87.02
+    ],
+    "entry-editor-return": [
+      104.07
+    ],
+    "calendar-month-a11y-check": [
+      84.11
+    ],
+    "chart-a11y-check": [
+      130.07
+    ],
+    "tally-chip-row-yank": [
+      63.22
+    ],
+    "changes-methodology-check": [
+      11.2
+    ],
+    "words-reading-scope-check": [
+      10.27
+    ],
+    "entry-pending-save": [
+      76.42
+    ],
+    "radio-groups-gallery": [
+      35.57
+    ],
+    "roadmap-track-summary": [
+      5.42
+    ],
+    "prep-context-check": [
+      46.72
+    ],
+    "debrief-offer-check": [
+      80.56
+    ],
+    "home-fold-reserve": [
+      296.0
+    ],
+    "cold-screen-moves": [
+      269.93,
+      269.78
+    ],
+    "screen-part-last-row": [
+      63.58
+    ],
+    "more-search-nothing-found": [
+      85.33
+    ],
+    "documents-rows-settle": [
+      107.29
+    ],
+    "tile-arrival-timing": [
+      142.43
+    ],
+    "home-idle-raster": [
+      90.07
+    ],
+    "boot-error-alone": [
+      20.49
+    ],
+    "restore-previous-journal": [
+      41.34
+    ],
+    "device-recovery-check": [
+      13.71
+    ],
+    "settings-erase-check": [
+      77.48,
+      40.41
+    ]
+  }
+}
