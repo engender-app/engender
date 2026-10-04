@@ -82,6 +82,7 @@ CI's `guards` job runs both sets. To run one on its own, use
 | `wear-tile-close-yank` | stopping the Home wear-timer tile collapses its own tier's row rather than snapping the agenda up under a still-visible ghost, even when an unrelated fold promotion lands the same tick |
 | `day-cold-load-yank` | The day view's cold load at 4x CPU: margin notes and dose drug names land with the day's records, never after |
 | `entry-editor-return` | The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed |
+| `calendar-month-a11y-check` | the open calendar month is a list named by its month with one item per day, every day says its date, axe finds nothing in it, Tab walks the date links in order, and every link is 48px or more without overlapping at 360, 390 and 411px phones and the 390px desktop page (320 is printed only) |
 | `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |
