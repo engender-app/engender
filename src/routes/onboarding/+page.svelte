@@ -1339,7 +1339,8 @@
      answers had nowhere left to go. */
   .setup-head {
     position: relative;
-    z-index: 1;
+    /* Keep Back above questions that cross its target during a step change. */
+    z-index: 2;
     min-height: calc(175px * var(--step-grow, 1) * var(--sun-mult, 1));
   }
   .setup-head .icon-btn {

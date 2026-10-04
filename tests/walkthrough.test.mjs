@@ -2844,6 +2844,50 @@ try {
   );
   await emptyFirstRun();
 
+  /* Hold the real frame where the arriving name question crosses Back.
+     A heading above the control used to swallow a click during this frame. */
+  await page.evaluate(() => {
+    const probe = { frame: null, animations: [], request: 0 };
+    window.__restoreBackProbe = probe;
+    const sample = () => {
+      const back = document.querySelector('[data-back]');
+      if (back) {
+        const rect = back.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const crossing = [...document.querySelectorAll('[data-setup-question]')].some((heading) => {
+          const bounds = heading.getBoundingClientRect();
+          return bounds.left <= x && bounds.right >= x && bounds.top <= y && bounds.bottom >= y;
+        });
+        if (crossing) {
+          probe.animations = document.getAnimations().filter((animation) => animation.playState === 'running');
+          for (const animation of probe.animations) animation.pause();
+          probe.frame = { x, y };
+          return;
+        }
+      }
+      probe.request = requestAnimationFrame(sample);
+    };
+    probe.request = requestAnimationFrame(sample);
+  });
+  try {
+    await page.locator('[data-next]').click();
+    await waitingFor('the arriving question crossing Back', () =>
+      page.waitForFunction(() => window.__restoreBackProbe.frame !== null)
+    );
+    const { x, y } = await page.evaluate(() => window.__restoreBackProbe.frame);
+    await page.mouse.click(x, y);
+    await waitingFor('Back reaching the welcome during question arrival', () =>
+      page.waitForSelector('[data-restore-start]')
+    );
+  } finally {
+    await page.evaluate(() => {
+      cancelAnimationFrame(window.__restoreBackProbe.request);
+      for (const animation of window.__restoreBackProbe.animations) animation.play();
+      delete window.__restoreBackProbe;
+    });
+  }
+
   /* A setup draft from the new-journal path must not override the archive.
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
