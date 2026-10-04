@@ -26,6 +26,8 @@
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>] [--root <built tree>] */
+import { COLD_SCREEN_SAMPLER, COLD_SAMPLE_MS } from './cold-screen-sampler.mjs';
+import { measurementNoticeTravel, NOTICE_APPEAR_MS, NOTICE_OBSERVE_MS, NOTICE_SETTLE_MS, NOTICE_MAX_GAP_MS } from './measurement-notice-observation.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,65 +65,8 @@ const JUMP_PX = 24;
 const STEP_PX = Number(flag('step', '4'));
 const ARRIVALS = args.includes('--arrivals');
 const TRAVEL_FRAMES = 4;
-const SAMPLE_MS = 1600;
 const VIEWPORT_W = Number(flag('width', '390'));
 const VIEWPORT_H = 844;
-
-const SAMPLER = `(() => {
-  if (navigator.storage) navigator.storage.persist = () => Promise.resolve(true);
-  const ids = new WeakMap();
-  let next = 0;
-  const name = (el) => {
-    let id = ids.get(el);
-    if (id == null) {
-      const cls = [...el.classList].filter((c) => !c.startsWith('s-') && !c.startsWith('svelte-')).slice(0, 2).join('.');
-      const data = el.hasAttribute('data-protocol')
-        ? 'data-protocol'
-        : [...el.attributes].map((a) => a.name).find((a) => a.startsWith('data-') && a !== 'data-kit-surface');
-      id = (next++) + ':' + el.tagName.toLowerCase() + (cls ? '.' + cls : '') + (data ? '[' + data + ']' : '');
-      ids.set(el, id);
-    }
-    return id;
-  };
-  const out = [];
-  window.__coldSamples = out;
-  let vt = false;
-  const start = document.startViewTransition?.bind(document);
-  if (start)
-    document.startViewTransition = (...a) => {
-      const running = start(...a);
-      running.ready.catch(() => {}).then(() => (vt = true));
-      running.finished.catch(() => {}).then(() => (vt = false));
-      return running;
-    };
-  const t0 = performance.now();
-  const tick = () => {
-    const at = performance.now() - t0;
-    const row = { at, vt, boxes: {}, ops: {} };
-    const opacity = new Map();
-    for (const el of document.querySelectorAll('.screen > *, .screen > .screen-part > *, .read-reserve-body > *, .read-reserve-body > .screen-part > [data-protocol]')) {
-      if (el.hasAttribute('data-gate-skeleton') || el.hasAttribute('data-read-reserve-hold')) continue;
-      const box = el.getBoundingClientRect();
-      /* Kept below the fold too, so a travel that leaves the viewport
-         still reads as the run of frames it is; only steps seen on
-         screen are reported (analyse). */
-      if (box.height === 0) continue;
-      row.boxes[name(el)] = Math.round(box.top * 10) / 10;
-      let o = 1;
-      for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
-        if (!opacity.has(n)) opacity.set(n, Number(getComputedStyle(n).opacity));
-        o *= opacity.get(n);
-      }
-      row.ops[name(el)] = Math.round(o * 100) / 100;
-    }
-    out.push(row);
-    if (at < ${SAMPLE_MS}) requestAnimationFrame(later);
-  };
-  /* After the frame's paint rather than inside its rAF: a rAF read lands
-     before that frame's ResizeObserver callbacks (home-fold-reserve.mjs). */
-  const later = () => setTimeout(tick, 0);
-  requestAnimationFrame(later);
-})()`;
 
 function teleports(series, samples) {
   const out = [];
@@ -165,21 +110,6 @@ function analyse(samples) {
   return findings;
 }
 
-/* Ticket 262: the protocol notice must first appear at its resting place.
-   A smooth 40px journey still fails even though the generic teleport rule
-   deliberately allows travel during other screen changes. */
-function measurementNoticeTravel(samples) {
-  const key = Object.keys(samples.at(-1)?.boxes ?? {}).find((name) => name.includes('.kit-notice[data-protocol]'));
-  if (!key) return ['measuring notice never appeared'];
-  const tops = samples
-    .filter((frame) => frame.at < 500 && (frame.ops[key] ?? 0) >= 0.1)
-    .map((frame) => frame.boxes[key])
-    .filter((top) => top != null);
-  if (!tops.length) return ['measuring notice was not visible during cold load'];
-  const travel = Math.max(...tops) - Math.min(...tops);
-  return travel > 3 ? [`measuring notice traveled ${Math.round(travel)}px after appearing`] : [];
-}
-
 const browser = await launchChromium();
 const app = await previewBuild(resolve(flag('root', resolve(here, '..'))));
 const base = `http://localhost:${app.httpServer.address().port}`;
@@ -195,7 +125,7 @@ await page.waitForTimeout(1500);
 await settlePage(page, base, '/', THEME);
 await page.evaluate(DEMO_THEME_EXPRESSION(THEME));
 await page.waitForTimeout(1500);
-await page.addInitScript(SAMPLER);
+await page.addInitScript(COLD_SCREEN_SAMPLER);
 
 let failed = false;
 const failedSamples = [];
@@ -210,13 +140,20 @@ for (const route of ROUTES) {
     }
     await page.goto(`${base}${route}`, { waitUntil: 'commit' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
-    await page.waitForTimeout(SAMPLE_MS + 300);
-    const samples = await page.evaluate(() => window.__coldSamples);
+    let incomplete = '';
+    try {
+      await page.waitForFunction(() => window.__coldSamplesComplete, null, { timeout: NOTICE_APPEAR_MS + NOTICE_OBSERVE_MS + 5000 });
+    } catch (error) {
+      if (error.name !== 'TimeoutError') throw error;
+      incomplete = 'cold-load observation incomplete: sampler did not finish';
+    }
+    const samples = await page.evaluate(() => window.__coldSamples ?? []);
     if (DUMP) {
       await mkdir(DUMP, { recursive: true });
       await writeFile(`${DUMP}/${THEME}${route.replaceAll('/', '_')}-${run}.json`, JSON.stringify(samples));
     }
     const findings = [
+      ...(incomplete ? [incomplete] : []),
       ...analyse(samples),
       ...(route === '/body/measurements' ? measurementNoticeTravel(samples) : [])
     ];
@@ -236,15 +173,16 @@ if (failedSamples.length) {
   try {
     await mkdir('ci-logs', { recursive: true });
     for (const result of failedSamples) {
-      const key = Object.keys(result.samples.at(-1)?.boxes ?? {}).find((name) => name.includes('.kit-notice[data-protocol]'));
+      const key = result.samples.flatMap((frame) => Object.keys(frame.boxes)).find((name) => name.includes('.kit-notice[data-protocol]'));
       const firstNotice = key && result.samples.find((frame) => (frame.ops[key] ?? 0) >= 0.1 && frame.boxes[key] != null);
       const firstScreen = result.samples.find((frame) => Object.keys(frame.boxes).length > 0);
       const output = `ci-logs/cold-screen-${Date.now()}-${process.pid}-${THEME}${result.route.replaceAll('/', '_')}-${result.run}.json`;
       await writeFile(output, JSON.stringify({
-        theme: THEME, width: VIEWPORT_W, sampleMs: SAMPLE_MS,
-        noticeCutoffMs: 500, firstScreenAtMs: firstScreen?.at ?? null,
+        theme: THEME, width: VIEWPORT_W, sampleMs: COLD_SAMPLE_MS,
+        noticeAppearanceBoundMs: NOTICE_APPEAR_MS, noticeObservationMs: NOTICE_OBSERVE_MS,
+        noticeSettleMs: NOTICE_SETTLE_MS, noticeMaxFrameGapMs: NOTICE_MAX_GAP_MS, firstScreenAtMs: firstScreen?.at ?? null,
         firstVisibleNoticeAtMs: firstNotice?.at ?? null,
-        limits: 'Times start with the document sampler, not boot readiness. No SQL, parameters or content text is recorded.',
+        limits: 'Times start with the document sampler. These frames describe this attempt only. No SQL, parameters or content text is recorded.',
         ...result
       }));
       console.log(`Cold screen diagnostic samples: ${output}`);
