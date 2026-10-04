@@ -51,6 +51,9 @@ export default defineConfig({
     }
   },
   plugins: [sqlocal()],
+  define: {
+    __DEMO__: JSON.stringify(false)
+  },
   optimizeDeps: {
     exclude: ['@evolu/sqlite-wasm']
   },
