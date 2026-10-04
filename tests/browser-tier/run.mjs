@@ -2583,5 +2583,11 @@ await block('Timeline facts are selectable without precision tapping', 1, async 
   ok('care captions at the 48px floor, lane jumps, rail targets that own only what they draw, and the fact list');
 });
 
+await block('PIN count status', 1, async () => {
+  const { verifyPinProgressStatus } = await import('../pin-progress-status.mjs');
+  await verifyPinProgressStatus();
+  ok('EN/PL count-only status updates through keyboard entry, backspace and refusal');
+});
+
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);

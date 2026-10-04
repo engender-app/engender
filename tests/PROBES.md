@@ -121,9 +121,9 @@ shards in CI (`--shard 1/2` and `--shard 2/2`); local npm scripts run the whole 
 | --- | --- |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
 
-`browser-tier/run.mjs` also imports five probes (`care-read`,
+`browser-tier/run.mjs` also imports six probes (`care-read`,
 `care-spine-links`, `read-failures`, `source-record-links`,
-`timeline-fact-selection`), so they run in the browser job with
+`timeline-fact-selection`, `pin-progress-status`), so they run in the browser job with
 `npm run test:browser`. Three of them take `--gallery` as well.
 
 ## Galleries and tools
