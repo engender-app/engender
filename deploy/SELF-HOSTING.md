@@ -4,11 +4,11 @@ The web app is a folder of static files. There is no server component, no
 database and no account system behind it, so hosting your own copy comes
 down to serving that folder over HTTPS with the right headers. You don't need
 to fork or rebuild anything: every release publishes the same bundle that
-`app.engender.dev` serves.
+`app.engender.barankiewicz.dev` serves.
 
 This page covers the two supported setups: a Docker image behind a reverse
 proxy you already run, or nginx directly on the host. The production setup
-for `app.engender.dev` is in [README.md](README.md).
+for `app.engender.barankiewicz.dev` is in [README.md](README.md).
 
 ## Before you start
 
@@ -40,7 +40,7 @@ for `app.engender.dev` is in [README.md](README.md).
 Journals live in the browser's storage for one origin, and passkeys are bound
 to it too. Hosting your own copy does not move anyone's data:
 
-- A journal kept on `app.engender.dev` will not appear on your host, and the
+- A journal kept on `app.engender.barankiewicz.dev` will not appear on your host, and the
   reverse is also true. To move, a person exports a backup from Export &
   import in Settings, sets the app up on the new origin (unlocking included),
   and restores the backup there with Import backup.

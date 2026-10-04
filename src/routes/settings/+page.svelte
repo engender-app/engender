@@ -174,7 +174,7 @@
   }
 
 
-  const SITE_URL = 'https://engender.dev/';
+  const SITE_URL = 'https://engender.barankiewicz.dev/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
 
   /* Ticket ux/06: ships disabled. While this is empty the row is not drawn
