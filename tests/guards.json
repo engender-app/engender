@@ -17,12 +17,18 @@
   {
     "name": "body-map-selected-context",
     "tier": "dev",
-    "holds": "the figure and the cluster select one region, and each case gets an honest sentence"
+    "holds": "the figure and the cluster select one region, and each case gets an honest sentence",
+    "diagnostics": [
+      ".claude/ticket30/*"
+    ]
   },
   {
     "name": "body-map-figure-yank",
     "tier": "dev",
-    "holds": "nothing on the body map's figure is painted at its destination first or in neither place"
+    "holds": "nothing on the body map's figure is painted at its destination first or in neither place",
+    "diagnostics": [
+      ".claude/ticket47/*"
+    ]
   },
   {
     "name": "chart-tick-readout",
@@ -42,12 +48,18 @@
   {
     "name": "record-dismissal-check",
     "tier": "dev",
-    "holds": "a cancelled dismissal keeps unsaved record edits and the sheet's position"
+    "holds": "a cancelled dismissal keeps unsaved record edits and the sheet's position",
+    "diagnostics": [
+      ".claude/record-dismissal-shots/*"
+    ]
   },
   {
     "name": "letter-composition-check",
     "tier": "dev",
-    "holds": "letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock uses real routes"
+    "holds": "letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock uses real routes",
+    "diagnostics": [
+      ".claude/letter-shots/*"
+    ]
   },
   {
     "name": "recovery-key-departure-check",
@@ -97,7 +109,10 @@
   {
     "name": "hair-progress-photo-jump-check",
     "tier": "dev",
-    "holds": "the hair progress jump reaches its photo and keeps its context"
+    "holds": "the hair progress jump reaches its photo and keeps its context",
+    "diagnostics": [
+      ".claude/hair-progress-shots/*"
+    ]
   },
   {
     "name": "hair-removal-entry-check",
@@ -107,12 +122,18 @@
   {
     "name": "hair-removal-recency-handoff-check",
     "tier": "dev",
-    "holds": "the recency rows open their own area prefilled, and nothing saves before Save"
+    "holds": "the recency rows open their own area prefilled, and nothing saves before Save",
+    "diagnostics": [
+      ".claude/hair-removal-recency-shots/*"
+    ]
   },
   {
     "name": "measurements-sizes-jump-check",
     "tier": "dev",
-    "holds": "the Measurements/Sizes jump moves focus and keeps an open editor's input"
+    "holds": "the Measurements/Sizes jump moves focus and keeps an open editor's input",
+    "diagnostics": [
+      ".claude/measurements-jump-shots/*"
+    ]
   },
   {
     "name": "roadmap-tick-motion-check",
@@ -137,7 +158,10 @@
   {
     "name": "noticed-effects-picker-check",
     "tier": "dev",
-    "holds": "the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame"
+    "holds": "the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame",
+    "diagnostics": [
+      "/tmp/claude-1000/-home-alice--projekty-priv-gender-diary/787bf72c-d37e-4175-b485-375d59e7f4bc/scratchpad/editor.png"
+    ]
   },
   {
     "name": "breathing-frames",
@@ -212,7 +236,10 @@
   {
     "name": "dose-editor-copy-check",
     "tier": "built",
-    "holds": "dose editor labels and field order in English and Polish, without duplicate prompts"
+    "holds": "dose editor labels and field order in English and Polish, without duplicate prompts",
+    "diagnostics": [
+      ".claude/dose-editor-copy-shots/*"
+    ]
   },
   {
     "name": "dose-save-check",
@@ -245,6 +272,10 @@
       "1",
       "--gate",
       "--dump"
+    ],
+    "diagnostics": [
+      ".claude/yank-sweep/*.frames.json",
+      ".claude/yank-sweep/report.json"
     ]
   },
   {
@@ -265,17 +296,26 @@
   {
     "name": "care-cold-load-yank",
     "tier": "built",
-    "holds": "Care's cold load at 1x and 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail, what it answers with fades in, and the nav pill never paints wider than its tab"
+    "holds": "Care's cold load at 1x and 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail, what it answers with fades in, and the nav pill never paints wider than its tab",
+    "diagnostics": [
+      ".claude/care-cold-load/*"
+    ]
   },
   {
     "name": "wear-tile-close-yank",
     "tier": "built",
-    "holds": "stopping the Home wear-timer tile collapses its own tier's row rather than snapping the agenda up under a still-visible ghost, even when an unrelated fold promotion lands the same tick"
+    "holds": "stopping the Home wear-timer tile collapses its own tier's row rather than snapping the agenda up under a still-visible ghost, even when an unrelated fold promotion lands the same tick",
+    "diagnostics": [
+      ".claude/wear-tile-close/*"
+    ]
   },
   {
     "name": "day-cold-load-yank",
     "tier": "built",
-    "holds": "The day view's cold load at 4x CPU: margin notes and dose drug names land with the day's records, never after"
+    "holds": "The day view's cold load at 4x CPU: margin notes and dose drug names land with the day's records, never after",
+    "diagnostics": [
+      ".claude/day-cold-load/*"
+    ]
   },
   {
     "name": "entry-editor-return",
@@ -295,12 +335,18 @@
   {
     "name": "tally-chip-row-yank",
     "tier": "built",
-    "holds": "Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after"
+    "holds": "Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after",
+    "diagnostics": [
+      ".claude/tally-chip-row/*"
+    ]
   },
   {
     "name": "changes-methodology-check",
     "tier": "built",
-    "holds": "the changes screen's methodology disclosure and record action"
+    "holds": "the changes screen's methodology disclosure and record action",
+    "diagnostics": [
+      ".claude/changes-shots/*"
+    ]
   },
   {
     "name": "words-reading-scope-check",
@@ -310,12 +356,18 @@
   {
     "name": "entry-pending-save",
     "tier": "built",
-    "holds": "delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish"
+    "holds": "delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish",
+    "diagnostics": [
+      ".claude/entry-pending-save-shots/*"
+    ]
   },
   {
     "name": "radio-groups-gallery",
     "tier": "built",
-    "holds": "radio groups select by keyboard and the mood faces have full targets (a guard despite its name)"
+    "holds": "radio groups select by keyboard and the mood faces have full targets (a guard despite its name)",
+    "diagnostics": [
+      ".claude/radio-groups-shots/*"
+    ]
   },
   {
     "name": "roadmap-track-summary",
@@ -325,12 +377,18 @@
   {
     "name": "prep-context-check",
     "tier": "built",
-    "holds": "an empty prep list still shows the next visit and keeps every section"
+    "holds": "an empty prep list still shows the next visit and keeps every section",
+    "diagnostics": [
+      ".claude/prep-context-failure.png"
+    ]
   },
   {
     "name": "debrief-offer-check",
     "tier": "built",
-    "holds": "the appointment debrief loop, end to end"
+    "holds": "the appointment debrief loop, end to end",
+    "diagnostics": [
+      ".claude/debrief-check-failure.png"
+    ]
   },
   {
     "name": "home-fold-reserve",
@@ -339,12 +397,18 @@
     "args": [
       "--dump",
       "ci-logs/home-fold-reserve"
+    ],
+    "diagnostics": [
+      "ci-logs/home-fold-reserve/*"
     ]
   },
   {
     "name": "cold-screen-moves",
     "tier": "built",
-    "holds": "no top-level block steps in one frame after a cold open's first paint, on the sixteen screens where one did (a heading-led ReadGate's margin, a late block cut in); `--routes` sweeps any others"
+    "holds": "no top-level block steps in one frame after a cold open's first paint, on the sixteen screens where one did (a heading-led ReadGate's margin, a late block cut in); `--routes` sweeps any others",
+    "diagnostics": [
+      "ci-logs/cold-screen-*.json"
+    ]
   },
   {
     "name": "screen-part-last-row",
@@ -364,7 +428,10 @@
   {
     "name": "tile-arrival-timing",
     "tier": "built",
-    "holds": "Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, and a revisit paints them in its first frame with no placeholder and nothing moving, on the web tier (the Android bridge is ADR-0089's device record, not this)"
+    "holds": "Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, and a revisit paints them in its first frame with no placeholder and nothing moving, on the web tier (the Android bridge is ADR-0089's device record, not this)",
+    "diagnostics": [
+      "ci-logs/tile-arrival-*.json"
+    ]
   },
   {
     "name": "home-idle-raster",
@@ -391,6 +458,9 @@
     "name": "settings-erase-check",
     "tier": "built",
     "holds": "Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; cancelling erases nothing; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first)",
-    "build": "production"
+    "build": "production",
+    "diagnostics": [
+      "/tmp/settings-erase-*-failure.png"
+    ]
   }
 ]
