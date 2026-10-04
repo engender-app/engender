@@ -45,8 +45,9 @@ async function captureBootDiagnostics(page, result, browser) {
     limits: 'Environment is captured after measurement. WASM compilation and OPFS stages are unavailable; replay cannot establish the earlier one-year cause.'
   };
   let timeout;
-  try {
-    report.document = await page.evaluate(async (windows) => {
+  let expired = false;
+  const capture = async () => {
+    const document = await page.evaluate(async (windows) => {
       const overlaps = (entry) => windows.some((window) =>
         entry.startTime <= window.readyAt && entry.startTime + Math.max(0, entry.duration) >= window.startedAt);
       const longTasks = await new Promise((resolve) => {
@@ -77,7 +78,9 @@ async function captureBootDiagnostics(page, result, browser) {
         }))
       };
     }, scoredBoots.map((run) => run.window));
-    report.replay = await Promise.race([page.evaluate(async (root) => {
+    if (expired) return;
+    report.document = document;
+    const replay = await page.evaluate(async (root) => {
       const [{ boot }, { createEncryptedWebSqlite }, { PROBE_DATA_KEY }] = await Promise.all([
         import(`/@fs${root}/src/lib/data/sqlite/boot.ts`),
         import(`/@fs${root}/src/lib/data/sqlite/mc-driver.ts`),
@@ -107,9 +110,17 @@ async function captureBootDiagnostics(page, result, browser) {
           error: reopened.phase === 'error' ? String(reopened.error) : null, operations
         };
       } finally { await sqlite.driver.close().catch(() => {}); }
-    }, resolve(here, '../..')), new Promise((_resolve, reject) => {
-      timeout = setTimeout(() => reject(new Error('Boot diagnostic replay exceeded 10 seconds')), 10_000);
-    })]);
+    }, resolve(here, '../..'));
+    if (!expired) report.replay = replay;
+  };
+  try {
+    const deadline = new Promise((_resolve, reject) => {
+      timeout = setTimeout(() => {
+        expired = true;
+        reject(new Error('Boot diagnostics exceeded 10 seconds'));
+      }, 10_000);
+    });
+    await Promise.race([capture(), deadline]);
   } catch (error) { report.error = String(error); }
   finally { clearTimeout(timeout); }
   mkdirSync('ci-logs', { recursive: true });
