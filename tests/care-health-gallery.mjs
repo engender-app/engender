@@ -66,13 +66,15 @@ const readMotion = `
         x: box.x, y: box.y, h: box.height, opacity: Number(style.opacity),
         transform: style.transform, clip: style.clipPath, wrapper: (() => { const wrap = node.closest('[data-procedure-group]') ?? node; const box = wrap.getBoundingClientRect(); const style = getComputedStyle(wrap); return { y: box.y, h: box.height, transform: style.transform, clip: style.clipPath }; })() };
     }),
-    headings: [...document.querySelectorAll('[data-procedure-heading], [data-dose-day], [data-section-heading]')]
+    headings: [...document.querySelectorAll('[data-procedure-heading], [data-dose-day], [data-procedure-group] [data-section-heading]')]
       .filter((node) => !node.closest('[data-procedure-heading]') || node.matches('[data-procedure-heading]')).map((node) => {
       if (!node.__ticket17Stamp) { window.__ticket17StampCounter = (window.__ticket17StampCounter ?? 0) + 1; node.__ticket17Stamp = window.__ticket17StampCounter; }
       const box = node.getBoundingClientRect();
       return { id: node.dataset.procedureHeading ?? node.dataset.doseDay ?? node.textContent,
         stamp: node.__ticket17Stamp, text: node.textContent, y: box.y, h: box.height,
-        opacity: Number(getComputedStyle(node).opacity), transform: getComputedStyle(node).transform };
+        opacity: Number(getComputedStyle(node).opacity), transform: getComputedStyle(node).transform,
+        clip: getComputedStyle(node).clipPath, overflow: getComputedStyle(node).overflow,
+        wrapperHeight: node.parentElement.getBoundingClientRect().height };
     }) };
 `;
 
@@ -129,6 +131,22 @@ function proveMotion(scene) {
     const moving = metrics.filter((row) => row.distance > 20);
     check(`${scene.name}: regroup travels through intermediate positions`, moving.length > 0 && moving.every((row) => row.middles >= 3 && row.maxStep / row.distance < 0.6), moving);
     check(`${scene.name}: headings sampled every frame`, scene.samples.every((sample) => sample.headings.length > 0));
+    const headings = new Map();
+    for (const sample of scene.samples) for (const heading of sample.headings) {
+      if (!headings.has(heading.id)) headings.set(heading.id, []);
+      headings.get(heading.id).push(heading);
+    }
+    scene.headingMetrics = [...headings.entries()].map(([id, sequence]) => ({
+      id, identity: new Set(sequence.map((heading) => heading.stamp)).size === 1,
+      firstHeight: sequence[0].h, lastHeight: sequence.at(-1).h,
+      minHeight: Math.min(...sequence.map((heading) => heading.h)),
+      intermediates: sequence.filter((heading) => heading.h > 1 && heading.h < sequence[0].h - 1).length
+    }));
+    if (scene.name.startsWith('surgery')) {
+      check(`${scene.name}: standing heading keeps its node`,
+        scene.samples.every((sample) => sample.headings.some((heading) => heading.id === 'heading-0')) &&
+        scene.headingMetrics.find((heading) => heading.id === 'heading-0')?.identity, scene.headingMetrics);
+    }
   } else {
     check(`${scene.name}: new rows disclose through intermediate heights`, metrics.length > 0 && metrics.every((row) => row.identity && row.middles >= 3 && row.firstHeight < row.finalHeight * 0.8), metrics);
   }
