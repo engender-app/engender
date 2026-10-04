@@ -5,14 +5,31 @@ import { execute, writeSummary } from '../scripts/check-process.mjs';
 
 /** @typedef {{ name: string, tier: string, holds: string, args?: string[], build?: string }} Guard */
 
-/** @param {Guard[]} guards @param {string} tier @param {string | undefined} [shard] */
-export function selectGuards(guards, tier, shard) {
+/** @typedef {{ guards: Record<string, number>, builds: Record<string, number> }} Timings */
+
+/** @param {Guard[]} guards @param {string} tier @param {string | undefined} [shard] @param {Timings} [timings] */
+export function selectGuards(guards, tier, shard, timings) {
   if (!['dev', 'built'].includes(tier)) throw new Error(`Invalid tier: ${tier}. Use dev or built.`);
   const selected = guards.filter((guard) => guard.tier === tier);
   if (!shard) return selected;
   const [part, total] = shard.split('/').map(Number);
-  if (!/^\d+\/\d+$/.test(shard) || part < 1 || part > total) throw new Error(`Invalid shard: ${shard}. Use N/M.`);
-  return selected.slice(Math.floor(selected.length * (part - 1) / total), Math.floor(selected.length * part / total));
+  if (!/^\d+\/\d+$/.test(shard) || part < 1 || part > total || total > selected.length) throw new Error(`Invalid shard: ${shard}. Use N/M with no empty groups.`);
+  const measured = timings ?? JSON.parse(readFileSync(new URL('./guard-durations.json', import.meta.url), 'utf8'));
+  for (const guard of selected) {
+    if (!(measured.guards[guard.name] > 0)) throw new Error(`Missing duration for guard: ${guard.name}`);
+  }
+  const groups = Array.from({ length: total }, () => ({ seconds: 0, builds: new Set(), names: new Set() }));
+  for (const guard of [...selected].sort((a, b) => measured.guards[b.name] - measured.guards[a.name])) {
+    const build = tier === 'built' ? guard.build ?? 'demo' : null;
+    if (build && !(measured.builds[build] > 0)) throw new Error(`Missing duration for build: ${build}`);
+    const cost = (/** @type {typeof groups[number]} */ group) => group.seconds + (build && !group.builds.has(build) ? measured.builds[build] : 0);
+    const group = groups.reduce((best, candidate) => cost(candidate) < cost(best) ? candidate : best);
+    group.seconds = cost(group) + measured.guards[guard.name];
+    if (build) group.builds.add(build);
+    group.names.add(guard.name);
+  }
+  // Preserve roster order so production runs after demo in each job's build directory.
+  return selected.filter((guard) => groups[part - 1].names.has(guard.name));
 }
 
 /**
