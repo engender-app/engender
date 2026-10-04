@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, copyFileSync, globSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
 import { execute, writeSummary } from '../scripts/check-process.mjs';
@@ -105,8 +105,9 @@ function diagnosticFiles(patterns) {
 /** @param {string} logFile */
 function failureExcerpt(logFile) {
   const lines = stripVTControlCharacters(readFileSync(logFile, 'utf8')).trimEnd().split('\n').slice(1, -1);
-  const firstFailure = lines.findIndex((line) => /\bFAIL(?:ED)?\b|\b\w*Error(?: \[[^\]]+\])?:|\bERROR\b|stopped by SIG/i.test(line));
+  const firstFailure = lines.findIndex((line) => /\bFAIL(?:ED)?\b|\b\w*Error(?: \[[^\]]+\])?:|\bERROR\b|stopped by SIG|\b[1-9]\d* style \/ \d+ render yank\(s\)/i.test(line));
   return lines.slice(firstFailure < 0 ? -12 : firstFailure, firstFailure < 0 ? undefined : firstFailure + 12)
+    .filter((line) => !/\b0 style \/ \d+ render yank\(s\)/.test(line))
     .join('\n').slice(0, 2400).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
@@ -132,7 +133,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         const logFile = join(evidenceDir, row.name, `attempt-${attempt.attempt}`, 'output.log');
         writeSummary([
           '', `Failed case output: ${row.name}, attempt ${attempt.attempt}`, '',
-          `Full log in the artifact: \`${logFile}\``, '',
+          `Full log in the artifact: \`${relative('ci-logs', logFile)}\``, '',
           '<pre>', failureExcerpt(logFile), '</pre>'
         ]);
       }
