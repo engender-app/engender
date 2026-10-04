@@ -2,10 +2,9 @@
 
    This used to be 78 forward-only migrations, `SCHEMA_V1` through
    `SCHEMA_V78`, applied in order against `PRAGMA user_version` (ADR-0006).
-   Nothing had ever run them from anywhere but empty - no release has shipped,
-   so every installed copy of this app had migrated from nothing - and that is
-   a window that shuts the moment somebody outside this repo has a build. It
-   was shut deliberately here instead, while it was still free.
+   They were squashed before the 1.0.0 cutoff, while every supported journal
+   had migrated from empty. From 1.0.0 on, released schemas stay immutable and
+   every change needs a forward migration.
 
    The 78 steps are in git history at the commit that retired them, which is
    where to look for how a column came to be there. What each one still means
