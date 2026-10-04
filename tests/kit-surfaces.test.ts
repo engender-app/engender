@@ -206,6 +206,12 @@ describe('the surfaces', () => {
          rule of its own - five steps of the type scale, heaviest in the
          middle - and that rule is the kind of thing this directory holds. */
       'WordCloud.svelte',
+      /* The year's days as words under YearRows' picture (phase 14
+         pre-release ticket 30, accessibility audit A06): a fold, a month
+         stepper and a list. In the kit beside the grid it reads, because
+         the pair is one chart - the picture for the eye, the list for
+         everybody the picture leaves out. */
+      'YearDaysList.svelte',
       /* Phase 5 UX ticket 23: a year of days, because twelve bars said
          where a year's shape went and a retrospective wanted what the year
          was. Phase 11 ticket 07 made the days shaded cells in twelve rows
