@@ -26,7 +26,7 @@ jobs:
   publish:
     name: Package and publish
     needs: checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The protected environment. The Android signing credentials belong here,
     # and this is the only job that will ever be able to read them.
@@ -37,18 +37,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The tag object itself, not just the commit: app-version.mjs asks
           # whether the tag carries a signature, and a shallow checkout has no
           # tag to ask about.
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
