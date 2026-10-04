@@ -748,6 +748,10 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 .kit-day-body {
   padding: var(--space-2) 0 var(--space-3);
 }
+/* DayCard's `tight`: half the room under the bar (search ticket 16). */
+.kit-day.is-tight .kit-day-body {
+  padding-top: var(--space-1);
+}
 
 .kit-entry {
   display: grid;
@@ -828,6 +832,16 @@ a.kit-entry:active {
    contributes. */
 .kit-entry:first-of-type .kit-entry-mark::before { top: 13px; }
 .kit-entry:last-of-type .kit-entry-mark::before { bottom: calc(100% - 13px); }
+/* The variant for a card whose entries each sit in a wrapper of their own,
+   `.kit-entry-row`, so that each can open and close its own height
+   (EntryDays.svelte, search ticket 16). Inside a wrapper every entry is the
+   first and the last of its type, and the rule above would end the line at
+   each one; the run of wrappers says where the card's first and last entry
+   are instead. After the two rules above, which tie with the first of these
+   on specificity. */
+.kit-entry-row > .kit-entry .kit-entry-mark::before { top: 0; bottom: 0; }
+.kit-entry-row:first-child > .kit-entry .kit-entry-mark::before { top: 13px; }
+.kit-entry-row:last-child > .kit-entry .kit-entry-mark::before { bottom: calc(100% - 13px); }
 
 .kit-entry-mark > * {
   position: relative;
