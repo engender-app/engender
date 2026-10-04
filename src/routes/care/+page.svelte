@@ -505,7 +505,7 @@
     {#snippet empty()}{/snippet}
     {#snippet rows()}
   {#if spine}
-    <ChartCard heading={m.care_rail_heading()} kind="care-spine" role={roleAt(activeFlag.roles, AREA_ROLE.rail)}>
+    <ChartCard level={2} heading={m.care_rail_heading()} kind="care-spine" role={roleAt(activeFlag.roles, AREA_ROLE.rail)}>
       <div class="care-rail" data-care-rail>
         <!-- Today and the draw head the rail, once, and their guides run
              down through every lane below. Two reasons for the split. They
@@ -823,7 +823,7 @@
        rail's own forward-looking window - so it says so once, in Care's
        own words, and both readings still gate on their own output rather
        than on a floor either could clear with nothing to show. -->
-  <ChartCard heading={m.interval_mood_title()} kind="interval-mood" role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
+  <ChartCard level={3} heading={m.interval_mood_title()} kind="interval-mood" role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
     {#snippet control()}
       <span class="stats-interval" data-interval-control>
         <span class="stats-interval-affix">{m.care_interval_fold_prefix()}</span>

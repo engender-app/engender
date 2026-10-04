@@ -87,7 +87,7 @@ const SAMPLER = `(() => {
       mood: mood ? Math.round(mood.getBoundingClientRect().top) : null,
       hosted: hosted ? Math.round(hosted.getBoundingClientRect().top) : null,
       seen: {
-        heading: seen(document.querySelector('[data-chart-card="care-spine"] h3')),
+        heading: seen(document.querySelector('[data-chart-card="care-spine"] .kit-chart-head h2')),
         lane: seen(document.querySelector('.care-lane-name')),
         hosted: seen(hosted)
       },

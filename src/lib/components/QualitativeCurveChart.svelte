@@ -40,8 +40,7 @@
     ariaLabel,
     markers = [],
     selectedMarker = null,
-    onSelectMarker,
-    markLabel
+    onSelectMarker
   }: {
     points: CurvePoint[];
     max?: number;
@@ -62,7 +61,7 @@
   const P = 8;
   const AXIS = 34;
 
-  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker, markLabel }));
+  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker }));
 
   let chart = $derived.by(() => {
     if (points.length < 2) return null;
@@ -113,7 +112,6 @@
         plotHeight={height - P * 2}
         selected={selectedMarker}
         onSelect={onSelectMarker!}
-        markLabel={markLabel!}
       />
     {/if}
 
