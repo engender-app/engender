@@ -19,3 +19,21 @@ describe('release publication contract', () => {
     expect(upload).not.toContain('status: completed');
   });
 });
+
+const checks = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+
+describe('walkthrough CI coverage', () => {
+  it('requires every isolated group without cancelling siblings after failure', () => {
+    const browser = checks.slice(checks.indexOf('\n  browser:'), checks.indexOf('\n  guards:'));
+    for (const group of ['journal', 'setup', 'features', 'actions']) {
+      expect(browser).toContain(`name: walkthrough-${group}`);
+      expect(browser).toContain(`args: --group ${group}`);
+    }
+    expect(browser).toContain('fail-fast: false');
+    expect(browser).toContain("startsWith(matrix.name, 'walkthrough-') && '1'");
+    expect(browser).toContain("startsWith(matrix.name, 'walkthrough-') && '9.9.9-walkthrough'");
+    expect(checks).toMatch(/needs: \[node, android, browser, guards, benchmark\]/);
+    expect(checks).toContain("if (job.result !== 'success') failed = true");
+    expect(workflow).toContain('uses: ./.github/workflows/ci.yml');
+  });
+});
