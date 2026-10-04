@@ -27,7 +27,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
-  import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { motionDuration } from '$lib/motion/tokens';
+  import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
 
   let comfortItemsQuery = liveList((j) => j.comfortItems.getItems());
 
@@ -79,55 +80,23 @@
   const trailWidth = (node: Element) => ({ ...discloseWidth(node), duration: motionDuration('--dur-med') });
 
   let listEl: HTMLElement | undefined = $state();
-  /** The row being dragged, how far the pointer has taken it, and the row
-      it is over. Null the rest of the time. */
-  let drag = $state<{ id: string; dy: number; overId: string } | null>(null);
-  /** The rows' boxes when the grab started, measured once: the rows move
-      under the pointer as it travels. */
-  let boxes: { id: string; top: number; height: number }[] = [];
-  let grabbedAt = 0;
-
   const rowElements = () => [...(listEl?.querySelectorAll<HTMLElement>('[data-comfort-item]') ?? [])];
   const rowId = (el: HTMLElement) => el.dataset.comfortItem ?? '';
+  /* The handle's drag and the travel after it are the Today editor's,
+     shared ($lib/motion/reorder.svelte.ts); what is this list's own is
+     where an order goes - the journal, behind `pendingOrder`. */
+  const reorder = new ListDrag(rowElements, rowId);
 
-  function measure(): { key: string; top: number }[] {
-    return rowElements().map((el) => ({ key: rowId(el), top: el.getBoundingClientRect().top }));
-  }
-
-  /** Write an order and let every row travel from where it stood on screen
-      to where the order puts it: measure, write, measure, start each row
-      at the difference and release it on the next frame (a FLIP, the
-      Journal door's and the Today editor's). Measured from the painted
-      boxes, so a row a drag left standing aside or under the pointer
-      starts exactly there. */
+  /** Write an order and let every row travel from where it was painted to
+      where the order puts it. Measured before the drag is cleared, so a
+      row a drag left standing aside or under the pointer starts there. */
   async function writeOrder(ids: string[]) {
-    const before = measure();
-    drag = null;
+    const before = measureTops(rowElements(), rowId);
+    reorder.release();
     pendingOrder = ids;
     void journal.comfortItems.reorder(ids);
     await tick();
-    if (isReducedMotion()) return;
-    /* Every row, a zero difference included, and each one's transition
-       off before it is measured: a row that stood aside during the drag
-       lost its translate in the same update, and with its transition left
-       on it was still painted 48px away when measured and then played that
-       loss as a trip the wrong way. */
-    const rows = rowElements();
-    for (const el of rows) {
-      el.style.transition = 'none';
-      el.style.translate = '';
-    }
-    const from = new Map(before.map((box) => [box.key, box.top]));
-    for (const el of rows) {
-      const top = from.get(rowId(el));
-      if (top !== undefined) el.style.translate = `0 ${top - el.getBoundingClientRect().top}px`;
-    }
-    requestAnimationFrame(() => {
-      for (const el of rowElements()) {
-        el.style.transition = '';
-        el.style.translate = '';
-      }
-    });
+    travelFrom(rowElements(), rowId, before);
   }
 
   function moved(id: string, targetId: string): string[] {
@@ -139,54 +108,14 @@
     return ids;
   }
 
-  function grab(event: PointerEvent, id: string) {
-    if (event.button !== 0) return;
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    boxes = rowElements().map((el) => {
-      const box = el.getBoundingClientRect();
-      return { id: rowId(el), top: box.top, height: box.height };
-    });
-    grabbedAt = event.clientY;
-    drag = { id, dy: 0, overId: id };
-  }
-
-  function travel(event: PointerEvent) {
-    if (!drag) return;
-    const from = boxes.find((box) => box.id === drag?.id);
-    if (!from) return;
-    const dy = event.clientY - grabbedAt;
-    /* The row under the dragged row's middle; off either end, the first
-       or the last, so an overshoot still lands. */
-    const middle = from.top + from.height / 2 + dy;
-    const over =
-      boxes.find((box) => middle >= box.top && middle <= box.top + box.height) ??
-      (middle < boxes[0].top ? boxes[0] : boxes[boxes.length - 1]);
-    drag = { id: drag.id, dy, overId: over.id };
-  }
-
   function drop() {
+    const drag = reorder.drag;
     if (!drag) return;
-    const { id, overId } = drag;
-    if (overId === id) {
-      /* Put back where it was picked up: the row travels home on the
-         list's own translate transition. */
-      drag = null;
+    if (drag.overKey === drag.key) {
+      reorder.release();
       return;
     }
-    void writeOrder(moved(id, overId));
-  }
-
-  /** How far a row stands aside while another is dragged past it. */
-  function shift(id: string): number {
-    if (!drag || id === drag.id) return 0;
-    const from = boxes.findIndex((box) => box.id === drag?.id);
-    const to = boxes.findIndex((box) => box.id === drag?.overId);
-    const at = boxes.findIndex((box) => box.id === id);
-    if (from === -1 || to === -1 || at === -1) return 0;
-    const height = boxes[from].height;
-    if (at > from && at <= to) return -height;
-    if (at < from && at >= to) return height;
-    return 0;
+    void writeOrder(moved(drag.key, drag.overKey));
   }
 
   async function moveWithKeys(event: KeyboardEvent, id: string) {
@@ -211,7 +140,7 @@
       {#if arranging}
         <p class="comfort-hint" id="comfort-arrange-hint" transition:disclose>{m.comfort_list_arrange_hint()}</p>
       {/if}
-      <div class="comfort-list" class:is-arranging={arranging} class:is-dragging={drag !== null} bind:this={listEl}>
+      <div class="comfort-list" class:is-arranging={arranging} class:is-dragging={reorder.drag !== null} bind:this={listEl}>
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each comfortItems as item (item.id)}
             <!-- The kit's split row written out, because the two modes are
@@ -222,8 +151,8 @@
               class="kit-row is-split"
               data-list-row={item.id}
               data-comfort-item={item.id}
-              data-lifted={drag?.id === item.id ? 'true' : undefined}
-              style:translate={drag ? `0 ${drag.id === item.id ? drag.dy : shift(item.id)}px` : undefined}
+              data-lifted={reorder.drag?.key === item.id ? 'true' : undefined}
+              style:translate={reorder.drag ? `0 ${reorder.offset(item.id)}px` : undefined}
             >
               <button
                 type="button"
@@ -247,8 +176,8 @@
                   aria-label={m.comfort_list_move({ text: item.text })}
                   aria-describedby="comfort-arrange-hint"
                   transition:trailWidth
-                  onpointerdown={(event) => grab(event, item.id)}
-                  onpointermove={travel}
+                  onpointerdown={(event) => reorder.grab(event, item.id)}
+                  onpointermove={reorder.travel}
                   onpointerup={drop}
                   onpointercancel={drop}
                   onkeydown={(event) => moveWithKeys(event, item.id)}
