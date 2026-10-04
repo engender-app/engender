@@ -48,7 +48,7 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery, liveQueryWhen } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
@@ -286,11 +286,11 @@
      clock, so a run tracking it would re-issue the whole forward read once
      a second. A boolean only wakes the query when it flips. */
   let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
-  /* The answer carries the boolean it was asked with, so the reserve below
-     can tell an agenda read for the composed grid from the one read before
-     the grid had answered, when the boolean was still false (ticket 183:
-     the second answer used to land a frame after everything else). */
-  let agendaQuery = liveQuery(async (j) => {
+  /* Wait for the grid's dose-panel answer before reading the agenda, so
+     its first read is not repeated when the grid finishes composing.
+     The answer carries that input so the reserve also waits for later
+     coverage changes. An unanswered grid leaves no settled agenda. */
+  let agendaQuery = liveQueryWhen(() => liveTiles.ready, async (j) => {
     const covered = dosePanelCoversEveryDose;
     const agenda = await readAgenda(
       { dayAhead: j.dayAhead, doses: j.doses },
@@ -530,14 +530,12 @@
      every read that decides them has agreed, then crossfade them in, and a
      wrong guess travels (`resize`) rather than jumps.
 
-     "Agreed" is more than `loading` for two of them. The agenda is asked
-     with the grid's own dose-panel answer, which is false until the grid
-     composes, so its first answer is for the wrong grid and a second one
-     follows; the debrief offer's read is asked with an appointment id that
-     only arrives with the appointments read. Each answer carries the input
-     it was asked with, and the gate waits for the one asked with the
-     current input. A failed read counts as answered - it will not answer
-     any better by waiting. */
+     "Agreed" is more than `loading` for two of them. The agenda waits for
+     the grid's dose-panel answer; the debrief offer waits for an appointment
+     id from the appointments read. Each answer carries its input, and the
+     gate waits for the current input's answer, including coverage changes
+     after the grid composes. A failed read counts as answered - it will not
+     answer any better by waiting. */
   const settledFor = <T,>(read: { loading: boolean; failed: boolean; value: T | undefined }, askedWith: (value: T) => boolean) =>
     !read.loading && (read.failed || (read.value !== undefined && askedWith(read.value)));
   let foldReadsAgree = $derived(

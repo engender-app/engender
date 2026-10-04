@@ -25,6 +25,7 @@ import {
   journalIsOpen,
   liveList,
   liveQuery,
+  liveQueryWhen,
   liveQueryWatchingOnly,
   type LiveQuery
 } from '../../src/lib/data/live/journal.svelte.ts';
@@ -503,7 +504,7 @@ async function run() {
   await until(() => !afterLock.read.loading, 'the entry count to answer after a lock');
   afterLock.destroy();
 
-  publish({
+  const result = {
     lastResults: {
       firstVisit: { loading: firstVisit.loadingAtCreation, value: firstVisit.valueAtCreation ?? null, answered: firstVisit.read.value ?? null },
       revisit: { loading: revisit.loadingAtCreation, value: revisit.valueAtCreation ?? null, error: revisitSettled },
@@ -542,7 +543,79 @@ async function run() {
       stableRunsAfterUnrelatedRename,
       stableErrorAfterRealChange
     }
+  };
+
+  let enabled = $state(false);
+  let rejectNext = true;
+  let holdNext = false;
+  let release: ((value: number) => void) | null = null;
+  const attempts: number[] = [];
+  let gated!: LiveQuery<number>;
+  let sawFailure = false;
+  const destroyGate = $effect.root(() => {
+    gated = liveQueryWhen(() => enabled, async (j) => {
+      attempts.push(performance.now());
+      const count = await j.entries.countAll();
+      if (rejectNext) {
+        rejectNext = false;
+        throw new Error('Injected gated read rejection');
+      }
+      if (holdNext) {
+        holdNext = false;
+        return new Promise<number>((resolve) => { release = resolve; });
+      }
+      return count;
+    });
+    $effect(() => { if (gated.failed) sawFailure = true; });
   });
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const disabledCalls = attempts.length;
+  const pendingWhileDisabled = gated.loading;
+  enabled = true;
+  await until(() => !gated.loading, 'the enabled read to retry its first rejection');
+  const firstAttempts = attempts.length;
+  const firstRetryDelayMs = attempts[1] - attempts[0];
+  const failedDuringFirstRetry = sawFailure;
+  const beforeMountedWrite = gated.value!;
+  await journal.entries.upsertEntry({ epochDay: TODAY - 9, mood: 3 });
+  await until(() => gated.value === beforeMountedWrite + 1, 'the mounted gated read to follow an entry write');
+  const valueAfterMountedWrite = gated.value;
+
+  rejectNext = true;
+  const beforeLaterFailure = attempts.length;
+  await journal.entries.upsertEntry({ epochDay: TODAY - 10, mood: 3 });
+  await until(() => gated.failed, 'a later read rejection to report failure');
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const laterFailureAttempts = attempts.length - beforeLaterFailure;
+  const staleAfterLaterFailure = gated.stale;
+
+  holdNext = true;
+  gated.retry();
+  await until(() => release !== null, 'the gated read to be held in flight');
+  enabled = false;
+  flushSync();
+  const beforeDisable = gated.value;
+  release!(100_000);
+  release = null;
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const disabledResultIgnored = gated.value === beforeDisable && !gated.running;
+  enabled = true;
+  await until(() => !gated.running && !gated.failed, 'the re-enabled read to answer');
+
+  holdNext = true;
+  gated.retry();
+  await until(() => release !== null, 'the read to be held before disposal');
+  const beforeDispose = gated.value;
+  destroyGate();
+  release!(200_000);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  publish({ ...result, readinessGate: {
+    disabledCalls, pendingWhileDisabled, firstAttempts, firstRetryDelayMs, failedDuringFirstRetry,
+    valueAfterMountedWrite, expectedAfterMountedWrite: beforeMountedWrite + 1,
+    laterFailureAttempts, staleAfterLaterFailure, disabledResultIgnored,
+    disposedResultIgnored: gated.value === beforeDispose
+  } });
 }
 
 run().catch((e) => publish({ error: String((e as Error)?.stack ?? e) }));
