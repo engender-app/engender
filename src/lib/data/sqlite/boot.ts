@@ -50,7 +50,7 @@ interface BootDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-export function isDatabaseLockedError(error: unknown): boolean {
+function isDatabaseLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
   /* "Access Handles cannot be created" (ux-carpet 243) is the web driver's
