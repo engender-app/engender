@@ -27,6 +27,11 @@ export const EASE_OUT = quintOut;
     animates via WAAPI rather than a Svelte transition). */
 export const EASE_OUT_CSS = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
+/** --ease-out-soft as the string WAAPI takes: --ease-out with the instant
+    off the front, for a long travel setting off (base.css says why). Kept
+    to that token by hand, the same as EASE_OUT_CSS above. */
+export const EASE_OUT_SOFT_CSS = 'cubic-bezier(0.38, 0.32, 0.2, 1)';
+
 /** Opacity alone over `duration`, which two different jobs both need: tier
     2's reduced-motion substitute, and tier 3's fallback where the runtime has
     no clip-path. Shared from here rather than written out in both, since the
