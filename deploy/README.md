@@ -1,7 +1,7 @@
 # Production hosting and release switch
 
 Ticket 05 serves the Journal from one decided origin:
-`app.engender.dev`.
+`app.engender.barankiewicz.dev`.
 
 The VPS keeps immutable release directories and one symlink:
 
@@ -14,12 +14,54 @@ traffic with no reload and no half-copied release state.
 Hosting your own copy on another origin is covered in
 [SELF-HOSTING.md](SELF-HOSTING.md). It installs the same two snippets.
 
+## Adding the chosen hostname to an existing installation
+
+Keep `app.gender-diary.barankiewicz.dev` serving its existing release. Add
+`app.engender.barankiewicz.dev` as a separate nginx site; do not redirect the
+old hostname or replace its certificate. Browser journals belong to their
+origin. A journal on the old hostname stays there until its owner exports an
+archive and imports it on the new hostname. Android still uses
+`https://localhost`, so these DNS and nginx changes do not move Android data.
+
+In the DNS provider's panel, set an A record for
+`app.engender.barankiewicz.dev` to the existing journal VPS address. Read that
+address from the `zabka-vps` SSH alias. Keep the landing site's record and the
+old app record unchanged. Check both authoritative nameservers before issuing
+a certificate. If the new app hostname has an AAAA record, it must reach the
+same server too.
+
+First enable an HTTP-only server for the new hostname. Give its
+`/.well-known/acme-challenge/` location the root `/var/lib/letsencrypt` and
+return 404 for other paths. Create that directory, test nginx, then reload.
+This bootstrap site lets certbot validate the hostname before its TLS
+certificate exists:
+
+```bash
+sudo install -d -m 0755 /var/lib/letsencrypt
+sudo nginx -t
+sudo systemctl reload nginx
+sudo certbot certonly --webroot -w /var/lib/letsencrypt -d app.engender.barankiewicz.dev
+```
+
+After issuance, install the snippets and replace only the new hostname's
+bootstrap site with `deploy/nginx/journal.conf` as described below. Its HTTP
+challenge location keeps renewals out of the immutable release directories.
+The new site initially serves the existing `/home/journal/current` release;
+adding a hostname does not publish a new app build.
+
+Verify valid TLS, response headers and `/release.json` on both app hostnames.
+Their release metadata must match. To roll back the hostname addition,
+disable only the new site's symlink, test nginx and reload, then restore the
+new hostname's previous DNS record. Leave the old site, its certificate and
+`/home/journal/current` untouched.
+
 ## Nginx setup
 
 Install these files:
 
 - `deploy/nginx/journal-headers.conf` -> `/etc/nginx/snippets/engender-journal-headers.conf`
 - `deploy/nginx/journal-site.conf` -> `/etc/nginx/snippets/engender-journal-site.conf`
+- `deploy/nginx/journal-http.conf` -> `/etc/nginx/snippets/engender-journal-http.conf`
 - `deploy/nginx/journal.conf` -> `/etc/nginx/sites-available/engender-journal.conf`
 
 `deploy/nginx/journal-brotli.conf` is optional and goes in last, because it
