@@ -269,6 +269,7 @@ public class PhotosPlugin extends Plugin {
             byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
             try (FileOutputStream out = new FileOutputStream(target, false)) {
                 out.write(bytes);
+                out.getFD().sync();
             }
             call.resolve();
         } catch (Exception e) {
