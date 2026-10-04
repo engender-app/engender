@@ -16,6 +16,7 @@
     date,
     role,
     key,
+    tight = false,
     children
   }: {
     date: string;
@@ -23,11 +24,15 @@
     /** The day this card is for, for the walkthrough's handle (ADR-0029):
         an epoch day rather than the date as written. */
     key?: string;
+    /** Half the room between the bar and the first entry, for a list
+        whose first entry has to start high on the screen (search's
+        results, ticket 16). */
+    tight?: boolean;
     children: Snippet;
   } = $props();
 </script>
 
-<section class="kit-day" data-kit-surface data-day-card={key} {...roleAttrs(role)}>
+<section class="kit-day" class:is-tight={tight} data-kit-surface data-day-card={key} {...roleAttrs(role)}>
   <h3 class="kit-day-bar">
     {date}
   </h3>

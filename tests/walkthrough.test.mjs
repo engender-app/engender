@@ -1057,11 +1057,15 @@ try {
 
   await page.locator('[data-filter-clear]').click();
   await page.locator('#q').fill('');
-  if (await page.locator('[data-active-filter-chip]').count()) throw new Error('clear-all did not clear chips');
-  const hint = await page.locator('[data-screen]').innerText();
-  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
-    throw new Error('empty-criteria hint did not return after clear-all');
-  }
+  /* The chip row gives its height back rather than cutting (ticket 16), so
+     it is gone once that has run, not in the same frame. */
+  await page.waitForSelector('[data-active-filter-chip]', { state: 'detached', timeout: 2000 })
+    .catch(() => { throw new Error('clear-all did not clear chips'); });
+  /* The opening state is what comes back with no criteria (ticket 18); the
+     words this used to look for ("try") are no longer on it since ticket
+     16 left it one line about what is searched. */
+  await page.waitForSelector('[data-search-idle]', { timeout: 2000 })
+    .catch(() => { throw new Error('empty-criteria hint did not return after clear-all'); });
 
   ok('structured search filters combine with text, show chips and clear-all');
 } catch (e) { fail('structured search filters', e); }
@@ -1141,7 +1145,12 @@ try {
   // ticket says is not waited out, so the previous results have to be gone
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
-  if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
+  /* The results are on their way out by then, not gone: they fade where
+     they stood (ticket 16), marked `data-leaving` for the length of the
+     fade. What must not be there is a result that is staying. */
+  const staying = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-entry-card]')].filter((card) => !card.closest('[data-leaving]')).length);
+  if (staying) throw new Error('clearing left the previous results on screen');
   // The idle Notice this waited on is gone (ticket 18): the opening state
   // is real content now, named as a whole by `data-search-idle`.
   if (!(await page.locator('[data-search-idle]').count())) throw new Error('clearing did not bring back the opening state');
@@ -1205,7 +1214,11 @@ try {
   await page.waitForSelector('[data-search-idle]');
 
   await page.locator('#q').fill('hopeful');
-  await page.waitForSelector('[data-entry-card]');
+  /* A card that is staying, not one of the tag search's still fading out
+     (ticket 16): those matched at once, the box was cleared before the
+     typed search had been recorded, and no recent row ever came. */
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('[data-entry-card]')].some((card) => !card.closest('[data-leaving]')));
   await page.locator('#q').fill('');
   await page.waitForSelector('[data-search-idle]');
 

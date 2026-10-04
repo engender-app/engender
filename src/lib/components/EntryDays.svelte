@@ -15,8 +15,19 @@
      one card with a count too. What is shared here is the case with no count
      to give - a hit list can say how many entries of a day matched and not how
      many it holds, and a bar reading "3 that day" over three of five would be
-     the filter describing itself (recentEntries.ts). */
+     the filter describing itself (recentEntries.ts).
+
+     Both callers redraw it under a question that changes while somebody
+     types, so a day and an entry each open their own height when an answer
+     brings them and give it back when the next answer drops them (ticket
+     16, "rows animate in; no row painted in place before it arrives"). A
+     day stays one card while the entries on it come and go. The
+     transitions are local, so a list arriving as a whole rides its
+     caller's own transition instead of opening every row at once. Each
+     entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
+     where a card's first and last entry are (kit.css). */
   import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { disclose } from '$lib/motion/reveal';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
@@ -50,13 +61,16 @@
 
 <div class="entry-days">
   {#each groups as group (group.epochDay)}
+    <div class="entry-days-day" transition:disclose>
     <DayCard
       key={String(group.epochDay)}
       {role}
+      tight
       date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
     >
       {#each group.entries as entry (entry.id)}
         {@const presentation = entryPresentation(entry)}
+        <div class="kit-entry-row" transition:disclose>
         <DayEntry
           key={String(entry.id)}
           href={`/entry/${entry.id}`}
@@ -74,7 +88,20 @@
             {/if}
           {/snippet}
         </DayEntry>
+        </div>
       {/each}
     </DayCard>
+    </div>
   {/each}
 </div>
+
+<style>
+  /* A margin under every day rather than the grid gap this used to be: a
+     gap stays at full size while a day collapses beside it and is lost in
+     the frame the day is removed, where a margin travels with its box
+     (reveal.ts). Under every day, the last too, because a margin between
+     siblings moves to the next day when the first one goes. */
+  .entry-days-day {
+    margin-bottom: var(--space-3);
+  }
+</style>
