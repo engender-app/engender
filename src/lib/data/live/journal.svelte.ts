@@ -203,6 +203,13 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: Table
   return query(null, run, seed ?? null, callSite());
 }
 
+/** A query that starts only when its readiness condition holds. Waiting
+    does not consume the first read's rejection retry. Disabling it keeps
+    the last answer and prevents an older in-flight answer from landing. */
+export function liveQueryWhen<T>(enabled: () => boolean, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
+  return query(null, run, null, callSite(), enabled);
+}
+
 /** `liveQuery` for a read that answers with a list: the same query, seen
     through `rows`/`loading`/`empty`/`failed` (readState.ts). What ReadGate
     takes, and what a screen holding rows of its own should ask for.
@@ -311,7 +318,8 @@ function query<T>(
   narrowedTo: TableName[] | null,
   run: (journal: Journal) => Promise<T>,
   seed: TableName[] | null,
-  site: string | null
+  site: string | null,
+  enabled?: () => boolean
 ): LiveQuery<T> {
   /* A warm revisit paints the answer this query gave last time, if nothing
      it read has been written since (lastResults.ts, ux-carpet 201). Asked
@@ -322,7 +330,7 @@ function query<T>(
      learn what it asks for. */
   const instance = ++queriesMade;
   liveQueries.add(instance);
-  const asked = site && openedJournal ? recallFor(site, run, openedJournal) : null;
+  const asked = site && openedJournal && (!enabled || enabled()) ? recallFor(site, run, openedJournal) : null;
   const recalled = asked?.value;
   let state = $state<ReadState<T>>(recalled === undefined ? pending<T>() : landed(recalled as T));
   let inFlight = $state(false);
@@ -371,6 +379,10 @@ function query<T>(
     for (const table of dependencies) void versionOf(table);
     const ready = open.journal;
     if (!ready) return; // still booting; this re-runs when the database opens
+    if (enabled && !enabled()) {
+      inFlight = false;
+      return;
+    }
 
     const mine = ++latest;
     inFlight = true;
