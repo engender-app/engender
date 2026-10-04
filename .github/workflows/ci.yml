@@ -159,8 +159,18 @@ jobs:
         include:
           - name: browser-tier
             entry: tests/browser-tier/run.mjs
-          - name: walkthrough
+          - name: walkthrough-journal
             entry: tests/walkthrough.test.mjs
+            args: --group journal
+          - name: walkthrough-setup
+            entry: tests/walkthrough.test.mjs
+            args: --group setup
+          - name: walkthrough-features
+            entry: tests/walkthrough.test.mjs
+            args: --group features
+          - name: walkthrough-actions
+            entry: tests/walkthrough.test.mjs
+            args: --group actions
           - name: installed-pwa
             entry: tests/browser-tier/verify-build.mjs
           - name: hosting
@@ -207,14 +217,14 @@ jobs:
       - name: Build the verification bundle
         if: matrix.name != 'browser-tier'
         env:
-          VITE_DEMO: ${{ matrix.name == 'walkthrough' && '1' || '0' }}
-          ENGENDER_VERSION: ${{ matrix.name == 'walkthrough' && '9.9.9-walkthrough' || '' }}
+          VITE_DEMO: ${{ startsWith(matrix.name, 'walkthrough-') && '1' || '0' }}
+          ENGENDER_VERSION: ${{ startsWith(matrix.name, 'walkthrough-') && '9.9.9-walkthrough' || '' }}
         run: npm run build
       - name: Verify ${{ matrix.name }}
         id: browser-check
         run: |
           mkdir -p ci-logs
-          node ${{ matrix.entry }} 2>&1 | tee ci-logs/${{ matrix.name }}.log
+          node ${{ matrix.entry }} ${{ matrix.args }} 2>&1 | tee ci-logs/${{ matrix.name }}.log
 
       - name: Report verification blocked by setup
         if: ${{ always() && steps.browser-check.outcome == 'skipped' }}
@@ -223,8 +233,8 @@ jobs:
           echo 'BLOCKED ${{ matrix.name }}: prerequisite setup or build failed' >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
-      - name: Keep the output of a failed run
-        if: failure()
+      - name: Keep walkthrough timings and failed browser output
+        if: ${{ always() && (startsWith(matrix.name, 'walkthrough-') || failure()) }}
         uses: actions/upload-artifact@v7
         with:
           name: browser-${{ matrix.name }}-logs-${{ github.run_id }}
