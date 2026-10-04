@@ -320,14 +320,13 @@ describe('rule 4: two line strengths', () => {
     }
   });
 
-  /* The six surfaces that gave up an elevation take a block's own edge, not
+  /* The surfaces that gave up an elevation take a block's own edge, not
      a separator's. Added because `.card` was left behind at --hairline when
      the other five moved - the comment above it and the commit that made
      the change both said --outline, and nothing read the declaration. A
      rationale in a comment is not a contract. */
   it('draws every unelevated surface edge at --outline', () => {
     const surfaces = [
-      ['components', '.entry-card'],
       ['components', '.skeleton-card'],
       ['components', '.skeleton-block'],
       ['screens', '.wrapped-card'],
@@ -563,7 +562,6 @@ describe('rule 4: surfaces are flush, block or ink', () => {
     expect(body).toMatch(/background:\s*var\(--text\)/);
     expect(body).toMatch(/color:\s*var\(--bg\)/);
     expect(body).not.toMatch(/--role|border(-(top|right|bottom|left|inline|block)[a-z-]*)?:/);
-    expect(ruleFor(kit, '.kit-day-aside')?.body ?? '').not.toMatch(/color:/);
   });
 
   it("sets the notice's mark as a 40px square of ink", () => {

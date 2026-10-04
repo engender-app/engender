@@ -45,7 +45,7 @@ describe('entry editor Save, date and delete', () => {
   });
 
   it('opens an entry with its list named, from every list that shows entries', () => {
-    for (const file of ['src/lib/components/kit/DayEntry.svelte', 'src/lib/components/EntryCard.svelte']) {
+    for (const file of ['src/lib/components/kit/DayEntry.svelte']) {
       expect(readFileSync(root + file, 'utf8')).toContain('withListReturn(');
     }
   });

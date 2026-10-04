@@ -80,6 +80,13 @@ describe('what Safe Space is built from', () => {
     for (const way of SAFE_SPACE_WAYS) expect(doubt).toContain(`${way.key}:`);
   });
 
+  /* Release audit U11: "Things that help" was both the button above the
+     breath and a row under it. Said once, by the button. */
+  it('reaches the comfort list once, from the button above the breath', () => {
+    expect(markup.match(/href="\/doubt\/comfort"/g)).toHaveLength(1);
+    expect(SAFE_SPACE_WAYS.map((w) => w.href)).not.toContain('/doubt/comfort');
+  });
+
   it('names the More hub as where back falls back to', () => {
     /* CARPET-05: the href is the fallback rather than the destination now,
        and ScreenHeader is what turns it into a return to whichever screen
@@ -110,14 +117,14 @@ describe('what Safe Space is built from', () => {
      put the save control at the bottom of it, so the one thing a person
      came here to do was twenty cards away. Six is what fits above it. */
   it('opens on six of the pool with the save under them, and holds the rest behind one control', () => {
-    expect(evidence).toContain('COUNTEREVIDENCE_PREVIEW');
-    expect(evidence).toContain('counterevidence.slice(0, COUNTEREVIDENCE_PREVIEW)');
-    expect(evidence).toContain('counterevidence.slice(COUNTEREVIDENCE_PREVIEW)');
+    // Split by whole days since phase 14 ticket 18 (previewWholeDays has
+    // its own test in counterevidence.test.ts).
+    expect(evidence).toContain('previewWholeDays(entryDayGroups(counterevidence))');
     expect(COUNTEREVIDENCE_PREVIEW).toBeLessThan(COUNTEREVIDENCE_LIMIT);
     // The save sits between the six and the control, which is the whole
     // point of the bound - not under all twenty, as it was.
     expect(evidenceMarkup).toMatch(
-      /{#each shown[\s\S]*?onclick={saveSnapshot}[\s\S]*?data-evidence-see-all/
+      /<EntryDays groups={shown} \/>[\s\S]*?onclick={saveSnapshot}[\s\S]*?data-evidence-see-all/
     );
     // And it still saves the whole pool, not the six that are showing.
     expect(evidence).toContain('counterevidence.map((e) => ({');
@@ -131,7 +138,9 @@ describe('what Safe Space is built from', () => {
        open from their own left edge and the control itself collapses,
        rather than either cutting into place. */
     expect(evidence).toContain('out:disclose');
-    expect(evidence).toContain('animation: kit-block-in');
+    // The held days arrive through EntryDays' own `arrive` (phase 14 ticket 18).
+    expect(evidence).toContain('<EntryDays groups={held} arrive />');
+    expect(read('src/lib/components/EntryDays.svelte')).toContain('animation: kit-block-in');
   });
 
   /* Ticket 15 again: the subtitle is the qualification rule in the

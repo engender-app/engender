@@ -136,7 +136,7 @@
         <!-- No count on the bar: an entry count above a list of that many
              entries is noise (spec 05). -->
         {#if d.entries.length}
-          <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} date={d.date}>
+          <DayCard key={String(d.epochDay)} role={roleAt(activeFlag.roles, i)} heading={d.date}>
             {#each d.entries as entry (entry.id)}
               {@const presentation = entryPresentation(entry)}
               <DayEntry

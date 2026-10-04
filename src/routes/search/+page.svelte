@@ -116,7 +116,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { fmtDay } from '$lib/data/dates';
+  import { photoCaptionDate } from '$lib/data/dates';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -678,7 +678,7 @@
               {#each starredPhotos as p (p.id)}
                 <div class="starred-photo-cell">
                   <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                  <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                  <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                   <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
                     <Icon name="star" size={16} cls="is-starred" />
                   </button>
@@ -855,6 +855,14 @@
 </div>
 
 <style>
+  /* Search's own hint lines; the screen is their one reader, so they live
+     here rather than in screens.css (check-screens-classes). */
+  .search-hint {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 0;
+  }
+
   /* The notice arrives by its own `collapse`, which pulls it up by its
      height and lets it travel down. Here that margin collapsed through every
      block above it, so the whole answer area, the outgoing results too,

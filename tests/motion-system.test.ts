@@ -352,6 +352,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
       'the drag handle is held rather than tapped - a press scale on the grip would fight the translate that follows the pointer (redesign ticket 14)'
   },
   {
+    file: 'src/routes/doubt/comfort/+page.svelte',
+    count: 2,
+    reason:
+      "the kit's split row written out (its main half takes the row's wash, as ListRow's does), and the drag handle, held rather than tapped like the Today editor's (phase 14 ticket 18)"
+  },
+  {
     file: 'src/lib/components/SpanTimeline.svelte',
     count: 5,
     reason:

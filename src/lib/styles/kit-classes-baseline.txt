@@ -52,7 +52,6 @@ kit-chart-pick-label
 kit-check
 kit-check-mark
 kit-day
-kit-day-aside
 kit-day-bar
 kit-day-body
 kit-dist

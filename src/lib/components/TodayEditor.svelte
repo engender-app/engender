@@ -38,9 +38,10 @@
      a guessed constant, and the rows between the grab and the drop shift
      out of the way as it moves. Its keyboard equivalent is on the same
      handle - the arrow keys move a row one place, which is the whole of
-     what the drag does - and that move animates through `regroupSteps`,
-     the FLIP arithmetic the Journal door already uses, since a row that
-     teleports is exactly what DIRECTION.md's motion brief rules out.
+     what the drag does - and that move animates through `travelFrom`
+     ($lib/motion/reorder.svelte.ts, shared with Things that help), since a
+     row that teleports is exactly what DIRECTION.md's motion brief rules
+     out.
 
      **What the person can see is not the whole arrangement.** A pin whose
      area is hidden stays stored and draws nothing (`pinnedRows.ts`), so
@@ -67,7 +68,7 @@
   import { PREFERENCE_DEFAULTS } from '$lib/data/prefs/catalogue';
   import { UNPROMPTED_ROWS } from '$lib/unprompted/registry';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
-  import { regroupSteps, type CellBox } from '$lib/motion/regroup';
+  import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
   import { maskHeight } from '$lib/motion/reveal';
   import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Role } from '$lib/theme/roles';
@@ -191,17 +192,6 @@
   /** The add list's own box, so a row leaving it closes the same way one
       arriving in the pinned list opens. */
   let addEl: HTMLElement | undefined = $state();
-  /** The row being dragged, how far the pointer has taken it, and the row
-      it is currently over. Null the rest of the time, which is also what
-      takes the lift off the row and the transitions back on. */
-  let drag = $state<{ key: string; dy: number; overKey: string } | null>(null);
-  /** The rows' boxes as they stood when the grab started. Measured once:
-      the rows move under the pointer as it travels, so measuring again
-      mid-gesture would compare the pointer against boxes the gesture
-      itself had already displaced. */
-  let boxes: { key: string; top: number; height: number }[] = [];
-  let grabbedAt = 0;
-
   const rowElements = () =>
     [...(listEl?.querySelectorAll<HTMLElement>('[data-edit-pinned-row]') ?? [])];
 
@@ -209,59 +199,25 @@
     return el.dataset.editPinnedRow ?? '';
   }
 
-  function grab(event: PointerEvent, key: string) {
-    if (event.button !== 0) return;
-    const handle = event.currentTarget as HTMLElement;
-    handle.setPointerCapture(event.pointerId);
-    boxes = rowElements().map((el) => {
-      const box = el.getBoundingClientRect();
-      return { key: rowKey(el), top: box.top, height: box.height };
-    });
-    grabbedAt = event.clientY;
-    drag = { key, dy: 0, overKey: key };
-  }
+  /* The handle's gesture and the travel after a write are shared with
+     Things that help ($lib/motion/reorder.svelte.ts). While a row is held
+     it sits under the pointer and the rows it has passed stand aside;
+     the drop writes the move and every row travels from where it was
+     painted. */
+  const dragger = new ListDrag(rowElements, rowKey);
 
-  function travel(event: PointerEvent) {
+  async function drop() {
+    const drag = dragger.drag;
     if (!drag) return;
-    const from = boxes.find((box) => box.key === drag?.key);
-    if (!from) return;
-
-    const dy = event.clientY - grabbedAt;
-    /* Which row the dragged one is over: the box holding the middle of it
-       where it now sits. Off either end it is the first or the last, so a
-       drag that overshoots the list still lands rather than stalling on the
-       row it started from. */
-    const middle = from.top + from.height / 2 + dy;
-    const over =
-      boxes.find((box) => middle >= box.top && middle <= box.top + box.height) ??
-      (middle < boxes[0].top ? boxes[0] : boxes[boxes.length - 1]);
-    drag = { key: drag.key, dy, overKey: over.key };
-  }
-
-  function drop() {
-    if (!drag) return;
-    const { key, overKey } = drag;
-    /* The rows are already standing where the gesture put them - the
-       dragged one under the pointer, the ones it passed shifted by its
-       height - so the write lands on a layout that matches, and clearing
-       the drag needs no transition of its own. */
-    drag = null;
-    if (overKey !== key) move(key, overKey);
-  }
-
-  /** How far a row has to stand aside while another is dragged over it:
-      the dragged row's own height, in the direction it came from, for every
-      row between where it was picked up and where it is now. */
-  function shift(key: string): number {
-    if (!drag || key === drag.key) return 0;
-    const from = boxes.findIndex((box) => box.key === drag?.key);
-    const to = boxes.findIndex((box) => box.key === drag?.overKey);
-    const at = boxes.findIndex((box) => box.key === key);
-    if (from === -1 || to === -1 || at === -1) return 0;
-    const height = boxes[from].height;
-    if (at > from && at <= to) return -height;
-    if (at < from && at >= to) return height;
-    return 0;
+    if (drag.overKey === drag.key) {
+      dragger.release();
+      return;
+    }
+    const before = measureTops(rowElements(), rowKey);
+    dragger.release();
+    move(drag.key, drag.overKey);
+    await tick();
+    travelFrom(rowElements(), rowKey, before);
   }
 
   /* ---------- a row arriving and leaving ----------
@@ -273,22 +229,13 @@
      the rows in them, write, then clip each list from the height it had to
      the height it now has (`maskHeight`, the primitive the Journal door's
      month already uses) while every row that survived travels from where it
-     stood (`regroupSteps`, the same file's FLIP). */
-
-  /** The rows as FLIP wants them, keyed by the row so a pair can be made
-      across the write that reorders them. */
-  function measure(): CellBox[] {
-    return rowElements().map((el) => {
-      const box = el.getBoundingClientRect();
-      return { key: rowKey(el), left: box.left, top: box.top, width: box.width, height: box.height };
-    });
-  }
+     stood (`travelFrom`, the reorder module's FLIP). */
 
   /** Where both lists and the pinned rows stand, taken before a write. */
   function beforeWrite() {
     const lists = [listEl, addEl].filter((el): el is HTMLElement => el !== undefined);
     return {
-      rows: measure(),
+      rows: measureTops(rowElements(), rowKey),
       heights: lists.map((el) => ({ el, height: el.getBoundingClientRect().height }))
     };
   }
@@ -301,29 +248,7 @@
     /* A list that went away with the write - unpinning the last row takes
        the whole pinned list with it - has nothing left to clip. */
     for (const { el, height } of before.heights) if (el.isConnected) maskHeight(el, height, duration);
-    travelRows(before.rows);
-  }
-
-  /** Start every row at the difference between where it was and where it
-      now is, then release it on the next frame. */
-  function travelRows(before: CellBox[]) {
-    const elements = new Map(rowElements().map((el) => [rowKey(el), el]));
-    for (const step of regroupSteps(before, measure())) {
-      const el = elements.get(String(step.key));
-      if (!el) continue;
-      /* The jump back to where the row was is not a transition, and the
-         travel forwards is the list's own CSS one - so both inline
-         properties come off again on the way out. A left-behind inline
-         `transition` would still be there during the next drag, where the
-         held row has to sit exactly under the pointer with no easing at
-         all. */
-      el.style.transition = 'none';
-      el.style.translate = `0 ${step.dy}px`;
-      requestAnimationFrame(() => {
-        el.style.transition = '';
-        el.style.translate = '';
-      });
-    }
+    travelFrom(rowElements(), rowKey, before.rows);
   }
 
   /** Move a row one place with the keyboard, and let it travel there.
@@ -331,14 +256,14 @@
       The arrow keys are the drag's whole content - a row goes one place up
       or one place down - so the neighbour is named off what is drawn and
       the write is the same `movedPin` the drop makes. The animation is
-      `regroupSteps`: measure, write, measure again, start each row at the
-      difference and release it on the next frame. */
+      `travelFrom`: measure, write, start each row where it was painted and
+      release it on the next frame. */
   async function moveWithKeys(key: string, delta: -1 | 1) {
     const at = pinned.findIndex((row) => row.spec.key === key);
     const neighbour = pinned[at + delta];
     if (at === -1 || !neighbour) return;
 
-    const before = measure();
+    const before = measureTops(rowElements(), rowKey);
     move(key, neighbour.spec.key);
     await tick();
 
@@ -346,8 +271,7 @@
        the same row again rather than the one that took its place. */
     const handle = listEl?.querySelector<HTMLElement>(`[data-edit-grip="${key}"]`);
     handle?.focus();
-    if (isReducedMotion()) return;
-    travelRows(before);
+    travelFrom(rowElements(), rowKey, before);
   }
 
   function onGripKeydown(event: KeyboardEvent, key: string) {
@@ -366,7 +290,7 @@
   <p class="today-editor-hint" id="today-editor-hint">{m.home_edit_hint()}</p>
 
   {#if pinned.length > 0}
-    <div class="today-editor-list" class:is-dragging={drag !== null} bind:this={listEl}>
+    <div class="today-editor-list" class:is-dragging={dragger.drag !== null} bind:this={listEl}>
       <ListCard {role}>
         {#each pinned as row (row.spec.key)}
           <!-- The title alone, without the row's reading. What a row says
@@ -381,8 +305,8 @@
             icon={row.spec.icon}
             title={hubRowTitle(row.spec.key)}
             data-edit-pinned-row={row.spec.key}
-            data-lifted={drag?.key === row.spec.key ? 'true' : undefined}
-            style={`translate: 0 ${drag?.key === row.spec.key ? drag.dy : shift(row.spec.key)}px`}
+            data-lifted={dragger.drag?.key === row.spec.key ? 'true' : undefined}
+            style={`translate: 0 ${dragger.offset(row.spec.key)}px`}
             action={{
               icon: 'x',
               label: m.home_edit_unpin({ row: hubRowTitle(row.spec.key) }),
@@ -402,8 +326,8 @@
                 data-no-press
                 aria-label={m.home_edit_move({ row: hubRowTitle(row.spec.key) })}
                 aria-describedby="today-editor-hint"
-                onpointerdown={(event) => grab(event, row.spec.key)}
-                onpointermove={travel}
+                onpointerdown={(event) => dragger.grab(event, row.spec.key)}
+                onpointermove={dragger.travel}
                 onpointerup={drop}
                 onpointercancel={drop}
                 onkeydown={(event) => onGripKeydown(event, row.spec.key)}
