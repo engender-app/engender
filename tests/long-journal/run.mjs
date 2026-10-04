@@ -137,10 +137,70 @@ await server.listen();
 const port = server.config.server.port;
 
 const browser = await launchChromium();
-const page = await (await browser.newContext()).newPage();
+const context = await browser.newContext();
+const page = await context.newPage();
+const startupEvents = [];
+let startupEventCount = 0;
+const startupStartedAt = performance.now();
+const retainStartupEvent = (kind, detail) => {
+  startupEventCount++;
+  startupEvents.push({ at: performance.now() - startupStartedAt, kind, detail: String(detail).slice(0, 4096) });
+  if (startupEvents.length > 128) startupEvents.shift();
+};
+context.on('requestfailed', (request) =>
+  retainStartupEvent('request-failed', `${request.method()} ${request.url()} ${request.failure()?.errorText}`));
+context.on('response', (response) => {
+  if (response.status() >= 400) retainStartupEvent('http-error', `${response.status()} ${response.url()}`);
+});
+page.on('framenavigated', (frame) => {
+  if (frame === page.mainFrame()) retainStartupEvent('navigation', frame.url());
+});
+page.on('worker', (worker) => {
+  retainStartupEvent('worker-started', worker.url());
+  worker.on('close', () => retainStartupEvent('worker-closed', worker.url()));
+});
 page.on('console', (message) => {
+  if (message.type() === 'error' || message.type() === 'warning') {
+    retainStartupEvent(`console-${message.type()}`, message.text());
+  }
   if (message.type() === 'error') console.log('  browser error:', message.text());
 });
+
+async function captureStartupFailure(error) {
+  const report = {
+    error: String(error).slice(0, 4096), browser: browser.version(), source: process.env.GITHUB_SHA ?? null,
+    host: { node: process.version, cpus: cpus().length, cpuModel: cpus()[0]?.model, freeMemory: freemem(), totalMemory: totalmem(), loadAverage: loadavg() },
+    eventCount: startupEventCount, events: [...startupEvents], workers: page.workers().slice(-128).map((worker) => worker.url()),
+    limits: 'Events retain the last 128 observations. Resources are document entries, not worker timings. A final stage locates unfinished work but does not establish its cause.'
+  };
+  let timeout;
+  try {
+    report.document = await Promise.race([
+      page.evaluate((readyAttribute) => ({
+        url: location.href, readyState: document.readyState,
+        ready: document.body.hasAttribute(readyAttribute),
+        stage: document.body.getAttribute('data-long-journal-stage'),
+        fixtureDays: document.body.getAttribute('data-long-journal-days'),
+        timeOrigin: performance.timeOrigin, userAgent: navigator.userAgent,
+        hardwareConcurrency: navigator.hardwareConcurrency, deviceMemory: navigator.deviceMemory,
+        crossOriginIsolated,
+        resources: performance.getEntriesByType('resource').slice(-128).map((entry) => ({
+          path: new URL(entry.name).pathname, start: entry.startTime, duration: entry.duration,
+          responseStart: entry.responseStart, responseEnd: entry.responseEnd,
+          initiator: entry.initiatorType, transferSize: entry.transferSize
+        }))
+      }), readyAttr(NAME)),
+      new Promise((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error('Startup failure snapshot exceeded 5 seconds')), 5_000);
+      })
+    ]);
+  } catch (error) { report.snapshotError = String(error); }
+  finally { clearTimeout(timeout); }
+  mkdirSync('ci-logs', { recursive: true });
+  const output = `ci-logs/long-journal-startup-${Date.now()}-${process.pid}.json`;
+  writeFileSync(output, JSON.stringify(report, null, 2));
+  console.log(`Startup failure diagnostics: ${output}`);
+}
 
 /* The browser tier converged on forwarding pageerror (tests/browser-tier/
    run.mjs), so a module that throws on import fails by name rather than
@@ -153,7 +213,10 @@ page.on('console', (message) => {
    flows has no natural per-check boundary to attribute a pageerror to, so it
    collects them instead of racing each flow against one). */
 let onPageError;
-page.on('pageerror', (error) => onPageError?.(error));
+page.on('pageerror', (error) => {
+  retainStartupEvent('pageerror', error.stack ?? error.message);
+  onPageError?.(error);
+});
 
 console.log('Generating one year and ten years of Journal and measuring both. Around 90 seconds.\n');
 const startedAt = performance.now();
@@ -181,6 +244,10 @@ try {
   result = { error: error?.message ?? String(error) };
 } finally {
   onPageError = undefined;
+  if (result?.error) {
+    try { await captureStartupFailure(result.error); }
+    catch (error) { console.log(`Startup failure diagnostics failed: ${error}`); }
+  }
   await browser.close();
   await server.close();
 }

@@ -33,6 +33,10 @@ import { publish as publishResult } from '../probe-handshake.mjs';
 
 const NAME = 'long-journal';
 const publish = (value: unknown) => publishResult(NAME, value);
+const stage = (name: string, days: number) => {
+  document.body.setAttribute('data-long-journal-stage', name);
+  document.body.setAttribute('data-long-journal-days', String(days));
+};
 
 /** What ADR-0008 normalizes to: 2048px on the long edge, 320px thumbnail. */
 const FULL = { width: 2048, height: 1536 };
@@ -91,8 +95,10 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
 }
 
 async function run(days: number) {
+  stage('reset-origin', days);
   await freshOrigin();
 
+  stage('initial-boot', days);
   const rawFiles = opfsPhotoFiles('long-journal-photos');
   const files = encryptedFileStore(rawFiles, PROBE_DATA_KEY);
   const { driver, fileOps } = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
@@ -100,11 +106,14 @@ async function run(days: number) {
   if (booted.phase === 'error') throw booted.error;
 
   const journal = openJournal(booted.driver, files);
+  stage('reconcile', days);
   await journal.reconcileBuiltIns();
 
+  stage('generate', days);
   const startedAt = performance.now();
   const summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
   const generatedInMs = Math.round(performance.now() - startedAt);
+  stage('storage-size', days);
 
   // On raw OPFS rather than through the encrypting store: what the fixture
   // costs the device is the ciphertext on disk, not the plaintext length.
@@ -120,6 +129,7 @@ async function run(days: number) {
      The three numbers are separated on purpose: what a screen waits for is
      `boot-ready`, and the two housekeeping passes are what used to be in front
      of it. Their cost at this scale is what the ticket wanted written down. */
+  stage('fixture-close', days);
   await booted.driver.close();
 
   const reopenedSqlite = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
@@ -135,6 +145,7 @@ async function run(days: number) {
   let purged = 0;
   let sweepMs = 0;
 
+  stage('measured-boot', days);
   const bootStartedAt = performance.now();
   const reopened = await boot({
     createDriver: () => reopenedSqlite.driver,
@@ -157,6 +168,7 @@ async function run(days: number) {
   });
   const bootReadyMs = performance.now() - bootStartedAt;
   if (reopened.phase === 'error') throw reopened.error;
+  stage('housekeeping', days);
 
   startup.push({
     name: READY,
@@ -186,12 +198,14 @@ async function run(days: number) {
      (phase 8 audit ticket 01). It records only inside the windows the
      harness opens, so nothing above pays for it. */
   const recorder = recordingDriver(reopened.driver);
+  stage('measurements', days);
   const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
     recorder
   });
 
+  stage('measured-close', days);
   await reopened.driver.close();
   return {
     summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes,
@@ -202,6 +216,7 @@ async function run(days: number) {
 async function main() {
   const oneYear = await run(ONE_YEAR_IN_DAYS);
   const tenYears = await run(TEN_YEARS_IN_DAYS);
+  stage('publish', TEN_YEARS_IN_DAYS);
   publish({ ...tenYears, oneYear, scaling: compareJournalSizes(oneYear, tenYears) });
 }
 
