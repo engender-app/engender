@@ -32,10 +32,10 @@ defaults:
 jobs:
   node:
     name: Checks, Node tier, catalogues and licences
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Deep, with the tags, because release.yml calls this workflow against
           # a tag and a shallow checkout has none: app-version.mjs would resolve
@@ -44,7 +44,7 @@ jobs:
           # differently from the one that gets published.
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -68,7 +68,7 @@ jobs:
           fi
       - name: Keep Node check results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: node-logs-${{ github.run_id }}
           path: ci-logs/
@@ -98,18 +98,18 @@ jobs:
 
   android:
     name: Android debug artifact and F-Droid checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -132,7 +132,7 @@ jobs:
 
       - name: Keep PR debug APK
         if: ${{ always() && github.event_name == 'pull_request' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # Name cannot collide with the release APK the release workflow publishes.
           name: engender-android-debug-${{ github.run_id }}
@@ -141,7 +141,7 @@ jobs:
 
       - name: Keep F-Droid rebuild report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fdroid-rebuild-report-${{ github.run_id }}
           path: ci-logs/
@@ -149,7 +149,7 @@ jobs:
 
   browser:
     name: Browser verification (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Each tier owns its build and journal. A failed walkthrough cannot skip
     # installed-PWA or nginx verification.
     timeout-minutes: 45
@@ -166,7 +166,7 @@ jobs:
           - name: hosting
             entry: tests/hosting/run.mjs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Deep, with the tags, because release.yml calls this workflow against
           # a tag and a shallow checkout has none: app-version.mjs would resolve
@@ -175,7 +175,7 @@ jobs:
           # differently from the one that gets published.
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -225,7 +225,7 @@ jobs:
 
       - name: Keep the output of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-${{ matrix.name }}-logs-${{ github.run_id }}
           path: ci-logs/
@@ -233,7 +233,7 @@ jobs:
 
   guards:
     name: Regression guards (${{ matrix.tier }} ${{ matrix.shard }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Built guards rebuild the app and run the full motion sweeps.
     # Their passing checks can exceed 30 minutes on a hosted runner.
     timeout-minutes: ${{ matrix.tier == 'built' && 45 || 30 }}
@@ -248,11 +248,11 @@ jobs:
           - tier: built
             shard: 2/2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -301,7 +301,7 @@ jobs:
 
       - name: Keep the output of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: guards-${{ matrix.tier }}-${{ strategy.job-index }}-logs-${{ github.run_id }}
           path: |
@@ -313,7 +313,7 @@ jobs:
 
   benchmark:
     name: Ten-year Journal, against the regression budget
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Its own job rather than another step in the browser one. The run takes
     # 44 seconds and leaves 340MB in the origin's storage, and it gates on
     # timing rather than on correctness - so a wobble here should not turn
@@ -321,8 +321,8 @@ jobs:
     # own. Running concurrently, it costs nothing in wall clock.
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -354,7 +354,7 @@ jobs:
 
       - name: Keep the output of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: long-journal-log-${{ github.run_id }}
           path: ci-logs/
@@ -364,7 +364,7 @@ jobs:
     name: All required checks
     needs: [node, android, browser, guards, benchmark]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Report every required tier
         env:
