@@ -66,6 +66,11 @@ const readMotion = `
         x: box.x, y: box.y, h: box.height, opacity: Number(style.opacity),
         transform: style.transform, clip: style.clipPath, wrapper: (() => { const wrap = node.closest('[data-procedure-group]') ?? node; const box = wrap.getBoundingClientRect(); const style = getComputedStyle(wrap); return { y: box.y, h: box.height, transform: style.transform, clip: style.clipPath }; })() };
     }),
+    controls: [...document.querySelectorAll('[data-batched-more="doses"], [data-doses-earlier]')].map((node) => {
+      const box = node.getBoundingClientRect(); const style = getComputedStyle(node);
+      return { id: node.hasAttribute('data-doses-earlier') ? 'earlier' : 'more',
+        y: box.y, h: box.height, margin: parseFloat(style.marginTop) + parseFloat(style.marginBottom) };
+    }),
     headings: [...document.querySelectorAll('[data-procedure-heading], [data-dose-day], [data-procedure-group] [data-section-heading]')]
       .filter((node) => !node.closest('[data-procedure-heading]') || node.matches('[data-procedure-heading]')).map((node) => {
       if (!node.__ticket17Stamp) { window.__ticket17StampCounter = (window.__ticket17StampCounter ?? 0) + 1; node.__ticket17Stamp = window.__ticket17StampCounter; }
@@ -149,6 +154,12 @@ function proveMotion(scene) {
     }
   } else {
     check(`${scene.name}: new rows disclose through intermediate heights`, metrics.length > 0 && metrics.every((row) => row.identity && row.middles >= 3 && row.firstHeight < row.finalHeight * 0.8), metrics);
+    if (scene.name.startsWith('dose-final-batches')) {
+      const more = scene.samples.flatMap((sample) => sample.controls.filter((control) => control.id === 'more'));
+      check(`${scene.name}: final control gives back its spacing before removal`,
+        more.length > 0 && more.at(-1).h + more.at(-1).margin < 1 &&
+        !scene.samples.at(-1).controls.some((control) => control.id === 'more'), more.slice(-4));
+    }
   }
 }
 
@@ -213,6 +224,12 @@ try {
     await editDoseDay(movingDose, oldDay);
     await page.locator('[data-save-dose]').click();
     await page.waitForSelector('[data-sheet]', { state: 'detached' });
+    await scene(`dose-final-batches-${theme}`, async () => {
+      while (await page.locator('[data-batched-more="doses"]').count()) {
+        await page.locator('[data-batched-more="doses"]').evaluate((button) => button.click());
+        await page.waitForTimeout(450);
+      }
+    });
 
     await go('/care/changes');
     await crop(`changes-${theme}`, '[data-noticed-axis]', 440);
