@@ -294,46 +294,29 @@ try {
     const deskCrop = await surfaceCrop(desk.page);
     scenes.at(-1).crop = deskCrop;
     before = await title(desk.page);
-    await desk.page.evaluate(() => {
-      window.r8WheelTrace = [];
-      const read = () => {
-        const track = document.querySelector('[data-date-picker] .dp-track');
-        return {
-          at: performance.now(),
-          offset: track?.style.transform,
-          painted: track ? getComputedStyle(track).transform : null,
-          title: document.querySelector('[data-date-picker-title]')?.textContent,
-        };
-      };
-      document.addEventListener('wheel', (event) => {
-        const entry = {
-          kind: 'wheel', timeStamp: event.timeStamp, delivered: performance.now(),
-          deltaX: event.deltaX, deltaY: event.deltaY, deltaMode: event.deltaMode,
-          trusted: event.isTrusted, prevented: event.defaultPrevented,
-          target: event.target.outerHTML.slice(0, 500), before: read(),
-        };
-        window.r8WheelTrace.push(entry);
-        queueMicrotask(() => { entry.after = read(); });
-      });
-      const original = window.setTimeout;
-      window.setTimeout = (callback, delay, ...args) => original(() => {
-        if (delay === 120) window.r8WheelTrace.push({ kind: 'release-before', ...read() });
-        callback(...args);
-        if (delay === 120) queueMicrotask(() => window.r8WheelTrace.push({ kind: 'release-after', ...read() }));
-      }, delay);
-    });
+    let wheelTrace;
     await record(desk, `popover-wheel-${theme}`, async () => {
       const box = await desk.page.locator('[data-date-picker-viewport]').boundingBox();
-      console.log('R8_GEOMETRY', JSON.stringify(box), 'browser', await browser.version());
       await desk.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      for (let i = 0; i < 10; i++) {
-        await desk.page.mouse.wheel(14, 0);
-        await wait(16);
-      }
+      await desk.page.locator('[data-date-picker-viewport]').evaluate((viewport) => {
+        viewport.wheelTrace = [];
+        viewport.addEventListener('wheel', (event) => viewport.wheelTrace.push({
+          at: performance.now(), dx: event.deltaX, trusted: event.isTrusted,
+        }), { passive: true });
+      });
+      /* Chromium owns the gesture clock. Ten awaited wheel calls plus Node
+         sleeps can leave a 120ms gap and release the picker mid-swipe. */
+      await desk.cdp.send('Input.synthesizeScrollGesture', {
+        x: box.x + box.width / 2, y: box.y + box.height / 2,
+        xDistance: -140, yDistance: 0, speed: 875,
+        gestureSourceType: 'mouse', preventFling: true,
+      });
+      wheelTrace = await desk.page.locator('[data-date-picker-viewport]').evaluate((viewport) => ({
+        width: viewport.clientWidth, events: viewport.wheelTrace,
+      }));
     }, { crop: deskCrop, note: 'desktop: a two-finger trackpad swipe' });
     await pickerAtRest(desk.page);
-    console.log('R8_WHEEL_TRACE', JSON.stringify(await desk.page.evaluate(() => window.r8WheelTrace)));
-    await check(`${theme}: a trackpad swipe turns the month`, async () => assert.notEqual(await title(desk.page), before));
+    await check(`${theme}: a trackpad swipe turns the month`, async () => assert.notEqual(await title(desk.page), before, `trackpad input: ${JSON.stringify(wheelTrace)}`));
     before = await title(desk.page);
     await record(desk, `popover-drag-${theme}`, async () => {
       const box = await desk.page.locator('[data-date-picker-viewport]').boundingBox();
