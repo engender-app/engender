@@ -760,8 +760,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
        dose log and Today are live while this runs. */
     autoLogDueDoses: async () => {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
-      const written = await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
-      if (written > 0) bump(tablesWrittenBy('doses', 'autoLogDueDoses'));
+      await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
     },
     scheduleHousekeeping: whenIdle
   });
