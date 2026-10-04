@@ -46,6 +46,7 @@
   } from '$lib/data/photos/library';
   import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
+  import { crossfade } from '$lib/motion/reveal';
   import Progress from '$lib/components/Progress.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
@@ -283,15 +284,42 @@
         </p>
 
         <SectionHeading text={m.pj_range_title()} />
-        <div class="compare-picker-grid">
-          <label for="pj-start">{m.recap_custom_start_label()}</label>
-          <DatePicker id="pj-start" max={dayRangeStartMax(endInput)} bind:value={startInput} />
-          <label for="pj-end">{m.recap_custom_end_label()}</label>
-          <DatePicker id="pj-end" min={dayRangeEndMin(startInput)} bind:value={endInput} />
+        <!-- The date rows compare and the wrapped custom range draw (release
+             audit U13): the day in words, with the picker spread over the
+             row, where two read-only text boxes used to show "2024-09-18". -->
+        <div>
+          {#each [
+            { id: 'pj-start', label: m.recap_custom_start_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput) },
+            { id: 'pj-end', label: m.recap_custom_end_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined }
+          ] as field (field.id)}
+            {@const day = epochDayFromDateInputValue(field.value)}
+            <div class="rows-divide date-row">
+              <label class="date-row-label" for={field.id}>{field.label}</label>
+              <!-- A picked day crossfades in over the one it replaces. -->
+              <span class="date-row-value">
+                {#key day}
+                  <span transition:crossfade>{day === null ? '' : fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                {/key}
+              </span>
+              <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
+              <DatePicker
+                id={field.id}
+                value={field.value}
+                min={field.min}
+                max={field.max}
+                invis
+                onchange={(next) => {
+                  if (field.id === 'pj-start') startInput = next;
+                  else endInput = next;
+                }}
+              />
+            </div>
+          {/each}
         </div>
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
-        <p class="small">{m.pj_selected_count({ count: selected.length })}</p>
+        <!-- The count is said once, in the bar with the button it counts
+             for (release audit U13: it was here as well). -->
         <p class="muted small">
           {#if photos.length === 0}
             {m.pj_none_in_range()}
@@ -322,7 +350,7 @@
                   onclick={() => toggle(p.id)}
                 >
                   <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                  <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                  <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: 'numeric' })}</span>
                   {#if included}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
                 </button>
               </div>

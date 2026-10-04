@@ -202,7 +202,7 @@ export function searchHitRows(hits: readonly SearchHit[], query: string): Search
         label: declared.label(),
         ...literalIcon(declared.icon),
         href: declared.href(hit),
-        date: hit.epochDay === null ? undefined : fmtDay(hit.epochDay, { month: 'short', year: '2-digit' }),
+        date: hit.epochDay === null ? undefined : fmtDay(hit.epochDay, { month: 'short', year: 'numeric' }),
         excerpt: excerptOf(hit.value, query)
       }
     ];
