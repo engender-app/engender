@@ -218,7 +218,7 @@
   }
 </script>
 
-<ChartCard heading={m.vc_own_heading()} kind="voice-own-series" {role}>
+<ChartCard level={2} heading={m.vc_own_heading()} kind="voice-own-series" {role}>
   {#snippet control()}
     <ChartPicker
       key="voice-own-figure"

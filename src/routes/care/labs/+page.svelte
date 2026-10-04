@@ -487,7 +487,7 @@
         {@const chart = chartFor(s)}
         {@const mixed = comparabilityLabels(seriesComparability(s.results))}
         <div data-lab-series={s.unit}>
-          <ChartCard heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
+          <ChartCard level={2} heading={analyte} kind="labs-{s.unit}" role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}>
             {#snippet control()}
               <!-- The unit on the heading's line, which is the one thing
                    about this chart that is not the analyte above it. A

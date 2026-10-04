@@ -164,7 +164,7 @@
 <!-- Two points is what a line needs to be a line; below that a wrapped would
      rather not have the card at all. -->
 {#if moodTrend.length >= 2}
-  <ChartCard heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+  <ChartCard level={3} heading={m.wrapped_mood_arc()} kind="wrapped-mood" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <AreaChart
       points={plotted.points}
       scrubLabel={grainLabel(plotted.grain)}
@@ -179,7 +179,7 @@
 {/if}
 
 {#if insightRows.length}
-  <ChartCard
+  <ChartCard level={3}
     heading={m.tag_insights_of({ metric: vocabulary.metricNameOf(metric) })}
     kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={insightRows} />
@@ -188,7 +188,7 @@
 {/if}
 
 {#if tally_rows.length}
-  <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+  <ChartCard level={3} heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={tally_rows} />
   </ChartCard>
 {/if}
