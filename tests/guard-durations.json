@@ -1,413 +1,332 @@
 {
   "sources": {
-    "baseline": {
-      "run": "https://github.com/engender-app/engender/actions/runs/37188235861",
-      "revision": "3dfa9cdfe2922dcdfd9e14d577eb4301ff05d071",
-      "guards": [
-        "date-picker-check",
-        "date-picker-motion",
-        "time-picker-check",
-        "sheet-focus-check",
-        "no-auto-keyboard",
-        "dose-editor-copy-check",
-        "sheet-navigation-leftover-check",
-        "sheet-handoff-scroll-check",
-        "sheet-touch-drag-check",
-        "yank-sweep",
-        "tryout-form-check",
-        "media-transport-check",
-        "care-lane-labels",
-        "care-cold-load-yank",
-        "wear-tile-close-yank",
-        "day-cold-load-yank",
-        "tally-chip-row-yank",
-        "changes-methodology-check",
-        "words-reading-scope-check",
-        "entry-pending-save",
-        "radio-groups-gallery",
-        "roadmap-track-summary",
-        "prep-context-check",
-        "debrief-offer-check",
-        "home-fold-reserve",
-        "cold-screen-moves",
-        "screen-part-last-row",
-        "more-search-nothing-found",
-        "documents-rows-settle",
-        "tile-arrival-timing",
-        "home-idle-raster",
-        "boot-error-alone",
-        "restore-previous-journal"
-      ]
-    },
-    "latestMain": {
-      "run": "https://github.com/engender-app/engender/actions/runs/37221482998",
-      "revision": "90dac6f01321d116424b06f457acdb2737be95e3",
-      "guards": [
-        "blind-edge-padding-check",
-        "dilation-schedule-action",
-        "letters-ready-jump",
-        "body-map-selected-context",
-        "body-map-figure-yank",
-        "chart-tick-readout",
-        "year-days-list",
-        "voice-task-names",
-        "record-dismissal-check",
-        "letter-composition-check",
-        "recovery-key-departure-check",
-        "photo-browse-compare",
-        "photo-grid-batching",
-        "photo-export",
-        "chosen-appointment",
-        "appointment-entry-check",
-        "content-before-dates-check",
-        "document-reader",
-        "empty-reflection",
-        "hair-progress-photo-jump-check",
-        "hair-removal-entry-check",
-        "hair-removal-recency-handoff-check",
-        "measurements-sizes-jump-check",
-        "roadmap-tick-motion-check",
-        "search-filter-scope",
-        "mark-edge-fringe",
-        "getting-started-cross-check",
-        "noticed-effects-picker-check",
-        "breathing-frames",
-        "tryout-save-check",
-        "regimen-editor-check",
-        "document-import-check",
-        "lab-entry-check",
-        "measurements-entry-check",
-        "leave-lock-check",
-        "device-recovery-check",
-        "settings-erase-check"
-      ]
-    },
-    "local": {
-      "revision": "90dac6f01321d116424b06f457acdb2737be95e3",
-      "date": "2026-10-04",
-      "note": "Local demo bundle from this code revision, with the prewarm metadata repair applied during the run. Hosted demo build failed before these guards. Seed measurements only; replace after first hosted candidate.",
-      "guards": [
-        "dose-save-check",
-        "entry-editor-return",
-        "calendar-month-a11y-check",
-        "chart-a11y-check"
-      ]
+    "hosted": {
+      "run": "https://github.com/engender-app/engender/actions/runs/37223138118",
+      "revision": "07d8347caa92f7b0ab8a4fc0788f4d46497289c5",
+      "headRevision": "47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa"
     }
   },
-  "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round up measured total minus attempt durations.",
+  "method": "Sum observed hosted attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds.",
   "builds": {
-    "demo": 71,
-    "production": 65
+    "demo": 73,
+    "production": 66
   },
   "setupSeconds": {
-    "baseline": {
-      "dev 1/1": 37,
-      "built 1/2": 83,
-      "built 2/2": 44
-    }
+    "dev 1/3": 39.0,
+    "dev 2/3": 48.0,
+    "dev 3/3": 36.0,
+    "built 1/6": 46.0,
+    "built 2/6": 47.0,
+    "built 3/6": 50.0,
+    "built 4/6": 57.0,
+    "built 5/6": 56.0,
+    "built 6/6": 51.0
   },
   "guards": {
-    "blind-edge-padding-check": 2.94,
-    "dilation-schedule-action": 10.37,
-    "letters-ready-jump": 8.38,
-    "body-map-selected-context": 11.66,
-    "body-map-figure-yank": 6.87,
-    "chart-tick-readout": 62.98,
-    "year-days-list": 7.06,
-    "voice-task-names": 61.03,
-    "record-dismissal-check": 49.85,
-    "letter-composition-check": 12.78,
-    "recovery-key-departure-check": 6.9,
-    "photo-browse-compare": 7.29,
-    "photo-grid-batching": 71.17,
-    "photo-export": 19.54,
-    "chosen-appointment": 6.85,
-    "appointment-entry-check": 13.09,
-    "content-before-dates-check": 47.09,
-    "document-reader": 12.77,
-    "empty-reflection": 28.55,
-    "hair-progress-photo-jump-check": 8.09,
-    "hair-removal-entry-check": 15.64,
-    "hair-removal-recency-handoff-check": 7.33,
-    "measurements-sizes-jump-check": 10.3,
-    "roadmap-tick-motion-check": 7.97,
-    "search-filter-scope": 15.43,
-    "mark-edge-fringe": 0.92,
-    "getting-started-cross-check": 20.21,
-    "noticed-effects-picker-check": 28.72,
-    "breathing-frames": 72.93,
-    "tryout-save-check": 24.45,
-    "regimen-editor-check": 12.51,
-    "document-import-check": 11.89,
-    "lab-entry-check": 13.16,
-    "measurements-entry-check": 17.23,
-    "leave-lock-check": 7.78,
-    "date-picker-check": 146.33,
-    "date-picker-motion": 32.02,
-    "time-picker-check": 36.91,
-    "sheet-focus-check": 24.27,
-    "no-auto-keyboard": 26.12,
-    "dose-editor-copy-check": 10.58,
-    "dose-save-check": 13.09,
-    "sheet-navigation-leftover-check": 12.91,
-    "sheet-handoff-scroll-check": 9.63,
-    "sheet-touch-drag-check": 8.84,
-    "yank-sweep": 342.9,
-    "tryout-form-check": 35.04,
-    "media-transport-check": 18.66,
-    "care-lane-labels": 41.23,
-    "care-cold-load-yank": 77.2,
-    "wear-tile-close-yank": 170.18,
-    "day-cold-load-yank": 87.02,
-    "entry-editor-return": 104.07,
-    "calendar-month-a11y-check": 84.11,
-    "chart-a11y-check": 130.07,
-    "tally-chip-row-yank": 63.22,
-    "changes-methodology-check": 11.2,
-    "words-reading-scope-check": 10.27,
-    "entry-pending-save": 76.42,
-    "radio-groups-gallery": 35.57,
-    "roadmap-track-summary": 5.42,
-    "prep-context-check": 46.72,
-    "debrief-offer-check": 80.56,
-    "home-fold-reserve": 296.0,
-    "cold-screen-moves": 539.71,
-    "screen-part-last-row": 63.58,
-    "more-search-nothing-found": 85.33,
-    "documents-rows-settle": 107.29,
-    "tile-arrival-timing": 142.43,
-    "home-idle-raster": 90.07,
-    "boot-error-alone": 20.49,
-    "restore-previous-journal": 41.34,
-    "device-recovery-check": 13.71,
-    "settings-erase-check": 117.89
+    "blind-edge-padding-check": 3.49,
+    "dilation-schedule-action": 15.38,
+    "letters-ready-jump": 15.87,
+    "body-map-selected-context": 18.99,
+    "body-map-figure-yank": 12.37,
+    "chart-tick-readout": 145.92,
+    "year-days-list": 18.96,
+    "voice-task-names": 70.88,
+    "record-dismissal-check": 52.32,
+    "letter-composition-check": 16.17,
+    "recovery-key-departure-check": 9.57,
+    "photo-browse-compare": 9.68,
+    "photo-grid-batching": 114.33,
+    "photo-export": 26.11,
+    "chosen-appointment": 8.88,
+    "appointment-entry-check": 18.05,
+    "content-before-dates-check": 56.83,
+    "document-reader": 17.44,
+    "empty-reflection": 33.46,
+    "hair-progress-photo-jump-check": 11.09,
+    "hair-removal-entry-check": 17.37,
+    "hair-removal-recency-handoff-check": 9.69,
+    "measurements-sizes-jump-check": 13.65,
+    "roadmap-tick-motion-check": 9.95,
+    "search-filter-scope": 19.56,
+    "mark-edge-fringe": 4.18,
+    "getting-started-cross-check": 25.44,
+    "noticed-effects-picker-check": 31.66,
+    "breathing-frames": 76.6,
+    "tryout-save-check": 30.47,
+    "regimen-editor-check": 16.43,
+    "document-import-check": 14.12,
+    "lab-entry-check": 17.73,
+    "measurements-entry-check": 20.14,
+    "leave-lock-check": 11.66,
+    "date-picker-check": 260.39,
+    "date-picker-motion": 32.67,
+    "time-picker-check": 34.94,
+    "sheet-focus-check": 22.4,
+    "no-auto-keyboard": 25.17,
+    "dose-editor-copy-check": 10.93,
+    "dose-save-check": 19.95,
+    "sheet-navigation-leftover-check": 14.06,
+    "sheet-handoff-scroll-check": 8.71,
+    "sheet-touch-drag-check": 9.04,
+    "yank-sweep": 153.69,
+    "tryout-form-check": 38.6,
+    "media-transport-check": 16.15,
+    "care-lane-labels": 39.46,
+    "care-cold-load-yank": 88.62,
+    "wear-tile-close-yank": 217.13,
+    "day-cold-load-yank": 84.19,
+    "entry-editor-return": 250.15,
+    "calendar-month-a11y-check": 197.43,
+    "chart-a11y-check": 228.26,
+    "tally-chip-row-yank": 57.84,
+    "changes-methodology-check": 10.55,
+    "words-reading-scope-check": 9.67,
+    "entry-pending-save": 118.44,
+    "radio-groups-gallery": 68.68,
+    "roadmap-track-summary": 4.5,
+    "prep-context-check": 48.49,
+    "debrief-offer-check": 82.59,
+    "home-fold-reserve": 233.82,
+    "cold-screen-moves": 522.03,
+    "screen-part-last-row": 55.85,
+    "more-search-nothing-found": 76.67,
+    "documents-rows-settle": 109.92,
+    "tile-arrival-timing": 291.1,
+    "home-idle-raster": 93.07,
+    "boot-error-alone": 15.04,
+    "restore-previous-journal": 41.98,
+    "device-recovery-check": 19.76,
+    "settings-erase-check": 81.24
   },
   "attempts": {
     "blind-edge-padding-check": [
-      2.94
+      3.49
     ],
     "dilation-schedule-action": [
-      10.37
+      15.38
     ],
     "letters-ready-jump": [
-      8.38
+      15.87
     ],
     "body-map-selected-context": [
-      11.66
+      18.99
     ],
     "body-map-figure-yank": [
-      6.87
+      12.37
     ],
     "chart-tick-readout": [
-      62.98
+      145.92
     ],
     "year-days-list": [
-      7.06
+      18.96
     ],
     "voice-task-names": [
-      61.03
+      70.88
     ],
     "record-dismissal-check": [
-      25.56,
-      24.29
+      26.93,
+      25.39
     ],
     "letter-composition-check": [
-      12.78
+      16.17
     ],
     "recovery-key-departure-check": [
-      6.9
+      9.57
     ],
     "photo-browse-compare": [
-      7.29
+      9.68
     ],
     "photo-grid-batching": [
-      71.17
+      114.33
     ],
     "photo-export": [
-      19.54
+      26.11
     ],
     "chosen-appointment": [
-      6.85
+      8.88
     ],
     "appointment-entry-check": [
-      13.09
+      18.05
     ],
     "content-before-dates-check": [
-      47.09
+      56.83
     ],
     "document-reader": [
-      12.77
+      17.44
     ],
     "empty-reflection": [
-      28.55
+      33.46
     ],
     "hair-progress-photo-jump-check": [
-      8.09
+      11.09
     ],
     "hair-removal-entry-check": [
-      15.64
+      17.37
     ],
     "hair-removal-recency-handoff-check": [
-      7.33
+      9.69
     ],
     "measurements-sizes-jump-check": [
-      10.3
+      13.65
     ],
     "roadmap-tick-motion-check": [
-      7.97
+      9.95
     ],
     "search-filter-scope": [
-      15.43
+      19.56
     ],
     "mark-edge-fringe": [
-      0.92
+      4.18
     ],
     "getting-started-cross-check": [
-      20.21
+      25.44
     ],
     "noticed-effects-picker-check": [
-      28.72
+      31.66
     ],
     "breathing-frames": [
-      72.93
+      76.6
     ],
     "tryout-save-check": [
-      24.45
+      30.47
     ],
     "regimen-editor-check": [
-      12.51
+      16.43
     ],
     "document-import-check": [
-      11.89
+      14.12
     ],
     "lab-entry-check": [
-      13.16
+      17.73
     ],
     "measurements-entry-check": [
-      17.23
+      20.14
     ],
     "leave-lock-check": [
-      7.78
+      11.66
     ],
     "date-picker-check": [
-      146.33
+      129.91,
+      130.48
     ],
     "date-picker-motion": [
-      32.02
+      32.67
     ],
     "time-picker-check": [
-      36.91
+      34.94
     ],
     "sheet-focus-check": [
-      24.27
+      22.4
     ],
     "no-auto-keyboard": [
-      26.12
+      25.17
     ],
     "dose-editor-copy-check": [
-      10.58
+      10.93
     ],
     "dose-save-check": [
-      13.09
+      19.95
     ],
     "sheet-navigation-leftover-check": [
-      12.91
+      14.06
     ],
     "sheet-handoff-scroll-check": [
-      9.63
+      8.71
     ],
     "sheet-touch-drag-check": [
-      8.84
+      9.04
     ],
     "yank-sweep": [
-      172.0,
-      170.9
+      153.69
     ],
     "tryout-form-check": [
-      35.04
+      38.6
     ],
     "media-transport-check": [
-      18.66
+      16.15
     ],
     "care-lane-labels": [
-      41.23
+      39.46
     ],
     "care-cold-load-yank": [
-      77.2
+      88.62
     ],
     "wear-tile-close-yank": [
-      170.18
+      217.13
     ],
     "day-cold-load-yank": [
-      87.02
+      84.19
     ],
     "entry-editor-return": [
-      104.07
+      250.15
     ],
     "calendar-month-a11y-check": [
-      84.11
+      197.43
     ],
     "chart-a11y-check": [
-      130.07
+      228.26
     ],
     "tally-chip-row-yank": [
-      63.22
+      57.84
     ],
     "changes-methodology-check": [
-      11.2
+      10.55
     ],
     "words-reading-scope-check": [
-      10.27
+      9.67
     ],
     "entry-pending-save": [
-      76.42
+      59.83,
+      58.61
     ],
     "radio-groups-gallery": [
-      35.57
+      34.41,
+      34.27
     ],
     "roadmap-track-summary": [
-      5.42
+      4.5
     ],
     "prep-context-check": [
-      46.72
+      48.49
     ],
     "debrief-offer-check": [
-      80.56
+      82.59
     ],
     "home-fold-reserve": [
-      296.0
+      233.82
     ],
     "cold-screen-moves": [
-      269.93,
-      269.78
+      260.92,
+      261.11
     ],
     "screen-part-last-row": [
-      63.58
+      55.85
     ],
     "more-search-nothing-found": [
-      85.33
+      76.67
     ],
     "documents-rows-settle": [
-      107.29
+      109.92
     ],
     "tile-arrival-timing": [
-      142.43
+      145.26,
+      145.84
     ],
     "home-idle-raster": [
-      90.07
+      93.07
     ],
     "boot-error-alone": [
-      20.49
+      15.04
     ],
     "restore-previous-journal": [
-      41.34
+      41.98
     ],
     "device-recovery-check": [
-      13.71
+      19.76
     ],
     "settings-erase-check": [
-      77.48,
-      40.41
+      40.68,
+      40.56
     ]
   }
 }
