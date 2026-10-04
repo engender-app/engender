@@ -67,7 +67,7 @@ export function isDue(status: Pick<AutoExportStatus, 'enabled' | 'destinationUri
 function timestampedFileName(name: string, at: number, disguised: boolean): string {
   const base = exportFileName(name, ARCHIVE_FILE_EXTENSION, undefined, disguised).slice(0, -ARCHIVE_FILE_EXTENSION.length);
   const stamp = new Date(at).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-  return `${base}-${stamp}${ARCHIVE_FILE_EXTENSION}`;
+  return `auto-${base}-${stamp}${ARCHIVE_FILE_EXTENSION}`;
 }
 
 async function disable(status: AutoExportStatus) {
