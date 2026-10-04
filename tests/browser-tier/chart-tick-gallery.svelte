@@ -146,7 +146,7 @@
 
 <div class="screen">
   {#each charts as chart, i (chart.key)}
-    <ChartCard heading={chart.heading} kind={chart.key} role={roleAt(roles, i)}>
+    <ChartCard level={2} heading={chart.heading} kind={chart.key} role={roleAt(roles, i)}>
       <AreaChart
         points={chart.points}
         annotations={chart.annotations}

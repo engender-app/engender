@@ -194,7 +194,7 @@
 
   <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
-    <ChartCard heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
+    <ChartCard level={2} heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
       <AreaChart
         scrubLabel={grainLabel(plottedMis.grain)}
         points={plottedMis.points}
@@ -233,7 +233,7 @@
       </button>
     </div>
 
-    <ChartCard
+    <ChartCard level={2}
       heading={m.tally_correctly_gendered()}
       kind="tally-correctly-gendered"
       role={roleAt(activeFlag.roles, 0)}

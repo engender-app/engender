@@ -211,7 +211,7 @@
     />
   {/if}
 {:else}
-<ChartCard heading={m.words_reading_title()} kind="words" {role}>
+<ChartCard level={2} heading={m.words_reading_title()} kind="words" {role}>
   {#if dimensions.length === 0}
     <ChartEmpty>{m.words_reading_needs_stretch()}</ChartEmpty>
   {:else}

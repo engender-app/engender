@@ -215,7 +215,7 @@
   {/each}
 </ListCard>
 
-<ChartCard heading={m.wrapped_year_months()} kind="wrapped-months" role={rowsRole}>
+<ChartCard level={3} heading={m.wrapped_year_months()} kind="wrapped-months" role={rowsRole}>
   <!-- Short month names: full ones took 70px of a 340px card, which is a
        fifth of the grid's width spent on labels the reader already knows the
        order of. -->
@@ -223,7 +223,7 @@
 </ChartCard>
 
 {#if insightRows.length}
-  <ChartCard
+  <ChartCard level={3}
     heading={m.tag_insights_of({ metric: vocabulary.metricNameOf(metric) })}
     kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={insightRows} />
@@ -232,7 +232,7 @@
 {/if}
 
 {#if tally_rows.length}
-  <ChartCard heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+  <ChartCard level={3} heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={tally_rows} />
   </ChartCard>
 {/if}

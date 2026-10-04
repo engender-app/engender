@@ -380,7 +380,7 @@
       {#if dysphoriaQuery.loading || euphoriaQuery.loading}
         <div out:crossfade><Skeleton variant="block" count={2} /></div>
       {:else}
-        <ChartCard heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
+        <ChartCard level={3} heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
           {@render series(
             plottedDysphoria,
             m.body_region_axis_dysphoria(),
@@ -388,7 +388,7 @@
           )}
         </ChartCard>
 
-        <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={figureRole}>
+        <ChartCard level={3} heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={figureRole}>
           {@render series(
             plottedEuphoria,
             m.body_region_axis_euphoria(),

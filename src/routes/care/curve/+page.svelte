@@ -356,7 +356,7 @@
           {@const points = curve.labPoints}
           {@const selected = picked[curve.ester] ?? null}
           {@const openMark = pickedMarker[curve.ester] ?? null}
-          <ChartCard
+          <ChartCard level={3}
             heading={esterLabel(curve.ester)}
             kind="curve-{curve.ester}"
             role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
@@ -450,7 +450,7 @@
           {#each section.charts as curve (curve.key)}
             {@const lines = qualLines(section, curve)}
             {@const openMark = pickedMarker[curve.key] ?? null}
-            <ChartCard
+            <ChartCard level={3}
               heading={qualitativeCurveLabel(curve.key)}
               kind="curve-qual-{curve.key}"
               role={roleAt(activeFlag.roles, SECTION_ROLE.charts)}
