@@ -78,7 +78,7 @@
     const duration = readRevealDuration('--dur-fast');
     if (duration === 0) return;
     const animation = node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
-    playAfterPaint(node, [animation]);
+    playAfterPaint(node, [animation], { fitArrival: true });
     return { destroy: () => animation.cancel() };
   }
 
