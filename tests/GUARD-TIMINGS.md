@@ -50,12 +50,12 @@ The production guards still receive a production build. The walkthrough's
 version override is not reused. Every guard job keeps full history and tags;
 `scripts/app-version.mjs` remains the version source for its own revision.
 
-## Candidate
+## First candidate
 
 CI uses three dev groups and six built groups on the existing runner type.
 The additional jobs repeat setup and demo builds; runner minutes can rise even
-when the longest guard group gets shorter. Hosted results must be compared with
-the baseline above before calling the scheduling change accepted.
+when the longest guard group gets shorter. The hosted comparison below records the first candidate and the imbalance it
+exposed.
 
 The source roster also contains guards absent from the earlier run. The latest
 main run, [37221482998](https://github.com/engender-app/engender/actions/runs/37221482998),
@@ -87,5 +87,192 @@ so the additional six guards are not lost in a historical comparison.
 These are projections before setup or queue time. They already exceed ten
 minutes for built guards; the retained two-attempt cold-screen cost is 539.71s
 before its 71s build. More groups cannot split that guard. The earlier
-walkthrough's 18m03s also prevents a ten-minute full-workflow claim. Actual hosted
-elapsed time, setup costs and summed runner minutes remain required evidence.
+walkthrough's 18m03s also prevents a ten-minute full-workflow claim. The hosted results below supply elapsed time, setup costs and summed runner
+minutes for this candidate.
+
+## First hosted candidate
+
+[PR 8 run 37223138118](https://github.com/engender-app/engender/actions/runs/37223138118)
+ran the reviewed scheduling code. The public branch head was
+`47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa`, code-equivalent to local ticket tip
+`8a0f84365820137e4fde9b2e2ad520cf4bd9529c`. Actions checked out the PR merge
+revision `07d8347caa92f7b0ab8a4fc0788f4d46497289c5`; the Node build recorded
+`0.0.0-dev+g07d8347c`. The candidate does not contain ticket 01's cold-notice repair.
+
+The workflow failed. Every one of the 74 guards ran exactly once at the guard
+level, with the existing second attempt on failure. There were 67 passing guards,
+seven failing guards, no blocked guards and no recovered retries. Every required
+job ran, and the aggregate reported the failures.
+
+| Measurement | Earlier baseline | First candidate |
+| --- | ---: | ---: |
+| Trigger to aggregate completion | 31m36s | 20m09s |
+| Summed runner minutes, all jobs | 110.90 | 136.40 |
+| Summed runner minutes, guards | 69.28 | 93.35 |
+| Longest guard job | 30m51s | 18m09s |
+| Walkthrough job | 18m03s | 19m46s |
+| Initial job start delay | 2-4s | 3-210s |
+
+This is an observed comparison, not a controlled steady-state benchmark. The
+older run has six fewer guards and an earlier application revision. PR 7 ran
+concurrently with PR 8 during this campaign; the queue-inclusive result includes
+that contention. The data does not establish a particular GitHub concurrency
+limit. Runner minutes increased by 25.50 across the workflow and 24.07 for guards.
+The walkthrough was the longest job, while group 6's later start left it as the
+last guard to finish. The final aggregate finished 20m09s after the trigger.
+
+| Guard group | Start delay | Setup | Guard step | Demo build | Production build | Whole job | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| dev 1/3 | 98s | 39s | 297s | - | - | 339s | success |
+| dev 2/3 | 3s | 48s | 311s | - | - | 363s | failure |
+| dev 3/3 | 3s | 36s | 386s | - | - | 424s | success |
+| built 1/6 | 99s | 46s | 601s | 68.89s | - | 651s | failure |
+| built 2/6 | 3s | 47s | 552s | 49.93s | - | 602s | failure |
+| built 3/6 | 51s | 50s | 586s | 59.44s | - | 638s | failure |
+| built 4/6 | 210s | 57s | 685s | 71.42s | - | 747s | success |
+| built 5/6 | 209s | 56s | 689s | 72.14s | 65.46s | 748s | failure |
+| built 6/6 | 115s | 51s | 1036s | 68.16s | - | 1089s | failure |
+
+Start delay is trigger-to-job-start for the independent jobs. Setup is job start
+through the start of the guard step. Guard steps include builds; whole-job time
+also includes reporting and cleanup. Build times come from the first guard's
+total minus its attempts, rounded to the log's 0.01s precision. All six demo
+builds and the production build succeeded. The production guards ran only after
+the production build in group 5; no job shared mutable build output.
+
+| Other job | Whole job | Result |
+| --- | ---: | --- |
+| Checks, Node tier, catalogues and licences | 205s | success |
+| Browser verification (walkthrough) | 1186s | success |
+| Ten-year Journal, against the regression budget | 350s | success |
+| Browser verification (installed-pwa) | 111s | success |
+| Android debug artifact and F-Droid checks | 246s | success |
+| Browser verification (hosting) | 94s | success |
+| Browser verification (browser-tier) | 389s | success |
+| All required checks | 2s | failure |
+
+The seven guard failures remain visible:
+
+- `record-dismissal-check`: the dose-requirements selector did not become visible.
+  This also failed in main run 37221482998 before the scheduling change.
+- `radio-groups-gallery`: the second save waited for `[data-home-log]` and timed
+  out at line 75. Scheduling attribution remains unclassified.
+- `entry-pending-save`: the URL wait at line 294 timed out after navigation to
+  `/day/today`. Scheduling attribution remains unclassified.
+- `cold-screen-moves`: both attempts reported "measuring notice was not visible
+  during cold load" on the first light measurements case. This candidate still
+  has the old sampling contract; ticket 01's repair is separate.
+- `date-picker-check`: both attempts failed "\"Use date\" can be brought inside
+  the zoomed visual viewport" at line 189. Scheduling attribution remains
+  unclassified.
+- `settings-erase-check`: both attempts found an extra `photos` directory in the
+  device-bound cancellation file-list assertion. Scheduling attribution remains
+  unclassified.
+- `tile-arrival-timing`: warm Look back to Today medians were 253ms and 260ms
+  against 250ms. Attempt one also failed the Android-presentation timing case
+  with readable content at 445ms and the field ending at 429ms. Scheduling
+  attribution remains unclassified.
+
+The table records every attempt from the hosted logs. Exit code 0 means success;
+1 means failure. These are attempt seconds, excluding build time. A retry still
+counts as the same roster guard.
+
+| Group | Guard | Result | Attempts: exit code / seconds |
+| --- | --- | --- | --- |
+| dev 1/3 | `blind-edge-padding-check` | pass | 0 / 3.49s |
+| dev 1/3 | `letters-ready-jump` | pass | 0 / 15.87s |
+| dev 1/3 | `body-map-selected-context` | pass | 0 / 18.99s |
+| dev 1/3 | `recovery-key-departure-check` | pass | 0 / 9.57s |
+| dev 1/3 | `photo-export` | pass | 0 / 26.11s |
+| dev 1/3 | `content-before-dates-check` | pass | 0 / 56.83s |
+| dev 1/3 | `document-reader` | pass | 0 / 17.44s |
+| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.09s |
+| dev 1/3 | `hair-removal-recency-handoff-check` | pass | 0 / 9.69s |
+| dev 1/3 | `search-filter-scope` | pass | 0 / 19.56s |
+| dev 1/3 | `noticed-effects-picker-check` | pass | 0 / 31.66s |
+| dev 1/3 | `breathing-frames` | pass | 0 / 76.60s |
+| dev 2/3 | `dilation-schedule-action` | pass | 0 / 15.38s |
+| dev 2/3 | `record-dismissal-check` | fail | 1 / 26.93s; 1 / 25.39s |
+| dev 2/3 | `letter-composition-check` | pass | 0 / 16.17s |
+| dev 2/3 | `photo-browse-compare` | pass | 0 / 9.68s |
+| dev 2/3 | `photo-grid-batching` | pass | 0 / 114.33s |
+| dev 2/3 | `chosen-appointment` | pass | 0 / 8.88s |
+| dev 2/3 | `empty-reflection` | pass | 0 / 33.46s |
+| dev 2/3 | `hair-removal-entry-check` | pass | 0 / 17.37s |
+| dev 2/3 | `roadmap-tick-motion-check` | pass | 0 / 9.95s |
+| dev 2/3 | `document-import-check` | pass | 0 / 14.12s |
+| dev 2/3 | `measurements-entry-check` | pass | 0 / 20.14s |
+| dev 3/3 | `body-map-figure-yank` | pass | 0 / 12.37s |
+| dev 3/3 | `chart-tick-readout` | pass | 0 / 145.92s |
+| dev 3/3 | `year-days-list` | pass | 0 / 18.96s |
+| dev 3/3 | `voice-task-names` | pass | 0 / 70.88s |
+| dev 3/3 | `appointment-entry-check` | pass | 0 / 18.05s |
+| dev 3/3 | `measurements-sizes-jump-check` | pass | 0 / 13.65s |
+| dev 3/3 | `mark-edge-fringe` | pass | 0 / 4.18s |
+| dev 3/3 | `getting-started-cross-check` | pass | 0 / 25.44s |
+| dev 3/3 | `tryout-save-check` | pass | 0 / 30.47s |
+| dev 3/3 | `regimen-editor-check` | pass | 0 / 16.43s |
+| dev 3/3 | `lab-entry-check` | pass | 0 / 17.73s |
+| dev 3/3 | `leave-lock-check` | pass | 0 / 11.66s |
+| built 1/6 | `changes-methodology-check` | pass | 0 / 10.55s |
+| built 1/6 | `cold-screen-moves` | fail | 1 / 260.92s; 1 / 261.11s |
+| built 2/6 | `sheet-touch-drag-check` | pass | 0 / 9.04s |
+| built 2/6 | `yank-sweep` | pass | 0 / 153.69s |
+| built 2/6 | `calendar-month-a11y-check` | pass | 0 / 197.43s |
+| built 2/6 | `tally-chip-row-yank` | pass | 0 / 57.84s |
+| built 2/6 | `radio-groups-gallery` | fail | 1 / 34.41s; 1 / 34.27s |
+| built 2/6 | `boot-error-alone` | pass | 0 / 15.04s |
+| built 3/6 | `no-auto-keyboard` | pass | 0 / 25.17s |
+| built 3/6 | `sheet-handoff-scroll-check` | pass | 0 / 8.71s |
+| built 3/6 | `media-transport-check` | pass | 0 / 16.15s |
+| built 3/6 | `care-lane-labels` | pass | 0 / 39.46s |
+| built 3/6 | `day-cold-load-yank` | pass | 0 / 84.19s |
+| built 3/6 | `entry-pending-save` | fail | 1 / 59.83s; 1 / 58.61s |
+| built 3/6 | `home-fold-reserve` | pass | 0 / 233.82s |
+| built 4/6 | `sheet-navigation-leftover-check` | pass | 0 / 14.06s |
+| built 4/6 | `tryout-form-check` | pass | 0 / 38.60s |
+| built 4/6 | `wear-tile-close-yank` | pass | 0 / 217.13s |
+| built 4/6 | `words-reading-scope-check` | pass | 0 / 9.67s |
+| built 4/6 | `prep-context-check` | pass | 0 / 48.49s |
+| built 4/6 | `debrief-offer-check` | pass | 0 / 82.59s |
+| built 4/6 | `documents-rows-settle` | pass | 0 / 109.92s |
+| built 4/6 | `home-idle-raster` | pass | 0 / 93.07s |
+| built 5/6 | `date-picker-check` | fail | 1 / 129.91s; 1 / 130.48s |
+| built 5/6 | `time-picker-check` | pass | 0 / 34.94s |
+| built 5/6 | `sheet-focus-check` | pass | 0 / 22.40s |
+| built 5/6 | `screen-part-last-row` | pass | 0 / 55.85s |
+| built 5/6 | `more-search-nothing-found` | pass | 0 / 76.67s |
+| built 5/6 | `device-recovery-check` | pass | 0 / 19.76s |
+| built 5/6 | `settings-erase-check` | fail | 1 / 40.68s; 1 / 40.56s |
+| built 6/6 | `date-picker-motion` | pass | 0 / 32.67s |
+| built 6/6 | `dose-editor-copy-check` | pass | 0 / 10.93s |
+| built 6/6 | `dose-save-check` | pass | 0 / 19.95s |
+| built 6/6 | `care-cold-load-yank` | pass | 0 / 88.62s |
+| built 6/6 | `entry-editor-return` | pass | 0 / 250.15s |
+| built 6/6 | `chart-a11y-check` | pass | 0 / 228.26s |
+| built 6/6 | `roadmap-track-summary` | pass | 0 / 4.50s |
+| built 6/6 | `tile-arrival-timing` | fail | 1 / 145.26s; 1 / 145.84s |
+| built 6/6 | `restore-previous-journal` | pass | 0 / 41.98s |
+
+## Timing correction for the second candidate
+
+The first run demonstrated material imbalance: group 6 took 1089s, while the
+other built jobs took 602-748s. Three local seeds in group 6 underestimated
+hosted cost: dose save took 19.95s instead of 13.09s, entry return 250.15s instead
+of 104.07s, and chart accessibility 228.26s instead of 130.07s. Calendar
+accessibility, in group 2, took 197.43s instead of 84.11s. Group 6 also incurred a
+second tile-arrival attempt. The first forecast therefore does not count as
+proof that the actual groups were balanced.
+
+The duration file now uses all 74 guards' attempts from this hosted run, including
+failures. Demo and production build estimates round the largest observed cost
+up to 73s and 66s. The runner and the three-dev/six-built matrix are unchanged.
+Refreshing only the four local seeds would leave replayed built groups at
+504-847s. Using all observed attempt costs gave 693-702s with the original 71s/65s
+build estimates; the refreshed build estimates add their measured difference.
+These replays hold attempt costs fixed and exclude setup and queue time. They
+are a reason to rerun the candidate, not a replacement for that run.
+
+The second candidate needs actual hosted timing evidence. Ticket 01 will change
+the cold guard's runtime when integrated, and ticket 05 owns the subsequent
+integrated samples. No ten-minute or all-green claim follows from this first run.
