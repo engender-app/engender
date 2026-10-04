@@ -321,15 +321,12 @@ jobs:
             exit 1
           fi
 
-      - name: Keep the output of a failed run
-        if: failure()
+      - name: Keep guard attempts, including recovered failures
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: guards-${{ matrix.tier }}-${{ strategy.job-index }}-logs-${{ github.run_id }}
-          path: |
-            ci-logs/
-            .claude/yank-sweep/*.frames.json
-            .claude/yank-sweep/report.json
+          name: guards-${{ matrix.tier }}-${{ strategy.job-index }}-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-logs/
           include-hidden-files: true
           retention-days: 7
 
