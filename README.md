@@ -5,7 +5,7 @@
   </picture>
 </h1>
 
-[![Checks](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml)
+[![Checks](https://github.com/engender-app/engender/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/engender-app/engender/actions/workflows/ci.yml)
 
 engender is a private journal for tracking a gender transition, written by a
 trans person for other trans people. It keeps daily entries, care records,

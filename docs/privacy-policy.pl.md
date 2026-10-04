@@ -6,7 +6,7 @@ Ostatnia aktualizacja: 26 września 2026
 
 Polityka dotyczy:
 
-- aplikacji w przeglądarce pod adresem `app.engender.dev`, gdy zostanie opublikowana,
+- aplikacji w przeglądarce pod adresem `app.engender.barankiewicz.dev`, gdy zostanie opublikowana,
 - kanałów dystrybucji Androida (Google Play, F-Droid, bezpośrednio pobrany
   plik APK), gdy wydania się pojawią,
 - wybranego przez ciebie miejsca zapisu zaszyfrowanej kopii zapasowej lub
