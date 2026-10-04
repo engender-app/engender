@@ -1,6 +1,6 @@
 # 07 - rel: The release workflow publishes, and there is a version to publish
 
-Status: done
+Status: resolved
 Type: build
 Audit findings: R3, R4, R12
 Severity: P1, blocks release

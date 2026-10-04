@@ -1,6 +1,6 @@
 # 02 - ux: The dose sheet closes and confirms after a save
 
-Status: done
+Status: resolved
 Type: bug
 Audit findings: V01, V15 (dose sheet half)
 Severity: P1, blocks release

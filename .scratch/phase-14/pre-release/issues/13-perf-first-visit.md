@@ -1,6 +1,6 @@
 # 13 - perf: First visit paints early and caches less at once
 
-Status: done
+Status: resolved
 Type: build
 Audit findings: P03, P02
 Severity: P2

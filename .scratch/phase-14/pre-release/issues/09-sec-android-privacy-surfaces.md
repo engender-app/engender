@@ -1,6 +1,6 @@
 # 09 - sec: What leaks outside the app on Android
 
-Status: done
+Status: resolved
 Type: bug
 Audit findings: S-02, S-01, S-03, S-04, V06
 Severity: P2

@@ -1,6 +1,6 @@
 # 22 - arch: Delete what nothing uses
 
-Status: done
+Status: resolved
 Type: cleanup
 Audit findings: A5
 Severity: P3, after release (not in the release gate)

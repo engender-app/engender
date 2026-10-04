@@ -1,6 +1,6 @@
 # 12 - sec: Small hardening
 
-Status: done
+Status: resolved
 Type: build
 Audit findings: S-05, S-07, S-08, S-11
 Severity: P3

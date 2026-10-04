@@ -1,6 +1,6 @@
 # 24 - perf: The demo journal seeds in seconds, not twelve
 
-Status: done
+Status: resolved
 Type: build
 Audit findings: P06
 Severity: P3, after release (matters only if a demo is hosted; also speeds up

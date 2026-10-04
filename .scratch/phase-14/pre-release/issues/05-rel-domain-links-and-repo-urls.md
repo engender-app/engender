@@ -1,6 +1,6 @@
 # 05 - rel: Every link points at a domain the project owns
 
-Status: done
+Status: resolved
 Type: build
 Audit findings: R2, R6 (URLs half)
 Severity: P1, blocks release

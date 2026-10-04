@@ -1,6 +1,6 @@
 # 32 - a11y: PIN progress is announced from a real status node
 
-Status: done
+Status: resolved
 Type: bug
 Audit findings: A08 (accessibility audit, 30 September 2026)
 Severity: P2 in the accessibility audit (WCAG 4.1.2, 4.1.3); wanted before release, not in the hard release gate
