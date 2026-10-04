@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, copyFileSync, globSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { execute, writeSummary } from '../scripts/check-process.mjs';
 
 /** @typedef {{ name: string, tier: string, holds: string, args?: string[], build?: string, diagnostics?: string[] }} Guard */
@@ -101,6 +102,14 @@ function diagnosticFiles(patterns) {
   return files;
 }
 
+/** @param {string} logFile */
+function failureExcerpt(logFile) {
+  const lines = stripVTControlCharacters(readFileSync(logFile, 'utf8')).trimEnd().split('\n').slice(1, -1);
+  const firstFailure = lines.findIndex((line) => /\bFAIL(?:ED)?\b|\b\w*Error(?: \[[^\]]+\])?:|\bERROR\b|stopped by SIG/i.test(line));
+  return lines.slice(firstFailure < 0 ? -12 : firstFailure, firstFailure < 0 ? undefined : firstFailure + 12)
+    .join('\n').slice(0, 2400).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const tier = args[args.indexOf('--tier') + 1];
@@ -118,6 +127,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       '| Guard | Result | Seconds | Attempts (exit code, seconds) |', '| --- | --- | --- | --- |',
       ...results.map((row) => `| ${row.name} | ${row.outcome} | ${(row.durationMs / 1000).toFixed(2)} | ${row.buildFailed ? (args.includes('--blocked') ? 'job setup failed; guard did not run' : 'build failed; guard did not run') : row.attempts.map((attempt) => `attempt ${attempt.attempt}: exit ${attempt.code}, ${(attempt.durationMs / 1000).toFixed(2)}s`).join('; ')} |`)
     ]);
+    for (const row of results) {
+      for (const attempt of row.attempts.filter((attempt) => attempt.code !== 0)) {
+        const logFile = join(evidenceDir, row.name, `attempt-${attempt.attempt}`, 'output.log');
+        writeSummary([
+          '', `Failed case output: ${row.name}, attempt ${attempt.attempt}`, '',
+          `Full log in the artifact: \`${logFile}\``, '',
+          '<pre>', failureExcerpt(logFile), '</pre>'
+        ]);
+      }
+    }
     process.exitCode = results.some((row) => !row.passed) ? 1 : 0;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
