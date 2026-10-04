@@ -67,7 +67,12 @@ if (ONLY) {
 /** One flow, skipped whole where `--only` did not name it. */
 async function flow(name, body) {
   if (ONLY && !name.toLowerCase().includes(ONLY)) return;
-  await body();
+  if (['plain export', 'onboarding restore'].includes(name)) flight = { name, events: [] };
+  try {
+    await body();
+  } finally {
+    flight = null;
+  }
 }
 
 const server = await preview({ preview: { port: 0 } });
@@ -79,6 +84,87 @@ const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 440, height: 940 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
+
+// Keep failure evidence in the host across full-page navigations. Nothing
+// here replaces worker messages or changes the app's event handlers.
+let flight = null;
+let domCaptureReady = false;
+function recordFlight(event) {
+  if (!flight) return;
+  flight.events.push(event);
+  if (flight.events.length > 128) flight.events.shift();
+}
+page.on('console', message => {
+  if (message.type() === 'error') recordFlight({ kind: 'console-error', time: Date.now(), detail: message.text().slice(0, 4096) });
+});
+page.on('worker', worker => {
+  const url = worker.url();
+  recordFlight({ kind: 'worker-started', time: Date.now(), url });
+  worker.on('close', () => recordFlight({ kind: 'worker-closed', time: Date.now(), url }));
+});
+async function setupFlightCapture(signal) {
+  await page.exposeFunction('__walkthroughEvidence', event => { if (domCaptureReady) recordFlight(event); });
+  signal.throwIfAborted();
+  await page.addInitScript(() => {
+    const emit = event => { void window.__walkthroughEvidence({ time: Date.now(), at: performance.now(), timeOrigin: performance.timeOrigin, url: location.href, ...event }).catch(() => {}); };
+    const state = () => ({
+      note: document.querySelector('#ed-note')?.value?.slice(0, 4096),
+      saveDisabled: document.querySelector('[data-save]')?.disabled,
+      restoreStart: !!document.querySelector('[data-restore-start]'),
+      questions: [...document.querySelectorAll('[data-setup-question]')].slice(0, 8).map(node => ({ text: node.textContent, rect: node.getBoundingClientRect().toJSON(), opacity: getComputedStyle(node).opacity }))
+    });
+    const capture = event => {
+      const target = event.target.closest?.('#ed-note, [data-save], [data-back], [data-next], #demo-jump');
+      if (!target || (target.id !== 'demo-jump' && !['/entry/new/today', '/onboarding'].includes(location.pathname))) return;
+      const tag = target.id || target.outerHTML.split('>')[0];
+      emit({ kind: event.type, target: tag, trusted: event.isTrusted, x: event.clientX, y: event.clientY, rect: target.getBoundingClientRect().toJSON(), ...state() });
+      if (event.type === 'click') requestAnimationFrame(() => emit({ kind: 'after-click-frame', target: tag, ...state() }));
+    };
+    for (const type of ['pointerdown', 'pointerup', 'click', 'input', 'change']) document.addEventListener(type, capture, true);
+  });
+  signal.throwIfAborted();
+}
+
+try {
+  await boundedDiagnostic(setupFlightCapture);
+  domCaptureReady = true;
+} catch (error) {
+  console.log('WALKTHROUGH DOM EVIDENCE UNAVAILABLE ' + String(error.message ?? error));
+}
+
+async function boundedDiagnostic(operation) {
+  const controller = new AbortController();
+  let timer;
+  try {
+    return await Promise.race([
+      operation(controller.signal),
+      new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('diagnostic capture exceeded 5000ms')); }, 5000); })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function recentEntryEvidence(signal) {
+  const chunks = 'build/_app/immutable/chunks';
+  let journalChunk;
+  for (const file of await readdir(chunks)) {
+    signal.throwIfAborted();
+    if (!file.endsWith('.js')) continue;
+    if ((await readFile(`${chunks}/${file}`, { encoding: 'utf8', signal })).includes('the journal was reported open before it was attached')) {
+      journalChunk = `${BASE}/_app/immutable/chunks/${file}`;
+      break;
+    }
+  }
+  signal.throwIfAborted();
+  if (!journalChunk) throw new Error('the built journal module was not found');
+  return page.evaluate(async (url) => {
+    const module = await import(url);
+    const journal = Object.values(module).find((value) => value !== null && typeof value === 'object' && typeof value.entries?.recentDays === 'function');
+    if (!journal) throw new Error('the open journal export was not found');
+    return (await journal.entries.recentDays(5)).map(({ id, epochDay, timestamp, mood, note }) => ({ id, epochDay, timestamp, mood, note }));
+  }, journalChunk);
+}
 
 /* Waits for the boot sequence, not just for the network to go quiet (ticket
    08). Opening OPFS, running migrations and - on a cold demo start - writing
@@ -2011,8 +2097,9 @@ try {
    than assumed of the demo persona, so the nastiest field in the file is
    one this test knows the exact text of. */
 await flow('plain export', async () => {
+const NOTE = 'Told them my name, out loud.\nShe said "finally".';
+let plainCsv = null;
 try {
-  const NOTE = 'Told them my name, out loud.\nShe said "finally".';
 
   await fresh('/entry/new/today');
   // Mood is required to save (ticket 04): the fixture picks one before the
@@ -2054,7 +2141,7 @@ try {
     throw new Error(`plain export downloaded ${download.suggestedFilename()}`);
   }
 
-  const rows = parseCsv(await readFile(await download.path(), 'utf8'));
+  const rows = parseCsv(plainCsv = await readFile(await download.path(), 'utf8'));
   const [header, ...entries] = rows;
   if (header[0] !== 'date' || header[1] !== 'time' || header[2] !== 'mood') throw new Error(`header is ${header}`);
   if (header.at(-2) !== 'tags' || header.at(-1) !== 'note') throw new Error(`header is ${header}`);
@@ -2090,7 +2177,20 @@ try {
   );
 
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
-} catch (e) { fail('plain export', e); }
+} catch (e) {
+  fail('plain export', e);
+  const diagnostic = {
+    failure: String(e.message ?? e), expectedNote: NOTE,
+    csv: plainCsv?.slice(0, 2_000_000), csvLength: plainCsv?.length,
+    flight: flight.events.slice(), domCaptureReady, pageErrors: errors.slice()
+  };
+  try {
+    diagnostic.sqlEntries = await boundedDiagnostic(recentEntryEvidence);
+  } catch (error) {
+    diagnostic.sqlCaptureError = String(error.message ?? error);
+  }
+  console.log('PLAIN EXPORT FAILURE EVIDENCE ' + JSON.stringify(diagnostic));
+}
 });
 
 
@@ -2812,19 +2912,11 @@ try {
   fail('onboarding restore', e);
   /* Capture only after failure. Bounds keep a broken page or SQL read from
      preventing the remaining flows from running. */
-  const bounded = async (operation) => {
-    let timer;
-    try {
-      return await Promise.race([
-        operation,
-        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('diagnostic capture exceeded 5000ms')), 5000); })
-      ]);
-    } finally {
-      clearTimeout(timer);
-    }
-  };
+  const bounded = operation => boundedDiagnostic(() => operation);
   const diagnostic = {
     stage: restoreStage,
+    flight: flight.events.slice(),
+    domCaptureReady,
     failure: String(e.message ?? e),
     consoleErrors,
     pageErrors: errors.slice(),
@@ -2872,23 +2964,7 @@ try {
     diagnostic.pageCaptureError = String(error.message ?? error);
   }
   try {
-    // The built chunk exports the journal already open in this page.
-    const chunks = 'build/_app/immutable/chunks';
-    let journalChunk;
-    for (const file of await readdir(chunks)) {
-      if (!file.endsWith('.js')) continue;
-      if ((await readFile(`${chunks}/${file}`, 'utf8')).includes('the journal was reported open before it was attached')) {
-        journalChunk = `${BASE}/_app/immutable/chunks/${file}`;
-        break;
-      }
-    }
-    if (!journalChunk) throw new Error('the built journal module was not found');
-    diagnostic.sqlEntries = await bounded(page.evaluate(async (url) => {
-      const module = await import(url);
-      const journal = Object.values(module).find((value) => value !== null && typeof value === 'object' && typeof value.entries?.recentDays === 'function');
-      if (!journal) throw new Error('the open journal export was not found');
-      return (await journal.entries.recentDays(5)).map(({ id, epochDay, timestamp, mood, note }) => ({ id, epochDay, timestamp, mood, note }));
-    }, journalChunk));
+    diagnostic.sqlEntries = await boundedDiagnostic(recentEntryEvidence);
   } catch (error) {
     diagnostic.sqlCaptureError = String(error.message ?? error);
   }
