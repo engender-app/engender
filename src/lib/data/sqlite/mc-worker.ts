@@ -40,7 +40,7 @@
    cross-platform archive probe - separate storage instead of a collision. */
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
-import { oneTransactionAtATime } from './transactor';
+import { oneTransactionAtATime, withReadSnapshots } from './transactor';
 import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
 
 // Exported for tests/browser-tier/legacy-cipher-worker.ts (ticket 04): the
@@ -233,7 +233,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
       db!.exec({ sql, bind: params.length > 0 ? (params as never) : undefined,
         rowMode: 'object', returnValue: 'resultRows' }) as Row[];
     try {
-      return await preparePersonaJournal({
+      return await preparePersonaJournal(withReadSnapshots({
         exec(sql) { db!.exec(sql); },
         query,
         async run(sql, params = []) {
@@ -242,14 +242,13 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
         },
         getUserVersion: () => Number(db!.selectValue('PRAGMA user_version')),
         setUserVersion(version) { db!.exec(`PRAGMA user_version = ${version}`); },
-        readSnapshot: async (read) => read({ query }),
         transaction: oneTransactionAtATime({
           async begin() { db!.exec('BEGIN'); },
           async commit() { db!.exec('COMMIT'); },
           async rollback() { db!.exec('ROLLBACK'); }
         }),
         async close() {}
-      }, encryptedFileStore(opfsPhotoFiles(), dataKey), {
+      }), encryptedFileStore(opfsPhotoFiles(), dataKey), {
         preMigrationCopyIsUsable: () => handlers.preMigrationCopyIsUsable(undefined as never) as Promise<boolean>,
         copyDatabaseFile: () => handlers.copyDatabaseFile(undefined as never) as Promise<void>,
         restorePreMigrationCopy: () => handlers.restorePreMigrationCopy(undefined as never) as Promise<void>,

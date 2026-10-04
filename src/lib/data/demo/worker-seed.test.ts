@@ -187,18 +187,21 @@ test('an authored schema keeps the ordinary upgrade boundary after failure', asy
     ['00000000-0000-4000-8000-000000000001', 20_730, 1_791_104_400_000, 2, 'Keep this authored note', 0]
   );
   await (await openPreferences(db)).set('name', 'Existing journal');
-  const originalExec = db.exec.bind(db);
-  db.exec = async (sql) => originalExec(sql.replace(
-    'ALTER TABLE medication_stock ADD COLUMN lead_time_days',
-    'SELECT * FROM missing_demo_migration; ALTER TABLE medication_stock ADD COLUMN lead_time_days'
-  ));
+  const originalTransaction = db.transaction.bind(db);
+  db.transaction = (work) => originalTransaction((scope) => work({
+    ...scope,
+    exec: (sql) => scope.exec(sql.replace(
+      'ALTER TABLE medication_stock ADD COLUMN lead_time_days',
+      'SELECT * FROM missing_demo_migration; ALTER TABLE medication_stock ADD COLUMN lead_time_days'
+    ))
+  }));
   try {
     await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo),
       /no such table: missing_demo_migration/);
     assert.equal(await db.getUserVersion(), 78);
     assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
     assert.equal((await db.query('SELECT note FROM entry'))[0].note, 'Keep this authored note');
-    db.exec = originalExec;
+    db.transaction = originalTransaction;
     assert.equal(await preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo), false);
     assert.equal((await db.query('SELECT note FROM entry'))[0].note, 'Keep this authored note');
     assert.equal(await db.getUserVersion(), LATEST_SCHEMA_VERSION);
