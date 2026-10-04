@@ -38,7 +38,7 @@ function isFocusable(element: HTMLElement): boolean {
     && element.getClientRects().length > 0;
 }
 
-export function focusableElements(container: ParentNode): HTMLElement[] {
+function focusableElements(container: ParentNode): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(isFocusable);
 }
 
@@ -218,7 +218,7 @@ export function lockBackground(node: HTMLElement): () => void {
 
 /** Keeps Tab and Shift+Tab inside `container`. Call from a `keydown` handler
     that has already established the key is Tab. */
-export function trapFocus(containers: HTMLElement | HTMLElement[] | null, e: KeyboardEvent): void {
+function trapFocus(containers: HTMLElement | HTMLElement[] | null, e: KeyboardEvent): void {
   if (!containers) return;
   const regions = Array.isArray(containers) ? containers : [containers];
   const focusables = regions.flatMap(focusableElements);

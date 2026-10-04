@@ -183,7 +183,8 @@ export function recordingDriver(inner: SqliteDriver): RecordingDriver {
     if (open) open.push({ sql, bytes: jsonBytes(payload), ...tablesTouched(sql) });
   };
 
-  const driver: SqliteDriver = {
+  const wrap = (inner: SqliteDriver): SqliteDriver => ({
+    deferUntilCommit: inner.deferUntilCommit,
     async query<Row extends Record<string, unknown> = Record<string, unknown>>(sql: string, params?: unknown[]) {
       const rows = await inner.query<Row>(sql, params);
       note(sql, rows);
@@ -200,10 +201,7 @@ export function recordingDriver(inner: SqliteDriver): RecordingDriver {
     },
     getUserVersion: () => inner.getUserVersion(),
     setUserVersion: (version: number) => inner.setUserVersion(version),
-    /* Delegated whole: the transaction's own BEGIN and COMMIT are the
-       inner driver's business, and the statements inside the callback reach
-       this wrapper anyway because the callback holds it. */
-    transaction: <T>(fn: () => T | Promise<T>) => inner.transaction(fn),
+    transaction: (fn) => inner.transaction((scope) => fn(wrap(scope))),
     readSnapshot: (read) => inner.readSnapshot((reader) => read({
       async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
         const rows = await reader.query<Row>(sql, params);
@@ -212,7 +210,8 @@ export function recordingDriver(inner: SqliteDriver): RecordingDriver {
       }
     })),
     close: () => inner.close()
-  };
+  });
+  const driver = wrap(inner);
 
   return {
     driver,

@@ -75,7 +75,7 @@ test('boot skips the reconcile, transaction and all, when the journal carries th
   });
   const driver = {
     ...counting.driver,
-    transaction: <T>(work: () => Promise<T>) => {
+    transaction: <T>(work: Parameters<typeof counting.driver.transaction<T>>[0]) => {
       transactions += 1;
       return counting.driver.transaction(work);
     }

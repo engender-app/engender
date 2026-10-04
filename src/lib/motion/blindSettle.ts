@@ -127,7 +127,7 @@ function settleEasing(peak: number, base: Bezier): string {
  * motion). One curve, two ways of handing it over, the way EASE_OUT and
  * EASE_OUT_CSS already are one easing.
  */
-export function settleCurve(peak: number, base: Bezier): (t: number) => number {
+function settleCurve(peak: number, base: Bezier): (t: number) => number {
   const curve = bezier(base);
   if (peak <= 0) return curve;
   const sum = (height: number, t: number) => curve(t) + height * Math.sin(Math.PI * t);

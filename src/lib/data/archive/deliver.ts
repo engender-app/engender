@@ -35,7 +35,8 @@ type Sharing = {
     passes through a share sheet, a file picker, and whatever filesystem is
     on the other side. The extension is the caller's, because the plain
     export writes the same name with `.csv` and `.json` (F22). */
-export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay()): string {
+export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay(), disguised = false): string {
+  if (disguised) return `backup-${dateInputValueFromEpochDay(epochDay)}${extension}`;
   const slug = nameSlug(name);
   return `${slug ? `${slug}-` : ''}journal-${dateInputValueFromEpochDay(epochDay)}${extension}`;
 }

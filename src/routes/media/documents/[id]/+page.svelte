@@ -681,7 +681,6 @@
         key="document-missing"
         role={roleAt(activeFlag.roles, 0)}
         title={m.document_missing_title()}
-        text={m.document_missing_body()}
         action={{ label: m.document_missing_action(), href: DOCUMENTS }}
       />
     </div>

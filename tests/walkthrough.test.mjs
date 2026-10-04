@@ -10,7 +10,7 @@
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
    #demo-jump control), then serves that build. */
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium, fillDate, fillTime } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
@@ -2580,6 +2580,13 @@ try {
    the palette, which is a portable preference (ADR-0003) and therefore also
    the proof that the flag step was rightly not asked. */
 await flow('onboarding restore', async () => {
+let restoreStage = 'starting';
+let exportedArchive = null;
+const consoleErrors = [];
+const recordConsoleError = (message) => {
+  if (message.type() === 'error') consoleErrors.push(message.text());
+};
+page.on('console', recordConsoleError);
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2589,6 +2596,7 @@ try {
      flow with nine of them names none of them - which cost this ticket two
      eight-minute runs to find out. */
   const waitingFor = async (what, run) => {
+    restoreStage = what;
     try {
       await run();
     } catch (error) {
@@ -2654,6 +2662,7 @@ try {
      waiting for. The archive is one entry, so carrying it in memory is
      nothing. */
   const archiveBytes = await readFile(await archive.path());
+  exportedArchive = { name: archive.suggestedFilename(), bytes: archiveBytes };
 
   /* Emptied again, and the flag put back to something the archive will have
      to overwrite, so a palette reading lesbian at the end can only have come
@@ -2669,13 +2678,19 @@ try {
   /* A setup draft from the new-journal path must not override the archive.
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
-  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
+  for (let i = 0; i < 4; i++) {
+    restoreStage = `next to setup draft ${i + 1}/4`;
+    await page.locator('[data-next]').click();
+  }
   /* Dispatched rather than clicked: with the demo bar's 240px above it, the
      areas list keeps a 41px scroll window at 390x844, so no 75px row fits
      in view and the step's foot takes a real click. Without the bar the
      list has about 280px. */
   await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  for (let i = 0; i < 4; i++) await page.locator('[data-back]').click();
+  for (let i = 0; i < 4; i++) {
+    restoreStage = `back from setup draft ${i + 1}/4`;
+    await page.locator('[data-back]').click();
+  }
   await page.waitForSelector('[data-restore-start]');
 
   await page.locator('[data-restore-start]').click();
@@ -2767,7 +2782,7 @@ try {
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
   await waitingFor("today's entries, after the restore", () =>
-    page.waitForSelector('[data-entry-note]', { timeout: 30000 })
+    page.locator('[data-entry-card] [data-entry-note]').filter({ hasText: 'The entry that came back.' }).waitFor({ timeout: 30000 }) // text-under-test: this flow's restored fixture note, not app copy
   );
   const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
   if (!notes.some((note) => note.includes('The entry that came back'))) {
@@ -2793,7 +2808,103 @@ try {
   );
 
   ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
-} catch (e) { fail('onboarding restore', e); }
+} catch (e) {
+  fail('onboarding restore', e);
+  /* Capture only after failure. Bounds keep a broken page or SQL read from
+     preventing the remaining flows from running. */
+  const bounded = async (operation) => {
+    let timer;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('diagnostic capture exceeded 5000ms')), 5000); })
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const diagnostic = {
+    stage: restoreStage,
+    failure: String(e.message ?? e),
+    consoleErrors,
+    pageErrors: errors.slice(),
+    archive: exportedArchive ? { name: exportedArchive.name, bytes: exportedArchive.bytes.length } : null
+  };
+  try {
+    diagnostic.page = await bounded(page.evaluate(() => {
+      const now = new Date();
+      const frame = document.querySelector('[data-setup-frame]');
+      const nodes = new Set(frame?.querySelectorAll('[data-back], [data-next], [data-setup-question], [data-setup-field], [data-field-blind], [data-setup-answers]') ?? []);
+      for (const node of nodes) {
+        for (let parent = node.parentElement; parent && frame.contains(parent); parent = parent.parentElement) nodes.add(parent);
+      }
+      const geometry = [...nodes].map((node) => {
+        const style = getComputedStyle(node);
+        const properties = ['translate', 'transform', 'opacity', 'pointer-events', 'position', 'z-index', 'height', 'overflow', 'clip-path', '--blind-edge', '--own-rest', '--part-delta', '--blind-delta', '--part-travel'];
+        return {
+          element: node.outerHTML.split('>')[0], text: node.textContent.trim(),
+          rect: node.getBoundingClientRect().toJSON(), inlineStyle: node.style.cssText, inert: node.inert,
+          computed: Object.fromEntries(properties.map((property) => [property, style.getPropertyValue(property)]))
+        };
+      });
+      const hitTests = [...document.querySelectorAll('[data-back], [data-next], [data-finish]')].map((node) => {
+        const rect = node.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        return { element: node.outerHTML.split('>')[0], x, y, hits: document.elementsFromPoint(x, y).map((hit) => hit.outerHTML.split('>')[0]) };
+      });
+      return {
+        url: location.href, localDate: now.toString(), utcDate: now.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, offsetMinutes: now.getTimezoneOffset(),
+        epochDay: Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000),
+        boot: document.querySelector('[data-app-root]')?.dataset.boot,
+        palette: document.documentElement.dataset.palette,
+        notes: [...document.querySelectorAll('[data-entry-card] [data-entry-note]')].map((node) => node.textContent),
+        text: document.body.innerText, geometry, hitTests,
+        animations: document.getAnimations().map((animation) => ({
+          target: animation.effect?.target?.outerHTML?.split('>')[0],
+          playState: animation.playState, currentTime: animation.currentTime, startTime: animation.startTime,
+          timing: animation.effect?.getComputedTiming(), keyframes: animation.effect?.getKeyframes()
+        }))
+      };
+    }));
+  } catch (error) {
+    diagnostic.pageCaptureError = String(error.message ?? error);
+  }
+  try {
+    // The built chunk exports the journal already open in this page.
+    const chunks = 'build/_app/immutable/chunks';
+    let journalChunk;
+    for (const file of await readdir(chunks)) {
+      if (!file.endsWith('.js')) continue;
+      if ((await readFile(`${chunks}/${file}`, 'utf8')).includes('the journal was reported open before it was attached')) {
+        journalChunk = `${BASE}/_app/immutable/chunks/${file}`;
+        break;
+      }
+    }
+    if (!journalChunk) throw new Error('the built journal module was not found');
+    diagnostic.sqlEntries = await bounded(page.evaluate(async (url) => {
+      const module = await import(url);
+      const journal = Object.values(module).find((value) => value !== null && typeof value === 'object' && typeof value.entries?.recentDays === 'function');
+      if (!journal) throw new Error('the open journal export was not found');
+      return (await journal.entries.recentDays(5)).map(({ id, epochDay, timestamp, mood, note }) => ({ id, epochDay, timestamp, mood, note }));
+    }, journalChunk));
+  } catch (error) {
+    diagnostic.sqlCaptureError = String(error.message ?? error);
+  }
+  try {
+    const directory = 'ci-logs/onboarding-restore';
+    await mkdir(directory, { recursive: true });
+    await writeFile(`${directory}/state.json`, JSON.stringify(diagnostic, null, 2));
+    if (exportedArchive) await writeFile(`${directory}/exported.ttbackup`, exportedArchive.bytes);
+    await page.screenshot({ path: `${directory}/page.png`, fullPage: true, timeout: 5000 });
+    console.log(`onboarding restore diagnostics: ${directory}`);
+  } catch (error) {
+    console.error('onboarding restore diagnostics could not be saved', error);
+  }
+} finally {
+  page.off('console', recordConsoleError);
+}
 });
 
 /* 13d. and the way back out of it: a restore that is given up on leaves the

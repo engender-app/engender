@@ -11,7 +11,7 @@ page.setDefaultTimeout(10000);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const base = server.resolvedUrls.local[0];
-async function navigate(path) {
+async function requestNavigation(path) {
   await page.evaluate((path) => {
     const link = document.createElement('a');
     link.href = path;
@@ -20,6 +20,10 @@ async function navigate(path) {
     link.remove();
   }, path);
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(() => requestAnimationFrame(resolve), 0))));
+}
+async function navigate(path) {
+  await requestNavigation(path);
+  await page.waitForURL((url) => url.pathname === path);
 }
 async function stored() {
   return page.evaluate(async () => {
@@ -109,7 +113,7 @@ try {
     if (dismiss === 'scrim') await page.locator('[data-sheet-scrim]').click({ position: { x: 2, y: 2 } });
     if (dismiss === 'close') await page.locator('[data-close-regimen]').click();
     if (dismiss === 'back') await page.evaluate(() => history.back());
-    if (dismiss === 'route') await navigate('/care/doses');
+    if (dismiss === 'route') await requestNavigation('/care/doses');
     if (dismiss === 'drag') {
       await page.locator('[data-sheet]').evaluate((el) => { el.scrollTop = 0; });
       const rect = await page.locator('.sheet-handle').boundingBox();
@@ -174,7 +178,7 @@ try {
     await page.waitForFunction(() => document.querySelector('.regimen-editor').getAttribute('aria-busy') === 'true');
     await page.locator(control).evaluate((el) => { el.click(); el.click(); });
     await page.keyboard.press('Escape');
-    await navigate('/care/doses');
+    await requestNavigation('/care/doses');
     assert.equal(new URL(page.url()).pathname, '/care/regimen');
     assert.equal(await page.locator('[data-keep-editing]').count(), 0);
     for (const selector of ['[data-save-regimen]', '[data-save-schedule]', '[data-end-episode]']) assert.equal(await page.locator(selector).isDisabled(), true);
@@ -273,7 +277,7 @@ try {
 
   await open();
   await page.locator('#regimen-dose').fill('13');
-  await navigate('/care/doses');
+  await requestNavigation('/care/doses');
   await discard();
   await page.waitForURL((url) => url.pathname === '/care/doses');
   await navigate('/care/regimen');

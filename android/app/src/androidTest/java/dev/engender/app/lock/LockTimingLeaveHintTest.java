@@ -53,7 +53,7 @@ public class LockTimingLeaveHintTest {
     }
 
     @Test
-    public void otherTimingsNotifyTheClockWithoutBlockingCapture() throws Exception {
+    public void allTimingsProtectLegacyRecentsAndRestoreAllowedCapture() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             installCounter(scenario);
@@ -68,10 +68,13 @@ public class LockTimingLeaveHintTest {
                 Thread.sleep(500);
                 assertEquals(timing, android.os.Build.VERSION.SDK_INT >= 29 ? "3" : "2",
                     evalJs(scenario, "String(window.__leaveLockCalls || 0)"));
+                scenario.onActivity(activity -> assertEquals(android.os.Build.VERSION.SDK_INT < 33,
+                    (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+                ));
+                scenario.onActivity(MainActivity::onResume);
                 scenario.onActivity(activity -> assertEquals(0,
                     activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE
                 ));
-                scenario.onActivity(MainActivity::onResume);
             }
         }
     }
@@ -87,10 +90,11 @@ public class LockTimingLeaveHintTest {
                 InstrumentationRegistry.getInstrumentation().getTargetContext()
                     .getSharedPreferences(dev.engender.app.screencapture.ScreenCapturePlugin.PREFS, Context.MODE_PRIVATE)
                     .edit().putBoolean("allowed", allowed).commit();
+                scenario.onActivity(activity -> dev.engender.app.screencapture.ScreenCapturePlugin.applyWindowFlags(activity, allowed));
                 runJs(scenario, "window.__leaveLockCalls = 0");
                 scenario.onActivity(activity -> activity.onTopResumedActivityChanged(false));
                 assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
-                scenario.onActivity(activity -> assertTrue(
+                scenario.onActivity(activity -> assertEquals(android.os.Build.VERSION.SDK_INT < 33 || !allowed,
                     (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
                 ));
                 scenario.onActivity(activity -> activity.onTopResumedActivityChanged(true));
@@ -123,7 +127,7 @@ public class LockTimingLeaveHintTest {
             installCounter(scenario);
             scenario.onActivity(MainActivity::onPause);
             assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
-            scenario.onActivity(activity -> assertTrue(
+            scenario.onActivity(activity -> assertEquals(android.os.Build.VERSION.SDK_INT < 33,
                 (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
             ));
             scenario.onActivity(MainActivity::onResume);
@@ -135,7 +139,7 @@ public class LockTimingLeaveHintTest {
     }
 
     private void setTiming(ActivityScenario<MainActivity> scenario, String timing) throws Exception {
-        runJs(scenario, "window.Capacitor.Plugins.LockTiming.setTiming({timing: '" + timing + "'})");
+        runJs(scenario, "window.Capacitor.Plugins.LockTiming.setTiming({timing: '" + timing + "', enabled: true})");
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
         while (System.nanoTime() < deadline) {

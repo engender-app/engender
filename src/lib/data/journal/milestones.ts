@@ -177,7 +177,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           assertChanged(result, `milestone: ${input.id}`);
           return input.id;
         }
-        await driver.transaction(async () => {
+        await driver.transaction(async (driver) => {
           const result = await driver.run(updateSql, updateParams);
           assertChanged(result, `milestone: ${input.id}`);
           await driver.run('DELETE FROM photo WHERE milestone_id = ?', [milestoneRowid]);
@@ -185,7 +185,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
             await insertStagedPhoto(driver, { entryId: null, milestoneId: milestoneRowid }, staged, stagedOverride);
           }
         });
-        await removeFilesAfterCommit(files, oldPhotos);
+        await removeFilesAfterCommit(driver, files, oldPhotos);
         return input.id;
       }
       const uuid = mintUuid();
@@ -205,7 +205,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         await driver.run(insertSql, insertParams);
         return uuid;
       }
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         await driver.run(insertSql, insertParams);
         if (staged) {
           const rowid = await rowidByUuid(driver, 'milestone', uuid);
@@ -220,7 +220,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         'SELECT p.file_path FROM photo p JOIN milestone m ON m.id = p.milestone_id WHERE m.uuid = ?',
         [id]
       );
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         await driver.run('DELETE FROM felt_sense WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [
           id
         ]);
@@ -235,7 +235,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       });
       // After the commit, like deleteEntry: rows never come back because a
       // file removal failed; the boot sweep reclaims orphaned files.
-      await removeFilesOf(files, photos);
+      await removeFilesOf(driver, files, photos);
     },
 
     async lastWriteEpochDay(todayEpochDay) {

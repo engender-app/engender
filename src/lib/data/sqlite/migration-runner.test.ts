@@ -31,9 +31,10 @@ function makeFts5UnavailableDb(): MigrationDb {
     getUserVersion() {
       throw new Error('getUserVersion should not be called when FTS5 is unavailable');
     },
+    async query() { return []; },
     setUserVersion() {},
     transaction(fn) {
-      return fn();
+      return fn(this);
     }
   };
 }
@@ -285,9 +286,10 @@ test('assertFts5Available does not misclassify a locked database as missing FTS5
     getUserVersion() {
       throw new Error('should not be called');
     },
+    async query() { return []; },
     setUserVersion() {},
     transaction(fn) {
-      return fn();
+      return fn(this);
     }
   };
 
@@ -358,4 +360,45 @@ test('a lazy source refuses a database newer than its latest version without loa
   );
 
   assert.equal(loads, 0);
+});
+
+
+test('table rebuilds preserve children while migrations suspend foreign keys, then restore enforcement', async () => {
+  const db = makeDb();
+  db.raw.exec(`CREATE TABLE parent (id INTEGER PRIMARY KEY);
+    CREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES parent(id) ON DELETE CASCADE);
+    INSERT INTO parent VALUES (1); INSERT INTO child VALUES (1, 1);
+    PRAGMA user_version = 1; PRAGMA foreign_keys = ON;`);
+
+  await runMigrations(db, makeFileOpsSpy(), [{ version: 2, sql: `
+    CREATE TABLE parent_next (id INTEGER PRIMARY KEY);
+    INSERT INTO parent_next SELECT * FROM parent;
+    DROP TABLE parent;
+    ALTER TABLE parent_next RENAME TO parent;
+  ` }]);
+
+  assert.equal((await db.query('SELECT COUNT(*) AS n FROM child'))[0].n, 1);
+  assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+  assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
+});
+
+
+test('migration failures restore foreign key enforcement', async () => {
+  const db = makeDb();
+  await assert.rejects(() => runMigrations(db, makeFileOpsSpy(), [{ version: 1, sql: 'invalid sql' }]));
+  assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+});
+
+test('foreign key violations fail migration and a later clean boot without retiring the recovery copy', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy();
+  const steps = [{ version: 1, sql: `
+    CREATE TABLE parent (id INTEGER PRIMARY KEY);
+    CREATE TABLE child (parent_id INTEGER REFERENCES parent(id));
+    INSERT INTO child VALUES (99);
+  ` }];
+  await assert.rejects(() => runMigrations(db, fileOps, steps), /Foreign key violations/);
+  assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+  await assert.rejects(() => runMigrations(db, fileOps, steps), /Foreign key violations/);
+  assert.equal(fileOps.cleanupCalls, 0);
 });

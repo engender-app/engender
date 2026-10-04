@@ -186,7 +186,7 @@ export function makeHairProgressArea(driver: SqliteDriver, files: PhotoFileStore
     async deletePhoto(id) {
       const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo WHERE uuid = ?', [id]);
       await driver.run('DELETE FROM hair_photo WHERE uuid = ?', [id]);
-      await removeFilesOf(files, rows);
+      await removeFilesOf(driver, files, rows);
     },
 
     async lastPhotoWriteEpochDay(todayEpochDay) {

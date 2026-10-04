@@ -24,6 +24,7 @@
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
@@ -388,6 +389,7 @@
     const palette = prefs.palette;
     const launcherIconShape = prefs.launcherIconShape;
     const lockAfter = prefs.lockAfter;
+    const lockEnabled = accessModeHasSecret(bootState.accessMode, true);
     const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready || !isAndroid()) return;
 
@@ -416,6 +418,7 @@
           isAndroid,
           isReady: () => isReadyState(bootState),
           todayEpochDay,
+          lockEnabled,
           prefs: {
             checkInEnabled,
             checkInTime,

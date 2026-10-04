@@ -2,6 +2,7 @@ package dev.engender.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Build;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -9,6 +10,7 @@ import com.getcapacitor.Plugin;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
 import dev.engender.app.lock.LockTimingPlugin;
+import dev.engender.app.launch.AppLaunch;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -90,10 +92,12 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void lockOnLeave() {
+        // Below Android 13, Recents and capture share one flag. Protect every
+        // locked access mode on leave, including the default restart timing.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && LockTimingPlugin.isEnabled(this)) {
+            ScreenCapturePlugin.applyWindowFlags(this, false);
+        }
         if (bridge == null || bridge.getWebView() == null) return;
-        // The native flag protects the thumbnail while the WebView renders
-        // its gate. Capture permission returns when the app resumes.
-        if (LockTimingPlugin.locksImmediately(this)) ScreenCapturePlugin.applyWindowFlags(this, false);
         bridge.getWebView().evaluateJavascript("window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative();", null);
     }
 
@@ -106,6 +110,6 @@ public class MainActivity extends BridgeActivity {
 
     private void captureReminderRoute(Intent intent) {
         if (intent == null) return;
-        ReminderScheduler.storeLaunchRoute(this, intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE));
+        ReminderScheduler.storeLaunchRoute(this, AppLaunch.authenticatedRoute(this, intent));
     }
 }
