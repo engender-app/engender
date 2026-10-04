@@ -92,6 +92,8 @@ describe('guard runner', () => {
       expect(summary).toContain('| first | recovered |');
       expect(summary).toContain('| second | passed |');
       expect(summary).toContain(revision);
+      expect(summary).toContain('FAIL synthetic case');
+      expect(summary).toMatch(/first\/attempt-1\/output\.log/);
       expect(summary).toMatch(/attempt 1: exit 1, [0-9.]+s/);
       expect(summary).toMatch(/attempt 2: exit 0, [0-9.]+s/);
       const attempts = globSync('ci-logs/guards/*/first/attempt-*/result.json', { cwd: root }).sort();
