@@ -3,9 +3,9 @@
    to lose the journal has to be one the user chose (the reset action on
    the lock screen), not one a bored kid can trip into.
 
-   Time comes in as an argument rather than from Date.now(), so the growth
-   is testable without a clock and without a real hash - the throttle knows
-   nothing about PINs.
+   Epoch time comes in as an argument for restoring persisted waits. Within
+   the session, performance.now() measures elapsed time independently of the
+   device clock. The throttle knows nothing about PINs.
 
    The count outlives the page, through the injected store. In memory it
    would not have raised the cost of guessing at all: the guesser is
@@ -54,25 +54,33 @@ interface AttemptThrottle {
   reset(): void;
 }
 
-export function createAttemptThrottle(store?: AttemptStore): AttemptThrottle {
+export function createAttemptThrottle(store?: AttemptStore, mirroredWaitMs = 0): AttemptThrottle {
   const restored = store?.read();
   let wrongAttempts = restored?.wrongAttempts ?? 0;
   let acceptingFrom = restored?.acceptingFrom ?? 0;
+  let elapsedDeadline: number | null = null;
 
   return {
-    /* Capped at what the current count is worth, so a clock that moved -
-       or a stored moment that was tampered into the far future - costs one
-       delay rather than locking the owner out until the date arrives. */
-    remainingMs: (now) =>
-      Math.min(Math.max(0, acceptingFrom - now), delayAfterWrongAttempts(wrongAttempts)),
+    remainingMs(now) {
+      if (elapsedDeadline === null) {
+        // Epoch time restores the wait once. Clock changes after that cannot
+        // shorten it; Android also mirrors the wait outside the WebView.
+        const restoredWait = Math.min(Math.max(0, acceptingFrom - now), delayAfterWrongAttempts(wrongAttempts));
+        elapsedDeadline = performance.now() + Math.max(restoredWait, mirroredWaitMs);
+      }
+      return Math.max(0, elapsedDeadline - performance.now());
+    },
     recordWrong(now) {
       wrongAttempts++;
-      acceptingFrom = now + delayAfterWrongAttempts(wrongAttempts);
+      const delay = delayAfterWrongAttempts(wrongAttempts);
+      acceptingFrom = now + delay;
+      elapsedDeadline = performance.now() + delay;
       store?.write({ wrongAttempts, acceptingFrom });
     },
     reset() {
       wrongAttempts = 0;
       acceptingFrom = 0;
+      elapsedDeadline = 0;
       store?.clear();
     }
   };
