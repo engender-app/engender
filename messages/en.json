@@ -785,7 +785,7 @@
   "dim_social_recognition_low": "unseen",
   "dim_social_recognition_note": "How far the people around you read your gender the way you feel it.",
   "dim_value_placeholder": "e.g. {n}",
-  "disguise_android_gap_note": "Android still shows the app’s real name in Settings, on its app-info screen, and in the widget picker.",
+  "disguise_android_gap_note": "Android still shows the app’s real name in Settings, on its app-info screen, in the widget picker, in notifications and in permission prompts.",
   "disguise_app_sub_android": "the launcher icon and name become a neutral “Notes”, and the app closes briefly to switch",
   "disguise_app_sub_web": "the browser tab shows a neutral “Notes” title and icon, and the app installs under that name",
   "disguise_app_title": "Disguise app",
@@ -1555,7 +1555,7 @@
   "imp_failed": "The import couldn’t be finished. Your journal is exactly as it was.",
   "imp_file_empty": "This file has nothing in it. Nothing was imported.",
   "imp_file_label": "Backup file",
-  "imp_file_placeholder": "Choose a .ttbackup file…",
+  "imp_file_placeholder": "Choose a backup file…",
   "imp_how_label": "How to import",
   "imp_log_n_attachments": [
     {
@@ -2199,7 +2199,7 @@
   "perm_camera_why": "Video notes.",
   "perm_clipboard": "The clipboard",
   "perm_clipboard_why": "The app marks copied recovery keys as sensitive and clears them after a minute, or when you return.",
-  "perm_clipboard_why_web": "Copies the recovery key. The app does not clear the browser clipboard.",
+  "perm_clipboard_why_web": "Copies the recovery key to the system clipboard. After a minute, the app tries to clear it if it still holds the key. Your browser may block this.",
   "perm_exact_alarms": "Exact timing",
   "perm_exact_alarms_why": "A reminder rings at the minute you set.",
   "perm_microphone": "Microphone",

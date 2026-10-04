@@ -14,6 +14,7 @@ import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.util.Log;
 
 import androidx.activity.result.ActivityResult;
 import androidx.annotation.NonNull;
@@ -36,6 +37,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import org.json.JSONArray;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -66,6 +70,7 @@ public class AutoExportPlugin extends Plugin {
     private static final String KEY_DESTINATION_LABEL = "destinationLabel";
     private static final String KEY_PASSWORD_NONCE = "passwordNonce";
     private static final String KEY_PASSWORD_CIPHERTEXT = "passwordCiphertext";
+    private static final String KEY_VERIFIED_BACKUPS = "verifiedBackups";
     private static final String KEY_LAST_SUCCESS_AT = "lastSuccessAt";
     private static final String KEY_LAST_FAILURE_AT = "lastFailureAt";
     private static final String KEY_LAST_FAILURE_REASON = "lastFailureReason";
@@ -309,6 +314,7 @@ public class AutoExportPlugin extends Plugin {
     @PluginMethod
     public synchronized void finishBackup(PluginCall call) {
         DocumentFile target = null;
+        boolean destinationVerified = false;
         try {
             StagedBackup backup = requireTransfer(call);
             long expectedLength = byteCount(call, "byteLength");
@@ -335,9 +341,14 @@ public class AutoExportPlugin extends Plugin {
             try (InputStream input = resolver.openInputStream(target.getUri())) {
                 if (input == null) throw new IllegalStateException("destination-unavailable");
                 StagedBackup.verify(input, expectedLength, sha256);
+                destinationVerified = true;
             }
 
-            clearPendingBackup();
+            // Cleanup failure must never remove the newly verified backup.
+            try { clearPendingBackup(); }
+            catch (IOException cleanup) { Log.w("AutoExport", "Could not remove backup staging file", cleanup); }
+            try { retainVerifiedBackup(folder, target); }
+            catch (Exception cleanup) { Log.w("AutoExport", "Could not prune automatic backups", cleanup); }
             long now = System.currentTimeMillis();
             preferences().edit()
                 .putLong(KEY_LAST_SUCCESS_AT, now)
@@ -348,11 +359,34 @@ public class AutoExportPlugin extends Plugin {
             result.put("writtenAt", now);
             call.resolve(result);
         } catch (Exception e) {
-            if (target != null) {
+            if (target != null && !destinationVerified) {
                 try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
             }
             rejectDelivery(call, e);
         }
+    }
+
+    private void retainVerifiedBackup(DocumentFile folder, DocumentFile target) throws Exception {
+        SharedPreferences prefs = preferences();
+        JSONArray recorded = new JSONArray(prefs.getString(KEY_VERIFIED_BACKUPS, "[]"));
+        List<String> verified = new ArrayList<>();
+        for (int i = 0; i < recorded.length(); i++) verified.add(recorded.getString(i));
+        String uri = target.getUri().toString();
+        verified.remove(uri);
+        verified.add(uri);
+        // Persist ownership before any old document is deleted.
+        if (!prefs.edit().putString(KEY_VERIFIED_BACKUPS, new JSONArray(verified).toString()).commit()) return;
+        List<BackupRetention.Document> documents = new ArrayList<>();
+        for (DocumentFile file : folder.listFiles()) {
+            if (!file.isFile()) continue;
+            documents.add(new BackupRetention.Document() {
+                public String uri() { return file.getUri().toString(); }
+                public String name() { return file.getName(); }
+                public boolean delete() { return file.delete(); }
+            });
+        }
+        BackupRetention.prune(verified, documents);
+        prefs.edit().putString(KEY_VERIFIED_BACKUPS, new JSONArray(verified).toString()).apply();
     }
 
     @PluginMethod

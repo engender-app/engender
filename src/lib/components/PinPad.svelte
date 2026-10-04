@@ -48,13 +48,17 @@
   }
 </script>
 
+<span class="visually-hidden" role="status" aria-atomic="true">
+  {m.pin_progress({ typed: String(value.length), total: String(PIN_LENGTH) })}
+</span>
+
 <!-- Keyed on the refusal count so a wrong PIN gets a fresh row and the
      shake plays once per refusal rather than once per mount. -->
 {#key refusals}
   <div
     class="pin-dots"
     class:is-refused={refusals > 0}
-    aria-label={m.pin_progress({ typed: String(value.length), total: String(PIN_LENGTH) })}
+    aria-hidden="true"
   >
     {#each Array.from({ length: PIN_LENGTH }) as _, i (i)}<span
         class="pin-dot"

@@ -107,7 +107,7 @@ test('the tryouts constraint is what keeps felt-sense rows from being dropped', 
 /** How many felt-sense rows survive applying these sections, in this order. */
 async function applied(sections: readonly ArchiveSection[], journal: ArchiveJournal): Promise<number> {
   const driver = await migratedDb();
-  await driver.transaction(() => applyArchiveJournal({ driver, mode: 'replace', journal, ts: 1 }, sections));
+  await driver.transaction((driver) => applyArchiveJournal({ driver, mode: 'replace', journal, ts: 1 }, sections));
   const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM felt_sense');
   return rows[0].n;
 }
@@ -158,8 +158,8 @@ test('a section added to the registry travels in a packed archive and comes back
 
   const target = await migratedDb();
   await target.run('CREATE TABLE moon_phase (epoch_day INTEGER NOT NULL, phase TEXT NOT NULL)');
-  await target.transaction(() =>
-    applyArchiveJournal({ driver: target, mode: 'replace', journal: opened.payload.journal, ts: 1 }, sections)
+  await target.transaction((driver) =>
+    applyArchiveJournal({ driver, mode: 'replace', journal: opened.payload.journal, ts: 1 }, sections)
   );
 
   const landed = await target.query<{ epoch_day: number; phase: string }>(

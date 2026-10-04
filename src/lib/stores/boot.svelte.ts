@@ -23,7 +23,7 @@
    screen to render already has a vocabulary. */
 
 import { m } from '$lib/paraglide/messages';
-import { boot } from '../data/sqlite/boot';
+import { boot, migrateJournal } from '../data/sqlite/boot';
 import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
 import { prewarmArgon2 } from '../crypto/argon2id';
 import { forgetLastResults } from '../data/live/lastResults';
@@ -80,7 +80,7 @@ import { markUnlocked } from './lock.svelte';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
-import { demoPreferences } from '../data/demo/persona';
+import { demoPreferences, persona } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, type BootState } from './boot-state';
 import { crossBootFailure, openApp } from '../motion/appOpening';
@@ -708,16 +708,24 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
 
   let activeSqlite: WebSqlite | null = null;
   let journal: Journal | null = null;
+  let personaPrepared = false;
 
   const result = await boot({
     createDriver: () => {
       activeSqlite = createJournalSqlite(dataKey);
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
-      setActiveDriver(activeSqlite.driver, activeSqlite.fileOps);
+      setActiveDriver(activeSqlite.driver);
       journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
       return activeSqlite.driver;
     },
+    prepareDatabase: __DEMO__ ? async (driver, fileOps) => {
+      if (activeSqlite!.prepareDemoPersona) {
+        personaPrepared = await activeSqlite!.prepareDemoPersona(persona());
+      } else {
+        await migrateJournal(driver, fileOps);
+      }
+    } : undefined,
     fileOps: {
       preMigrationCopyIsUsable: () => activeSqlite!.fileOps.preMigrationCopyIsUsable(),
       copyDatabaseFile: () => activeSqlite!.fileOps.copyDatabaseFile(),
@@ -762,8 +770,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
        dose log and Today are live while this runs. */
     autoLogDueDoses: async () => {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
-      const written = await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
-      if (written > 0) bump(tablesWrittenBy('doses', 'autoLogDueDoses'));
+      await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
     },
     scheduleHousekeeping: whenIdle
   });
@@ -789,16 +796,13 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
      which empties the journal on purpose - is not undone by the next
      reload. Dropped whole from a production build (ticket 05). */
   if (__DEMO__ && preferences.openedEmpty()) {
-    const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
-    /* Cleared first, and the preferences written last, so an interrupted
-       seed heals itself. Writing the persona is a few thousand statements
-       through a worker, and a tab closed part-way through would otherwise
-       leave a demo that is permanently half-seeded: the preferences would
-       say it had been done, while the journal held only the oldest entries -
-       the persona writes 150 days oldest-first, so what goes missing is
-       exactly the recent data every screen shows. */
-    await clearJournal(journal!);
-    await seedPersonaJournal(journal!);
+    /* The worker prepared the persona before reference hydration. Android and
+       older web canvases keep clear-first, preferences-last journal writes. */
+    if (!personaPrepared) {
+      const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
+      await clearJournal(journal!);
+      await seedPersonaJournal(journal!);
+    }
     for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
       await preferences.set(key, value);
     }

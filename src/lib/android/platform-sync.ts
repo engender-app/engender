@@ -50,6 +50,7 @@ import { resolveAndroidBackAction } from './back-navigation';
 export interface PlatformSyncDeps {
   isAndroid: () => boolean;
   isReady: () => boolean;
+  lockEnabled: boolean;
   todayEpochDay: () => number;
   prefs: {
     checkInEnabled: boolean;
@@ -93,7 +94,7 @@ export interface PlatformSyncDeps {
     consumeLaunchRoute(): Promise<{ route: string | null }>;
   };
   androidDisguise: { setLauncherIdentity(options: { disguised: boolean; palette: string; shape: 'current' | 'round' }): Promise<void> };
-  androidLockTiming: { setTiming(options: { timing: LockAfter }): Promise<void> };
+  androidLockTiming: { setTiming(options: { timing: LockAfter; enabled: boolean }): Promise<void> };
   androidScreenCapture: { setAllowed(options: { allowed: boolean }): Promise<void> };
   androidBackButton: {
     addListener(eventName: 'backButton', listener: () => void): Promise<{ remove(): Promise<void> }>;
@@ -354,7 +355,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     palette: deps.prefs.palette,
     shape: deps.prefs.launcherIconShape
   });
-  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter });
+  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter, enabled: deps.lockEnabled });
   void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture });
 
   stopCurrent = () => {

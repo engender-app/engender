@@ -5,7 +5,10 @@ import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-
 import type { LockAfter } from '../data/prefs/catalogue';
 
 interface LockTimingBridge {
-  setTiming(options: { timing: LockAfter }): Promise<void>;
+  getPinWait(): Promise<{ remainingMs: number }>;
+  setPinWait(options: { remainingMs: number }): Promise<void>;
+  resetPinWait(): Promise<void>;
+  setTiming(options: { timing: LockAfter; enabled: boolean }): Promise<void>;
 }
 
 export const androidLockTiming = registerAndroidPlugin<LockTimingBridge>(androidPluginOwners.lockTiming);

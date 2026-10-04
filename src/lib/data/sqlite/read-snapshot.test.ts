@@ -13,7 +13,7 @@ test('a snapshot waits for an existing transaction and sees its committed rows',
   const db = await migratedDb();
   const entered = latch();
   const release = latch();
-  const writing = db.transaction(async () => {
+  const writing = db.transaction(async (db) => {
     await db.run("INSERT INTO pref (key, value) VALUES ('snapshot-test', 'before')");
     entered.release();
     await release.promise;
@@ -45,7 +45,7 @@ test('plain writes and new transactions wait until a snapshot finishes all its q
   });
   await entered.promise;
   const plain = db.run("INSERT INTO pref (key, value) VALUES ('plain', 'plain')");
-  const transaction = db.transaction(() => db.run("INSERT INTO pref (key, value) VALUES ('transaction', 'transaction')"));
+  const transaction = db.transaction((db) => db.run("INSERT INTO pref (key, value) VALUES ('transaction', 'transaction')"));
   await yieldTurn();
   release.release();
   assert.deepEqual(await snapshot, []);

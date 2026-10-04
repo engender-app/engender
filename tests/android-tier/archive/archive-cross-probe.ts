@@ -29,6 +29,7 @@ import type { SqliteDriver } from '../../../src/lib/data/sqlite/driver.ts';
 import type { PhotoFileStore } from '../../../src/lib/data/journal/journal.ts';
 import { DecryptionFailedError } from '../../../src/lib/crypto/aesGcm.ts';
 import { deriveKey } from '../../../src/lib/crypto/argon2id.ts';
+import { ARCHIVE_ARGON2_PARAMS } from '../../../src/lib/crypto/params.ts';
 import { androidAutoExport } from '../../../src/lib/data/archive/android-auto-export-bridge.ts';
 
 declare global {
@@ -397,7 +398,7 @@ async function runDirection(
 
 async function verifyNativeDerivationParity(checks: Check[]) {
   const salt = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
-  const kdf = { memorySize: 8192, iterations: 1, parallelism: 1, hashLength: 32 };
+  const kdf = ARCHIVE_ARGON2_PARAMS;
   const password = 'cross-derivation-secret';
 
   await androidAutoExport.setPassword({ password });

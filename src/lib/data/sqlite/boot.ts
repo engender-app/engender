@@ -29,6 +29,8 @@ import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
 interface BootDeps {
   createDriver: () => SqliteDriver;
+  /** Demo web boot can prepare the same database in its owning worker. */
+  prepareDatabase?: (driver: SqliteDriver, fileOps: MigrationFileOps) => Promise<void>;
   fileOps: MigrationFileOps;
   applyBootPreferences?: () => void;
   requestPersistentStorage?: () => Promise<boolean>;
@@ -50,7 +52,14 @@ interface BootDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-export function isDatabaseLockedError(error: unknown): boolean {
+export async function migrateJournal(driver: SqliteDriver, fileOps: MigrationFileOps): Promise<void> {
+  await runMigrations(driver, fileOps, {
+    latestVersion: LATEST_SCHEMA_VERSION,
+    load: async () => (await import('./migrations.ts')).migrations
+  });
+}
+
+function isDatabaseLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
   /* "Access Handles cannot be created" (ux-carpet 243) is the web driver's
@@ -114,10 +123,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
          of SQL text across the full schema history, which a journal already on
          the current version has no use for. The dynamic import is what keeps it
          out of the first-load graph, so it has to stay inside this call. */
-      await runMigrations(driver, deps.fileOps, {
-        latestVersion: LATEST_SCHEMA_VERSION,
-        load: async () => (await import('./migrations.ts')).migrations
-      });
+      await (deps.prepareDatabase ?? migrateJournal)(driver, deps.fileOps);
       break;
     } catch (error) {
       if (driver) {

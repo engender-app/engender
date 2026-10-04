@@ -10,6 +10,9 @@ import sqlocal from 'sqlocal/vite';
 export default defineConfig({
   root: import.meta.dirname,
   plugins: [sqlocal()],
+  define: {
+    __DEMO__: JSON.stringify(false)
+  },
   resolve: {
     alias: {
       $lib: resolve(import.meta.dirname, '../../src/lib')

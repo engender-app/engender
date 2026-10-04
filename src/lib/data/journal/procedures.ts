@@ -252,7 +252,7 @@ export function makeProceduresArea(
       await driver.run("UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'procedure' AND target_id = ?", [id]);
       await driver.run('DELETE FROM procedure WHERE uuid = ?', [id]);
       if (checklist) await checklists.deleteChecklist(checklist.id);
-      await removeFilesOf(files, photos);
+      await removeFilesOf(driver, files, photos);
     },
 
     async setNotes(id, notes) {
@@ -375,7 +375,7 @@ export function makeProceduresArea(
         id
       ]);
       await driver.run('DELETE FROM procedure_photo WHERE uuid = ?', [id]);
-      await removeFilesOf(files, rows);
+      await removeFilesOf(driver, files, rows);
     },
 
     getChecklist(procedureId) {

@@ -76,7 +76,7 @@
           if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
           animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS, fill: 'forwards' }));
         }
-        playAfterPaint(part, animations);
+        playAfterPaint(part, animations, { fitArrival: true });
         void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
           if (version === revealVersion) delete revealedPart.dataset.gateRevealing;
           for (const animation of animations) animation.cancel();

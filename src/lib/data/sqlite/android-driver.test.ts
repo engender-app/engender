@@ -30,26 +30,30 @@ beforeEach(() => {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-test('interleaved calls, a transaction among them, all cross before any answers, numbered in call order', async () => {
+test('ordinary calls pipeline, then outside calls wait through transaction commit', async () => {
   const { driver } = createAndroidSqlite('journal');
 
-  void driver.query('SELECT a');
-  void driver.run('INSERT b');
-  const transaction = driver.transaction(async () => {
+  const first = driver.query('SELECT a');
+  const second = driver.run('INSERT b');
+  const transaction = driver.transaction(async (driver) => {
     await driver.run('INSERT inside');
   });
-  void driver.query('SELECT c');
+  const outside = driver.query('SELECT c');
   await flush();
 
-  /* Nothing has answered, and the BEGIN is out: under the old serializer
-     only the open would have crossed by now. */
+  // Ordinary calls cross immediately; BEGIN waits for both to finish.
   expect(sent.map((call) => [call.method, call.options.sql ?? null])).toEqual([
     ['open', null],
     ['query', 'SELECT a'],
-    ['run', 'INSERT b'],
-    ['query', 'SELECT c'],
-    ['beginTransaction', null]
+    ['run', 'INSERT b']
   ]);
+
+  sent[0].answer();
+  sent[1].answer({ rows: [] });
+  sent[2].answer({ changes: 1, lastInsertRowid: 1 });
+  await Promise.all([first, second]);
+  await flush();
+  expect(sent.at(-1)!.method).toBe('beginTransaction');
 
   // The transaction's own statement goes once its BEGIN has answered.
   sent.at(-1)!.answer();
@@ -60,6 +64,10 @@ test('interleaved calls, a transaction among them, all cross before any answers,
   expect(sent.at(-1)!.method).toBe('commitTransaction');
   sent.at(-1)!.answer();
   await transaction;
+  await flush();
+  expect(sent.at(-1)!.options.sql).toBe('SELECT c');
+  sent.at(-1)!.answer({ rows: [] });
+  await outside;
 
   const session = sent[0].options.session;
   expect(typeof session).toBe('string');

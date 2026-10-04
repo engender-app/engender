@@ -27,6 +27,7 @@ import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './sqlocal-driver.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
+import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -51,12 +52,16 @@ const liveConnections = new Set<Connection>();
 /** One worker and the message plumbing over it. Two things are built on
     this: the driver below, and ticket 10's conversion, which needs the same
     pool and the same encryption shim but no open database. */
-function connectWorker() {
+function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
   const worker = new Worker(new URL('./mc-worker.ts', import.meta.url), { type: 'module' });
   /* Taken now rather than read at each post, so a connection waits only for
      the recoveries started before it - which is also what keeps a recovery
      worker from waiting for itself. */
-  const poolFree = recovering;
+  // Demo HTML can supply the same module bytes before the worker fetches them.
+  // Hold every message so attach still precedes open, even while fetching.
+  let suppliedWasm: ArrayBuffer | undefined;
+  const binaryReady = wasmBinary?.then((bytes) => { suppliedWasm = bytes; });
+  const poolFree = binaryReady ? Promise.all([recovering, binaryReady]) : recovering;
 
   let nextId = 0;
   const pending = new Map<number, { resolve: (value: never) => void; reject: (reason: Error) => void }>();
@@ -80,12 +85,14 @@ function connectWorker() {
      Remembered, so the `open` that comes later fails with the same cause
      and boot reports it rather than waiting forever. */
   let stopped: Error | null = null;
-  worker.onerror = (event: ErrorEvent) => {
-    const failure = new Error(`the database worker stopped: ${event.message || 'no message'}`);
+  function fail(failure: Error) {
     stopped = failure;
     for (const waiter of pending.values()) waiter.reject(failure);
     pending.clear();
-  };
+  }
+  worker.onerror = (event: ErrorEvent) =>
+    fail(new Error(`the database worker stopped: ${event.message || 'no message'}`));
+  void poolFree?.catch((error) => fail(error instanceof Error ? error : new Error(String(error))));
 
   function post<T>(op: string, args: Record<string, unknown> = {}, transfer: Transferable[] = []): Promise<T> {
     if (stopped) return Promise.reject(stopped);
@@ -94,12 +101,20 @@ function connectWorker() {
       pending.set(id, { resolve, reject });
       /* In the order posted: every post waits on the same promise, and its
          callbacks run in the order they were attached. Straight through when
-         nothing is recovering, which is every boot that did not fail. */
-      if (!poolFree) worker.postMessage({ id, op, args }, transfer);
+         no recovery or supplied module is pending. */
+      function send() {
+        if (op === 'attach' && suppliedWasm) {
+          args = { ...args, wasmBinary: suppliedWasm };
+          transfer = [suppliedWasm];
+          suppliedWasm = undefined;
+        }
+        worker.postMessage({ id, op, args }, transfer);
+      }
+      if (!poolFree) send();
       else
         void poolFree.then(() => {
-          if (!stopped) worker.postMessage({ id, op, args }, transfer);
-        });
+          if (!stopped) send();
+        }, () => {});
     });
   }
 
@@ -169,7 +184,7 @@ if (typeof window !== 'undefined') {
    boot() reports as the journal failing to open. */
 let prewarmed: { path: string; connection: Connection; attached: Promise<void> } | null = null;
 
-export function prewarmJournalWorker(databasePath: string): Promise<void> {
+export function prewarmJournalWorker(databasePath: string, wasmBinary?: Promise<ArrayBuffer>): Promise<void> {
   if (!prewarmed) {
     /* A worker that cannot even be constructed (a policy that refuses
        module workers throws on `new Worker`) must not take startBoot down
@@ -177,7 +192,7 @@ export function prewarmJournalWorker(databasePath: string): Promise<void> {
        constructs its own inside boot(), where that failure is a boot error. */
     let connection: Connection;
     try {
-      connection = connectWorker();
+      connection = connectWorker(wasmBinary);
     } catch (error) {
       return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     }
@@ -350,5 +365,17 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     return navigator.storage.persist();
   }
 
-  return { driver, fileOps, requestPersistentStorage };
+  return {
+    driver,
+    fileOps,
+    requestPersistentStorage,
+    ...(typeof __DEMO__ !== 'undefined' && __DEMO__ && typeof OffscreenCanvas !== 'undefined' ? {
+      prepareDemoPersona: (source: ReturnType<typeof import('../demo/persona').persona>) =>
+      post<boolean | { foundVersion: number; knownVersion: number } | { interruptedRestore: true }>('seedDemoPersona', { source })
+        .then((result) => {
+          if (typeof result === 'boolean') return result;
+          if ('foundVersion' in result) throw new SchemaTooNewError(result.foundVersion, result.knownVersion);
+          throw new InterruptedRestoreError();
+        }) } : {})
+  };
 }
