@@ -4024,6 +4024,8 @@
   "wrapped_week_range": "{from} to {to}",
   "wrapped_week_title": "Your week",
   "wrapped_year_close": "That was {year}, in your own words.",
+  "wrapped_year_day_none": "Not logged",
+  "wrapped_year_days_disclosure": "Every day as a list",
   "wrapped_year_figures": "The year in figures",
   "wrapped_year_intro": "Twelve months, as you logged them.",
   "wrapped_year_months": "Month by month",
