@@ -1,4 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { progressiveReleaseProblems } from '../scripts/check-progressive-release.mjs';
 import {
@@ -87,6 +91,20 @@ function progressiveTemplate() {
   return JSON.parse(readFileSync('scripts/progressive-release-record.template.json', 'utf8'));
 }
 
+function pendingRecord() {
+  const record = fullRecord();
+  for (const stage of STAGE_ORDER as Array<keyof typeof record.stages>) {
+    record.stages[stage].passedAt = '';
+    record.stages[stage].releaseMatrix.ranAt = '';
+    for (const check of RELEASE_MATRIX_CHECKS) record.stages[stage].releaseMatrix.checks[check as keyof ReturnType<typeof baseMatrix>['checks']] = false;
+    for (const key of Object.keys(record.stages[stage].evidence)) (record.stages[stage].evidence as Record<string, boolean>)[key] = false;
+  }
+  for (const channel of ['web', 'play', 'obtainium', 'fdroid'] as const) {
+    record.channels[channel] = { state: 'label-only', switchedAt: '' };
+  }
+  return record;
+}
+
 describe('progressiveReleaseProblems', () => {
   it('fails malformed top-level structure', () => {
     const problems = progressiveReleaseProblems({ releaseVersion: '' }, 'stage1');
@@ -96,6 +114,75 @@ describe('progressiveReleaseProblems', () => {
 
   it('passes a record that satisfies every stage and channel gate', () => {
     expect(progressiveReleaseProblems(fullRecord(), 'stable')).toEqual([]);
+  });
+
+  it('defaults to the highest claimed stage while later stages remain pending', () => {
+    const released = fullRecord();
+    const record = pendingRecord();
+    record.stages.stage1 = released.stages.stage1;
+    record.channels.web = released.channels.web;
+    expect(progressiveReleaseProblems(record)).toEqual([]);
+  });
+
+  it('rejects a missing stage in an unreleased record rather than passing an empty baseline', () => {
+    const record = { releaseVersion: '1.0.0', stages: {}, channels: {
+      web: { state: 'label-only' }, play: { state: 'label-only' },
+      obtainium: { state: 'label-only' }, fdroid: { state: 'label-only' }
+    } };
+    expect(progressiveReleaseProblems(record)).toContain('Missing stage record: stage1');
+  });
+
+  it('reads the tracked default record on a clone without local docs', () => {
+    const root = mkdtempSync(join(tmpdir(), 'progressive-release-'));
+    try {
+      mkdirSync(join(root, 'scripts'));
+      writeFileSync(join(root, 'scripts/progressive-release-record.json'), JSON.stringify(pendingRecord()));
+      const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/check-progressive-release.mjs', import.meta.url))], { cwd: root, encoding: 'utf8' });
+      expect(result.stderr).toBe('');
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('PASS progressive release record is valid through unreleased.');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('validates every pending exercise field even before any stage is claimed', () => {
+    const record = pendingRecord();
+    (record.stages.stage2.evidence as Record<string, unknown>).androidApi26 = 'pending';
+    expect(progressiveReleaseProblems(record)).toContain('stage2.evidence.androidApi26 must be a boolean.');
+  });
+
+  it('requires the whole stage when only one piece of its evidence is claimed', () => {
+    const record = pendingRecord();
+    record.stages.stage3.evidence.signedGithubReleaseApk = true;
+    const problems = progressiveReleaseProblems(record);
+    expect(problems).toContain('stage3.passedAt must be an ISO timestamp.');
+    expect(problems).toContain('stage3.releaseMatrix.checks.rollback must be true.');
+    expect(problems).toContain('stage1.evidence.hostedWebBeta must be true.');
+  });
+
+  it('does not hide an invalid stage timestamp by falling back to an earlier stage', () => {
+    const record = pendingRecord();
+    record.stages.stage4.passedAt = 'yesterday';
+    expect(progressiveReleaseProblems(record)).toContain('stage4.passedAt must be an ISO timestamp.');
+    expect(progressiveReleaseProblems(record)).toContain('stage4.evidence.fdroidRebuildPassed must be true.');
+  });
+
+  it('infers a live channel claim even if its stage has no passed timestamp', () => {
+    const record = pendingRecord();
+    record.channels.play = { state: 'live', switchedAt: '2026-08-15T10:30:00Z' };
+    expect(progressiveReleaseProblems(record)).toContain('stage3.evidence.playOpenTesting must be true.');
+  });
+
+  it('keeps explicit readiness checks strict for an unreleased record', () => {
+    expect(progressiveReleaseProblems(pendingRecord(), 'stage1')).toContain('stage1.passedAt must be an ISO timestamp.');
+    expect(progressiveReleaseProblems(pendingRecord(), 'stable')).toContain('stable.evidence.rollback must be true.');
+  });
+
+  it('still defaults to stable when stable is claimed and fails incomplete evidence', () => {
+    const record = fullRecord();
+    record.stages.stable.evidence.rollback = false;
+    expect(progressiveReleaseProblems(record)).toContain('stable.evidence.rollback must be true.');
   });
 
   it('fails when the release matrix did not pass before a stage', () => {
