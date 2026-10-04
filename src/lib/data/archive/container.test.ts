@@ -193,6 +193,20 @@ test('a header asking for absurd KDF iterations is refused as unreadable, before
   );
 });
 
+test('forged KDF output lengths are refused before derivation', async () => {
+  for (const hashLength of [16, 64, 1_000_000]) {
+    const json = validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, hashLength } });
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(json)))), CorruptArchiveError);
+  }
+});
+
+test('forged KDF parallelism above four is refused before derivation', async () => {
+  for (const parallelism of [5, 1_000_000]) {
+    const json = validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, parallelism } });
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(json)))), CorruptArchiveError);
+  }
+});
+
 test('a header merely heavier than today\'s profile still imports, so the cap does not defeat re-tuning', async () => {
   const heavier = { ...ARCHIVE_ARGON2_PARAMS, memorySize: ARCHIVE_ARGON2_PARAMS.memorySize * 4, iterations: ARCHIVE_ARGON2_PARAMS.iterations * 4 };
   const json = validHeaderJson({ kdf: heavier });
