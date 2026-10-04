@@ -576,7 +576,9 @@ try {
     header.append(a);
   }, hrefs[1]);
   await page.locator('[data-probe-next-entry]').click();
-  await page.waitForFunction((want) => location.pathname === want, hrefs[1], { timeout: 10000 });
+  /* An entry link carries the list it came from (`?from=`, ticket 03),
+     so the arrival is the path alone. */
+  await page.waitForFunction((want) => location.pathname === new URL(want, location.href).pathname, hrefs[1], { timeout: 10000 });
   await page.waitForSelector('#ed-note');
   await page.waitForTimeout(600);
   const second = await page.locator('#ed-note').inputValue();
@@ -1397,11 +1399,14 @@ try {
   await page.waitForSelector('[data-sheet] [data-entry-card]');
   const opens = page.locator('[data-sheet] [data-entry-card]').first();
   const href = await opens.getAttribute('href');
-  if (!/^\/entry\/\d+$/.test(href ?? '')) {
+  /* The entry, and the list it came from (`?from=`, ticket 03) so save
+     and delete return there. */
+  if (!/^\/entry\/\d+(\?from=[^&]+)?$/.test(href ?? '')) {
     throw new Error('a tag insight entry links nowhere in particular: ' + href);
   }
   await opens.click();
-  await page.waitForURL('**' + href);
+  const entryPath = new URL(href, BASE).pathname;
+  await page.waitForURL((url) => url.pathname === entryPath);
   /* And it is the editor for that entry rather than a screen that merely
      answers to the URL - #ed-note is the note field every other editor
      flow in this file waits on. */
@@ -3926,7 +3931,7 @@ try {
   const resurfaced = sixMonthSection.locator('[data-entry-card]');
   if (!(await resurfaced.count())) throw new Error('a resurfaced day shows no entries');
   const opens = await resurfaced.first().getAttribute('href');
-  if (!/^\/entry\/\d+$/.test(opens ?? '')) throw new Error('a resurfaced entry opens ' + opens);
+  if (!/^\/entry\/\d+(\?from=[^&]+)?$/.test(opens ?? '')) throw new Error('a resurfaced entry opens ' + opens);
   if (await sixMonthSection.locator('[data-chart="area"]').count()) {
     throw new Error('the chart that cannot draw over one day is back');
   }

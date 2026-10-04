@@ -39,7 +39,8 @@
   import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
-  import { motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, crossfadeDuration, motionDuration } from '$lib/motion/tokens';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
   import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
   import AccessModeSetup, {
@@ -119,6 +120,28 @@
   ];
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
+  /* Settings' "Delete everything" lands here (phase 14 ticket 15). The
+     wipe cannot be undone, so its result stays on the welcome as a line
+     rather than a toast that fades. */
+  const erasedOnEntry = untrack(() => page.url.searchParams.get('erased') === '1');
+  /* Read once, then taken off the address, so a reload part way through
+     setup does not announce the wipe a second time. replaceRoute rather
+     than history.replaceState, which page.url never sees. */
+  $effect(() => {
+    if (untrack(() => page.url.searchParams.has('erased'))) void replaceRoute('/onboarding');
+  });
+  /* The line arrives after the page it sits on rather than with it: the
+     welcome is the same screen setup always opens on, and the one new thing
+     on it fades up once the rest is there. A fade rather than a travel, so
+     it survives reduced motion as the contract's crossfade. */
+  function erasedArrival(node: HTMLElement) {
+    node.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: Math.max(motionDuration('--dur-slow'), crossfadeDuration()),
+      delay: motionDuration('--dur-fast'),
+      easing: EASE_OUT_CSS,
+      fill: 'backwards'
+    });
+  }
   let step = $state<OnboardingStep>(restoreOnEntry ? 'restore' : 'welcome');
 
   let name = $state('');
@@ -748,6 +771,7 @@
                  pitch is the one exception in the flow and it sits in this
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
+              {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
               <p class="setup-def">{m.ob_welcome_def()}</p>
               <p class="setup-line is-pitch">{m.ob_welcome_body()}</p>
             {:else if line}
@@ -1386,6 +1410,13 @@
      the same voice. */
   .setup-def {
     font-style: italic;
+  }
+  /* What a wipe from Settings left behind (phase 14 ticket 15): a result
+     rather than a description, so it reads in the text colour above the
+     welcome's own muted lines. */
+  .setup-line.is-result {
+    margin-top: 0;
+    color: var(--text);
   }
   .setup-line.is-pitch {
     font-weight: var(--weight-regular);
