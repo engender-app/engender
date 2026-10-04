@@ -82,6 +82,7 @@
   import {
     EASE_OUT,
     EASE_OUT_CSS,
+    EASE_OUT_SOFT_CSS,
     crossfadeDuration,
     fadeOnly,
     isReducedMotion,
@@ -323,7 +324,7 @@
         { transform: from, transformOrigin: '0 0' },
         { transform: 'none', transformOrigin: '0 0' }
       ],
-      { duration, easing: EASE_OUT_CSS, fill: 'forwards' }
+      { duration, easing: EASE_OUT_SOFT_CSS, fill: 'forwards' }
     );
     const settle = () => {
       el.style.transform = '';
@@ -388,8 +389,14 @@
        it, so nothing under the month arrives at its new place in the frame
        of the tap. It is motion/reveal.ts's, beside disclose and resize,
        because animating a height is the performance contract's one named
-       exception and every spend of it is tracked in that one file. */
-    maskHeight(body, from, duration);
+       exception and every spend of it is tracked in that one file.
+
+       Panel and days run on --ease-out-soft, the curve for a long travel
+       setting off (phase 14 ticket 28). On --ease-out the farthest day, 427px
+       from its bar on a 390px phone, covered 19% of that, 81px, in its first
+       frame: continuous, but a lurch. Soft it is 4%, 18px, and no frame
+       moves it more than 46px. */
+    maskHeight(body, from, duration, EASE_OUT_SOFT_CSS);
     for (const box of regroupSteps(swatches, boxesOf('data-cal-cell'))) {
       travel(box, 'data-cal-cell', duration, true);
     }

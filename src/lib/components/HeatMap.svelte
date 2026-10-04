@@ -829,6 +829,10 @@
     margin-inline: -4px;
     padding-inline: 4px;
   }
+  /* The focus ring stays round the day it was round before, 2px out from
+     the drawn column, rather than following the link out to the middle of
+     the gap, where it all but touched the next day's swatch. */
+  .cal-grid:not(.is-compact) .cal-day:focus-visible { outline-offset: -2px; }
 
   .cal-cell {
     position: relative;

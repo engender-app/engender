@@ -1241,8 +1241,11 @@ const masks = new WeakMap<HTMLElement, { count: number; overflow: string; rows: 
  * Reduced motion is the caller's to check, since the caller is also deciding
  * whether to animate the marks inside the box; there is nothing here to
  * substitute a fade for.
+ *
+ * `easing` is whatever curve the travel inside the box runs on, so the clip
+ * edge and the content keep pace.
  */
-export function maskHeight(node: HTMLElement, from: number, duration: number): void {
+export function maskHeight(node: HTMLElement, from: number, duration: number, easing = EASE_OUT_CSS): void {
   /* A second travel can start inside the first (a month tapped twice). The
      box's own styles are saved once, by the first, and put back by the last
      to settle: saved per call, the second took the first's clip and pinned
@@ -1267,7 +1270,7 @@ export function maskHeight(node: HTMLElement, from: number, duration: number): v
   node
     .animate([{ height: `${from}px` }, { height: `${node.getBoundingClientRect().height}px` }], {
       duration,
-      easing: EASE_OUT_CSS
+      easing
     })
     .finished.then(settle, settle);
 }
