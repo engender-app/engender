@@ -222,7 +222,7 @@ interface SpineFacts {
 }
 
 /** The most recent dose that actually happened, or null when none did. */
-export function lastLoggedDose(doses: readonly DoseEvent[]): DoseEvent | null {
+function lastLoggedDose(doses: readonly DoseEvent[]): DoseEvent | null {
   let latest: DoseEvent | null = null;
   for (const dose of doses) {
     if (dose.status === 'skipped') continue;

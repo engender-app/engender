@@ -22,7 +22,7 @@ import { localDateFromEpochDay } from '../epochDay';
 /** Which table a photograph came from. `entry` and `milestone` are the two
     owners of the `photo` table; the rest each have one of their own
     (journal/photoLibrary.ts names them). */
-export const PHOTO_SOURCES = [
+const PHOTO_SOURCES = [
   'entry',
   'milestone',
   'hair',
@@ -54,7 +54,7 @@ export interface LibraryPhoto {
 
 /** The chips over the grid, in the order they are drawn. `everything` is
     first because it is where the library opens. */
-export const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'] as const;
+const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'] as const;
 
 export type PhotoChip = (typeof PHOTO_CHIPS)[number];
 

@@ -456,7 +456,7 @@ function readStripes(doc: Document): string[] {
     tests/palette-contrast.test.ts holds every flag's pair to that floor and
     to the table DIRECTION.md prints. Ticket 23 publishes the pair beside the
     roles; this is the arithmetic it publishes. */
-export const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8' };
+const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8' };
 
 export interface FlagField {
   hex: string;

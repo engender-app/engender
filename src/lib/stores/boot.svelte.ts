@@ -704,7 +704,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       activeSqlite = createJournalSqlite(dataKey);
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
-      setActiveDriver(activeSqlite.driver, activeSqlite.fileOps);
+      setActiveDriver(activeSqlite.driver);
       journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
       return activeSqlite.driver;
     },
