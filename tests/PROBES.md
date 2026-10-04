@@ -29,6 +29,40 @@ results. Browser fixtures, walkthroughs, installed PWA and hosting run in
 separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
+## Walkthrough groups
+
+`walkthrough-groups` (`tests/walkthrough-groups.mjs`) assigns contiguous flow ranges to four hosted jobs.
+Run one with `node tests/walkthrough.test.mjs --group journal` after
+`VITE_DEMO=1 ENGENDER_VERSION=9.9.9-walkthrough npm run build`. The other group
+names are `setup`, `features` and `actions`; `--list` prints their inventory.
+No group argument keeps the continuous walkthrough available. `--only` is a
+partial diagnostic run in either mode and does not prove the whole group.
+
+Each process owns a new browser context and origin, including OPFS, IndexedDB
+and localStorage. Initialization explicitly resets the synthetic journal and
+waits for the demo control's database writes to finish. Each hosted job owns
+its checkout and build. Concurrent local runs may read the same completed
+walkthrough build; do not rebuild underneath them. Diagnostic files and JSON
+results use a unique `ci-logs/walkthrough-<group>-*` directory. CI keeps these
+results for seven days, including passing runs, and reports per-flow durations
+in the job summary. The browser matrix remains part of `All required checks`;
+a failed group does not cancel its siblings.
+
+| Group | Starting state and retained sequence | Baseline flow span |
+| --- | --- | --- |
+| journal | Alice persona. Entry writes remain before search; stale-backup notice stays before archive and CSV exports. | 193 seconds |
+| setup | Alice persona. Onboarding variants stay together; the forgotten-PIN reset restores the persona before wrapped and comparison. Journal-book reset stays before regimen and route checks. | 296 seconds |
+| features | Alice persona. The demo-jump overlap check stays before fill-every-feature and its consumers. Coming-back restores the full fixture before letters, comparison, import, injection map and eras. | 205 seconds |
+| actions | Alice persona plus the full fixture, needed by quick-add dose. Tally reset stays before appointments; effects reset stays before media. Recovery-key creation, mode changes and recovery at the gate stay together at the end. | 263 seconds |
+
+The split uses timestamps from passing [Checks run 37223064935](https://github.com/engender-app/engender/actions/runs/37223064935),
+job 111497183448. The unsplit job took 1064 seconds (17.73 runner minutes),
+including setup and build. The spans above exclude preparation and are not a
+claim about parallel speed. No assertion or fixture scale was reduced. The
+two quick-add tally cases now share a named flow so selection cannot run them
+outside their group. `walkthrough-groups.test.ts` checks complete ordered
+coverage and the command's selection behavior.
+
 ## Guards
 
 Pass/fail checks: each exits non-zero when what it holds stops being true.
