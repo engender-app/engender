@@ -7,6 +7,7 @@ import { execute, writeSummary } from './check-process.mjs';
 /** @type {Record<string, Check[]>} */
 export const CI_CHECKS = {
   node: [
+    { id: 'ai-directories', name: 'Untracked AI working directories', command: 'npm', args: ['run', 'check:ai-directories'] },
     { id: 'build', name: 'Production build', command: 'npm', args: ['run', 'build'] },
     { id: 'types', name: 'Svelte and TypeScript', command: 'npm', args: ['run', 'check'], requires: ['build'] },
     { id: 'node', name: 'Node tier', command: 'npm', args: ['test', '--', '--maxWorkers=2'], requires: ['build'] },
