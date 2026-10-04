@@ -42,8 +42,8 @@
 
      The handles are the app's own - `data-entry-card` for the row and
      `data-entry-note` for its note - rather than a second vocabulary for
-     the thing EntryCard already carries on search, on a day and on the
-     timeline (ADR-0029). Same concept, same handle, whichever surface it is
+     the thing the old EntryCard carried before every list of entries came
+     here (ADR-0029; the last three moved in phase 14 ticket 18). Same concept, same handle, whichever surface it is
      drawn on.
 
      Where it opens, it is also the source half of the app's one container
@@ -140,10 +140,12 @@
 {/snippet}
 
 {#if href}
-  <!-- The transition name lives on `.kit-entry-bg`, not on this element -
-       see EntryCard.svelte's own comment, the same fix for the same reason
-       (a row's note text does not want to be part of a rasterised image
-       scaled 4-8x into a full screen). -->
+  <!-- The transition name lives on `.kit-entry-bg`, not on this element: a
+       view transition captures a named element as one rasterised image and
+       scales it 4-8x into a full screen, and a row's note text riding inside
+       that image read as a heading-sized blow-up (Alicja, 2026-08-27: "the
+       ridiculous huge text transition"). The plain fill grows; the content
+       crossfades with the screen. -->
   <a
     class="kit-entry"
     data-entry-card={key}

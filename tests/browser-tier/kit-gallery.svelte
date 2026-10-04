@@ -232,7 +232,7 @@
   </ListCard>
 
   <p class="gallery-note">Day card, role 2 on the date bar, entries on a timeline</p>
-  <DayCard key="20324" date="Monday 24 August" aside="3 entries" role={roleAt(roles, 1)}>
+  <DayCard key="20324" heading="Monday 24 August" role={roleAt(roles, 1)}>
     <DayEntry
       key="a"
       time="08:20"

@@ -39,6 +39,8 @@
    above the window's top edge, where the only thing to uncover is the page
    the fieldless screen is drawn on anyway. */
 
+import { EASE_OUT_SOFT_POINTS } from './tokens';
+
 /** What an opening blind takes where nothing overshoots: the content's own
     curve, so the two move as one and no band of page can open between
     them. */
@@ -189,7 +191,8 @@ export function travelOvershoot(travel: number): number {
     settle has to be built on cannot be a var() - and
     src/lib/motion/blindSettle.test.ts holds both to the tokens. */
 export const EASE_OUT_POINTS = [0.22, 1, 0.36, 1] as const;
-export const EASE_OUT_SOFT_POINTS = [0.38, 0.32, 0.2, 1] as const;
+// --ease-out-soft's points live in tokens.ts beside the string form of the curve.
+export { EASE_OUT_SOFT_POINTS };
 
 type Bezier = readonly [number, number, number, number];
 

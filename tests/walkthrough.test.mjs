@@ -6389,8 +6389,8 @@ try {
   if ((await spoken()).length) throw new Error('reading the screen spoke');
 
   /* Repeated actions and repeated undos, each answered with the new value:
-     1 seeded, 2, 3, back down to the zero the seed never shows - and one
-     more log on top of zero, because an empty counter must still answer. */
+     1 seeded, 2, 3, back down to the seeded 1 - and then undo stops,
+     because the seed's tap is from an earlier day (release audit U6). */
   await page.locator('[data-tally-log="misgendered"]').click();
   const afterLog = await nextSpoken(await spoken());
   startsWithKind(afterLog, 'Misgendered');
@@ -6408,16 +6408,18 @@ try {
   const afterSecondUndo = await nextSpoken(afterUndo);
   if (count(afterSecondUndo) !== 1) throw new Error(`the second undo announced "${afterSecondUndo}"`);
 
-  /* The last undo removes the seed's own newest event, so the visible count
-     lands on zero and says so - a zero count is an answer, not a blank. */
-  await page.locator('[data-tally-undo="misgendered"]').click();
-  const afterZero = await nextSpoken(afterSecondUndo);
-  if (count(afterZero) !== 0) throw new Error(`the zero-count undo announced "${afterZero}"`);
+  /* Undo reaches today's taps only: the seed's tap from twenty days ago is
+     still counted, and undo is disabled rather than hard-deleting it. Each
+     undo that did run named its day in a toast. */
+  if (!(await page.locator('[data-tally-undo="misgendered"]').isDisabled()))
+    throw new Error('undo stayed enabled with only an earlier day left to remove');
+  if ((await page.locator('[data-toast-kind="tally-undone"]').count()) < 1)
+    throw new Error('an undo said nothing on screen about the day it removed from');
 
-  /* And zero is not a dead end: one more log on top of it answers one. */
+  /* And the counter still takes a log on top of the seed. */
   await page.locator('[data-tally-log="misgendered"]').click();
-  const afterRevive = await nextSpoken(afterZero);
-  if (count(afterRevive) !== 1) throw new Error(`logging onto zero announced "${afterRevive}"`);
+  const afterRevive = await nextSpoken(afterSecondUndo);
+  if (count(afterRevive) !== 2) throw new Error(`logging after the undos announced "${afterRevive}"`);
 
   /* The other counter is independent: its actions move only their own
      count, which the misgendered numbers above no longer explain. */
@@ -6433,7 +6435,7 @@ try {
   /* Reading the screen never writes: this flow navigated, moved the range,
      read and pressed the labelled actions - the numbers above are what the
      actions moved, and nothing moved on its own. */
-  ok('tally: each counter logs and undos beside its own chart, announces the changed value, and reaches zero honestly');
+  ok('tally: each counter logs and undos beside its own chart, announces the changed value, and undo never reaches an earlier day');
 } catch (e) { fail('tally in-context actions', e); }
 });
 

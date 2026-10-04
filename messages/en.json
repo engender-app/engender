@@ -490,6 +490,8 @@
   "colour_palette": "Colour palette",
   "coloured_by": "coloured by",
   "comfort_list_add": "Add something",
+  "comfort_list_arrange": "Arrange",
+  "comfort_list_arrange_hint": "Drag a thing by its handle, or move it with the arrow keys.",
   "comfort_list_delete": "Remove",
   "comfort_list_delete_hint": "This cannot be undone.",
   "comfort_list_delete_q": "Remove “{text}”?",
@@ -499,7 +501,7 @@
   "comfort_list_empty_title": "A list for harder moments",
   "comfort_list_item_label": "What helps",
   "comfort_list_item_placeholder": "e.g. text a friend, walk to the park",
-  "comfort_list_move_up_aria": "Move {text} up",
+  "comfort_list_move": "Move {text}",
   "comfort_list_new_sheet": "Add something that helps",
   "comfort_list_save": "Save",
   "comfort_list_title": "Things that help",
@@ -881,7 +883,7 @@
   "documents_empty_action": "Add a document",
   "documents_empty_body": "Photos and PDFs stay encrypted on this device. Paperwork without the paper pile.",
   "documents_empty_title": "No documents yet",
-  "documents_intro": "Search finds titles only. The app doesn't read the text on the pages.",
+  "documents_search_note": "Search finds titles, not the text on the pages.",
   "documents_summary": [
     {
       "declarations": [
@@ -1171,7 +1173,6 @@
   "entry_cycle_event_chip_period": "Period",
   "entry_cycle_event_chip_spotting": "Spotting",
   "entry_cycle_event_title": "Cycle tracking",
-  "entry_day_count": "{count} that day",
   "entry_delete_failed": "Couldn’t delete this entry.",
   "entry_dose_quick_log": "Log {dose}{unit} {drug} taken",
   "entry_hrt_effects_chip": "Noticed a physical change?",
@@ -1182,7 +1183,6 @@
   "entry_hrt_effects_search": "Search effects",
   "entry_hrt_effects_sheet_title": "Record a physical change",
   "entry_hrt_effects_show_all": "Show all effects",
-  "entry_mood_aria": "mood: {name}",
   "entry_no_note": "No note was added",
   "entry_nudges": "Entry nudges",
   "entry_nudges_sub": "Offer to add details after you save just your mood.",
@@ -1920,7 +1920,6 @@
   "mood_4": "good",
   "mood_5": "great",
   "mood_colours": "Mood colours",
-  "mood_none": "no mood",
   "mood_preset_amber": "Amber",
   "mood_preset_moss": "Moss",
   "mood_preset_plum": "Plum",
@@ -2902,7 +2901,7 @@
     }
   ],
   "roadmap_track_switch_label": "Track",
-  "safe_space_breathing_desc": "Follow the inhale, hold and exhale prompts.",
+  "safe_space_breathing_desc": "Breathe in for 4, hold for 4, out for 4, hold for 4.",
   "safe_space_breathing_exhale": "Exhale",
   "safe_space_breathing_hold": "Hold",
   "safe_space_breathing_inhale": "Inhale",
@@ -3071,6 +3070,7 @@
   "stats_reading_unknown_body": "The readings are on Look back. Pick one there.",
   "stats_reading_unknown_title": "No such reading",
   "stats_readings_group": "Readings",
+  "stats_scale_each_day": "One scale, each day",
   "stats_scales_now": "Each scale, this period",
   "stats_tag_share": "What you write about",
   "stats_tag_share_note": "tag uses in range",
@@ -3337,8 +3337,9 @@
   "tally_misgendered": "Misgendered",
   "tally_trend_sub": "Misgendering and correct gendering, over time.",
   "tally_trend_title": "Tally",
-  "tally_undo_correctly_gendered": "Undo correct gendering",
-  "tally_undo_misgendered": "Undo misgendering",
+  "tally_undo_correctly_gendered": "Undo today's correct gendering",
+  "tally_undo_misgendered": "Undo today's misgendering",
+  "tally_undone": "{kind}: removed one from {date}.",
   "theme": "Theme",
   "theme_dark": "Dark",
   "theme_light": "Light",
@@ -3951,6 +3952,7 @@
   "words_return_to_reading": "Return to Words that stand out",
   "words_scope_era": "Era: {name} · Whole journal baseline",
   "words_scope_mode": "Mode: {name} · Whole journal baseline",
+  "words_tile_note": "Stands out in {name}",
   "words_times": [
     {
       "declarations": [

@@ -200,7 +200,11 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.documents_title()} back="/more" subtitle={m.documents_intro()}>
+  <!-- No subtitle: the screen used to open on what it cannot do ("Search
+       finds titles only") before saying what it holds (release audit U17).
+       That line now sits under the summary row, where the pile it
+       qualifies is counted. -->
+  <ScreenHeader title={m.documents_title()} back="/more">
     {#snippet actions()}
       <button
         class="icon-btn press"
@@ -219,7 +223,13 @@
       {#if totalBytes !== null}
         <div class="screen-part" data-documents-present-reading>
           <ListCard role={roleAt(activeFlag.roles, 0)}>
-            <ListRow static data-documents-summary icon="documents" title={documentsSummaryText(documents.length, totalBytes)} />
+            <ListRow
+              static
+              data-documents-summary
+              icon="documents"
+              title={documentsSummaryText(documents.length, totalBytes)}
+              subtitle={m.documents_search_note()}
+            />
           </ListCard>
         </div>
       {/if}
