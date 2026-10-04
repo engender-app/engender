@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData, type LocalDataTargets } from './reset.ts';
+import { androidResetTargets, clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData, type LocalDataTargets } from './reset.ts';
 import { RECOVERY_KEY_FILE } from './recovery-key-file.ts';
 import { BOOT_ACCESS_MODE_KEY, BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
@@ -269,4 +269,36 @@ test('photos that will not delete keep the key, so the reset can be retried', as
     })
   ).rejects.toThrow('could not delete photos');
   expect(log).toEqual(['database']);
+});
+
+/* Phase 14 ticket 15: Settings' Delete everything reaches resetApp on
+   Android too, where a journal in Unlocked mode has no gate. What resetApp
+   hands wipeLocalData there is built here, so the wiring is checked against
+   fake bridges: the database, the photo files, the data key, and the
+   device-reset plugin that takes the preference files and the alarms
+   scheduled off them (one native call; the files and alarms behind it are
+   the plugin's own, android/app/.../reset/DeviceResetPlugin.java). */
+test('on Android the reset reaches every native store through its bridge', async () => {
+  const log: string[] = [];
+  const bridge = (name: string) => async () => {
+    log.push(name);
+  };
+  const android = androidResetTargets({
+    deleteDatabase: bridge('delete database'),
+    deletePhotos: bridge('delete photos'),
+    eraseKey: bridge('erase key'),
+    wipeDeviceState: bridge('wipe prefs and alarms')
+  });
+  const root = {
+    async *keys() {},
+    async removeEntry() {}
+  } as unknown as ListableDirectory;
+  await wipeLocalData({
+    closeDatabase: bridge('close'),
+    storageRoot: async () => root,
+    ...android,
+    clearBrowserMirrors: () => log.push('mirrors'),
+    clearBootCache: () => log.push('boot cache')
+  });
+  expect(log).toEqual(['close', 'delete database', 'delete photos', 'erase key', 'wipe prefs and alarms', 'mirrors', 'boot cache']);
 });
