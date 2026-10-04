@@ -25,7 +25,7 @@ import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-sto
 import { purgeExpiredTrash } from '../../src/lib/data/journal/entries.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
-import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS } from './generate.ts';
+import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import { compareJournalSizes } from './scaling.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
@@ -110,8 +110,20 @@ async function run(days: number) {
   await journal.reconcileBuiltIns();
 
   stage('generate', days);
+  // Fixture writes are setup, before any scored operation. Keep the public
+  // journal transactions and defer SQLite durability syncs during generation.
+  // Restore the captured setting and commit a header write before reopening.
+  const [{ synchronous }] = await booted.driver.query<{ synchronous: number }>('PRAGMA synchronous');
   const startedAt = performance.now();
-  const summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+  let summary: LongJournalSummary;
+  try {
+    await booted.driver.exec('PRAGMA synchronous = OFF');
+    summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+  } finally {
+    await booted.driver.exec(`PRAGMA synchronous = ${synchronous}`);
+    const version = await booted.driver.getUserVersion();
+    await booted.driver.transaction((scope) => scope.setUserVersion(version));
+  }
   const generatedInMs = Math.round(performance.now() - startedAt);
   stage('storage-size', days);
 
