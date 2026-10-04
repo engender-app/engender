@@ -473,7 +473,24 @@
       </button>
     </div>
 
-    <div class="cal-month-body" id="calendar-month" data-cal-month-body bind:this={monthBody}>
+    <!-- Folded, the whole strip opens the month (release audit U18). Its
+         days are 9x24 bars that take no pointer (HeatMap's own rule: a 7px
+         bar is not a tap target), so the strip was a 350px-wide surface a
+         thumb could land on and nothing happened. "Show month" above stays
+         the keyboard's and the screen reader's control - the strip is
+         aria-hidden - and this only widens where a pointer can ask for the
+         same thing. Open, the grid's own days are the targets. -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div
+      class="cal-month-body"
+      class:is-folded={!monthOpen}
+      id="calendar-month"
+      data-cal-month-body
+      bind:this={monthBody}
+      onclick={() => {
+        if (!monthOpen) void toggleMonth();
+      }}
+    >
       <HeatMap
         {year}
         {month}
@@ -694,6 +711,9 @@
     display: grid;
     gap: var(--space-3);
     margin-bottom: var(--space-5);
+  }
+  .cal-month-body.is-folded {
+    cursor: pointer;
   }
 
   /* ---------- The days ---------- */
