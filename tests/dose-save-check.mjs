@@ -6,7 +6,7 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 try {
   for (const entry of ['care', 'quick-add', 'today']) {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: entry === 'care' ? 'no-preference' : 'reduce' });
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await settlePage(page, base, '/care/regimen', 'light');
@@ -45,6 +45,28 @@ try {
     const before = await page.locator('[data-dose]').count();
     assert.equal(await page.locator('#dose-requirements').count(), 0, 'Opening has no validation announcement');
     await page.locator('button[data-site="thigh-left"]').click();
+    assert.equal(await page.locator('[data-app-root]').evaluate((node) => node.scrollTop), 0, 'Sheet cannot scroll the fixed app frame');
+    if (entry === 'care') {
+      const main = page.locator('[data-app-scroll-region]');
+      const scrollBefore = await main.evaluate((node) => node.scrollTop);
+      assert.equal(await main.evaluate((node) => getComputedStyle(node).overflowY), 'hidden');
+      await page.mouse.move(5, 20);
+      await page.mouse.wheel(0, 300);
+      await page.waitForTimeout(100);
+      assert.equal(await main.evaluate((node) => node.scrollTop), scrollBefore, 'Background stays locked');
+      await page.locator('[data-dose-what]').click();
+      await page.waitForTimeout(400);
+      await page.locator('#dose-amount').focus();
+      const reachable = await page.locator('#dose-amount').evaluate((node) => {
+        const input = node.getBoundingClientRect();
+        const sheet = node.closest('[data-sheet]').getBoundingClientRect();
+        const app = document.querySelector('[data-app-root]').getBoundingClientRect();
+        return document.activeElement === node && input.top >= Math.max(sheet.top, app.top) && input.bottom <= Math.min(sheet.bottom, app.bottom);
+      });
+      assert.equal(reachable, true, 'Focused amount stays reachable in a tall sheet');
+      await page.locator('[data-dose-what]').click();
+      await page.waitForTimeout(400);
+    }
     await page.locator('[data-save-dose]').click();
     await page.locator('[data-sheet]').waitFor({ state: 'detached', timeout: 2000 });
     const status = page.locator('[data-toast-kind="dose-saved"]');
@@ -53,6 +75,7 @@ try {
     await page.waitForFunction((count) => document.querySelectorAll('[data-dose]').length === count, before + 1);
     await page.waitForTimeout(350);
     assert.equal(await page.locator('[data-sheet]').count(), 0, 'Sheet stays closed after live reads settle');
+    assert.equal(await page.locator('[data-app-root]').evaluate((node) => node.scrollTop), 0, 'App frame stays fixed after close');
     assert.equal(await page.locator('[data-dose]').count(), before + 1, 'One save adds one row');
     assert.equal(await page.evaluate(() => window.doseOpenings), 1, 'Arrival opens editor once across live-query updates');
     assert.equal(await page.locator('#dose-requirements').count(), 0, 'Closed editor clears validation live region');

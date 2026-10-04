@@ -1065,7 +1065,7 @@
 
 <style>
   /* A fixed overlay sits on the app edge, outside screen block spacing. */
-  .screen :global([data-sheet-scrim]) {
+  .screen :global(.sheet-scrim) {
     margin: 0;
   }
 
