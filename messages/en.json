@@ -2193,7 +2193,7 @@
   "perm_camera_why": "Video notes.",
   "perm_clipboard": "The clipboard",
   "perm_clipboard_why": "The app marks copied recovery keys as sensitive and clears them after a minute, or when you return.",
-  "perm_clipboard_why_web": "Copies the recovery key. The app does not clear the browser clipboard.",
+  "perm_clipboard_why_web": "Copies the recovery key to the system clipboard. After a minute, the app tries to clear it if it still holds the key. Your browser may block this.",
   "perm_exact_alarms": "Exact timing",
   "perm_exact_alarms_why": "A reminder rings at the minute you set.",
   "perm_microphone": "Microphone",
