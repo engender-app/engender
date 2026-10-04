@@ -1,6 +1,6 @@
 # 29 - a11y: Charts expose their controls, have room to tap, and fit the heading order
 
-Status: resolved
+Status: done
 Type: bug
 Audit findings: A04, A05, A12 (accessibility audit, 30 September 2026)
 Severity: P1 (A04, A05), P2 (A12) in the accessibility audit; wanted before release, not in the hard release gate

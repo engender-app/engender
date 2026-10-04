@@ -1,6 +1,6 @@
 # 18 - ux: Journal, Safe space, Photos and Look back polish
 
-Status: resolved
+Status: done
 Type: bug
 Audit findings: U6, U8, U9, U10, U11, U12, U13, U14, U17, U18 (calendar strip only; the Look back marks are ticket 29)
 Severity: P2 (U6), P3 (rest)

@@ -1,6 +1,6 @@
 # 08 - data: Archive format guards that have to be inside 1.0
 
-Status: ready-for-agent
+Status: done
 Type: build
 Audit findings: D3, A3, D5
 Severity: P2, but must ship in 1.0 (1.0 cannot be changed after it ships)

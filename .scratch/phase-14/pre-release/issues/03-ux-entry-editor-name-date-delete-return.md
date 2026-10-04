@@ -1,6 +1,6 @@
 # 03 - ux: Entry editor keeps its Save name, shows its date, says delete worked, and returns where you came from
 
-Status: resolved
+Status: done
 Type: bug
 Audit findings: U1, U3, U4, U5
 Severity: P1, blocks release (U1); the rest P2 on the same file

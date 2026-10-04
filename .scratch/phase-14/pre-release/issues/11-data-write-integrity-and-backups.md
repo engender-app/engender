@@ -1,6 +1,6 @@
 # 11 - data: Writes and backups that cannot fail silently
 
-Status: ready-for-agent
+Status: done
 Type: bug
 Audit findings: D2, D4, D6, D7, S-06
 Severity: P2

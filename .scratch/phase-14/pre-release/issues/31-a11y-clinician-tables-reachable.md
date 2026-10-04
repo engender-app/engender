@@ -1,6 +1,6 @@
 # 31 - a11y: Clinician summary tables are readable at phone width and reachable by keyboard
 
-Status: resolved
+Status: done
 Type: bug
 Audit findings: A07, V09 (accessibility audit, 30 September 2026)
 Severity: P1 in the accessibility audit (WCAG 2.1.1); V09 P3; wanted before release, not in the hard release gate

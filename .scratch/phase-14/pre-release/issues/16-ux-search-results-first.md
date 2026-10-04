@@ -1,6 +1,6 @@
 # 16 - ux: Search shows results first and says its rules once
 
-Status: resolved
+Status: done
 Type: design
 Audit findings: U7
 Severity: P2

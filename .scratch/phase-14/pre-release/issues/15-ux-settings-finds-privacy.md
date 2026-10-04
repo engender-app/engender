@@ -1,6 +1,6 @@
 # 15 - ux: Settings puts privacy where people look for it, and can erase the journal
 
-Status: resolved
+Status: done
 Type: design
 Audit findings: V04, V05, V14
 Severity: P2

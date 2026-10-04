@@ -1,6 +1,6 @@
 # 25 - perf: The long-journal benchmark measures two sizes
 
-Status: ready-for-agent
+Status: done
 Type: build
 Audit findings: P07
 Severity: P3, after release (not in the release gate)

@@ -1,6 +1,6 @@
 # 01 - data: Foreign keys enforced where the journal actually runs
 
-Status: ready-for-agent
+Status: done
 Type: bug
 Audit findings: D1
 Severity: P1, blocks release

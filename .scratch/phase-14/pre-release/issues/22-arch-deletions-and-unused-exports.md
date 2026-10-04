@@ -1,6 +1,6 @@
 # 22 - arch: Delete what nothing uses
 
-Status: ready-for-agent
+Status: done
 Type: cleanup
 Audit findings: A5
 Severity: P3, after release (not in the release gate)
