@@ -34,6 +34,12 @@
   import { changePalette, changeTheme, isAppearancePending } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
+  import { resize } from '$lib/motion/reveal';
+  import { bootState, resetApp } from '$lib/stores/boot.svelte';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import { lockAfterSub } from '$lib/lock/lock-after-words';
+  import { accessModeTitle } from '$lib/components/AccessModeSetup.svelte';
 
   /* Keyed, not worded, so the swatch names translate with everything else. */
   const PALETTES: [string, () => string][] = [
@@ -60,6 +66,10 @@
   let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
   let metricName = $derived(vocabulary.metricName);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
+  /* The Export row's reading, which the erase sheet's backup row repeats. */
+  let backupLine = $derived(
+    backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()
+  );
 
   /* Reminders are not mirrored (ADR-0004 lists what is), and this row shows a
      count of the enabled ones - which only the Android build displays at all. */
@@ -74,6 +84,15 @@
   let genitalEffectsOn = $derived(
     vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
   );
+
+  /* The lock row's reading, the same line the Security screen's mode row
+     carries: which mode, and when it asks again where there is anything
+     to ask. */
+  let lockLine = $derived.by(() => {
+    if (!bootState.accessMode) return undefined;
+    const name = accessModeTitle(bootState.accessMode);
+    return accessModeHasSecret(bootState.accessMode, !isWeb) ? `${name} · ${lockAfterSub[prefs.lockAfter]()}` : name;
+  });
 
   let scalesSheet = $state(false);
 
@@ -94,6 +113,29 @@
   let languageSheet = $state(false);
   let a11ySheet = $state(false);
   let tagGroupsSheet = $state(false);
+  let eraseSheet = $state(false);
+  let erasing = $state(false);
+  let eraseError = $state('');
+  /* The button's words and the failure line both change in place: the old
+     and new share one grid cell and crossfade, so neither is cut. */
+  const swapFade = (_node: Element) => fadeOnly(crossfadeDuration());
+
+  /* The gates' reset (ADR-0014), reached from here too (phase 14 ticket
+     15): a journal in a mode with no gate - device-bound on the web,
+     Unlocked on Android - had no way to be erased inside the app at all.
+     resetApp reloads into setup, which states the result; it only returns
+     here if the wipe failed. */
+  async function confirmErase() {
+    erasing = true;
+    eraseError = '';
+    try {
+      await resetApp('erased');
+    } catch (e) {
+      console.error('the app reset failed', e);
+      erasing = false;
+      eraseError = m.reset_failed();
+    }
+  }
 
   /* The readings on the rows that open a sheet (ticket 277): what each is
      set to, so the hub says it without the sheet being opened. */
@@ -132,12 +174,13 @@
   }
 
 
-  const SITE_URL = 'https://engender.dev/';
+  const SITE_URL = 'https://engender.barankiewicz.dev/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
 
-  /* Ticket ux/06: ships disabled - an empty URL is what makes the row below
-     render as "coming soon" rather than a live link. Setting this to the
-     real Ko-fi URL is the whole follow-up; no markup changes with it. */
+  /* Ticket ux/06: ships disabled. While this is empty the row is not drawn
+     at all (phase 14 ticket 15, V05): a "coming soon" row that looked like
+     a link read as unfinished. Setting the real Ko-fi URL is the whole
+     follow-up; the row appears with it. */
   const KOFI_URL = '';
 
   /* The modes/entry-templates sheets raise from here (audit item 6):
@@ -183,6 +226,48 @@
        a reading - a value, a count, a state - and anything that is more
        than one control opens as a sheet from a row of its own, so the hub
        is a list of names and what each is set to. -->
+  <!-- First since phase 14 ticket 15 (V04): it sat fifth, 2251px down at
+       390, behind every flag and tracking option, and these are the rows
+       somebody comes to Settings in a hurry for. The lock says "Lock" in
+       its title, and erasing the journal comes last, the way the delete
+       row closes a list. -->
+  <SectionHeading text={m.settings_privacy()} />
+  <ListCard>
+    <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
+    <ListRow
+      key="disguise"
+      icon="eyeOff"
+      title={m.disguise_row()}
+      subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
+      chevron={false}
+      onclick={() => (disguiseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+    <ListRow
+      key="export"
+      icon="download"
+      title={m.export_import()}
+      subtitle={backupLine}
+      href="/settings/export"
+    />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
+    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
+         no-network claim made concrete, and setup's step promises this row
+         is here. -->
+    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
+    <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
+    <ListRow
+      key="erase"
+      icon="alert"
+      title={m.erase_row()}
+      chevron={false}
+      onclick={() => (eraseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+  </ListCard>
+
   <SectionHeading text={m.settings_appearance()} />
   <!-- On the page rather than in a card, and with no dropdown in front of
        it: a flag is a block of its own (rule 13), the grid is the one setup
@@ -405,48 +490,16 @@
     <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
   </ListCard>
 
-  <SectionHeading text={m.settings_privacy()} />
-  <ListCard>
-    <ListRow key="security" icon="shield" title={m.settings_security_row()} href="/settings/security" />
-    <!-- Beside security (phase 10 redesign ticket 31): the list is the
-         no-network claim made concrete, and setup's step promises this row
-         is here. -->
-    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
-    <ListRow
-      key="disguise"
-      icon="shield"
-      title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
-      chevron={false}
-      onclick={() => (disguiseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow
-      key="export"
-      icon="download"
-      title={m.export_import()}
-      subtitle={backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()}
-      href="/settings/export"
-    />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
-    <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
-  </ListCard>
-
-  <!-- No heading: two rows about the app rather than a setting of it. Ko-fi
-       stays its own row, not folded into the About sheet (ticket ux/06). -->
+  <!-- No heading: the rows about the app rather than a setting of it. Ko-fi
+       stays its own row, not folded into the About sheet (ticket ux/06),
+       once it has somewhere to go. -->
   <ListCard>
     <ListRow key="about" icon="info" title={m.about()} chevron={false} onclick={() => (aboutSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow
-      key="kofi"
-      icon="heart"
-      title={m.kofi_row()}
-      subtitle={KOFI_URL ? m.kofi_row_sub() : m.kofi_coming_soon()}
-      static={!KOFI_URL}
-      {...(KOFI_URL ? { href: KOFI_URL, target: '_blank', rel: 'noreferrer' } : {})}
-    />
+    {#if KOFI_URL}
+      <ListRow key="kofi" icon="heart" title={m.kofi_row()} subtitle={m.kofi_row_sub()} href={KOFI_URL} target="_blank" rel="noreferrer" />
+    {/if}
   </ListCard>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
@@ -512,6 +565,50 @@
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
       <DisguisePreview on={prefs.disguise} />
+    </div>
+  </Sheet>
+
+  <Sheet bind:open={eraseSheet} title={m.erase_row()}>
+    <h3>{m.erase_row()}</h3>
+    <!-- The gates' confirmation (JournalGate, SessionUnlock), said from
+         inside a journal that opens: the loss stated first, what an archive
+         brings back, and how old the last one is, with the way to make one
+         before anything goes. -->
+    <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
+      <Icon name="alert" size={20} />
+      <div class="notice-body">
+        <span class="notice-title">{m.erase_no_undo()}</span>
+        {m.reset_offer_archive_password()}
+      </div>
+    </div>
+    <ListCard>
+      <ListRow
+        key="erase-backup"
+        icon="download"
+        title={m.erase_backup_first()}
+        subtitle={backupLine}
+        href="/settings/export"
+      />
+    </ListCard>
+    <!-- Held at one line whether or not a wipe has failed; a longer
+         sentence grows it through resize rather than pushing the buttons
+         down in one frame. -->
+    <p class="erase-status small" role="alert" data-erase-failed use:resize>
+      {#key eraseError}<span transition:swapFade>{eraseError}</span>{/key}
+    </p>
+    <div class="stack-3">
+      <button class="btn btn-danger" data-confirm-reset disabled={erasing} onclick={confirmErase}>
+        <!-- Both labels sit in the cell unseen, so the button keeps the
+             width of the longer one, and the shown one crossfades. -->
+        <span class="swap-cell">
+          <span class="swap-sizer" aria-hidden="true">{m.reset_confirm()}</span>
+          <span class="swap-sizer" aria-hidden="true">{m.reset_running()}</span>
+          {#key erasing}<span transition:swapFade>{erasing ? m.reset_running() : m.reset_confirm()}</span>{/key}
+        </span>
+      </button>
+      <button class="btn btn-ghost" disabled={erasing} onclick={() => (eraseSheet = false)}>
+        <span>{m.erase_keep()}</span>
+      </button>
     </div>
   </Sheet>
 
@@ -658,6 +755,35 @@
 </div>
 
 <style>
+  /* The one row on the hub that destroys something says so in its type,
+     the way .btn-danger does. The disc keeps its role fill and the ink
+     proven on it. */
+  :global([data-list-row='erase'] .kit-row-title) {
+    color: var(--danger);
+  }
+
+  /* Room for the one sentence a failed wipe leaves, held whether or not
+     there is one so the buttons under it never move. */
+  .swap-cell {
+    display: inline-grid;
+  }
+  .swap-cell > * {
+    grid-area: 1 / 1;
+  }
+  .swap-sizer {
+    visibility: hidden;
+  }
+
+  .erase-status {
+    display: grid;
+    min-height: 1.25rem;
+    margin: var(--space-2) 0;
+    color: var(--danger);
+  }
+  .erase-status > * {
+    grid-area: 1 / 1;
+  }
+
   .settings-icon-preview {
     background: transparent;
     border: 0;

@@ -41,3 +41,37 @@ describe('splitShellAssets', () => {
     expect(ON_DEMAND_PREFIX).toBe('/tesseract/');
   });
 });
+
+describe('splitShellAssets, the two built files', () => {
+  const paths = [
+    '/_app/immutable/chunks/AbC123.js',
+    '/_app/immutable/workers/mc-worker-akfwo7ds.js',
+    '/_app/immutable/workers/pdf-worker-Kp7_pMCT.js',
+    '/_app/immutable/workers/sqlite3-worker1-bundler-friendly-CrvDegEM.js',
+    '/_app/immutable/workers/sqlite3-worker1-B2PgjPc4.js',
+    '/pdf-fonts/LiberationSans-Regular.ttf'
+  ];
+
+  test('the PDF renderer is asked for, the promiser worker nobody constructs is not stored', () => {
+    const { shell, pdfWorker, unused } = splitShellAssets(paths, '');
+
+    expect(pdfWorker).toEqual(['/_app/immutable/workers/pdf-worker-Kp7_pMCT.js']);
+    expect(unused).toEqual(['/_app/immutable/workers/sqlite3-worker1-bundler-friendly-CrvDegEM.js']);
+    expect(shell).toEqual([
+      '/_app/immutable/chunks/AbC123.js',
+      '/_app/immutable/workers/mc-worker-akfwo7ds.js',
+      '/_app/immutable/workers/sqlite3-worker1-B2PgjPc4.js',
+      '/pdf-fonts/LiberationSans-Regular.ttf'
+    ]);
+  });
+
+  test('the fonts stay in the shell (ADR-0065)', () => {
+    const { shell } = splitShellAssets(['/pdf-fonts/LiberationSans-Bold.ttf'], '');
+    expect(shell).toEqual(['/pdf-fonts/LiberationSans-Bold.ttf']);
+  });
+
+  test('matches under the base too', () => {
+    const { pdfWorker } = splitShellAssets(['/app/_app/immutable/workers/pdf-worker-X.js'], '/app');
+    expect(pdfWorker).toEqual(['/app/_app/immutable/workers/pdf-worker-X.js']);
+  });
+});

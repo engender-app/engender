@@ -26,14 +26,8 @@
    happens to deliver plugin calls in order, but that is a framework
    internal, and the order here is ours to own.
 
-   What the ordering does not do - on either platform - is isolate a
-   transaction. An unrelated call made while one is open still lands between
-   its BEGIN and COMMIT, because both drivers have one connection and one
-   order. That much is a property the two share rather than something
-   Android introduces, and it is what lets a transaction's own callback
-   reach the connection at all. What it cost until ticket 134 was a second
-   *transaction* being able to start inside the first one's window;
-   oneTransactionAtATime() below is where that no longer happens. */
+   withReadSnapshots() reserves the connection for the supplied transaction
+   scope. Unrelated calls wait through COMMIT or ROLLBACK. */
 
 import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';

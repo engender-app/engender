@@ -358,7 +358,8 @@
      distance for a band to have and no position for a mark to be at, so the
      caption would name things the plot never drew. The threshold is the
      placement's own, rather than a second copy of it here. */
-  let shownAnnotations = $derived(points.length >= MIN_PLOT_POSITIONS ? annotations : []);
+  let plottable = $derived(points.length >= MIN_PLOT_POSITIONS);
+  let shownAnnotations = $derived(plottable ? annotations : []);
   let placed = $derived(placeAnnotations(shownAnnotations, points, Math.max(plotWidth - PAD * 2, 1)));
   /* What the pointer is on, and what to write beside it. A hover names one
      mark where the scrub names a whole bucket, which is the difference
@@ -501,7 +502,20 @@
         viewBox="0 0 {plotWidth} {HEIGHT}"
         aria-hidden="true"
       >
-        <g transform="translate({PAD}, {PAD})">
+        <!-- Keyed on whether the plot has a line to draw at all. Across that
+             line the drawing is a different kind of thing - a filled line
+             with its marks, or one reading on its own in the middle - and
+             the tween cannot travel between them: from two readings to one,
+             the area, the annotation marks and the ring all went in one
+             frame and the ring jumped to the centre (phase 14 ticket 18,
+             sampled on Tally's undo). So the two drawings crossfade, the
+             old one held as it was while it fades. -->
+        {#key plottable}
+        <g
+          transform="translate({PAD}, {PAD})"
+          in:fade={{ duration: motionDuration('--dur-med') }}
+          out:fade={{ duration: motionDuration('--dur-med') }}
+        >
           <!-- Under the fill and the line, never over them: context sits
                behind the readings it is context for. -->
           <ChartAnnotations {placed} height={HEIGHT - PAD * 2} onHover={(next) => (hovered = next)} />
@@ -607,6 +621,7 @@
             />
           {/if}
         </g>
+        {/key}
       </svg>
 
       {#if hovered}
@@ -720,7 +735,10 @@
     <!-- What the marks are, once, under the plot. Names only: the dates are
          where the marks are, and a caption that repeated them would be a
          second axis written in words. -->
-    <p class="kit-area-annotations" data-chart-annotations aria-hidden="true">{caption}</p>
+    <!-- Opens and closes its own height: it comes and goes with the plot
+         having a line (above), and its line of text is what the card under
+         it would otherwise lose in one frame. -->
+    <p class="kit-area-annotations" data-chart-annotations aria-hidden="true" transition:disclose>{caption}</p>
     <!-- The same thing for somebody who cannot see where a mark sits. A
          scrub is a way of reading a picture, so it is no use here, and the
          chart's own numbers are already offered as a list by the screens

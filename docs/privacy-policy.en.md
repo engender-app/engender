@@ -8,7 +8,7 @@ This policy covers the web app, Android releases and files you export or share.
 
 The policy applies to:
 
-- The hosted web app at `app.engender.dev`, once hosting is published.
+- The hosted web app at `app.engender.barankiewicz.dev`, once hosting is published.
 - Distribution channels for Android releases (Google Play, F-Droid, direct APK)
   once Android builds are published.
 - Whatever destination you choose for an encrypted backup or an unencrypted

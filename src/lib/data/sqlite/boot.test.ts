@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from './driver.ts';
 import { journalIsBusy } from '../journal-busy.ts';
-import { boot } from './boot.ts';
+import { boot, migrateJournal } from './boot.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
@@ -36,8 +36,8 @@ function makeFakeDriver(): SqliteDriver {
         throw err;
       }
     },
-    async query() {
-      throw new Error('boot() should never call query()');
+    async query(sql) {
+      return raw.prepare(sql).all() as never;
     },
     async run() {
       throw new Error('boot() should never call run()');
@@ -501,4 +501,45 @@ test('the auto-log pass runs last of the three, and a failure in it is the next 
   assert.equal(result.phase, 'ready');
   if (result.phase === 'ready') await result.housekeeping;
   assert.deepEqual(order, ['trashPurge', 'photoSweep', 'autoLog']);
+});
+
+test('worker preparation owns migrations once before reference hydration under the write guard', async () => {
+  const driver = makeFakeDriver();
+  const copy = { ...noopFileOps(), copyDatabaseFile: () => { copies++; }, cleanupPreMigrationCopy: () => { cleanups++; } };
+  let copies = 0;
+  let cleanups = 0;
+  const order: string[] = [];
+  const result = await boot({
+    createDriver: () => driver,
+    fileOps: copy,
+    prepareDatabase: async (opened, files) => {
+      assert.equal(journalIsBusy(), true);
+      order.push('prepare');
+      await migrateJournal(opened, files);
+    },
+    loadReferenceData: async () => {
+      assert.equal(journalIsBusy(), false);
+      order.push('references');
+    }
+  });
+  assert.equal(result.phase, 'ready');
+  assert.deepEqual(order, ['prepare', 'references']);
+  assert.equal(copies, 1);
+  assert.equal(cleanups, 0);
+});
+
+test('failed worker preparation closes its driver and releases the write guard', async () => {
+  const driver = makeFakeDriver();
+  let closed = false;
+  driver.close = async () => { closed = true; };
+  const failure = new Error('demo preparation failed');
+  const result = await boot({
+    createDriver: () => driver,
+    fileOps: noopFileOps(),
+    prepareDatabase: async () => { throw failure; }
+  });
+  assert.equal(result.phase, 'error');
+  if (result.phase === 'error') assert.equal(result.error, failure);
+  assert.equal(closed, true);
+  assert.equal(journalIsBusy(), false);
 });

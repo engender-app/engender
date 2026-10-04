@@ -85,7 +85,7 @@
     </ReadingTile>
   {/if}
 {:else}
-  <ChartCard heading={m.stats_mood_days()} kind="mood-days">
+  <ChartCard level={2} heading={m.stats_mood_days()} kind="mood-days">
     {#if loading}
       <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if enoughEntries}
@@ -95,7 +95,7 @@
     {/if}
   </ChartCard>
 
-  <ChartCard heading={m.stats_tag_share()} kind="tag-share" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+  <ChartCard level={2} heading={m.stats_tag_share()} kind="tag-share" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#if loading}
       <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if enoughEntries && tagParts.length}

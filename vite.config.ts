@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import sqlocal from 'sqlocal/vite';
 import { appVersion } from './scripts/app-version.mjs';
 import capacitorConfig from './capacitor.config';
@@ -12,6 +12,66 @@ import capacitorConfig from './capacitor.config';
    WASM. verify-build.mjs fails if anything the build wrote is missing from
    the cache the worker fills. */
 const GENERATED = 'src/lib/pwa/emitted-client-assets.generated.ts';
+
+function demoWorkerPrewarm(): Plugin {
+  let client = false;
+  let entry: string | undefined;
+  return {
+    name: 'engender:demo-worker-prewarm',
+    configResolved(config) {
+      client = config.build.outDir.endsWith('/client');
+    },
+    buildStart() {
+      if (client && process.env.VITE_DEMO === '1') {
+        entry = this.emitFile({ type: 'chunk', id: 'src/lib/data/demo/prewarm.ts', name: 'demo-prewarm' });
+      }
+    },
+    outputOptions(options) {
+      if (!client || process.env.VITE_DEMO !== '1') return;
+      const reachable = (roots: string[]) => {
+        const modules = new Set<string>();
+        const visit = (id: string) => {
+          if (modules.has(id)) return;
+          modules.add(id);
+          for (const dependency of this.getModuleInfo(id)?.importedIds ?? []) visit(dependency);
+        };
+        for (const root of roots) visit(root);
+        return modules;
+      };
+      let startup: Set<string> | undefined;
+      let bootstrap: Set<string> | undefined;
+      options.onlyExplicitManualChunks = true;
+      options.manualChunks = (id) => {
+        if (!startup) {
+          const ids = [...this.getModuleIds()];
+          startup = reachable(ids.filter((module) =>
+            module.endsWith('/src/routes/+layout.svelte') || module.endsWith('/src/routes/+page.svelte')
+          ));
+          // Keep the early worker owner small while the screen bundle loads.
+          bootstrap = reachable(ids.filter((module) =>
+            module.endsWith('/src/lib/data/demo/prewarm.ts') ||
+            module.endsWith('/src/lib/data/sqlite/mc-driver.ts') ||
+            module.endsWith('/src/lib/data/conversion/plaintext-journal.ts') ||
+            module.endsWith('/src/lib/platform.ts')
+          ));
+          for (const module of bootstrap) startup.delete(module);
+          for (const module of bootstrap) {
+            if (module.endsWith('/src/lib/data/demo/prewarm.ts')) bootstrap.delete(module);
+          }
+          // The catalogue barrel imports copy used by other routes too.
+          for (const module of startup) {
+            if (module.includes('/src/lib/paraglide/')) startup.delete(module);
+          }
+        }
+        if (bootstrap!.has(id)) return 'demo-worker-bootstrap';
+        return startup.has(id) ? 'demo-startup' : undefined;
+      };
+    },
+    writeBundle() {
+      if (entry) writeFileSync('.svelte-kit/demo-prewarm.json', JSON.stringify(this.getFileName(entry)));
+    }
+  };
+}
 
 function writeEmittedClientAssets() {
   const write = (assets: string[]) => {
@@ -48,6 +108,41 @@ function writeEmittedClientAssets() {
             .sort()
         );
       }
+    }
+  };
+}
+
+/* One copy of each WASM file in the build (phase 14 pre-release ticket 13).
+
+   SvelteKit names an asset `assets/[name].[hash][ext]` in the client bundle
+   and `workers/assets/[name]-[hash][ext]` in the worker bundle, so a file
+   both import - sqlite3.wasm, once for SQLocal's client and once for its
+   worker - was written, precached and stored twice under two names with the
+   same bytes (0.4 MB brotli each). Giving the worker bundle the client's
+   pattern makes the two emit the same path with the same content, which
+   Rollup writes once.
+
+   Only the `.wasm` extension is moved. Everything else a worker emits keeps
+   SvelteKit's own directory, so this changes nothing but the duplicate. */
+function sharedWasmAssets() {
+  return {
+    name: 'engender:shared-wasm-assets',
+    // After sveltekit(), whose config hook sets the pattern this replaces.
+    config() {
+      return {
+        worker: {
+          rollupOptions: {
+            output: {
+              assetFileNames: (asset: { names?: string[]; name?: string }) => {
+                const name = asset.names?.[0] ?? asset.name ?? '';
+                return name.endsWith('.wasm')
+                  ? '_app/immutable/assets/[name].[hash][extname]'
+                  : '_app/immutable/workers/assets/[name]-[hash][extname]';
+              }
+            }
+          }
+        }
+      };
     }
   };
 }
@@ -94,6 +189,7 @@ export default defineConfig(({ command }) => ({
     exclude: ['@evolu/sqlite-wasm']
   },
   plugins: [
+    demoWorkerPrewarm(),
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/lib/paraglide',
@@ -106,6 +202,7 @@ export default defineConfig(({ command }) => ({
     // Cross-Origin-Embedder-Policy: require-corp and
     // Cross-Origin-Opener-Policy: same-origin itself.
     sqlocal(),
+    sharedWasmAssets(),
     writeEmittedClientAssets(),
     // `vite preview` is what the walkthrough suite serves the built app
     // from, and it got neither header. Without them this Chromium has no

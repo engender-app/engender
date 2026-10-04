@@ -159,7 +159,7 @@ export function makeTryoutsArea(
         'SELECT file_path FROM tryout_photo WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)',
         [id]
       );
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         // Unlinked before the tryout row goes, the same order procedures.ts
         // keeps for procedure_id: milestone.tryout_id references tryout(uuid)
         // with no ON DELETE clause, so the FK would refuse the delete
@@ -171,7 +171,7 @@ export function makeTryoutsArea(
         await driver.run('DELETE FROM tryout_photo WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout WHERE uuid = ?', [id]);
       });
-      await removeFilesOf(files, photos);
+      await removeFilesOf(driver, files, photos);
     },
 
     async getPhotos(tryoutId) {
@@ -229,7 +229,7 @@ export function makeTryoutsArea(
         id
       ]);
       await driver.run('DELETE FROM tryout_photo WHERE uuid = ?', [id]);
-      await removeFilesOf(files, rows);
+      await removeFilesOf(driver, files, rows);
     },
 
     async adoptTryout(id, options) {

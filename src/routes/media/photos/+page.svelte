@@ -36,7 +36,7 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { fmtDay, fmtDuration } from '$lib/data/dates';
+  import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
   import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
   import type { ComparePair } from '$lib/data/photos/compare-state';
   import {
@@ -272,6 +272,32 @@
     };
   });
 
+  /* The rail shows while the page is moving and for a moment after, and
+     fades away at rest (release audit U12): standing over the grid's last
+     column all the time, its pills covered x 313 to 360 of every third
+     photograph at 390px. A scrubber that answers a scroll is the shape the
+     photo apps use, and it is the scroll the rail is for - the ticket's
+     own rule above only offers it once the grid outgrows a screen. Hover
+     and keyboard focus hold it (CSS, :hover and :focus-within), so a mouse
+     on its way to a year and a Tab through them never chase a fading
+     target. */
+  const RAIL_REST_MS = 1500;
+  let railAwake = $state(false);
+  $effect(() => {
+    if (!gridTall) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const wake = () => {
+      railAwake = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => (railAwake = false), RAIL_REST_MS);
+    };
+    document.addEventListener('scroll', wake, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('scroll', wake, { capture: true });
+      clearTimeout(timer);
+    };
+  });
+
   /* A year the scrubber names can sit past what the grid has painted, so
      the jump grows the batch that holds it before scrolling - the same
      expansion BatchedList gives a deep link (batchedList.ts, batchesFor). */
@@ -383,7 +409,7 @@
                       <Icon name="play" size={26} />
                       <span class="photo-label">{photoSourceLabel(p.source)}</span>
                     </span>
-                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                    <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                   </button>
                 {:else}
                   <div class="photo-cell-controls">
@@ -397,7 +423,7 @@
                     onclick={() => selecting ? toggle(p.id) : viewPhoto(p.id)}
                   >
                     <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                    <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                    <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
                     {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
                   </button>
                   {#if datedByItsOwner(p)}
@@ -423,7 +449,7 @@
           {/if}
 
           {#if gridTall && marks.length}
-            <div class="photo-years" data-photo-years>
+            <div class="photo-years" class:is-awake={railAwake} data-photo-years>
               <div class="photo-years-inner" role="group" aria-label={m.ph_years_label()}>
                 {#each marks as mark (mark.year)}
                   <button
@@ -560,10 +586,9 @@
   /* The year rail, over the grid rather than beside it. Beside it was the
      first shape and it cost a column: the rail plus its gap is about 48px,
      which at 390px takes `repeat(auto-fill, minmax(104px, 1fr))` from three
-     tracks to two. So the rail is taken out of the flow and hangs into the
-     screen's own side padding, which leaves about 20px of it over the last
-     column - the scrubber's usual place in a photo grid, and the reference
-     this came from (corner, Mobbin).
+     tracks to two. So the rail is taken out of the flow and sits in the
+     screen's own side padding - the scrubber's usual place in a photo grid,
+     and the reference this came from (corner, Mobbin).
 
      Sticky inside an absolutely positioned full-height box: the box gives
      the rail the grid's own top and bottom to stick between, so it arrives
@@ -576,14 +601,34 @@
      wanted more room off the tiles' own date row above it). */
   .photo-grid-more { margin-top: var(--space-3); }
 
+  /* In the screen's own right gutter (.screen's --space-5), not over the
+     grid: a 47px pill at the grid's edge covered x 313 to 360 of every third
+     photograph while it was showing (release audit U12, and the review of
+     ticket 18). So the rail is a thin scrubber the width of the gutter, its
+     years set on their side. */
   .photo-years {
     position: absolute;
-    top: 0; bottom: 0; right: 0;
+    top: 0; bottom: 0;
+    right: calc(-1 * var(--space-5));
+    width: var(--space-5);
     pointer-events: none;
   }
+  /* At rest the rail is not there to be seen or pressed (no pointer
+     events, inherited from .photo-years); it fades in on a scroll and out
+     again when the scroll has stopped. Hover and focus keep it, so the
+     target someone is reaching for stays put. */
   .photo-years-inner {
     position: sticky; top: var(--space-4);
-    display: flex; flex-direction: column; gap: var(--space-1);
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+    opacity: 0;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+  /* Still in the tab order at rest (opacity, never visibility), so focus
+     reaching a year is what brings the rail back for a keyboard. */
+  .photo-years.is-awake .photo-years-inner,
+  .photo-years-inner:hover,
+  .photo-years-inner:focus-within {
+    opacity: 1;
     pointer-events: auto;
   }
   /* A year stands on a photograph, so it carries its own surface the way
@@ -592,19 +637,19 @@
      shadow and never a tint of the picture underneath. */
   .photo-year {
     position: relative;
-    min-height: 28px; min-width: 40px;
-    padding: 0 var(--space-2);
+    width: 18px;
+    padding: var(--space-2) 0;
     border: 1px solid var(--outline); border-radius: var(--radius-pill);
     background: var(--surface); cursor: pointer;
     font: inherit; font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+    line-height: 1;
+    writing-mode: vertical-rl;
     color: var(--text-2);
   }
-  /* The pill is 28px, which is under the 48px floor, so the target is
-     extended past it by a transparent overlay - the trick `.tag-chip::after`
-     plays for the same reason (components.css), which is also why the pill
-     above carries `position: relative` as its first line. The rail's own 4px
-     gap keeps two stacked targets from meeting. */
-  .photo-year::after { content: ''; position: absolute; inset: -10px 0; }
+  /* The drawn tab is 18px; the target is the 48px floor, reaching left
+     over the grid's edge. Only a target, never paint, and only while the
+     rail is awake: at rest the rail takes no pointer at all. */
+  .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
   .photo-year:hover { color: var(--text-1); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's

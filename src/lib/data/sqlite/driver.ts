@@ -18,6 +18,10 @@ export interface SqliteReader {
 }
 
 export interface SqliteDriver extends MigrationDb, SqliteReader {
+  /** Use the supplied driver for every statement in the transaction. */
+  transaction<T>(work: (driver: SqliteDriver) => T | Promise<T>): Promise<T>;
+  /** Present only on a transaction scope. Rollback discards scheduled cleanup. */
+  deferUntilCommit?(cleanup: () => Promise<void>): void;
   /** Read committed rows without other calls entering this connection.
       Use the supplied reader; calling this driver inside would wait on itself. */
   readSnapshot<T>(read: (reader: SqliteReader) => Promise<T>): Promise<T>;

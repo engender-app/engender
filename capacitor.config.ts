@@ -11,7 +11,9 @@
 
 import type { CapacitorConfig } from '@capacitor/cli';
 
-export const JOURNAL_ORIGIN = 'app.engender.dev';
+/* Hosted web metadata only. Android loads the bundled app at https://localhost
+   through server.hostname below; this constant does not set its origin. */
+export const JOURNAL_ORIGIN = 'app.engender.barankiewicz.dev';
 
 const config: CapacitorConfig = {
   appId: 'dev.engender.app',
@@ -49,6 +51,13 @@ const config: CapacitorConfig = {
        SyntaxError in a log nobody holding a phone can read - measured on the
        API 26 emulator, whose WebView is Chrome 69. */
     errorPath: 'webview-too-old.html'
+  },
+  /* CSS reads env(safe-area-inset-*). Native handling keeps older WebViews
+     padded without injecting unused CSS variables during document creation. */
+  plugins: {
+    SystemBars: {
+      insetsHandling: 'native'
+    }
   },
   /* Every plugin call's arguments are logged, in full, before the call runs:
      Bridge.callPluginMethod hands `call.getData().toString()` to

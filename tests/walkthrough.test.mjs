@@ -10,7 +10,7 @@
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
    #demo-jump control), then serves that build. */
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium, fillDate, fillTime } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
@@ -67,7 +67,12 @@ if (ONLY) {
 /** One flow, skipped whole where `--only` did not name it. */
 async function flow(name, body) {
   if (ONLY && !name.toLowerCase().includes(ONLY)) return;
-  await body();
+  if (['plain export', 'onboarding restore'].includes(name)) flight = { name, events: [] };
+  try {
+    await body();
+  } finally {
+    flight = null;
+  }
 }
 
 const server = await preview({ preview: { port: 0 } });
@@ -79,6 +84,87 @@ const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 440, height: 940 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
+
+// Keep failure evidence in the host across full-page navigations. Nothing
+// here replaces worker messages or changes the app's event handlers.
+let flight = null;
+let domCaptureReady = false;
+function recordFlight(event) {
+  if (!flight) return;
+  flight.events.push(event);
+  if (flight.events.length > 128) flight.events.shift();
+}
+page.on('console', message => {
+  if (message.type() === 'error') recordFlight({ kind: 'console-error', time: Date.now(), detail: message.text().slice(0, 4096) });
+});
+page.on('worker', worker => {
+  const url = worker.url();
+  recordFlight({ kind: 'worker-started', time: Date.now(), url });
+  worker.on('close', () => recordFlight({ kind: 'worker-closed', time: Date.now(), url }));
+});
+async function setupFlightCapture(signal) {
+  await page.exposeFunction('__walkthroughEvidence', event => { if (domCaptureReady) recordFlight(event); });
+  signal.throwIfAborted();
+  await page.addInitScript(() => {
+    const emit = event => { void window.__walkthroughEvidence({ time: Date.now(), at: performance.now(), timeOrigin: performance.timeOrigin, url: location.href, ...event }).catch(() => {}); };
+    const state = () => ({
+      note: document.querySelector('#ed-note')?.value?.slice(0, 4096),
+      saveDisabled: document.querySelector('[data-save]')?.disabled,
+      restoreStart: !!document.querySelector('[data-restore-start]'),
+      questions: [...document.querySelectorAll('[data-setup-question]')].slice(0, 8).map(node => ({ text: node.textContent, rect: node.getBoundingClientRect().toJSON(), opacity: getComputedStyle(node).opacity }))
+    });
+    const capture = event => {
+      const target = event.target.closest?.('#ed-note, [data-save], [data-back], [data-next], #demo-jump');
+      if (!target || (target.id !== 'demo-jump' && !['/entry/new/today', '/onboarding'].includes(location.pathname))) return;
+      const tag = target.id || target.outerHTML.split('>')[0];
+      emit({ kind: event.type, target: tag, trusted: event.isTrusted, x: event.clientX, y: event.clientY, rect: target.getBoundingClientRect().toJSON(), ...state() });
+      if (event.type === 'click') requestAnimationFrame(() => emit({ kind: 'after-click-frame', target: tag, ...state() }));
+    };
+    for (const type of ['pointerdown', 'pointerup', 'click', 'input', 'change']) document.addEventListener(type, capture, true);
+  });
+  signal.throwIfAborted();
+}
+
+try {
+  await boundedDiagnostic(setupFlightCapture);
+  domCaptureReady = true;
+} catch (error) {
+  console.log('WALKTHROUGH DOM EVIDENCE UNAVAILABLE ' + String(error.message ?? error));
+}
+
+async function boundedDiagnostic(operation) {
+  const controller = new AbortController();
+  let timer;
+  try {
+    return await Promise.race([
+      operation(controller.signal),
+      new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('diagnostic capture exceeded 5000ms')); }, 5000); })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function recentEntryEvidence(signal) {
+  const chunks = 'build/_app/immutable/chunks';
+  let journalChunk;
+  for (const file of await readdir(chunks)) {
+    signal.throwIfAborted();
+    if (!file.endsWith('.js')) continue;
+    if ((await readFile(`${chunks}/${file}`, { encoding: 'utf8', signal })).includes('the journal was reported open before it was attached')) {
+      journalChunk = `${BASE}/_app/immutable/chunks/${file}`;
+      break;
+    }
+  }
+  signal.throwIfAborted();
+  if (!journalChunk) throw new Error('the built journal module was not found');
+  return page.evaluate(async (url) => {
+    const module = await import(url);
+    const journal = Object.values(module).find((value) => value !== null && typeof value === 'object' && typeof value.entries?.recentDays === 'function');
+    if (!journal) throw new Error('the open journal export was not found');
+    return (await journal.entries.recentDays(5)).map(({ id, epochDay, timestamp, mood, note }) => ({ id, epochDay, timestamp, mood, note }));
+  }, journalChunk);
+}
 
 /* Waits for the boot sequence, not just for the network to go quiet (ticket
    08). Opening OPFS, running migrations and - on a cold demo start - writing
@@ -576,7 +662,9 @@ try {
     header.append(a);
   }, hrefs[1]);
   await page.locator('[data-probe-next-entry]').click();
-  await page.waitForFunction((want) => location.pathname === want, hrefs[1], { timeout: 10000 });
+  /* An entry link carries the list it came from (`?from=`, ticket 03),
+     so the arrival is the path alone. */
+  await page.waitForFunction((want) => location.pathname === new URL(want, location.href).pathname, hrefs[1], { timeout: 10000 });
   await page.waitForSelector('#ed-note');
   await page.waitForTimeout(600);
   const second = await page.locator('#ed-note').inputValue();
@@ -1055,11 +1143,15 @@ try {
 
   await page.locator('[data-filter-clear]').click();
   await page.locator('#q').fill('');
-  if (await page.locator('[data-active-filter-chip]').count()) throw new Error('clear-all did not clear chips');
-  const hint = await page.locator('[data-screen]').innerText();
-  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
-    throw new Error('empty-criteria hint did not return after clear-all');
-  }
+  /* The chip row gives its height back rather than cutting (ticket 16), so
+     it is gone once that has run, not in the same frame. */
+  await page.waitForSelector('[data-active-filter-chip]', { state: 'detached', timeout: 2000 })
+    .catch(() => { throw new Error('clear-all did not clear chips'); });
+  /* The opening state is what comes back with no criteria (ticket 18); the
+     words this used to look for ("try") are no longer on it since ticket
+     16 left it one line about what is searched. */
+  await page.waitForSelector('[data-search-idle]', { timeout: 2000 })
+    .catch(() => { throw new Error('empty-criteria hint did not return after clear-all'); });
 
   ok('structured search filters combine with text, show chips and clear-all');
 } catch (e) { fail('structured search filters', e); }
@@ -1139,7 +1231,12 @@ try {
   // ticket says is not waited out, so the previous results have to be gone
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
-  if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
+  /* The results are on their way out by then, not gone: they fade where
+     they stood (ticket 16), marked `data-leaving` for the length of the
+     fade. What must not be there is a result that is staying. */
+  const staying = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-entry-card]')].filter((card) => !card.closest('[data-leaving]')).length);
+  if (staying) throw new Error('clearing left the previous results on screen');
   // The idle Notice this waited on is gone (ticket 18): the opening state
   // is real content now, named as a whole by `data-search-idle`.
   if (!(await page.locator('[data-search-idle]').count())) throw new Error('clearing did not bring back the opening state');
@@ -1203,7 +1300,11 @@ try {
   await page.waitForSelector('[data-search-idle]');
 
   await page.locator('#q').fill('hopeful');
-  await page.waitForSelector('[data-entry-card]');
+  /* A card that is staying, not one of the tag search's still fading out
+     (ticket 16): those matched at once, the box was cleared before the
+     typed search had been recorded, and no recent row ever came. */
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('[data-entry-card]')].some((card) => !card.closest('[data-leaving]')));
   await page.locator('#q').fill('');
   await page.waitForSelector('[data-search-idle]');
 
@@ -1385,11 +1486,14 @@ try {
   await page.waitForSelector('[data-sheet] [data-entry-card]');
   const opens = page.locator('[data-sheet] [data-entry-card]').first();
   const href = await opens.getAttribute('href');
-  if (!/^\/entry\/\d+$/.test(href ?? '')) {
+  /* The entry, and the list it came from (`?from=`, ticket 03) so save
+     and delete return there. */
+  if (!/^\/entry\/\d+(\?from=[^&]+)?$/.test(href ?? '')) {
     throw new Error('a tag insight entry links nowhere in particular: ' + href);
   }
   await opens.click();
-  await page.waitForURL('**' + href);
+  const entryPath = new URL(href, BASE).pathname;
+  await page.waitForURL((url) => url.pathname === entryPath);
   /* And it is the editor for that entry rather than a screen that merely
      answers to the URL - #ed-note is the note field every other editor
      flow in this file waits on. */
@@ -2011,8 +2115,9 @@ try {
    than assumed of the demo persona, so the nastiest field in the file is
    one this test knows the exact text of. */
 await flow('plain export', async () => {
+const NOTE = 'Told them my name, out loud.\nShe said "finally".';
+let plainCsv = null;
 try {
-  const NOTE = 'Told them my name, out loud.\nShe said "finally".';
 
   await fresh('/entry/new/today');
   // Mood is required to save (ticket 04): the fixture picks one before the
@@ -2054,7 +2159,7 @@ try {
     throw new Error(`plain export downloaded ${download.suggestedFilename()}`);
   }
 
-  const rows = parseCsv(await readFile(await download.path(), 'utf8'));
+  const rows = parseCsv(plainCsv = await readFile(await download.path(), 'utf8'));
   const [header, ...entries] = rows;
   if (header[0] !== 'date' || header[1] !== 'time' || header[2] !== 'mood') throw new Error(`header is ${header}`);
   if (header.at(-2) !== 'tags' || header.at(-1) !== 'note') throw new Error(`header is ${header}`);
@@ -2090,7 +2195,20 @@ try {
   );
 
   ok(`plain CSV export behind the warning, ${entries.length} rows, notes intact`);
-} catch (e) { fail('plain export', e); }
+} catch (e) {
+  fail('plain export', e);
+  const diagnostic = {
+    failure: String(e.message ?? e), expectedNote: NOTE,
+    csv: plainCsv?.slice(0, 2_000_000), csvLength: plainCsv?.length,
+    flight: flight.events.slice(), domCaptureReady, pageErrors: errors.slice()
+  };
+  try {
+    diagnostic.sqlEntries = await boundedDiagnostic(recentEntryEvidence);
+  } catch (error) {
+    diagnostic.sqlCaptureError = String(error.message ?? error);
+  }
+  console.log('PLAIN EXPORT FAILURE EVIDENCE ' + JSON.stringify(diagnostic));
+}
 });
 
 
@@ -2580,6 +2698,13 @@ try {
    the palette, which is a portable preference (ADR-0003) and therefore also
    the proof that the flag step was rightly not asked. */
 await flow('onboarding restore', async () => {
+let restoreStage = 'starting';
+let exportedArchive = null;
+const consoleErrors = [];
+const recordConsoleError = (message) => {
+  if (message.type() === 'error') consoleErrors.push(message.text());
+};
+page.on('console', recordConsoleError);
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -2589,6 +2714,7 @@ try {
      flow with nine of them names none of them - which cost this ticket two
      eight-minute runs to find out. */
   const waitingFor = async (what, run) => {
+    restoreStage = what;
     try {
       await run();
     } catch (error) {
@@ -2654,6 +2780,7 @@ try {
      waiting for. The archive is one entry, so carrying it in memory is
      nothing. */
   const archiveBytes = await readFile(await archive.path());
+  exportedArchive = { name: archive.suggestedFilename(), bytes: archiveBytes };
 
   /* Emptied again, and the flag put back to something the archive will have
      to overwrite, so a palette reading lesbian at the end can only have come
@@ -2669,13 +2796,19 @@ try {
   /* A setup draft from the new-journal path must not override the archive.
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
-  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
+  for (let i = 0; i < 4; i++) {
+    restoreStage = `next to setup draft ${i + 1}/4`;
+    await page.locator('[data-next]').click();
+  }
   /* Dispatched rather than clicked: with the demo bar's 240px above it, the
      areas list keeps a 41px scroll window at 390x844, so no 75px row fits
      in view and the step's foot takes a real click. Without the bar the
      list has about 280px. */
   await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  for (let i = 0; i < 4; i++) await page.locator('[data-back]').click();
+  for (let i = 0; i < 4; i++) {
+    restoreStage = `back from setup draft ${i + 1}/4`;
+    await page.locator('[data-back]').click();
+  }
   await page.waitForSelector('[data-restore-start]');
 
   await page.locator('[data-restore-start]').click();
@@ -2767,7 +2900,7 @@ try {
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
   await waitingFor("today's entries, after the restore", () =>
-    page.waitForSelector('[data-entry-note]', { timeout: 30000 })
+    page.locator('[data-entry-card] [data-entry-note]').filter({ hasText: 'The entry that came back.' }).waitFor({ timeout: 30000 }) // text-under-test: this flow's restored fixture note, not app copy
   );
   const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
   if (!notes.some((note) => note.includes('The entry that came back'))) {
@@ -2793,7 +2926,79 @@ try {
   );
 
   ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
-} catch (e) { fail('onboarding restore', e); }
+} catch (e) {
+  fail('onboarding restore', e);
+  /* Capture only after failure. Bounds keep a broken page or SQL read from
+     preventing the remaining flows from running. */
+  const bounded = operation => boundedDiagnostic(() => operation);
+  const diagnostic = {
+    stage: restoreStage,
+    flight: flight.events.slice(),
+    domCaptureReady,
+    failure: String(e.message ?? e),
+    consoleErrors,
+    pageErrors: errors.slice(),
+    archive: exportedArchive ? { name: exportedArchive.name, bytes: exportedArchive.bytes.length } : null
+  };
+  try {
+    diagnostic.page = await bounded(page.evaluate(() => {
+      const now = new Date();
+      const frame = document.querySelector('[data-setup-frame]');
+      const nodes = new Set(frame?.querySelectorAll('[data-back], [data-next], [data-setup-question], [data-setup-field], [data-field-blind], [data-setup-answers]') ?? []);
+      for (const node of nodes) {
+        for (let parent = node.parentElement; parent && frame.contains(parent); parent = parent.parentElement) nodes.add(parent);
+      }
+      const geometry = [...nodes].map((node) => {
+        const style = getComputedStyle(node);
+        const properties = ['translate', 'transform', 'opacity', 'pointer-events', 'position', 'z-index', 'height', 'overflow', 'clip-path', '--blind-edge', '--own-rest', '--part-delta', '--blind-delta', '--part-travel'];
+        return {
+          element: node.outerHTML.split('>')[0], text: node.textContent.trim(),
+          rect: node.getBoundingClientRect().toJSON(), inlineStyle: node.style.cssText, inert: node.inert,
+          computed: Object.fromEntries(properties.map((property) => [property, style.getPropertyValue(property)]))
+        };
+      });
+      const hitTests = [...document.querySelectorAll('[data-back], [data-next], [data-finish]')].map((node) => {
+        const rect = node.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        return { element: node.outerHTML.split('>')[0], x, y, hits: document.elementsFromPoint(x, y).map((hit) => hit.outerHTML.split('>')[0]) };
+      });
+      return {
+        url: location.href, localDate: now.toString(), utcDate: now.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, offsetMinutes: now.getTimezoneOffset(),
+        epochDay: Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000),
+        boot: document.querySelector('[data-app-root]')?.dataset.boot,
+        palette: document.documentElement.dataset.palette,
+        notes: [...document.querySelectorAll('[data-entry-card] [data-entry-note]')].map((node) => node.textContent),
+        text: document.body.innerText, geometry, hitTests,
+        animations: document.getAnimations().map((animation) => ({
+          target: animation.effect?.target?.outerHTML?.split('>')[0],
+          playState: animation.playState, currentTime: animation.currentTime, startTime: animation.startTime,
+          timing: animation.effect?.getComputedTiming(), keyframes: animation.effect?.getKeyframes()
+        }))
+      };
+    }));
+  } catch (error) {
+    diagnostic.pageCaptureError = String(error.message ?? error);
+  }
+  try {
+    diagnostic.sqlEntries = await boundedDiagnostic(recentEntryEvidence);
+  } catch (error) {
+    diagnostic.sqlCaptureError = String(error.message ?? error);
+  }
+  try {
+    const directory = 'ci-logs/onboarding-restore';
+    await mkdir(directory, { recursive: true });
+    await writeFile(`${directory}/state.json`, JSON.stringify(diagnostic, null, 2));
+    if (exportedArchive) await writeFile(`${directory}/exported.ttbackup`, exportedArchive.bytes);
+    await page.screenshot({ path: `${directory}/page.png`, fullPage: true, timeout: 5000 });
+    console.log(`onboarding restore diagnostics: ${directory}`);
+  } catch (error) {
+    console.error('onboarding restore diagnostics could not be saved', error);
+  }
+} finally {
+  page.off('console', recordConsoleError);
+}
 });
 
 /* 13d. and the way back out of it: a restore that is given up on leaves the
@@ -3914,7 +4119,7 @@ try {
   const resurfaced = sixMonthSection.locator('[data-entry-card]');
   if (!(await resurfaced.count())) throw new Error('a resurfaced day shows no entries');
   const opens = await resurfaced.first().getAttribute('href');
-  if (!/^\/entry\/\d+$/.test(opens ?? '')) throw new Error('a resurfaced entry opens ' + opens);
+  if (!/^\/entry\/\d+(\?from=[^&]+)?$/.test(opens ?? '')) throw new Error('a resurfaced entry opens ' + opens);
   if (await sixMonthSection.locator('[data-chart="area"]').count()) {
     throw new Error('the chart that cannot draw over one day is back');
   }
@@ -6371,8 +6576,8 @@ try {
   if ((await spoken()).length) throw new Error('reading the screen spoke');
 
   /* Repeated actions and repeated undos, each answered with the new value:
-     1 seeded, 2, 3, back down to the zero the seed never shows - and one
-     more log on top of zero, because an empty counter must still answer. */
+     1 seeded, 2, 3, back down to the seeded 1 - and then undo stops,
+     because the seed's tap is from an earlier day (release audit U6). */
   await page.locator('[data-tally-log="misgendered"]').click();
   const afterLog = await nextSpoken(await spoken());
   startsWithKind(afterLog, 'Misgendered');
@@ -6390,16 +6595,18 @@ try {
   const afterSecondUndo = await nextSpoken(afterUndo);
   if (count(afterSecondUndo) !== 1) throw new Error(`the second undo announced "${afterSecondUndo}"`);
 
-  /* The last undo removes the seed's own newest event, so the visible count
-     lands on zero and says so - a zero count is an answer, not a blank. */
-  await page.locator('[data-tally-undo="misgendered"]').click();
-  const afterZero = await nextSpoken(afterSecondUndo);
-  if (count(afterZero) !== 0) throw new Error(`the zero-count undo announced "${afterZero}"`);
+  /* Undo reaches today's taps only: the seed's tap from twenty days ago is
+     still counted, and undo is disabled rather than hard-deleting it. Each
+     undo that did run named its day in a toast. */
+  if (!(await page.locator('[data-tally-undo="misgendered"]').isDisabled()))
+    throw new Error('undo stayed enabled with only an earlier day left to remove');
+  if ((await page.locator('[data-toast-kind="tally-undone"]').count()) < 1)
+    throw new Error('an undo said nothing on screen about the day it removed from');
 
-  /* And zero is not a dead end: one more log on top of it answers one. */
+  /* And the counter still takes a log on top of the seed. */
   await page.locator('[data-tally-log="misgendered"]').click();
-  const afterRevive = await nextSpoken(afterZero);
-  if (count(afterRevive) !== 1) throw new Error(`logging onto zero announced "${afterRevive}"`);
+  const afterRevive = await nextSpoken(afterSecondUndo);
+  if (count(afterRevive) !== 2) throw new Error(`logging after the undos announced "${afterRevive}"`);
 
   /* The other counter is independent: its actions move only their own
      count, which the misgendered numbers above no longer explain. */
@@ -6415,7 +6622,7 @@ try {
   /* Reading the screen never writes: this flow navigated, moved the range,
      read and pressed the labelled actions - the numbers above are what the
      actions moved, and nothing moved on its own. */
-  ok('tally: each counter logs and undos beside its own chart, announces the changed value, and reaches zero honestly');
+  ok('tally: each counter logs and undos beside its own chart, announces the changed value, and undo never reaches an earlier day');
 } catch (e) { fail('tally in-context actions', e); }
 });
 
@@ -6539,7 +6746,73 @@ try {
     throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
   }
   await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
-  await fillTime(page, '#calendar-handoff-time', '09:15');
+  await page.evaluate(() => {
+    const targetInfo = (target) => target instanceof Element
+      ? { tag: target.tagName, id: target.id, data: [...target.attributes].map(({ name }) => name).filter((name) => name.startsWith('data-')).slice(0, 6) }
+      : null;
+    const trace = { events: [], types: ['pointerdown', 'pointerup', 'click', 'input', 'focusin', 'invalid'] };
+    trace.capture = (event) => {
+      const picker = document.querySelector('[data-time-picker]');
+      if (!picker && event.target?.id !== 'calendar-handoff-time') return;
+      trace.events.push({
+        type: event.type, at: Math.round(performance.now()), target: targetInfo(event.target),
+        insidePicker: !!picker?.contains(event.target),
+        entry: picker?.querySelector('[data-time-picker-entry]')?.value ?? null,
+        field: document.querySelector('#calendar-handoff-time')?.value ?? null
+      });
+      if (trace.events.length > 32) trace.events.shift();
+    };
+    window.__calendarPickerTrace = trace;
+    for (const type of trace.types) document.addEventListener(type, trace.capture, true);
+  });
+  const evaluateDiagnostic = async (callback) => {
+    let timer;
+    try {
+      return await Promise.race([
+        page.evaluate(callback),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('calendar picker diagnostic exceeded 5000ms')), 5000);
+        })
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  try {
+    await fillTime(page, '#calendar-handoff-time', '09:15');
+  } catch (error) {
+    try {
+      const state = await evaluateDiagnostic(() => {
+        const picker = document.querySelector('[data-time-picker]');
+        const surface = picker?.closest('[data-sheet]') ?? picker;
+        const field = document.querySelector('#calendar-handoff-time');
+        const entry = picker?.querySelector('[data-time-picker-entry]');
+        const active = document.activeElement;
+        return {
+          field: field?.value ?? null,
+          entry: entry ? { value: entry.value, valid: entry.validity.valid, message: entry.validationMessage } : null,
+          picker: picker ? {
+            box: picker.getBoundingClientRect().toJSON(),
+            inert: !!picker.closest('[inert]'),
+            animations: surface.getAnimations().slice(0, 4).map((animation) => ({ state: animation.playState, time: animation.currentTime }))
+          } : null,
+          focus: active ? { tag: active.tagName, id: active.id, insidePicker: !!picker?.contains(active) } : null,
+          events: window.__calendarPickerTrace?.events ?? []
+        };
+      });
+      console.log('CALENDAR PICKER FAILURE ' + JSON.stringify(state));
+    } catch (diagnosticError) {
+      console.log('CALENDAR PICKER DIAGNOSTICS UNAVAILABLE: ' + diagnosticError.message);
+    }
+    throw error;
+  } finally {
+    await evaluateDiagnostic(() => {
+      const trace = window.__calendarPickerTrace;
+      if (!trace) return;
+      for (const type of trace.types) document.removeEventListener(type, trace.capture, true);
+      delete window.__calendarPickerTrace;
+    }).catch(() => {});
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),

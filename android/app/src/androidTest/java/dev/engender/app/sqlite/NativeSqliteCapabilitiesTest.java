@@ -183,6 +183,35 @@ public class NativeSqliteCapabilitiesTest {
         }
     }
 
+    @Test
+    public void foreignKeysAreEnabledOnProductionConnectionOpen() throws Exception {
+        for (String key : new String[] {"", RAW_KEY}) {
+            String name = key.isEmpty() ? "foreign-keys-plain.db" : "foreign-keys-encrypted.db";
+            SqliteConnection conn = new SqliteConnection();
+            try {
+                conn.open(context(), name, key);
+                assertEquals(1L, conn.query("PRAGMA foreign_keys", new org.json.JSONArray())
+                    .getJSONObject(0).getLong("foreign_keys"));
+                conn.exec("CREATE TABLE parent (id INTEGER PRIMARY KEY);"
+                    + "CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) ON DELETE CASCADE);"
+                    + "INSERT INTO parent VALUES (1); INSERT INTO child VALUES (1);");
+                conn.exec("DELETE FROM parent;");
+                assertEquals(0L, conn.query("SELECT COUNT(*) AS n FROM child", new org.json.JSONArray())
+                    .getJSONObject(0).getLong("n"));
+                conn.exec("PRAGMA foreign_keys = OFF;");
+                conn.open(context(), name, key);
+                assertEquals(1L, conn.query("PRAGMA foreign_keys", new org.json.JSONArray())
+                    .getJSONObject(0).getLong("foreign_keys"));
+                conn.close();
+                conn.open(context(), name, key);
+                assertEquals(1L, conn.query("PRAGMA foreign_keys", new org.json.JSONArray())
+                    .getJSONObject(0).getLong("foreign_keys"));
+            } finally {
+                conn.deleteDatabaseFiles(context(), name);
+            }
+        }
+    }
+
     private SQLiteDatabase open(String hexKey) {
         String password = hexKey == null ? "" : "x'" + hexKey + "'";
         return SQLiteDatabase.openOrCreateDatabase(dbFile, password, null, null, null);

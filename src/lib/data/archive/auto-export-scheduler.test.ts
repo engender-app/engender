@@ -181,6 +181,39 @@ describe('auto-export scheduler', () => {
     });
   });
 
+  test('reports a snapshot failure before packing starts', async () => {
+    snapshot.mockRejectedValue(new Error('journal unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+
+      expect(runAndroidAutoExport).not.toHaveBeenCalled();
+      expect(notifyFailure).toHaveBeenCalledTimes(1);
+      expect(prefs.lastBackupAt).toBeNull();
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test('holds a pre-pack failure during quiet hours', async () => {
+    snapshot.mockRejectedValue(new Error('journal unavailable'));
+    prefs.quietHoursEnabled = true;
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+
+      expect(notifyFailure).not.toHaveBeenCalled();
+      expect(prefs.heldExportFailureNotice).toBe(true);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
   test('disguises the notice when hidden titles are on', async () => {
     runAndroidAutoExport.mockResolvedValue({ outcome: 'failed', reason: 'destination-full' });
     prefs.hideNotificationTitles = true;

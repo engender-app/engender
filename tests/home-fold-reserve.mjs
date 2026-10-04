@@ -11,12 +11,14 @@
    rows - whether any of them ever moves further than `JUMP_PX` between two
    frames.
 
-   Three cases:
+   Cases:
    - `warm`: the reserve remembers the height from the settle before it,
      which is every visit after the first. Nothing under it may move at all.
    - `wrong`: the remembered heights are halved, the guess a changed journal
      gives. The difference must travel (resize), never jump.
    - `none`: no remembered height, the first visit. Same rule as `wrong`.
+   - `margin-first`: no remembered height; the bottom margin finishes one
+     frame before the mask, exercising their cleanup order.
 
    And the reserve itself: the placeholder must fade out and the content
    fade in, never at opacity 1 on the frame it appears or leaves.
@@ -124,9 +126,29 @@ await settlePage(page, base, '/', THEME);
 await page.evaluate(DEMO_THEME_EXPRESSION(THEME));
 await page.waitForTimeout(1500);
 
+/* Native animations need not acquire the same start time. Advance only the
+   lower reserve's bottom margin in the regression case; its height and the
+   classifier keep their normal timing and rules. */
+await page.addInitScript(() => {
+  const original = Element.prototype.animate;
+  Element.prototype.animate = function (frames, options) {
+    const animation = original.call(this, frames, options);
+    if (
+      sessionStorage.getItem('home-fold-margin-first') === '1' &&
+      this.getAttribute('data-home-reserve') === 'below' &&
+      Array.isArray(frames) && frames.some((frame) => 'marginBottom' in frame)
+    ) {
+      animation.ready.then(() => {
+        if (animation.startTime !== null) animation.startTime -= 1000 / 60;
+      }).catch(() => {});
+    }
+    return animation;
+  };
+});
 await page.addInitScript(SAMPLER);
 
-async function coldLoad(prepare) {
+async function coldLoad(prepare, marginFirst = false) {
+  await page.evaluate((enabled) => sessionStorage.setItem('home-fold-margin-first', enabled ? '1' : '0'), marginFirst);
   /* Settle on Home first so the reserve remembers this journal's heights,
      then bend them as the case asks, then load cold. */
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
@@ -152,6 +174,8 @@ const CASES = {
     for (const slot of ['above', 'below', 'pinned']) localStorage.removeItem('engender-home-reserve-' + slot);
   })()`
 };
+
+CASES['margin-first'] = CASES.none;
 
 /* A move over the floor in one frame counts as travel only inside a run of
    at least `TRAVEL_FRAMES` consecutive frames all moving the same way. A
@@ -180,7 +204,7 @@ function teleports(series, label, samples) {
     for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
     for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
     if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
-      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, in a ${run}-frame move`);
+      out.push(`${label} ${Math.round(Math.abs(d))}px in one frame at ${Math.round(samples[i].at)}ms, in a ${run}-frame move (${Math.round(samples[i].at - samples[i - 1].at)}ms between samples)`);
   }
   return out;
 }
@@ -285,7 +309,7 @@ for (let run = 1; run <= RUNS; run++) {
 
 for (const [name, prepare] of Object.entries(CASES)) {
   for (let run = 1; run <= RUNS; run++) {
-    const samples = await coldLoad(prepare);
+    const samples = await coldLoad(prepare, name === 'margin-first');
     if (DUMP) {
       await mkdir(DUMP, { recursive: true });
       await writeFile(`${DUMP}/${THEME}-${name}-${run}.json`, JSON.stringify(samples));

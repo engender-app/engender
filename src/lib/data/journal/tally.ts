@@ -22,12 +22,14 @@ export interface TallyArea {
   log(input: TallyEventInput): Promise<string>;
   /** One kind's events, oldest first. */
   getEvents(kind: TallyKind): Promise<TallyEvent[]>;
-  /** The kind's most recent event, or null if there is none (phase 11
-      ticket 40). Same ordering as `getEvents`, read backwards: the newest
-      day wins, and a same-day tie falls out of the same `id` order the day
-      view already shows - the taps are indistinguishable, so which of them
+  /** The kind's most recent event on `epochDay`, or null if that day has
+      none (phase 11 ticket 40; bounded to one day by phase 14 ticket 18,
+      release audit U6). What undo reverses: an earlier day's tap is never
+      reached, so undo cannot hard-delete an old record without saying
+      which. A same-day tie falls out of the same `id` order the day view
+      already shows - the taps are indistinguishable, so which of them
       counts as last is not a decision anyone can observe. */
-  latestEvent(kind: TallyKind): Promise<TallyEvent | null>;
+  latestEvent(kind: TallyKind, epochDay: number): Promise<TallyEvent | null>;
   /** One day's events, both kinds, in the order they were logged (phase 5
       deepening ticket 21). Both kinds together because the day view asks
       what happened, not how one counter moved. */
@@ -54,8 +56,8 @@ export function makeTallyArea(driver: SqliteDriver): TallyArea {
 
     getEvents: (kind) => events.read('WHERE kind = ? ORDER BY epoch_day, id', [kind]),
 
-    latestEvent: async (kind) =>
-      (await events.read('WHERE kind = ? ORDER BY epoch_day DESC, id DESC LIMIT 1', [kind]))[0] ?? null,
+    latestEvent: async (kind, epochDay) =>
+      (await events.read('WHERE kind = ? AND epoch_day = ? ORDER BY id DESC LIMIT 1', [kind, epochDay]))[0] ?? null,
 
     getEventsOnDay: (epochDay) => events.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
 

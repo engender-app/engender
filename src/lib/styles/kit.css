@@ -739,14 +739,12 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   letter-spacing: 0.02em;
 }
 
-.kit-day-aside {
-  margin-left: auto;
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-}
-
 .kit-day-body {
   padding: var(--space-2) 0 var(--space-3);
+}
+/* DayCard's `tight`: half the room under the bar (search ticket 16). */
+.kit-day.is-tight .kit-day-body {
+  padding-top: var(--space-1);
 }
 
 .kit-entry {
@@ -764,8 +762,8 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 }
 /* The container transform's own layer (DayEntry.svelte) - out of grid flow
    (absolute, so it takes no track and the three columns beside it are
-   unaffected) and carrying no text of its own, the same reason
-   .entry-card-bg exists in components.css. */
+   unaffected) and carrying no text of its own, so the row's words stay out
+   of the image the transition scales. */
 .kit-entry-bg {
   position: absolute; inset: 0;
 }
@@ -780,10 +778,18 @@ a.kit-entry:active {
 }
 
 /* The hour sits on the same 26px line the face does, so the two read as one
-   mark on the rail rather than as a label that slipped. */
+   mark on the rail rather than as a label that slipped.
+
+   One width for every hour, right-aligned against the face (release audit
+   U8): the column was `auto` per row, so "9:24" sat 7px narrower than
+   "13:49" and its face, and the rail through it, moved left with it. Five
+   tabular digits' worth in the time's own type holds "23:59", the widest
+   time either locale writes (fmtTime is 24-hour in en-GB and pl-PL). */
 .kit-entry-time {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  width: 5ch;
   height: 26px;
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
@@ -828,6 +834,16 @@ a.kit-entry:active {
    contributes. */
 .kit-entry:first-of-type .kit-entry-mark::before { top: 13px; }
 .kit-entry:last-of-type .kit-entry-mark::before { bottom: calc(100% - 13px); }
+/* The variant for a card whose entries each sit in a wrapper of their own,
+   `.kit-entry-row`, so that each can open and close its own height
+   (EntryDays.svelte, search ticket 16). Inside a wrapper every entry is the
+   first and the last of its type, and the rule above would end the line at
+   each one; the run of wrappers says where the card's first and last entry
+   are instead. After the two rules above, which tie with the first of these
+   on specificity. */
+.kit-entry-row > .kit-entry .kit-entry-mark::before { top: 0; bottom: 0; }
+.kit-entry-row:first-child > .kit-entry .kit-entry-mark::before { top: 13px; }
+.kit-entry-row:last-child > .kit-entry .kit-entry-mark::before { bottom: calc(100% - 13px); }
 
 .kit-entry-mark > * {
   position: relative;
@@ -886,8 +902,7 @@ a.kit-entry:active {
 
 /* The fluidity engine's presentation, in its own colour (phase 5 deepening
    ticket 17, ADR-0048) - set inline per entry by the caller, since it names
-   a specific presentation rather than this row's own section role, the same
-   split components.css's .entry-presentation makes. */
+   a specific presentation rather than this row's own section role. */
 .kit-entry-presentation {
   display: block;
   font-size: var(--text-xs);
@@ -1916,6 +1931,7 @@ button.kit-strip-day .kit-strip-cell {
   gap: var(--space-3);
 }
 
+.kit-chart-head h2,
 .kit-chart-head h3 {
   flex: 1;
   min-width: 0;

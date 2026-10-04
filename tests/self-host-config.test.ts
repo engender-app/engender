@@ -13,7 +13,10 @@ import { join } from 'node:path';
 import { expect, test } from 'vitest';
 
 const DEPLOY = 'deploy';
-const SHARED = ['deploy/nginx/journal-headers.conf', 'deploy/nginx/journal-site.conf'];
+const SHARED = [
+  'deploy/nginx/journal-headers.conf', 'deploy/nginx/journal-site.conf',
+  'deploy/nginx/journal-http.conf'
+];
 const SELF_HOST_SERVERS = ['deploy/self-host/engender.conf', 'deploy/self-host/container.conf'];
 const DOCKERFILE = 'deploy/self-host/Dockerfile';
 

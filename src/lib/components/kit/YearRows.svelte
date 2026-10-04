@@ -16,7 +16,14 @@
      a second place that decides how this app colours a value. A day that
      carried nothing is step 0 - the empty end of the ramp, which is what a
      day nobody logged has always been on the calendar. It is not a day at
-     the bottom of the scale. */
+     the bottom of the scale.
+
+     A picture only (phase 14 pre-release ticket 30, accessibility audit
+     A06): a day's date and value lived in a `title`, which a screen reader
+     does not reach and a finger or a keyboard cannot raise, and the steps
+     are told apart by shade alone. So the whole grid is out of the
+     accessibility tree, and the same days are read as words in
+     YearDaysList.svelte, which the caller draws under it. */
   import type { YearRows } from '$lib/charts/yearRows';
 
   let {
@@ -29,16 +36,16 @@
     /** Month names come from the caller: dates are written against the
         active locale in $lib/data/dates. */
     monthName: (month: number) => string;
-    /** A cell's own name, for what a long press or a hover shows. */
+    /** A cell's own name, for what a hover shows. */
     dayLabel: (epochDay: number, value: number | null) => string;
     /** What a step is painted in, 0 for an empty day. */
     fillAt: (step: number) => string;
   } = $props();
 </script>
 
-<div class="kit-year" data-chart="year-rows" style={`--year-columns: ${grid.columns}`}>
+<div class="kit-year" data-chart="year-rows" aria-hidden="true" style={`--year-columns: ${grid.columns}`}>
   {#each grid.months as month, i (month)}
-    <span class="kit-year-label" aria-hidden="true">{monthName(month)}</span>
+    <span class="kit-year-label">{monthName(month)}</span>
     <!-- Fills in month by month rather than appearing whole: the grid has
          no per-value motion of its own to borrow, so it takes the skeleton
          cascade's own primitive for "several like things arriving as a

@@ -1211,7 +1211,13 @@ export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) =
         throw new Error(`journal.${areaName}.${operation} is neither a declared read nor a declared write`);
       }
       wrappedArea[operation] = tables
-        ? announcing(implementation as Mutation, tables, onWrite)
+        ? announcing(
+            implementation as Mutation,
+            tables,
+            onWrite,
+            // Auto-log returns its count, including zero, to the caller.
+            areaName === 'doses' && operation === 'autoLogDueDoses' ? 0 : NOTHING_WRITTEN
+          )
         : (implementation as Mutation).bind(area);
     }
 
@@ -1223,7 +1229,12 @@ export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) =
 
 type Mutation = (...args: never[]) => Promise<unknown>;
 
-function announcing(implementation: Mutation, tables: TableName[], onWrite: (tables: TableName[]) => void) {
+function announcing(
+  implementation: Mutation,
+  tables: TableName[],
+  onWrite: (tables: TableName[]) => void,
+  noWriteResult: unknown = NOTHING_WRITTEN
+) {
   return async (...args: never[]) => {
     const done = markJournalBusy();
     try {
@@ -1231,7 +1242,7 @@ function announcing(implementation: Mutation, tables: TableName[], onWrite: (tab
       // A write that looked and changed nothing says so, and announcing it
       // anyway is how the run-out reconcile kept waking itself (ux-carpet 199).
       if (result === NOTHING_WRITTEN) return undefined;
-      onWrite(tables);
+      if (result !== noWriteResult) onWrite(tables);
       return result;
     } finally {
       done();

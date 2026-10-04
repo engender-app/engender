@@ -24,6 +24,7 @@
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, screencast, previewBuild } from './browser-harness.mjs';
+import { frameBandDistances } from './frame-band-distances.mjs';
 import { INIT_HIDE_DEMO_SCRIPT } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -70,37 +71,7 @@ async function open(breakTheDatabase) {
     notice: !!document.querySelector('[data-retry-boot]') && !!document.querySelector('[data-unreadable-reset]')
   }), APP_MARKUP);
   await context.close();
-  return { ...state, bands: await distances(frames) };
-}
-
-/** Each frame's mean channel distance from the last one, per band. */
-async function distances(frames) {
-  return decoder.evaluate(async (list) => {
-    const pixels = async (b64) => {
-      const image = new Image();
-      image.src = 'data:image/png;base64,' + b64;
-      await image.decode();
-      const canvas = new OffscreenCanvas(image.width, image.height);
-      const context = canvas.getContext('2d');
-      context.drawImage(image, 0, 0);
-      return context.getImageData(0, 0, image.width, image.height);
-    };
-    const images = [];
-    for (const frame of list) images.push(await pixels(frame.data));
-    const last = images[images.length - 1];
-    const band = (a, y0, y1) => {
-      let sum = 0;
-      let n = 0;
-      for (let y = y0; y < Math.min(y1, a.height); y++)
-        for (let x = 0; x < a.width; x += 2) {
-          const i = (y * a.width + x) * 4;
-          for (let c = 0; c < 3; c++) sum += Math.abs(a.data[i + c] - last.data[i + c]);
-          n += 3;
-        }
-      return sum / n;
-    };
-    return { notice: images.map((a) => band(a, 0, 200)), body: images.map((a) => band(a, 200, 700)) };
-  }, frames);
+  return { ...state, bands: await decoder.evaluate(frameBandDistances, frames) };
 }
 
 /** How the band got from its peak to settled: the largest share of that

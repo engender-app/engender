@@ -18,7 +18,8 @@ import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-
 import { thumbFileName } from '../../../src/lib/data/photos/names.ts';
 import { addJournalPassphrase, unlockJournalPassphrase } from '../../../src/lib/data/journal-passphrase.ts';
 import { sweepOrphanPhotos } from '../../../src/lib/data/journal/photos.ts';
-import { generateLongJournal, TEN_YEARS_IN_DAYS } from '../../long-journal/generate.ts';
+import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS } from '../../long-journal/generate.ts';
+import { compareJournalSizes } from '../../long-journal/scaling.ts';
 import { measureLongJournal } from '../../long-journal/measure.ts';
 import type { NormalizedPhoto } from '../../../src/lib/data/journal/photos.ts';
 import type { Measurement } from '../../long-journal/measure.ts';
@@ -89,11 +90,14 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   };
 }
 
-async function run(): Promise<Record<string, unknown>> {
-  /* One fixed name, so LongJournalBenchmarkTest can delete it before launch
-     and each run starts from an empty database. */
-  const { driver, fileOps } = createAndroidSqlite('long-journal-benchmark.sqlite3', PROBE_DATA_KEY);
-  const files = encryptedFileStore(appPrivatePhotoFiles('long-journal-photos'), PROBE_DATA_KEY);
+async function run(days: number) {
+  const suffix = days === ONE_YEAR_IN_DAYS ? '-one-year' : '';
+  const databaseName = `long-journal-benchmark${suffix}.sqlite3`;
+  const photoDirectory = `long-journal-photos${suffix}`;
+  /* Fixed names let LongJournalBenchmarkTest delete both fixtures before
+     launch. Each size gets its own empty database and photo directory. */
+  const { driver, fileOps } = createAndroidSqlite(databaseName, PROBE_DATA_KEY);
+  const files = encryptedFileStore(appPrivatePhotoFiles(photoDirectory), PROBE_DATA_KEY);
 
   const booted = await boot({ createDriver: () => driver, fileOps });
   if (booted.phase === 'error') throw booted.error;
@@ -102,14 +106,14 @@ async function run(): Promise<Record<string, unknown>> {
   await journal.reconcileBuiltIns();
 
   const startedAt = performance.now();
-  const summary = await generateLongJournal(journal, { days: TEN_YEARS_IN_DAYS, makePhoto: photoMaker() });
+  const summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
   const generatedInMs = Math.round(performance.now() - startedAt);
 
   await addJournalPassphrase(PROBE_DATA_KEY, PROBE_PASSPHRASE);
   await booted.driver.close();
 
   const startupState =
-    `cold start after fixture generation; decade fixture already present; ` +
+    `cold start after fixture generation; ${days}-day fixture already present; ` +
     `boot-migrations includes any schema work this build still needs`;
   const startup: Measurement[] = [];
 
@@ -122,8 +126,8 @@ async function run(): Promise<Record<string, unknown>> {
     detail: `${startupState}; key bytes ${unlockedDataKey.length}`
   });
 
-  const reopenedSqlite = createAndroidSqlite('long-journal-benchmark.sqlite3', unlockedDataKey);
-  const reopenedFiles = encryptedFileStore(appPrivatePhotoFiles('long-journal-photos'), unlockedDataKey);
+  const reopenedSqlite = createAndroidSqlite(databaseName, unlockedDataKey);
+  const reopenedFiles = encryptedFileStore(appPrivatePhotoFiles(photoDirectory), unlockedDataKey);
 
   const bootStartedAt = performance.now();
   const reopened = await boot({ createDriver: () => reopenedSqlite.driver, fileOps: reopenedSqlite.fileOps });
@@ -203,7 +207,9 @@ async function main() {
   );
   let result: Record<string, unknown>;
   try {
-    result = await run();
+    const oneYear = await run(ONE_YEAR_IN_DAYS);
+    const tenYears = await run(TEN_YEARS_IN_DAYS);
+    result = { ...tenYears, oneYear, scaling: compareJournalSizes(oneYear, tenYears) };
   } catch (error) {
     result = { error: String((error as Error)?.stack ?? error) };
   }

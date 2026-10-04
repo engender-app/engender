@@ -27,12 +27,14 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { disclose } from '$lib/motion/reveal';
+  import { whileStaying } from '$lib/motion/whileStaying';
   import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
+  import SearchActions from '$lib/components/SearchActions.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
@@ -210,6 +212,9 @@
   {#if question}
     <ScreenHeader title={question.name} back="/search/questions">
       {#snippet actions()}
+        <!-- Random sits with the question's other actions rather than over
+             its results, as on /search (ticket 16). -->
+        <SearchActions draw={revealedCriteria === stableSearch && hits.length > 0 ? drawRandom : undefined} />
         <button class="icon-btn" aria-label={m.saved_question_rename_aria()} data-saved-question-rename onclick={openRename}>
           <Icon name="pencil" />
         </button>
@@ -249,8 +254,6 @@
         </ul>
       </div>
     {/if}
-    <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
-    <p class="search-hint">{m.search_filters_date_scope()}</p>
 
     <div aria-live="polite">
       {#key searchSignature}
@@ -262,59 +265,50 @@
         />
       {/if}
       {#if !foundNothing}
-        {#if hitRows.length}
-          <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
-        {/if}
 
-        {#if hitRows.length}
-          <SectionHeading text={m.search_entries_heading()} />
-        {/if}
-        <p class="search-count" data-search-entry-count>
-          {hitRows.length ? m.results_count({ count: total }) : m.search_entries_count({ count: total })}
-        </p>
-        {#if !hits.length}
-          <p class="search-hint">{m.search_no_results_filtered()}</p>
-        {/if}
         {#if hits.length}
-          <!-- A draw from the question currently being asked, not a mode of
-               its own (spec.md's own line) - the same control /search's own
-               ad hoc run offers, over this saved question's `hits`. -->
-          <button class="btn btn-soft search-random" data-search-random onclick={drawRandom}>
-            <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
-          </button>
-          <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
-          {#if remaining > 0}
-            <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
-              <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
-            </button>
-          {/if}
+          <div transition:disclose={whileStaying}>
+            <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
+            {#if remaining > 0}
+              <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
+                <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
+              </button>
+            {/if}
+          </div>
         {/if}
 
         {#if hitRows.length}
-          <SectionHeading text={m.search_elsewhere_heading()} />
-          <p class="search-count" data-search-other-count>{m.results_count({ count: elsewhereResults.total })}</p>
-          <ListCard role={hitsRole}>
-            {#each hitRows as row (row.key)}
-              <ListRow
-                key={row.key}
-                icon={row.icon}
-                title={row.excerpt}
-                subtitle={row.label}
-                href={row.href}
-                data-search-hit={row.area}
-              >
-                {#snippet trailing()}
-                  {#if row.date}<span class="search-hit-date">{row.date}</span>{/if}
-                {/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
+          <div transition:disclose={whileStaying}>
+            <!-- Named only under entries, to be elsewhere from: the call
+                 /search makes about the same two lists (ticket 16). -->
+            {#if hits.length}<SectionHeading text={m.search_elsewhere_heading()} />{/if}
+            <ListCard role={hitsRole}>
+              {#each hitRows as row (row.key)}
+                <ListRow
+                  key={row.key}
+                  icon={row.icon}
+                  title={row.excerpt}
+                  subtitle={row.label}
+                  href={row.href}
+                  data-search-hit={row.area}
+                >
+                  {#snippet trailing()}
+                    {#if row.date}<span class="search-hit-date">{row.date}</span>{/if}
+                  {/snippet}
+                </ListRow>
+              {/each}
+            </ListCard>
+            {#if hitsRemaining > 0}
+              <button class="btn btn-soft search-more" data-search-hits-more onclick={() => (hitPages += 1)}>
+                <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
+              </button>
+            {/if}
+          </div>
         {/if}
-        {#if hitsRemaining > 0}
-          <button class="btn btn-soft search-more" data-search-hits-more onclick={() => (hitPages += 1)}>
-            <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
-          </button>
-        {/if}
+
+        <!-- One count, the total, in the same words and the same place as
+             /search's: under the results (ticket 16). -->
+        <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
       {:else if !search.failed && !elsewhere.failed}
         <Notice icon="bookmark" key="saved-question-none" title={m.no_results()} text={m.saved_question_no_results()} />
       {/if}

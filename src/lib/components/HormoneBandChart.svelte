@@ -39,8 +39,7 @@
     pointLabel,
     markers = [],
     selectedMarker = null,
-    onSelectMarker,
-    markLabel
+    onSelectMarker
   }: {
     band: BandPoint[];
     /** The user's own results. Drawn over the band and never part of it. */
@@ -68,7 +67,7 @@
   } & CurveMarkerProps = $props();
 
   let interactive = $derived(onSelect !== undefined && pointLabel !== undefined);
-  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker, markLabel }));
+  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker }));
 
   const P = 8;
   /* Room on the left for the axis labels, which sit inside the viewBox so
@@ -109,19 +108,28 @@
 </script>
 
 {#if chart}
+  <!-- A labelled group rather than an image once the results are controls
+       (phase 14 ticket 29, accessibility audit A05): an image is one atomic
+       thing to a screen reader, and the result marks inside it were
+       focusable buttons it was entitled to flatten away. As a group, the
+       label still says what the drawing shows and each result is its own
+       named control under it. With no results to press it stays an image.
+       The axis is decoration either way - the label carries the range. -->
   <svg
     class="band-chart"
     viewBox="0 0 {width} {height}"
     preserveAspectRatio="none"
-    role="img"
+    role={interactive && chart.marks.length > 0 ? 'group' : 'img'}
     aria-label={ariaLabel}
   >
-    <text x={AXIS - 5} y={P - 1} class="band-axis-label" text-anchor="end">{unitLabel}</text>
+    <g aria-hidden="true">
+      <text x={AXIS - 5} y={P - 1} class="band-axis-label" text-anchor="end">{unitLabel}</text>
 
-    {#each chart.ticks as tick (tick.value)}
-      <line x1={AXIS} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />
-      <text x={AXIS - 5} y={tick.y + 3.5} class="band-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
-    {/each}
+      {#each chart.ticks as tick (tick.value)}
+        <line x1={AXIS} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />
+        <text x={AXIS - 5} y={tick.y + 3.5} class="band-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
+      {/each}
+    </g>
 
     <!-- Under the band and its results, over the gridlines: what else was
          logged is context for the readings and never a reading itself. -->
@@ -136,13 +144,14 @@
         plotHeight={height - P * 2}
         selected={selectedMarker}
         onSelect={onSelectMarker!}
-        markLabel={markLabel!}
       />
     {/if}
 
-    <path d={chart.band} class="band-fill" />
-    <path d={chart.upperEdge} class="band-edge" />
-    <path d={chart.lowerEdge} class="band-edge" />
+    <g aria-hidden="true">
+      <path d={chart.band} class="band-fill" />
+      <path d={chart.upperEdge} class="band-edge" />
+      <path d={chart.lowerEdge} class="band-edge" />
+    </g>
 
     <!-- The user's own results, over the band and shaped unlike it: a filled
          square rather than a dot, so a measurement never reads as part of a
@@ -220,6 +229,7 @@
     fill: var(--accent);
     stroke: var(--surface);
     stroke-width: 1.5;
+    transition: stroke var(--dur-fast) var(--ease-out), stroke-width var(--dur-fast) var(--ease-out);
   }
 
   .band-result.is-selected {

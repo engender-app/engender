@@ -19,9 +19,10 @@ const version = appVersion();
 /** The sha256 of every inline script in `src/app.html`, in CSP's spelling.
 
     SvelteKit hashes the start call it injects itself and nothing else, so
-    without this the boot-preference stamp - the one script that has to run
-    before the first paint, which is why it is inline at all - is the script
-    the policy blocks. The template copies these through verbatim, so hashing
+    without this the boot-preference stamp - the script that has to run
+    before the first paint, which is why it is inline at all, and which also
+    gives the build's held module hints back (src/hooks.server.ts) - is the
+    script the policy blocks. The template copies these through verbatim, so hashing
     the source is hashing what ships; `tests/csp.test.ts` hashes the built
     document instead and fails if that ever stops being true. */
 function appHtmlScriptHashes() {
@@ -96,6 +97,12 @@ const config = {
         'media-src': ['self', 'blob:']
       }
     },
+    /* SvelteKit's own registration is a line in the document's start script,
+       run on the window's load event. The layout registers the worker
+       itself, after boot has answered (lib/pwa/register.ts), so the line is
+       switched off: left on, the 680-file precache began at load whatever
+       the layout decided. */
+    serviceWorker: { register: false },
     paths: {
       /* Root-absolute asset URLs, against SvelteKit's default of relative
          ones: the service worker answers every navigation with one precached

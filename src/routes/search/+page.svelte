@@ -99,7 +99,8 @@
      `recentSearches.ts` for what "recent" means, since a search's own
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import { EMPTY_SEARCH, holdSearch, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
@@ -115,10 +116,11 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { fmtDay } from '$lib/data/dates';
+  import { photoCaptionDate } from '$lib/data/dates';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import SearchActions from '$lib/components/SearchActions.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -130,6 +132,8 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
   import { crossfade, disclose } from '$lib/motion/reveal';
+  import { whileStaying } from '$lib/motion/whileStaying';
+  import { fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
 
   /** One page of hits, and what the "show more" control asks for again. */
   const PAGE = 30;
@@ -151,6 +155,15 @@
      `/search/starred` redirect stub, so a stale bookmark still lands on
      the shelf it pointed at rather than on a bare, unfiltered screen. */
   let starredOnly = $state(page.url.searchParams.has('starred'));
+  /* What the address asks for, which is also what a stale held search
+     falls back to: `?starred=1` above, and `?q=` from the Transition door's
+     "finish this search" row, which linked here with the query and landed
+     on an empty box (ticket 16). */
+  const asked = (): SearchSnapshot => ({
+    ...EMPTY_SEARCH,
+    query: page.url.searchParams.get('q') ?? '',
+    starredOnly: page.url.searchParams.has('starred')
+  });
   /* Saving a question keeps the query and every filter that is on, never
      today's results (ticket 06's own acceptance criterion: a saved
      question is read the same way an ad hoc search is, not frozen). */
@@ -237,9 +250,27 @@
     const timer = setTimeout(() => {
       debouncedQuery = typed;
       recordRecentSearch(typed);
-      recentSearchList = listRecentSearches();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
+  });
+
+  /* Back from an entry opened out of these results: the same search, with
+     the same filters (searchReturn.ts). Arriving any other way, the held
+     snapshot was stale and the search starts empty. */
+  const current = (): SearchSnapshot => ({
+    query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly
+  });
+  const restore = (s: SearchSnapshot) => {
+    ({ query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly } = s);
+    debouncedQuery = s.query.trim();
+  };
+  const held = takeHeldSearch();
+  restore(held ?? asked());
+  beforeNavigate(({ to }) => {
+    if (to?.url.pathname.startsWith('/entry/')) holdSearch(current());
+  });
+  afterNavigate(({ from }) => {
+    if (held && !from?.url.pathname.startsWith('/entry/')) restore(asked());
   });
 
   /* Off the debounced query, not the box: what this gates - the idle/results
@@ -290,17 +321,28 @@
      its count come back together or not at all, and defaulting them
      separately was two chances for a screen to report a total over hits that
      were not from the same read. */
-  const NOTHING_ASKED = { hits: [], total: 0 };
+  const NOTHING_ASKED = { key: '', hits: [], total: 0 };
+
+  /* Each answer carries the question it answers (ticket 16). A read keeps
+     its last value while the next run is out, so between a pause in the
+     typing and the answer the screen still holds the previous answer - or,
+     for the first question after an empty box, nothing at all - and drawing
+     "nothing found" off that painted a notice for one or two frames on
+     every first search, then cut it for the rows. `settled` below is the
+     two keys agreeing with what is being asked. */
+  const entriesKeyOf = (typed: string, f: EntrySearchFilters) => JSON.stringify([typed, f]);
+  const elsewhereKeyOf = (typed: string, start: number | null, end: number | null) => JSON.stringify([typed, start, end]);
 
   let search = liveQuery((j) => {
     const typed = debouncedQuery;
     const limit = PAGE * pages;
-    if (!typed && !hasStructuredCriteria) return Promise.resolve(NOTHING_ASKED);
+    const key = entriesKeyOf(typed, filters);
+    if (!typed && !hasStructuredCriteria) return Promise.resolve({ ...NOTHING_ASKED, key });
     const tagIds = tagIdsMatching(typed, vocabulary.tags);
     return Promise.all([
       j.entries.searchEntries(typed, tagIds, filters, limit),
       j.entries.countSearchMatches(typed, tagIds, filters)
-    ]).then(([hits, total]) => ({ hits, total }));
+    ]).then(([hits, total]) => ({ key, hits, total }));
   });
   /* Everything the journal holds that is not an entry, in one scan across
      the registry (textSearch.ts). Reads the debounced query, the range and
@@ -310,17 +352,30 @@
      `today` because a sealed letter is not searchable and the seal is a
      comparison against today, which no read below the journal seam makes
      for itself (ADR-0001). */
-  const NOTHING_ELSEWHERE = { hits: [], total: 0 };
+  const NOTHING_ELSEWHERE = { key: '', hits: [], total: 0 };
   let elsewhere = liveQuery((j) => {
     const typed = debouncedQuery;
     const limit = PAGE * hitPages;
     const startEpochDay = filters.startEpochDay ?? null;
     const endEpochDay = filters.endEpochDay ?? null;
-    if (!typed) return Promise.resolve(NOTHING_ELSEWHERE);
-    return j.textSearch.search({ query: typed, today: todayEpochDay(), startEpochDay, endEpochDay, limit });
+    const key = elsewhereKeyOf(typed, startEpochDay, endEpochDay);
+    if (!typed) return Promise.resolve({ ...NOTHING_ELSEWHERE, key });
+    return j.textSearch
+      .search({ query: typed, today: todayEpochDay(), startEpochDay, endEpochDay, limit })
+      .then((answer) => ({ ...answer, key }));
   });
 
-  let results = $derived(search.value ?? NOTHING_ASKED);
+  /* The answer on screen: both reads' values, taken together once they
+     agree on the question (`settled`, below). The two reads land a frame or
+     more apart, and drawing each as it landed showed a records-only answer
+     for a frame, then opened the entries above it - half an answer moving
+     under the other half (ticket 16). A later page of the same question
+     keeps the keys, so "show more" still lands at once. */
+  let shown = $state<{ entries: NonNullable<typeof search.value>; elsewhere: NonNullable<typeof elsewhere.value> }>({
+    entries: NOTHING_ASKED,
+    elsewhere: NOTHING_ELSEWHERE
+  });
+  let results = $derived(shown.entries);
   let hits = $derived(results.hits);
   let total = $derived(results.total);
   let groups = $derived(entryDayGroups(hits));
@@ -339,7 +394,7 @@
      tell a last page that happens to be exactly thirty from a full one. */
   let remaining = $derived(Math.max(0, total - hits.length));
 
-  let elsewhereResults = $derived(elsewhere.value ?? NOTHING_ELSEWHERE);
+  let elsewhereResults = $derived(shown.elsewhere);
   /* One list, newest first across every area, each row saying what kind of
      thing it is. Not a section per area: eighteen areas can answer a query
      and a heading over a card of one row is framework rather than structure
@@ -371,6 +426,42 @@
   let foundNothing = $derived(
     hits.length === 0 && hitRows.length === 0 && (!starredOnly || starredPhotos.length === 0)
   );
+  let settled = $derived(
+    search.value?.key === entriesKeyOf(debouncedQuery, filters) &&
+      elsewhere.value?.key === elsewhereKeyOf(debouncedQuery, filters.startEpochDay ?? null, filters.endEpochDay ?? null) &&
+      (!starredOnly || !starredPhotosQuery.loading)
+  );
+  /* Whether this question has had an answer drawn yet. The opening state
+     stays up until it has, so the box empties into results rather than into
+     a gap or a notice; after that, a refined question keeps the rows it has
+     until the next answer replaces them row by row. */
+  let answered = $state(false);
+  $effect.pre(() => {
+    if (settled && search.value && elsewhere.value) shown = { entries: search.value, elsewhere: elsewhere.value };
+    if (!hasCriteria) answered = false;
+    else if (settled) answered = true;
+  });
+  /* Nothing to save when nothing matched (ticket 16, audit U7). */
+  let canSave = $derived(answered && settled && !foundNothing);
+  /* Headings name a list only where there is one above it to tell it
+     apart from, the Transition door's call for the same two lists: the
+     entries lead, so they are named only under starred photos, and the
+     records from elsewhere only under entries or photos. A heading over the
+     first list pushed the first result below the first third of a phone. */
+  let photosShown = $derived(starredOnly && starredPhotos.length > 0);
+  /* What arrives where something else is leaving by `crossfade`: it fades
+     up in flow while the leaver fades off out of flow. And what comes back
+     before its own leave finished - typing then clearing inside one fade -
+     is the same node resumed, still wearing the positioning crossfade wrote
+     on it (absolute, behind the screen, no pointer events), which left the
+     opening state's rows untappable under the screen. So the arrival takes
+     those writes off first. */
+  const fadeUp = (node: Element) => {
+    const el = node as HTMLElement;
+    for (const property of ['position', 'width', 'z-index', 'pointer-events']) el.style.removeProperty(property);
+    delete el.dataset.leaving;
+    return isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
+  };
 
   /* One area of colour on this screen, and it is the days. Role 0, the only
      index guaranteed to be a colour on all 8 palettes, since a screen with a
@@ -433,6 +524,12 @@
   let savedQuestions = $derived(savedQuestionsQuery.rows);
 
   let recentSearchList = $state<string[]>(listRecentSearches());
+  /* Read again when the opening state comes back rather than the moment a
+     search is recorded: the opening state is still up then, waiting on the
+     answer, and the new row grew it 96px in one frame (ticket 16). */
+  $effect.pre(() => {
+    if (!hasCriteria) recentSearchList = listRecentSearches();
+  });
 
   function runRecentSearch(term: string) {
     query = term;
@@ -441,7 +538,16 @@
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.search()} screen="search" back="/calendar" />
+  <!-- The actions snippet is always passed, so the header's layout never
+       changes as its buttons come and go (SearchActions.svelte). -->
+  <ScreenHeader title={m.search()} screen="search" back="/calendar">
+    {#snippet actions()}
+      <SearchActions
+        save={canSave ? () => (savingOpen = true) : undefined}
+        draw={answered && hits.length > 0 ? drawRandom : undefined}
+      />
+    {/snippet}
+  </ScreenHeader>
 
   <div class="search-controls">
     <div class="search-box">
@@ -469,14 +575,12 @@
       <span>{m.search_filters_count({ count: activeFilterChips.length })}</span>
     </button>
   </div>
-  <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
-  <p class="search-hint">{m.search_filters_date_scope()}</p>
 
   {#if activeFilterChips.length}
     <!-- The one thing that has to stay on the screen once the filters left
          it: with the panel in a sheet, these chips are the only place the
          state of the query is visible. -->
-    <div class="search-chips">
+    <div class="search-chips" transition:disclose={whileStaying}>
       {#each activeFilterChips as chip (chip.key)}
         <button class="tag-chip is-selected press" data-active-filter-chip onclick={chip.remove}>
           <Icon name="x" size={14} />
@@ -487,40 +591,31 @@
     </div>
   {/if}
 
-  {#if hasCriteria}
-    <!-- Offered once a query has actually run, never for a blank box - a
-         question nobody has asked yet is not worth naming (the ticket's
-         own line). -->
-    <!-- `disclose`, because this arrives in the middle of a screen the
-         person is reading rather than with the screen: typing the first
-         character inserted a full-height button between the box and the
-         results in one frame and shoved everything under it down to meet
-         it (ticket 99 item 14, "searching happens with an extra yank").
-         DIRECTION.md names exactly this - an insertion opens its own
-         height instead of making everything below it jump. -->
-    <button class="btn btn-soft" data-search-save transition:disclose onclick={() => (savingOpen = true)}>
-      <Icon name="bookmark" size={20} /><span>{m.saved_question_save()}</span>
-    </button>
-  {/if}
+  <!-- What a screen reader is told when an answer lands: the count, or
+       that nothing matched, once per answer. The whole answer area used to
+       be the live region, so every keystroke's pause read out the whole
+       list of results. In the document while empty, because a live region
+       has to exist before its content changes to be announced. -->
+  <p class="visually-hidden" role="status" data-search-status>
+    {hasCriteria && answered && settled ? (foundNothing ? m.no_results() : m.results_count({ count: foundTotal })) : ''}
+  </p>
 
-  {#if hits.length > 0}
-    <!-- A draw from the question currently being asked, not a mode of its
-         own (spec.md's own line) - absent with nothing asked, which
-         `hits.length` already says without a second `hasCriteria` check. -->
-    <button class="btn btn-soft search-random" data-search-random transition:disclose onclick={drawRandom}>
-      <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
-    </button>
-  {/if}
-
-  <div aria-live="polite">
-    {#if !hasCriteria}
-      <!-- Nothing typed yet, so the screen opens with something rather than
-           drawing an empty result area (ticket 18): the hint says what can
-           be searched, and what follows is real, tappable content instead
-           of a suggested example. `data-search-idle` names the whole
-           state, not any one row inside it - what the walkthrough waits to
-           see gone once typing starts, and back once the field clears. -->
-      <div data-search-idle out:disclose>
+  <!-- One block at a time, each swapping for the next in place by one
+       crossfade: the opening state, the first read's skeleton, nothing
+       found, or the results. A crossfade rather than a height travel,
+       because the results run past the bottom of the phone and opening
+       their height swept the whole visible screen in three frames; nothing
+       sits under this area to be pushed. The opening state stays until the
+       first answer, so the box empties into results rather than into a gap
+       or a notice. `data-search-idle` names the whole opening state - what
+       the walkthrough waits to see gone once typing starts, and back once
+       the field clears. -->
+  <div class="search-answer">
+    {#if !hasCriteria || (!answered && !loading)}
+      <div data-search-idle in:fadeUp out:crossfade>
+        <!-- One plain line about what is searched. What each filter covers
+             is said once, in the Filters sheet, where the filters are
+             (ticket 16). -->
         <p class="search-hint">{m.search_hint()}</p>
 
         {#if savedQuestions.length}
@@ -554,83 +649,104 @@
           </ListCard>
         {/if}
       </div>
-    {:else if loading}
+    {:else if !answered}
+      <!-- Only on a first read of the journal (a search held over from an
+           entry, or an address that asks one): every later question keeps
+           the previous answer up until its own lands. -->
       <div out:crossfade><Skeleton variant="card" count={3} /></div>
-    {:else if !foundNothing}
-      {#if hitRows.length || (starredOnly && starredPhotos.length)}
-        <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
-      {/if}
-
-      {#if starredOnly && starredPhotos.length}
-        <!-- Ported from the old /search/starred (ticket 18): the same grid,
-             the same unstar affordance, shown now under this screen's own
-             Starred toggle instead of behind a second door. -->
-        <SectionHeading text={m.starred_shelf_photos_label()} />
-        <p class="search-count">{m.results_count({ count: starredPhotos.length })}</p>
-        <p class="search-hint">{m.search_starred_photos_scope()}</p>
-        <div class="photo-grid" data-starred-photos>
-          {#each starredPhotos as p (p.id)}
-            <div class="starred-photo-cell">
-              <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-              <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
-                <Icon name="star" size={16} cls="is-starred" />
-              </button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-
-      {#if hitRows.length || (starredOnly && starredPhotos.length)}
-        <SectionHeading text={m.search_entries_heading()} />
-      {/if}
-      <p class="search-count" data-search-entry-count>
-        {hitRows.length || (starredOnly && starredPhotos.length) ? m.results_count({ count: total }) : m.search_entries_count({ count: total })}
-      </p>
-      {#if !hits.length}
-        <p class="search-hint">{m.search_no_results_filtered()}</p>
-      {/if}
-      {#if hits.length}
-        <EntryDays {groups} {role} {marginNotesByEntry} />
-        {#if remaining > 0}
-          <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
-            <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
-          </button>
-        {/if}
-      {/if}
-
-      {#if hitRows.length}
-        <SectionHeading text={m.search_elsewhere_heading()} />
-        <p class="search-count" data-search-other-count>{m.results_count({ count: elsewhereResults.total })}</p>
-        <ListCard role={hitsRole}>
-          {#each hitRows as row (row.key)}
-            <ListRow
-              key={row.key}
-              icon={row.icon}
-              title={row.excerpt}
-              subtitle={row.label}
-              href={row.href}
-              data-search-hit={row.area}
-            >
-              {#snippet trailing()}
-                {#if row.date}<span class="search-hit-date">{row.date}</span>{/if}
-              {/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
-      {/if}
-      {#if hitsRemaining > 0}
-        <button class="btn btn-soft search-more" data-search-hits-more onclick={() => (hitPages += 1)}>
-          <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
-        </button>
-      {/if}
+    {:else if foundNothing}
+      <div class="search-nothing" in:fadeUp out:crossfade>
+        <Notice
+          icon="search"
+          key="search-none"
+          title={m.no_results()}
+          text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
+        />
+      </div>
     {:else}
-      <Notice
-        icon="search"
-        key="search-none"
-        title={m.no_results()}
-        text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
-      />
+      <!-- Inside the results, each list opens and gives back its own height
+           as a refined question adds or drops one. -->
+      <div in:fadeUp out:crossfade>
+        {#if starredOnly && starredPhotos.length}
+          <!-- Ported from the old /search/starred (ticket 18): the same grid,
+               the same unstar affordance, shown now under this screen's own
+               Starred toggle instead of behind a second door. -->
+          <div transition:disclose={whileStaying}>
+            {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
+            <p class="search-hint">{m.search_starred_photos_scope()}</p>
+            <div class="photo-grid" data-starred-photos>
+              {#each starredPhotos as p (p.id)}
+                <div class="starred-photo-cell">
+                  <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
+                  <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
+                  <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
+                    <Icon name="star" size={16} cls="is-starred" />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        {#if hits.length}
+          <div transition:disclose={whileStaying}>
+            {#if photosShown}
+              <div transition:disclose={whileStaying}><SectionHeading text={m.search_entries_heading()} /></div>
+            {/if}
+            <EntryDays {groups} {role} {marginNotesByEntry} />
+            {#if remaining > 0}
+              <button class="btn btn-soft search-more" data-search-more transition:disclose={whileStaying} onclick={() => (pages += 1)}>
+                <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        {#if hitRows.length}
+          <div transition:disclose={whileStaying}>
+            {#if hits.length || photosShown}
+              <div transition:disclose={whileStaying}><SectionHeading text={m.search_elsewhere_heading()} /></div>
+            {/if}
+            <ListCard role={hitsRole}>
+              {#each hitRows as row (row.key)}
+                <!-- Each row opens and gives back its own height as the
+                     answer changes under the typing (the Transition door's
+                     rows, rule 10). -->
+                <div class="rows-divide" transition:disclose={whileStaying}>
+                  <ListRow
+                    key={row.key}
+                    icon={row.icon}
+                    title={row.excerpt}
+                    subtitle={row.label}
+                    href={row.href}
+                    data-search-hit={row.area}
+                  >
+                    {#snippet trailing()}
+                      {#if row.date}<span class="search-hit-date">{row.date}</span>{/if}
+                    {/snippet}
+                  </ListRow>
+                </div>
+              {/each}
+            </ListCard>
+            {#if hitsRemaining > 0}
+              <button class="btn btn-soft search-more" data-search-hits-more transition:disclose={whileStaying} onclick={() => (hitPages += 1)}>
+                <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- One count, the total, in the same words as a saved question's
+             (ticket 16: "Entries: 27" here and "35 results ... Entries 21
+             results" there). Under the results rather than over them: a
+             line of its own above the first day put the first entry at
+             y 316 of 844, past the first third, where the results are
+             meant to start. The screen reader hears it first anyway, from
+             the status line above. -->
+        <p class="search-count" data-search-count>
+          {#key foundTotal}<span in:fadeUp out:crossfade>{m.results_count({ count: foundTotal })}</span>{/key}
+        </p>
+      </div>
     {/if}
   </div>
 
@@ -641,13 +757,14 @@
          because the sheet covers it. Filtering against a number you cannot
          see is guessing, and this is the screen's own wording rather than a
          new line of copy. -->
-    {#if hasCriteria && !loading}
-      <p class="search-count" data-filter-count>{m.search_entries_count({ count: total })}</p>
+    {#if hasCriteria && settled}
+      <p class="search-count" data-filter-count>{m.results_count({ count: foundTotal })}</p>
     {/if}
 
-    <!-- Said here rather than left to be inferred: these four are entry
-         fields, so a letter or a consult question ignores them. -->
-    <p class="search-hint">{m.search_filters_entries_only()}</p>
+    <!-- What the filters cover, said here and only here (ticket 16): these
+         are entry fields, so a letter or a consult question ignores them,
+         and the dates are the one filter that reaches further. -->
+    <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
 
     <p class="search-filter-label">{m.search_filter_tags_label()}</p>
     <TagPicker groups={vocabulary.tagGroups} selected={selectedTagIds} onToggle={toggleTag} />
@@ -673,6 +790,7 @@
       <label for="search-filter-end">{m.search_filter_end_label()}</label>
       <DatePicker id="search-filter-end" min={dayRangeEndMin(startDate)} max={todayInput} bind:value={endDate} ariaLabel={m.search_filter_end_label()} data-filter-end />
     </div>
+    <p class="search-hint">{m.search_filters_date_scope()}</p>
 
     <div class="tag-row" role="group" aria-label={m.search_filters()}>
       <button
@@ -737,7 +855,29 @@
 </div>
 
 <style>
+  /* Search's own hint lines; the screen is their one reader, so they live
+     here rather than in screens.css (check-screens-classes). */
+  .search-hint {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 0;
+  }
+
+  /* The notice arrives by its own `collapse`, which pulls it up by its
+     height and lets it travel down. Here that margin collapsed through every
+     block above it, so the whole answer area, the outgoing results too,
+     jumped 97px up in one frame and slid back. A formatting context of its
+     own keeps the travel inside this box, clipped to its edge. */
+  .search-nothing {
+    display: flow-root;
+    overflow: clip;
+  }
+  /* 8 under the controls rather than the screen's 24, and a tight day card
+     (EntryDays), so the first entry row starts inside the first third of a
+     390x844 phone (ticket 16): 316 with a count line over the results,
+     289 without one, 277 with both. */
   .search-controls {
+    margin-bottom: var(--space-2);
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);

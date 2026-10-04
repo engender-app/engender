@@ -62,7 +62,12 @@ const fileName = (href: string) => href.slice(href.lastIndexOf('/') + 1);
 
 /** Runs the pre-paint script over one boot cache and returns the eight
     stamps it leaves on the document. */
-function stamp(boot: unknown, system: { prefersDark: boolean; prefersReducedMotion: boolean }) {
+function stamp(
+  boot: unknown,
+  system: { prefersDark: boolean; prefersReducedMotion: boolean },
+  window: Record<string, unknown> = {},
+  heldLinks: Array<{ rel: string }> = []
+) {
   const dataset = documentElementDataset();
   const links = documentLinks();
   const elements: Record<string, { href: string }> = {
@@ -83,8 +88,12 @@ function stamp(boot: unknown, system: { prefersDark: boolean; prefersReducedMoti
     }),
     document: {
       documentElement: { dataset },
-      querySelector: (selector: string) => elements[selector] ?? null
-    }
+      querySelector: (selector: string) => elements[selector] ?? null,
+      querySelectorAll: (selector: string) => (selector === 'link[rel="x-modulepreload"]' ? heldLinks : [])
+    },
+    addEventListener: (type: string, listener: () => void) => void ((window[type] ??= []) as Array<() => void>).push(listener),
+    requestAnimationFrame: (callback: () => void) => callback(),
+    setTimeout: (callback: () => void) => callback()
   });
   return { dataset, icon: fileName(elements['link[rel="icon"]'].href), manifest: fileName(elements['link[rel="manifest"]'].href) };
 }
@@ -136,5 +145,20 @@ describe("app.html's pre-paint script against the shared fixture", () => {
     expect(stamped.dataset.palette).toBe(parsed.palette);
     expect(stamped.dataset.moodPreset).toBe(parsed.moodPreset);
     expect(stamped.icon).toBe(fileName(documentLinks().icon));
+  });
+
+  it('marks a disguised boot, so the first frame can leave its mark out', () => {
+    const calm = { prefersDark: false, prefersReducedMotion: false };
+    expect(stamp({ disguise: true }, calm).dataset.disguised).toBe('');
+    expect(stamp({ disguise: false }, calm).dataset.disguised).toBeUndefined();
+  });
+
+  it('gives the held module hints back once the document has parsed', () => {
+    const heard: Record<string, unknown> = {};
+    const links = [{ rel: 'x-modulepreload' }, { rel: 'x-modulepreload' }];
+    stamp({}, { prefersDark: false, prefersReducedMotion: false }, heard, links);
+    expect(links.map((link) => link.rel)).toEqual(['x-modulepreload', 'x-modulepreload']);
+    for (const listener of heard.DOMContentLoaded as Array<() => void>) listener();
+    expect(links.map((link) => link.rel)).toEqual(['modulepreload', 'modulepreload']);
   });
 });

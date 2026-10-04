@@ -630,7 +630,7 @@
         </div>
       </div>
       <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-      <ChartCard
+      <ChartCard level={2}
         heading={m.wear_session_trend_title()}
         kind="wear-trend"
         role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}

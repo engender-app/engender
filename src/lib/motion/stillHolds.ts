@@ -43,7 +43,7 @@ export function movingWindows(keyframes: { offset: number; value: string }[]): M
 /** Where an animation with these timings is at `elapsed` ms since it
     started, as a position inside its current iteration (0..1), or null while
     it is still inside its delay. */
-export function iterationProgress(elapsed: number, duration: number, delay: number): number | null {
+function iterationProgress(elapsed: number, duration: number, delay: number): number | null {
   const active = elapsed - delay;
   if (active < 0) return null;
   return (active % duration) / duration;

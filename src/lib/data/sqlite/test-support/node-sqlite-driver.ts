@@ -11,8 +11,8 @@ import { withReadSnapshots } from '../transactor.ts';
 import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from '../driver.ts';
 
-export function makeNodeSqliteDb(): SqliteDriver & { raw: DatabaseSync } {
-  const raw = new DatabaseSync(':memory:');
+export function makeNodeSqliteDb(path = ':memory:'): SqliteDriver & { raw: DatabaseSync } {
+  const raw = new DatabaseSync(path);
   return {
     raw,
     ...withReadSnapshots({
