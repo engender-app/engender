@@ -47,10 +47,16 @@
         props: {
           grid: yearRows(YEAR, days, (value) => heatLevel(value, MOOD_RANGE)),
           monthName: (m) => MONTHS[m],
+          monthTitle: (m) => new Date(YEAR, m, 1).toLocaleDateString('en-GB', { month: 'long' }),
           dayLabel: (d, value) => `${d} ${value ?? 'none'}`,
+          dayName: (d) => new Date(YEAR, 0, 1 + d - start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }),
+          valueName: (value) => value.toFixed(1),
           fillAt: (step) => `var(--heat-${step})`
         }
       });
+      /* The series itself, for tests/year-days-list.mjs to check each
+         listed day against rather than against the cells. */
+      window.__yearFixture = { year: YEAR, startEpochDay: start, values: Object.fromEntries(days.map((d) => [d.day, d.value])) };
       document.body.dataset.ready = '1';
     </script>
   </body>
