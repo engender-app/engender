@@ -449,9 +449,19 @@
      records from elsewhere only under entries or photos. A heading over the
      first list pushed the first result below the first third of a phone. */
   let photosShown = $derived(starredOnly && starredPhotos.length > 0);
-  /* The count's words change in place as the answer changes: the old line
-     fades off (crossfade, out of flow) while the new one fades up in flow. */
-  const fadeUp = (_node: Element) => (isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast')));
+  /* What arrives where something else is leaving by `crossfade`: it fades
+     up in flow while the leaver fades off out of flow. And what comes back
+     before its own leave finished - typing then clearing inside one fade -
+     is the same node resumed, still wearing the positioning crossfade wrote
+     on it (absolute, behind the screen, no pointer events), which left the
+     opening state's rows untappable under the screen. So the arrival takes
+     those writes off first. */
+  const fadeUp = (node: Element) => {
+    const el = node as HTMLElement;
+    for (const property of ['position', 'width', 'z-index', 'pointer-events']) el.style.removeProperty(property);
+    delete el.dataset.leaving;
+    return isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
+  };
 
   /* One area of colour on this screen, and it is the days. Role 0, the only
      index guaranteed to be a colour on all 8 palettes, since a screen with a
