@@ -1,0 +1,34 @@
+name: Guard recovery proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci-reliability/recovery-proof]
+
+permissions:
+  contents: read
+
+jobs:
+  recovery:
+    name: Synthetic recovery and retained evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Prove recovery through the guard runner
+        shell: bash
+        run: |
+          mkdir -p ci-logs
+          node tests/guard-recovery-proof.mjs 2>&1 | tee ci-logs/recovery-proof.log
+      - name: Keep both attempts on success or failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: guard-recovery-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-logs/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error

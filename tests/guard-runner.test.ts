@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -25,10 +25,11 @@ describe('guard runner', () => {
     });
     expect(calls).toEqual(['tests/first.mjs', 'tests/first.mjs', 'tests/second.mjs', 'tests/second.mjs', 'tests/third.mjs']);
     expect(results.map((row) => row.passed)).toEqual([false, true, true]);
+    expect(results.map((row) => row.outcome)).toEqual(['failed', 'recovered', 'passed']);
     expect(results.map((row) => row.attempts.map((attempt) => attempt.code))).toEqual([[1, 1], [1, 0], [0]]);
     expect(results.every((row) => row.durationMs >= 0)).toBe(true);
     expect(output.join('\n')).toContain('FAIL first');
-    expect(output.join('\n')).toContain('PASS second');
+    expect(output.join('\n')).toContain('RECOVERED second');
     expect(output.join('\n')).toContain('PASS third');
   });
 
@@ -51,6 +52,72 @@ describe('guard runner', () => {
       expect(result.stdout).toContain('later guard ran');
       expect(result.stdout).toContain('FAIL first');
       expect(result.stdout).toContain('PASS second');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { failure: 'FAIL synthetic case', caseName: 'FAIL synthetic case' },
+    {
+      failure: '[demo-light] passing-first p1: 10 frames, 0 style / 0 render yank(s)\n' +
+        '[demo-light] doses-sheet p1: 10 frames, 1 style / 0 render yank(s)\n  style position edge @10ms - moved 8px\n' +
+        Array.from({ length: 20 }, (_, i) => `[demo-light] passing-${i} p1: 10 frames, 0 style / 0 render yank(s)`).join('\n') +
+        '\ngate FAILED: 1 style yank(s) across the scenes run - see the report above.',
+      caseName: '[demo-light] doses-sheet p1'
+    }
+  ])('CLI identifies $caseName and preserves both recovered attempts', ({ failure, caseName }) => {
+    const root = mkdtempSync(join(tmpdir(), 'guard-recovery-'));
+    try {
+      mkdirSync(join(root, 'tests'));
+      mkdirSync(join(root, 'scripts'));
+      mkdirSync(join(root, '.claude/shots'), { recursive: true });
+      writeFileSync(join(root, '.claude/shots/unchanged.txt'), 'unrelated old evidence');
+      copyFileSync(new URL('./run-guards.mjs', import.meta.url), join(root, 'tests/run-guards.mjs'));
+      copyFileSync(new URL('../scripts/check-process.mjs', import.meta.url), join(root, 'scripts/check-process.mjs'));
+      writeFileSync(join(root, 'tests/guards.json'), JSON.stringify([
+        { ...guards[0], diagnostics: ['.claude/shots/*'] }, guards[1]
+      ]));
+      writeFileSync(join(root, 'tests/first.mjs'), `
+        import { existsSync, writeFileSync } from 'node:fs';
+        const first = !existsSync('attempted');
+        writeFileSync('attempted', 'yes');
+        writeFileSync('.claude/shots/report.json', first ? 'failed case evidence' : 'recovered case evidence');
+        console.log(first ? ${JSON.stringify(failure)} : 'PASS synthetic case');
+        console.error(first ? 'first attempt stderr' : 'second attempt stderr');
+        process.exit(first ? 1 : 0);
+      `);
+      writeFileSync(join(root, 'tests/second.mjs'), 'console.log("independent guard ran");');
+      spawnSync('git', ['init', '-q', root]);
+      spawnSync('git', ['-C', root, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-qm', 'Fixture']);
+      const revision = spawnSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+      const result = spawnSync(process.execPath, ['tests/run-guards.mjs', '--tier', 'dev'], {
+        cwd: root, encoding: 'utf8', env: { ...process.env, GITHUB_SHA: 'incorrect-event-sha', GITHUB_STEP_SUMMARY: join(root, 'summary.md') }
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('RECOVERED first');
+      expect(result.stdout).toContain('PASS second');
+      const summary = readFileSync(join(root, 'summary.md'), 'utf8');
+      expect(summary).toContain('| first | recovered |');
+      expect(summary).toContain('| second | passed |');
+      expect(summary).toContain(revision);
+      expect(summary).toContain(caseName);
+      expect(summary).not.toContain('passing-');
+      expect(summary).toMatch(/first\/attempt-1\/output\.log/);
+      expect(summary).toMatch(/attempt 1: exit 1, [0-9.]+s/);
+      expect(summary).toMatch(/attempt 2: exit 0, [0-9.]+s/);
+      const attempts = globSync('ci-logs/guards/*/first/attempt-*/result.json', { cwd: root }).sort();
+      expect(attempts).toHaveLength(2);
+      for (const [index, path] of attempts.entries()) {
+        const attempt = JSON.parse(readFileSync(join(root, path), 'utf8'));
+        expect(attempt).toMatchObject({ name: 'first', revision, attempt: index + 1, code: index === 0 ? 1 : 0 });
+        expect(Date.parse(attempt.finishedAt)).toBeGreaterThanOrEqual(Date.parse(attempt.startedAt));
+        expect(attempt.durationMs).toBeGreaterThanOrEqual(0);
+        const directory = join(root, path, '..');
+        expect(readFileSync(join(directory, 'output.log'), 'utf8')).toContain(index === 0 ? 'first attempt stderr' : 'second attempt stderr');
+        expect(readFileSync(join(directory, 'diagnostics/.claude/shots/report.json'), 'utf8')).toBe(index === 0 ? 'failed case evidence' : 'recovered case evidence');
+        expect(globSync('**/unchanged.txt', { cwd: directory })).toEqual([]);
+      }
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -91,6 +158,19 @@ describe('guard runner', () => {
     expect(calls).toEqual([['run', 'build'], ['run', 'build'], ['tests/recovery.mjs']]);
     expect(results.map((row) => row.passed)).toEqual([false, true]);
     expect(results[0].buildFailed).toBe(true);
+    expect(results[0].outcome).toBe('blocked');
+    expect(results[0].attempts).toEqual([]);
+  });
+
+  it('names every guard blocked by job setup without executing it', async () => {
+    const output: string[] = [];
+    const results = await runGuards(guards, {
+      blocked: true,
+      run: async () => { throw new Error('A blocked guard must not execute'); },
+      log: (line: string) => output.push(line)
+    });
+    expect(results.every((row) => row.outcome === 'blocked' && !row.passed && row.attempts.length === 0)).toBe(true);
+    for (const guard of guards) expect(output.join('\n')).toContain(`BLOCKED ${guard.name}`);
   });
 
   it('balances measured duration rather than guard count and retains roster order', () => {
