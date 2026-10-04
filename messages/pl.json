@@ -2949,7 +2949,7 @@
     }
   ],
   "roadmap_track_switch_label": "Ścieżka",
-  "safe_space_breathing_desc": "Wdech przez 4 sekundy, zatrzymanie na 4, wydech przez 4, zatrzymanie na 4.",
+  "safe_space_breathing_desc": "Wdech na 4, zatrzymanie na 4, wydech na 4, zatrzymanie na 4.",
   "safe_space_breathing_exhale": "Wydech",
   "safe_space_breathing_hold": "Wstrzymaj oddech",
   "safe_space_breathing_inhale": "Wdech",
