@@ -92,7 +92,7 @@ function findYanks(samples, { bound = false } = {}) {
     const dark = s.vop < 0.05 || was.vop < 0.05;
     for (const p of dark ? [] : s.panels) {
       const before = was.panels.find((q) => q.k === p.k);
-      if (before && Math.abs(before.l - p.l) > s.vw * 0.5) yanks.push({ t: s.t, k: p.k, what: `month jumps ${Math.round(p.l - before.l)}px` });
+      if (before && Math.abs(before.l - p.l) > s.vw * 0.5) yanks.push({ t: s.t, k: p.k, what: `month jumps ${Math.round(p.l - before.l)}px; previous=${was.t}ms elapsed=${s.t - was.t}ms from=${before.l} to=${p.l} viewport=${s.vw}` });
       if (!before && visible(s, p)) yanks.push({ t: s.t, k: p.k, what: 'month painted on screen with no frame before it' });
     }
     for (const q of dark ? [] : was.panels) {
