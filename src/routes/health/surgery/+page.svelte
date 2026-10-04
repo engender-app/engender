@@ -26,7 +26,7 @@
   import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
@@ -302,14 +302,11 @@
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
       {#each procedureRows as { key, procedure, group, heading } (key)}
-        <div data-procedure-group={procedure ? group : undefined} use:resize transition:disclose
+        <div data-procedure-group={procedure ? group : undefined} data-procedure-heading={heading ? key : undefined}
+          use:resize transition:disclose
           animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
           {#if heading}
-            <div class="procedure-heading" data-procedure-heading={key}>
-              {#key heading}
-                <div transition:crossfade><SectionHeading text={heading} /></div>
-              {/key}
-            </div>
+            <SectionHeading text={heading} />
           {:else if procedure}
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
               <ProcedureRecoveryCard
@@ -858,14 +855,6 @@
 </div>
 
 <style>
-  .procedure-heading {
-    display: grid;
-  }
-
-  .procedure-heading > div {
-    grid-area: 1 / 1;
-  }
-
   .recovery {
     margin-top: var(--space-4);
   }
