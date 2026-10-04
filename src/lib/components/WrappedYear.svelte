@@ -135,6 +135,12 @@
     return value === null ? day : `${day} · ${nativeValue(metric, value)}`;
   };
 
+  /* The list under the rows names its month once in its heading, so a day
+     there is its weekday and date alone. */
+  const longMonth = (month: number) => fmtMonthName(year, month);
+  const listDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'short', day: 'numeric' });
+  const listValue = (value: number) => nativeValue(metric, value);
+
   /* Which scale the insight bars are of, named once in the heading. The
      rows carry only their counts (wrappedDisplay.ts): a wrapped draws these
      against whichever metric the preference held, and unlike /stats it has
@@ -219,7 +225,15 @@
   <!-- Short month names: full ones took 70px of a 340px card, which is a
        fifth of the grid's width spent on labels the reader already knows the
        order of. -->
-  <YearRows {grid} monthName={shortMonth} {dayLabel} {fillAt} />
+  <YearRows
+    {grid}
+    monthName={shortMonth}
+    monthTitle={longMonth}
+    {dayLabel}
+    dayName={listDay}
+    valueName={listValue}
+    {fillAt}
+  />
 </ChartCard>
 
 {#if insightRows.length}
