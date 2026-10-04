@@ -586,10 +586,9 @@
   /* The year rail, over the grid rather than beside it. Beside it was the
      first shape and it cost a column: the rail plus its gap is about 48px,
      which at 390px takes `repeat(auto-fill, minmax(104px, 1fr))` from three
-     tracks to two. So the rail is taken out of the flow and hangs into the
-     screen's own side padding, which leaves about 20px of it over the last
-     column - the scrubber's usual place in a photo grid, and the reference
-     this came from (corner, Mobbin).
+     tracks to two. So the rail is taken out of the flow and sits in the
+     screen's own side padding - the scrubber's usual place in a photo grid,
+     and the reference this came from (corner, Mobbin).
 
      Sticky inside an absolutely positioned full-height box: the box gives
      the rail the grid's own top and bottom to stick between, so it arrives
@@ -602,9 +601,16 @@
      wanted more room off the tiles' own date row above it). */
   .photo-grid-more { margin-top: var(--space-3); }
 
+  /* In the screen's own right gutter (.screen's --space-5), not over the
+     grid: a 47px pill at the grid's edge covered x 313 to 360 of every third
+     photograph while it was showing (release audit U12, and the review of
+     ticket 18). So the rail is a thin scrubber the width of the gutter, its
+     years set on their side. */
   .photo-years {
     position: absolute;
-    top: 0; bottom: 0; right: 0;
+    top: 0; bottom: 0;
+    right: calc(-1 * var(--space-5));
+    width: var(--space-5);
     pointer-events: none;
   }
   /* At rest the rail is not there to be seen or pressed (no pointer
@@ -613,7 +619,7 @@
      target someone is reaching for stays put. */
   .photo-years-inner {
     position: sticky; top: var(--space-4);
-    display: flex; flex-direction: column; gap: var(--space-1);
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
     opacity: 0;
     transition: opacity var(--dur-med) var(--ease-out);
   }
@@ -631,19 +637,19 @@
      shadow and never a tint of the picture underneath. */
   .photo-year {
     position: relative;
-    min-height: 28px; min-width: 40px;
-    padding: 0 var(--space-2);
+    width: 18px;
+    padding: var(--space-2) 0;
     border: 1px solid var(--outline); border-radius: var(--radius-pill);
     background: var(--surface); cursor: pointer;
     font: inherit; font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+    line-height: 1;
+    writing-mode: vertical-rl;
     color: var(--text-2);
   }
-  /* The pill is 28px, which is under the 48px floor, so the target is
-     extended past it by a transparent overlay - the trick `.tag-chip::after`
-     plays for the same reason (components.css), which is also why the pill
-     above carries `position: relative` as its first line. The rail's own 4px
-     gap keeps two stacked targets from meeting. */
-  .photo-year::after { content: ''; position: absolute; inset: -10px 0; }
+  /* The drawn tab is 18px; the target is the 48px floor, reaching left
+     over the grid's edge. Only a target, never paint, and only while the
+     rail is awake: at rest the rail takes no pointer at all. */
+  .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
   .photo-year:hover { color: var(--text-1); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
