@@ -542,39 +542,42 @@ export function makeEntriesArea(
       const ids = rows.slice(from, from + ID_CHUNK).map((row) => row.id);
       const placeholders = ids.map(() => '?').join(', ');
 
-      const dimRows = await driver.query<{ entry_id: number; key: string; value: number }>(
-        `SELECT edv.entry_id, gd.key, edv.value FROM entry_dimension_value edv
-         JOIN gender_dimension gd ON gd.id = edv.dimension_id
-         WHERE edv.entry_id IN (${placeholders})`,
-        ids
-      );
+      const [dimRows, tagRows, photoRows, recordingRows, videoRows, bodyRegionRows] = await Promise.all([
+        driver.query<{ entry_id: number; key: string; value: number }>(
+          `SELECT edv.entry_id, gd.key, edv.value FROM entry_dimension_value edv
+           JOIN gender_dimension gd ON gd.id = edv.dimension_id
+           WHERE edv.entry_id IN (${placeholders})`,
+          ids
+        ),
+        // ORDER BY t.id, as tagsOf has it: the order a tag list arrives in is
+        // what the entry editor renders.
+        driver.query<{ entry_id: number; key: string | null; uuid: string | null }>(
+          `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+           WHERE et.entry_id IN (${placeholders}) ORDER BY t.id`,
+          ids
+        ),
+        photosByEntry(driver, ids),
+        recordingsByEntry(driver, ids),
+        videosByEntry(driver, ids),
+        driver.query<{ entry_id: number; region: string; value: number }>(
+          `SELECT entry_id, region, value FROM entry_body_region WHERE entry_id IN (${placeholders})`,
+          ids
+        )
+      ]);
       for (const row of dimRows) {
         const forEntry = dims.get(row.entry_id) ?? {};
         forEntry[row.key] = row.value;
         dims.set(row.entry_id, forEntry);
       }
-
-      // ORDER BY t.id, as tagsOf has it: the order a tag list arrives in is
-      // what the entry editor renders.
-      const tagRows = await driver.query<{ entry_id: number; key: string | null; uuid: string | null }>(
-        `SELECT et.entry_id, t.key, t.uuid FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-         WHERE et.entry_id IN (${placeholders}) ORDER BY t.id`,
-        ids
-      );
       for (const row of tagRows) {
         const forEntry = tags.get(row.entry_id) ?? [];
         forEntry.push(domainIdOf(row, 'tag'));
         tags.set(row.entry_id, forEntry);
       }
+      for (const [entryId, forEntry] of photoRows) photos.set(entryId, forEntry);
+      for (const [entryId, forEntry] of recordingRows) recordings.set(entryId, forEntry);
+      for (const [entryId, forEntry] of videoRows) videos.set(entryId, forEntry);
 
-      for (const [entryId, forEntry] of await photosByEntry(driver, ids)) photos.set(entryId, forEntry);
-      for (const [entryId, forEntry] of await recordingsByEntry(driver, ids)) recordings.set(entryId, forEntry);
-      for (const [entryId, forEntry] of await videosByEntry(driver, ids)) videos.set(entryId, forEntry);
-
-      const bodyRegionRows = await driver.query<{ entry_id: number; region: string; value: number }>(
-        `SELECT entry_id, region, value FROM entry_body_region WHERE entry_id IN (${placeholders})`,
-        ids
-      );
       for (const row of bodyRegionRows) {
         const forEntry = bodyRegions.get(row.entry_id) ?? {};
         forEntry[row.region] = row.value;
