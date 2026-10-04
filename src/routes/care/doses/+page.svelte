@@ -26,7 +26,8 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
-  import { replaceState } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import TimePicker from '$lib/components/TimePicker.svelte';
@@ -190,6 +191,8 @@
       windowDays = Math.max(windowDays, today - epochDayFromTimestamp(input.timestamp));
       through = Math.max(through, epochDayFromTimestamp(input.timestamp));
       view = 'log';
+      validationTouched = false;
+      toast(m.dose_saved(), { kind: 'dose-saved' });
     },
     remove: (id) => journal.doses.deleteDose(id),
     findById: (id) => allDoses.find((dose) => dose.id === id)
@@ -212,6 +215,7 @@
      it. */
   type RecordGroup = 'what' | 'when' | 'status';
   let openGroup = $state<RecordGroup | null>(null);
+  let validationTouched = $state(false);
   const toggleGroup = (group: RecordGroup) => (openGroup = openGroup === group ? null : group);
 
   /* Quick add's dose option (phase 5 ticket 18, spec 04): the log is the
@@ -224,7 +228,7 @@
      Not a launch route: /doses is not in launch-routes.json (ADR-0028) and
      this is reached from inside the app only. */
   $effect(() => {
-    if (page.url.searchParams.get('add') !== '1') return;
+    if (loading || page.url.searchParams.get('add') !== '1') return;
     /* Seeded with the drug the caller already knew (phase 11 ticket 10:
        Care's regimen blocks each carry a Log button, and somebody on three
        regimens said which one by pressing that block's button rather than
@@ -235,11 +239,10 @@
        that is not one of the active ones falls through to the picker, same
        as arriving with no drug at all. */
     openEditor(null, page.url.searchParams.get('drug'));
-    /* replaceState rather than goto: this only has to take the param off the
-       URL, and a goto would start a second navigation on top of the one that
-       just landed here, which aborts it and leaves the shell's transition
-       promise rejecting for nothing. */
-    replaceState('/care/doses', {});
+    // A shallow replacement leaves page.url unchanged and replays this arrival.
+    const url = new URL(page.url);
+    url.searchParams.delete('add');
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
   });
 
   /* Same story as the regimen screen's: the clinician summary links a dose
@@ -261,6 +264,7 @@
   });
 
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
+    validationTouched = false;
     if (dose) {
       openGroup = null;
       record.editor = draftOfDose(dose);
@@ -794,6 +798,7 @@
                         class:is-selected={editor!.drug === drug}
                         aria-pressed={editor!.drug === drug}
                         data-dose-drug={drug}
+                        onblur={() => { validationTouched = true; }}
                         onclick={() => pickDrug(drug)}
                       >
                         {drug}
@@ -831,8 +836,9 @@
                   inputmode="decimal"
                   aria-label={m.dose_amount_label()}
                   placeholder={m.dose_amount_placeholder()}
-                  aria-invalid={!editorHasAmount}
-                  aria-describedby={!editorCanSave ? 'dose-requirements' : undefined}
+                  aria-invalid={validationTouched && !editorHasAmount}
+                  aria-describedby={validationTouched && !editorCanSave ? 'dose-requirements' : undefined}
+                  onblur={() => { validationTouched = true; }}
                   value={editor.dose}
                   oninput={(event) => { editor.dose = event.currentTarget.value; }}
                 />
@@ -1046,8 +1052,8 @@
         </Field>
       {/if}
 
-      {#if !editorCanSave}
-        <div id="dose-requirements" class="muted small" aria-live="polite">
+      {#if validationTouched && !editorCanSave}
+        <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
           {#if !editorHasAmount}<p>{m.dose_amount_required()}</p>{/if}
           {#if editorNeedsDrugPick}<p>{m.dose_drug_required()}</p>{/if}
           {#if editorIsInjection && !editor.injectionSite}<p>{m.dose_injection_site_required()}</p>{/if}
@@ -1058,6 +1064,11 @@
 </div>
 
 <style>
+  /* A fixed overlay sits on the app edge, outside screen block spacing. */
+  .screen :global([data-sheet-scrim]) {
+    margin: 0;
+  }
+
   /* The old intro, folded (ticket 09): a quiet row rather than a full-width
      card, since it is a hint about bookkeeping rather than a reading. */
   .doses-attribution-toggle {
@@ -1214,16 +1225,13 @@
     transform: rotate(180deg);
   }
 
-  /* One value, one box. The unit is a suffix inside the amount's own field
-     rather than a second full-width field beside it, and the box is sized to
-     what it holds rather than to the sheet, because an amount is three
-     characters and a field the width of the screen says otherwise. */
+  /* The amount and unit share a box, with room to edit either value. */
   .dose-amount {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    width: fit-content;
-    max-width: 14rem;
+    gap: var(--space-3);
+    width: 100%;
+    max-width: 22rem;
     background: var(--surface);
     border: 1.5px solid var(--outline);
     border-radius: var(--r-block);
@@ -1255,21 +1263,9 @@
     outline: none;
   }
 
-  /* Both inputs size to what is in them, so "4" and "mg" sit next to each
-     other instead of at opposite ends of a box. `field-sizing` is Chromium's
-     and this app ships inside a Chromium WebView; where it is missing the
-     two fall back to their intrinsic widths and the box hits the max-width
-     above, which is a wider version of the same field rather than a broken
-     one. The floors stop an empty field collapsing to nothing and keep both
-     placeholders readable.
-
-     The spinners come off. They are a mouse affordance on a control that
-     declares inputmode="decimal", and inside this box they would land
-     between the number and its unit. */
   .dose-amount-num {
-    field-sizing: content;
-    min-width: 5ch;
-    max-width: 9ch;
+    flex: 2;
+    width: 0;
     appearance: textfield;
   }
 
@@ -1280,9 +1276,8 @@
   }
 
   .dose-amount-unit {
-    field-sizing: content;
-    min-width: 6ch;
-    max-width: 8ch;
+    flex: 1;
+    width: 0;
     color: var(--text-2);
   }
 
