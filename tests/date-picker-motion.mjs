@@ -294,16 +294,29 @@ try {
     const deskCrop = await surfaceCrop(desk.page);
     scenes.at(-1).crop = deskCrop;
     before = await title(desk.page);
+    let wheelTrace;
     await record(desk, `popover-wheel-${theme}`, async () => {
       const box = await desk.page.locator('[data-date-picker-viewport]').boundingBox();
       await desk.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      for (let i = 0; i < 10; i++) {
-        await desk.page.mouse.wheel(14, 0);
-        await wait(16);
-      }
+      await desk.page.locator('[data-date-picker-viewport]').evaluate((viewport) => {
+        viewport.wheelTrace = [];
+        viewport.addEventListener('wheel', (event) => viewport.wheelTrace.push({
+          at: performance.now(), dx: event.deltaX, trusted: event.isTrusted,
+        }), { passive: true });
+      });
+      /* Chromium owns the gesture clock. Ten awaited wheel calls plus Node
+         sleeps can leave a 120ms gap and release the picker mid-swipe. */
+      await desk.cdp.send('Input.synthesizeScrollGesture', {
+        x: box.x + box.width / 2, y: box.y + box.height / 2,
+        xDistance: -140, yDistance: 0, speed: 875,
+        gestureSourceType: 'mouse', preventFling: true,
+      });
+      wheelTrace = await desk.page.locator('[data-date-picker-viewport]').evaluate((viewport) => ({
+        width: viewport.clientWidth, events: viewport.wheelTrace,
+      }));
     }, { crop: deskCrop, note: 'desktop: a two-finger trackpad swipe' });
     await pickerAtRest(desk.page);
-    await check(`${theme}: a trackpad swipe turns the month`, async () => assert.notEqual(await title(desk.page), before));
+    await check(`${theme}: a trackpad swipe turns the month`, async () => assert.notEqual(await title(desk.page), before, `trackpad input: ${JSON.stringify(wheelTrace)}`));
     before = await title(desk.page);
     await record(desk, `popover-drag-${theme}`, async () => {
       const box = await desk.page.locator('[data-date-picker-viewport]').boundingBox();
