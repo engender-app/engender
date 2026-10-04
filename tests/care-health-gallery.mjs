@@ -23,7 +23,8 @@ let seeded = false;
 const errors = [];
 page.on('pageerror', (error) => errors.push(String(error)));
 const sourceFiles = Object.fromEntries(['src/routes/care/+page.svelte', 'src/routes/care/doses/+page.svelte', 'src/routes/care/changes/+page.svelte', 'src/routes/health/surgery/+page.svelte', 'src/lib/components/NoticedAxis.svelte'].map((file) => [file, createHash('sha256').update(readFileSync(resolve(source, file))).digest('hex')]));
-const report = { stage, sourceFiles, source: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, encoding: 'utf8' }).trim(), shots: [], scenes: [], checks: [] };
+const buildSource = JSON.parse(readFileSync(resolve(source, 'build/release.json'), 'utf8'));
+const report = { stage, sourceFiles, buildSource, source: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, encoding: 'utf8' }).trim(), shots: [], scenes: [], checks: [] };
 const check = (name, passed, details = null) => {
   report.checks.push({ name, passed, details });
   console.log(`${passed ? 'PASS' : 'FAIL'} ${name}`);
@@ -48,7 +49,7 @@ async function crop(name, selector, height = 430) {
   const y = Math.max(0, Math.min(box.y, 1200 - height));
   const file = `${stage}/${name}.png`;
   await page.screenshot({ path: `${output}/${file}`, clip: { x: 0, y, width: 390, height },
-    style: '[data-toast], .bottom-bar { visibility: hidden !important; }' });
+    style: '[data-toast], [data-app-nav] { visibility: hidden !important; }' });
   report.shots.push({ name, file, viewport: { width: 390, height: 1200 }, crop: { x: 0, y, width: 390, height } });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(600);
