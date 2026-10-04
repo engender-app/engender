@@ -314,6 +314,7 @@ public class AutoExportPlugin extends Plugin {
     @PluginMethod
     public synchronized void finishBackup(PluginCall call) {
         DocumentFile target = null;
+        boolean destinationVerified = false;
         try {
             StagedBackup backup = requireTransfer(call);
             long expectedLength = byteCount(call, "byteLength");
@@ -340,12 +341,14 @@ public class AutoExportPlugin extends Plugin {
             try (InputStream input = resolver.openInputStream(target.getUri())) {
                 if (input == null) throw new IllegalStateException("destination-unavailable");
                 StagedBackup.verify(input, expectedLength, sha256);
+                destinationVerified = true;
             }
 
             // Cleanup failure must never remove the newly verified backup.
+            try { clearPendingBackup(); }
+            catch (IOException cleanup) { Log.w("AutoExport", "Could not remove backup staging file", cleanup); }
             try { retainVerifiedBackup(folder, target); }
             catch (Exception cleanup) { Log.w("AutoExport", "Could not prune automatic backups", cleanup); }
-            clearPendingBackup();
             long now = System.currentTimeMillis();
             preferences().edit()
                 .putLong(KEY_LAST_SUCCESS_AT, now)
@@ -356,7 +359,7 @@ public class AutoExportPlugin extends Plugin {
             result.put("writtenAt", now);
             call.resolve(result);
         } catch (Exception e) {
-            if (target != null) {
+            if (target != null && !destinationVerified) {
                 try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
             }
             rejectDelivery(call, e);

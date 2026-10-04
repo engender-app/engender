@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
+import android.system.Os;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -92,6 +93,7 @@ public class AutoExportDeliveryTest {
             JSONObject recovered = command(probe, "recover(386)");
             assertEquals(recovered.toString(), 386, recovered.getInt("recovered"));
             assertEquals(3300, recovered.getInt("rows"));
+            android.util.Log.i("AutoExportDeliveryTest", "Recovered " + delivered.length() + " encrypted bytes, 3300 rows, 386 MiB attachments");
             Uri lookalike = DocumentsContract.createDocument(resolver,
                 DocumentsContract.buildDocumentUriUsingTree(tree, "root"),
                 "application/octet-stream", "auto-backup-legacy.ttbackup");
@@ -113,8 +115,42 @@ public class AutoExportDeliveryTest {
             assertEquals(new java.util.HashSet<>(retained), new java.util.HashSet<>(documents()));
             resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
 
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "blocked", null);
+            probe.evaluate("window.backupProbe.run(1)");
+            long blockedDeadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+            while (!resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "blocked", null, null)
+                    .getBoolean("blocked") && System.nanoTime() < blockedDeadline) Thread.sleep(50);
+            assertTrue("destination write did not pause after staging preparation",
+                resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "blocked", null, null)
+                    .getBoolean("blocked"));
+            String cachePath = app.getCacheDir().getAbsolutePath();
+            int cacheMode = Os.stat(cachePath).st_mode & 0777;
+            try {
+                // The prepared archive remains readable, but unlink must fail.
+                Os.chmod(cachePath, 0500);
+                resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "release", null, null);
+                probe.awaitTrue("window.backupProbe.ready");
+                String raw = probe.evaluate("JSON.stringify(window.backupProbe.result)");
+                JSONObject cleanupFailure = new JSONObject(new JSONArray("[" + raw + "]").getString(0));
+                List<Uri> afterCleanup = documents();
+                assertEquals("staging cleanup must preserve five verified backups plus two unowned documents",
+                    7, afterCleanup.size());
+                assertEquals(cleanupFailure.toString(), "ok", cleanupFailure.getJSONObject("result").getString("outcome"));
+                assertFalse(cleanupFailure.isNull("recorded"));
+                assertTrue(afterCleanup.contains(lookalike));
+                assertTrue(afterCleanup.contains(manual));
+                afterCleanup.removeAll(retained);
+                assertEquals(1, afterCleanup.size());
+                copyDocument(afterCleanup.get(0), delivered);
+                assertEquals(1, command(probe, "recover(1)").getInt("recovered"));
+                assertTrue("the fixture must leave staging behind", new File(app.getCacheDir(), "auto-export.pending").exists());
+            } finally {
+                Os.chmod(cachePath, cacheMode);
+                resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
+                Files.deleteIfExists(new File(app.getCacheDir(), "auto-export.pending").toPath());
+            }
+
             assertFalse(new File(app.getCacheDir(), "auto-export.pending").exists());
-            android.util.Log.i("AutoExportDeliveryTest", "Recovered " + delivered.length() + " encrypted bytes, 3300 rows, 386 MiB attachments");
         } finally {
             resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
             Files.deleteIfExists(delivered.toPath());
