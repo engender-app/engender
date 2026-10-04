@@ -75,6 +75,16 @@
   overflow-x: auto;
 }
 
+.dossier-route-print {
+  display: none;
+}
+
+@media print {
+  .dossier-route-print {
+    display: inline;
+  }
+}
+
 /* Clinical tables */
 .dossier-table {
   width: 100%;
