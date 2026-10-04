@@ -312,11 +312,6 @@
      rather than at the column's top. */
   position: relative;
   }
-.search-hint {
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  margin: var(--space-3) 0 0;
-  }
 /* One run of day cards, whichever screen is drawing it (EntryDays.svelte). */
 .entry-days { display: block; }
 /* When a hit was recorded, at the trailing edge of its row. The month and

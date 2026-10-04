@@ -22,3 +22,18 @@ export const COUNTEREVIDENCE_LIMIT = 20;
     else - the pool itself is still read whole, and the snapshot still saves
     whole. */
 export const COUNTEREVIDENCE_PREVIEW = 6;
+
+/** The pool's days split at the preview, by whole days (phase 14 ticket 18,
+    release audit U9): Good moments draws days of entries, so the split
+    rounds up to the end of the day holding the sixth entry rather than
+    cutting through it and giving that day a second date bar under the
+    control. */
+export function previewWholeDays<G extends { entries: readonly unknown[] }>(
+  groups: readonly G[],
+  preview = COUNTEREVIDENCE_PREVIEW
+): { shown: G[]; held: G[] } {
+  let count = 0;
+  let days = 0;
+  while (days < groups.length && count < preview) count += groups[days++].entries.length;
+  return { shown: groups.slice(0, days), held: groups.slice(days) };
+}

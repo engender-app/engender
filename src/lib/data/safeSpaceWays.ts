@@ -33,9 +33,15 @@
    are not here (ADR-0016: the node tier does not import paraglide), so a
    way carries its key and the screen says it.
 
+   The comfort list left the run in phase 14 ticket 18 (release audit U11):
+   it already had its own button above the breath, so a short screen
+   reaches it without starting the exercise (UI/UX ticket 14), and the
+   same words as a row further down said it twice. The button is the one
+   that stays, since it is the one that holds the reachability.
+
    Node-tier safe: no clock, no driver, no paraglide, no runes. */
 
-export type SafeSpaceWayKey = 'resources' | 'moments' | 'comfort' | 'evidence' | 'readings';
+export type SafeSpaceWayKey = 'resources' | 'moments' | 'evidence' | 'readings';
 
 export type SafeSpaceWay = {
   key: SafeSpaceWayKey;
@@ -47,7 +53,6 @@ export type SafeSpaceWay = {
 export const SAFE_SPACE_WAYS: readonly SafeSpaceWay[] = [
   { key: 'resources', icon: 'info', href: '/support/resources' },
   { key: 'moments', icon: 'bookmark', href: '/transition/letters#opened' },
-  { key: 'comfort', icon: 'heart', href: '/doubt/comfort' },
   { key: 'evidence', icon: 'sparkle', href: '/doubt/evidence' },
   { key: 'readings', icon: 'timeline', href: '/stats' }
 ];

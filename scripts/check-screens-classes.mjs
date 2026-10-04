@@ -91,7 +91,14 @@ const SHEETS = [
          readable in one place; a scoped copy in ReadReserve would win on
          specificity alone and hide the interaction (ticket 229). */
       'read-reserve',
-      'read-reserve-body'
+      'read-reserve-body',
+      /* DayCard's `tight` and EntryDays' per-entry wrapper (search ticket
+         16). One consumer each, but both rules are about the day card's
+         own body and rail - `.kit-entry-row` is what the rail's first and
+         last segment rules count through - so they sit beside those rules
+         in kit.css, where the cascade between them is read in one place. */
+      'is-tight',
+      'kit-entry-row'
     ])
   },
   {

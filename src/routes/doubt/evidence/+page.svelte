@@ -38,11 +38,12 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
-  import { COUNTEREVIDENCE_LIMIT, COUNTEREVIDENCE_PREVIEW } from '$lib/data/counterevidence';
+  import { COUNTEREVIDENCE_LIMIT, previewWholeDays } from '$lib/data/counterevidence';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import Icon from '$lib/components/Icon.svelte';
-  import EntryCard from '$lib/components/EntryCard.svelte';
+  import EntryDays from '$lib/components/EntryDays.svelte';
+  import { entryDayGroups } from '$lib/data/recentEntries';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -63,9 +64,15 @@
   let counterevidence = $derived(counterevidenceQuery.rows);
 
   /* What the screen opens on, and what waits behind the control. Split here
-     rather than in the markup so the walkthrough can count each half. */
-  let shown = $derived(counterevidence.slice(0, COUNTEREVIDENCE_PREVIEW));
-  let held = $derived(counterevidence.slice(COUNTEREVIDENCE_PREVIEW));
+     rather than in the markup so the walkthrough can count each half.
+
+     Drawn as days of entries, the same drawing Calendar, Search and a day
+     give an entry (release audit U9: this screen alone used the older
+     card). The split is by whole days (previewWholeDays), so a day the
+     pool returns two entries for never gets its date bar twice. */
+  let split = $derived(previewWholeDays(entryDayGroups(counterevidence)));
+  let shown = $derived(split.shown);
+  let held = $derived(split.held);
 
   /* One visit's answer, not a remembered one. Leaving the screen and coming
      back opens it on six again, which is the whole point of the bound; a
@@ -108,9 +115,7 @@
 
   <ReadGate read={counterevidenceQuery} variant="card" count={2}>
     {#snippet rows()}
-      {#each shown as e (e.id)}
-        <EntryCard entry={e} />
-      {/each}
+      <EntryDays groups={shown} />
 
       <!-- Under the six rather than under all twenty (ticket 15). The
            snapshot it saves is the whole pool either way; where the control
@@ -137,10 +142,8 @@
       {/if}
 
       {#if expanded}
-        <div class="evidence-rest" data-evidence-rest>
-          {#each held as e (e.id)}
-            <EntryCard entry={e} />
-          {/each}
+        <div data-evidence-rest>
+          <EntryDays groups={held} arrive />
         </div>
       {/if}
     {/snippet}
@@ -195,31 +198,3 @@
   />
 </div>
 
-<style>
-  /* The cards the control disclosed, in the gap the screen gives its own
-     children, so a disclosed card sits exactly where a card above it sits. */
-  .evidence-rest {
-    display: grid;
-    gap: var(--space-4);
-  }
-
-  /* Each arrives as every block in the app does: clipped open from its own
-     left edge over --dur-slow, one --stagger-step behind the one above it
-     (rule 10, ADR-0078). Nothing is painted where it lands before it has
-     travelled there.
-
-     The stagger is written out and capped the way kit.css writes the tile
-     grid's, and for the same reason: a fourteenth card counting its own way
-     up would wait most of a second for a turn nobody is watching for, so
-     everything past the sixth arrives with the sixth. */
-  .evidence-rest > :global(*) {
-    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
-    animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
-  }
-
-  .evidence-rest > :global(:nth-child(2)) { --row-index: 1; }
-  .evidence-rest > :global(:nth-child(3)) { --row-index: 2; }
-  .evidence-rest > :global(:nth-child(4)) { --row-index: 3; }
-  .evidence-rest > :global(:nth-child(5)) { --row-index: 4; }
-  .evidence-rest > :global(:nth-child(n + 6)) { --row-index: 5; }
-</style>

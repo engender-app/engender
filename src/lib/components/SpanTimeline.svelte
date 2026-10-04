@@ -307,6 +307,13 @@
      starts, not when the write lands. */
   let hintGone = $state(false);
   let showHint = $derived(!hintSeen && !hintGone);
+  /* Latched like a reserve: once the hint's line is drawn it keeps its
+     place for the visit, so the preference write that answers it (which
+     flips `hintSeen`) fades the words without taking the line away. */
+  let hintDrawn = $state(false);
+  $effect.pre(() => {
+    if (!hintSeen) hintDrawn = true;
+  });
   /* Crossfade date and day count together. The leaving text leaves flow so
      two long ranges cannot wrap the line. Skip the first mount's fade. */
   let dateFirstRun = true;
@@ -372,20 +379,6 @@
      drawing; date values and selection ranges remain exact. */
   const segment = (from: number, to: number) =>
     visibleSegment(x(from), x(to), railWidth);
-  /* Between the two handles, and held inside the rail by its own half-width
-     so a span sitting at either end does not push the line off the screen -
-     which is what the default span, the last thirty days against today's
-     edge, does every first time. */
-  let hintWidth = $state(0);
-  let hintX = $derived(
-    Math.min(railWidth - hintWidth / 2, Math.max(hintWidth / 2, (startX + endX) / 2))
-  );
-  /* Keep the hint at its last painted position when a milestone tap moves
-     both handles. It fades there instead of jumping to the new midpoint. */
-  let hintXAtDismiss = $state(0);
-  $effect(() => {
-    if (showHint) hintXAtDismiss = hintX;
-  });
   /* The clip that lifts the span out of the history: the far edge of the
      end handle's day, so a one-day span is still a visible stretch. */
   let clipRight = $derived(Math.max(0, railWidth - Math.min(railWidth, endX + Math.max(2, pxPerDayAt(live.end)))));
@@ -533,7 +526,6 @@
   style:--tl-start="{handleXs.start}px"
   style:--tl-end="{handleXs.end}px"
   style:--tl-span-start="{startX}px"
-  style:--tl-hint-x="{hintXAtDismiss}px"
   style:--tl-clip-right="{clipRight}px"
   style:--tl-has-regimen={hasRow('regimen')}
   style:--tl-has-tryout={hasRow('tryout')}
@@ -717,18 +709,6 @@
         <span class="span-tl-grip" aria-hidden="true"></span>
       </button>
     {/each}
-
-    <!-- The one-time hint, between the handles it is about, gone on the
-         first move of either. Not a control and not announced: the handles
-         already carry their own names, and a slider that read out "drag the
-         ends" every time it took focus would be worse than silent. -->
-    <span
-      class="span-tl-hint"
-      class:is-hidden={!showHint}
-      bind:clientWidth={hintWidth}
-      data-span-hint
-      aria-hidden="true">{m.lookback_drag_hint()}</span
-    >
   </div>
 
   <!-- What the rail is showing, against the handles rather than two
@@ -737,6 +717,20 @@
   <p class="span-tl-state" data-span-state-line>
     {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
+
+  <!-- The one-time hint, gone on the first move of either handle. Under
+       the rail's own reading rather than on the rail (release audit U14:
+       at rest it sat over the lanes it is about). In flow, and it fades
+       where it stands rather than leaving: its line stays for the rest of
+       this visit, so nothing under it moves, and the next visit never
+       draws it. Not a control and not announced: the handles already
+       carry their own names, and a slider that read out "drag the ends"
+       every time it took focus would be worse than silent. -->
+  {#if hintDrawn}
+    <p class="span-tl-hint" class:is-hidden={!showHint} data-span-hint aria-hidden="true">
+      {m.lookback_drag_hint()}
+    </p>
+  {/if}
 
   {#if legend.length}
     <ul class="span-tl-legend" data-span-legend aria-label={m.lookback_legend_group()}>
@@ -1135,29 +1129,12 @@
     outline-offset: 2px;
   }
 
-  /* The one-time hint, sitting between the two grips it is about, on the
-     page's second surface inside the outline every kit element separates
-     with (the kit refuses shadows). At the top of the rail rather than
-     across it: that band is the part of the lifted layer the rest state
-     leaves empty, so the hint covers nothing a resting rail is drawing, and
-     it is gone by the time a drag raises the layer into it. */
+  /* The one-time hint, a line of small type under the reading. */
   .span-tl-hint {
-    position: absolute;
-    top: -1px;
-    left: var(--tl-hint-x);
-    transform: translateX(-50%);
-    max-width: 100%;
-    padding: 2px 8px;
-    background: var(--surface-2);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
+    margin: var(--space-1) 0 0;
     color: var(--text-2);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
-    line-height: 1.2;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 4;
     transition: opacity var(--dur-med) var(--ease-out);
   }
   .span-tl-hint.is-hidden {

@@ -306,13 +306,31 @@
        pressable and a press scales from their middle, which is not where a
        corner-anchored travel starts from. A keyframe property lasts as long
        as the animation and leaves nothing behind. */
-    monthBody?.querySelector(`[${attr}="${box.key}"]`)?.animate(
+    const el = monthBody?.querySelector<HTMLElement>(`[${attr}="${box.key}"]`);
+    if (!el) return;
+    /* The start written to the element as well as into the animation: a
+       freshly made Web Animation paints from the frame after the one that
+       makes it (reveal.ts's crossfade note), so for one frame every day sat
+       at its new place. Opened from the strip, that put rows two to five
+       under the panel's 30px clip at once, and 27 of the strip's 31 bars
+       vanished in the first frame (phase 14 ticket 18, sampled). Filled
+       forwards and cleared together, so the inline start never shows once
+       the travel is over either. */
+    el.style.transformOrigin = '0 0';
+    el.style.transform = from;
+    const run = el.animate(
       [
         { transform: from, transformOrigin: '0 0' },
         { transform: 'none', transformOrigin: '0 0' }
       ],
-      { duration, easing: EASE_OUT_CSS }
+      { duration, easing: EASE_OUT_CSS, fill: 'forwards' }
     );
+    const settle = () => {
+      el.style.transform = '';
+      el.style.transformOrigin = '';
+      run.cancel();
+    };
+    run.finished.then(settle, settle);
   }
 
   /* Closing, the faces and dots go first. A face is laid out in its cell,
@@ -468,12 +486,36 @@
         data-cal-open
         onclick={toggleMonth}
       >
-        <span>{monthOpen ? m.cal_close_month() : m.cal_open_month()}</span>
+        <!-- Both words always laid out in one cell, and the one that is not
+             true faded out: swapped, the label changed in one frame, and a
+             keyed crossfade would size the button by whichever word was
+             leaving. The hidden one is out of the name. -->
+        <span class="cal-open-faces">
+          <span class:is-shown={!monthOpen} aria-hidden={monthOpen}>{m.cal_open_month()}</span>
+          <span class:is-shown={monthOpen} aria-hidden={!monthOpen}>{m.cal_close_month()}</span>
+        </span>
         <Icon name="chevronDown" size={22} />
       </button>
     </div>
 
-    <div class="cal-month-body" id="calendar-month" data-cal-month-body bind:this={monthBody}>
+    <!-- Folded, the whole strip opens the month (release audit U18). Its
+         days are 9x24 bars that take no pointer (HeatMap's own rule: a 7px
+         bar is not a tap target), so the strip was a 350px-wide surface a
+         thumb could land on and nothing happened. "Show month" above stays
+         the keyboard's and the screen reader's control - the strip is
+         aria-hidden - and this only widens where a pointer can ask for the
+         same thing. Open, the grid's own days are the targets. -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div
+      class="cal-month-body"
+      class:is-folded={!monthOpen}
+      id="calendar-month"
+      data-cal-month-body
+      bind:this={monthBody}
+      onclick={() => {
+        if (!monthOpen) void toggleMonth();
+      }}
+    >
       <HeatMap
         {year}
         {month}
@@ -520,7 +562,7 @@
             <DayCard
               key={String(group.epochDay)}
               role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
-              date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+              heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
             >
               {#each group.entries as entry (entry.id)}
                 {@const presentation = entryPresentation(entry)}
@@ -668,6 +710,17 @@
   .cal-open.is-open :global(.icon) {
     transform: rotate(180deg);
   }
+  .cal-open-faces {
+    display: grid;
+  }
+  .cal-open-faces > span {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .cal-open-faces > .is-shown {
+    opacity: 1;
+  }
 
   /* ---------- The month's controls, and the month ---------- */
 
@@ -694,6 +747,9 @@
     display: grid;
     gap: var(--space-3);
     margin-bottom: var(--space-5);
+  }
+  .cal-month-body.is-folded {
+    cursor: pointer;
   }
 
   /* ---------- The days ---------- */

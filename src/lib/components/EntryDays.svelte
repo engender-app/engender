@@ -41,7 +41,8 @@
     groups,
     role,
     clampNotes = true,
-    marginNotesByEntry
+    marginNotesByEntry,
+    arrive = false
   }: {
     groups: EntryDayGroup[];
     role?: Role;
@@ -56,17 +57,23 @@
         affordance for exactly that reason: it is not one of the four
         surfaces the ticket names. */
     marginNotesByEntry?: Map<number, MarginNote[]>;
+    /** Set where the whole run is disclosed at once by a control (Good
+        moments' "See all", phase 14 ticket 18): each day clips open from
+        its own left edge, one --stagger-step behind the one above, the
+        way every block in the app arrives (rule 10, ADR-0078). Without
+        it a run mounts as it stands, and only a day added later opens. */
+    arrive?: boolean;
   } = $props();
 </script>
 
-<div class="entry-days">
+<div class="entry-days" class:is-arriving={arrive}>
   {#each groups as group (group.epochDay)}
     <div class="entry-days-day" transition:disclose>
     <DayCard
       key={String(group.epochDay)}
       {role}
       tight
-      date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+      heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
     >
       {#each group.entries as entry (entry.id)}
         {@const presentation = entryPresentation(entry)}
@@ -104,4 +111,18 @@
   .entry-days-day {
     margin-bottom: var(--space-3);
   }
+
+  /* The stagger is written out and capped the way kit.css writes the tile
+     grid's: a fourteenth day counting its own way up would wait most of a
+     second for a turn nobody is watching for, so everything past the sixth
+     arrives with the sixth. */
+  .is-arriving > .entry-days-day {
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
+  }
+  .is-arriving > .entry-days-day:nth-child(2) { --row-index: 1; }
+  .is-arriving > .entry-days-day:nth-child(3) { --row-index: 2; }
+  .is-arriving > .entry-days-day:nth-child(4) { --row-index: 3; }
+  .is-arriving > .entry-days-day:nth-child(5) { --row-index: 4; }
+  .is-arriving > .entry-days-day:nth-child(n + 6) { --row-index: 5; }
 </style>

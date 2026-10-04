@@ -492,9 +492,9 @@
   /* Longhands: only the press is on --ease-press, and a shorthand naming
      that token strands the background with it on an old WebView. The
      mechanism is at --ease-press in theme/base.css. */
-  transition-property: transform, background;
-  transition-duration: var(--dur-press), var(--dur-fast);
-  transition-timing-function: var(--ease-press), var(--ease-out);
+  transition-property: transform, background, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out), var(--ease-out);
   text-decoration: none;
 }
 .icon-btn:hover { background: var(--surface-2); }
@@ -525,10 +525,13 @@
      three down on an old WebView. The mechanism is at --ease-press in
      theme/base.css. filter has no curve of its own, same as before.
      box-shadow left this list with ticket 37: .btn-primary was its one
-     consumer in the family and it takes no shadow now. */
-  transition-property: transform, background, filter;
-  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast);
-  transition-timing-function: var(--ease-press), var(--ease-out), ease;
+     consumer in the family and it takes no shadow now. Opacity is the
+     disabled state below: without it a button going disabled (a write in
+     flight, an undo with nothing left) dropped to 0.45 in one frame
+     (phase 14 ticket 18). */
+  transition-property: transform, background, filter, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out);
 }
 /* The wide depth itself - which is the 0.97 chosen on a Pixel 10a by ticket
    29, after the stuck-hover bug below was fixed - is set in press.css, the
@@ -1672,13 +1675,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   background: var(--accent-soft); border-color: var(--accent);
   color: var(--on-accent-soft);
 }
-.tag-chip.is-mini {
-  padding: 2px 9px; min-height: 22px; font-size: var(--text-xs);
-  background: var(--surface-2); border: none; color: var(--text-2); cursor: inherit;
-}
-/* P10-007/probe 2: the extra opacity on top of an already-passing --text-2
-   on --surface-2 computed to 2.89-4.50:1, failing 16/16 palette/theme
-   combinations. --text-2 alone already clears 4.5:1. */
 
 /* A presentation's own colour rather than the app's accent, since the
    whole point of the chip is telling several of them apart at a glance
@@ -1701,57 +1697,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   border-color: var(--role-draw);
   color: var(--role-ink);
 }
-
-/* ---------- entry card ---------- */
-.entry-card {
-  display: flex; gap: var(--space-3);
-  padding: var(--space-4);
-  min-height: 96px;
-  position: relative;
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-block);
-  color: var(--text); text-decoration: none;
-}
-/* The container transform's own layer (EntryCard.svelte) - a plain fill the
-   same shape as the card, behind its real content, and the only thing that
-   carries the transition name. Content stays out of the scaled snapshot,
-   which is the whole reason this layer exists. */
-.entry-card-bg {
-  position: absolute; inset: 0;
-  border-radius: inherit;
-  background: inherit;
-  z-index: 0;
-}
-.entry-side, .entry-main { position: relative; z-index: 1; }
-/* Nothing on hover. The rule here was a shadow and no lift, on the argument
-   that tier 4 bans hover-dependent motion and the lift had no touch
-   equivalent (ticket 15) - and rule 4 has since taken the shadow too, which
-   leaves the argument with nothing to make. A hover state that a finger can
-   never reach is not worth a second elevation for the app. */
-.entry-card + .entry-card { margin-top: var(--space-3); }
-.entry-side { padding-top: 2px; }
-.mood-dot {
-  display: inline-block; width: var(--dot, 26px); height: var(--dot, 26px);
-  border-radius: 50%;
-}
-.mood-dot.is-empty { background: var(--surface-2); border: 1.5px dashed var(--outline); }
-.entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.entry-meta { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--text-2); flex-wrap: wrap; }
-.entry-day { font-weight: var(--weight-bold); color: var(--text); }
-.entry-multi { display: inline-flex; align-items: center; gap: 3px; background: var(--accent-soft); color: var(--on-accent-soft); border-radius: var(--r-block); padding: 1px 8px; }
-.entry-has-photo, .entry-has-recording, .entry-has-video { display: inline-flex; }
-.entry-note {
-  margin: 0; font-size: var(--text-sm); line-height: var(--leading-body);
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-  min-height: calc(1.5em * 1); /* breathe even for one-liners */
-}
-.entry-tags { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-/* The fluidity engine's presentation, read back in its own colour (phase 5
-   deepening ticket 17, ADR-0048) - the colour is set inline per entry
-   (--role-mark resolved through roleAt, EntryCard.svelte), since it names
-   a specific presentation rather than this card's own section role. */
-.entry-presentation { font-size: var(--text-xs); font-weight: var(--weight-bold); }
 
 /* ---------- heat-map ---------- */
 /* The heat map's own squares moved to screens.css with the calendar
