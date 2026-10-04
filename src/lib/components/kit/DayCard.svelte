@@ -6,21 +6,19 @@
      The date arrives formatted. Dates are formatted against the active
      locale in $lib/data/dates, and a component that took an epoch day and
      formatted it here would be a second place that decides how this app
-     writes a date. */
+     writes a date. A day's own screen hands its bar a count instead, since
+     its header already names the day (DayRecords.svelte). */
   import type { Snippet } from 'svelte';
   import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
   let {
     date,
-    aside,
     role,
     key,
     children
   }: {
     date: string;
-    /** The right-hand end of the bar: an entry count, a time, a weekday. */
-    aside?: string;
     role?: Role;
     /** The day this card is for, for the walkthrough's handle (ADR-0029):
         an epoch day rather than the date as written. */
@@ -32,7 +30,6 @@
 <section class="kit-day" data-kit-surface data-day-card={key} {...roleAttrs(role)}>
   <h3 class="kit-day-bar">
     {date}
-    {#if aside}<span class="kit-day-aside">{aside}</span>{/if}
   </h3>
   <div class="kit-day-body">{@render children()}</div>
 </section>

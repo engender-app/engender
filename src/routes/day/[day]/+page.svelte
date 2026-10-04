@@ -90,7 +90,7 @@
   import { goto } from '$app/navigation';
   import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
   import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
@@ -308,7 +308,14 @@
 
 <div class="screen" data-screen>
   <ScreenHeader
-    title={isToday ? m.today() : fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+    title={isToday
+      ? m.today()
+      : fmtDay(epochDay, {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          ...(crossesCalendarYear(epochDay, todayEpochDay()) ? { year: 'numeric' } : {})
+        })}
     screen="day"
     back="/calendar"
   />

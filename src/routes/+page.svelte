@@ -468,6 +468,29 @@
   });
   const isCrossed = (key: string) => doneKeys.has(key) && !held.has(key);
 
+  /* Said once (release audit U17): an offer whose area is already a pinned
+     row above it is left out, so a new journal's default pins (care,
+     milestones, tryouts) do not put Milestones and Care on day one twice.
+     Settled once, when the section first lands, and held for the visit: a
+     pin changed in the edit mode while the section is up must not cut a
+     row into or out of a list nobody is looking at as it changes. */
+  const START_AREA: Record<string, string | null> = {
+    milestones: 'milestones',
+    regimen: 'care',
+    letters: 'letters',
+    photos: 'photos',
+    more: null
+  };
+  let startOffers = $state<typeof GETTING_STARTED | null>(null);
+  $effect.pre(() => {
+    if (!gettingStartedReady || startOffers) return;
+    const pinnedAreas = new Set(untrack(() => pinned).map((row) => row.spec.key as string));
+    startOffers = GETTING_STARTED.filter((offer) => {
+      const area = START_AREA[offer.key];
+      return area === null || !pinnedAreas.has(area);
+    });
+  });
+
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read. The list itself no longer draws here - a milestone still ahead is
      an agenda row - but the day one lands is the one authored moment below,
@@ -1189,7 +1212,7 @@
       <SectionHeading text={m.home_start_title()} />
       <p class="home-start-intro">{m.home_start_intro()}</p>
       <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
-        {#each GETTING_STARTED as offer (offer.key)}
+        {#each startOffers ?? GETTING_STARTED as offer (offer.key)}
           {@const crossed = isCrossed(offer.key)}
           <!-- Both glyphs stay in the markup and cross on opacity and a
                scale, as the roadmap's tick does: one that was added and

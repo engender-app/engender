@@ -887,7 +887,7 @@
   "documents_empty_action": "Dodaj dokument",
   "documents_empty_body": "Zdjęcia i PDF-y zostają zaszyfrowane na tym urządzeniu. Papierologia bez sterty papierów.",
   "documents_empty_title": "Jeszcze nie ma tu dokumentów",
-  "documents_intro": "Dokumenty wyszukasz tylko po tytule. Aplikacja nie czyta tekstu na stronach.",
+  "documents_search_note": "Wyszukiwanie znajduje tytuły, nie tekst na stronach.",
   "documents_summary": [
     {
       "declarations": [
@@ -3119,6 +3119,7 @@
   "stats_reading_unknown_body": "Odczyty są w Przeglądzie. Wybierz tam jeden.",
   "stats_reading_unknown_title": "Nie ma takiego odczytu",
   "stats_readings_group": "Odczyty",
+  "stats_scale_each_day": "Jedna skala, dzień po dniu",
   "stats_scales_now": "Każda skala w tym okresie",
   "stats_tag_share": "O czym piszesz",
   "stats_tag_share_note": "liczba użyć tagów w tym okresie",
@@ -4036,6 +4037,7 @@
   "words_return_to_reading": "Wróć do ekranu „Słowa, które się wyróżniają”",
   "words_scope_era": "Era: {name} · Tło: cały dziennik",
   "words_scope_mode": "Tryb: {name} · Tło: cały dziennik",
+  "words_tile_note": "Wyróżnia się w: {name}",
   "words_times": [
     {
       "declarations": [

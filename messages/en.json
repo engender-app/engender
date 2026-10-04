@@ -881,7 +881,7 @@
   "documents_empty_action": "Add a document",
   "documents_empty_body": "Photos and PDFs stay encrypted on this device. Paperwork without the paper pile.",
   "documents_empty_title": "No documents yet",
-  "documents_intro": "Search finds titles only. The app doesn't read the text on the pages.",
+  "documents_search_note": "Search finds titles, not the text on the pages.",
   "documents_summary": [
     {
       "declarations": [
@@ -3069,6 +3069,7 @@
   "stats_reading_unknown_body": "The readings are on Look back. Pick one there.",
   "stats_reading_unknown_title": "No such reading",
   "stats_readings_group": "Readings",
+  "stats_scale_each_day": "One scale, each day",
   "stats_scales_now": "Each scale, this period",
   "stats_tag_share": "What you write about",
   "stats_tag_share_note": "tag uses in range",
@@ -3950,6 +3951,7 @@
   "words_return_to_reading": "Return to Words that stand out",
   "words_scope_era": "Era: {name} · Whole journal baseline",
   "words_scope_mode": "Mode: {name} · Whole journal baseline",
+  "words_tile_note": "Stands out in {name}",
   "words_times": [
     {
       "declarations": [

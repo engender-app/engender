@@ -61,8 +61,11 @@ describe('ticket 17: words reading scope and honest baseline', () => {
       expect(statsDoor).toMatch(/<WordsReading\s+view="tile"\s+span=\{resolvedSpan\}/);
     });
 
-    it('displays the era or mode scope and baseline in the tile note', () => {
-      expect(wordsReading).toMatch(/note=\{dimension === 'era'/);
+    /* Phase 14 ticket 18 (release audit U14): the tile names the stretch
+       in plain words; the era-or-mode scope and the baseline stay on the
+       reading's own screen, beside the cloud they qualify. */
+    it('names the stretch in the tile note, and keeps the scope and baseline for the reading', () => {
+      expect(wordsReading).toContain('note={m.words_tile_note({ name: selectionLabel })}');
       expect(wordsReading).toContain('words_scope_era');
       expect(wordsReading).toContain('words_scope_mode');
     });
