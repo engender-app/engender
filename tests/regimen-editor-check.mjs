@@ -280,6 +280,8 @@ try {
   await requestNavigation('/care/doses');
   await discard();
   await page.waitForURL((url) => url.pathname === '/care/doses');
+  // The URL changes before the view transition mounts the dose screen.
+  await page.getByRole('heading', { name: 'Dose log', exact: true }).waitFor();
   await navigate('/care/regimen');
   {
     await page.waitForURL((url) => url.pathname === '/care/regimen');
