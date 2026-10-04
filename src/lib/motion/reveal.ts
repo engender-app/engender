@@ -1091,7 +1091,12 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
      moved every tile under the reading grid 850px across the tab's first
      170ms. */
   let painted = typeof requestAnimationFrame !== 'function';
-  if (!painted) requestAnimationFrame(() => setTimeout(() => (painted = true)));
+  if (!painted) requestAnimationFrame(() => setTimeout(() => {
+    // The first observer notification can arrive after this paint. Start
+    // from the visible height, not the box measured during its mount.
+    lastHeight = node.getBoundingClientRect().height;
+    painted = true;
+  }));
 
   /* The tallest the box can be with its bottom edge still in the viewport.
      A travel is only worth watching while its edge is on screen, and the
