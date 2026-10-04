@@ -6669,11 +6669,24 @@ try {
     window.__calendarPickerTrace = trace;
     for (const type of trace.types) document.addEventListener(type, trace.capture, true);
   });
+  const evaluateDiagnostic = async (callback) => {
+    let timer;
+    try {
+      return await Promise.race([
+        page.evaluate(callback),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('calendar picker diagnostic exceeded 5000ms')), 5000);
+        })
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
   try {
     await fillTime(page, '#calendar-handoff-time', '09:15');
   } catch (error) {
     try {
-      const state = await page.evaluate(() => {
+      const state = await evaluateDiagnostic(() => {
         const picker = document.querySelector('[data-time-picker]');
         const surface = picker?.closest('[data-sheet]') ?? picker;
         const field = document.querySelector('#calendar-handoff-time');
@@ -6697,7 +6710,7 @@ try {
     }
     throw error;
   } finally {
-    await page.evaluate(() => {
+    await evaluateDiagnostic(() => {
       const trace = window.__calendarPickerTrace;
       if (!trace) return;
       for (const type of trace.types) document.removeEventListener(type, trace.capture, true);
