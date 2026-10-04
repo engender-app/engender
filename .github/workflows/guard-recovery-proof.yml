@@ -2,33 +2,40 @@ name: Guard recovery proof
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ci-reliability/recovery-proof]
 
 permissions:
   contents: read
 
 jobs:
-  recovery:
-    name: Synthetic recovery and retained evidence
+  wheel:
+    name: Date picker wheel diagnostic
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Prove recovery through the guard runner
-        shell: bash
+          cache: npm
+      - run: npm ci
+      - name: Chromium
+        run: |
+          npx playwright-core install --with-deps chromium
+          echo "CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
+      - name: Build demo
+        run: VITE_DEMO=1 npm run build
+      - name: Record trusted wheel events
         run: |
           mkdir -p ci-logs
-          node tests/guard-recovery-proof.mjs 2>&1 | tee ci-logs/recovery-proof.log
-      - name: Keep both attempts on success or failure
+          node tests/date-picker-motion.mjs --gate --themes light 2>&1 | tee ci-logs/date-picker-wheel.log
+      - name: Keep diagnostic
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: guard-recovery-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          name: date-picker-wheel-${{ github.run_id }}-${{ github.run_attempt }}
           path: ci-logs/
-          include-hidden-files: true
           retention-days: 7
           if-no-files-found: error

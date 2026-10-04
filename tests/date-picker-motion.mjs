@@ -294,8 +294,37 @@ try {
     const deskCrop = await surfaceCrop(desk.page);
     scenes.at(-1).crop = deskCrop;
     before = await title(desk.page);
+    await desk.page.evaluate(() => {
+      window.r8WheelTrace = [];
+      const read = () => {
+        const track = document.querySelector('[data-date-picker] .dp-track');
+        return {
+          at: performance.now(),
+          offset: track?.style.transform,
+          painted: track ? getComputedStyle(track).transform : null,
+          title: document.querySelector('[data-date-picker-title]')?.textContent,
+        };
+      };
+      document.addEventListener('wheel', (event) => {
+        const entry = {
+          kind: 'wheel', timeStamp: event.timeStamp, delivered: performance.now(),
+          deltaX: event.deltaX, deltaY: event.deltaY, deltaMode: event.deltaMode,
+          trusted: event.isTrusted, prevented: event.defaultPrevented,
+          target: event.target.outerHTML.slice(0, 500), before: read(),
+        };
+        window.r8WheelTrace.push(entry);
+        queueMicrotask(() => { entry.after = read(); });
+      });
+      const original = window.setTimeout;
+      window.setTimeout = (callback, delay, ...args) => original(() => {
+        if (delay === 120) window.r8WheelTrace.push({ kind: 'release-before', ...read() });
+        callback(...args);
+        if (delay === 120) queueMicrotask(() => window.r8WheelTrace.push({ kind: 'release-after', ...read() }));
+      }, delay);
+    });
     await record(desk, `popover-wheel-${theme}`, async () => {
       const box = await desk.page.locator('[data-date-picker-viewport]').boundingBox();
+      console.log('R8_GEOMETRY', JSON.stringify(box), 'browser', await browser.version());
       await desk.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       for (let i = 0; i < 10; i++) {
         await desk.page.mouse.wheel(14, 0);
@@ -303,6 +332,7 @@ try {
       }
     }, { crop: deskCrop, note: 'desktop: a two-finger trackpad swipe' });
     await pickerAtRest(desk.page);
+    console.log('R8_WHEEL_TRACE', JSON.stringify(await desk.page.evaluate(() => window.r8WheelTrace)));
     await check(`${theme}: a trackpad swipe turns the month`, async () => assert.notEqual(await title(desk.page), before));
     before = await title(desk.page);
     await record(desk, `popover-drag-${theme}`, async () => {
