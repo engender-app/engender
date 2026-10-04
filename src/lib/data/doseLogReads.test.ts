@@ -71,10 +71,10 @@ test('the log is the window newest first, each row attributed, with the older do
   assert.equal(wider.hasOlderDoses, false);
 });
 
-test('a row repeats its episode in the trailing text only when several are running or none resolved', async () => {
+test('concurrent regimens do not repeat a resolved drug in the row attribution', async () => {
   const two = await twoRegimens();
   await two.doses.upsertDose(oral('estradiol', TODAY - 1));
-  assert.deepEqual((await readDoseLog(two, question())).logRows.map((row) => row.showAttribution), [true]);
+  assert.deepEqual((await readDoseLog(two, question())).logRows.map((row) => row.showAttribution), [false]);
 
   const { journal: one } = await journalWithBuiltIns();
   await one.regimen.upsertEpisode({
