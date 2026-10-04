@@ -6650,7 +6650,60 @@ try {
     throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
   }
   await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
-  await fillTime(page, '#calendar-handoff-time', '09:15');
+  await page.evaluate(() => {
+    const targetInfo = (target) => target instanceof Element
+      ? { tag: target.tagName, id: target.id, data: [...target.attributes].map(({ name }) => name).filter((name) => name.startsWith('data-')).slice(0, 6) }
+      : null;
+    const trace = { events: [], types: ['pointerdown', 'pointerup', 'click', 'input', 'focusin', 'invalid'] };
+    trace.capture = (event) => {
+      const picker = document.querySelector('[data-time-picker]');
+      if (!picker && event.target?.id !== 'calendar-handoff-time') return;
+      trace.events.push({
+        type: event.type, at: Math.round(performance.now()), target: targetInfo(event.target),
+        insidePicker: !!picker?.contains(event.target),
+        entry: picker?.querySelector('[data-time-picker-entry]')?.value ?? null,
+        field: document.querySelector('#calendar-handoff-time')?.value ?? null
+      });
+      if (trace.events.length > 32) trace.events.shift();
+    };
+    window.__calendarPickerTrace = trace;
+    for (const type of trace.types) document.addEventListener(type, trace.capture, true);
+  });
+  try {
+    await fillTime(page, '#calendar-handoff-time', '09:15');
+  } catch (error) {
+    try {
+      const state = await page.evaluate(() => {
+        const picker = document.querySelector('[data-time-picker]');
+        const surface = picker?.closest('[data-sheet]') ?? picker;
+        const field = document.querySelector('#calendar-handoff-time');
+        const entry = picker?.querySelector('[data-time-picker-entry]');
+        const active = document.activeElement;
+        return {
+          field: field?.value ?? null,
+          entry: entry ? { value: entry.value, valid: entry.validity.valid, message: entry.validationMessage } : null,
+          picker: picker ? {
+            box: picker.getBoundingClientRect().toJSON(),
+            inert: !!picker.closest('[inert]'),
+            animations: surface.getAnimations().slice(0, 4).map((animation) => ({ state: animation.playState, time: animation.currentTime }))
+          } : null,
+          focus: active ? { tag: active.tagName, id: active.id, insidePicker: !!picker?.contains(active) } : null,
+          events: window.__calendarPickerTrace?.events ?? []
+        };
+      });
+      console.log('CALENDAR PICKER FAILURE ' + JSON.stringify(state));
+    } catch (diagnosticError) {
+      console.log('CALENDAR PICKER DIAGNOSTICS UNAVAILABLE: ' + diagnosticError.message);
+    }
+    throw error;
+  } finally {
+    await page.evaluate(() => {
+      const trace = window.__calendarPickerTrace;
+      if (!trace) return;
+      for (const type of trace.types) document.removeEventListener(type, trace.capture, true);
+      delete window.__calendarPickerTrace;
+    }).catch(() => {});
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
