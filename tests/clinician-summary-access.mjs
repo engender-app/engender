@@ -7,7 +7,9 @@ import { launchChromium } from './browser-harness.mjs';
 const tag = process.argv.includes('--before') ? 'before' : 'after';
 const out = resolve('.claude/review-31');
 await mkdir(out, { recursive: true });
-const original = execFileSync('unzip', ['-p', 'docs/accessibility-audit-2026-09-30/audit-evidence.zip', 'scripts/run.mjs'], { encoding: 'utf8' });
+const rootArg = process.argv.indexOf('--root');
+if (rootArg !== -1) process.chdir(resolve(process.argv[rootArg + 1]));
+const original = execFileSync('unzip', ['-p', `${out}/../../docs/accessibility-audit-2026-09-30/audit-evidence.zip`, 'scripts/run.mjs'], { encoding: 'utf8' });
 const auditFunctions = original.slice(original.indexOf('async function load('), original.indexOf('\ntry {'));
 const axe = await readFile(process.env.AXE_PATH ?? `${out}/axe-4.10.3.min.js`, 'utf8');
 const server = await preview({ preview: { port: 0 } });
@@ -18,7 +20,15 @@ const report = { platform: 'web', tag, source: execFileSync('git', ['rev-parse',
 page.on('pageerror', e => report.errors.push(e.message));
 const save = () => writeFile(`${out}/${tag}.json`, JSON.stringify(report, null, 2));
 // Use the audit's load and scan functions unchanged; only their route roster is bounded to this ticket.
-const { load, scan } = new Function('page', 'axe', 'base', 'android', 'report', 'save', 'out', `${auditFunctions}; return {load, scan};`)(page, axe, base, false, report, save, out);
+const { load: auditLoad, scan } = new Function('page', 'axe', 'base', 'android', 'report', 'save', 'out', `${auditFunctions}; return {load, scan};`)(page, axe, base, false, report, save, out);
+async function load(path, theme) {
+  await auditLoad(path, theme);
+  await page.evaluate(() => {
+    document.body.classList.remove('has-demo-bar');
+    document.querySelectorAll('[data-toast]').forEach(e => e.remove());
+  });
+}
+
 let failures = 0;
 function check(pass, message) {
   console.log(`${pass ? 'PASS' : 'FAIL'} ${message}`);
