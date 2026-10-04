@@ -72,7 +72,8 @@ try {
   await page.locator('#ed-note').fill('U03 keyboard entry edited');
   await shot('existing-entry-390');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-home-log]');
+  await page.waitForURL(base + '/day/today');
+  await page.locator('[data-entry-note]').filter({ hasText: 'U03 keyboard entry edited' }).waitFor();
   await open('/day/today');
   assert.equal(await page.locator('[data-entry-note]').filter({ hasText: 'U03 keyboard entry edited' }).count(), 1);
 
