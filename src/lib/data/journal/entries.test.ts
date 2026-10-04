@@ -77,6 +77,43 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
   assert.deepEqual(forDay.map((e) => e.id), [id]);
 });
 
+test('entry hydration issues independent reads together and keeps their rows', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  await journal.reconcileBuiltIns();
+  const id = await journal.entries.upsertEntry({
+    epochDay: 100, timestamp: 8_640_000_000, mood: 4, note: 'Hydrated entry',
+    dims: { femininity: 55 }, tags: ['e-happy'], bodyRegions: { chest: 20 },
+    attachPhotos: [{ full: new Uint8Array([1]), thumb: new Uint8Array([2]) }],
+    attachRecordings: [new Uint8Array([3])], attachVideos: [new Uint8Array([4])]
+  });
+  const expected = await journal.entries.getEntry(id);
+  let release!: () => void;
+  const answers = new Promise<void>((resolve) => { release = resolve; });
+  const issued: string[] = [];
+  const delayed = openJournal({
+    ...db,
+    async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      const rows = await db.query<Row>(sql, params);
+      if (/entry_id IN/.test(sql)) {
+        issued.push(sql);
+        await answers;
+      }
+      return rows;
+    }
+  }, files);
+  const reading = delayed.entries.getEntry(id);
+  try {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(issued.length, 6, 'every child read starts before any child answer lands');
+  } finally {
+    release();
+    assert.deepEqual(await reading, expected);
+    await db.close();
+  }
+});
+
 test('a new entry never arrives with a presentation pre-filled', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.presentations.addPresentation('femme', 0);
