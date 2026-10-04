@@ -93,9 +93,26 @@ describe('guard runner', () => {
     expect(results[0].buildFailed).toBe(true);
   });
 
+  it('balances measured duration rather than guard count and retains roster order', () => {
+    const measured = [
+      { name: 'short-one', tier: 'dev', holds: 'one' },
+      { name: 'short-two', tier: 'dev', holds: 'two' },
+      { name: 'long', tier: 'dev', holds: 'three' }
+    ];
+    const timings = { guards: { 'short-one': 20, 'short-two': 30, long: 100 }, builds: {} };
+    expect(selectGuards(measured, 'dev', '1/2', timings).map((guard) => guard.name)).toEqual(['long']);
+    expect(selectGuards(measured, 'dev', '2/2', timings).map((guard) => guard.name)).toEqual(['short-one', 'short-two']);
+  });
+
+  it('refuses an unmeasured guard instead of dropping its coverage', () => {
+    expect(() => selectGuards(guards, 'dev', '1/2', { guards: { first: 30 }, builds: {} }))
+      .toThrow('Missing duration for guard: second');
+  });
+
   it('partitions each tier without missing or repeating a guard', () => {
     const built = guards.map((guard) => ({ ...guard, tier: 'built' }));
-    expect([...selectGuards(built, 'built', '1/2'), ...selectGuards(built, 'built', '2/2')]).toEqual(built);
+    const timings = { guards: { first: 30, second: 20, third: 10 }, builds: { demo: 5 } };
+    expect([...selectGuards(built, 'built', '1/2', timings), ...selectGuards(built, 'built', '2/2', timings)]).toEqual(built);
     expect(() => selectGuards(built, 'built', '0/2')).toThrow('Invalid shard');
     expect(() => selectGuards(built, 'unknown')).toThrow('Invalid tier');
   });

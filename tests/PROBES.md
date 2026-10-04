@@ -33,8 +33,13 @@ blocked.
 
 Pass/fail checks: each exits non-zero when what it holds stops being true.
 CI's regression jobs run both sets from `guards.json`. The runner retries each
-failed guard once and prints every result. The built tier is split into two
-shards in CI (`--shard 1/2` and `--shard 2/2`); local npm scripts run the whole tier. To run one on its own, use
+failed guard once and prints every result. CI uses three dev shards and six
+built shards, balanced by measured duration in `guard-durations.json`, including
+build costs. Each hosted job owns its browser storage and build directory.
+The runner preserves roster order within each shard so demo guards finish
+before the production build replaces their bundle. Local npm scripts run the
+whole tier. Timing sources and the cost comparison are in [GUARD-TIMINGS.md](GUARD-TIMINGS.md).
+To run one on its own, use
 `node tests/<name>.mjs`, with the right build on disk first.
 
 ### `npm run test:guards` (dev server, no build)
