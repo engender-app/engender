@@ -86,7 +86,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.0",
+    "@capacitor/android": "8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.0",
     "@evolu/sqlite-wasm": "^2.2.4",
