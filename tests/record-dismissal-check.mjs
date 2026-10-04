@@ -125,7 +125,14 @@ try {
   const doseAmount = page.locator('#dose-amount');
   const doseUnit = page.locator('#dose-unit');
   assert.equal(await page.locator('[data-save-dose]').isDisabled(), true);
+  assert.equal(await page.locator('#dose-requirements').count(), 0);
+  assert.equal(await doseAmount.getAttribute('aria-invalid'), 'false');
+  assert.equal(await doseAmount.getAttribute('aria-describedby'), null);
+  await doseAmount.focus();
+  await page.keyboard.press('Tab');
   assert.match(await page.locator('#dose-requirements').innerText(), /Enter a dose amount/);
+  assert.equal(await doseAmount.getAttribute('aria-invalid'), 'true');
+  assert.equal(await doseAmount.getAttribute('aria-describedby'), 'dose-requirements');
   await doseAmount.fill('7.5');
   await doseUnit.fill('proof-unit');
   await page.locator('[data-route="im"]').click();
