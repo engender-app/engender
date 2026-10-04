@@ -8,6 +8,11 @@ the fixture bounds; future letter unlock dates can remain in the future.
 Every timing line reports the one-year time, ten-year time, their ratio,
 and the existing absolute budget.
 Both sizes also retain the statement and byte budgets for screen mounts.
+When `boot-ready` exceeds its budget, the runner saves original boot windows,
+retained resource and long-task entries, host metadata, and one diagnostic
+reopen in `ci-logs/`. The reopen uses the remaining ten-year fixture and retained
+browser caches; it cannot establish the earlier one-year cause or replace its
+score. `--diagnostics` saves the same report after a passing run.
 `--record` reports both sizes but only records the ten-year absolute baseline;
 it skips both budget and scaling failures, as it did for budget failures.
 

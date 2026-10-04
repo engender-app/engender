@@ -17,7 +17,9 @@
    new hardware wants. */
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { breaches, budgetFor, budgets, mb, mountBudgetsFor, overTarget } from './budgets.mjs';
@@ -27,6 +29,105 @@ const NAME = 'long-journal';
 const here = dirname(fileURLToPath(import.meta.url));
 const recording = process.argv.includes('--record');
 const { fail, finish } = createReporter();
+
+/* Original workers have closed by publication. Resource entries below cannot
+   recover their WASM compilation or OPFS timings.
+   The replay uses the remaining ten-year fixture and does not replace a score. */
+async function captureBootDiagnostics(page, result, browser) {
+  const scoredBoots = [result.oneYear, result].map((run) => ({
+    entries: run.summary.entries,
+    window: run.bootWindow,
+    ms: run.measurements.find((measurement) => measurement.name === 'boot-ready').ms
+  }));
+  const report = {
+    scoredBoots, browser: browser.version(), source: process.env.GITHUB_SHA ?? null,
+    host: { node: process.version, cpus: cpus().length, cpuModel: cpus()[0]?.model, freeMemory: freemem(), totalMemory: totalmem(), loadAverage: loadavg() },
+    limits: 'Environment is captured after measurement. WASM compilation and OPFS stages are unavailable; replay cannot establish the earlier one-year cause.'
+  };
+  let timeout;
+  let expired = false;
+  const capture = async () => {
+    const document = await page.evaluate(async (windows) => {
+      const overlaps = (entry) => windows.some((window) =>
+        entry.startTime <= window.readyAt && entry.startTime + Math.max(0, entry.duration) >= window.startedAt);
+      const longTasks = await new Promise((resolve) => {
+        const entries = [];
+        let droppedEntriesCount = null;
+        const observer = new PerformanceObserver((list, _observer, options) => {
+          entries.push(...list.getEntries());
+          droppedEntriesCount = options?.droppedEntriesCount ?? null;
+        });
+        try { observer.observe({ type: 'longtask', buffered: true }); }
+        catch (error) { resolve({ unavailable: String(error) }); return; }
+        setTimeout(() => {
+          observer.disconnect();
+          resolve({
+            retainedCount: entries.length, droppedEntriesCount,
+            limits: 'Only retained buffered tasks are available; unknown or nonzero drops cannot rule out earlier tasks.',
+            entries: entries.filter(overlaps).slice(0, 64).map((entry) => ({ start: entry.startTime, duration: entry.duration }))
+          });
+        }, 100);
+      });
+      return {
+        timeOrigin: performance.timeOrigin, userAgent: navigator.userAgent,
+        hardwareConcurrency: navigator.hardwareConcurrency, deviceMemory: navigator.deviceMemory, longTasks,
+        resources: performance.getEntriesByType('resource').filter(overlaps).slice(0, 64).map((entry) => ({
+          path: new URL(entry.name).pathname, start: entry.startTime, duration: entry.duration,
+          responseStart: entry.responseStart, responseEnd: entry.responseEnd,
+          initiator: entry.initiatorType, transferSize: entry.transferSize
+        }))
+      };
+    }, scoredBoots.map((run) => run.window));
+    if (expired) return;
+    report.document = document;
+    const replay = await page.evaluate(async (root) => {
+      const [{ boot }, { createEncryptedWebSqlite }, { PROBE_DATA_KEY }] = await Promise.all([
+        import(`/@fs${root}/src/lib/data/sqlite/boot.ts`),
+        import(`/@fs${root}/src/lib/data/sqlite/mc-driver.ts`),
+        import(`/@fs${root}/tests/browser-tier/fresh-origin.ts`)
+      ]);
+      const sqlite = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
+      const operations = [];
+      const timed = async (method, run) => {
+        const started = performance.now();
+        try { return await run(); }
+        finally { operations.push({ method, duration: performance.now() - started }); }
+      };
+      const driver = { ...sqlite.driver };
+      for (const method of ['exec', 'query', 'getUserVersion']) {
+        driver[method] = (...args) => timed(method, () => sqlite.driver[method](...args));
+      }
+      const fileOps = {
+        ...sqlite.fileOps,
+        cleanupPreMigrationCopy: () => timed('cleanupPreMigrationCopy', () => sqlite.fileOps.cleanupPreMigrationCopy())
+      };
+      const started = performance.now();
+      try {
+        const reopened = await boot({ createDriver: () => driver, fileOps });
+        return {
+          fixture: 'remaining ten-year journal; browser and Vite caches retained',
+          ms: performance.now() - started, phase: reopened.phase,
+          error: reopened.phase === 'error' ? String(reopened.error) : null, operations
+        };
+      } finally { await sqlite.driver.close().catch(() => {}); }
+    }, resolve(here, '../..'));
+    if (!expired) report.replay = replay;
+  };
+  try {
+    const deadline = new Promise((_resolve, reject) => {
+      timeout = setTimeout(() => {
+        expired = true;
+        reject(new Error('Boot diagnostics exceeded 10 seconds'));
+      }, 10_000);
+    });
+    await Promise.race([capture(), deadline]);
+  } catch (error) { report.error = String(error); }
+  finally { clearTimeout(timeout); }
+  mkdirSync('ci-logs', { recursive: true });
+  const output = `ci-logs/long-journal-boot-${Date.now()}-${process.pid}.json`;
+  writeFileSync(output, JSON.stringify(report, null, 2));
+  console.log(`Boot diagnostic replay: ${output}`);
+}
 
 const server = await createServer({
   configFile: `${here}/long-journal.vite.config.ts`,
@@ -70,6 +171,12 @@ try {
     failure
   ]);
   result = await page.evaluate((key) => window[key], resultGlobal(NAME));
+  if (!result?.error && (process.argv.includes('--diagnostics') || (!recording &&
+    [result.oneYear, result].some((run) => run.measurements.some((measurement) =>
+      measurement.name === 'boot-ready' && measurement.ms > budgets.measurements['boot-ready'].budgetMs))))) {
+    try { await captureBootDiagnostics(page, result, browser); }
+    catch (error) { console.log(`Boot diagnostics failed: ${error}`); }
+  }
 } catch (error) {
   result = { error: error?.message ?? String(error) };
 } finally {
