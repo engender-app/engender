@@ -201,6 +201,7 @@ on this page ran green on 2026-09-23.
 
 Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`),
+`cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
 `setup-flow`, `frame-band-distances`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`, `device-evidence`, `picker-motion-yanks`.
@@ -227,3 +228,4 @@ available for the surface or device it measures.
 | `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
+| `measurement-notice-proof` | prove delayed stationary appearance, missing content, incomplete observation, unsettled content and injected travel using the cold-load sampler; fresh and remembered reserves against a demo build |
