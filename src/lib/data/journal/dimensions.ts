@@ -85,7 +85,7 @@ export function makeDimensionsArea(driver: SqliteDriver): DimensionsArea {
 
     async addPreset(preset) {
       const uuid = mintUuid();
-      await driver.transaction(async () => {
+      await driver.transaction(async (driver) => {
         await driver.run('INSERT INTO gender_preset (uuid, name, is_built_in, updated_at) VALUES (?, ?, 0, ?)', [
           uuid,
           preset.name,

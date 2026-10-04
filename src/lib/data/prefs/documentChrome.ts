@@ -43,7 +43,7 @@ export interface SystemPreferences {
 }
 
 /** The disguised tab icon. */
-export const NEUTRAL_TAB_ICON = 'favicon-notes.svg';
+const NEUTRAL_TAB_ICON = 'favicon-notes.svg';
 
 export interface DocumentChrome {
   palette: string;

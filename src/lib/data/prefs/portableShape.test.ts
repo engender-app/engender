@@ -34,6 +34,11 @@ describe('importing the archive named in the audit (S6)', () => {
     expect(portablePreferencePatch({ theme: 'dark' })).toEqual({ theme: 'dark', cycleTrackingChoice: null });
   });
 
+  test('an archive without preferences keeps device values and restores automatic cycle choice', () => {
+    expect(portablePreferencePatch(undefined))
+      .toEqual({ cycleTrackingChoice: null });
+  });
+
   test('an archived cycle choice survives restore, while an older archive returns to automatic', () => {
     expect(portablePreferencePatch({ cycleTrackingChoice: false }).cycleTrackingChoice).toBe(false);
     expect(portablePreferencePatch({ cycleTrackingChoice: true }).cycleTrackingChoice).toBe(true);

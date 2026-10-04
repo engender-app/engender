@@ -53,7 +53,7 @@ export type DoseDraft = {
 /** `<input type="time">` value for a timestamp. Local wall-clock both ways:
     the field shows the time of day the user took the dose at, which is the
     thing being recorded. */
-export function timeInputValue(timestamp: number): string {
+function timeInputValue(timestamp: number): string {
   const date = new Date(timestamp);
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }

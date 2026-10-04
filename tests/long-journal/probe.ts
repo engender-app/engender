@@ -25,13 +25,18 @@ import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-sto
 import { purgeExpiredTrash } from '../../src/lib/data/journal/entries.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
-import { generateLongJournal, TEN_YEARS_IN_DAYS } from './generate.ts';
+import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
+import { compareJournalSizes } from './scaling.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 import { publish as publishResult } from '../probe-handshake.mjs';
 
 const NAME = 'long-journal';
 const publish = (value: unknown) => publishResult(NAME, value);
+const stage = (name: string, days: number) => {
+  document.body.setAttribute('data-long-journal-stage', name);
+  document.body.setAttribute('data-long-journal-days', String(days));
+};
 
 /** What ADR-0008 normalizes to: 2048px on the long edge, 320px thumbnail. */
 const FULL = { width: 2048, height: 1536 };
@@ -89,9 +94,11 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   };
 }
 
-async function run() {
+async function run(days: number) {
+  stage('reset-origin', days);
   await freshOrigin();
 
+  stage('initial-boot', days);
   const rawFiles = opfsPhotoFiles('long-journal-photos');
   const files = encryptedFileStore(rawFiles, PROBE_DATA_KEY);
   const { driver, fileOps } = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
@@ -99,11 +106,26 @@ async function run() {
   if (booted.phase === 'error') throw booted.error;
 
   const journal = openJournal(booted.driver, files);
+  stage('reconcile', days);
   await journal.reconcileBuiltIns();
 
+  stage('generate', days);
+  // Fixture writes are setup, before any scored operation. Keep the public
+  // journal transactions and defer SQLite durability syncs during generation.
+  // Restore the captured setting and commit a header write before reopening.
+  const [{ synchronous }] = await booted.driver.query<{ synchronous: number }>('PRAGMA synchronous');
   const startedAt = performance.now();
-  const summary = await generateLongJournal(journal, { days: TEN_YEARS_IN_DAYS, makePhoto: photoMaker() });
+  let summary: LongJournalSummary;
+  try {
+    await booted.driver.exec('PRAGMA synchronous = OFF');
+    summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+  } finally {
+    await booted.driver.exec(`PRAGMA synchronous = ${synchronous}`);
+    const version = await booted.driver.getUserVersion();
+    await booted.driver.transaction((scope) => scope.setUserVersion(version));
+  }
   const generatedInMs = Math.round(performance.now() - startedAt);
+  stage('storage-size', days);
 
   // On raw OPFS rather than through the encrypting store: what the fixture
   // costs the device is the ciphertext on disk, not the plaintext length.
@@ -119,11 +141,12 @@ async function run() {
      The three numbers are separated on purpose: what a screen waits for is
      `boot-ready`, and the two housekeeping passes are what used to be in front
      of it. Their cost at this scale is what the ticket wanted written down. */
+  stage('fixture-close', days);
   await booted.driver.close();
 
   const reopenedSqlite = createEncryptedWebSqlite('long-journal.sqlite3', PROBE_DATA_KEY);
   const reopenedFiles = encryptedFileStore(rawFiles, PROBE_DATA_KEY);
-  const fixtureDetail = `decade fixture already present, schema current; ${summary.entries} entries across ${summary.daysWithEntries} days`;
+  const fixtureDetail = `${days}-day fixture already present, schema current; ${summary.entries} entries across ${summary.daysWithEntries} days`;
   const startup: Measurement[] = [];
   // From the constant, so the names the budgets are checked against and the
   // names a run publishes cannot drift apart.
@@ -134,6 +157,7 @@ async function run() {
   let purged = 0;
   let sweepMs = 0;
 
+  stage('measured-boot', days);
   const bootStartedAt = performance.now();
   const reopened = await boot({
     createDriver: () => reopenedSqlite.driver,
@@ -156,6 +180,7 @@ async function run() {
   });
   const bootReadyMs = performance.now() - bootStartedAt;
   if (reopened.phase === 'error') throw reopened.error;
+  stage('housekeeping', days);
 
   startup.push({
     name: READY,
@@ -185,14 +210,26 @@ async function run() {
      (phase 8 audit ticket 01). It records only inside the windows the
      harness opens, so nothing above pays for it. */
   const recorder = recordingDriver(reopened.driver);
+  stage('measurements', days);
   const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
     recorder
   });
 
+  stage('measured-close', days);
   await reopened.driver.close();
-  publish({ summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes });
+  return {
+    summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes,
+    bootWindow: { startedAt: bootStartedAt, readyAt: bootStartedAt + bootReadyMs }
+  };
 }
 
-run().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));
+async function main() {
+  const oneYear = await run(ONE_YEAR_IN_DAYS);
+  const tenYears = await run(TEN_YEARS_IN_DAYS);
+  stage('publish', TEN_YEARS_IN_DAYS);
+  publish({ ...tenYears, oneYear, scaling: compareJournalSizes(oneYear, tenYears) });
+}
+
+main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));

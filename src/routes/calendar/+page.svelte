@@ -396,7 +396,7 @@
        from its bar on a 390px phone, covered 19% of that, 81px, in its first
        frame: continuous, but a lurch. Soft it is 4%, 18px, and no frame
        moves it more than 46px. */
-    maskHeight(body, from, duration, EASE_OUT_SOFT_CSS);
+    maskHeight(body, from, duration, { easing: EASE_OUT_SOFT_CSS });
     for (const box of regroupSteps(swatches, boxesOf('data-cal-cell'))) {
       travel(box, 'data-cal-cell', duration, true);
     }

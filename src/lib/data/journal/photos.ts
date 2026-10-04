@@ -20,6 +20,7 @@
    what a photo's files are lives in one place. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { afterCommit } from '../sqlite/transactor';
 import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import { watchJournalWrites } from '../journal-busy';
@@ -93,25 +94,32 @@ const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_pa
     Called after the rows are gone, by all three paths that delete photo
     rows - a failure here must not resurrect them, and what it leaves
     behind is the sweep's to reclaim. */
-export async function removeFilesOf(
+async function removePhotoFiles(
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
   for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
 }
 
+export async function removeFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
+  await afterCommit(driver, () => removePhotoFiles(files, rows));
+}
+
 /** Best-effort cleanup after an owner save has committed. The rows are
     already gone, so reporting a file-store failure would make a completed
     save look unsuccessful. The boot orphan sweep will retry the leftovers. */
 export async function removeFilesAfterCommit(
+  driver: SqliteDriver,
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
-  try {
-    await removeFilesOf(files, rows);
-  } catch {
-    // A committed save stays successful; sweepOrphanPhotos() owns retries.
-  }
+  await afterCommit(driver, async () => {
+    try {
+      await removePhotoFiles(files, rows);
+    } catch {
+      // A committed save stays successful; sweepOrphanPhotos() owns retries.
+    }
+  });
 }
 
 /** Photo rows by entry, oldest first within each entry - one query for a
@@ -303,9 +311,13 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
     attach: (owner, photo) => attachPhoto(driver, files, owner, photo),
 
     async remove(id) {
-      const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE uuid = ?', [id]);
-      await driver.run('DELETE FROM photo WHERE uuid = ?', [id]);
-      await removeFilesOf(files, rows);
+      const removeRows = async (driver: SqliteDriver) => {
+        const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM photo WHERE uuid = ?', [id]);
+        await driver.run('DELETE FROM photo WHERE uuid = ?', [id]);
+        return rows;
+      };
+      const rows = driver.deferUntilCommit ? await removeRows(driver) : await driver.transaction(removeRows);
+      await removeFilesOf(driver, files, rows);
     },
 
     async inJournal() {

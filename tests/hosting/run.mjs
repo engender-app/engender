@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createReporter, launchPersistentChromium } from '../browser-harness.mjs';
+import { startContainer, templateCheckArgs } from './container.mjs';
 
 function walk(path, files = []) {
   for (const entry of readdirSync(path, { withFileTypes: true })) {
@@ -59,11 +60,6 @@ async function waitForHttp(origin, attempts = 30) {
   throw new Error(`nginx did not answer on ${origin}`);
 }
 
-function choosePort() {
-  const value = 18080 + Math.floor(Math.random() * 2000);
-  return value;
-}
-
 const IMAGE = 'engender-hosting-verify';
 
 const { ok, fail, finish } = createReporter();
@@ -79,6 +75,7 @@ const stopContainer = () => {
 
 try {
   assertDockerAvailable();
+  const interfacesBefore = readdirSync('/sys/class/net').sort();
   ensureBuild();
 
   /* The self-hosting image (phase 13 self-hosting ticket 01) carries the same
@@ -102,31 +99,23 @@ try {
   ]);
   const templateCheck = spawnSync(
     'docker',
-    [
-      'run', '--rm',
-      '-v', `${template}:/etc/nginx/conf.d/default.conf:ro,z`,
-      '-v', `${certs}:/etc/ssl/engender:ro,z`,
-      IMAGE, 'nginx', '-t'
-    ],
+    templateCheckArgs(IMAGE, template, certs),
     { encoding: 'utf8' }
   );
   if (templateCheck.status === 0) ok('the bare-nginx template passes nginx -t once its placeholders are filled');
   else fail('the bare-nginx template passes nginx -t once its placeholders are filled', templateCheck.stderr);
 
-  const port = choosePort();
-  containerId = run('docker', [
-    'run',
-    '--rm',
-    '-d',
-    '-p',
-    `127.0.0.1:${port}:80`,
-    '-v',
-    `${current}:/srv/engender:ro,z`,
-    IMAGE
-  ]);
+  const hosted = await startContainer(IMAGE, current, tempRoot, run);
+  containerId = hosted.containerId;
   containerUp = true;
+  const interfacesAfter = readdirSync('/sys/class/net').sort();
+  if (JSON.stringify(interfacesBefore) === JSON.stringify(interfacesAfter)) {
+    ok('hosting setup leaves host network interfaces unchanged');
+  } else {
+    fail('hosting setup leaves host network interfaces unchanged', JSON.stringify({ before: interfacesBefore, after: interfacesAfter }));
+  }
 
-  const origin = `http://127.0.0.1:${port}`;
+  const origin = hosted.origin;
   await waitForHttp(origin);
 
   const rootResponse = await fetch(`${origin}/`);
@@ -225,13 +214,31 @@ try {
       if (message.type() === 'error') console.error('Hosted console error:', message.text());
     });
 
+    const waitFor = async (label, selector, timeout = 30000) => {
+      stage = label;
+      console.log(`Hosted wait: ${label} (${selector}) at ${page.url()}`);
+      await page.waitForSelector(selector, { timeout });
+    };
+    const advanceTo = async (selector) => {
+      for (let step = 0; step < 12 && !(await page.locator(selector).isVisible()); step++) {
+        await waitFor(`setup step ${step + 1}`, '[data-next]');
+        await page.waitForFunction(() => document.querySelectorAll('[data-setup-question]').length === 1);
+        const question = await page.locator('[data-setup-question]').innerText();
+        console.log(`Hosted setup: ${question}`);
+        await page.locator('[data-next]').click();
+        stage = `setup transition after ${question}`;
+        await page.waitForFunction(({ question, selector }) => {
+          const headings = document.querySelectorAll('[data-setup-question]');
+          return document.querySelector(selector) || (headings.length === 1 && headings[0].textContent.trim() !== question);
+        }, { question, selector });
+      }
+      await waitFor(`setup reached ${selector}`, selector, 15000);
+    };
+
     const PASSPHRASE = 'hosting verify passphrase';
     await page.goto(origin, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-next]', { timeout: 60000 });
-    for (let step = 0; step < 12 && !(await page.locator('[data-access-modes]').count()); step++) {
-      await page.locator('[data-next]').click();
-    }
-    await page.waitForSelector('[data-access-modes]', { timeout: 15000 });
+    await waitFor('welcome on cold install', '[data-next]', 60000);
+    await advanceTo('[data-access-modes]');
     stage = 'access mode';
     await page.locator('[data-list-row="passphrase"]').click();
     await page.waitForSelector('[data-access-chosen="passphrase"]');
@@ -240,13 +247,11 @@ try {
     await page.fill('#am-passphrase', PASSPHRASE);
     await page.fill('#am-passphrase-confirm', PASSPHRASE);
     await page.click('[data-access-submit]');
-    await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
+    await waitFor('journal created after passphrase', '.app[data-boot="ready"]');
 
     stage = 'finish setup';
-    await page.waitForSelector('[data-next]', { timeout: 60000 });
-    for (let step = 0; step < 12 && (await page.locator('[data-next]').count()); step++) {
-      await page.locator('[data-next]').click();
-    }
+    await waitFor('setup after access mode', '[data-next]', 60000);
+    await advanceTo('[data-finish]');
     await page.locator('[data-finish]').click();
     await page.waitForSelector('[data-home-hello]', { timeout: 15000 });
 

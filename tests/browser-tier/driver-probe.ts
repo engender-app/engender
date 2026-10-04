@@ -13,6 +13,8 @@ import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/schema-version.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { publish } from '../probe-handshake.mjs';
+import { runJournalContract } from '../../src/lib/data/journal/contract-suite.ts';
+import { fakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-store.ts';
 
 const NAME = 'driver-probe';
 
@@ -79,8 +81,8 @@ async function run() {
      what is asserted is both halves - no failure, and both rows there. */
   const pair = `concurrent-${Date.now()}`;
   const concurrent = await Promise.allSettled([
-    result.driver.transaction(async () => {
-      await result.driver.run(
+    result.driver.transaction(async (driver) => {
+      await driver.run(
         'INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES (?, 1, 1000, 1000)',
         [`${pair}-a`]
       );
@@ -88,8 +90,8 @@ async function run() {
       // other transaction's BEGIN used to fall into.
       await new Promise((resolve) => setTimeout(resolve, 0));
     }),
-    result.driver.transaction(async () => {
-      await result.driver.run(
+    result.driver.transaction(async (driver) => {
+      await driver.run(
         'INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES (?, 1, 1000, 1000)',
         [`${pair}-b`]
       );
@@ -101,6 +103,7 @@ async function run() {
   await result.driver.run('DELETE FROM entry WHERE uuid IN (?, ?)', [`${pair}-a`, `${pair}-b`]);
 
   publish(NAME, {
+    driverContractChecks: markerExisted ? null : await runJournalContract(result.driver, fakeFileStore()),
     concurrentTransactions: {
       rejected: concurrent
         .filter((r) => r.status === 'rejected')

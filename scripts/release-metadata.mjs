@@ -14,7 +14,8 @@
    zero would suggest otherwise.
 
    Runs from `npm run build`, after Vite, because it reads what the build wrote. */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { appVersion } from './app-version.mjs';
 
 function latestSchemaVersion() {
@@ -37,6 +38,20 @@ const metadata = {
   buildId,
    schemaMax: latestSchemaVersion()
 };
+
+if (process.env.VITE_DEMO === '1') {
+  const entry = JSON.parse(readFileSync('.svelte-kit/demo-prewarm.json', 'utf8'));
+  // Reuse the worker's emitted binary rather than emitting a second copy.
+  const binary = readFileSync(createRequire(import.meta.url).resolve('@evolu/sqlite-wasm/sqlite3.wasm'));
+  const directory = '_app/immutable/workers/assets';
+  const wasm = readdirSync(`build/${directory}`).find((name) =>
+    name.endsWith('.wasm') && readFileSync(`build/${directory}/${name}`).equals(binary)
+  );
+  if (!wasm) throw new Error('The demo worker database module was not emitted');
+  const html = readFileSync('build/index.html', 'utf8');
+  const bootstrap = `<link rel="preload" as="fetch" type="application/wasm" crossorigin fetchpriority="high" href="/${directory}/${wasm}"><script type="module" async fetchpriority="high" data-demo-prewarm data-wasm="/${directory}/${wasm}" src="/${entry}"></script>`;
+  writeFileSync('build/index.html', html.replace(/(<meta http-equiv="content-security-policy"[^>]*>)/, `$1${bootstrap}`));
+}
 
 writeFileSync('build/release.json', `${JSON.stringify(metadata, null, 2)}\n`);
 console.log(`release.json: ${metadata.version} (build ${buildId}, schema up to ${metadata.schemaMax})`);

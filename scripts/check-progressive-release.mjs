@@ -32,17 +32,39 @@ function parseIsoDate(value) {
   return Number.isNaN(t) ? null : t;
 }
 
+/** Infer claims from timestamps, exercise evidence, and live channels.
+ * @param {unknown} record
+ * @returns {StageName | null}
+ */
+export function highestClaimedStage(record) {
+  if (!record || typeof record !== 'object') return null;
+  const { stages, channels } = /** @type {ProgressiveRecord} */ (record);
+  let highest = -1;
+  for (const [index, stage] of STAGE_ORDER.entries()) {
+    const data = /** @type {{passedAt?: unknown, releaseMatrix?: {ranAt?: unknown, checks?: Record<string, unknown>}, evidence?: Record<string, unknown>} | undefined} */ (stages?.[stage]);
+    if (data && (data.passedAt || data.releaseMatrix?.ranAt ||
+      Object.values(data.releaseMatrix?.checks ?? {}).includes(true) ||
+      Object.values(data.evidence ?? {}).includes(true))) highest = index;
+  }
+  for (const [channel, gate] of Object.entries(CHANNEL_STAGE_GATE)) {
+    if ((/** @type {{state?: unknown} | undefined} */ (channels?.[channel]))?.state === 'live') {
+      highest = Math.max(highest, stageIndex(gate));
+    }
+  }
+  return highest < 0 ? null : /** @type {StageName} */ (STAGE_ORDER[highest]);
+}
+
 /**
  * @param {unknown} record
- * @param {StageName} target
+ * @param {StageName | null} [target]
  */
-export function progressiveReleaseProblems(record, target = 'stable') {
+export function progressiveReleaseProblems(record, target = highestClaimedStage(record)) {
   const problems = [];
 
   if (!record || typeof record !== 'object') return ['Record must be a JSON object.'];
 
-  const targetIdx = stageIndex(target);
-  if (targetIdx < 0) return [`Unknown target stage: ${target}`];
+  const targetIdx = target === null ? -1 : stageIndex(target);
+  if (target !== null && targetIdx < 0) return [`Unknown target stage: ${target}`];
 
   const releaseVersion = /** @type {{releaseVersion?: unknown}} */ (record).releaseVersion;
   if (typeof releaseVersion !== 'string' || releaseVersion.trim() === '') {
@@ -58,7 +80,8 @@ export function progressiveReleaseProblems(record, target = 'stable') {
   /** @type {Record<string, number>} */
   const stagePassedAt = {};
 
-  for (let idx = 0; idx <= targetIdx; idx += 1) {
+  for (let idx = 0; idx < STAGE_ORDER.length; idx += 1) {
+    const required = idx <= targetIdx;
     const stageName = /** @type {StageName} */ (STAGE_ORDER[idx]);
     const stageData = /** @type {Record<string, unknown>} */ (/** @type {Record<string, unknown>} */ (stages)[stageName]);
     if (!stageData || typeof stageData !== 'object') {
@@ -67,9 +90,9 @@ export function progressiveReleaseProblems(record, target = 'stable') {
     }
 
     const passedAt = parseIsoDate(stageData.passedAt);
-    if (passedAt === null) {
-      problems.push(`${stageName}.passedAt must be an ISO timestamp.`);
-    } else {
+    if (passedAt === null && (required || stageData.passedAt !== '')) {
+      problems.push(`${stageName}.passedAt must be an ISO timestamp${required ? '' : ' or empty while pending'}.`);
+    } else if (passedAt !== null) {
       stagePassedAt[stageName] = passedAt;
     }
 
@@ -78,9 +101,9 @@ export function progressiveReleaseProblems(record, target = 'stable') {
       problems.push(`${stageName}.releaseMatrix must be an object.`);
     } else {
       const ranAt = parseIsoDate(matrix.ranAt);
-      if (ranAt === null) {
-        problems.push(`${stageName}.releaseMatrix.ranAt must be an ISO timestamp.`);
-      } else if (passedAt !== null && ranAt > passedAt) {
+      if (ranAt === null && (required || matrix.ranAt !== '')) {
+        problems.push(`${stageName}.releaseMatrix.ranAt must be an ISO timestamp${required ? '' : ' or empty while pending'}.`);
+      } else if (passedAt !== null && ranAt !== null && ranAt > passedAt) {
         problems.push(`${stageName}.releaseMatrix.ranAt must be at or before ${stageName}.passedAt.`);
       }
 
@@ -89,8 +112,8 @@ export function progressiveReleaseProblems(record, target = 'stable') {
         problems.push(`${stageName}.releaseMatrix.checks must be an object.`);
       } else {
         for (const check of RELEASE_MATRIX_CHECKS) {
-          if (checks[check] !== true) {
-            problems.push(`${stageName}.releaseMatrix.checks.${check} must be true.`);
+          if (required ? checks[check] !== true : typeof checks[check] !== 'boolean') {
+            problems.push(`${stageName}.releaseMatrix.checks.${check} must be ${required ? 'true' : 'a boolean'}.`);
           }
         }
       }
@@ -103,8 +126,8 @@ export function progressiveReleaseProblems(record, target = 'stable') {
     }
 
     for (const key of STAGE_EVIDENCE_KEYS[stageName]) {
-      if (evidence[key] !== true) {
-        problems.push(`${stageName}.evidence.${key} must be true.`);
+      if (required ? evidence[key] !== true : typeof evidence[key] !== 'boolean') {
+        problems.push(`${stageName}.evidence.${key} must be ${required ? 'true' : 'a boolean'}.`);
       }
     }
   }
@@ -156,8 +179,9 @@ export function progressiveReleaseProblems(record, target = 'stable') {
  * @param {string[]} argv
  */
 function parseArgs(argv) {
-  let filePath = 'docs/progressive-release-record.json';
-  let target = 'stable';
+  let filePath = 'scripts/progressive-release-record.json';
+  /** @type {string | undefined} */
+  let target;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -185,7 +209,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
 
     const record = JSON.parse(readFileSync(filePath, 'utf8'));
-    const problems = progressiveReleaseProblems(record, /** @type {StageName} */ (target));
+    const resolvedTarget = target === undefined ? highestClaimedStage(record) : /** @type {StageName} */ (target);
+    const problems = progressiveReleaseProblems(record, resolvedTarget);
 
     for (const problem of problems) console.log(`FAIL ${problem}`);
     if (problems.length) {
@@ -193,7 +218,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     }
 
-    console.log(`PASS progressive release record is valid through ${target}.`);
+    console.log(`PASS progressive release record is valid through ${resolvedTarget ?? 'unreleased'}.`);
   } catch (error) {
     console.error((/** @type {Error} */ (error)).message);
     process.exit(1);

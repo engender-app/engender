@@ -30,8 +30,11 @@
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>] */
+     node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>]
+   Failed warm cases save a diagnostic replay in ci-logs/. --diagnostics
+   captures both warm routes even when the measured guard passes. */
 import { dirname, resolve } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, RESET_PERSONA_EXPRESSION } from './yank-sweep-core.mjs';
@@ -189,18 +192,20 @@ async function revisit(to) {
 
 const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
 let failed = false;
+const timingResults = [];
 const cases = [
-  ['warm Look back -> Today', () => warm('/'), WARM_MS],
-  ['warm Today -> Look back', () => warm('/stats'), WARM_MS],
+  ['warm Look back -> Today', () => warm('/'), WARM_MS, '/'],
+  ['warm Today -> Look back', () => warm('/stats'), WARM_MS, '/stats'],
   ['cold Today, shell to tiles', () => cold('/'), COLD_MS],
   ['cold Look back, shell to tiles', () => cold('/stats'), COLD_MS]
 ];
-for (const [name, run, budget] of cases) {
+for (const [name, run, budget, to] of cases) {
   const times = [];
   for (let i = 0; i < RUNS; i++) times.push(await run());
   const missing = times.some((t) => t == null);
   const m = missing ? null : median(times);
   const ok = !missing && m <= budget;
+  timingResults.push({ name, to, budget, times, median: m, ok });
   if (!ok) failed = true;
   console.log(
     `${ok ? 'ok  ' : 'FAIL'} ${name}: median ${m == null ? 'never' : Math.round(m) + 'ms'} (budget ${budget}ms), ` +
@@ -313,6 +318,93 @@ console.log(`${lateOk ? 'ok  ' : 'FAIL'} unfinished Journal read keeps placehold
 if (errors.length) {
   failed = true;
   console.log(`page errors:\n  ${errors.join('\n  ')}`);
+}
+
+/* Replay failed warm cases after every measured assertion. These observers
+   never run during the guard's measurements; replay timings do not gate. */
+const diagnosticCases = timingResults.filter((result) => result.to && (!result.ok || args.includes('--diagnostics')));
+if (diagnosticCases.length) {
+  const report = { timings: timingResults, pageErrors: [...errors], browser: browser.version(), source: process.env.GITHUB_SHA ?? null, replays: [] };
+  try {
+    await page.addInitScript(() => {
+      let events = [];
+      const record = (kind, detail = {}) => events.push({ at: performance.now(), kind, ...detail });
+      document.addEventListener('click', (event) => {
+        const link = event.target.closest?.('nav a');
+        if (link) {
+          events = [];
+          record('click', { to: link.getAttribute('href') });
+        }
+      }, true);
+      window.__tileArrivalDiagnostics = () => ({ timeOrigin: performance.timeOrigin, events });
+      const workers = new WeakSet();
+      const post = Worker.prototype.postMessage;
+      Worker.prototype.postMessage = function(message, ...options) {
+        if (!workers.has(this)) {
+          workers.add(this);
+          this.addEventListener('message', (event) => record('worker-result', { id: event.data?.id, ok: event.data?.ok }));
+        }
+        record('worker-post', { id: message?.id, op: message?.op });
+        return post.call(this, message, ...options);
+      };
+      const startTransition = document.startViewTransition;
+      if (startTransition) document.startViewTransition = function(...options) {
+        record('transition-start');
+        const transition = startTransition.apply(this, options);
+        transition.ready.then(() => record('transition-ready'), () => record('transition-skipped'));
+        transition.finished.then(() => record('transition-end'), () => record('transition-aborted'));
+        return transition;
+      };
+      let previous = '';
+      new MutationObserver(() => {
+        const grid = document.querySelector('[data-lookback-readings]');
+        const state = {
+          route: location.pathname,
+          hello: !!document.querySelector('[data-home-hello]'),
+          below: !!document.querySelector('[data-home-reserve="below"] [data-read-reserve-body]'),
+          grid: !!grid,
+          held: grid?.closest('.read-group-members')?.classList.contains('is-held') ?? null
+        };
+        const next = JSON.stringify(state);
+        if (next !== previous) {
+          previous = next;
+          record('dom', { state });
+        }
+      }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      new PerformanceObserver((list) => {
+        for (const task of list.getEntries()) record('longtask', { start: task.startTime, duration: task.duration });
+      }).observe({ type: 'longtask' });
+    });
+    for (const { name, to } of diagnosticCases) {
+      const replay = { name };
+      report.replays.push(replay);
+      try {
+        replay.observedMs = await warm(to);
+        Object.assign(replay, await page.evaluate(() => ({
+          ...window.__tileArrivalDiagnostics(),
+          environment: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            hardwareConcurrency: navigator.hardwareConcurrency,
+            deviceMemory: navigator.deviceMemory,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+            motion: document.documentElement.dataset.a11yMotion,
+            durations: Object.fromEntries(['--dur-fast', '--dur-med', '--dur-slow'].map((name) =>
+              [name, getComputedStyle(document.documentElement).getPropertyValue(name)]))
+          }
+        })));
+      } catch (error) {
+        replay.error = String(error);
+      }
+    }
+  } catch (error) {
+    report.error = String(error);
+  }
+  const output = resolve('ci-logs', `tile-arrival-${Date.now()}-${process.pid}.json`);
+  mkdirSync(dirname(output), { recursive: true });
+  writeFileSync(output, JSON.stringify(report, null, 2));
+  console.log(`Tile arrival diagnostic replay: ${output}`);
 }
 
 await browser.close();

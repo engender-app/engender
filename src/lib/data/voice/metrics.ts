@@ -136,7 +136,7 @@ export function bandsOf(metric: VoiceMetric, language: BandLanguage): readonly P
 /** Where the explanations live: a sheet over the voice screen rather than
     a screen of its own since ticket 17 - `/practice/voice/metrics` is a
     redirect stub now, kept for a bookmark rather than built from here. */
-export const VOICE_METRICS_ROUTE = '/voice';
+const VOICE_METRICS_ROUTE = '/voice';
 
 /** Where one figure's own explanation lives. Here rather than written out
     at each call site so that a link and the section it opens cannot

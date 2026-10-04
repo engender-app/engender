@@ -136,6 +136,7 @@ public final class PhotoWriteChannel {
             File target = PhotoFiles.fileFor(appContext, directory, name);
             try (FileOutputStream out = new FileOutputStream(target, false)) {
                 out.write(bytes);
+                out.getFD().sync();
             }
             port.postMessage(new WebMessageCompat("{\"ok\":true}"));
         } catch (Exception e) {

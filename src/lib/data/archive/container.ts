@@ -248,7 +248,8 @@ function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'>
     throw new CorruptArchiveError('the archive header is not readable');
   }
   if (chunkSize! > CHUNK_SIZE * 16) throw new CorruptArchiveError('the archive header is not readable');
-  if (kdf!.memorySize > MAX_KDF_MEMORY_SIZE || kdf!.iterations > MAX_KDF_ITERATIONS) {
+  if (kdf!.memorySize > MAX_KDF_MEMORY_SIZE || kdf!.iterations > MAX_KDF_ITERATIONS
+    || kdf!.hashLength !== 32 || kdf!.parallelism > 4) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
 

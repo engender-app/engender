@@ -39,7 +39,7 @@
 import type { Action } from 'svelte/action';
 
 import { blindVariables, VARIABLES } from './fieldBlind';
-import { isReducedMotion, motionDuration } from './tokens';
+import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
 
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
@@ -99,6 +99,8 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   /* When the last change began, for the direction rule below. */
   let lastChange = -Infinity;
   let lastArrival = -Infinity;
+  const frozen = new Map<HTMLElement, string>();
+  const resumed = new Map<HTMLElement, Animation>();
 
   /* Where the question's own box sits inside the field, in layout terms.
      `offsetTop` rather than a client rect, because the ride is a translate
@@ -151,6 +153,29 @@ export const blindEdge: Action<HTMLElement> = (node) => {
       el.style.setProperty('--own-rest', `${restOf(el, fallback)}px`);
     }
   };
+  /* Svelte can reverse an outgoing keyed heading without inserting it
+     again. Its inline hold must then return to the edge's ride. */
+  const resume = (event: Event) => {
+    const el = event.target;
+    if (!(el instanceof HTMLElement) || el.inert || !frozen.has(el)) return;
+    const from = getComputedStyle(el).translate;
+    el.style.setProperty('--own-rest', `${restOf(el, edge)}px`);
+    el.style.translate = frozen.get(el)!;
+    frozen.delete(el);
+    lastArrival = performance.now();
+    if (isReducedMotion()) return;
+    const run = el.animate([
+      { translate: from },
+      { translate: '0 calc(var(--blind-edge) - var(--own-rest))' }
+    ], { duration: motionDuration('--dur-slow'), easing: EASE_OUT_CSS });
+    resumed.set(el, run);
+    const release = () => {
+      if (resumed.get(el) === run) resumed.delete(el);
+    };
+    void run.finished.then(release, release);
+  };
+  node.addEventListener('introstart', resume, true);
+
   const shownEdge = () => {
     return edgeShown(getComputedStyle(host).getPropertyValue('--blind-edge'), edge);
   };
@@ -247,6 +272,15 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   const arrivals =
     typeof MutationObserver === 'function' && node.querySelector?.(ASK)
       ? new MutationObserver((records) => {
+          for (const record of records) {
+            for (const el of record.removedNodes) {
+              if (!(el instanceof HTMLElement)) continue;
+              if (frozen.has(el)) el.style.translate = frozen.get(el)!;
+              frozen.delete(el);
+              resumed.get(el)?.cancel();
+              resumed.delete(el);
+            }
+          }
           if (edge === 0) return;
           /* A heading leaving is a mutation too, and is not an arrival. */
           if (!records.some((r) => r.addedNodes.length)) return;
@@ -259,7 +293,11 @@ export const blindEdge: Action<HTMLElement> = (node) => {
             if (el.style.getPropertyValue('--own-rest')) {
               /* Held where it is drawn, so one that was mid-ride when another
                  change landed stops there instead of stepping to its rest. */
-              el.style.translate = getComputedStyle(el).translate;
+              const shown = getComputedStyle(el).translate;
+              resumed.get(el)?.cancel();
+              resumed.delete(el);
+              frozen.set(el, el.style.translate);
+              el.style.translate = shown;
               el.style.removeProperty('--own-rest');
             }
           }
@@ -276,6 +314,11 @@ export const blindEdge: Action<HTMLElement> = (node) => {
       cancelAnimationFrame(paintedFrame);
       observer.disconnect();
       arrivals?.disconnect();
+      node.removeEventListener('introstart', resume, true);
+      for (const [el, translate] of frozen) el.style.translate = translate;
+      for (const run of resumed.values()) run.cancel();
+      frozen.clear();
+      resumed.clear();
       delete host.dataset[HOLD];
       /* Everything this published, given back. Setup mounts once per
          session, so nothing has been seen to depend on it - but a
