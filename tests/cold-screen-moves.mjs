@@ -194,6 +194,7 @@ await page.waitForTimeout(1500);
 await page.addInitScript(SAMPLER);
 
 let failed = false;
+const failedSamples = [];
 for (const route of ROUTES) {
   for (let run = 1; run <= RUNS; run++) {
     /* The first measurements run keeps the fresh persona's empty reserve;
@@ -215,12 +216,37 @@ for (const route of ROUTES) {
       ...analyse(samples),
       ...(route === '/body/measurements' ? measurementNoticeTravel(samples) : [])
     ];
-    if (findings.length) failed = true;
+    if (findings.length) {
+      failed = true;
+      failedSamples.push({ route, run, findings, samples });
+    }
     console.log(`[${THEME}] ${route} run ${run}: ${findings.length ? 'FAIL' : 'ok'} - ${samples.length} frames`);
     for (const f of findings) console.log(`    ${f}`);
   }
 }
 if (errors.length) console.log(`page errors:\n  ${errors.join('\n  ')}`);
+
+/* Retain failed cases after every scored assertion. The CI artifact upload
+   already includes ci-logs; --dump still saves the caller's complete sweep. */
+if (failedSamples.length) {
+  try {
+    await mkdir('ci-logs', { recursive: true });
+    for (const result of failedSamples) {
+      const key = Object.keys(result.samples.at(-1)?.boxes ?? {}).find((name) => name.includes('.kit-notice[data-protocol]'));
+      const firstNotice = key && result.samples.find((frame) => (frame.ops[key] ?? 0) >= 0.1 && frame.boxes[key] != null);
+      const firstScreen = result.samples.find((frame) => Object.keys(frame.boxes).length > 0);
+      const output = `ci-logs/cold-screen-${Date.now()}-${process.pid}-${THEME}${result.route.replaceAll('/', '_')}-${result.run}.json`;
+      await writeFile(output, JSON.stringify({
+        theme: THEME, width: VIEWPORT_W, sampleMs: SAMPLE_MS,
+        noticeCutoffMs: 500, firstScreenAtMs: firstScreen?.at ?? null,
+        firstVisibleNoticeAtMs: firstNotice?.at ?? null,
+        limits: 'Times start with the document sampler, not boot readiness. No SQL, parameters or content text is recorded.',
+        ...result
+      }));
+      console.log(`Cold screen diagnostic samples: ${output}`);
+    }
+  } catch (error) { console.log(`Cold screen diagnostics failed: ${error}`); }
+}
 
 await browser.close();
 await app.close();
