@@ -27,8 +27,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
-  import { regroupSteps, type CellBox } from '$lib/motion/regroup';
-  import { isReducedMotion } from '$lib/motion/tokens';
+  import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
 
   let comfortItemsQuery = liveList((j) => j.comfortItems.getItems());
 
@@ -74,6 +73,11 @@
      equivalent, one place per press. */
   let arranging = $state(false);
 
+  /* The chevron closing and the handle opening, over --dur-med rather than
+     discloseWidth's --dur-fast: on 150ms of quint-out the first frame took
+     43% of the 48px handle at once (21px, sampled), on 240ms it takes 14. */
+  const trailWidth = (node: Element) => ({ ...discloseWidth(node), duration: motionDuration('--dur-med') });
+
   let listEl: HTMLElement | undefined = $state();
   /** The row being dragged, how far the pointer has taken it, and the row
       it is over. Null the rest of the time. */
@@ -86,18 +90,16 @@
   const rowElements = () => [...(listEl?.querySelectorAll<HTMLElement>('[data-comfort-item]') ?? [])];
   const rowId = (el: HTMLElement) => el.dataset.comfortItem ?? '';
 
-  function measure(): CellBox[] {
-    return rowElements().map((el) => {
-      const box = el.getBoundingClientRect();
-      return { key: rowId(el), left: box.left, top: box.top, width: box.width, height: box.height };
-    });
+  function measure(): { key: string; top: number }[] {
+    return rowElements().map((el) => ({ key: rowId(el), top: el.getBoundingClientRect().top }));
   }
 
   /** Write an order and let every row travel from where it stood on screen
       to where the order puts it: measure, write, measure, start each row
-      at the difference and release it on the next frame (`regroupSteps`,
-      the Journal door's FLIP). Measured from the painted boxes, so a row a
-      drag left standing aside or under the pointer starts exactly there. */
+      at the difference and release it on the next frame (a FLIP, the
+      Journal door's and the Today editor's). Measured from the painted
+      boxes, so a row a drag left standing aside or under the pointer
+      starts exactly there. */
   async function writeOrder(ids: string[]) {
     const before = measure();
     drag = null;
@@ -105,17 +107,27 @@
     void journal.comfortItems.reorder(ids);
     await tick();
     if (isReducedMotion()) return;
-    const elements = new Map(rowElements().map((el) => [rowId(el), el]));
-    for (const step of regroupSteps(before, measure())) {
-      const el = elements.get(String(step.key));
-      if (!el) continue;
+    /* Every row, a zero difference included, and each one's transition
+       off before it is measured: a row that stood aside during the drag
+       lost its translate in the same update, and with its transition left
+       on it was still painted 48px away when measured and then played that
+       loss as a trip the wrong way. */
+    const rows = rowElements();
+    for (const el of rows) {
       el.style.transition = 'none';
-      el.style.translate = `0 ${step.dy}px`;
-      requestAnimationFrame(() => {
+      el.style.translate = '';
+    }
+    const from = new Map(before.map((box) => [box.key, box.top]));
+    for (const el of rows) {
+      const top = from.get(rowId(el));
+      if (top !== undefined) el.style.translate = `0 ${top - el.getBoundingClientRect().top}px`;
+    }
+    requestAnimationFrame(() => {
+      for (const el of rowElements()) {
         el.style.transition = '';
         el.style.translate = '';
-      });
-    }
+      }
+    });
   }
 
   function moved(id: string, targetId: string): string[] {
@@ -223,7 +235,7 @@
               >
                 <span class="kit-row-text"><span class="kit-row-title" data-row-title>{item.text}</span></span>
                 {#if !arranging}
-                  <span class="kit-row-trail" transition:discloseWidth><Icon name="chevronRight" size={22} /></span>
+                  <span class="kit-row-trail" transition:trailWidth><Icon name="chevronRight" size={22} /></span>
                 {/if}
               </button>
               {#if arranging}
@@ -234,7 +246,7 @@
                   data-no-press
                   aria-label={m.home_edit_move({ row: item.text })}
                   aria-describedby="comfort-arrange-hint"
-                  transition:discloseWidth
+                  transition:trailWidth
                   onpointerdown={(event) => grab(event, item.id)}
                   onpointermove={travel}
                   onpointerup={drop}
@@ -347,6 +359,9 @@
   }
 
   .comfort-grip {
+    /* No button padding: its 12px stayed behind when the handle closed
+       its width, and went in the last frame, moving the chevron 12px. */
+    padding: 0;
     /* The gesture is vertical, so the browser keeps the horizontal axis. */
     touch-action: none;
     cursor: grab;

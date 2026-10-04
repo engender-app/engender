@@ -284,4 +284,14 @@
     flex-wrap: wrap;
     gap: var(--space-3);
   }
+
+  /* A button going disabled - undo once today has nothing left, both while
+     a write is in flight - fades to .btn:disabled's 0.45 rather than
+     dropping to it in one frame. .btn's own transitions, restated with
+     opacity added. */
+  .tally-actions .btn {
+    transition-property: transform, background, filter, opacity;
+    transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
+    transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out);
+  }
 </style>

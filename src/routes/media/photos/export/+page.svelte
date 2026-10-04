@@ -409,6 +409,21 @@
 </div>
 
 <style>
+  /* The picked day crossfades over the one it replaces in the same place.
+     The leaving one goes absolute (reveal.ts crossfade), and its static
+     position in a right-aligned cell is its left edge, which slid it 31px
+     right as it faded; pinned to the cell's right edge, it fades where it
+     stood. */
+  .date-row-value {
+    position: relative;
+    display: grid;
+    justify-items: end;
+  }
+  .date-row-value > :global([data-leaving]) {
+    top: 0;
+    right: 0;
+  }
+
   .journey-summary {
     margin: 0;
   }

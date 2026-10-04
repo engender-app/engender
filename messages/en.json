@@ -2899,7 +2899,7 @@
     }
   ],
   "roadmap_track_switch_label": "Track",
-  "safe_space_breathing_desc": "Breathe in for 4 seconds, hold for 4, out for 4, hold for 4.",
+  "safe_space_breathing_desc": "Breathe in for 4, hold for 4, out for 4, hold for 4.",
   "safe_space_breathing_exhale": "Exhale",
   "safe_space_breathing_hold": "Hold",
   "safe_space_breathing_inhale": "Inhale",
