@@ -328,6 +328,8 @@
   "care_group_hormones": "Hormony",
   "care_interval_all_history": "Bierze pod uwagę cały dziennik, nie tylko to, co widać na osi wyżej.",
   "care_interval_fold_label": "Długość odstępu w dniach",
+  "care_injection_cycle_caption": "Cykl między zastrzykami",
+  "care_custom_interval_caption": "Odstęp {days} dni",
   "care_interval_fold_prefix": "Podziel na odcinki po",
   "care_interval_fold_unit": "dni",
   "care_lane_mark_aria": "{what}, {when}, {drug}",

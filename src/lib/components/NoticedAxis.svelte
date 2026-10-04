@@ -235,7 +235,12 @@
     <div class="na-legend muted small">
       {#each directionsPresent as direction (direction)}
         <span class="na-legend-item">
-          <span class="na-legend-swatch" {...roleAttrs(roleFor(direction))}></span>{effectDirectionLabel(direction)}
+          {#each ['personal-effect', 'side-effect'] as kind (kind)}
+            {#if axis.marks.some((mark) => mark.direction === direction && mark.kind === kind)}
+              <span class="na-legend-swatch" data-kind={kind} {...roleAttrs(roleFor(direction))}></span>
+            {/if}
+          {/each}
+          {effectDirectionLabel(direction)}
         </span>
       {/each}
     </div>
@@ -473,6 +478,11 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+  }
+
+  .na-legend-swatch[data-kind='side-effect'] {
+    background: var(--bg);
+    box-shadow: inset 0 0 0 2px var(--text-2);
   }
 
   .na-legend-swatch {

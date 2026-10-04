@@ -326,6 +326,8 @@
   "care_group_hormones": "Hormones",
   "care_interval_all_history": "Reads your whole journal, not just what's on the rail above.",
   "care_interval_fold_label": "Interval length in days",
+  "care_injection_cycle_caption": "Injection cycle",
+  "care_custom_interval_caption": "{days}-day interval",
   "care_interval_fold_prefix": "Fold by",
   "care_interval_fold_unit": "days",
   "care_lane_mark_aria": "{what}, {when}, {drug}",
