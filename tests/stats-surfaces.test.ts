@@ -173,10 +173,14 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect((timeline.match(/answerHint\(\);/g) ?? []).length).toBe(3);
   });
 
-  it('freezes the hint at its last position instead of tracking the handles while it fades', () => {
-    expect(timeline).toMatch(/let hintXAtDismiss = \$state\(0\);\s*\$effect\(\(\) => \{\s*if \(showHint\) hintXAtDismiss = hintX;\s*\}\);/);
-    expect(timeline).toContain('style:--tl-hint-x="{hintXAtDismiss}px"');
-    expect(timeline).not.toContain('style:--tl-hint-x="{hintX}px"');
+  /* Release audit U14: on the rail, the hint sat over the lanes at rest.
+     It is a line under the rail's reading now, faded where it stands and
+     latched for the visit, so answering it moves nothing under it. */
+  it('puts the hint under the rail, and fades it without taking its line away', () => {
+    const rail = timeline.slice(timeline.indexOf('class="span-tl-rail"'), timeline.indexOf('data-span-state-line'));
+    expect(rail).not.toContain('data-span-hint');
+    expect(timeline).toMatch(/\{#if hintDrawn\}\s*<p class="span-tl-hint" class:is-hidden=\{!showHint\}/);
+    expect(timeline).not.toContain('--tl-hint-x');
   });
 
   it('crossfades the written span instead of cutting it, with the day count riding along', () => {

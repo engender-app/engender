@@ -103,8 +103,8 @@ if (args.includes('--app')) {
     await page.waitForTimeout(900);
     await crop('home-chips', '.kit-moods');
 
-    /* A day's own screen, which is where an entry's 28px mark and the
-       entry-card dot are drawn (Home carries no entries since ticket 13). */
+    /* A day's own screen, which is where an entry's 28px mark is drawn
+       (Home carries no entries since ticket 13). */
     await settle('/day/today');
     await page.waitForTimeout(1200);
     await crop('day-entries', '.kit-day');
@@ -142,13 +142,11 @@ if (args.includes('--app')) {
     await page.waitForTimeout(900);
     await crop('fan', '[data-fan]');
 
-    /* The entry card's dot, which is one step of the ramp and no drawing at
-       all. Safe space's counterevidence check is where a card renders with
-       the demo's data - one tap down from /doubt since redesign ticket
-       47. */
+    /* Good moments, which drew the old entry card's flat dot until phase 14
+       ticket 18 moved it to the kit's day entry and its face. */
     await settle('/doubt/evidence');
     await page.waitForTimeout(1200);
-    await crop('entry-card', '.entry-card');
+    await crop('good-moments', '.kit-day');
 
     /* Felt sense on a voice take: a 36px face, read never chosen. Only if the
        demo seeded a take that carries one. */

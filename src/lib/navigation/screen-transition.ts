@@ -146,7 +146,7 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
     into and slide out of reads as two different places. On the axis it is
     what it looks like - a step into one of the entries and a step back.
 
-    Written as an exception here rather than as a prop on EntryCard because
+    Written as an exception here rather than as a prop on DayEntry because
     this file is where the rule it excepts is stated, and a rule and its one
     carve-out belong in the same table. The source card is not told
     anything: the layout drops the container name on any navigation this

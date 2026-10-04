@@ -59,7 +59,7 @@
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence } from '$lib/data/agenda';
-  import { fallbackReading, pinnedRows, shownAgendaKinds } from '$lib/data/pinnedRows';
+  import { fallbackReading, pinnedRows, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
   import { crossesOnArrival, rememberCrossed } from '$lib/data/gettingStartedMemory';
@@ -401,12 +401,22 @@
      to the hub, which is whose it is. */
   const GETTING_STARTED_UNTIL = 5;
   let showGettingStarted = $derived(entryCount != null && entryCount < GETTING_STARTED_UNTIL);
-  const GETTING_STARTED = [
-    { key: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
-    { key: 'regimen', icon: 'flask', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
-    { key: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
-    { key: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
-    { key: 'more', icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
+  /* `area` is the hub row an offer leads into, so a pinned row can stand
+     in for it (below); `more` leads into no one area. */
+  type StartOffer = {
+    key: string;
+    area: PinnedRow['spec']['key'] | null;
+    icon: string;
+    href: string;
+    title: () => string;
+    sub: () => string;
+  };
+  const GETTING_STARTED: StartOffer[] = [
+    { key: 'milestones', area: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
+    { key: 'regimen', area: 'care', icon: 'flask', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
+    { key: 'letters', area: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
+    { key: 'photos', area: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
+    { key: 'more', area: null, icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
   ];
 
   /* A row is crossed when what it suggests has been done, which is data
@@ -467,6 +477,19 @@
     );
   });
   const isCrossed = (key: string) => doneKeys.has(key) && !held.has(key);
+
+  /* Said once (release audit U17): an offer whose area is already a pinned
+     row above it is left out, so a new journal's default pins (care,
+     milestones, tryouts) do not put Milestones and Care on day one twice.
+     Settled once, when the section first lands, and held for the visit: a
+     pin changed in the edit mode while the section is up must not cut a
+     row into or out of a list nobody is looking at as it changes. */
+  let startOffers = $state<typeof GETTING_STARTED | null>(null);
+  $effect.pre(() => {
+    if (!gettingStartedReady || startOffers) return;
+    const pinnedAreas = new Set(untrack(() => pinned).map((row) => row.spec.key));
+    startOffers = GETTING_STARTED.filter((offer) => offer.area === null || !pinnedAreas.has(offer.area));
+  });
 
   /* Milestones are mirrored (ADR-0004), so this stays a synchronous derived
      read. The list itself no longer draws here - a milestone still ahead is
@@ -1189,7 +1212,7 @@
       <SectionHeading text={m.home_start_title()} />
       <p class="home-start-intro">{m.home_start_intro()}</p>
       <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
-        {#each GETTING_STARTED as offer (offer.key)}
+        {#each startOffers ?? GETTING_STARTED as offer (offer.key)}
           {@const crossed = isCrossed(offer.key)}
           <!-- Both glyphs stay in the markup and cross on opacity and a
                scale, as the roadmap's tick does: one that was added and

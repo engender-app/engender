@@ -25,7 +25,8 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
-  import EntryCard from '$lib/components/EntryCard.svelte';
+  import EntryDays from '$lib/components/EntryDays.svelte';
+  import { entryDayGroups } from '$lib/data/recentEntries';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -557,9 +558,9 @@
     <SectionHeading text={m.tryout_entries_title()} />
     <ReadGate read={entriesInRangeRead} variant="card" count={2}>
       {#snippet rows()}
-        {#each entriesInRange as e (e.id)}
-          <EntryCard entry={e} />
-        {/each}
+        <!-- Days of entries, the drawing every list of entries uses (release
+             audit U9). -->
+        <EntryDays groups={entryDayGroups(entriesInRange)} />
       {/snippet}
       {#snippet empty()}
         <Notice
