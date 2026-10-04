@@ -457,7 +457,7 @@
   {
     "name": "settings-erase-check",
     "tier": "built",
-    "holds": "Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; cancelling erases nothing; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first)",
+    "holds": "Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first)",
     "build": "production",
     "diagnostics": [
       "/tmp/settings-erase-*-failure.png"
