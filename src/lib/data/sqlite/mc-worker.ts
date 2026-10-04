@@ -40,6 +40,8 @@
    cross-platform archive probe - separate storage instead of a collision. */
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
+import { oneTransactionAtATime } from './transactor';
+import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
 
 // Exported for tests/browser-tier/legacy-cipher-worker.ts (ticket 04): the
 // compatibility check needs to land in the exact same pool directory this
@@ -96,9 +98,11 @@ function keyAndVerify(target: Database, key: string): void {
     opening anything. Split out of `open` because a conversion has to have
     the VFS before there is a database to open through it (ticket 10), and
     because `sqlite3mc_vfs_create` may only wrap the pool once. */
-async function attach(seedPath: string): Promise<Sqlite3Static> {
+async function attach(seedPath: string, wasmBinary?: ArrayBuffer): Promise<Sqlite3Static> {
   if (sqlite3 && poolUtil) return sqlite3;
-  sqlite3 = await sqlite3InitModule();
+  const options: Parameters<typeof sqlite3InitModule>[0] & { wasmBinary?: ArrayBuffer } = {};
+  if (__DEMO__ && wasmBinary) options.wasmBinary = wasmBinary;
+  sqlite3 = await (__DEMO__ && wasmBinary ? sqlite3InitModule(options) : sqlite3InitModule());
   /* Slots, not files: the pool holds main database + rollback journal +
      the pre-migration copy + its journal, and does not grow on demand.
      Eight leaves headroom over that worst case. */
@@ -116,12 +120,22 @@ async function attach(seedPath: string): Promise<Sqlite3Static> {
 // unlink() finding the same file VACUUM INTO writes.
 const poolPath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
 
+// The demo's existing preparation modules can load while its WASM downloads.
+const demoSeedModules = __DEMO__ ? Promise.all([
+  import('../demo/worker-seed'),
+  import('../photos/encrypted-file-store'),
+  import('../photos/opfs-file-store'),
+  import('./migrations'),
+  import('../journal/reconcile').then(({ reconcileBuiltIns }) => reconcileBuiltIns)
+]) : null;
+void demoSeedModules?.catch(() => {});
+
 const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
   /* The module, the pool and the shim, ahead of the key (ux-carpet ticket
      209): no database is opened and no key is taken. `open` below calls
      the same attach and finds it done. */
-  async attach(args: { path: string }) {
-    await attach(args.path);
+  async attach(args: { path: string; wasmBinary?: ArrayBuffer }) {
+    await attach(args.path, args.wasmBinary);
   },
 
   /* The files and the key without the live database (ux-carpet 219): what
@@ -211,6 +225,44 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
       lastInsertRowid: Number(sqlite3!.capi.sqlite3_last_insert_rowid(db!))
     };
   },
+
+  ...(__DEMO__ ? { async seedDemoPersona(args: { source: ReturnType<typeof import('../demo/persona').persona> }) {
+    const [{ preparePersonaJournal }, { encryptedFileStore }, { opfsPhotoFiles }] = await demoSeedModules!;
+    const dataKey = new Uint8Array(hexKey.match(/../g)!.map((byte) => parseInt(byte, 16)));
+    const query = async <Row extends Record<string, unknown>>(sql: string, params: unknown[] = []) =>
+      db!.exec({ sql, bind: params.length > 0 ? (params as never) : undefined,
+        rowMode: 'object', returnValue: 'resultRows' }) as Row[];
+    try {
+      return await preparePersonaJournal({
+        exec(sql) { db!.exec(sql); },
+        query,
+        async run(sql, params = []) {
+          db!.exec({ sql, bind: params.length > 0 ? (params as never) : undefined });
+          return { changes: db!.changes(), lastInsertRowid: Number(sqlite3!.capi.sqlite3_last_insert_rowid(db!)) };
+        },
+        getUserVersion: () => Number(db!.selectValue('PRAGMA user_version')),
+        setUserVersion(version) { db!.exec(`PRAGMA user_version = ${version}`); },
+        readSnapshot: async (read) => read({ query }),
+        transaction: oneTransactionAtATime({
+          async begin() { db!.exec('BEGIN'); },
+          async commit() { db!.exec('COMMIT'); },
+          async rollback() { db!.exec('ROLLBACK'); }
+        }),
+        async close() {}
+      }, encryptedFileStore(opfsPhotoFiles(), dataKey), {
+        preMigrationCopyIsUsable: () => handlers.preMigrationCopyIsUsable(undefined as never) as Promise<boolean>,
+        copyDatabaseFile: () => handlers.copyDatabaseFile(undefined as never) as Promise<void>,
+        restorePreMigrationCopy: () => handlers.restorePreMigrationCopy(undefined as never) as Promise<void>,
+        cleanupPreMigrationCopy: () => handlers.cleanupPreMigrationCopy(undefined as never) as Promise<void>
+      }, args.source);
+    } catch (error) {
+      if (error instanceof SchemaTooNewError) {
+        return { foundVersion: error.foundVersion, knownVersion: error.knownVersion };
+      }
+      if (error instanceof InterruptedRestoreError) return { interruptedRestore: true };
+      throw error;
+    }
+  } } : {}),
 
   /* Whether a copy from an earlier boot is in the pool and can be read back
      as a journal. Not a file listing: SAHPool names are its own, and

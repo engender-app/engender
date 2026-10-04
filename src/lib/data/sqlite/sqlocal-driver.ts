@@ -36,6 +36,8 @@ export interface WebSqlite {
   /** Requests persistent storage so OPFS isn't subject to eviction (PRD).
       Resolves to whether it was granted. */
   requestPersistentStorage: () => Promise<boolean>;
+  /** Demo builds only. Uses the worker's connection without SQL round trips. */
+  prepareDemoPersona?: (source: ReturnType<typeof import('../demo/persona').persona>) => Promise<boolean>;
 }
 
 /* createWebSqlite stays exported only for archive-cross-probe.ts,
