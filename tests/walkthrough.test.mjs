@@ -1055,7 +1055,10 @@ try {
 
   await page.locator('[data-filter-clear]').click();
   await page.locator('#q').fill('');
-  if (await page.locator('[data-active-filter-chip]').count()) throw new Error('clear-all did not clear chips');
+  /* The chip row gives its height back rather than cutting (ticket 16), so
+     it is gone once that has run, not in the same frame. */
+  await page.waitForSelector('[data-active-filter-chip]', { state: 'detached', timeout: 2000 })
+    .catch(() => { throw new Error('clear-all did not clear chips'); });
   const hint = await page.locator('[data-screen]').innerText();
   if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
     throw new Error('empty-criteria hint did not return after clear-all');
@@ -1208,7 +1211,11 @@ try {
   await page.waitForSelector('[data-search-idle]');
 
   await page.locator('#q').fill('hopeful');
-  await page.waitForSelector('[data-entry-card]');
+  /* A card that is staying, not one of the tag search's still fading out
+     (ticket 16): those matched at once, the box was cleared before the
+     typed search had been recorded, and no recent row ever came. */
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('[data-entry-card]')].some((card) => !card.closest('[data-leaving]')));
   await page.locator('#q').fill('');
   await page.waitForSelector('[data-search-idle]');
 
