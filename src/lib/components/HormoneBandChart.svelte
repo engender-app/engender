@@ -229,6 +229,7 @@
     fill: var(--accent);
     stroke: var(--surface);
     stroke-width: 1.5;
+    transition: stroke var(--dur-fast) var(--ease-out), stroke-width var(--dur-fast) var(--ease-out);
   }
 
   .band-result.is-selected {

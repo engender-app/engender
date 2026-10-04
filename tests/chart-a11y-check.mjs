@@ -239,6 +239,40 @@ for (const width of widths) {
       )
     );
     report('/care/curve no image holds a control', nested.slice(0, 3).map((name) => `"${name}" has a focusable descendant`));
+    const labTargets = await page.locator('svg[role="group"] [role="button"]').evaluateAll(es => es.map(e => ({ name: e.getAttribute('aria-label') })));
+    const labProblems = labTargets.length ? [] : ['the fixture has no lab result targets'];
+    const labToggles = page.locator('[data-curve-results-toggle]');
+    if ((await labToggles.count()) === 0) labProblems.push('lab result targets have no list equivalent');
+    for (let i = 0; i < (await labToggles.count()); i++) {
+      await labToggles.nth(i).focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(400);
+    }
+    const labRows = await page.locator('[data-curve-result]').evaluateAll(es => es.map(e => {
+      const b = e.getBoundingClientRect();
+      return { name: e.textContent.trim(), width: b.width, height: b.height };
+    }));
+    for (const target of labTargets)
+      if (!labRows.some(row => row.name === target.name && row.width >= FLOOR && row.height >= FLOOR))
+        labProblems.push(`"${target.name}" has no ${FLOOR}px lab selection row`);
+    if (labRows.length) {
+      const first = page.locator('[data-curve-result]').first();
+      await first.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(400);
+      const selected = await page.locator('svg[role="group"] [role="button"][aria-pressed="true"]').getAttribute('aria-label');
+      if (selected !== labRows[0].name) labProblems.push(`the lab row selected "${selected}", not "${labRows[0].name}"`);
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(400);
+      if ((await page.locator('svg[role="group"] [role="button"][aria-pressed="true"]').count()) !== 0)
+        labProblems.push('pressing the selected lab row does not clear it');
+    }
+    report('/care/curve lab results have named 48px selection equivalents', labProblems);
+    for (let i = 0; i < (await labToggles.count()); i++) {
+      await labToggles.nth(i).focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(400);
+    }
     const toggles = page.locator('[data-curve-markers-toggle]');
     const count = await toggles.count();
     const problems = count ? [] : ['no list of the marked days beside any curve'];

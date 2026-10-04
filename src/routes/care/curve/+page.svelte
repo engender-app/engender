@@ -51,7 +51,7 @@
   import { curveDrugLabel, esterLabel, qualitativeCurveLabel } from '$lib/data/vocabulary/hormoneCurveLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { AnnotationMark, ChartAnnotation } from '$lib/charts/annotations';
-  import { disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { annotationLine } from '$lib/components/kit/chartAnnotation';
   import { secondaryLabValue } from '$lib/data/labs/units';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
@@ -215,6 +215,7 @@
   /** Which charts have their list of marked things open (phase 14 ticket
       29, accessibility audit A05). */
   let markersOpen = $state<Record<string, boolean>>({});
+  let resultsOpen = $state<Partial<Record<InjectableEster, boolean>>>({});
   const toggleMarkers = (chart: string) => () => (markersOpen = { ...markersOpen, [chart]: !markersOpen[chart] });
 
   function pickMarker(chart: string, mark: AnnotationMark) {
@@ -436,45 +437,80 @@
                 <p>{m.curve_band_note()}</p>
                 <p>{m.curve_source()}</p>
               </details>
-              <details class="curve-legend-detail">
-                <summary class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</summary>
-                <p>{m.curve_intro()}</p>
-              </details>
+              <button
+                type="button"
+                class="legend-item curve-markers-toggle"
+                aria-expanded={resultsOpen[curve.ester] === true}
+                aria-controls="curve-results-{curve.ester}"
+                data-curve-results-toggle={curve.ester}
+                onclick={() => (resultsOpen = { ...resultsOpen, [curve.ester]: !resultsOpen[curve.ester] })}
+              >
+                <span class="legend-result"></span>{m.curve_legend_results()}
+                <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
+              </button>
               {@render markerToggle(curve.ester, markersFor(curve.ester).length)}
+            </div>
+            <div id="curve-results-{curve.ester}">
+              {#if resultsOpen[curve.ester]}
+                <div class="disclosed" transition:disclose data-curve-results-list={curve.ester}>
+                  <p class="muted small curve-markers-note">{m.curve_intro()}</p>
+                  <ul class="marker-list" aria-label={m.curve_legend_results()}>
+                    {#each points as point, index (point.result.id)}
+                      <li>
+                        <button
+                          type="button"
+                          class="marker-link curve-result-control"
+                          data-curve-result={index}
+                          aria-pressed={selected === index}
+                          onclick={() => pickPoint(curve.ester, index)}
+                        >{m.curve_point_aria({
+                            value: String(point.result.value),
+                            unit: point.result.unit,
+                            date: fmtDay(point.result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                          })}</button>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
             </div>
             {@render markerList(curve.ester, markersFor(curve.ester))}
 
             <!-- The readout. aria-live because tapping a result changes text
                  elsewhere on the screen, which a screen reader would otherwise
                  not announce. -->
-            <div class="curve-readout" aria-live="polite">
-              {#if openMark}
-                {@render markerReadout(openMark, () => pickMarker(curve.ester, openMark))}
-              {:else if selected !== null && points[selected]}
-                {@const lines = resultLines(points[selected])}
-                <div class="spread">
-                  <p class="readout-label">
-                    {m.curve_result_at({
-                      date: fmtDay(points[selected].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                    })}
-                  </p>
-                  <button class="icon-btn" aria-label={m.curve_point_clear()} onclick={() => pickPoint(curve.ester, selected)}>
-                    <Icon name="x" size={18} />
-                  </button>
+            <div class="curve-readout" aria-live="polite" use:resize>
+              {#key `${selected}:${openMark?.key ?? ''}`}
+                <div transition:crossfade>
+                  {#if openMark}
+                    {@render markerReadout(openMark, () => pickMarker(curve.ester, openMark))}
+                  {:else if selected !== null && points[selected]}
+                    {@const lines = resultLines(points[selected])}
+                    <div class="spread">
+                      <p class="readout-label">
+                        {m.curve_result_at({
+                          date: fmtDay(points[selected].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                        })}
+                      </p>
+                      <button class="icon-btn" aria-label={m.curve_point_clear()} onclick={() => pickPoint(curve.ester, selected)}>
+                        <Icon name="x" size={18} />
+                      </button>
+                    </div>
+                    <p class="readout-value">{lines.native}</p>
+                    {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
+                    {#if lines.context}<p class="muted small">{lines.context}</p>{/if}
+                  {:else}
+                    {@const lines = bandLines(curve)}
+                    {#if lines}
+                      <p class="readout-label">
+                        {m.curve_band_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                      </p>
+                      <p class="readout-value">{lines.native}</p>
+                      {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
+                    {/if}
+                  {/if}
                 </div>
-                <p class="readout-value">{lines.native}</p>
-                {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
-                {#if lines.context}<p class="muted small">{lines.context}</p>{/if}
-              {:else}
-                {@const lines = bandLines(curve)}
-                {#if lines}
-                  <p class="readout-label">
-                    {m.curve_band_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                  </p>
-                  <p class="readout-value">{lines.native}</p>
-                  {#if lines.converted}<p class="muted small">{lines.converted}</p>{/if}
-                {/if}
-              {/if}
+              {/key}
             </div>
           </ChartCard>
         {/each}
@@ -722,6 +758,8 @@
   }
 
   .curve-readout {
+    position: relative;
+    isolation: isolate;
     margin-top: var(--space-3);
     min-height: 3.5rem;
   }
@@ -762,6 +800,17 @@
      and dropping the row would lose a mark the plot is drawing. */
   a.marker-link {
     color: var(--accent);
+  }
+
+  .curve-result-control {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
   }
 
   .readout-label {
