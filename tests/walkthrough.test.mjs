@@ -1061,10 +1061,11 @@ try {
      it is gone once that has run, not in the same frame. */
   await page.waitForSelector('[data-active-filter-chip]', { state: 'detached', timeout: 2000 })
     .catch(() => { throw new Error('clear-all did not clear chips'); });
-  const hint = await page.locator('[data-screen]').innerText();
-  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
-    throw new Error('empty-criteria hint did not return after clear-all');
-  }
+  /* The opening state is what comes back with no criteria (ticket 18); the
+     words this used to look for ("try") are no longer on it since ticket
+     16 left it one line about what is searched. */
+  await page.waitForSelector('[data-search-idle]', { timeout: 2000 })
+    .catch(() => { throw new Error('empty-criteria hint did not return after clear-all'); });
 
   ok('structured search filters combine with text, show chips and clear-all');
 } catch (e) { fail('structured search filters', e); }
