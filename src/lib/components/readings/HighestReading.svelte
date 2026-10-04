@@ -93,7 +93,7 @@
     </ReadingTile>
   {/if}
 {:else}
-  <ChartCard heading={m.stats_highest_days()} kind="highest-days" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+  <ChartCard level={2} heading={m.stats_highest_days()} kind="highest-days" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#snippet control()}
       <ChartPicker
         key="highest-metric"

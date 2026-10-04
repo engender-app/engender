@@ -298,7 +298,7 @@
     {/snippet}
   </SectionHeading>
 
-  <ChartCard heading="Day by day" kind="area" role={roleAt(roles, 0)}>
+  <ChartCard level={3} heading="Day by day" kind="area" role={roleAt(roles, 0)}>
     {#snippet control()}
       <ChartPicker
         key="metric"
@@ -317,7 +317,7 @@
     />
   </ChartCard>
 
-  <ChartCard heading="Day by day, two scales" kind="two-metrics" role={roleAt(roles, 0)}>
+  <ChartCard level={3} heading="Day by day, two scales" kind="two-metrics" role={roleAt(roles, 0)}>
     <AreaChart
       points={TWO_PRIMARY}
       min={1}
@@ -338,7 +338,7 @@
     />
   </ChartCard>
 
-  <ChartCard heading="Each scale, this period" kind="bars" role={roleAt(roles, 1)}>
+  <ChartCard level={3} heading="Each scale, this period" kind="bars" role={roleAt(roles, 1)}>
     <BarRows
       rows={[
         { key: 'euphoria', name: 'Euphoria', value: '78', amount: 78 },
@@ -353,7 +353,7 @@
        draws on a 0-to-100 dimension - one tag with almost every entry,
        the rest with one or two - so the smallest three bars stay a
        readable length instead of the sliver `leader` used to draw. -->
-  <ChartCard heading="Tag insights, thin journal" kind="bars" role={roleAt(roles, 1)}>
+  <ChartCard level={3} heading="Tag insights, thin journal" kind="bars" role={roleAt(roles, 1)}>
     <BarRows
       rows={[
         { key: 'a', name: 'Coming out', value: '90', amount: 90 },
@@ -369,7 +369,7 @@
   <!-- Same card, mood's own 1-to-5 scale: deltas this close together were
        never near the floor, so this is the "unchanged" half of the same
        ticket's acceptance criteria. -->
-  <ChartCard heading="Tag insights, mood scale" kind="bars" role={roleAt(roles, 1)}>
+  <ChartCard level={3} heading="Tag insights, mood scale" kind="bars" role={roleAt(roles, 1)}>
     <BarRows
       rows={[
         { key: 'a', name: 'Coming out', value: '1.0', amount: 1.0 },
@@ -380,7 +380,7 @@
     />
   </ChartCard>
 
-  <ChartCard heading="Days at each mood" kind="distribution" role={roleAt(roles, 2)}>
+  <ChartCard level={3} heading="Days at each mood" kind="distribution" role={roleAt(roles, 2)}>
     <Distribution
       steps={[
         { step: 1, name: 'Awful', count: 1 },
@@ -400,7 +400,7 @@
        Step 2 is empty on purpose. A step nothing landed on holds its place
        so the sequence stays under the right part of the scale, which is the
        thing a ring cannot do for an ordered scale at all. -->
-  <ChartCard heading="Across the mood scale" kind="ordered-strip">
+  <ChartCard level={3} heading="Across the mood scale" kind="ordered-strip">
     <OrderedStrip
       steps={[
         { step: 1, name: 'Awful', count: 2 },
@@ -412,7 +412,7 @@
     />
   </ChartCard>
 
-  <ChartCard heading="Share by tag" kind="donut" role={roleAt(roles, 1)}>
+  <ChartCard level={3} heading="Share by tag" kind="donut" role={roleAt(roles, 1)}>
     <Donut
       parts={[
         { key: 'work', name: 'Work', amount: 34 },
@@ -432,7 +432,7 @@
        as a zero. Its name is also the long one: a tag is whatever the
        person typed, so the legend has to clamp rather than sit at one line
        and cut. -->
-  <ChartCard heading="Share by tag, capped" kind="donut-capped" role={roleAt(roles, 0)}>
+  <ChartCard level={3} heading="Share by tag, capped" kind="donut-capped" role={roleAt(roles, 0)}>
     <Donut
       parts={[
         { key: 'a', name: 'Getting dressed', amount: 120 },
@@ -451,7 +451,7 @@
     />
   </ChartCard>
 
-  <ChartCard heading="Nothing logged yet" kind="empty" role={roleAt(roles, 0)}>
+  <ChartCard level={3} heading="Nothing logged yet" kind="empty" role={roleAt(roles, 0)}>
     <AreaChart points={[]} ariaLabel="Dysphoria ↔ euphoria, day by day" />
   </ChartCard>
 </div>

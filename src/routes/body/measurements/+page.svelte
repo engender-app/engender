@@ -486,7 +486,7 @@
 
   <ReadGate read={measurementsQuery} variant="block" count={1}>
     {#snippet rows()}
-      <ChartCard
+      <ChartCard level={2}
         heading={vocabulary.measurementTypeName(type)}
         kind="measurements-{type}"
         role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
