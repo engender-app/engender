@@ -126,7 +126,7 @@
 {:else if hasConstellation}
   <!-- No role on the card: its marks already carry one role each, resolved
        from the mode they were logged under. -->
-  <ChartCard heading={m.stats_constellation()} kind="constellation">
+  <ChartCard level={2} heading={m.stats_constellation()} kind="constellation">
     {#if canPlot && xScale && yScale}
       <ReadGate read={constellationQuery} variant="block" count={1}>
         {#snippet rows()}
@@ -174,7 +174,7 @@
     {/if}
   </ChartCard>
 {:else}
-  <ChartCard heading={m.stats_constellation()} kind="constellation">
+  <ChartCard level={2} heading={m.stats_constellation()} kind="constellation">
     <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
   </ChartCard>
 {/if}

@@ -129,7 +129,7 @@
     />
   {/if}
 {:else}
-  <ChartCard heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+  <ChartCard level={2} heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#snippet control()}
       <ChartPicker
         key="stats-insight-metric"
