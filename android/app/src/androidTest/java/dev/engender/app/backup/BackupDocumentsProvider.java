@@ -49,6 +49,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
             release.countDown();
             File[] files = directory().listFiles();
             if (files != null) for (File file : files) file.delete();
+            getContext().getSharedPreferences("backup-document-names", 0).edit().clear().commit();
             fault = "none";
             getContext().grantUriPermission("dev.engender.app",
                 android.provider.DocumentsContract.buildTreeDocumentUri(AUTHORITY, "root"),
@@ -73,7 +74,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         for (String column : cursor.getColumnNames()) {
             switch (column) {
                 case Document.COLUMN_DOCUMENT_ID: row.add(id); break;
-                case Document.COLUMN_DISPLAY_NAME: row.add(id); break;
+                case Document.COLUMN_DISPLAY_NAME: row.add(getContext().getSharedPreferences("backup-document-names", 0).getString(id, id)); break;
                 case Document.COLUMN_MIME_TYPE: row.add(root ? Document.MIME_TYPE_DIR : "application/octet-stream"); break;
                 case Document.COLUMN_FLAGS: row.add(root ? Document.FLAG_DIR_SUPPORTS_CREATE
                     : Document.FLAG_SUPPORTS_WRITE | Document.FLAG_SUPPORTS_DELETE); break;
@@ -102,6 +103,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         try {
             if (!file(id).createNewFile()) throw new IOException("create failed");
         } catch (IOException e) { throw new FileNotFoundException(e.toString()); }
+        getContext().getSharedPreferences("backup-document-names", 0).edit().putString(id, name).commit();
         return id;
     }
 

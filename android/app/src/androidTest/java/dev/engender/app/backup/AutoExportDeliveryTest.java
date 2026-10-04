@@ -92,6 +92,27 @@ public class AutoExportDeliveryTest {
             JSONObject recovered = command(probe, "recover(386)");
             assertEquals(recovered.toString(), 386, recovered.getInt("recovered"));
             assertEquals(3300, recovered.getInt("rows"));
+            Uri lookalike = DocumentsContract.createDocument(resolver,
+                DocumentsContract.buildDocumentUriUsingTree(tree, "root"),
+                "application/octet-stream", "auto-backup-legacy.ttbackup");
+            Uri manual = DocumentsContract.createDocument(resolver,
+                DocumentsContract.buildDocumentUriUsingTree(tree, "root"),
+                "application/octet-stream", "manual.ttbackup");
+            for (int i = 0; i < 6; i++) {
+                JSONObject next = command(probe, "run(1)");
+                assertEquals(next.toString(), "ok", next.getJSONObject("result").getString("outcome"));
+            }
+            List<Uri> retained = documents();
+            assertEquals("five verified backups plus two unowned documents", 7, retained.size());
+            assertTrue(retained.contains(lookalike));
+            assertTrue(retained.contains(manual));
+            assertFalse(retained.contains(previous));
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "truncated", null);
+            JSONObject failedAtLimit = command(probe, "run(1)");
+            assertEquals("failed", failedAtLimit.getJSONObject("result").getString("outcome"));
+            assertEquals(new java.util.HashSet<>(retained), new java.util.HashSet<>(documents()));
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
+
             assertFalse(new File(app.getCacheDir(), "auto-export.pending").exists());
             android.util.Log.i("AutoExportDeliveryTest", "Recovered " + delivered.length() + " encrypted bytes, 3300 rows, 386 MiB attachments");
         } finally {
