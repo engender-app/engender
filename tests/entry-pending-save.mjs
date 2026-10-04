@@ -270,6 +270,7 @@ try {
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
     assert.equal(await note.inputValue(), `Recovered edit ${locale}`, 'reopening restores unsaved draft over saved content');
+    assert.equal(new URL(page.url()).searchParams.get('from'), '/day/today', 'reopening retains the originating list');
     await attachPhoto(page);
     await page.evaluate(() => { Object.assign(window.entryWrite, { armed: true, entered: false, fail: false }); });
     await page.locator('[data-save]').click();
@@ -281,18 +282,19 @@ try {
     });
     await page.locator('[data-applock]').waitFor();
     await page.locator('[data-save]').waitFor({ state: 'detached' });
-    const lockedRoute = new URL(page.url()).pathname;
+    const lockedRoute = page.url();
     await page.evaluate(() => window.entryWrite.release());
     await page.waitForFunction(() => localStorage.getItem('engender-entry-draft') === null);
-    assert.equal(new URL(page.url()).pathname, lockedRoute, 'detached save does not navigate through gate');
+    assert.equal(page.url(), lockedRoute, 'detached save does not navigate through gate');
     await page.locator('#session-passphrase').fill('demo');
     await page.locator('[data-session-submit]').click();
     await page.locator('[data-entry-saved]').waitFor();
     await page.locator('[data-save]').waitFor({ state: 'detached' });
     assert.equal(await page.locator('[data-save]').count(), 0, 'completed save resumes readonly fallback');
+    assert.equal(await page.locator('[data-entry-saved] a').getAttribute('href'), '/day/today',
+      'completed save returns to the originating list after unlock');
     await page.locator('[data-entry-saved] a').click();
-    await page.waitForURL((url) => url.pathname === '/');
-    await page.goto(base + '/day/today', { waitUntil: 'networkidle' });
+    await page.waitForURL((url) => url.pathname === '/day/today');
     const recovered = page.locator('[data-entry-card]').filter({ hasText: `Recovered edit ${locale}` });
     await recovered.waitFor();
     assert.equal(await recovered.count(), 1);
