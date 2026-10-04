@@ -14,6 +14,8 @@
      series rather than against the cells;
    - the month is changed by two buttons, so the whole card is three tab
      stops, and the ends of the year say they go no further;
+   - the tree names one month at a time, also in the middle of the
+     crossfade that paints two;
    - nothing yanks: the list opens by its height growing frame by frame, and
      a month change keeps the panel's height on every frame.
 
@@ -59,7 +61,7 @@ async function readMonth(page) {
   await page.waitForFunction(() => document.querySelectorAll('[data-year-days-list]').length === 1);
   const panel = page.locator('[data-year-days]');
   return {
-    title: (await page.locator('[data-year-days-month]').innerText()).trim(),
+    title: (await page.locator('[data-year-days-month]').textContent()).trim(),
     tree: await panel.ariaSnapshot()
   };
 }
@@ -72,9 +74,8 @@ try {
 
     const grid = await page.evaluate(() => {
       const chart = document.querySelector('[data-chart="year-rows"]');
-      const painted = chart?.querySelector('[data-year-grid]');
       return {
-        hidden: painted?.getAttribute('aria-hidden') === 'true',
+        hidden: chart?.getAttribute('aria-hidden') === 'true',
         cells: chart?.querySelectorAll('[data-year-cell]').length ?? 0,
         focusableCells: [...(chart?.querySelectorAll('[data-year-cell]') ?? [])].filter((c) => c.tabIndex >= 0).length
       };
@@ -214,6 +215,17 @@ try {
       });
       return samples;
     });
+    /* Mid-crossfade, two months are painted and one is named. */
+    await page.locator('[data-year-days-step="next"]').click();
+    await page.waitForTimeout(40);
+    const midFade = await page.evaluate(() => document.querySelectorAll('[data-year-days-list]').length);
+    const heading = await page.locator('[data-year-days] h4').ariaSnapshot();
+    check(midFade === 2, `the check below ran mid-crossfade (${midFade} lists painted)`);
+    check(
+      /^- heading "March" \[level=4\]$/.test(heading.trim()),
+      `mid-crossfade the heading names one month (${JSON.stringify(heading)})`
+    );
+
     /* Constant is the usual case. Where a row wraps, the two months can
        differ in height, and then the panel has to travel: no one frame may
        take more than 40% of the change, and it spreads over several. */

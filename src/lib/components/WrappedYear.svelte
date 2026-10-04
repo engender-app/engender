@@ -53,6 +53,7 @@
   import BarRows from './kit/BarRows.svelte';
   import type { BarRow } from './kit/barRow';
   import YearRows from './kit/YearRows.svelte';
+  import YearDaysList, { type YearDaysFormat } from './kit/YearDaysList.svelte';
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -137,9 +138,11 @@
 
   /* The list under the rows names its month once in its heading, so a day
      there is its weekday and date alone. */
-  const longMonth = (month: number) => fmtMonthName(year, month);
-  const listDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'short', day: 'numeric' });
-  const listValue = (value: number) => nativeValue(metric, value);
+  const daysFormat: YearDaysFormat = {
+    monthTitle: (month) => fmtMonthName(year, month),
+    dayName: (epochDay) => fmtDay(epochDay, { weekday: 'short', day: 'numeric' }),
+    valueName: (value) => nativeValue(metric, value)
+  };
 
   /* Which scale the insight bars are of, named once in the heading. The
      rows carry only their counts (wrappedDisplay.ts): a wrapped draws these
@@ -225,15 +228,8 @@
   <!-- Short month names: full ones took 70px of a 340px card, which is a
        fifth of the grid's width spent on labels the reader already knows the
        order of. -->
-  <YearRows
-    {grid}
-    monthName={shortMonth}
-    monthTitle={longMonth}
-    {dayLabel}
-    dayName={listDay}
-    valueName={listValue}
-    {fillAt}
-  />
+  <YearRows {grid} monthName={shortMonth} {dayLabel} {fillAt} />
+  <YearDaysList {grid} format={daysFormat} {fillAt} />
 </ChartCard>
 
 {#if insightRows.length}
