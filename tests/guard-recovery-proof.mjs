@@ -9,6 +9,7 @@ mkdirSync('.claude', { recursive: true });
 mkdirSync('ci-logs', { recursive: true });
 const fixture = mkdtempSync(resolve('.claude/recovery-proof-'));
 const summaryPath = resolve('ci-logs/recovery-proof-summary.md');
+writeFileSync(summaryPath, '');
 const revision = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
 assert.match(revision, /^[a-f0-9]{40}$/);
 try {
@@ -45,6 +46,8 @@ try {
   assert.match(summary, /\| synthetic-recovery \| recovered \|/);
   assert.match(summary, /\| synthetic-pass \| passed \|/);
   assert.ok(summary.includes(revision));
+  assert.match(summary, /FAIL synthetic recovery case/);
+  assert.match(summary, /synthetic-recovery\/attempt-1\/output\.log/);
   const reports = globSync('ci-logs/guards/*/results.json', { cwd: fixture });
   assert.equal(reports.length, 1);
   const report = JSON.parse(readFileSync(join(fixture, reports[0]), 'utf8'));
