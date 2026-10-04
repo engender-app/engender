@@ -27,7 +27,10 @@
      what they tapped before.
 
      Personal support is now linked above the breath, so it is reachable
-     on a short screen without starting the exercise (UI/UX ticket 14).
+     on a short screen without starting the exercise (UI/UX ticket 14). It
+     is the only way to it: the same list as a row among the ways down said
+     "Things that help" twice on one screen (phase 14 ticket 18, release
+     audit U11).
 
      **The same choices, however you arrived.** A surface that
      opens differently depending on whether you came from the tile, the hub
@@ -50,7 +53,7 @@
 
   /* The words for each way, beside the list rather than in it: the order is
      a fact about the product and lives in the module (ADR-0016 keeps
-     paraglide out of the node tier), and four of these five titles are the
+     paraglide out of the node tier), and three of these four titles are the
      section headings the person already read on the screen this replaces -
      the same names, one tap further in.
 
@@ -61,7 +64,6 @@
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub?: () => string }> = {
     resources: { title: m.resources_title, sub: m.resources_row_sub },
     moments: { title: m.safe_space_moments_title, sub: m.safe_space_moments_sub },
-    comfort: { title: m.comfort_list_title },
     evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub },
     readings: { title: m.safe_space_readings_row_title, sub: m.safe_space_readings_sub }
   };

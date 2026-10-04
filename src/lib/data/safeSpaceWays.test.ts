@@ -31,7 +31,6 @@ describe('the ways down from Safe space', () => {
     expect(SAFE_SPACE_WAYS.map((w) => w.key)).toEqual([
       'resources',
       'moments',
-      'comfort',
       'evidence',
       'readings'
     ]);
@@ -51,7 +50,8 @@ describe('the ways down from Safe space', () => {
          screen of its own, on the screen that always held them, at the
          section that holds them. */
       '/transition/letters#opened',
-      '/doubt/comfort',
+      /* The comfort list is the button above the breath, not a way down
+         (phase 14 ticket 18): safe-space-surfaces.test.ts holds it. */
       '/doubt/evidence',
       /* Ticket 15: a Look back page stops living on the Safe space door.
          Ticket 07 gives the affirming themes a reading of their own under

@@ -12,6 +12,7 @@
      the counterevidence check a read; the comfort list is the person's own
      list and always could be edited, and moving it to its own screen
      changes nothing about that. */
+  import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import type { ComfortItem } from '$lib/data/types';
@@ -20,15 +21,33 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { regroupSteps, type CellBox } from '$lib/motion/regroup';
+  import { isReducedMotion } from '$lib/motion/tokens';
 
   let comfortItemsQuery = liveList((j) => j.comfortItems.getItems());
-  let comfortItems = $derived(comfortItemsQuery.rows);
+
+  /* The order a drop or an arrow key just wrote, held until the read says
+     the same: the write is a worker round trip, and drawing the read's old
+     order in between would put every moved row back for a frame or two and
+     then move it again. */
+  let pendingOrder = $state<string[] | null>(null);
+  let comfortItems = $derived.by(() => {
+    const rows = comfortItemsQuery.rows;
+    if (!pendingOrder) return rows;
+    const byId = new Map(rows.map((item) => [item.id, item]));
+    const ordered = pendingOrder.map((id) => byId.get(id)).filter((item) => item !== undefined);
+    return ordered.length === rows.length ? ordered : rows;
+  });
+  $effect(() => {
+    const read = comfortItemsQuery.rows.map((item) => item.id).join(' ');
+    if (pendingOrder && pendingOrder.join(' ') === read) pendingOrder = null;
+  });
 
   const comfortRecord = recordEditor<ComfortItem, { id?: string; text: string }>({
     blank: () => ({ text: '' }),
@@ -43,13 +62,132 @@
     findById: (id) => comfortItems.find((item) => item.id === id)
   });
 
-  /* The journal speaks whole orders (a drag), so the up-button builds the
-     order it wants and hands it over - the same reason TagsArea.reorder
-     takes it (settings/tags/+page.svelte). */
-  function moveComfortItemUp(index: number) {
+  /* **Arranging** (release audit U10). The list used to carry a "move up"
+     control on every row: a chevron turned on its side, which read as a
+     row that folds open, and sat disabled but visible on the first row.
+     Now a row opens its editor (the chevron says so, as on every other
+     list that opens something) and the order is its own mode, with a
+     handle per row - the shape the Today editor already uses, and the
+     shape the report's references (Evernote, Beli) use. Pointer events
+     on the handle rather than the whole row, so the list still scrolls
+     under a thumb; the arrow keys on the handle are the keyboard's whole
+     equivalent, one place per press. */
+  let arranging = $state(false);
+
+  let listEl: HTMLElement | undefined = $state();
+  /** The row being dragged, how far the pointer has taken it, and the row
+      it is over. Null the rest of the time. */
+  let drag = $state<{ id: string; dy: number; overId: string } | null>(null);
+  /** The rows' boxes when the grab started, measured once: the rows move
+      under the pointer as it travels. */
+  let boxes: { id: string; top: number; height: number }[] = [];
+  let grabbedAt = 0;
+
+  const rowElements = () => [...(listEl?.querySelectorAll<HTMLElement>('[data-comfort-item]') ?? [])];
+  const rowId = (el: HTMLElement) => el.dataset.comfortItem ?? '';
+
+  function measure(): CellBox[] {
+    return rowElements().map((el) => {
+      const box = el.getBoundingClientRect();
+      return { key: rowId(el), left: box.left, top: box.top, width: box.width, height: box.height };
+    });
+  }
+
+  /** Write an order and let every row travel from where it stood on screen
+      to where the order puts it: measure, write, measure, start each row
+      at the difference and release it on the next frame (`regroupSteps`,
+      the Journal door's FLIP). Measured from the painted boxes, so a row a
+      drag left standing aside or under the pointer starts exactly there. */
+  async function writeOrder(ids: string[]) {
+    const before = measure();
+    drag = null;
+    pendingOrder = ids;
+    void journal.comfortItems.reorder(ids);
+    await tick();
+    if (isReducedMotion()) return;
+    const elements = new Map(rowElements().map((el) => [rowId(el), el]));
+    for (const step of regroupSteps(before, measure())) {
+      const el = elements.get(String(step.key));
+      if (!el) continue;
+      el.style.transition = 'none';
+      el.style.translate = `0 ${step.dy}px`;
+      requestAnimationFrame(() => {
+        el.style.transition = '';
+        el.style.translate = '';
+      });
+    }
+  }
+
+  function moved(id: string, targetId: string): string[] {
     const ids = comfortItems.map((item) => item.id);
-    [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-    journal.comfortItems.reorder(ids);
+    const from = ids.indexOf(id);
+    const to = ids.indexOf(targetId);
+    ids.splice(from, 1);
+    ids.splice(to, 0, id);
+    return ids;
+  }
+
+  function grab(event: PointerEvent, id: string) {
+    if (event.button !== 0) return;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    boxes = rowElements().map((el) => {
+      const box = el.getBoundingClientRect();
+      return { id: rowId(el), top: box.top, height: box.height };
+    });
+    grabbedAt = event.clientY;
+    drag = { id, dy: 0, overId: id };
+  }
+
+  function travel(event: PointerEvent) {
+    if (!drag) return;
+    const from = boxes.find((box) => box.id === drag?.id);
+    if (!from) return;
+    const dy = event.clientY - grabbedAt;
+    /* The row under the dragged row's middle; off either end, the first
+       or the last, so an overshoot still lands. */
+    const middle = from.top + from.height / 2 + dy;
+    const over =
+      boxes.find((box) => middle >= box.top && middle <= box.top + box.height) ??
+      (middle < boxes[0].top ? boxes[0] : boxes[boxes.length - 1]);
+    drag = { id: drag.id, dy, overId: over.id };
+  }
+
+  function drop() {
+    if (!drag) return;
+    const { id, overId } = drag;
+    if (overId === id) {
+      /* Put back where it was picked up: the row travels home on the
+         list's own translate transition. */
+      drag = null;
+      return;
+    }
+    void writeOrder(moved(id, overId));
+  }
+
+  /** How far a row stands aside while another is dragged past it. */
+  function shift(id: string): number {
+    if (!drag || id === drag.id) return 0;
+    const from = boxes.findIndex((box) => box.id === drag?.id);
+    const to = boxes.findIndex((box) => box.id === drag?.overId);
+    const at = boxes.findIndex((box) => box.id === id);
+    if (from === -1 || to === -1 || at === -1) return 0;
+    const height = boxes[from].height;
+    if (at > from && at <= to) return -height;
+    if (at < from && at >= to) return height;
+    return 0;
+  }
+
+  async function moveWithKeys(event: KeyboardEvent, id: string) {
+    const by = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+    if (!by) return;
+    event.preventDefault();
+    const at = comfortItems.findIndex((item) => item.id === id);
+    const neighbour = comfortItems[at + by];
+    if (at === -1 || !neighbour) return;
+    await writeOrder(moved(id, neighbour.id));
+    /* The handle keeps the focus across the write, so a second press moves
+       the same row again. */
+    listEl?.querySelector<HTMLElement>(`[data-comfort-grip="${id}"]`)?.focus();
   }
 </script>
 
@@ -58,23 +196,58 @@
 
   <ReadGate read={comfortItemsQuery} variant="line" count={3}>
     {#snippet rows()}
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each comfortItems as item, i (item.id)}
-          <ListRow
-            key={item.id}
-            data-comfort-item={item.id}
-            title={item.text}
-            chevron={false}
-            onclick={() => comfortRecord.openEditor(item)}
-            action={{
-              icon: 'chevronLeft',
-              label: m.comfort_list_move_up_aria({ text: item.text }),
-              onclick: () => moveComfortItemUp(i),
-              attrs: i === 0 ? { 'data-up': '', disabled: 'true' } : { 'data-up': '' }
-            }}
-          />
-        {/each}
-      </ListCard>
+      {#if arranging}
+        <p class="comfort-hint" id="comfort-arrange-hint" transition:disclose>{m.home_edit_hint()}</p>
+      {/if}
+      <div class="comfort-list" class:is-arranging={arranging} class:is-dragging={drag !== null} bind:this={listEl}>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each comfortItems as item (item.id)}
+            <!-- The kit's split row written out, because the two modes are
+                 one row: the main half and its text never change, and only
+                 the trailing end does - the chevron closes as the handle
+                 opens beside it, so nothing is redrawn and nothing cuts. -->
+            <div
+              class="kit-row is-split"
+              data-list-row={item.id}
+              data-comfort-item={item.id}
+              data-lifted={drag?.id === item.id ? 'true' : undefined}
+              style:translate={drag ? `0 ${drag.id === item.id ? drag.dy : shift(item.id)}px` : undefined}
+            >
+              <button
+                type="button"
+                class="kit-row-main"
+                data-row-main={item.id}
+                data-no-press
+                disabled={arranging}
+                onclick={() => comfortRecord.openEditor(item)}
+              >
+                <span class="kit-row-text"><span class="kit-row-title" data-row-title>{item.text}</span></span>
+                {#if !arranging}
+                  <span class="kit-row-trail" transition:discloseWidth><Icon name="chevronRight" size={22} /></span>
+                {/if}
+              </button>
+              {#if arranging}
+                <button
+                  type="button"
+                  class="kit-row-act comfort-grip"
+                  data-comfort-grip={item.id}
+                  data-no-press
+                  aria-label={m.home_edit_move({ row: item.text })}
+                  aria-describedby="comfort-arrange-hint"
+                  transition:discloseWidth
+                  onpointerdown={(event) => grab(event, item.id)}
+                  onpointermove={travel}
+                  onpointerup={drop}
+                  onpointercancel={drop}
+                  onkeydown={(event) => moveWithKeys(event, item.id)}
+                >
+                  <Icon name="grip" size={22} />
+                </button>
+              {/if}
+            </div>
+          {/each}
+        </ListCard>
+      </div>
       <button
         type="button"
         class="btn btn-soft btn-block press"
@@ -83,6 +256,21 @@
       >
         <Icon name="plus" size={18} /> <span>{m.comfort_list_add()}</span>
       </button>
+      {#if comfortItems.length > 1}
+        <!-- One button, two words: the label crossfades in place, so the
+             control a person just pressed is still under their finger. -->
+        <button
+          type="button"
+          class="btn btn-ghost btn-block comfort-arrange"
+          data-comfort-arrange
+          aria-pressed={arranging}
+          onclick={() => (arranging = !arranging)}
+        >
+          {#key arranging}
+            <span transition:crossfade>{arranging ? m.done() : m.comfort_list_arrange()}</span>
+          {/key}
+        </button>
+      {/if}
     {/snippet}
     {#snippet empty()}
       <Notice
@@ -127,3 +315,48 @@
     {/snippet}
   </RecordSheet>
 </div>
+
+<style>
+  .comfort-hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  /* A row stands aside, or travels to a new place, on its translate; the
+     row under the pointer has none, so it sits exactly where the finger
+     is. */
+  .comfort-list :global(.kit-row) {
+    background: var(--bg);
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
+  .comfort-list.is-dragging :global(.kit-row[data-lifted]) {
+    transition: none;
+    z-index: 2;
+    /* Picked up, said by an edge rather than the shadow the kit refuses. */
+    outline: 1px solid var(--outline);
+  }
+
+  /* Arranging, the main half is not a way into the editor: the handle is
+     the one thing on the row that does anything. Its text keeps its ink. */
+  .comfort-list.is-arranging :global(.kit-row-main:disabled) {
+    cursor: default;
+    color: inherit;
+    opacity: 1;
+  }
+
+  .comfort-grip {
+    /* The gesture is vertical, so the browser keeps the horizontal axis. */
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .comfort-grip:active {
+    cursor: grabbing;
+  }
+
+  .comfort-arrange {
+    position: relative;
+  }
+</style>
