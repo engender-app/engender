@@ -50,6 +50,13 @@ const config: CapacitorConfig = {
        API 26 emulator, whose WebView is Chrome 69. */
     errorPath: 'webview-too-old.html'
   },
+  /* CSS reads env(safe-area-inset-*). Native handling keeps older WebViews
+     padded without injecting unused CSS variables during document creation. */
+  plugins: {
+    SystemBars: {
+      insetsHandling: 'native'
+    }
+  },
   /* Every plugin call's arguments are logged, in full, before the call runs:
      Bridge.callPluginMethod hands `call.getData().toString()` to
      Logger.verbose, and Logger's only gate is this setting, whose default
