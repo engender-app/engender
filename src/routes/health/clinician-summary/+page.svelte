@@ -123,19 +123,8 @@
   const dayLong = (epochDay: number) =>
     fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* The one row above the preview (ticket 08): what the sheet currently
-     holds, read back rather than restated - the same counts and the same
-     dates the dossier below is actually built from, so the row can never
-     drift from what printing. "Included" rather than the fixed nine and
-     however-many-drugs-exist: with every switch on by default the two
-     numbers agree, and the row only starts saying something different from
-     "everything" once a switch does.
-
-     Ticket 34: the same text is also the print action's own summary, in
-     the foot under the preview. Both surfaces read this one derived, so
-     "what will be included" has one wording, not two that a later change
-     can pull apart - the row wraps it in the affordance tail that opens
-     the sheet, the foot states it bare. */
+  /* Both summaries read the selected sections and drugs. Only the print
+     foot states the range, so the screen does not repeat its sentence. */
   let includedSections = $derived(
     CLINICIAN_DOSSIER_INCLUSION_KEYS.filter((key) => inclusion[key])
   );
@@ -171,6 +160,10 @@
       : m.clinician_summary_scope_no_drugs({ range: rangeText, sections: sectionsScope });
   });
 
+  let settingsScope = $derived(
+    drugNames.length > 0 ? `${sectionsScope}. ${drugsScope}` : sectionsScope
+  );
+
   function include(key: ClinicianDossierInclusionKey, value: boolean) {
     inclusion = { ...inclusion, [key]: value };
   }
@@ -183,21 +176,14 @@
 <div class="screen clinician-summary">
   <ScreenHeader title={m.clinician_summary_title()} back="/more" class="no-print" />
 
-  <!-- Ticket 08: the row is the door to every control the old form held,
-       stated rather than left for the reader to open the sheet and find
-       out (rule 16 - a screen opens on what is true now). It reads the
-       range, the section count and the drug count straight off the same
-       state the preview below renders from, so it can't say something the
-       page underneath it doesn't. Unopenable state (no valid range) reads
-       as the same prompt the old inline paragraph gave, in the one place
-       left to give it. -->
+  <!-- The settings row shows the included items and opens their controls. -->
   <!-- Held until the regimen read answers: the row names the drugs, and
        drawn before it knew them it grew a line in one frame on every cold
        open, pushing the preview 21px (ux-carpet ticket 193). -->
   <div class="no-print settings-row-wrap">
     <ReadReserve ready={!regimenEpisodesQuery.loading} estimate={rowEstimate} onrest={rememberRow}>
       <ListRow
-        title={range ? m.clinician_summary_settings_row({ scope: scopeText }) : scopeText}
+        title={range ? m.clinician_summary_settings_row({ scope: settingsScope }) : scopeText}
         key="clinician-summary-settings"
         data-settings-row
         onclick={() => (controlsOpen = true)}
@@ -242,13 +228,12 @@
            to finish before it can be reached. The foot is the column's flex
            sibling rather than a bar floating over it (carpet 26), so the
            one verb this screen has (ticket 08) stays reachable at every
-           scroll position and covers nothing - and its scope line is the
-           same derived the settings row above reads, so the two can never
-           say different things. -->
+           scroll position and covers nothing - and its scope line includes the
+           range alongside the same item choices the settings row reads. -->
       <SaveBar arrange="stack">
         <p class="small muted summary-scope no-print" role="status">{scopeText}</p>
         <button class="btn btn-primary no-print" data-summary-print onclick={printSummary}>
-          <Icon name="share" size={18} />
+          <Icon name="print" size={18} />
           <span>{m.clinician_summary_print()}</span>
         </button>
       </SaveBar>

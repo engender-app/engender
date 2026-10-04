@@ -80,17 +80,14 @@ describe('clinician summary print parity', () => {
    any scroll position), with the scope it prints stated beside it, so a
    long preview never separates the reader from either. */
 describe('the print foot (ticket 34)', () => {
-  it('the action summary and the settings row read one shared scope, not two recomputations', () => {
-    /* One derived composes range, selected section names and selected drugs;
-       the row wraps it in its own affordance tail. Two separately written sentences
-       about the same dossier could drift after an inclusion change - one
-       cannot. */
+  it('shares included items between summaries and states the range only in the print foot', () => {
     expect(page).toContain('let scopeText = $derived.by(');
     expect(page).toContain('m.clinician_summary_scope({');
     expect(page).toContain('m.clinician_summary_scope_no_drugs(');
     expect(page).toContain('includedSections.map(clinicianDossierPartName).join');
     expect(page).toContain('includedDrugNames.join');
-    expect(page).toContain('m.clinician_summary_settings_row({ scope: scopeText })');
+    expect(page).toContain('m.clinician_summary_settings_row({ scope: settingsScope })');
+    expect(page).toContain('drugNames.length > 0 ? `${sectionsScope}. ${drugsScope}` : sectionsScope');
   });
 
   it('the print action lives in the foot, with its scope line beside it', () => {
