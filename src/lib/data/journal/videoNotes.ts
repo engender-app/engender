@@ -25,6 +25,7 @@
    the same division of labour normalizePhoto/photos.ts already draws. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { afterCommit } from '../sqlite/transactor';
 import type { VideoNote } from '../types';
 import { videoFileName } from '../videoNotes/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -73,8 +74,12 @@ export async function videosByEntry(driver: SqliteDriver, entryIds: number[]): P
 /** Deletes every file the given video note rows owned. Called after the rows
     are gone, mirroring photos.ts's removeFilesOf: a failure here must not
     resurrect them, and what it leaves behind is the sweep's to reclaim. */
-export async function removeVideoFilesOf(files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
+async function removeVideoFiles(files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
   for (const row of rows) await files.remove(row.file_path);
+}
+
+export async function removeVideoFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
+  await afterCommit(driver, () => removeVideoFiles(files, rows));
 }
 
 /** Best-effort cleanup after an owner save has committed, the same reasoning
@@ -82,14 +87,17 @@ export async function removeVideoFilesOf(files: PhotoFileStore, rows: { file_pat
     file-store failure here must not make a completed save look unsuccessful.
     The boot orphan sweep retries the leftovers. */
 export async function removeVideoFilesAfterCommit(
+  driver: SqliteDriver,
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
-  try {
-    await removeVideoFilesOf(files, rows);
-  } catch {
-    // sweepOrphanPhotos() owns retries.
-  }
+  await afterCommit(driver, async () => {
+    try {
+      await removeVideoFiles(files, rows);
+    } catch {
+      // sweepOrphanPhotos() owns retries.
+    }
+  });
 }
 
 async function nextOrderIndex(driver: SqliteDriver, entryId: number): Promise<number> {

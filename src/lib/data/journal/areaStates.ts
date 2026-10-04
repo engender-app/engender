@@ -78,7 +78,7 @@ export function makeAreaStatesArea(driver: SqliteDriver): AreaStatesArea {
     if (areas.length === 0) return;
     const alsoClear = value !== null ? clearing : undefined;
 
-    await driver.transaction(async () => {
+    await driver.transaction(async (driver) => {
       const ts = now();
       for (const area of areas) {
         if (alsoClear) {

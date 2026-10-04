@@ -165,7 +165,7 @@ test('the recorded driver is still the driver underneath it', async () => {
   await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['a', '1']);
   expect(await driver.query('SELECT value FROM pref WHERE key = ?', ['a'])).toEqual([{ value: '1' }]);
   expect(await driver.getUserVersion()).toBeGreaterThan(0);
-  await driver.transaction(async () => {
+  await driver.transaction(async (driver) => {
     await driver.run('UPDATE pref SET value = ? WHERE key = ?', ['2', 'a']);
   });
   expect(await driver.query('SELECT value FROM pref WHERE key = ?', ['a'])).toEqual([{ value: '2' }]);
@@ -175,7 +175,7 @@ test('a statement inside a transaction is recorded like any other', async () => 
   const { driver, record } = await recorded();
 
   const { recording } = await record(async () => {
-    await driver.transaction(async () => {
+    await driver.transaction(async (driver) => {
       await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['a', '1']);
     });
   });

@@ -38,22 +38,23 @@ export function countingDriver(
   let queryRoundTrips = 0;
   let runRoundTrips = 0;
 
-  const wrapped: SqliteDriver = {
+  const wrap = (driver: SqliteDriver): SqliteDriver => ({
     ...driver,
     query(sql, params) {
       queryRoundTrips += 1;
       hooks.onQuery?.(sql, params);
       return driver.query(sql, params);
     },
+    transaction: (work) => driver.transaction((scope) => work(wrap(scope))),
     run(sql, params) {
       runRoundTrips += 1;
       hooks.onRun?.(sql, params);
       return driver.run(sql, params);
     }
-  };
+  });
 
   return {
-    driver: wrapped,
+    driver: wrap(driver),
     roundTrips: () => ({ query: queryRoundTrips, run: runRoundTrips }),
     resetRoundTrips: () => {
       queryRoundTrips = 0;
