@@ -80,6 +80,13 @@ describe('what Safe Space is built from', () => {
     for (const way of SAFE_SPACE_WAYS) expect(doubt).toContain(`${way.key}:`);
   });
 
+  /* Release audit U11: "Things that help" was both the button above the
+     breath and a row under it. Said once, by the button. */
+  it('reaches the comfort list once, from the button above the breath', () => {
+    expect(markup.match(/href="\/doubt\/comfort"/g)).toHaveLength(1);
+    expect(SAFE_SPACE_WAYS.map((w) => w.href)).not.toContain('/doubt/comfort');
+  });
+
   it('names the More hub as where back falls back to', () => {
     /* CARPET-05: the href is the fallback rather than the destination now,
        and ScreenHeader is what turns it into a return to whichever screen
