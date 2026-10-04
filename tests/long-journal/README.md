@@ -13,6 +13,13 @@ retained resource and long-task entries, host metadata, and one diagnostic
 reopen in `ci-logs/`. The reopen uses the remaining ten-year fixture and retained
 browser caches; it cannot establish the earlier one-year cause or replace its
 score. `--diagnostics` saves the same report after a passing run.
+Startup failures save a separate `long-journal-startup-*.json` report in
+`ci-logs/` before closing the browser. It retains the last 128 worker,
+navigation, network-failure and browser-error events, plus browser and host
+metadata. A document snapshot has a five-second deadline and records the
+unfinished stage, fixture span and retained resource entries. Stage updates
+run outside scored timers; the final stage identifies unfinished work, but
+does not establish its cause.
 `--record` reports both sizes but only records the ten-year absolute baseline;
 it skips both budget and scaling failures, as it did for budget failures.
 
