@@ -91,6 +91,7 @@ async function maybeRun() {
     await reportFailure(true, now);
   } catch (error) {
     console.error('scheduled auto-export failed', error);
+    await reportFailure(true, now);
   } finally {
     running = false;
   }
