@@ -145,14 +145,16 @@
   });
 </script>
 
-<div class="batched" data-batched-list={key}>
+<div class="batched" class:batched-manual={!autoGrow} data-batched-list={key}>
   <ListCard {role}>
     {@render rows(shown)}
   </ListCard>
 
   <!-- What the scroll is watched for. Empty and hidden: it is a position in
        the layout, not content, and a screen reader has no use for it. -->
-  <div class="batched-edge" bind:this={sentinel} aria-hidden="true"></div>
+  {#if autoGrow}
+    <div class="batched-edge" bind:this={sentinel} aria-hidden="true"></div>
+  {/if}
 
   <!-- Kept even though the sentinel exists, and not a fallback for it. It is
        what a keyboard reaches, it is the same control search already ships,
@@ -171,5 +173,13 @@
   .batched {
     display: grid;
     gap: var(--space-4);
+  }
+
+  .batched-manual {
+    gap: 0;
+  }
+
+  .batched-manual > button {
+    margin-top: var(--space-4);
   }
 </style>
