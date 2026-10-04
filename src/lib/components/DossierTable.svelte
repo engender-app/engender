@@ -7,7 +7,7 @@
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
 
-  function fadeEdge() {
+  function fadeEdge(_node: Element) {
     return fadeOnly(crossfadeDuration());
   }
 
