@@ -30,7 +30,11 @@ jobs:
       - name: Record trusted wheel events
         run: |
           mkdir -p ci-logs
-          node tests/date-picker-motion.mjs --gate --themes light 2>&1 | tee ci-logs/date-picker-wheel.log
+          failed=0
+          for attempt in 1 2 3 4 5; do
+            node tests/date-picker-motion.mjs --gate --themes light 2>&1 | tee "ci-logs/date-picker-wheel-${attempt}.log" || failed=1
+          done
+          exit "$failed"
       - name: Keep diagnostic
         if: always()
         uses: actions/upload-artifact@v7
