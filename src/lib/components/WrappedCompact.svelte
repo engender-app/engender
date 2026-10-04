@@ -227,3 +227,20 @@
     {/each}
   </div>
 {/if}
+
+<style>
+  /* The recap's tag counts, a quieter chip than a picker's (.tag-chip,
+     components.css). Here since the old entry card, its other reader, gave
+     way to the kit's day entry (phase 14 ticket 18). --text-2 on
+     --surface-2 clears 4.5:1 in every palette without any extra opacity
+     (P10-007/probe 2). */
+  .tag-chip.is-mini {
+    padding: 2px 9px;
+    min-height: 22px;
+    font-size: var(--text-xs);
+    background: var(--surface-2);
+    border: none;
+    color: var(--text-2);
+    cursor: inherit;
+  }
+</style>

@@ -21,19 +21,6 @@ dim-readout
 dim-slider
 dim-value
 empty-state
-entry-card
-entry-card-bg
-entry-day
-entry-has-photo
-entry-has-recording
-entry-has-video
-entry-main
-entry-meta
-entry-multi
-entry-note
-entry-presentation
-entry-side
-entry-tags
 fan
 fan-card
 fan-flight
@@ -67,7 +54,6 @@ is-starred
 kit-chart-pick
 line-chart
 mood-btn
-mood-dot
 mood-face
 mood-face-disc
 mood-face-eye

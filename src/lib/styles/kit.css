@@ -764,8 +764,8 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 }
 /* The container transform's own layer (DayEntry.svelte) - out of grid flow
    (absolute, so it takes no track and the three columns beside it are
-   unaffected) and carrying no text of its own, the same reason
-   .entry-card-bg exists in components.css. */
+   unaffected) and carrying no text of its own, so the row's words stay out
+   of the image the transition scales. */
 .kit-entry-bg {
   position: absolute; inset: 0;
 }
@@ -780,10 +780,18 @@ a.kit-entry:active {
 }
 
 /* The hour sits on the same 26px line the face does, so the two read as one
-   mark on the rail rather than as a label that slipped. */
+   mark on the rail rather than as a label that slipped.
+
+   One width for every hour, right-aligned against the face (release audit
+   U8): the column was `auto` per row, so "9:24" sat 7px narrower than
+   "13:49" and its face, and the rail through it, moved left with it. Five
+   tabular digits' worth in the time's own type holds "23:59", the widest
+   time either locale writes (fmtTime is 24-hour in en-GB and pl-PL). */
 .kit-entry-time {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  width: 5ch;
   height: 26px;
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
@@ -886,8 +894,7 @@ a.kit-entry:active {
 
 /* The fluidity engine's presentation, in its own colour (phase 5 deepening
    ticket 17, ADR-0048) - set inline per entry by the caller, since it names
-   a specific presentation rather than this row's own section role, the same
-   split components.css's .entry-presentation makes. */
+   a specific presentation rather than this row's own section role. */
 .kit-entry-presentation {
   display: block;
   font-size: var(--text-xs);
