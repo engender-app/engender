@@ -10,37 +10,35 @@
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
    #demo-jump control), then serves that build. */
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium, fillDate, fillTime } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
+import { WALKTHROUGH_GROUPS, groupFlows } from './walkthrough-groups.mjs';
+import { writeSummary } from '../scripts/check-process.mjs';
 
-const { ok, fail, finish } = createReporter();
+const reporter = createReporter();
+const assertions = [];
+const ok = (label) => { assertions.push({ label, outcome: 'passed' }); reporter.ok(label); };
+const fail = (label, error) => { assertions.push({ label, outcome: 'failed', error: String(error) }); reporter.fail(label, error); };
+const { finish } = reporter;
 
-/* Which flows this run walks.
-
-   The suite is one build and one browser over about 136 checks, roughly
-   fifteen minutes, and a change that moves one screen's markup usually
-   breaks four of them. `--only <substring>` runs the flows whose name holds
-   that substring, matched case-insensitively. A flow's name is the label its
-   `catch` reports on failure, and `--only` with no match prints the whole
-   list rather than guessing.
-
-   Read the banner before believing a filtered run. These flows share one
-   journal: several import an archive, discard it, or reseed the fixture
-   through the demo bar, so a flow that reads what an earlier one wrote fails
-   for the want of it rather than for anything the diff did. A filtered run
-   is a loop for finding a break and proving a fix. The whole run is what a
-   merge rests on.
-
-   The names are read out of this file rather than counted as the flows go
-   past, so the banner can say how many of how many before the first one
-   runs, and cannot drift from the flows themselves.
-
-   Filtering skips the build the npm script does, which is the point of it:
-     node tests/walkthrough.test.mjs --only "recovery key"
-   against whatever `npm run test:walkthrough` last built. */
+/* --group runs a complete sequence with its own synthetic journal. CI runs
+   every group in a separate job. With no group, the original continuous
+   walkthrough still runs. --only filters inside either mode for diagnosis;
+   skipped writers can leave prerequisites missing, so it is not merge proof.
+   --list prints the selected flows without starting a browser. */
+const GROUP = (() => {
+  const at = process.argv.indexOf('--group');
+  if (at === -1) return null;
+  const id = process.argv[at + 1];
+  if (!WALKTHROUGH_GROUPS.some((group) => group.id === id)) {
+    throw new Error(`--group wants one of: ${WALKTHROUGH_GROUPS.map((group) => group.id).join(', ')}`);
+  }
+  return WALKTHROUGH_GROUPS.find((group) => group.id === id);
+})();
 const ONLY = (() => {
   const at = process.argv.indexOf('--only');
   if (at === -1) return null;
@@ -52,7 +50,18 @@ const ONLY = (() => {
 const FLOW_NAMES = [
   ...(await readFile(new URL(import.meta.url), 'utf8')).matchAll(/^await flow\((['"])(.*?)\1/gm)
 ].map((match) => match[2]);
-const PICKED = ONLY ? FLOW_NAMES.filter((name) => name.toLowerCase().includes(ONLY)) : FLOW_NAMES;
+const GROUP_FLOWS = GROUP ? groupFlows(FLOW_NAMES, GROUP.id) : FLOW_NAMES;
+const PICKED = ONLY ? GROUP_FLOWS.filter((name) => name.toLowerCase().includes(ONLY)) : GROUP_FLOWS;
+if (process.argv.includes('--list')) {
+  console.log(JSON.stringify({ group: GROUP?.id ?? 'all', state: GROUP?.state ?? 'alice', flows: PICKED }));
+  process.exit(PICKED.length ? 0 : 1);
+}
+const runStarted = Date.now();
+const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+await mkdir('ci-logs', { recursive: true });
+const outputDirectory = await mkdtemp(`ci-logs/walkthrough-${GROUP?.id ?? 'all'}-`);
+const timings = [];
+console.log(`Walkthrough ${GROUP?.id ?? 'all'}: ${PICKED.length} flows, ${GROUP?.state ?? 'alice'} fixture, revision ${revision}`);
 
 if (ONLY && !PICKED.length) {
   console.log(`No flow name holds "${ONLY}". The flows are:\n  ${FLOW_NAMES.join('\n  ')}`);
@@ -64,14 +73,16 @@ if (ONLY) {
   console.log('!! the flows that did not run. Not merge proof.\n');
 }
 
-/** One flow, skipped whole where `--only` did not name it. */
+/** Run selected flows in their original order, retaining journal writes. */
 async function flow(name, body) {
-  if (ONLY && !name.toLowerCase().includes(ONLY)) return;
+  if (!PICKED.includes(name)) return;
+  const started = performance.now();
   if (['plain export', 'onboarding restore'].includes(name)) flight = { name, events: [] };
   try {
     await body();
   } finally {
     flight = null;
+    timings.push({ name, durationMs: performance.now() - started });
   }
 }
 
@@ -291,6 +302,46 @@ function parseCsv(text) {
   if (field || rows.at(-1).length) rows.at(-1).push(field);
   if (!rows.at(-1).length) rows.pop();
   return rows;
+}
+
+async function writeResult(failures, blocked = []) {
+  const durationMs = Date.now() - runStarted;
+  await writeFile(`${outputDirectory}/result.json`, JSON.stringify({
+    group: GROUP?.id ?? 'all', revision, state: GROUP?.state ?? 'alice', partial: Boolean(ONLY),
+    startedAt: new Date(runStarted).toISOString(), durationMs, failures, blocked, timings, assertions
+  }, null, 2));
+  writeSummary([
+    `Walkthrough **${GROUP?.id ?? 'all'}**: ${failures ? 'failed' : 'passed'}${ONLY ? ' (partial)' : ''}.`,
+    `Revision: ${revision}. Fixture: ${GROUP?.state ?? 'alice'}.`,
+    `${timings.length}/${PICKED.length} flows, ${assertions.length} reported checks, ${(durationMs / 1000).toFixed(1)} seconds.`,
+    ...blocked.map((name) => `BLOCKED ${name}: initialization failed`),
+    '| Flow | Seconds |', '| --- | --- |',
+    ...timings.map(({ name, durationMs }) => `| ${name} | ${(durationMs / 1000).toFixed(2)} |`)
+  ]);
+}
+
+/* A new browser context isolates OPFS, IndexedDB and localStorage. Reset
+   through the demo control too, so the starting journal is explicit. Busy
+   covers the database writes; Home being visible alone does not. */
+try {
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator(GROUP?.state === 'full' ? '[data-fill-every-feature]' : '[data-reset-demo]').click();
+  await page.waitForSelector('[data-demo-busy]', { timeout: 5000 });
+  await page.waitForSelector('[data-demo-busy]', { state: 'detached', timeout: 120000 });
+  await booted();
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-list-row="about"]').click();
+  const version = (await page.locator('[data-app-version]').innerText()).trim();
+  if (version !== '9.9.9-walkthrough') throw new Error(`Walkthrough requires 9.9.9-walkthrough, got ${version}`);
+} catch (error) {
+  fail('walkthrough initialization', error);
+  console.error(`BLOCKED ${PICKED.join(', ')}`);
+  await writeResult(1, PICKED);
+  await browser.close();
+  await server.close();
+  process.exit(1);
 }
 
 /* 1. quick log */
@@ -2987,7 +3038,7 @@ try {
     diagnostic.sqlCaptureError = String(error.message ?? error);
   }
   try {
-    const directory = 'ci-logs/onboarding-restore';
+    const directory = `${outputDirectory}/onboarding-restore`;
     await mkdir(directory, { recursive: true });
     await writeFile(`${directory}/state.json`, JSON.stringify(diagnostic, null, 2));
     if (exportedArchive) await writeFile(`${directory}/exported.ttbackup`, exportedArchive.bytes);
@@ -6428,6 +6479,7 @@ try {
 } catch (e) { fail('quick add backdate', e); }
 });
 
+await flow('quick add tallies', async () => {
 for (const kind of ['misgendered', 'correctly_gendered']) {
   try {
     /* From a screen with nothing to do with the tally, which is the whole
@@ -6454,6 +6506,8 @@ for (const kind of ['misgendered', 'correctly_gendered']) {
     ok(`quick add: ${kind} logs from wherever you are, without leaving it`);
   } catch (e) { fail(`quick add tally ${kind}`, e); }
 }
+
+});
 
 await flow('quick add failed write', async () => {
 try {
@@ -8657,7 +8711,9 @@ try {
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
+if (timings.length !== PICKED.length) fail('all selected flows ran', `${timings.length} of ${PICKED.length}`);
 const failures = finish('ALL FLOWS PASS');
+await writeResult(failures);
 await browser.close();
 await server.close();
 process.exit(failures ? 1 : 0);
