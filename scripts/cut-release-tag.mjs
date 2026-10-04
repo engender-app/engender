@@ -98,10 +98,11 @@ export function parseReleaseTagArgs(argv) {
  * @param {'pipe'|'inherit'} [output]
  */
 function git(args, output = 'pipe') {
-  return execFileSync('git', args, {
+  const result = execFileSync('git', args, {
     encoding: 'utf8',
     stdio: output === 'inherit' ? 'inherit' : ['ignore', 'pipe', 'pipe']
-  }).trim();
+  });
+  return output === 'inherit' ? '' : result.trim();
 }
 
 /**
