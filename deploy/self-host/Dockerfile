@@ -7,8 +7,8 @@
 # on port 80: TLS is the job of the reverse proxy you put in front, and the app
 # will not start without it. deploy/SELF-HOSTING.md has the rest.
 #
-# The same nginx version tests/hosting/run.mjs has always checked the rules on.
-FROM nginx:1.27-alpine
+# Docker Official Image index from docker.io/library/nginx:1.27-alpine.
+FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
 
 COPY nginx/journal-headers.conf /etc/nginx/snippets/engender-journal-headers.conf
 COPY nginx/journal-site.conf /etc/nginx/snippets/engender-journal-site.conf

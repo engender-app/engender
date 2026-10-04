@@ -2233,7 +2233,7 @@
   "perm_camera_why": "Notatki wideo.",
   "perm_clipboard": "Schowek",
   "perm_clipboard_why": "Aplikacja oznacza skopiowany klucz odzyskiwania jako wrażliwy. Czyści go ze schowka po minucie lub po powrocie do aplikacji, jeśli nadal tam jest.",
-  "perm_clipboard_why_web": "Kopiuje klucz odzyskiwania. Aplikacja nie czyści schowka przeglądarki.",
+  "perm_clipboard_why_web": "Kopiuje klucz odzyskiwania do schowka systemowego. Po minucie aplikacja próbuje go usunąć, jeśli nadal jest w schowku. Przeglądarka może to zablokować.",
   "perm_exact_alarms": "Dokładna godzina",
   "perm_exact_alarms_why": "Przypomnienie dzwoni o ustawionej minucie.",
   "perm_microphone": "Mikrofon",
