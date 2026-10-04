@@ -246,6 +246,8 @@ Imported or read by the probes above, never run on their own:
 `setup-flow`, `frame-band-distances`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`, `device-evidence`, `picker-motion-yanks`.
 
 `run-guards` runs the roster; its Node tests check retry, builds and sharding.
+The roster's `diagnostics` paths identify files to retain per attempt. Only files
+created or changed by that attempt are copied; gallery-only output is excluded.
 
 `letter-composition-gallery` captures composition and discard across all palettes, both themes, English/Polish, compact widths and 200% zoom. It needs a demo build. `android-tier/letter-composition.mjs` checks native Back and drag on a disposable emulator.
 
@@ -268,3 +270,7 @@ available for the surface or device it measures.
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
 | `measurement-notice-proof` | prove delayed stationary appearance, missing content, incomplete observation, unsettled content and injected travel using the cold-load sampler; fresh and remembered reserves against a demo build |
+
+`guard-recovery-proof` runs disposable synthetic guards through the production runner
+and checks recovery, revision identity and retained evidence. The separate Guard
+recovery proof workflow uploads both attempts for seven days, including on success.
