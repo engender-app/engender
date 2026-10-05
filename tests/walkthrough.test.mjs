@@ -2144,6 +2144,8 @@ try {
   await page.locator('[data-pick-file]').click();
   await page.locator('#imp-pass').fill('walkthrough');
   await page.locator('[data-import]').click();
+  /* Merge only adds, so it runs without the confirm Replace asks for. */
+  if (await page.locator('[data-sheet]').count()) throw new Error('Merge opened a confirm sheet');
   await page.waitForFunction(
     () => [...document.querySelectorAll('[data-toast]')].some((t) => /Archive imported|Archiwum zaimportowane/.test(t.textContent)),
     null,

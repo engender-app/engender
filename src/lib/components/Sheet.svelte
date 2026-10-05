@@ -53,7 +53,9 @@
     /** Once the sheet has finished leaving and handed focus and scrolling
         back to the screen: the moment a caller can move either itself. Set
         while the sheet is still on screen, a scroll is refused (the region
-        is locked) and a focus is taken back by the release. */
+        is locked) and a focus is taken back by the release. It also fires
+        when the screen unmounts with the sheet still open, so a caller
+        that acts on it should only do so for a close it asked for. */
     onClosed?: () => void;
     children: Snippet;
     globalTransitions?: boolean;
