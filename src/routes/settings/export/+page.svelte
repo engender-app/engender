@@ -6,6 +6,7 @@
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
   import { resize } from '$lib/motion/reveal';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
@@ -33,6 +34,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import { rovingRadio } from '$lib/components/rovingRadio';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -48,7 +50,25 @@
 
   let expPass = $state('');
   let impPass = $state('');
-  let impMode = $state('merge');
+  let impMode = $state<'merge' | 'replace'>('merge');
+  /* Replace asks first (phase 15 release-blockers ticket 05). It used to
+     run straight from the Import button with a muted note as its only
+     warning, the one action in the app that throws a whole journal away
+     on a single tap. Merge only adds, so it still runs at once. */
+  let replaceSheet = $state(false);
+  /* Set by the sheet's "Make a backup first" row, and read once the sheet
+     has gone: the screen is locked while it is up, so the scroll to the
+     export password has to wait for it to leave. */
+  let backupAfterSheet = false;
+  /* The erase sheet's backup row says the same (Settings), in the same
+     words. */
+  let backupLine = $derived(
+    backupAge != null ? m.settings_backup_age({ days: m.n_days({ n: backupAge }) }) : m.settings_backup_none()
+  );
+  const IMPORT_MODES = [
+    { value: 'merge', title: m.imp_mode_merge, sub: m.imp_merge_note },
+    { value: 'replace', title: m.imp_mode_replace, sub: m.imp_mode_replace_sub }
+  ] as const;
   let picked = $state<PickedArchive | null>(null);
   let importing = $state(false);
   let verifying = $state(false);
@@ -436,6 +456,32 @@
     }
   }
 
+  function requestImport() {
+    if (impMode === 'replace') replaceSheet = true;
+    else void doImport();
+  }
+
+  function confirmReplace() {
+    replaceSheet = false;
+    void doImport();
+  }
+
+  function backUpFirst() {
+    backupAfterSheet = true;
+    replaceSheet = false;
+  }
+
+  /* Down to the export password, which is where a backup starts, and into
+     it, so the next thing typed is that password. */
+  function afterReplaceSheet() {
+    if (!backupAfterSheet) return;
+    backupAfterSheet = false;
+    const field = document.getElementById('exp-pass');
+    if (!field) return;
+    field.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
+    field.focus({ preventScroll: true });
+  }
+
   /* The import, run by restoreFlow.ts so the welcome step's restore and this
      one are the same act (ticket 36). What is left here is what this screen
      says about it. */
@@ -451,7 +497,7 @@
     importLabel = m.imp_running_files();
     importProgress.start();
     const onProgress = restoreWatcher(importProgress, (label) => (importLabel = label), m.imp_running_files);
-    const result = await runRestore(picked, impPass, impMode as 'merge' | 'replace', onProgress);
+    const result = await runRestore(picked, impPass, impMode, onProgress);
     if (result.ok) {
       await importProgress.finish();
       toast(impMode === 'replace' ? m.imp_replaced_toast() : m.imp_merged_toast());
@@ -865,11 +911,36 @@
         placeholder={m.imp_password_placeholder()} bind:value={impPass} />
     {/snippet}
   </Field>
+  <!-- Two rows with what each one does, not a Segmented: "Replace this
+       journal" was cut to "Replace this journa" at 390px, the destructive
+       choice the one clipped, and a choice this heavy wants its
+       consequence beside it rather than in a note that changes under it.
+       LockAfterChoice's shape: every row carries its check, and only the
+       chosen one shows it, so a pick fades the mark across. -->
   <Field label={m.imp_how_label()} legend>
-    {#snippet children()}
-      <Segmented name={m.imp_how_label()}
-        options={[{ value: 'merge', label: m.imp_mode_merge() }, { value: 'replace', label: m.imp_mode_replace() }]}
-        value={impMode} onChange={(v) => (impMode = v)} />
+    {#snippet children(id)}
+      <div role="radiogroup" tabindex="-1" aria-labelledby={id} use:rovingRadio data-import-modes>
+        <ListCard>
+          {#each IMPORT_MODES as mode (mode.value)}
+            <ListRow
+              key={`import-${mode.value}`}
+              title={mode.title()}
+              subtitle={mode.sub()}
+              chevron={false}
+              role="radio"
+              aria-checked={impMode === mode.value}
+              data-import-mode={mode.value}
+              onclick={() => (impMode = mode.value)}
+            >
+              {#snippet trailing()}
+                <span class="mode-mark" class:is-on={impMode === mode.value} aria-hidden="true">
+                  <Icon name="check" size={20} />
+                </span>
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
     {/snippet}
   </Field>
   {#if impError}
@@ -878,16 +949,16 @@
       <div class="notice-body">{impError}</div>
     </div>
   {/if}
-  <p class="muted small" style="margin-bottom:var(--space-3)">
-    {impMode === 'replace' ? m.imp_replace_note() : m.imp_merge_note()}
-  </p>
-  <div class="spread">
+  <!-- Stacked, each the column's width: side by side at 390px both labels
+       broke onto two lines. Import is the block, the act this section is
+       for; checking a backup is the lighter one under it. -->
+  <div class="stack-3">
+    <button class="btn btn-soft" data-import onclick={requestImport} disabled={importing || verifying}>
+      <span>{importing ? m.imp_running() : m.imp_run()}</span>
+    </button>
     <button class="btn btn-ghost" data-verify onclick={doVerify} disabled={importing || verifying}>
       <Icon name="shield" size={18} />
       <span>{verifying ? m.verify_running() : m.verify_run()}</span>
-    </button>
-    <button class="btn btn-soft" data-import onclick={doImport} disabled={importing || verifying}>
-      <span>{importing ? m.imp_running() : m.imp_run()}</span>
     </button>
   </div>
   <!-- One bar for the two buttons above it: they are disabled by each
@@ -957,6 +1028,38 @@
         <button class="btn btn-ghost" onclick={() => (plainSheet = null)}><span>{m.cancel()}</span></button>
       </div>
     {/if}
+  </Sheet>
+
+  <!-- The erase sheet's shape (Settings, phase 14 pre-release 15): the loss
+       first, then the way to keep a copy with how old the last one is, then
+       the act in danger red and the way out. -->
+  <Sheet bind:open={replaceSheet} title={m.imp_replace_sheet_title()} onClosed={afterReplaceSheet}>
+    <h3>{m.imp_replace_sheet_title()}</h3>
+    <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
+      <Icon name="alert" size={20} />
+      <div class="notice-body">
+        <span class="notice-title">{m.erase_no_undo()}</span>
+        {m.imp_replace_note()}
+      </div>
+    </div>
+    <ListCard>
+      <ListRow
+        key="replace-backup"
+        icon="download"
+        title={m.erase_backup_first()}
+        subtitle={backupLine}
+        chevron={false}
+        onclick={backUpFirst}
+      />
+    </ListCard>
+    <div class="stack-3" style="margin-top:var(--space-4)">
+      <button class="btn btn-danger" data-confirm-replace onclick={confirmReplace}>
+        <span>{m.imp_replace_confirm()}</span>
+      </button>
+      <button class="btn btn-ghost" data-keep-journal onclick={() => (replaceSheet = false)}>
+        <span>{m.erase_keep()}</span>
+      </button>
+    </div>
   </Sheet>
 
   <Sheet bind:open={daylioSheet} title={m.daylio_sheet_title()}>
@@ -1110,5 +1213,13 @@
     border: none;
     border-top: 1px solid var(--hairline);
     margin: var(--space-4) 0;
+  }
+  .mode-mark {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .mode-mark.is-on {
+    opacity: 1;
   }
 </style>

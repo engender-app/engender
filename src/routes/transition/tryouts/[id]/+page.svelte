@@ -23,7 +23,7 @@
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
+  import ChoiceChips from '$lib/components/kit/ChoiceChips.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
@@ -369,11 +369,12 @@
   <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
-        <Segmented
+        <ChoiceChips
           name={m.tryout_kind_label()}
           options={KIND_OPTIONS}
           value={draft.kind}
           onChange={(v) => (draft.kind = v as TryoutKind)}
+          key="tryout-kind"
         />
       {/snippet}
     </Field>
