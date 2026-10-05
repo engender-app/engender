@@ -380,8 +380,14 @@ async function assembleDayAhead(
 export interface DayAheadArea {
   /** Every mark from `fromEpochDay` to `toEpochDay` inclusive, clamped below
       by `todayEpochDay` so a day already passed never earns one even when
-      the range asked for reaches back before today. Reads only. */
-  getDayAhead(fromEpochDay: number, toEpochDay: number, todayEpochDay: number): Promise<DayAheadMark[]>;
+      the range asked for reaches back before today. When kinds are supplied,
+      only those sections read their facts. Reads only. */
+  getDayAhead(
+    fromEpochDay: number,
+    toEpochDay: number,
+    todayEpochDay: number,
+    kinds?: readonly DayAheadMarkKind[]
+  ): Promise<DayAheadMark[]>;
 }
 
 /** The section list is a parameter, defaulting to the registry, so a test
@@ -392,7 +398,10 @@ export function makeDayAheadArea(
   sections: readonly DayAheadSection[] = DAY_AHEAD_SECTIONS
 ): DayAheadArea {
   return {
-    getDayAhead: (fromEpochDay, toEpochDay, todayEpochDay) =>
-      assembleDayAhead({ ...areas, fromEpochDay, toEpochDay, todayEpochDay }, sections)
+    getDayAhead: (fromEpochDay, toEpochDay, todayEpochDay, kinds) =>
+      assembleDayAhead(
+        { ...areas, fromEpochDay, toEpochDay, todayEpochDay },
+        kinds === undefined ? sections : sections.filter((section) => kinds.includes(section.key as DayAheadMarkKind))
+      )
   };
 }

@@ -398,25 +398,6 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     return rows[0].id;
   };
 
-  const weekdaysOf = async (scheduleRowId: number): Promise<number[]> => {
-    const rows = await driver.query<{ weekday: number }>(
-      'SELECT weekday FROM dose_schedule_weekday WHERE schedule_id = ? ORDER BY weekday',
-      [scheduleRowId]
-    );
-    return rows.map((r) => r.weekday);
-  };
-
-  /** Null rather than `[]` for none set: an empty cycle would have nothing
-      to index into, and this is the "no amount tracked" state every
-      schedule before this field existed is in (types.ts). */
-  const doseAmountsOf = async (scheduleRowId: number): Promise<DoseScheduleAmount[] | null> => {
-    const rows = await driver.query<{ dose: number; dose_unit: string }>(
-      'SELECT dose, dose_unit FROM dose_schedule_dose_amount WHERE schedule_id = ? ORDER BY position',
-      [scheduleRowId]
-    );
-    return rows.length > 0 ? rows.map((r) => ({ dose: r.dose, doseUnit: r.dose_unit })) : null;
-  };
-
   /* Named rather than returned anonymously so getComparison can ask this
      same area its three reads instead of restating their SQL. Not `this`: the
      write recorder wraps every operation as a plain function
@@ -645,34 +626,55 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async getSchedules() {
-      const rows = await driver.query<{
-        id: number;
-        uuid: string;
-        episode_uuid: string;
-        recurrence_kind: string;
-        every_n_days: number | null;
-        doses_per_day: number;
-        auto_log_from_epoch_day: number | null;
-      }>(
-        `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day,
-                s.auto_log_from_epoch_day
-           FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
-          ORDER BY s.id`
-      );
-      return Promise.all(
-        rows.map(async (row) => ({
-          id: row.uuid,
-          episodeId: row.episode_uuid,
-          recurrence:
-            row.recurrence_kind === 'weekdays'
-              ? { kind: 'weekdays' as const, weekdays: await weekdaysOf(row.id) }
-              // The v38 CHECK guarantees every_n_days is set for this arm.
-              : { kind: 'everyNDays' as const, everyNDays: row.every_n_days as number },
-          dosesPerDay: row.doses_per_day,
-          doseAmounts: await doseAmountsOf(row.id),
-          autoLogFromEpochDay: row.auto_log_from_epoch_day
-        }))
-      );
+      // Read each child table once. Today asks for these schedules from
+      // several surfaces, so per-schedule reads multiply every arrival.
+      const [rows, weekdays, amounts] = await Promise.all([
+        driver.query<{
+          id: number;
+          uuid: string;
+          episode_uuid: string;
+          recurrence_kind: string;
+          every_n_days: number | null;
+          doses_per_day: number;
+          auto_log_from_epoch_day: number | null;
+        }>(
+          `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day,
+                  s.auto_log_from_epoch_day
+             FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
+            ORDER BY s.id`
+        ),
+        driver.query<{ schedule_id: number; weekday: number }>(
+          'SELECT schedule_id, weekday FROM dose_schedule_weekday ORDER BY schedule_id, weekday'
+        ),
+        driver.query<{ schedule_id: number; dose: number; dose_unit: string }>(
+          'SELECT schedule_id, dose, dose_unit FROM dose_schedule_dose_amount ORDER BY schedule_id, position'
+        )
+      ]);
+      const weekdaysBySchedule = new Map<number, number[]>();
+      for (const row of weekdays) {
+        const days = weekdaysBySchedule.get(row.schedule_id) ?? [];
+        days.push(row.weekday);
+        weekdaysBySchedule.set(row.schedule_id, days);
+      }
+      const amountsBySchedule = new Map<number, DoseScheduleAmount[]>();
+      for (const row of amounts) {
+        const cycle = amountsBySchedule.get(row.schedule_id) ?? [];
+        cycle.push({ dose: row.dose, doseUnit: row.dose_unit });
+        amountsBySchedule.set(row.schedule_id, cycle);
+      }
+      return rows.map((row) => ({
+        id: row.uuid,
+        episodeId: row.episode_uuid,
+        recurrence:
+          row.recurrence_kind === 'weekdays'
+            ? { kind: 'weekdays' as const, weekdays: weekdaysBySchedule.get(row.id) ?? [] }
+            // The v38 CHECK guarantees every_n_days is set for this arm.
+            : { kind: 'everyNDays' as const, everyNDays: row.every_n_days as number },
+        dosesPerDay: row.doses_per_day,
+        // No stored cycle means no amount tracked, never an empty cycle.
+        doseAmounts: amountsBySchedule.get(row.id) ?? null,
+        autoLogFromEpochDay: row.auto_log_from_epoch_day
+      }));
     },
 
     /* An upsert on the episode, not on a schedule id: the caller is saying
