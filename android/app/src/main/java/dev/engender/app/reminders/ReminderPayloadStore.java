@@ -72,11 +72,12 @@ public final class ReminderPayloadStore {
            an older build's plaintext off disk, and apply returns before the
            file does. The payload is a few hundred bytes and this runs once
            per sync, so there is nothing to gain by queueing it. */
-        prefs(context).edit()
+        boolean committed = prefs(context).edit()
             .putString(KEY_NONCE, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
             .putString(KEY_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.NO_WRAP))
             .remove(KEY_LEGACY_PLAINTEXT)
             .commit();
+        if (!committed) throw new IllegalStateException("Could not persist reminder payload");
     }
 
     /**
