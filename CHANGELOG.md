@@ -29,7 +29,7 @@ This is the first versioned release. Earlier development builds, including
 the August web beta, do not establish a supported update path. Export anything
 you want to keep before replacing a development build.
 
-- Schema changes: the first release establishes schema 85; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
+- Schema changes: the first release establishes schema 86; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
 - Archive format changes: the first release establishes archive format 2. Archives from development builds are not a supported restore path.
 - Security migrations: none for this first release. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
 - Minimum supported version: 1.0.0 is the first supported release; there is no earlier supported version to update from.
