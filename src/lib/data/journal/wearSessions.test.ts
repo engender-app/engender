@@ -259,3 +259,31 @@ test('deleting a session clears its own reminder', async () => {
   assert.equal((await journal.reminders.getReminders()).length, 0);
   assert.equal(await journal.wearSessions.getRunningSession(), null);
 });
+
+test('stopping from a caller that omits reminder hours removes a later automatic reminder', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const start = at(19000, 9);
+  const id = await journal.wearSessions.upsertSession({
+    kind: 'binder', startTimestamp: start, durationMs: null,
+    reminderHoursAfterStart: 4, reminderTitle: 'Binder check-in'
+  });
+  await journal.wearSessions.upsertSession({ id, kind: 'binder', startTimestamp: start, durationMs: HOUR });
+  assert.equal(await journal.wearSessions.getRunningSession(), null);
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+});
+
+test('a failure clearing the stop reminder rolls the session stop back', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const start = at(19000, 9);
+  const id = await journal.wearSessions.upsertSession({
+    kind: 'binder', startTimestamp: start, durationMs: null,
+    reminderHoursAfterStart: 4, reminderTitle: 'Binder check-in'
+  });
+  await db.exec(`CREATE TRIGGER refuse_reminder_delete BEFORE DELETE ON reminder
+    BEGIN SELECT RAISE(ABORT, 'delete failed'); END`);
+  await assert.rejects(() => journal.wearSessions.upsertSession({
+    id, kind: 'binder', startTimestamp: start, durationMs: HOUR
+  }), /delete failed/);
+  assert.equal((await journal.wearSessions.getRunningSession())?.id, id);
+  assert.equal((await journal.reminders.getReminders()).length, 1);
+});
