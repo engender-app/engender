@@ -136,6 +136,10 @@ The import tools accept supported exports from Daylio, Day One, TransTracks,
 Track & Graph and Pixels. Plain CSV and JSON exports are available when you
 want to work with your own records outside the app.
 
+Daylio backups may be up to 1024 MiB on disk. ZIP imports from Daylio, Day One
+and TransTracks allow up to 1536 MiB of decompressed content. Large imports
+also need enough free memory on the device.
+
 An optional recovery key can unlock the journal on the device that still
 holds it. It cannot restore deleted data, move a journal to another device
 or decrypt an Archive. Keep backups separately from the device holding
@@ -299,6 +303,10 @@ hidden by filters. Review checkboxes work per key or for the shown keys in a
 group. Progress is saved in `.scratch/copy-review.json`; changing either
 language makes that key need review again. Unsaved edits stay in the browser
 until saved, and conflicting disk changes are reported without overwriting them.
+Find and replace matches literal, case-sensitive text in Polish, English, or
+both. Limit it to shown keys or choose **All keys (global)**. Preview lists
+every affected field, including plural forms. Applying replacements creates
+drafts; **Save all changes** writes them to the catalogues.
 
 ## Releases and hosting
 
