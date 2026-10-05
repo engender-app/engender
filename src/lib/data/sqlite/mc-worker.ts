@@ -62,8 +62,8 @@ let db: Database | null = null;
 let databasePath = '';
 let backupPath = '';
 let hexKey = '';
-// Set when `open`/`convert` fails after the pool attaches, so a later
-// queued statement reports the real cause instead of racing a null `db`.
+// A failed attach/open/convert stays failed until this worker closes.
+// Queued statements report that cause instead of reopening or using null `db`.
 let openError: Error | null = null;
 
 // A pool directory name derived from the database's own path: stable
@@ -369,15 +369,16 @@ onmessage = (event: MessageEvent<Request>) => {
   const { id, op, args } = event.data;
   chain = chain.then(async () => {
     try {
-      // `open`/`convert` having already failed leaves `db` null; running a
+      // A failed attach/open/convert leaves `db` null; running a
       // later handler against it would fail with an unrelated null-reference
       // error instead of the real cause. Report that cause again instead -
       // except for `close`, which still has to run to release the pool.
-      if (openError && op !== 'open' && op !== 'convert' && op !== 'close') throw openError;
+      // Retrying attach inside a queued open would hide the original failure.
+      if (openError && op !== 'close') throw openError;
       const result = await handlers[op](args);
       postMessage({ id, ok: true, result });
     } catch (error) {
-      if (op === 'open' || op === 'convert') openError = error as Error;
+      if (op === 'attach' || op === 'open' || op === 'convert') openError = error as Error;
       /* The message crosses the worker boundary as a string; the key never
          appears in one - SQLite reports codes ("file is not a database"),
          not the PRAGMA text. */
