@@ -147,17 +147,21 @@ const SAFETY_FACTS: Record<WearKind, { facts: () => string[]; source: () => stri
   }
 };
 
-export const wearKindLabel = (kind: WearKind): string => KIND_LABELS[kind]();
-export const wearAddAria = (kind: WearKind): string => ADD_ARIA[kind]();
-export const wearNewSheetTitle = (kind: WearKind): string => NEW_SHEET_TITLES[kind]();
-export const wearEditSheetTitle = (kind: WearKind): string => EDIT_SHEET_TITLES[kind]();
-export const wearRunningSheetTitle = (kind: WearKind): string => RUNNING_SHEET_TITLES[kind]();
-export const wearRunningCardTitle = (kind: WearKind): string => RUNNING_CARD_TITLES[kind]();
-export const wearDeleteSheetTitle = (kind: WearKind): string => DELETE_SHEET_TITLES[kind]();
-export const wearReminderTitle = (kind: WearKind): string => REMINDER_TITLES[kind]();
-export const wearTileTitle = (kind: WearKind): string => TILE_TITLES[kind]();
-export const wearReturningRowTitle = (kind: WearKind): string => RETURNING_ROW_TITLES[kind]();
-export const wearSafetyFacts = (kind: WearKind): { facts: string[]; source: string } => ({
-  facts: SAFETY_FACTS[kind].facts(),
-  source: SAFETY_FACTS[kind].source()
-});
+function labelForKind(record: Record<WearKind, () => string>, kind: WearKind): string {
+  return Object.hasOwn(record, kind) ? record[kind]() : kind;
+}
+
+export const wearKindLabel = (kind: WearKind): string => labelForKind(KIND_LABELS, kind);
+export const wearAddAria = (kind: WearKind): string => labelForKind(ADD_ARIA, kind);
+export const wearNewSheetTitle = (kind: WearKind): string => labelForKind(NEW_SHEET_TITLES, kind);
+export const wearEditSheetTitle = (kind: WearKind): string => labelForKind(EDIT_SHEET_TITLES, kind);
+export const wearRunningSheetTitle = (kind: WearKind): string => labelForKind(RUNNING_SHEET_TITLES, kind);
+export const wearRunningCardTitle = (kind: WearKind): string => labelForKind(RUNNING_CARD_TITLES, kind);
+export const wearDeleteSheetTitle = (kind: WearKind): string => labelForKind(DELETE_SHEET_TITLES, kind);
+export const wearReminderTitle = (kind: WearKind): string => labelForKind(REMINDER_TITLES, kind);
+export const wearTileTitle = (kind: WearKind): string => labelForKind(TILE_TITLES, kind);
+export const wearReturningRowTitle = (kind: WearKind): string => labelForKind(RETURNING_ROW_TITLES, kind);
+export const wearSafetyFacts = (kind: WearKind): { facts: string[]; source: string } =>
+  Object.hasOwn(SAFETY_FACTS, kind)
+    ? { facts: SAFETY_FACTS[kind].facts(), source: SAFETY_FACTS[kind].source() }
+    : { facts: [], source: '' };
