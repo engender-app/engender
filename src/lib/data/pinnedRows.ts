@@ -28,7 +28,8 @@
    paraglide, no runes. Today arrives inside `HubReading`, the same as it
    does for the hub. */
 
-import { HUB_ROWS, rowHidden, rowLine, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
+import { HUB_ROWS, rowHidden, rowLine, rowReads, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
+import { ROW_FORWARD_KEYS } from './rowForward';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from './journal/dayAhead';
 import type { PreferenceValues } from './prefs/catalogue';
@@ -245,6 +246,18 @@ export function pinArrangement(prefs: PinPreferences, rows: readonly HubRow[] = 
   }
 
   return arrangement;
+}
+
+/** Read the current pins on arrival; the editor needs every available row. */
+export function pinReadScope(prefs: PinPreferences, editing: boolean) {
+  const chosen = new Set(pinArrangement(prefs));
+  const rows = HUB_ROWS.filter((row) => editing || chosen.has(row.key));
+  const keys = rows.map((row) => row.key);
+  return {
+    rows: keys,
+    lastWrites: [...new Set(rows.flatMap(rowReads))],
+    forward: ROW_FORWARD_KEYS.filter((key) => keys.includes(key))
+  };
 }
 
 /** The arrangement with one more row on the end.

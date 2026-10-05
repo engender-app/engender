@@ -276,3 +276,20 @@ test('a test may register an entry of its own and read it back through the same 
 
   assert.equal(lastWrites.invented, TODAY);
 });
+
+test('selected last-write areas omit unrelated reads and retain their own answers', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const calls: string[] = [];
+  const area = makeLastWriteArea(journal, [
+    { key: 'measurements', tables: [], read: async () => { calls.push('measurements'); return TODAY - 2; } },
+    { key: 'sizeRecords', tables: [], read: async () => { calls.push('sizeRecords'); return null; } },
+    { key: 'cycleEvents', tables: [], read: async () => { calls.push('cycleEvents'); return TODAY; } }
+  ]);
+  assert.deepEqual(await area.getLastWrites(TODAY, ['measurements', 'sizeRecords']), { measurements: TODAY - 2, sizeRecords: null });
+  assert.deepEqual(calls, ['measurements', 'sizeRecords']);
+  calls.length = 0;
+  assert.deepEqual(await area.getLastWrites(TODAY, []), {});
+  assert.deepEqual(calls, []);
+  assert.deepEqual(await area.getLastWrites(TODAY), { measurements: TODAY - 2, sizeRecords: null, cycleEvents: TODAY });
+  assert.deepEqual(calls, ['measurements', 'sizeRecords', 'cycleEvents']);
+});

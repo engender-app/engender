@@ -622,7 +622,6 @@ const AREAS_WITH_A_LAST_WRITE: ReadonlySet<string> = new Set(LAST_WRITE_ENTRIES.
 const hasLastWrite = (area: ArchiveSectionName): area is LastWriteKey => AREAS_WITH_A_LAST_WRITE.has(area);
 
 /** Which of a row's areas have a last write to report. */
-/* rowReads stays exported only for its own test (AU-09 test-only review). */
 export function rowReads(spec: HubRowSpec): LastWriteKey[] {
   return spec.areas.filter(hasLastWrite);
 }
