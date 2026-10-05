@@ -335,8 +335,10 @@ describe('what spec 08 took off Home', () => {
        read, before either fetch runs. */
     expect(home).toContain("from '$lib/data/agendaReads'");
     expect(home).toMatch(
-      /readAgenda\(\s*\{ dayAhead: j\.dayAhead, doses: j\.doses \},\s*today,\s*prefs\.disguise,\s*shownAgendaKinds\(prefs\),\s*dosePanelCoversEveryDose\s*\)/
+      /readAgenda\(j,\s*today,\s*prefs\.disguise\)/
     );
+    expect(home).toMatch(/projectAgenda\(agendaQuery\.value,\s*shownAgendaKinds\(prefs\),\s*dosePanelCoversEveryDose\)/);
+    expect(home).toContain('liveTiles.ready && !prefs.disguise');
     expect(home).toContain('dayAheadMarkLabel(item.kind)');
     expect(home).toContain('passedSlotSentence(');
     expect(home).not.toContain('DAY_AHEAD_ROUTES');
@@ -356,13 +358,13 @@ describe('what spec 08 took off Home', () => {
     expect(home).toContain('lastWrites: lastWritesQuery.value');
     expect(home).toContain('states: areaStatesQuery.value');
     expect(home).toContain('pinnedRows(prefs, reading)');
-    expect(home).toContain('j.lastWrite.getLastWrites(today)');
+    expect(home).toContain('j.lastWrite.getLastWrites(today, pinReads.lastWrites)');
     expect(home).toContain('j.areaStates.getAreaStates()');
     /* The third read, phase 11 all-four-doors ticket 02: a pinned row draws
        the same line its hub row does, so it asks the same forward question
        rather than a second one of its own. */
     expect(home).toContain('forward: forwardQuery.value');
-    expect(home).toContain('readRowForward(j, today)');
+    expect(home).toContain('readRowForward(j, today, pinReads.forward)');
     /* The wear row counts up off the tile grid's own clock rather than a
        second interval (ADR-0051). */
     expect(markup).toMatch(/<ListRow[\s\S]*?title=\{hubRowTitle\(row\.spec\.key\)\}[\s\S]*?subtitle=\{hubRowLine\(row\.spec\.key, row\.line, today, liveTiles\.nowMs\)\}[\s\S]*?data-pinned-row=\{row\.spec\.key\}/);

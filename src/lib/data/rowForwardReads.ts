@@ -32,7 +32,7 @@
    Nothing here reads a clock: `todayEpochDay` arrives as an argument, the
    same as everywhere above the journal seam. */
 
-import { rowForward, type RowForwardFacts, type RowForwardMap } from './rowForward';
+import { rowForward, type RowForwardFacts, type RowForwardMap, type RowForwardKey } from './rowForward';
 import { SPINE_FORWARD_DAYS } from './careSpine';
 import type { AppointmentsArea } from './journal/appointments';
 import type { DayAheadArea } from './journal/dayAhead';
@@ -81,20 +81,27 @@ const LETTER_SEAL_PAGE = 100;
 
 /** What every row has to say facing forwards, today.
 
+    When rows are supplied, fetch only their facts.
+
     `null` is not one of the answers: a journal with nothing ahead in it
     comes back as an empty map, which is what `rowLine` falls through on. */
-export async function readRowForward(areas: RowForwardAreas, todayEpochDay: number): Promise<RowForwardMap> {
+export async function readRowForward(
+  areas: RowForwardAreas,
+  todayEpochDay: number,
+  rows?: readonly RowForwardKey[]
+): Promise<RowForwardMap> {
+  const includes = (row: RowForwardKey) => rows === undefined || rows.includes(row);
   const [milestones, seals, runningWear, tryouts, appointments, procedures, marks, stock, latestMeasurement] =
     await Promise.all([
-      areas.milestones.getMilestones(),
-      areas.letters.getLetterSeals(LETTER_SEAL_PAGE),
-      areas.wearSessions.getRunningSession(),
-      areas.tryouts.getTryouts(),
-      areas.appointments.getAppointments(),
-      areas.procedures.getProcedures(),
-      areas.dayAhead.getDayAhead(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS, todayEpochDay),
-      areas.stock.getProjections(todayEpochDay),
-      areas.measurements.latestMeasurement(todayEpochDay)
+      includes('milestones') ? areas.milestones.getMilestones() : [],
+      includes('letters') ? areas.letters.getLetterSeals(LETTER_SEAL_PAGE) : [],
+      includes('wear') ? areas.wearSessions.getRunningSession() : null,
+      includes('tryouts') ? areas.tryouts.getTryouts() : [],
+      includes('appointments') ? areas.appointments.getAppointments() : [],
+      includes('surgery') ? areas.procedures.getProcedures() : [],
+      includes('care') ? areas.dayAhead.getDayAhead(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS, todayEpochDay, ['doseSlot']) : [],
+      includes('care') ? areas.stock.getProjections(todayEpochDay) : [],
+      includes('measurements') ? areas.measurements.latestMeasurement(todayEpochDay) : null
     ]);
 
   /* Marks arrive in day order across every kind (dayAhead.ts sorts them), so

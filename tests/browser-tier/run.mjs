@@ -70,6 +70,21 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('failed encrypted pool initialization preserves journal data', 8, async () => {
+  const r = await load('/pool-initialization.html', 'pool-initialization');
+  if (r.error) throw new Error(r.error);
+  const failed = (scenario) => scenario.events.find((event) => event.event === 'attach-failed');
+  const check = (condition, label) => condition ? ok(label) : fail(label, JSON.stringify(r));
+  check(failed(r.teardown)?.error.includes('Access Handles cannot be created'), 'the pool probe exercises real OPFS lock contention');
+  check(r.teardown.result.preserved && !r.teardown.events.some((event) => event.event === 'destructive-cleanup'), 'failed initialization preserves an existing encrypted journal while its old owner closes');
+  check(failed(r.late)?.acquiredAfterContention === 7 && failed(r.late)?.liveHandles === 0, 'failed initialization waits for and releases all seven late access handles');
+  check(r.late.result.preserved, 'partial handle acquisition preserves the encrypted journal');
+  check([r.teardown, r.late].every((scenario) => scenario.result.reopened && scenario.result.liveHandles === 0), 'preserved journals survive successful close and reopen without leaked handles');
+  check([r.teardown, r.late].every((scenario) => scenario.result.wrongKeyRejected), 'preserved journals still reject another data key');
+  check(r.driver.latched, 'the production worker keeps an attach failure through queued open and query messages');
+  check(r.driver.preserved, 'the production worker leaves the old owner journal readable and persistent');
+});
+
 // --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
 await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');
@@ -1404,19 +1419,16 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  const gate = live.readinessGate;
-  if (gate.disabledCalls === 0 && gate.pendingWhileDisabled)
-    ok('a gated query stays pending without calling its read while disabled');
-  else fail('a gated query stays pending without calling its read while disabled', JSON.stringify(gate));
-  if (gate.firstAttempts === 2 && gate.firstRetryDelayMs >= 45 && !gate.failedDuringFirstRetry)
-    ok('a gated query preserves the first real read rejection retry');
-  else fail('a gated query preserves the first real read rejection retry', JSON.stringify(gate));
-  if (gate.valueAfterMountedWrite === gate.expectedAfterMountedWrite && gate.laterFailureAttempts === 1 && gate.staleAfterLaterFailure)
-    ok('a mounted gated query follows writes and reports later rejections without another retry');
-  else fail('a mounted gated query follows writes and reports later rejections without another retry', JSON.stringify(gate));
-  if (gate.disabledResultIgnored && gate.disposedResultIgnored)
-    ok('disabling or disposing a gated query rejects its older in-flight answer');
-  else fail('disabling or disposing a gated query rejects its older in-flight answer', JSON.stringify(gate));
+  const read = live.readLifecycle;
+  if (read.firstAttempts === 2 && read.firstRetryDelayMs >= 45 && !read.failedDuringFirstRetry)
+    ok('a query preserves the first real read rejection retry');
+  else fail('a query preserves the first real read rejection retry', JSON.stringify(read));
+  if (read.valueAfterMountedWrite === read.expectedAfterMountedWrite && read.laterFailureAttempts === 1 && read.staleAfterLaterFailure)
+    ok('a mounted query follows writes and reports later rejections without another retry');
+  else fail('a mounted query follows writes and reports later rejections without another retry', JSON.stringify(read));
+  if (read.disposedResultIgnored)
+    ok('disposing a query rejects its older in-flight answer');
+  else fail('disposing a query rejects its older in-flight answer', JSON.stringify(read));
 
   // The stock screen's read, against the write it used to miss: a projection
   // reads the episode history through regimen.getEpisodes().

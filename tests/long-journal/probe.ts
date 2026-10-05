@@ -33,7 +33,21 @@ import { publish as publishResult } from '../probe-handshake.mjs';
 
 const NAME = 'long-journal';
 const publish = (value: unknown) => publishResult(NAME, value);
+// Failure snapshots distinguish a late fixture from a stalled storage scan.
+const progress = {
+  stages: [] as { name: string; days: number; at: number }[],
+  storage: null as {
+    operation: 'list' | 'size' | 'complete';
+    startedAt: number;
+    completed: number;
+    total: number | null;
+  } | null
+};
+Object.assign(window, { __longJournalProgress: progress });
 const stage = (name: string, days: number) => {
+  progress.stages.push({ name, days, at: performance.now() });
+  if (progress.stages.length > 32) progress.stages.shift();
+  if (name === 'reset-origin') progress.storage = null;
   document.body.setAttribute('data-long-journal-stage', name);
   document.body.setAttribute('data-long-journal-days', String(days));
 };
@@ -130,8 +144,19 @@ async function run(days: number) {
   // On raw OPFS rather than through the encrypting store: what the fixture
   // costs the device is the ciphertext on disk, not the plaintext length.
   let photoBytes = 0;
+  const storage: NonNullable<typeof progress.storage> = {
+    operation: 'list', startedAt: performance.now(), completed: 0, total: null
+  };
+  progress.storage = storage;
   const fileNames = await rawFiles.list();
-  for (const name of fileNames) photoBytes += (await rawFiles.size(name)) ?? 0;
+  storage.total = fileNames.length;
+  for (const name of fileNames) {
+    storage.operation = 'size';
+    storage.startedAt = performance.now();
+    photoBytes += (await rawFiles.size(name)) ?? 0;
+    storage.completed++;
+  }
+  storage.operation = 'complete';
 
   /* The second open is the one worth timing (phase 5 audit ticket 02). The
      first one above migrated an empty database; this one is the boot every

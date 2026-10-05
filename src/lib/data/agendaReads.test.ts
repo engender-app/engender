@@ -4,9 +4,19 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { readAgenda, type AgendaAreas } from './agendaReads.ts';
+import { readAgenda as readFacts, projectAgenda, type AgendaAreas } from './agendaReads.ts';
 import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
-import { DAY_AHEAD_MARK_KINDS, type DayAheadMark } from './journal/dayAhead.ts';
+import { DAY_AHEAD_MARK_KINDS, type DayAheadMark, type DayAheadMarkKind } from './journal/dayAhead.ts';
+
+async function readAgenda(
+  areas: AgendaAreas,
+  today: number,
+  disguised: boolean,
+  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
+  covered = false
+) {
+  return projectAgenda(await readFacts(areas, today, disguised), kinds, covered);
+}
 
 const TODAY = 20000;
 
@@ -126,4 +136,21 @@ test('both reads are issued before the first await, so a live query sees both', 
   const pending = readAgenda(areas, TODAY, false);
   assert.deepEqual(asked, ['dayAhead', 'doses']);
   await pending;
+});
+
+
+test('dose-panel coverage changes project the same facts without another read', async () => {
+  const { areas, asked } = recordingAreas([
+    { kind: 'doseSlot', epochDay: TODAY + 1 },
+    { kind: 'appointment', epochDay: TODAY + 2 },
+    { kind: 'milestone', epochDay: TODAY + 3 },
+    { kind: 'letterUnlock', epochDay: TODAY + 4 }
+  ]);
+  const facts = await readFacts(areas, TODAY, false);
+  assert.equal(projectAgenda(facts, DAY_AHEAD_MARK_KINDS, false)?.folded.length, 1);
+  const covered = projectAgenda(facts, DAY_AHEAD_MARK_KINDS, true);
+  assert.deepEqual(covered?.shown.map((row) => row.kind), ['appointment', 'milestone', 'letterUnlock']);
+  assert.deepEqual(covered?.folded, []);
+  assert.equal(projectAgenda(facts, DAY_AHEAD_MARK_KINDS, false)?.shown[0].kind, 'doseSlot');
+  assert.deepEqual(asked, ['dayAhead', 'doses']);
 });

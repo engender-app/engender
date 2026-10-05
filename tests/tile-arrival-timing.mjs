@@ -32,7 +32,8 @@
      VITE_DEMO=1 npm run build
      node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>]
    Failed warm cases save a diagnostic replay in ci-logs/. --diagnostics
-   captures both warm routes even when the measured guard passes. */
+   captures both warm routes even when the measured guard passes.
+   --read-delay 40 adds controlled worker round trips to expose waterfalls. */
 import { dirname, resolve } from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +49,8 @@ const flag = (name, fallback) => {
 const RUNS = Number(flag('runs', '5'));
 const WARM_MS = 250;
 const COLD_MS = 300;
+const READ_DELAY_MS = Number(flag('read-delay', '0'));
+if (!Number.isFinite(READ_DELAY_MS) || READ_DELAY_MS < 0) throw new Error('--read-delay must be a nonnegative number');
 
 const TILES = {
   '/': `!!document.querySelector('[data-home-reserve="below"] [data-read-reserve-body]')`,
@@ -86,7 +89,7 @@ await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 await page.addInitScript(() => {
   const post = Worker.prototype.postMessage;
   Worker.prototype.postMessage = function(message, ...options) {
-    const delay = message?.op === 'query' ? Math.max(0, (window.__lateReadUntil ?? 0) - performance.now()) : 0;
+    const delay = message?.op === 'query' ? Math.max(window.__queryDelayMs ?? 0, (window.__lateReadUntil ?? 0) - performance.now()) : 0;
     if (delay) setTimeout(() => post.call(this, message, ...options), delay);
     else post.call(this, message, ...options);
   };
@@ -109,11 +112,33 @@ async function waitFor(expression) {
   throw new Error(`timed out waiting for ${expression.slice(0, 80)}`);
 }
 
-async function warm(to) {
+let captureWorkerTiming = false;
+
+async function warm(to, readDelay = 0) {
   const from = to === '/' ? '/stats' : '/';
   await page.goto(`${base}${from}`, { waitUntil: 'networkidle' });
   await waitFor(TILES[from]);
   await page.waitForTimeout(800);
+  await page.evaluate((delay) => { window.__queryDelayMs = delay; }, readDelay);
+  if (captureWorkerTiming) {
+    for (const worker of page.workers()) {
+      if (!worker.url().includes('mc-worker')) continue;
+      await worker.evaluate(() => {
+        const received = new Map();
+        const receive = self.onmessage;
+        self.onmessage = function(event) {
+          received.set(event.data.id, performance.timeOrigin + performance.now());
+          return receive.call(this, event);
+        };
+        const post = self.postMessage;
+        self.postMessage = function(message, ...options) {
+          const timing = { received: received.get(message.id), replied: performance.timeOrigin + performance.now() };
+          received.delete(message.id);
+          return post.call(this, { ...message, diagnosticTiming: timing }, ...options);
+        };
+      });
+    }
+  }
   return page.evaluate(
     FIRST_FRAME(`location.pathname === '${to}' && ${TILES[to]}`, {
       before: `document.querySelector('nav a[href="${to}"]').click();`
@@ -199,13 +224,19 @@ const cases = [
   ['cold Today, shell to tiles', () => cold('/'), COLD_MS],
   ['cold Look back, shell to tiles', () => cold('/stats'), COLD_MS]
 ];
-for (const [name, run, budget, to] of cases) {
+/* Optional fault injection: delay each query equally without serializing
+   its peers. Ordinary CI keeps the original four timing measurements. */
+if (READ_DELAY_MS > 0) cases.push(
+  [`${READ_DELAY_MS}ms worker round trips, Today`, () => warm('/', READ_DELAY_MS), WARM_MS, '/', READ_DELAY_MS],
+  [`${READ_DELAY_MS}ms worker round trips, Look back`, () => warm('/stats', READ_DELAY_MS), WARM_MS, '/stats', READ_DELAY_MS]
+);
+for (const [name, run, budget, to, readDelay = 0] of cases) {
   const times = [];
   for (let i = 0; i < RUNS; i++) times.push(await run());
   const missing = times.some((t) => t == null);
   const m = missing ? null : median(times);
   const ok = !missing && m <= budget;
-  timingResults.push({ name, to, budget, times, median: m, ok });
+  timingResults.push({ name, to, readDelay, budget, times, median: m, ok });
   if (!ok) failed = true;
   console.log(
     `${ok ? 'ok  ' : 'FAIL'} ${name}: median ${m == null ? 'never' : Math.round(m) + 'ms'} (budget ${budget}ms), ` +
@@ -315,11 +346,6 @@ const bounced = lateHeights.some((height, i) => i > 0 && height < lateHeights[i 
 const lateOk = waited && arrived?.at < 1200 && !bounced;
 if (!lateOk) failed = true;
 console.log(`${lateOk ? 'ok  ' : 'FAIL'} unfinished Journal read keeps placeholder, then reveals without a height reversal (${Math.round(arrived?.at ?? -1)}ms)`);
-if (errors.length) {
-  failed = true;
-  console.log(`page errors:\n  ${errors.join('\n  ')}`);
-}
-
 /* Replay failed warm cases after every measured assertion. These observers
    never run during the guard's measurements; replay timings do not gate. */
 const diagnosticCases = timingResults.filter((result) => result.to && (!result.ok || args.includes('--diagnostics')));
@@ -327,6 +353,7 @@ if (diagnosticCases.length) {
   const report = { timings: timingResults, pageErrors: [...errors], browser: browser.version(), source: process.env.GITHUB_SHA ?? null, replays: [] };
   try {
     await page.addInitScript(() => {
+      Error.stackTraceLimit = 30;
       let events = [];
       const record = (kind, detail = {}) => events.push({ at: performance.now(), kind, ...detail });
       document.addEventListener('click', (event) => {
@@ -342,9 +369,14 @@ if (diagnosticCases.length) {
       Worker.prototype.postMessage = function(message, ...options) {
         if (!workers.has(this)) {
           workers.add(this);
-          this.addEventListener('message', (event) => record('worker-result', { id: event.data?.id, ok: event.data?.ok }));
+          this.addEventListener('message', (event) => record('worker-result', { id: event.data?.id, ok: event.data?.ok, timing: event.data?.diagnosticTiming }));
         }
-        record('worker-post', { id: message?.id, op: message?.op });
+        record('worker-post', {
+          id: message?.id,
+          op: message?.op,
+          sql: message?.op === 'query' ? message.args?.sql : undefined,
+          stack: message?.op === 'query' ? new Error().stack : undefined
+        });
         return post.call(this, message, ...options);
       };
       const startTransition = document.startViewTransition;
@@ -375,11 +407,12 @@ if (diagnosticCases.length) {
         for (const task of list.getEntries()) record('longtask', { start: task.startTime, duration: task.duration });
       }).observe({ type: 'longtask' });
     });
-    for (const { name, to } of diagnosticCases) {
+    captureWorkerTiming = true;
+    for (const { name, to, readDelay } of diagnosticCases) {
       const replay = { name };
       report.replays.push(replay);
       try {
-        replay.observedMs = await warm(to);
+        replay.observedMs = await warm(to, readDelay);
         Object.assign(replay, await page.evaluate(() => ({
           ...window.__tileArrivalDiagnostics(),
           environment: {
@@ -405,6 +438,168 @@ if (diagnosticCases.length) {
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, JSON.stringify(report, null, 2));
   console.log(`Tile arrival diagnostic replay: ${output}`);
+}
+
+/* Scope checks run after timings: SQL observation and controlled failures
+   must not change a measured frame. Exercise the same built screens whose
+   arrival cost is guarded above. */
+const scopeStarted = Date.now();
+const scopeReport = {};
+const scopeCheck = (ok, message) => {
+  if (!ok) failed = true;
+  console.log(`${ok ? 'ok  ' : 'FAIL'} ${message}`);
+};
+try {
+  await page.addInitScript(() => {
+    Error.stackTraceLimit = 30;
+    window.__scopeQueries = [];
+    window.__scopeHeld = [];
+    // The deliberately rejected driver promise may also surface as an
+    // unhandled rejection. Suppress only this exact injected fault.
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event.reason?.message === 'controlled pin last-write failure') event.preventDefault();
+    });
+    const logError = console.error;
+    console.error = (...args) => {
+      if (args[0] === 'a journal query failed' && args[1]?.message === 'controlled pin last-write failure') window.__scopeReadFailed = true;
+      logError(...args);
+    };
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function(message, ...options) {
+      if (message?.op === 'query') {
+        window.__scopeQueries.push({ ...message.args, route: location.pathname, stack: new Error().stack });
+        if (window.__scopeFailWear && message.args.sql.includes('MAX(start_timestamp) AS ts FROM wear_session')) {
+          window.__scopeFailed = (window.__scopeFailed ?? 0) + 1;
+          queueMicrotask(() => this.dispatchEvent(new MessageEvent('message', {
+            data: { id: message.id, ok: false, error: 'controlled pin last-write failure' }
+          })));
+          return;
+        }
+        if (window.__scopeHold) {
+          window.__scopeHeld.push(() => post.call(this, message, ...options));
+          return;
+        }
+      }
+      return post.call(this, message, ...options);
+    };
+  });
+  await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => { window.__scopeQueries = []; });
+  await page.locator('[data-nav-item="stats"]').click();
+  await waitFor(TILES['/stats']);
+  const tilesSql = await page.evaluate(() => window.__scopeQueries);
+  scopeReport.tiles = tilesSql;
+  const spread = (query) => query.sql.includes('FIRST_VALUE(value) OVER day_order');
+  const tagShare = (query) => query.sql.trim().endsWith('GROUP BY t.id ORDER BY entries DESC, id');
+  const averages = (query) => query.sql.includes('AVG(value) AS value, COUNT(*) AS entries FROM metric_value');
+  // Correlation cards compare every scale independently of the day-by-day tile.
+  const tileAverages = (query) => averages(query) && !query.stack.includes('Object.getCards');
+  const metricKey = (query) => query.sql.includes('gd.key = ?') ? query.params[0] : 'mood';
+  scopeCheck(!tilesSql.some(spread) && !tilesSql.some(tagShare), 'Look back tiles omit screen-only spreads and tag shares');
+  const initialTileKeys = new Set(tilesSql.filter(tileAverages).map(metricKey));
+  scopeCheck(initialTileKeys.size <= 2, 'Look back tiles read mood and highest-days scale without loading every scale');
+  scopeCheck(tilesSql.filter((query) => query.sql.includes('FROM journaling_pause')).length === 1, 'Look back reads annotations only for its history rail');
+
+  await page.goto(`${base}/stats/day-by-day`, { waitUntil: 'networkidle' });
+  await waitFor(`!!document.querySelector('[data-values-list] li') && !!document.querySelector('[data-chart="area"]')`);
+  const chartSql = await page.evaluate(() => window.__scopeQueries);
+  const metricOptions = await page.locator('[data-chart-picker="stats-metric"] option').evaluateAll((options) => options.map((option) => option.value));
+  const seriesKeys = new Set(chartSql.filter(averages).map(metricKey));
+  scopeCheck(metricOptions.length > 2 && metricOptions.every((key) => seriesKeys.has(key)) && chartSql.some(spread), 'Day by day screen retains every scale, spreads and accessible values');
+  scopeCheck(chartSql.some((query) => query.sql.includes('FROM journaling_pause')), 'Day by day screen retains chart annotations');
+
+  const selectedMetric = metricOptions.at(-1);
+  await page.locator('[data-chart-picker="stats-metric"]').selectOption(selectedMetric);
+  await page.locator('[data-nav-item="settings"]').click();
+  await waitFor(`location.pathname === '/more'`);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__scopeQueries = []; });
+  await page.locator('[data-nav-item="stats"]').click();
+  await waitFor(TILES['/stats']);
+  const changedSql = await page.evaluate(() => window.__scopeQueries);
+  scopeReport.changedMetric = { selectedMetric, queries: changedSql };
+  const changedKeys = new Set(changedSql.filter(tileAverages).map(metricKey));
+  scopeCheck(changedKeys.has(selectedMetric) && [...changedKeys].every((key) => key === selectedMetric || initialTileKeys.has(key)), 'Look back tile follows changed active scale');
+
+  await page.goto(`${base}/stats/days`, { waitUntil: 'networkidle' });
+  await waitFor(`!!document.querySelector('[data-chart="donut"]')`);
+  scopeCheck((await page.evaluate(() => window.__scopeQueries)).some(tagShare), 'Days screen retains tag shares and donut');
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await waitFor(TILES['/']);
+  await page.locator('[data-list-row="edit-today"]').click();
+  await waitFor(`!!document.querySelector('[data-today-editor]')`);
+  const inventory = await page.locator('[data-edit-pinned-row], [data-edit-add]').evaluateAll((rows) => rows.map((row) => row.dataset.editPinnedRow ?? row.dataset.editAdd).sort());
+  const initialPins = await page.locator('[data-edit-pinned-row]').evaluateAll((rows) => rows.map((row) => row.dataset.editPinnedRow));
+  if (!initialPins.includes('wear')) await page.locator('[data-edit-add="wear"]').click();
+  for (const key of initialPins.filter((key) => key !== 'wear')) await page.locator(`[data-edit-unpin="${key}"]`).click();
+  await page.locator('[data-edit-done]').click();
+  await waitFor(`!document.querySelector('[data-today-editor]') && !!document.querySelector('[data-pinned-row="wear"]')`);
+  // The layout checks the return gap on every Home arrival. Count that
+  // full read separately from the pin's selected read.
+  await page.locator('[data-nav-item="settings"]').click();
+  await waitFor(`location.pathname === '/more'`);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__scopeQueries = []; window.__scopeFailWear = true; });
+  await page.locator('[data-nav-item="home"]').click();
+  await waitFor(`${TILES['/']} && window.__scopeReadFailed === true`);
+  await page.waitForTimeout(100);
+  const pinSql = await page.evaluate(() => window.__scopeQueries);
+  scopeReport.pins = pinSql;
+  const cycleLastWrite = (query) => query.sql.includes('FROM cycle_event') && query.sql.includes('ORDER BY epoch_day DESC LIMIT 1');
+  // The layout's return-gap offer still owns one full last-write read.
+  scopeCheck(pinSql.filter(cycleLastWrite).length === 1, 'Wear-only arrival adds no unrelated last-write read to return-gap check');
+
+  await page.evaluate(() => {
+    window.__scopeQueries = [];
+    window.__scopeFailWear = false;
+    window.__scopeHold = true;
+    window.__scopeEarlyEditor = false;
+    window.__scopeEditorObserver = new MutationObserver(() => {
+      if (window.__scopeHold && document.querySelector('[data-today-editor]')) window.__scopeEarlyEditor = true;
+    });
+    window.__scopeEditorObserver.observe(document.body, { childList: true, subtree: true });
+  });
+  await page.locator('[data-list-row="edit-today"]').click();
+  await page.waitForTimeout(100);
+  scopeCheck(await page.evaluate(() => window.__scopeHeld.length > 0 && !window.__scopeEarlyEditor && !document.querySelector('[data-today-editor]')), 'Editor waits for expanded reads after failed pin-only read');
+  await page.evaluate(() => {
+    window.__scopeEditorObserver.disconnect();
+    window.__scopeHold = false;
+    for (const release of window.__scopeHeld.splice(0)) release();
+  });
+  await waitFor(`!!document.querySelector('[data-today-editor]')`);
+  const expandedSql = await page.evaluate(() => window.__scopeQueries);
+  const expandedInventory = await page.locator('[data-edit-pinned-row], [data-edit-add]').evaluateAll((rows) => rows.map((row) => row.dataset.editPinnedRow ?? row.dataset.editAdd).sort());
+  scopeCheck(expandedSql.some(cycleLastWrite) && JSON.stringify(expandedInventory) === JSON.stringify(inventory), 'Editor expands reads and retains complete pin inventory');
+  const careLine = await page.locator('[data-edit-add="care"]').innerText();
+  await page.locator('[data-edit-add="voice-benchmark"]').click();
+  await page.locator('[data-edit-grip="voice-benchmark"]').press('ArrowUp');
+  await waitFor(`document.querySelector('[data-edit-pinned-row]')?.dataset.editPinnedRow === 'voice-benchmark'`);
+  await page.locator('[data-edit-done]').click();
+  await waitFor(`!document.querySelector('[data-today-editor]')`);
+  const arranged = await page.locator('[data-pinned-row]').evaluateAll((rows) => rows.map((row) => row.dataset.pinnedRow));
+  scopeCheck(JSON.stringify(arranged) === JSON.stringify(['voice-benchmark', 'wear']), 'Added pins retain keyboard order after closing editor');
+  await page.locator('[data-list-row="edit-today"]').click();
+  await waitFor(`!!document.querySelector('[data-today-editor]')`);
+  scopeCheck(await page.locator('[data-edit-add="care"]').innerText() === careLine, 'Reopened editor retains forward facts for unpinned rows');
+  await page.locator('[data-edit-unpin="voice-benchmark"]').click();
+  await page.locator('[data-edit-done]').click();
+  await waitFor(`!document.querySelector('[data-today-editor]')`);
+  scopeCheck(await page.locator('[data-pinned-row="voice-benchmark"]').count() === 0, 'Unpinned row stays removed after editor closes');
+} catch (error) {
+  scopeCheck(false, `scope lifecycle regression: ${error}`);
+}
+if (failed) {
+  const output = resolve('ci-logs', `tile-arrival-scope-${Date.now()}-${process.pid}.json`);
+  mkdirSync(dirname(output), { recursive: true });
+  writeFileSync(output, JSON.stringify(scopeReport, null, 2));
+  console.log(`Tile arrival scope queries: ${output}`);
+}
+console.log(`Scope lifecycle checks: ${Date.now() - scopeStarted}ms`);
+if (errors.length) {
+  failed = true;
+  console.log(`page errors:\n  ${errors.join('\n  ')}`);
 }
 
 await browser.close();
