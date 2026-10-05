@@ -2631,6 +2631,8 @@
   "rem_enable_aria": "Enable {title}",
   "rem_hide_titles_sub": "Hide reminder names, affirmations and notification details. Reminder times and the check-in question remain visible, including on the lock screen.",
   "rem_hide_titles_title": "Hide sensitive titles",
+  "rem_missing_action": "Back to reminders",
+  "rem_missing_title": "This reminder is gone",
   "rem_name_label": "Name",
   "rem_name_placeholder": "e.g. Estradiol patch",
   "rem_new_title": "New reminder",
