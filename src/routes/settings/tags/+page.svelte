@@ -64,19 +64,20 @@
   {#snippet groupSection(g: TagGroup)}
     <details
       class="managed-group"
+      data-tag-group={g.key}
       open={openGroups[g.key] ?? !g.builtIn}
       ontoggle={(e) => (openGroups[g.key] = e.currentTarget.open)}
     >
       <summary>{g.name}{#if !g.builtIn} · {m.custom_suffix()}{/if}</summary>
       <div class="tag-group-action">
-        <button class="btn btn-soft" aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
+        <button class="btn btn-soft" data-add-tag aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
           <Icon name="plus" size={20} /><span>{m.tags_new_tag()}</span>
         </button>
       </div>
       <div class="managed-tags">
         {#each g.tags as tg, i (tg.id)}
           <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
-            <span class="managed-label">{tg.label}</span>
+            <span class="managed-label" data-managed-tag-label={tg.id}>{tg.label}</span>
             {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
             <span class="managed-actions">
               <button class="icon-btn" data-up aria-label={m.tags_move_up({ label: tg.label })} disabled={i === 0}
@@ -169,6 +170,7 @@
       </Field>
       <button
         class="btn btn-primary"
+        data-save-new-tag
         onclick={() => {
           if (newLabel.trim()) journal.tags.addTag(addTarget!, newLabel.trim());
           addTarget = null;
@@ -186,6 +188,7 @@
     </Field>
     <button
       class="btn btn-primary"
+      data-save-new-tag-group
       onclick={() => {
         if (newGroupName.trim()) journal.tags.addGroup(newGroupName.trim());
         groupSheet = false;
