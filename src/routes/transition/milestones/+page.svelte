@@ -113,7 +113,7 @@
   /* Offered, never required, right after a brand-new milestone is created
      (CONTEXT: "Felt-sense entry") - editing an existing one never opens
      this, the same reasoning ticket 24 gives for the anniversary showing
-     on MilestoneCard being its own separate offer, not this one repeated. */
+     below being its own separate offer, not this one repeated. */
   let feelingOfferId = $state<string | null>(null);
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
