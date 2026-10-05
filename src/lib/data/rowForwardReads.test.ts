@@ -183,3 +183,21 @@ test('the seals are asked for as one page, not one letter at a time', async () =
   assert.equal(sealPages.length, 1);
   assert.equal(sealPages[0] > 1, true);
 });
+
+test('a pinned wear row reads no facts belonging to other rows', async () => {
+  const { areas, asked } = recordingAreas();
+  assert.deepEqual(await readRowForward(areas, TODAY, ['wear']), {});
+  assert.deepEqual(asked, ['wearSessions']);
+});
+
+test('an empty pin selection reads nothing, while care keeps both dose and stock facts', async () => {
+  const { areas, asked } = recordingAreas({
+    marks: [{ kind: 'doseSlot', epochDay: TODAY + 3 }], runOutDays: [TODAY + 10]
+  });
+  assert.deepEqual(await readRowForward(areas, TODAY, []), {});
+  assert.deepEqual(asked, []);
+  assert.deepEqual(await readRowForward(areas, TODAY, ['care']), {
+    care: { kind: 'next', epochDay: TODAY + 3, what: { area: 'dose', runOutEpochDay: TODAY + 10 } }
+  });
+  assert.deepEqual(asked, ['dayAhead', 'stock']);
+});
