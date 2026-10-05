@@ -2,7 +2,12 @@
   /* The question leaving changed work asks (leaveGuard.ts, CONTEXT:
      "Draft"). Keep editing is the primary button: the safe answer is the
      one a stray tap lands on. Closing the sheet any other way - the scrim,
-     a drag, Android back - is also Keep editing. */
+     a drag, Android back - is also Keep editing.
+
+     No body line by default. The one every copy used to carry, "Your
+     changes have not been saved", said again what "Discard unsaved
+     changes?" had just said. A screen that loses more than its edits - a
+     recorded take, a regimen's pending pause - says so in `body`. */
   import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';
   import type { LeaveGuard } from './leaveGuard.svelte';
@@ -10,18 +15,17 @@
 
   let {
     guard,
-    body = m.record_discard_body()
+    body
   }: {
     guard: LeaveGuard;
-    /** What discarding loses, where the screen has more to say than "your
-        changes have not been saved". */
+    /** What discarding loses, where the title does not already say it. */
     body?: string;
   } = $props();
 </script>
 
 <Sheet open={guard.pendingDeparture !== null} title={m.record_discard_title()} onClose={guard.keep}>
   <h3>{m.record_discard_title()}</h3>
-  <p class="muted">{body}</p>
+  {#if body}<p class="muted">{body}</p>{/if}
   <div class="discard-actions">
     <button class="btn btn-primary" {...{ [discardHandles.keep]: '' }} onclick={guard.keep}>
       <span>{m.record_keep_editing()}</span>
