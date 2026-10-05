@@ -25,8 +25,9 @@
      there turns the drums to it. Use time takes whichever was touched
      last - the drums' own value, so an arrow and Enter in quick
      succession commit the stepped time even though the drum is still on
-     its way and the entry not yet written; or the entry, so a half-typed
-     time is refused rather than half applied. */
+     its way and the entry not yet written; or the entry from focus onward,
+     so a settling drum cannot rewrite a selection before typing starts
+     and a half-typed time is refused rather than half applied. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, isReducedMotion } from '$lib/motion/tokens';
@@ -252,6 +253,7 @@
         inputmode="decimal"
         autocomplete="off"
         data-time-picker-entry
+        onfocus={() => { lastTouched = 'entry'; }}
         oninput={onTyped}
         onkeydown={(event) => {
           if (event.key !== 'Enter') return;
