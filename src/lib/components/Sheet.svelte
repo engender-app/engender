@@ -217,9 +217,13 @@
   /* The background lock's own release runs as the scrim leaves, and it
      queues the focus return; onClosed queues after it, so a caller that
      moves focus wins over the launcher getting it back. */
+  let recedeBackground: (() => void) | null = null;
+
   function holdBackground(node: HTMLElement) {
     const release = lockBackground(node);
+    recedeBackground = release.recede;
     return () => {
+      recedeBackground = null;
       release();
       queueMicrotask(() => onClosed?.());
     };
@@ -295,6 +299,7 @@
         data-sheet
         in:sheetRise|global
         out:sheetRise|global
+        onoutrostart={() => recedeBackground?.()}
         {@attach focusInitial}
         {@attach ownSheet}
       >
@@ -319,6 +324,7 @@
         data-sheet
         in:sheetRise
         out:sheetRise
+        onoutrostart={() => recedeBackground?.()}
         {@attach focusInitial}
         {@attach ownSheet}
       >

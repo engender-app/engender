@@ -86,7 +86,9 @@ function existsInSrc(handle: string): boolean {
    in src/. */
 const INJECTED_HANDLES: Record<string, string> = {
   'data-probe-next-entry':
-    'the entry-to-entry flow adds a throwaway <a> via page.evaluate to prove the editor remounts rather than reusing stale params (walkthrough.test.mjs ~line 346)'
+    'the entry-to-entry flow adds a throwaway <a> via page.evaluate to prove the editor remounts rather than reusing stale params (walkthrough.test.mjs ~line 346)',
+  'data-probe-new-reminder':
+    'the reminder editor flow adds an in-app <a> to /settings/reminders/new, because web draws no add control, so Back has history to go back through (phase 15 ticket 04)'
 };
 
 /* Handles a flow asserts *absent* on purpose. Each one still has to be a
