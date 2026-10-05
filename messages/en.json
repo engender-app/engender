@@ -1948,6 +1948,7 @@
   "ms_description_label": "What happened (optional)",
   "ms_description_placeholder": "How it felt",
   "ms_edit_title": "Edit milestone",
+  "ms_feeling_anniv_saved": "Saved for \"{name}\".",
   "ms_feeling_anniv_title": "How does it feel now?",
   "ms_feeling_new_title": "How does it feel?",
   "ms_intro": "Past milestones return as anniversaries. Future dates count down on Today.",
