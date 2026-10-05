@@ -20,6 +20,7 @@ export const CI_CHECKS = {
   android: [
     { id: 'build', name: 'Web production build', command: 'npm', args: ['run', 'build'] },
     { id: 'sync', name: 'Capacitor sync', command: 'npx', args: ['cap', 'sync', 'android'], requires: ['build'] },
+    { id: 'jvm', name: 'Android JVM unit tests', command: './gradlew', args: [':app:testDebugUnitTest'], cwd: 'android', requires: ['sync'] },
     { id: 'policy', name: 'Android dependency policy', command: 'node', args: ['scripts/check-android-dependencies.mjs'], requires: ['sync'] },
     { id: 'apk', name: 'Unsigned debug APK', command: './gradlew', args: [':app:assembleDebug'], cwd: 'android', requires: ['sync'] },
     { id: 'preserve-apk', name: 'Preserve debug APK', command: 'node', args: ['scripts/preserve-debug-apk.mjs'], requires: ['apk'] },
