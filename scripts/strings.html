@@ -26,18 +26,56 @@
   #prose td { width: 50%; }
   .group h2 { font-size: 1.1rem; margin: 0; }
   select { max-width: 100%; margin-bottom: .5rem; }
+  .toolbar { position: sticky; top: 0; z-index: 1; background: white; border-bottom: 1px solid #aaa; padding: .75rem 0; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+  button, select, .review { min-height: 44px; }
+  .review { display: flex; align-items: center; gap: .5rem; width: fit-content; }
+  .review input { width: 1.2rem; height: 1.2rem; }
+  :focus-visible { outline: 2px solid #174d91; outline-offset: 3px; }
+  .toolbar p { margin: 0; }
+  #operation { white-space: pre-wrap; }
+  progress { max-width: 100%; accent-color: #174d91; }
+  details { margin-top: 1rem; }
+  summary { cursor: pointer; padding: .75rem 0; }
+  .replace-fields { display: flex; flex-wrap: wrap; gap: .75rem; margin: .75rem 0; }
+  .replace-fields label { flex: 1 1 14rem; }
+  .replace-fields input, .replace-fields select { display: block; width: 100%; }
+  #replace-preview { max-height: 24rem; overflow: auto; }
+  #replace-preview td { white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 <h1>Message catalogues</h1>
 <p>Edit existing values. Save writes to <code>messages/en.json</code> or <code>messages/pl.json</code>.</p>
+<p>Check off a key or the shown keys in a group after reading both languages. Progress survives reloads and restarts. Changed copy needs review again.</p>
+<div class="toolbar">
+  <button id="save-all" type="button" disabled>Save all changes</button>
+  <p id="progress-text"></p>
+  <progress id="progress" aria-label="Copy review progress" value="0" max="1"></progress>
+</div>
+<p id="operation" role="status"></p>
 <label for="search">Search keys, English and Polish</label>
 <input id="search" type="search" autocomplete="off">
 <button id="reload" type="button">Reload from disk</button>
 <label for="theme">Copy theme</label>
 <select id="theme"><option value="">All themes</option></select>
+<label for="review-filter">Review status</label>
+<select id="review-filter"><option value="">All keys</option><option value="pending">Not reviewed</option><option value="reviewed">Reviewed</option><option value="unsaved">Unsaved edits</option></select>
 <div>
   <label class="toggle"><input id="changed" type="checkbox"> Changed vs main</label>
   <label class="toggle"><input id="prose-toggle" type="checkbox"> Read as prose</label>
 </div>
+<details id="replace-panel">
+  <summary>Find and replace</summary>
+  <p>Match exact text, including case. Replace every occurrence. Preview first, then apply to drafts and save when ready.</p>
+  <div class="replace-fields">
+    <label>Find text<input id="find-text" type="text"></label>
+    <label>Replace with<input id="replace-text" type="text"></label>
+    <label>Language<select id="replace-locale"><option value="pl">Polish</option><option value="en">English</option><option value="both">English and Polish</option></select></label>
+    <label>Scope<select id="replace-scope"><option value="shown">Shown keys</option><option value="all">All keys (global)</option></select></label>
+  </div>
+  <button id="preview-replacements" type="button" disabled>Preview replacements</button>
+  <button id="apply-replacements" type="button" disabled>Apply to drafts</button>
+  <p id="replace-summary" role="status"></p>
+  <div id="replace-preview"></div>
+</details>
 <p id="status" role="status">Loading…</p>
 <div id="editor" class="scroll">
   <table>
@@ -58,9 +96,20 @@
   const changed = document.querySelector('#changed');
   const proseToggle = document.querySelector('#prose-toggle');
   const theme = document.querySelector('#theme');
+  const reviewFilter = document.querySelector('#review-filter');
+  const saveAll = document.querySelector('#save-all');
+  const operation = document.querySelector('#operation');
+  const findText = document.querySelector('#find-text');
+  const replaceText = document.querySelector('#replace-text');
+  const replaceLocale = document.querySelector('#replace-locale');
+  const replaceScope = document.querySelector('#replace-scope');
+  const previewReplacements = document.querySelector('#preview-replacements');
+  const applyReplacements = document.querySelector('#apply-replacements');
+  let replacementEdits = [];
   let records = [];
   let groups = new Map();
-  let dirty = new Set();
+  const dirty = new Map();
+  let busy = false;
 
   function element(tag, text) {
     const node = document.createElement(tag);
@@ -85,6 +134,205 @@
     return row;
   }
 
+  const hasEdits = (record) => record.editors.some((editor) => dirty.has(editor.input));
+  const isReviewed = (record) => record.reviewed && !hasEdits(record);
+
+  function reviewControl(label, getRecords) {
+    const wrapper = element('label', label);
+    wrapper.className = 'review';
+    const input = element('input');
+    input.type = 'checkbox';
+    input.addEventListener('change', () => saveReview(getRecords(), input.checked));
+    wrapper.prepend(input);
+    return { wrapper, input };
+  }
+
+  function updateControls() {
+    const current = records.filter((record) => record.change !== 'removed');
+    const reviewed = current.filter(isReviewed).length;
+    document.querySelector('#progress-text').textContent = `${reviewed} of ${current.length} keys reviewed · ${dirty.size} unsaved fields`;
+    const progress = document.querySelector('#progress');
+    progress.max = current.length || 1;
+    progress.value = reviewed;
+    saveAll.disabled = busy || !dirty.size;
+    document.querySelector('#reload').disabled = busy;
+    for (const control of [findText, replaceText, replaceLocale, replaceScope]) control.disabled = busy;
+    previewReplacements.disabled = busy || !findText.value;
+    applyReplacements.disabled = busy || !replacementEdits.length;
+    for (const record of records) {
+      for (const editor of record.editors) {
+        editor.input.disabled = busy;
+        editor.save.disabled = busy || !dirty.has(editor.input);
+      }
+      for (const control of [record.reviewControl, record.proseReviewControl]) {
+        if (!control) continue;
+        control.input.checked = isReviewed(record);
+        control.input.disabled = busy || hasEdits(record) || record.change === 'removed';
+        control.wrapper.title = hasEdits(record) ? 'Save edits before reviewing this key.' : '';
+      }
+    }
+    for (const group of groups.values()) {
+      const shown = group.records.filter((record) => !record.row.hidden && record.change !== 'removed');
+      const count = shown.filter(isReviewed).length;
+      for (const control of [group.reviewControl, group.proseReviewControl]) {
+        if (!control) continue;
+        control.input.checked = shown.length > 0 && count === shown.length;
+        control.input.indeterminate = count > 0 && count < shown.length;
+        control.input.disabled = busy || !shown.length || shown.some(hasEdits);
+        control.wrapper.title = shown.some(hasEdits) ? 'Save edits before reviewing this group.' : 'Applies to the keys shown by the current filters.';
+      }
+    }
+  }
+
+  function invalidateReplacements() {
+    replacementEdits = [];
+    applyReplacements.disabled = true;
+    document.querySelector('#replace-preview').replaceChildren();
+    document.querySelector('#replace-summary').textContent = '';
+  }
+
+  function trackEdit(editor) {
+    if (editor.input.value === editor.field.text) dirty.delete(editor.input);
+    else dirty.set(editor.input, editor);
+    editor.message.textContent = '';
+  }
+
+  function previewReplacementEdits() {
+    invalidateReplacements();
+    if (busy || !findText.value) return;
+    let occurrences = 0;
+    for (const record of records) {
+      if (replaceScope.value === 'shown' && record.row.hidden) continue;
+      for (const editor of record.editors) {
+        if (replaceLocale.value !== 'both' && editor.locale !== replaceLocale.value) continue;
+        const before = editor.input.value;
+        const pieces = before.split(findText.value);
+        const after = pieces.join(replaceText.value);
+        if (pieces.length === 1 || before === after) continue;
+        occurrences += pieces.length - 1;
+        replacementEdits.push({ editor, before, after });
+      }
+    }
+    const count = replacementEdits.length;
+    const keys = new Set(replacementEdits.map(({ editor }) => editor.record.key)).size;
+    document.querySelector('#replace-summary').textContent = count
+      ? `${occurrences} occurrences in ${count} fields across ${keys} keys. Nothing saved yet.`
+      : 'No changes match this text, language and scope.';
+    if (count) {
+      const table = element('table');
+      const header = element('tr');
+      for (const text of ['Key / language / form', 'Before', 'After']) {
+        const cell = element('th', text);
+        cell.scope = 'col';
+        header.append(cell);
+      }
+      const head = element('thead');
+      head.append(header);
+      const body = element('tbody');
+      for (const { editor, before, after } of replacementEdits) {
+        const row = element('tr');
+        row.append(element('td', `${editor.record.key} ${editor.locale.toUpperCase()} ${editor.field.form ?? ''}`),
+          element('td', before), element('td', after));
+        body.append(row);
+      }
+      table.append(head, body);
+      document.querySelector('#replace-preview').append(table);
+    }
+    updateControls();
+  }
+
+  function applyReplacementEdits() {
+    if (busy || !replacementEdits.length) return;
+    if (replacementEdits.some(({ editor, before }) => editor.input.value !== before)) {
+      invalidateReplacements();
+      document.querySelector('#replace-summary').textContent = 'Text changed. Preview replacements again.';
+      return;
+    }
+    const count = replacementEdits.length;
+    for (const { editor, after } of replacementEdits) {
+      editor.input.value = after;
+      trackEdit(editor);
+    }
+    operation.textContent = `Replacements applied to ${count} fields. Use Save all changes to write them to disk.`;
+    filter();
+  }
+
+  async function patch(path, body) {
+    const response = await fetch(path, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(await response.text());
+  }
+
+  async function refreshFindings() {
+    const response = await fetch('/api/strings');
+    if (!response.ok) throw new Error(await response.text());
+    const latest = new Map((await response.json()).map((record) => [record.key, record]));
+    for (const record of records) {
+      const updated = latest.get(record.key);
+      record.findings = updated?.findings ?? [];
+      record.change = updated?.change ?? null;
+      record.previous = updated?.previous ?? { en: null, pl: null };
+      record.reviewed = Boolean(updated?.reviewed &&
+        JSON.stringify([updated.en, updated.pl]) === JSON.stringify([record.en, record.pl]));
+      showFindings(record);
+      showChange(record);
+    }
+  }
+
+  async function saveEdits(editors) {
+    if (busy || !editors.length) return;
+    busy = true;
+    updateControls();
+    let saved = 0;
+    operation.textContent = `Saving ${editors.length} fields…`;
+    try {
+      for (const editor of editors) {
+        const { record, locale, field, input, message } = editor;
+        const text = input.value;
+        try {
+          await patch('/api/strings', { locale, key: record.key, variant: field.variant,
+            form: field.form, previous: field.text, text });
+          field.text = text;
+          if (field.form === null) record[locale] = text;
+          else record[locale][field.variant].match[field.form] = text;
+          record.reviewed = false;
+          dirty.delete(input);
+          message.textContent = ' Saved.';
+          saved++;
+        } catch (error) {
+          message.textContent = ` ${error.message}`;
+        }
+      }
+      operation.textContent = `Saved ${saved} of ${editors.length} fields. ${dirty.size} still unsaved.`;
+      if (saved < editors.length) operation.textContent += ' Check the messages beside unsaved fields; your edits are still here.';
+      try { await refreshFindings(); }
+      catch (error) { operation.textContent += ` Could not refresh checks: ${error.message}`; }
+    } finally {
+      busy = false;
+      filter();
+    }
+  }
+
+  async function saveReview(selected, reviewed) {
+    if (busy || !selected.length || selected.some(hasEdits)) return;
+    const previous = selected.map((record) => record.reviewed);
+    for (const record of selected) record.reviewed = reviewed;
+    busy = true;
+    updateControls();
+    operation.textContent = 'Saving review progress…';
+    try {
+      await patch('/api/reviews', { reviewed, keys: selected.map(({ key, en, pl }) => ({ key, en, pl })) });
+      operation.textContent = `${selected.length} keys marked ${reviewed ? 'reviewed' : 'not reviewed'}. Progress saved.`;
+    } catch (error) {
+      selected.forEach((record, index) => { record.reviewed = previous[index]; });
+      operation.textContent = error.message;
+    } finally {
+      busy = false;
+      filter();
+    }
+  }
+
   function localeCell(record, locale) {
     const cell = element('td');
     record[`${locale}Comparison`] = element('div');
@@ -106,49 +354,14 @@
       save.disabled = true;
       const message = element('span');
       message.setAttribute('role', 'status');
+      const editor = { record, locale, field, input, save, message };
+      record.editors.push(editor);
       input.addEventListener('input', () => {
-        save.disabled = input.value === field.text;
-        if (save.disabled) dirty.delete(input); else dirty.add(input);
-        message.textContent = '';
+        trackEdit(editor);
+        invalidateReplacements();
+        updateControls();
       });
-      save.addEventListener('click', async () => {
-        const text = input.value;
-        save.disabled = true;
-        input.disabled = true;
-        message.textContent = ' Saving…';
-        try {
-          const response = await fetch('/api/strings', {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ locale, key: record.key, variant: field.variant, form: field.form, previous: field.text, text })
-          });
-          if (!response.ok) throw new Error(await response.text());
-          field.text = text;
-          if (field.form === null) record[locale] = text;
-          else record[locale][field.variant].match[field.form] = text;
-          dirty.delete(input);
-          message.textContent = ' Saved.';
-          // Refresh findings without replacing other fields' unsaved text.
-          const refreshed = await fetch('/api/strings');
-          if (!refreshed.ok) throw new Error(await refreshed.text());
-          const latest = await refreshed.json();
-          for (const entry of records) {
-            const updated = latest.find((row) => row.key === entry.key);
-            entry.findings = updated?.findings ?? [];
-            entry.en = updated?.en ?? null;
-            entry.pl = updated?.pl ?? null;
-            entry.change = updated?.change ?? null;
-            entry.previous = updated?.previous ?? { en: null, pl: null };
-            showFindings(entry);
-            showChange(entry);
-          }
-          filter();
-        } catch (error) {
-          message.textContent = ` ${error.message}`;
-        } finally {
-          input.disabled = false;
-          save.disabled = input.value === field.text;
-        }
-      });
+      save.addEventListener('click', () => saveEdits([editor]));
       wrapper.append(label, save, message);
       cell.append(wrapper);
     }
@@ -181,6 +394,7 @@
   }
 
   function filter() {
+    invalidateReplacements();
     const query = search.value.toLocaleLowerCase();
     let visible = 0;
     const paragraphs = document.createDocumentFragment();
@@ -189,6 +403,9 @@
       const text = [record.key, ...['en', 'pl'].flatMap((locale) =>
         [...fields(record[locale]), ...fields(record.previous[locale])].map((field) => field.text))].join('\n');
       record.row.hidden = (changed.checked ? !record.change : record.change === 'removed') ||
+        (reviewFilter.value === 'pending' && isReviewed(record)) ||
+        (reviewFilter.value === 'reviewed' && !isReviewed(record)) ||
+        (reviewFilter.value === 'unsaved' && !hasEdits(record)) ||
         (theme.value && record.theme !== theme.value) || !text.toLocaleLowerCase().includes(query);
       if (record.row.hidden) continue;
       visible++;
@@ -197,12 +414,19 @@
       if (proseToggle.checked) {
         if (!group.proseHeader) {
           group.proseHeader = groupRow(record.theme, 2);
+          group.proseReviewControl = reviewControl(`Review shown keys in ${record.theme}`, () =>
+            group.records.filter((entry) => !entry.row.hidden && entry.change !== 'removed'));
+          group.proseHeader.firstElementChild.append(group.proseReviewControl.wrapper);
           paragraphs.append(group.proseHeader);
         }
         const paragraph = element('tr');
         for (const locale of ['en', 'pl']) {
           const cell = element('td');
           cell.lang = locale;
+          if (locale === 'en') {
+            record.proseReviewControl = reviewControl(`Reviewed: ${record.key}`, () => [record]);
+            cell.append(record.proseReviewControl.wrapper);
+          }
           const value = record.change === 'removed' ? record.previous[locale] : record[locale];
           for (const field of fields(value)) cell.append(element('p', field.text));
           paragraph.append(cell);
@@ -219,10 +443,14 @@
     document.querySelector('#prose').hidden = !proseToggle.checked;
     document.querySelector('#paragraphs').replaceChildren(paragraphs);
     status.textContent = visible ? `${visible} of ${records.length} keys` : 'No matching keys';
+    updateControls();
   }
 
   async function load() {
+    if (busy) return;
     if (dirty.size && !confirm('Discard unsaved edits and reload from disk?')) return;
+    busy = true;
+    updateControls();
     try {
       const response = await fetch('/api/strings');
       if (!response.ok) throw new Error(await response.text());
@@ -234,14 +462,22 @@
       for (const record of records) {
         if (!groups.has(record.theme)) {
           const header = groupRow(record.theme, 4);
-          groups.set(record.theme, { header });
+          const group = { header, records: [] };
+          group.reviewControl = reviewControl(`Review shown keys in ${record.theme}`, () =>
+            group.records.filter((entry) => !entry.row.hidden && entry.change !== 'removed'));
+          header.firstElementChild.append(group.reviewControl.wrapper);
+          groups.set(record.theme, group);
           fragment.append(header);
         }
+        groups.get(record.theme).records.push(record);
+        record.editors = [];
         record.row = element('tr');
         const key = element('td');
         record.checks = element('div');
         record.mark = element('p');
         key.append(element('code', record.key), record.mark, record.checks);
+        record.reviewControl = reviewControl(`Reviewed: ${record.key}`, () => [record]);
+        key.append(record.reviewControl.wrapper);
         showFindings(record);
         const used = element('td');
         for (const site of record.sites) {
@@ -266,6 +502,9 @@
       filter();
     } catch (error) {
       status.textContent = error.message;
+    } finally {
+      busy = false;
+      updateControls();
     }
   }
 
@@ -273,9 +512,16 @@
   changed.addEventListener('change', filter);
   proseToggle.addEventListener('change', filter);
   theme.addEventListener('change', filter);
+  reviewFilter.addEventListener('change', filter);
+  saveAll.addEventListener('click', () => saveEdits([...dirty.values()]));
+  for (const control of [findText, replaceText, replaceLocale, replaceScope]) {
+    control.addEventListener('input', () => { invalidateReplacements(); updateControls(); });
+  }
+  previewReplacements.addEventListener('click', previewReplacementEdits);
+  applyReplacements.addEventListener('click', applyReplacementEdits);
   document.querySelector('#reload').addEventListener('click', load);
   window.addEventListener('beforeunload', (event) => {
-    if (dirty.size) { event.preventDefault(); event.returnValue = ''; }
+    if (dirty.size || busy) { event.preventDefault(); event.returnValue = ''; }
   });
   load();
 </script>

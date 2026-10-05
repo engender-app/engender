@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -10,6 +10,7 @@ import { catalogueFindings, collectReferenceSites, copySourceFiles } from './che
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PAGE = fileURLToPath(new URL('./strings.html', import.meta.url));
+const REVIEW_FILE = '.scratch/copy-review.json';
 /** @type {Record<number, string>} */
 const THEMES = {
   38: 'Journal, day, search and readback',
@@ -29,9 +30,55 @@ class RequestError extends Error {
 }
 
 /** @param {string} root */
+function readReviews(root) {
+  try { return JSON.parse(readFileSync(join(root, REVIEW_FILE), 'utf8')); }
+  catch (error) { if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return {}; throw error; }
+}
+
+/** @param {unknown} en @param {unknown} pl */
+const revision = (en, pl) => createHash('sha256').update(JSON.stringify([en, pl])).digest('hex');
+
+/** @param {string} file @param {string} text */
+function writeAtomic(file, text) {
+  const temporary = join(dirname(file), `.strings-${randomUUID()}.tmp`);
+  writeFileSync(temporary, text);
+  try { renameSync(temporary, file); }
+  catch (error) { unlinkSync(temporary); throw error; }
+}
+
+/** Save approval of the values actually shown, for one key or a visible group.
+ * @param {string} root @param {unknown} review */
+export function writeReviews(root, review) {
+  if (!review || typeof review !== 'object') throw new RequestError(400, 'Invalid review.');
+  const { reviewed, keys } = /** @type {{ reviewed?: unknown, keys?: unknown }} */ (review);
+  if (typeof reviewed !== 'boolean' || !Array.isArray(keys) || !keys.length) throw new RequestError(400, 'Invalid review.');
+  const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
+  const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
+  const approved = readReviews(root);
+  for (const entry of keys) {
+    if (!entry || typeof entry.key !== 'string' || entry.key.startsWith('$') ||
+        (!Object.hasOwn(en, entry.key) && !Object.hasOwn(pl, entry.key))) {
+      throw new RequestError(400, 'Key does not exist.');
+    }
+    const current = { en: en[entry.key] ?? null, pl: pl[entry.key] ?? null };
+    if (!isDeepStrictEqual(entry.en, current.en) || !isDeepStrictEqual(entry.pl, current.pl)) {
+      throw new RequestError(409, `Copy changed for ${entry.key}. Reload before reviewing.`);
+    }
+    if (reviewed) Object.defineProperty(approved, entry.key, {
+      value: revision(current.en, current.pl), enumerable: true, configurable: true, writable: true
+    });
+    else delete approved[entry.key];
+  }
+  const file = join(root, REVIEW_FILE);
+  mkdirSync(dirname(file), { recursive: true });
+  writeAtomic(file, JSON.stringify(approved, null, 2) + '\n');
+}
+
+/** @param {string} root */
 export function readStrings(root = ROOT) {
   const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
   const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
+  const approved = readReviews(root);
   const coverage = JSON.parse(readFileSync(join(root, 'docs/agents/copy-coverage-50.json'), 'utf8'));
   const base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: root, encoding: 'utf8' }).trim();
   const previousEn = JSON.parse(execFileSync('git', ['show', `${base}:messages/en.json`], { cwd: root, encoding: 'utf8' }));
@@ -43,6 +90,7 @@ export function readStrings(root = ROOT) {
     theme: THEMES[coverage[key]?.owner] ?? 'Unassigned copy',
     en: en[key] ?? null,
     pl: pl[key] ?? null,
+    reviewed: approved[key] === revision(en[key] ?? null, pl[key] ?? null),
     previous: { en: previousEn[key] ?? null, pl: previousPl[key] ?? null },
     change: !Object.hasOwn(previousEn, key) && !Object.hasOwn(previousPl, key) ? 'added' :
       !Object.hasOwn(en, key) && !Object.hasOwn(pl, key) ? 'removed' :
@@ -83,14 +131,7 @@ export function writeString(root, edit) {
   if (typeof target[field] !== 'string') throw new RequestError(400, 'Value is not editable text.');
   if (target[field] !== previous) throw new RequestError(409, 'Value changed on disk. Reload before saving.');
   target[field] = text;
-  const temporary = join(dirname(file), `.strings-${randomUUID()}.tmp`);
-  writeFileSync(temporary, serializeCatalogue(catalogue));
-  try {
-    renameSync(temporary, file);
-  } catch (error) {
-    unlinkSync(temporary);
-    throw error;
-  }
+  writeAtomic(file, serializeCatalogue(catalogue));
 }
 
 /** @param {string} root */
@@ -111,7 +152,7 @@ export function createStringsServer(root = ROOT) {
       } else if (request.method === 'GET' && request.url === '/api/strings') {
         response.setHeader('Content-Type', 'application/json; charset=utf-8');
         response.end(JSON.stringify(readStrings(root)));
-      } else if (request.method === 'PATCH' && request.url === '/api/strings') {
+      } else if (request.method === 'PATCH' && ['/api/strings', '/api/reviews'].includes(request.url ?? '')) {
         if (request.headers['content-type'] !== 'application/json') {
           throw new RequestError(415, 'Send application/json.');
         }
@@ -125,7 +166,8 @@ export function createStringsServer(root = ROOT) {
         }
         let edit;
         try { edit = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
-        writeString(root, edit);
+        if (request.url === '/api/reviews') writeReviews(root, edit);
+        else writeString(root, edit);
         response.statusCode = 204;
         response.end();
       } else {
