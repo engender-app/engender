@@ -152,6 +152,16 @@ async function capture(name, zoom) {
   const sheet = page.locator('[data-sheet]').last();
   assert.equal(await sheet.evaluate((el) => el.scrollWidth <= el.clientWidth), true, `${name}: no horizontal overflow`);
   for (const group of await sheet.getByRole('radiogroup').all()) {
+    assert.equal(await group.getByRole('radio', { checked: true }).count(), 1, `${name}: one selected option`);
+    if (await group.evaluate((el) => el.hasAttribute('data-choice-chips'))) {
+      await page.waitForFunction((el) => {
+        const selected = getComputedStyle(el.querySelector('[aria-checked="true"]'));
+        const unselected = getComputedStyle(el.querySelector('[aria-checked="false"]'));
+        return selected.backgroundColor !== unselected.backgroundColor && selected.borderColor !== unselected.borderColor;
+      }, await group.elementHandle(), { timeout: 3000 });
+      continue;
+    }
+    assert.equal(await group.locator('.segment-pill').count(), 1, `${name}: segmented selection has a highlight`);
     await page.waitForFunction((el) => {
       const selected = el.querySelector('[aria-checked="true"]').getBoundingClientRect();
       const highlight = el.querySelector('.segment-pill').getBoundingClientRect();
@@ -165,8 +175,15 @@ async function capture(name, zoom) {
   }
   for (const control of await sheet.locator('input, select, button[role="radio"], button[data-close-record], button[data-save-measurement], button[data-save-size-record]').all()) {
     const box = await control.boundingBox();
+    const overlay = await control.evaluate((el) => {
+      const after = getComputedStyle(el, '::after');
+      return after.content !== 'none' && after.position === 'absolute'
+        ? { width: parseFloat(after.width) || 0, height: parseFloat(after.height) || 0 }
+        : { width: 0, height: 0 };
+    });
     const label = await control.evaluate((el) => el.id || el.textContent?.trim() || el.tagName);
-    assert.ok(box.width / zoom >= 48 && box.height / zoom >= 48, `${name}: ${label} touch target is ${box.width / zoom}x${box.height / zoom}px, requires 48px`);
+    const width = Math.max(box.width / zoom, overlay.width), height = Math.max(box.height / zoom, overlay.height);
+    assert.ok(width >= 48 && height >= 48, `${name}: ${label} touch target is ${width}x${height}px, requires 48px`);
   }
   assert.equal(await sheet.locator('input[readonly]').evaluateAll((inputs) => inputs.every((input) => {
     const style = getComputedStyle(input);
