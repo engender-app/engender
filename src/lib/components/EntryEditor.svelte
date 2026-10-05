@@ -21,8 +21,8 @@
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { onDestroy, tick } from 'svelte';
-  import { beforeNavigate, goto } from '$app/navigation';
+  import { onDestroy, tick, untrack } from 'svelte';
+  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import {
     todayEpochDay,
@@ -38,7 +38,7 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
-  import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
+  import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { journalDataKey } from '$lib/stores/boot.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
@@ -78,6 +78,8 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
   import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -148,8 +150,22 @@
     }
   }
 
-  beforeNavigate((navigation) => {
-    if (saving) navigation.cancel();
+  /* What the draft held when it was loaded (CONTEXT: "Draft"): the stored
+     entry for an edit, the blank or prefilled one for a new entry. Taken
+     before any process-death mirror is laid over it, so text restored from
+     the mirror counts as unsaved, which it is. Null until it is known. */
+  let baseline = $state<string | null>(null);
+
+  /* Back, the header arrow, Android back and a nav tab all used to drop a
+     changed draft without a word: the only guard here cancelled while a
+     save was in flight, and onDestroy cleared the mirror on every normal
+     departure (ticket 04, audit UX-01). Leaving now asks whenever the
+     draft differs from what was loaded. A saved draft is consumed and
+     never asks. */
+  const guard = leaveGuard({
+    holding: () =>
+      baseline !== null && entryDraft.savedId === undefined && entryDraftFingerprint(entryDraft) !== baseline,
+    busy: () => saving
   });
 
   /* Mirrored to localStorage on every change. Normal departure discards
@@ -169,6 +185,7 @@
   async function restoreIfPersisted(target: EntryDraft): Promise<EntryDraft> {
     const recovery = detachedEntrySave;
     if (recovery && recovery.entryId === entryId && (entryId != null || recovery.epochDay === target.epochDay)) {
+      baseline ??= entryDraftFingerprint(target);
       entryDraft = recovery.draft;
       saving = true;
       try {
@@ -184,8 +201,10 @@
     }
     const persisted = await draftStore.read();
     if (!persisted) return target;
-    if (draftMatchesRoute(persisted, entryId, target.epochDay)) applyPersistedDraft(target, persisted);
-    else draftStore.clear(); // a different editor's leftovers - not this one's to resume
+    if (draftMatchesRoute(persisted, entryId, target.epochDay)) {
+      baseline ??= entryDraftFingerprint(target);
+      applyPersistedDraft(target, persisted);
+    } else draftStore.clear(); // a different editor's leftovers - not this one's to resume
     return target;
   }
 
@@ -199,6 +218,7 @@
   onFirstResult(loaded, (entry) => prepareDraft(async () => {
     if (entryId == null) return;
     const fresh = entry ? createEntryDraft(entry.epochDay, entry) : entryDraft;
+    baseline = entryDraftFingerprint(fresh);
     try {
       entryDraft = await restoreIfPersisted(fresh);
       if (entry) starred = entry.starred;
@@ -782,6 +802,13 @@
     dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
   );
   let moodMissing = $derived(entryDraft.mood == null);
+
+  /* A new entry's baseline is the draft once every prefill (a template, a
+     debrief's notes) has landed and nothing restored it from the mirror. */
+  $effect(() => {
+    if (baseline !== null || draftPreparing) return;
+    baseline = untrack(() => entryDraftFingerprint(entryDraft));
+  });
   let savedDestination = $state('/');
   let navigationFailed = $state(false);
 
@@ -859,6 +886,8 @@
 
   async function confirmDelete() {
     deleteOpen = false;
+    // Deleting answered the question leaving would have asked.
+    baseline = entryDraftFingerprint(entryDraft);
     if (!existing) {
       await leave();
       return;
@@ -1534,6 +1563,8 @@
       <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
     </div>
   </Sheet>
+
+  <DiscardSheet {guard} />
 
   <Sheet bind:open={revisitOpen} title={m.revisit_sheet_title()}>
     <SectionHeading text={m.revisit_sheet_title()} />
