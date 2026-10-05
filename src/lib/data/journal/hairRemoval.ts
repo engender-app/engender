@@ -159,7 +159,12 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
     },
 
     async deleteSession(id) {
+      const photos = await driver.query<{ file_path: string }>(
+        'SELECT file_path FROM hair_removal_photo WHERE session_id IN (SELECT id FROM hair_removal_session WHERE uuid = ?)',
+        [id]
+      );
       await driver.run('DELETE FROM hair_removal_session WHERE uuid = ?', [id]);
+      await removeFilesOf(driver, files, photos);
     },
 
     async lastWriteEpochDay(todayEpochDay) {

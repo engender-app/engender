@@ -524,25 +524,18 @@ const SECTIONS = [
       has_photo: { field: 'hasPhoto', bool: true }
     }
   }),
-  flat({
+  section({
     name: 'revisits',
     // A day chosen once to read an entry again is scheduling metadata about
     // this device, not something the person would hand to a clinician in a
     // structure file - the same judgement letters and reminders above
-    // already made. `entry_id` already holds the owning entry's own uuid
-    // (schema.ts), so this needs no rowid remap on restore, the
-    // reason it can stay flat at all.
+    // already made. Older archives may carry a revisit without its trashed
+    // entry, so restore checks the owner before inserting it.
     travels: 'none',
-    table: 'revisit',
-    identity: 'uuid',
-    orderBy: 'target_epoch_day, id',
-    columns: {
-      uuid: 'id',
-      entry_id: 'entryId',
-      entry_epoch_day: 'entryEpochDay',
-      created_epoch_day: 'createdEpochDay',
-      target_epoch_day: 'targetEpochDay'
-    }
+    after: ['entries'],
+    discard: ['DELETE FROM revisit'],
+    read: read.readRevisits,
+    apply: apply.applyRevisits
   }),
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
      no children, no built-ins - nothing ships seeded, so every row is the
