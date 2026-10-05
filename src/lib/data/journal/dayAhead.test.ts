@@ -299,3 +299,24 @@ test('a test may register a section of its own and read it back through the same
 
   assert.deepEqual(marks, [{ kind: 'milestone', epochDay: TODAY }]);
 });
+
+
+test('selected kinds read only their own facts and preserve default marks', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const calls: string[] = [];
+  const area = makeDayAheadArea(journal, [
+    { key: 'appointment', covers: [], tables: [], read: async () => { calls.push('appointment'); return [TODAY + 1]; } },
+    { key: 'doseSlot', covers: [], tables: [], read: async () => { calls.push('doseSlot'); return [TODAY + 3, TODAY + 2]; } }
+  ]);
+  assert.deepEqual(await area.getDayAhead(TODAY, TODAY + 30, TODAY, ['doseSlot']), [
+    { kind: 'doseSlot', epochDay: TODAY + 2 },
+    { kind: 'doseSlot', epochDay: TODAY + 3 }
+  ]);
+  assert.deepEqual(calls, ['doseSlot']);
+  calls.length = 0;
+  assert.deepEqual(await area.getDayAhead(TODAY, TODAY + 30, TODAY, []), []);
+  assert.deepEqual(calls, []);
+  const all = await area.getDayAhead(TODAY, TODAY + 30, TODAY);
+  assert.deepEqual(calls, ['appointment', 'doseSlot']);
+  assert.deepEqual(all.map((mark) => mark.kind), ['appointment', 'doseSlot', 'doseSlot']);
+});
