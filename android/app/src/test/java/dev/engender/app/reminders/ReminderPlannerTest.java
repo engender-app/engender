@@ -43,6 +43,17 @@ public class ReminderPlannerTest {
     }
 
     @Test
+    public void unanchoredLegacyWeeklyRuleIsNotScheduled() throws Exception {
+        JSONObject rule = new JSONObject()
+            .put("enabled", true)
+            .put("time", "20:00")
+            .put("recurrence", "WEEKLY");
+
+        ZonedDateTime now = ZonedDateTime.of(2026, 8, 11, 10, 0, 0, 0, ZONE);
+        assertNull(ReminderPlanner.nextReminder(rule, now));
+    }
+
+    @Test
     public void checkInSkipsTodayWhenThereIsAlreadyAnEntry() {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 10, 0, 0, 0, ZONE);
         ZonedDateTime next = ReminderPlanner.nextCheckIn("21:00", now, true);
