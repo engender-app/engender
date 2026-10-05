@@ -90,7 +90,7 @@
   "ak_no_lock_title": "Najpierw ustaw blokadę ekranu",
   "ak_plaintext_journal": "Na tym telefonie jest jeszcze dziennik sprzed szyfrowania. Najpierw zainstaluj wersję, która go zaszyfruje, a potem wróć do tej.",
   "ak_prompt_cancel": "Anuluj",
-  "ak_prompt_subtitle": "Odblokuj, żeby odszyfrować swoje zapiski.",
+  "ak_prompt_subtitle": "Odblokuj, żeby odszyfrować zapiski.",
   "ak_prompt_title": "Otwórz dziennik",
   "ak_unavailable": "Na tym urządzeniu engender nie może sprawdzić odcisku palca ani twarzy.",
   "ak_unenrolled": "Na tym urządzeniu nie ma zapisanego odcisku palca ani twarzy.",
