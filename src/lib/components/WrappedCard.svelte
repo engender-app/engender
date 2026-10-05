@@ -20,7 +20,7 @@
   {/if}
   {#if content.stats.length}
     <div class="wrapped-stats" data-wrapped-card-stats>
-      {#each content.stats as stat (stat.label)}
+      {#each content.stats as stat}
         <div class="wrapped-stat" data-wrapped-stat>
           <strong>{stat.value}</strong>
           <span>{stat.label}</span>
