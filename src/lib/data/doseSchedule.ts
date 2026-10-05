@@ -334,10 +334,41 @@ export interface Adherence {
   unmatched: DoseEvent[];
 }
 
+/** How many days off its slot's own day a dose may sit and still fill that
+    slot (after-release ticket 01, amending ADR-0086). Kept under half the gap
+    between two slots, so a dose can never be in reach of two different slot
+    days: a weekly injection taken up to three days late or early is still
+    that week's, and a daily schedule (or an every-other-day one, where a
+    one-day-late dose is exactly as near the next slot) stays same-day only.
+
+    A weekday recurrence's gaps differ round the week, Monday and Thursday
+    being three days and then four, and the narrower gap decides. A schedule
+    that expects nothing has no gap to halve and answers zero. */
+export function slotToleranceDays(schedule: Pick<DoseSchedule, 'recurrence'>): number {
+  let gap: number;
+  if (schedule.recurrence.kind === 'everyNDays') {
+    gap = schedule.recurrence.everyNDays;
+  } else {
+    const days = [...new Set(schedule.recurrence.weekdays)].sort((a, b) => a - b);
+    if (days.length === 0) return 0;
+    gap = days.reduce((narrowest, day, i) => {
+      const next = i + 1 < days.length ? days[i + 1] : days[0] + 7;
+      return Math.min(narrowest, next - day);
+    }, 7);
+  }
+  return Number.isFinite(gap) && gap >= 1 ? Math.ceil(gap / 2) - 1 : 0;
+}
+
 /** Pairs doses to slots by position within their day: a day's doses, oldest
     first, fill that day's slots in order. Positional rather than nearest-time
     because the schedule holds no times of day to be near - "twice daily" says
     two, not 8am and 8pm.
+
+    Then, with `toleranceDays` above zero (slotToleranceDays), each dose still
+    unpaired fills the nearest slot left open within that many days, oldest
+    dose first. A dose on a slot's own day always wins it before any late or
+    early one is considered, so the second step only ever fills a slot nobody
+    logged on the day. Zero, the default, is the old same-day pairing.
 
     `doses` must already be scoped to the same episode whose schedule produced
     `slots` - attributeDose is how a caller does that (regimenEpisode.ts).
@@ -348,7 +379,8 @@ export interface Adherence {
 export function adherence(
   slots: readonly DoseSlot[],
   doses: readonly DoseEvent[],
-  pauses: readonly DosePause[]
+  pauses: readonly DosePause[],
+  toleranceDays = 0
 ): Adherence {
   const expected = slots.filter((slot) => !pauses.some((pause) => pauseCoversDay(pause, slot.epochDay)));
 
@@ -361,11 +393,32 @@ export function adherence(
   }
 
   const matched = new Set<DoseEvent>();
-  const rows = expected.map((slot) => {
+  const rows: AdherenceRow[] = expected.map((slot) => {
     const dose = byDay.get(slot.epochDay)?.[slot.indexInDay] ?? null;
     if (dose) matched.add(dose);
     return { slot, dose };
   });
+
+  if (toleranceDays > 0) {
+    for (const [day, onDay] of byDay) {
+      for (const dose of onDay) {
+        if (matched.has(dose)) continue;
+        /* `rows` is chronological, so on a tie (two open slots on one day)
+           the strict comparison keeps the earlier one. */
+        let nearest: AdherenceRow | null = null;
+        for (const row of rows) {
+          if (row.dose !== null) continue;
+          const distance = Math.abs(row.slot.epochDay - day);
+          if (distance > toleranceDays) continue;
+          if (!nearest || distance < Math.abs(nearest.slot.epochDay - day)) nearest = row;
+        }
+        if (nearest) {
+          nearest.dose = dose;
+          matched.add(dose);
+        }
+      }
+    }
+  }
 
   const unmatched = [...byDay.values()].flat().filter((dose) => !matched.has(dose));
   return { rows, unmatched };
@@ -431,7 +484,7 @@ export function nearestOpenSlotDistance(
   const period = schedule.recurrence.kind === 'everyNDays' ? Math.max(schedule.recurrence.everyNDays, 1) : 7;
   const radius = Math.min(period, maxRadiusDays);
   const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay - radius, todayEpochDay + radius);
-  const { rows } = adherence(slots, doses, pauses);
+  const { rows } = adherence(slots, doses, pauses, slotToleranceDays(schedule));
   const distances = rows.filter((row) => row.dose === null).map((row) => Math.abs(row.slot.epochDay - todayEpochDay));
   return distances.length > 0 ? Math.min(...distances) : null;
 }
@@ -520,7 +573,8 @@ function autoLogTimestamp(slot: DoseSlot, dosesPerDay: number): number {
  *
  * Which slots are open is `adherence`'s answer, not a second rule: a day a
  * pause covers expects nothing, a hand-logged dose fills the slot it sits
- * in, and a dose this pass wrote on an earlier run fills its slot the same
+ * in (or the one it was a few days late or early for, slotToleranceDays),
+ * and a dose this pass wrote on an earlier run fills its slot the same
  * way - which is what makes running it again write nothing. There is no
  * stored high-water mark to keep in step with the log.
  *
@@ -538,7 +592,7 @@ export function autoLogSlots(
   if (from === null) return [];
 
   const slots = expectedSlots(schedule, anchorEpochDay, from, todayEpochDay - 1);
-  const { rows } = adherence(slots, doses, pauses);
+  const { rows } = adherence(slots, doses, pauses, slotToleranceDays(schedule));
   return rows
     .filter((row) => row.dose === null)
     .map((row) => ({ slot: row.slot, timestamp: autoLogTimestamp(row.slot, schedule.dosesPerDay) }));

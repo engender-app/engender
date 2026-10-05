@@ -17,10 +17,11 @@ import {
   matchDoseRoute,
   nearestOpenSlotDistance,
   pauseCoversDay,
-  siteRecency
+  siteRecency,
+  slotToleranceDays
 } from './doseSchedule.ts';
 import type { InjectionSiteKey, RouteOption } from './doseSchedule.ts';
-import { startOfDayTimestamp } from './epochDay.ts';
+import { epochDayFromLocalDate, startOfDayTimestamp } from './epochDay.ts';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types.ts';
 
 const schedule = (
@@ -648,4 +649,99 @@ test('canAutoLog reads a route written in the app\'s own words, whichever langua
   const polish: RouteOption[] = [{ value: 'im', label: 'Domięśniowo' }];
   assert.equal(canAutoLog(schedule(1, 1, amounts), 'domięśniowo', []), false);
   assert.equal(canAutoLog(schedule(1, 1, amounts), 'domięśniowo', polish), true);
+});
+
+/* A dose taken on a different day from its slot (after-release ticket 01,
+   L03-02). Pairing used to be same-day only, so a weekly injection logged a
+   day late left its slot open and the auto-log pass filled it with a second,
+   invented dose. A dose now fills an open slot within the schedule's
+   tolerance, which is under half the gap between slots, so it can never sit
+   within reach of two different slot days. */
+
+test('slotToleranceDays stays under half the gap between slots', () => {
+  assert.equal(slotToleranceDays(schedule(1, 1)), 0);
+  assert.equal(slotToleranceDays(schedule(2, 1)), 0);
+  assert.equal(slotToleranceDays(schedule(3, 1)), 1);
+  assert.equal(slotToleranceDays(schedule(7, 1)), 3);
+  assert.equal(slotToleranceDays(schedule(14, 1)), 6);
+  assert.equal(slotToleranceDays(weekdaySchedule([1])), 3);
+  /* Monday and Thursday: gaps of three and four days, and the narrower one decides. */
+  assert.equal(slotToleranceDays(weekdaySchedule([1, 4])), 1);
+  /* Saturday and Monday wrap round the week: a two-day gap. */
+  assert.equal(slotToleranceDays(weekdaySchedule([6, 1])), 0);
+  assert.equal(slotToleranceDays(schedule(0, 1)), 0);
+  assert.equal(slotToleranceDays(weekdaySchedule([])), 0);
+});
+
+test('a dose logged a day late fills its slot instead of coming back unmatched', () => {
+  const slots = expectedSlots(schedule(7, 1), 100, 100, 100);
+  const late = dose(101, 9);
+  const { rows, unmatched } = adherence(slots, [late], [], slotToleranceDays(schedule(7, 1)));
+  assert.equal(rows[0].dose, late);
+  assert.deepEqual(unmatched, []);
+});
+
+test('with no tolerance handed in, pairing is same-day only, as before', () => {
+  const slots = expectedSlots(schedule(7, 1), 100, 100, 100);
+  const { rows, unmatched } = adherence(slots, [dose(101, 9)], []);
+  assert.equal(rows[0].dose, null);
+  assert.equal(unmatched.length, 1);
+});
+
+test('a dose on the slot\'s own day wins it over a late one, and the late one stays an extra', () => {
+  const slots = expectedSlots(schedule(7, 1), 100, 100, 100);
+  const onTime = dose(100, 9);
+  const late = dose(101, 9);
+  const { rows, unmatched } = adherence(slots, [late, onTime], [], 3);
+  assert.equal(rows[0].dose, onTime);
+  assert.deepEqual(unmatched, [late]);
+});
+
+test('a dose past the tolerance is not stretched back to a slot', () => {
+  const slots = expectedSlots(schedule(7, 1), 100, 100, 100);
+  const { rows, unmatched } = adherence(slots, [dose(104, 9)], [], 3);
+  assert.equal(rows[0].dose, null);
+  assert.equal(unmatched.length, 1);
+});
+
+test('an early dose fills the slot it was early for', () => {
+  const slots = expectedSlots(schedule(7, 1), 100, 100, 107);
+  const early = dose(106, 9);
+  const { rows } = adherence(slots, [dose(100, 9), early], [], 3);
+  assert.equal(rows[1].dose, early);
+});
+
+test('a late dose fills the first open slot of a twice-a-day day', () => {
+  const slots = expectedSlots(schedule(7, 2), 100, 100, 100);
+  const onTime = dose(100, 9);
+  const late = dose(101, 9);
+  const { rows, unmatched } = adherence(slots, [onTime, late], [], 3);
+  assert.deepEqual(
+    rows.map((row) => row.dose),
+    [onTime, late]
+  );
+  assert.deepEqual(unmatched, []);
+});
+
+test('a late dose is matched to one slot only', () => {
+  const slots = expectedSlots(schedule(3, 1), 100, 100, 103);
+  /* Day 101 is one day after the slot on 100 and two before 103: it belongs to 100. */
+  const { rows } = adherence(slots, [dose(101, 9)], [], slotToleranceDays(schedule(3, 1)));
+  assert.deepEqual(
+    rows.map((row) => row.dose !== null),
+    [true, false]
+  );
+});
+
+test('the late-Tuesday case: a weekly Monday injection logged on Tuesday writes no auto-logged dose', () => {
+  const monday = epochDayFromLocalDate(new Date(2026, 8, 28));
+  const tuesday = monday + 1;
+  const wednesday = monday + 2;
+  const weekly = schedule(7, 1, [{ dose: 5, doseUnit: 'mg' }], monday);
+  assert.deepEqual(autoLogSlots(weekly, monday, [dose(tuesday, 19)], [], wednesday), []);
+});
+
+test('nearestOpenSlotDistance counts a slot a late dose filled as filled', () => {
+  /* Weekly from day 100, the dose logged on 101, today 102: no open slot within three days. */
+  assert.equal(nearestOpenSlotDistance(schedule(7, 1), 100, [dose(101, 9)], [], 102, 3), null);
 });
