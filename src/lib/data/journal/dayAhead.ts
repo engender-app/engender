@@ -36,9 +36,7 @@
    `todayEpochDay` arrives as an argument, the same as every pure module
    above this seam. */
 
-import { activeEpisodesAt } from '../regimenEpisode';
 import { expectedSlots, isDailySchedule, pauseCoversDay } from '../doseSchedule';
-import { startOfDayTimestamp } from '../epochDay';
 import type { TableName } from '../live/writes';
 import type { ArchiveSectionName } from './archiveSections';
 import type { AppointmentsArea } from './appointments';
@@ -209,12 +207,11 @@ const SECTIONS = [
       return reading.letters.getUnlockDaysInRange(range.from, range.to);
     }
   }),
-  /* A dose slot, only where the active schedule is not daily (ADR-0067): a
+  /* A dose slot, only where the schedule is not daily (ADR-0067): a
      daily slot would mark every cell a calendar could draw, which is
-     wallpaper rather than information. Every active episode is asked, the
-     same set `careSpine.ts` now draws a lane each for (phase 11 ticket 10;
-     before it, the rail picked one episode and this section was already
-     the wider read). A pause suppresses a slot the
+     wallpaper rather than information. Every episode the range meets is
+     asked (phase 11 ticket 10 made it every active one; after-release
+     ticket 01 every one in the range, bounded by its own end). A pause suppresses a slot the
      same way it does everywhere else a schedule is read against one
      (doseSchedule.ts's own `adherence`). */
   section({
@@ -224,19 +221,26 @@ const SECTIONS = [
     read: async (reading) => {
       const range = stillAhead(reading);
       if (!range) return [];
-      const { regimen, doses, todayEpochDay } = reading;
+      const { regimen, doses } = reading;
       const [episodes, schedules, pauses] = await Promise.all([
         regimen.getEpisodes(),
         doses.getSchedules(),
         doses.getPauses()
       ]);
-      const active = activeEpisodesAt(episodes, startOfDayTimestamp(todayEpochDay));
+      /* Every episode whose span meets the range, not only the ones running
+         today, and each one's slots stopped at its own planned end
+         (after-release ticket 01): a course that ends on Friday expects
+         nothing the week after, and one that starts next week expects its
+         first dose there even though nothing is running yet. */
       const days: number[] = [];
-      for (const episode of active) {
+      for (const episode of episodes) {
+        if (episode.startEpochDay > range.to) continue;
+        const to = Math.min(range.to, episode.endEpochDay ?? range.to);
+        if (to < range.from) continue;
         const schedule = schedules.find((s) => s.episodeId === episode.id);
         if (!schedule || isDailySchedule(schedule)) continue;
         const ownPauses = pauses.filter((p) => p.episodeId === episode.id);
-        for (const slot of expectedSlots(schedule, episode.startEpochDay, range.from, range.to)) {
+        for (const slot of expectedSlots(schedule, episode.startEpochDay, range.from, to)) {
           if (ownPauses.some((pause) => pauseCoversDay(pause, slot.epochDay))) continue;
           days.push(slot.epochDay);
         }
