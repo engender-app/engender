@@ -2675,6 +2675,8 @@
   "rem_enable_aria": "Włącz {title}",
   "rem_hide_titles_sub": "Ukryj nazwy przypomnień, afirmacje i szczegóły powiadomień. Godziny przypomnień i treść codziennego pytania pozostają widoczne, także na ekranie blokady.",
   "rem_hide_titles_title": "Ukryj wrażliwe tytuły",
+  "rem_missing_action": "Wróć do przypomnień",
+  "rem_missing_title": "Tego przypomnienia już nie ma",
   "rem_name_label": "Nazwa",
   "rem_name_placeholder": "np. plaster z estradiolem",
   "rem_new_title": "Nowe przypomnienie",

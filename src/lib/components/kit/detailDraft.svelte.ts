@@ -6,13 +6,17 @@
    that is the whole point of the module: a screen that captured
    `page.params.id` into a const kept the first record's draft forever when
    SvelteKit reused the component across two ids, and the two screens on
-   this module cannot write that line any more. */
+   this module cannot write that line any more.
+
+   Leaving a changed draft asks first, by default (leaveGuard.ts). A screen
+   renders the question with `<DiscardSheet guard={detail.guard} />`. */
 
 import { page } from '$app/state';
 import { liveQuery, type LiveQuery } from '$lib/data/live/journal.svelte';
 import type { Journal } from '$lib/data/journal/journal';
 import { answersFor, draftFor, fillDecision } from './detailDraft.ts';
 import { sameDraft, snapshotDraft } from './recordEditor.ts';
+import { leaveGuard, type LeaveGuard } from './leaveGuard.svelte';
 
 type DetailDraftOptions<TRecord, TDraft> = {
   /** Find the record this id names. Not called for a new one. */
@@ -21,6 +25,11 @@ type DetailDraftOptions<TRecord, TDraft> = {
   blank: () => TDraft;
   /** The draft for one that does. */
   fromRecord: (record: TRecord) => TDraft;
+  /** A save in flight: leaving waits for it rather than asking. */
+  saving?: () => boolean;
+  /** False for a screen that saves on every change, so there is never a
+      draft to lose and Back never asks. */
+  guardLeaving?: boolean;
 };
 
 type DetailDraft<TRecord, TDraft> = {
@@ -34,6 +43,8 @@ type DetailDraft<TRecord, TDraft> = {
   /** The editable draft. Deeply reactive, so a field binds straight to it. */
   draft: TDraft;
   readonly changed: boolean;
+  /** Holds a departure while `changed`, and drops the draft on Discard. */
+  readonly guard: LeaveGuard;
   /** Advance the baseline after a successful write. An independent action
       can supply its committed record while retaining unrelated draft edits. */
   commit(record?: TRecord): void;
@@ -81,6 +92,16 @@ export function detailDraft<TRecord, TDraft extends object>(
     baseline = snapshotDraft(draft);
   });
 
+  const discard = () => {
+    if (baseline !== null) draft = snapshotDraft(baseline);
+  };
+  const changed = () => baseline !== null && !sameDraft(draft, baseline);
+  const guard = leaveGuard({
+    holding: () => options.guardLeaving !== false && changed(),
+    busy: options.saving,
+    onDiscard: discard
+  });
+
   return {
     get id() {
       return routeId();
@@ -98,14 +119,13 @@ export function detailDraft<TRecord, TDraft extends object>(
       draft = value;
     },
     get changed() {
-      return baseline !== null && !sameDraft(draft, baseline);
+      return changed();
     },
+    guard,
     commit(record?: TRecord) {
       baseline = snapshotDraft(record === undefined ? draft : options.fromRecord(record));
     },
-    discard() {
-      if (baseline !== null) draft = snapshotDraft(baseline);
-    },
+    discard,
     get loading() {
       return answer === undefined;
     },
