@@ -726,6 +726,85 @@ try {
 } catch (e) { fail('entry to entry', e); }
 });
 
+/* 3c. leaving a changed entry asks first (phase 15 ticket 04, audit
+   UX-01). The editor used to drop an edited entry or a half-written new one
+   on every ordinary departure, with no question. Each of the four exits is
+   driven with the draft changed: the header arrow, browser back, Android's
+   hardware back (its listener calls window.history.back(), so that is what
+   is driven here) and a nav tab. Keep editing keeps the text; Discard goes
+   and leaves the stored entry as it was. */
+await flow('entry editor asks before leaving', async () => {
+try {
+  const asked = async (exit) => {
+    await page.waitForSelector('[data-discard-record]', { timeout: 5000 }).catch(() => {
+      throw new Error(`${exit} left the editor without asking`);
+    });
+  };
+  const keep = async (exit, typed) => {
+    await page.locator('[data-keep-editing]').click();
+    await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
+    if (!/^\/entry\//.test(new URL(page.url()).pathname)) throw new Error(`${exit}: Keep editing still left, at ${page.url()}`);
+    const note = await page.locator('#ed-note').inputValue();
+    if (note !== typed) throw new Error(`${exit}: Keep editing lost the text, the note reads "${note}"`);
+  };
+
+  // An existing entry, reached in-app so history has somewhere to go back to.
+  await fresh('/day/today');
+  await page.waitForSelector('[data-entry-card]');
+  await page.locator('[data-entry-card]').first().click();
+  // Save comes on once the stored entry has filled the draft.
+  await page.waitForSelector('[data-save]:not([disabled])');
+  const stored = await page.locator('#ed-note').inputValue();
+  const typed = `${stored} - and a line nobody saved`;
+  await page.locator('#ed-note').fill(typed);
+
+  await page.locator('[data-screen-back]').first().click();
+  await asked('the header arrow');
+  await keep('the header arrow', typed);
+
+  await page.goBack({ timeout: 3000 }).catch(() => {});
+  await asked('browser back');
+  await keep('browser back', typed);
+
+  await page.evaluate(() => window.history.back());
+  await asked('Android back');
+  await keep('Android back', typed);
+
+  await page.locator('[data-nav-item="calendar"]').first().click();
+  await asked('a nav tab');
+  await keep('a nav tab', typed);
+
+  await page.locator('[data-screen-back]').first().click();
+  await asked('the header arrow, again');
+  await page.locator('[data-discard-record]').click();
+  await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
+  await page.locator('[data-entry-card]').first().click();
+  await page.waitForSelector('[data-save]:not([disabled])');
+  await page.waitForFunction((want) => document.querySelector('#ed-note')?.value === want, stored, { timeout: 5000 }).catch(async () => {
+    throw new Error(`Discard did not leave the stored note alone: "${await page.locator('#ed-note').inputValue()}"`);
+  });
+
+  // An unchanged editor still leaves without a question.
+  await page.locator('[data-screen-back]').first().click();
+  await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
+  if (await page.locator('[data-discard-record]').count()) throw new Error('an unchanged entry asked before leaving');
+
+  // A new one: typed into, then Back asks and Keep editing keeps it.
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('[data-save]:not([disabled])');
+  await page.locator('#ed-note').fill('A new entry, not saved yet.');
+  await page.evaluate(() => window.history.back());
+  await asked('back from a new entry');
+  await keep('back from a new entry', 'A new entry, not saved yet.');
+  await page.locator('[data-nav-item="home"]').first().click();
+  await asked('a nav tab from a new entry');
+  await page.locator('[data-discard-record]').click();
+  await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
+  ok('the entry editor asks on all four exits, keeps on Keep editing, leaves on Discard');
+} catch (e) { fail('entry editor asks before leaving', e); }
+});
+
 /* 4. calendar → open the month → day → add another. The Journal door opens
       on the month folded to a strip (redesign ticket 10), whose cells are
       not links: 7px is not a tap target. So the flow starts by opening it,
