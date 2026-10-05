@@ -82,8 +82,9 @@ On Android, the launcher icon follows your chosen palette.
 Disguise mode uses a neutral name and icon and hides pride motifs. An app
 lock controls access to the journal, and lock screens show no entries or
 other journal data. Lock timing decides when the lock comes back: as soon as
-you leave the app, after one or five minutes away, or only on a restart. Android reminders use a generic label by default;
-you can choose to show their titles instead.
+you leave the app, after one or five minutes away, or only on a restart.
+Android reminders use a generic label by default; you can choose to show
+their titles instead.
 
 The layout adapts to the space available, with a bottom navigation bar on
 narrow screens and a rail on wider ones. The app uses bundled fonts and

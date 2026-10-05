@@ -881,7 +881,6 @@
     line-height: 1.55;
   }
 
-
   /* The frame that travels between flags: the chosen block's own 3px
      --text frame (screens.css), lifted off the block and moved, so a pick
      reads as the one frame going somewhere rather than one going out and

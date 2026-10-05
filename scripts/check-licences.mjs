@@ -85,6 +85,7 @@ export const READ_BY_HAND = {
  * @property {string} name
  * @property {string} path     where in node_modules it landed
  * @property {string | null} [version]
+ * @property {boolean} [dev] needed only to develop, never shipped
  * @property {string | null} licence
  */
 
@@ -133,6 +134,7 @@ export function lockfilePackages(root = '.') {
       name: path.split('node_modules/').pop() ?? path,
       path,
       version: entry.version ?? null,
+      dev: entry.dev === true,
       licence: licence ?? null
     });
   }
