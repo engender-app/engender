@@ -78,6 +78,39 @@ await block('release blockers 03 duplicate display values', 11, async () => {
   }
 });
 
+await block('archived wear kinds', 8, async () => {
+  const r = await load('/wear-labels.html', 'wear-labels-probe');
+  if (r.error) throw new Error(r.error);
+  const unknownKinds = ['future-wear', 'constructor', '__proto__', 'toString'];
+  const unknown = r.accessorResults;
+  const rendered = r.rendered;
+  const check = (condition, label) => condition ? ok(label) : fail(label, JSON.stringify(r));
+  check(unknown.length === 4 && unknownKinds.every(kind =>
+    unknown.some(row => row.kind === kind && row.labels?.length === 10 && row.labels.every(label => label === kind))),
+    'all wear labels preserve unknown archived kinds, including inherited property names');
+  check(unknown.every(row => row.safety?.facts.length === 0 && row.safety.source === ''),
+    'unknown wear kinds receive no invented safety advice');
+  const messages = JSON.parse(await readFile(`${here}/../../messages/en.json`, 'utf8'));
+  const labelKeys = [
+    'wear_kind', 'wear_session_add_aria', 'wear_session_new_sheet', 'wear_session_edit_sheet',
+    'wear_session_running_sheet', 'wear_session_running_card', 'wear_session_delete_sheet',
+    'wear_session_reminder_title', 'tile_wear_title', 'coming_back_wear_row'
+  ];
+  check(r.known.length === 3 && r.known.every(row =>
+    row.labels.length === 10 && row.labels.every((label, index) => label === messages[`${labelKeys[index]}_${row.kind}`])),
+    'known wear kinds retain every catalogue translation');
+  check(r.known.every(row => row.safety.facts.length === 3 &&
+    row.safety.facts.every((fact, index) => fact === messages[`wear_facts_${row.kind}_${index + 1}`]) &&
+    row.safety.source === messages[`wear_facts_${row.kind}_source`]),
+    'known wear kinds retain their safety facts and sources');
+  const everyKind = (field) => rendered.length === 4 && unknownKinds.every(kind =>
+    rendered.some(row => row.kind === kind && row[field] === true));
+  check(everyKind('running'), 'the Wear screen renders running sessions with unknown kinds');
+  check(everyKind('add'), 'the Wear screen names its add control for an unknown latest kind');
+  check(everyKind('row'), 'the Wear screen renders completed sessions with unknown kinds');
+  check(everyKind('hub'), 'the More hub renders running wear sessions with unknown kinds');
+});
+
 await block('failed encrypted pool initialization preserves journal data', 8, async () => {
   const r = await load('/pool-initialization.html', 'pool-initialization');
   if (r.error) throw new Error(r.error);
