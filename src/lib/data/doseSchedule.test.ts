@@ -745,3 +745,34 @@ test('nearestOpenSlotDistance counts a slot a late dose filled as filled', () =>
   /* Weekly from day 100, the dose logged on 101, today 102: no open slot within three days. */
   assert.equal(nearestOpenSlotDistance(schedule(7, 1), 100, [dose(101, 9)], [], 102, 3), null);
 });
+
+for (const [label, date] of [
+  ['spring', new Date(2026, 2, 29)],
+  ['autumn', new Date(2026, 9, 25)]
+] as const) {
+  test(`autoLogSlots writes noon and eight on the ${label} clock-change day, by the wall clock`, () => {
+    const day = epochDayFromLocalDate(date);
+    const twice = autoLogSlots(autoLogging(1, 2, day), day, [], [], day + 1);
+    assert.deepEqual(
+      twice.map((s) => [new Date(s.timestamp).getHours(), new Date(s.timestamp).getMinutes()]),
+      [
+        [12, 0],
+        [20, 0]
+      ]
+    );
+  });
+}
+
+test('autoLogSlots keeps a four-a-day slot at its minute rather than rounding the hour', () => {
+  const day = epochDayFromLocalDate(new Date(2026, 9, 25));
+  const four = autoLogSlots(autoLogging(1, 4, day), day, [], [], day + 1);
+  assert.deepEqual(
+    four.map((s) => [new Date(s.timestamp).getHours(), new Date(s.timestamp).getMinutes()]),
+    [
+      [12, 0],
+      [14, 40],
+      [17, 20],
+      [20, 0]
+    ]
+  );
+});

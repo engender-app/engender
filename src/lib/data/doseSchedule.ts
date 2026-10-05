@@ -8,7 +8,7 @@
    is logged against it", and stops: no target rate, no streak, no
    good/bad. The comparison is the feature (ticket 02, out of scope). */
 
-import { epochDayFromTimestamp, startOfDayTimestamp, weekdayOfEpochDay } from './epochDay';
+import { epochDayFromTimestamp, timestampAtLocalTime, weekdayOfEpochDay } from './epochDay';
 import { spanCoversDay } from './span';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types';
 
@@ -504,8 +504,6 @@ export function nearestOpenSlotDistance(
 const AUTO_LOG_WINDOW_START_HOUR = 12;
 const AUTO_LOG_WINDOW_END_HOUR = 20;
 
-const HOUR_MS = 3600000;
-
 /** Whether a schedule expects a dose on any day at all - the same three
     guards `expectedSlots` applies before it generates anything, named here
     so a screen can ask the question without generating a range of slots to
@@ -553,13 +551,17 @@ export interface AutoLogSlot {
   timestamp: number;
 }
 
+/** By the wall clock (timestampAtLocalTime), not as an offset from
+    midnight: on the days the clocks change, midnight plus twelve hours is
+    11:00 or 13:00 (after-release ticket 01). */
 function autoLogTimestamp(slot: DoseSlot, dosesPerDay: number): number {
   const span = AUTO_LOG_WINDOW_END_HOUR - AUTO_LOG_WINDOW_START_HOUR;
   const hour =
     dosesPerDay < 2
       ? AUTO_LOG_WINDOW_START_HOUR
       : AUTO_LOG_WINDOW_START_HOUR + (span * slot.indexInDay) / (dosesPerDay - 1);
-  return startOfDayTimestamp(slot.epochDay) + Math.round(hour * HOUR_MS);
+  const minutes = Math.round(hour * 60);
+  return timestampAtLocalTime(slot.epochDay, `${Math.floor(minutes / 60)}:${minutes % 60}`);
 }
 
 /**
