@@ -23,7 +23,7 @@
    problem `WAITING_TABLES` exists for (five reads sitting past an earlier
    `await`) is not this one's. */
 
-import { agenda, agendaPassedWindow, agendaWindow, type Agenda } from './agenda';
+import { agenda, agendaPassedWindow, agendaWindow, type Agenda, type AgendaInput } from './agenda';
 import { DAY_AHEAD_MARK_KINDS, type DayAheadArea, type DayAheadMarkKind } from './journal/dayAhead';
 import type { DosesArea } from './journal/doses';
 
@@ -36,47 +36,13 @@ export interface AgendaAreas {
   doses: DosesArea;
 }
 
-/** What is coming in the week ahead, or null where nothing is - including
-    every time disguise is on.
-
-    `todayEpochDay` is an argument, as it is everywhere in this feature:
-    nothing reads a clock, so a caller passes the same day it drew the rest
-    of its screen with.
-
-    `kinds` is the person's switch list (`shownAgendaKinds`, ticket 05),
-    applied to the marks before they reach the projection rather than to its
-    output: a kind switched off is not a fold's business, so the cap counts
-    only the kinds that are on. Defaulted to every kind for the caller that
-    has no switches to hand. The switches sit above the projection, as
-    ADR-0074 puts it, and this is the one place they touch it.
-
-    `dosePanelCoversEveryDose` is the second thing that can take a kind off
-    the band, and it is not a switch: Today draws a dose panel for as long
-    as a regimen is running, and since phase 11 ticket 03 that panel states
-    the next slot's own day. A `doseSlot` row beside it is the same
-    medication twice - the whole-app audit found the drug stated four ways
-    on one screen - so the kind is withheld while the panel says it.
-    Withheld here rather than dropped from `kinds` at the call site, so the
-    rule is written where the band is assembled and can be tested without a
-    screen.
-
-    What the caller has to have established is that the panel accounts for
-    the *whole* kind, not merely that one is drawn. The panel names one drug
-    and `dayAhead`'s `doseSlot` section reads every active episode, so on
-    two concurrent regimens the panel stands for one of them and the rows
-    for both; `dosePanelCoversEveryRegimen` (liveTiles.ts) is the answer to
-    that question and the flag Today passes. A drug the panel does not stand
-    for keeps its rows, which is what stops the day a schedule expects from
-    being on the screen nowhere at all. ADR-0067 is untouched either way:
-    the kind is still read, and the calendar and the day view still draw
-    it. */
+/** Read the agenda's facts without waiting for the live tiles to decide
+    whether their dose panel covers every regimen. Disguise reads nothing. */
 export async function readAgenda(
   areas: AgendaAreas,
   todayEpochDay: number,
-  disguised: boolean,
-  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
-  dosePanelCoversEveryDose = false
-): Promise<Agenda | null> {
+  disguised: boolean
+): Promise<AgendaInput | null> {
   if (disguised) return null;
 
   const ahead = agendaWindow(todayEpochDay);
@@ -89,7 +55,20 @@ export async function readAgenda(
     areas.doses.getComparison(behind)
   ]);
 
+  return { todayEpochDay, marks, doses, disguised };
+}
+
+/** Apply the current switches and dose-panel coverage to the same facts.
+    Filter before capping, so a withheld dose never takes another row's room.
+    Coverage means every active regimen, not merely a visible dose panel.
+    A panel naming one of two drugs must leave dose-slot marks in the agenda. */
+export function projectAgenda(
+  facts: AgendaInput | null | undefined,
+  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
+  dosePanelCoversEveryDose = false
+): Agenda | null {
+  if (!facts) return null;
   const on = new Set<DayAheadMarkKind>(kinds);
   if (dosePanelCoversEveryDose) on.delete('doseSlot');
-  return agenda({ todayEpochDay, marks: marks.filter((mark) => on.has(mark.kind)), doses, disguised });
+  return agenda({ ...facts, marks: facts.marks.filter((mark) => on.has(mark.kind)) });
 }

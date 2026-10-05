@@ -8,6 +8,8 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
+import { makeStatsArea } from './stats.ts';
+import type { SqliteDriver } from '../sqlite/driver.ts';
 import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from '../safeSpaceNudge.ts';
 
 /** The slider position a euphoria intensity of `intensity` maps to
@@ -1032,4 +1034,29 @@ test('the body map excludes trashed entries, honours the range, and filters by p
   assert.deepEqual(await journal.stats.bodyRegionMap(100, 102, null), [
     { region: 'chest', side: 'dysphoria', value: 80, mixed: false, count: 1, sideCount: 1 }
   ]);
+});
+
+
+test('a recap dispatches every independent read before waiting for worker replies', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-happy'] });
+  const expected = await journal.stats.recap(100, 100);
+  let release!: () => void;
+  const replies = new Promise<void>((resolve) => { release = resolve; });
+  const statements: string[] = [];
+  const driver: SqliteDriver = {
+    ...db,
+    async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      statements.push(sql);
+      await replies;
+      return db.query<Row>(sql, params);
+    }
+  };
+  const pending = makeStatsArea(driver).recap(100, 100);
+  try {
+    assert.equal(statements.length, 5, 'all recap reads must cross before any reply');
+  } finally {
+    release();
+    assert.deepEqual(await pending, expected);
+  }
 });
