@@ -60,8 +60,8 @@ export async function readAgenda(
 
 /** Apply the current switches and dose-panel coverage to the same facts.
     Filter before capping, so a withheld dose never takes another row's room.
-    Coverage means every active regimen, not merely a visible dose panel.
-    A panel naming one of two drugs must leave dose-slot marks in the agenda. */
+    Coverage includes every regimen producing dose-slot marks. A second
+    such regimen preserves the marks; daily or unscheduled regimens do not. */
 export function projectAgenda(
   facts: AgendaInput | null | undefined,
   kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
