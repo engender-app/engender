@@ -8,15 +8,15 @@ import { test, expect } from 'vitest';
 import type { LockAfter } from '../data/prefs/catalogue.ts';
 import { watchLeave } from './leave-lock.ts';
 
-function harness(lockAfter: LockAfter) {
+function harness(lockAfter: LockAfter, { android = false } = {}) {
   let clock = 1_000_000;
   let locks = 0;
   const page = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
   const timing = { value: lockAfter };
-  const native: { __lockOnLeaveFromNative?: () => void; __lockOnReturnFromNative?: () => void } = {};
+  const native: { __lockOnLeaveFromNative?: (ownScreen?: boolean) => void; __lockOnReturnFromNative?: () => void } = {};
   const stop = watchLeave({
     page,
-    native,
+    native: android ? native : undefined,
     lockAfter: () => timing.value,
     lock: () => void locks++,
     now: () => clock
@@ -32,6 +32,7 @@ function harness(lockAfter: LockAfter) {
     hide: () => show('hidden'),
     reveal: () => show('visible'),
     nativeLeave: () => native.__lockOnLeaveFromNative?.(),
+    ownScreenLeave: () => native.__lockOnLeaveFromNative?.(true),
     nativeReturn: () => native.__lockOnReturnFromNative?.(),
     wait: (ms: number) => void (clock += ms),
     setClock: (ms: number) => void (clock = ms)
@@ -45,7 +46,7 @@ test('immediately locks the moment the page is hidden, before anything comes bac
 });
 
 test('native Recents counts an absence while the document stays visible', () => {
-  const app = harness('one-minute');
+  const app = harness('one-minute', { android: true });
   app.nativeLeave();
   app.wait(59_000);
   app.nativeReturn();
@@ -58,11 +59,11 @@ test('native Recents counts an absence while the document stays visible', () => 
 });
 
 test('native Recents follows Immediately, five minutes and restart', () => {
-  const immediate = harness('immediately');
+  const immediate = harness('immediately', { android: true });
   immediate.nativeLeave();
   expect(immediate.locks()).toBe(1);
   for (const timing of ['five-minutes', 'restart'] as const) {
-    const app = harness(timing);
+    const app = harness(timing, { android: true });
     app.nativeLeave();
     app.wait(301_000);
     app.nativeReturn();
@@ -70,19 +71,67 @@ test('native Recents follows Immediately, five minutes and restart', () => {
   }
 });
 
-test('overlapping native and visibility leaves keep the first departure time', () => {
-  const app = harness('one-minute');
-  app.nativeLeave();
-  app.wait(30_000);
+test('on Android a hidden page is not a leave: the activity says when the app left', () => {
+  /* A picker, the camera and a permission dialog all cover the WebView and
+     hide the page without the person leaving the app. Only the activity can
+     tell those apart from Home or Recents (MainActivity's own-system-UI
+     window), so on Android the page's visibility decides nothing. */
+  const app = harness('immediately', { android: true });
   app.hide();
-  app.wait(31_000);
-  app.nativeReturn();
   app.reveal();
+  expect(app.locks()).toBe(0);
+  app.nativeLeave();
+  expect(app.locks()).toBe(1);
+});
+
+test('under immediately, a screen the app opened itself is a minute of grace, not a lock', () => {
+  /* A photo picker, the camera, a folder picker or a permission dialog. The
+     activity cannot see Home or Recents pressed on a screen it does not own,
+     so the time spent there still counts: a picker left open for longer
+     than a minute is treated as the person having gone. */
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  expect(app.locks()).toBe(0);
+  app.wait(59_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(0);
+  app.ownScreenLeave();
+  app.wait(61_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+test('a real leave from inside one of the app\'s own screens still locks at once', () => {
+  /* The screen going off while a picker is up reaches the activity, and is
+     leaving whatever is on top. */
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  app.nativeLeave();
+  expect(app.locks()).toBe(1);
+});
+
+test('the timed choices count time on the app\'s own screens like any other absence', () => {
+  const app = harness('five-minutes', { android: true });
+  app.ownScreenLeave();
+  app.wait(4 * 60_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(0);
+  app.ownScreenLeave();
+  app.wait(5 * 60_000 + 1_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+test('the grace ends with the return, so the next leave is judged on its own', () => {
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  app.nativeReturn();
+  app.nativeLeave();
   expect(app.locks()).toBe(1);
 });
 
 test('stopping removes native leave and return hooks', () => {
-  const app = harness('immediately');
+  const app = harness('immediately', { android: true });
   app.stop();
   app.nativeLeave();
   expect(app.locks()).toBe(0);
