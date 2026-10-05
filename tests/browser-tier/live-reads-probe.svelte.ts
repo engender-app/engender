@@ -25,7 +25,6 @@ import {
   journalIsOpen,
   liveList,
   liveQuery,
-  liveQueryWhen,
   liveQueryWatchingOnly,
   type LiveQuery
 } from '../../src/lib/data/live/journal.svelte.ts';
@@ -545,20 +544,19 @@ async function run() {
     }
   };
 
-  let enabled = $state(false);
   let rejectNext = true;
   let holdNext = false;
   let release: ((value: number) => void) | null = null;
   const attempts: number[] = [];
-  let gated!: LiveQuery<number>;
+  let read!: LiveQuery<number>;
   let sawFailure = false;
-  const destroyGate = $effect.root(() => {
-    gated = liveQueryWhen(() => enabled, async (j) => {
-      attempts.push(performance.now());
+  const destroyQuery = $effect.root(() => {
+    read = liveQuery(async (j) => {
       const count = await j.entries.countAll();
+      attempts.push(performance.now());
       if (rejectNext) {
         rejectNext = false;
-        throw new Error('Injected gated read rejection');
+        throw new Error('Injected read rejection');
       }
       if (holdNext) {
         holdNext = false;
@@ -566,55 +564,38 @@ async function run() {
       }
       return count;
     });
-    $effect(() => { if (gated.failed) sawFailure = true; });
+    $effect(() => { if (read.failed) sawFailure = true; });
   });
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  const disabledCalls = attempts.length;
-  const pendingWhileDisabled = gated.loading;
-  enabled = true;
-  await until(() => !gated.loading, 'the enabled read to retry its first rejection');
+  await until(() => !read.loading, 'the read to retry its first rejection');
   const firstAttempts = attempts.length;
   const firstRetryDelayMs = attempts[1] - attempts[0];
   const failedDuringFirstRetry = sawFailure;
-  const beforeMountedWrite = gated.value!;
+  const beforeMountedWrite = read.value!;
   await journal.entries.upsertEntry({ epochDay: TODAY - 9, mood: 3 });
-  await until(() => gated.value === beforeMountedWrite + 1, 'the mounted gated read to follow an entry write');
-  const valueAfterMountedWrite = gated.value;
+  await until(() => read.value === beforeMountedWrite + 1, 'the mounted read to follow an entry write');
+  const valueAfterMountedWrite = read.value;
 
   rejectNext = true;
   const beforeLaterFailure = attempts.length;
   await journal.entries.upsertEntry({ epochDay: TODAY - 10, mood: 3 });
-  await until(() => gated.failed, 'a later read rejection to report failure');
+  await until(() => read.failed, 'a later read rejection to report failure');
   await new Promise((resolve) => setTimeout(resolve, 80));
   const laterFailureAttempts = attempts.length - beforeLaterFailure;
-  const staleAfterLaterFailure = gated.stale;
+  const staleAfterLaterFailure = read.stale;
 
   holdNext = true;
-  gated.retry();
-  await until(() => release !== null, 'the gated read to be held in flight');
-  enabled = false;
-  flushSync();
-  const beforeDisable = gated.value;
-  release!(100_000);
-  release = null;
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  const disabledResultIgnored = gated.value === beforeDisable && !gated.running;
-  enabled = true;
-  await until(() => !gated.running && !gated.failed, 'the re-enabled read to answer');
-
-  holdNext = true;
-  gated.retry();
+  read.retry();
   await until(() => release !== null, 'the read to be held before disposal');
-  const beforeDispose = gated.value;
-  destroyGate();
+  const beforeDispose = read.value;
+  destroyQuery();
   release!(200_000);
   await new Promise((resolve) => setTimeout(resolve, 80));
 
-  publish({ ...result, readinessGate: {
-    disabledCalls, pendingWhileDisabled, firstAttempts, firstRetryDelayMs, failedDuringFirstRetry,
+  publish({ ...result, readLifecycle: {
+    firstAttempts, firstRetryDelayMs, failedDuringFirstRetry,
     valueAfterMountedWrite, expectedAfterMountedWrite: beforeMountedWrite + 1,
-    laterFailureAttempts, staleAfterLaterFailure, disabledResultIgnored,
-    disposedResultIgnored: gated.value === beforeDispose
+    laterFailureAttempts, staleAfterLaterFailure,
+    disposedResultIgnored: read.value === beforeDispose
   } });
 }
 

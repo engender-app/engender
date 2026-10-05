@@ -32,7 +32,8 @@
      VITE_DEMO=1 npm run build
      node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>]
    Failed warm cases save a diagnostic replay in ci-logs/. --diagnostics
-   captures both warm routes even when the measured guard passes. */
+   captures both warm routes even when the measured guard passes.
+   --read-delay 40 adds controlled worker round trips to expose waterfalls. */
 import { dirname, resolve } from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +49,8 @@ const flag = (name, fallback) => {
 const RUNS = Number(flag('runs', '5'));
 const WARM_MS = 250;
 const COLD_MS = 300;
+const READ_DELAY_MS = Number(flag('read-delay', '0'));
+if (!Number.isFinite(READ_DELAY_MS) || READ_DELAY_MS < 0) throw new Error('--read-delay must be a nonnegative number');
 
 const TILES = {
   '/': `!!document.querySelector('[data-home-reserve="below"] [data-read-reserve-body]')`,
@@ -86,7 +89,7 @@ await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 await page.addInitScript(() => {
   const post = Worker.prototype.postMessage;
   Worker.prototype.postMessage = function(message, ...options) {
-    const delay = message?.op === 'query' ? Math.max(0, (window.__lateReadUntil ?? 0) - performance.now()) : 0;
+    const delay = message?.op === 'query' ? Math.max(window.__queryDelayMs ?? 0, (window.__lateReadUntil ?? 0) - performance.now()) : 0;
     if (delay) setTimeout(() => post.call(this, message, ...options), delay);
     else post.call(this, message, ...options);
   };
@@ -109,11 +112,33 @@ async function waitFor(expression) {
   throw new Error(`timed out waiting for ${expression.slice(0, 80)}`);
 }
 
-async function warm(to) {
+let captureWorkerTiming = false;
+
+async function warm(to, readDelay = 0) {
   const from = to === '/' ? '/stats' : '/';
   await page.goto(`${base}${from}`, { waitUntil: 'networkidle' });
   await waitFor(TILES[from]);
   await page.waitForTimeout(800);
+  await page.evaluate((delay) => { window.__queryDelayMs = delay; }, readDelay);
+  if (captureWorkerTiming) {
+    for (const worker of page.workers()) {
+      if (!worker.url().includes('mc-worker')) continue;
+      await worker.evaluate(() => {
+        const received = new Map();
+        const receive = self.onmessage;
+        self.onmessage = function(event) {
+          received.set(event.data.id, performance.timeOrigin + performance.now());
+          return receive.call(this, event);
+        };
+        const post = self.postMessage;
+        self.postMessage = function(message, ...options) {
+          const timing = { received: received.get(message.id), replied: performance.timeOrigin + performance.now() };
+          received.delete(message.id);
+          return post.call(this, { ...message, diagnosticTiming: timing }, ...options);
+        };
+      });
+    }
+  }
   return page.evaluate(
     FIRST_FRAME(`location.pathname === '${to}' && ${TILES[to]}`, {
       before: `document.querySelector('nav a[href="${to}"]').click();`
@@ -199,13 +224,19 @@ const cases = [
   ['cold Today, shell to tiles', () => cold('/'), COLD_MS],
   ['cold Look back, shell to tiles', () => cold('/stats'), COLD_MS]
 ];
-for (const [name, run, budget, to] of cases) {
+/* Optional fault injection: delay each query equally without serializing
+   its peers. Ordinary CI keeps the original four timing measurements. */
+if (READ_DELAY_MS > 0) cases.push(
+  [`${READ_DELAY_MS}ms worker round trips, Today`, () => warm('/', READ_DELAY_MS), WARM_MS, '/', READ_DELAY_MS],
+  [`${READ_DELAY_MS}ms worker round trips, Look back`, () => warm('/stats', READ_DELAY_MS), WARM_MS, '/stats', READ_DELAY_MS]
+);
+for (const [name, run, budget, to, readDelay = 0] of cases) {
   const times = [];
   for (let i = 0; i < RUNS; i++) times.push(await run());
   const missing = times.some((t) => t == null);
   const m = missing ? null : median(times);
   const ok = !missing && m <= budget;
-  timingResults.push({ name, to, budget, times, median: m, ok });
+  timingResults.push({ name, to, readDelay, budget, times, median: m, ok });
   if (!ok) failed = true;
   console.log(
     `${ok ? 'ok  ' : 'FAIL'} ${name}: median ${m == null ? 'never' : Math.round(m) + 'ms'} (budget ${budget}ms), ` +
@@ -327,6 +358,7 @@ if (diagnosticCases.length) {
   const report = { timings: timingResults, pageErrors: [...errors], browser: browser.version(), source: process.env.GITHUB_SHA ?? null, replays: [] };
   try {
     await page.addInitScript(() => {
+      Error.stackTraceLimit = 30;
       let events = [];
       const record = (kind, detail = {}) => events.push({ at: performance.now(), kind, ...detail });
       document.addEventListener('click', (event) => {
@@ -342,9 +374,14 @@ if (diagnosticCases.length) {
       Worker.prototype.postMessage = function(message, ...options) {
         if (!workers.has(this)) {
           workers.add(this);
-          this.addEventListener('message', (event) => record('worker-result', { id: event.data?.id, ok: event.data?.ok }));
+          this.addEventListener('message', (event) => record('worker-result', { id: event.data?.id, ok: event.data?.ok, timing: event.data?.diagnosticTiming }));
         }
-        record('worker-post', { id: message?.id, op: message?.op });
+        record('worker-post', {
+          id: message?.id,
+          op: message?.op,
+          sql: message?.op === 'query' ? message.args?.sql : undefined,
+          stack: message?.op === 'query' ? new Error().stack : undefined
+        });
         return post.call(this, message, ...options);
       };
       const startTransition = document.startViewTransition;
@@ -375,11 +412,12 @@ if (diagnosticCases.length) {
         for (const task of list.getEntries()) record('longtask', { start: task.startTime, duration: task.duration });
       }).observe({ type: 'longtask' });
     });
-    for (const { name, to } of diagnosticCases) {
+    captureWorkerTiming = true;
+    for (const { name, to, readDelay } of diagnosticCases) {
       const replay = { name };
       report.replays.push(replay);
       try {
-        replay.observedMs = await warm(to);
+        replay.observedMs = await warm(to, readDelay);
         Object.assign(replay, await page.evaluate(() => ({
           ...window.__tileArrivalDiagnostics(),
           environment: {

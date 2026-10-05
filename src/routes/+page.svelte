@@ -48,7 +48,7 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
-  import { journal, liveList, liveQuery, liveQueryWhen } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
@@ -57,7 +57,7 @@
   import { appWordmark } from '$lib/disguise/identity';
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { readAgenda } from '$lib/data/agendaReads';
+  import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence } from '$lib/data/agenda';
   import { fallbackReading, pinnedRows, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
@@ -263,45 +263,17 @@
     }
   });
 
-  /* The agenda (ticket 04, ADR-0074): one live read over the two fetches
-     `readAgenda` makes, absent rather than empty, and absent for every
-     input while disguise is on - which the read checks before it asks the
-     journal anything. Both preferences it depends on are read inside the
-     query's own run, where a change to either re-runs it: disguise, and
-     the person's switches over the five kinds (ticket 05), applied to the
-     marks before the projection so a kind switched off is not what pushes
-     a row into the fold. Its fold is ADR-0039's shape at the agenda's own
-     cap, disclosed in place and never a route.
-
-     Phase 11 ticket 03: a `doseSlot` row is withheld while the dose panel
-     accounts for every dose slot the band could draw, because the panel now
-     carries the next slot's own day and the two together were the same
-     medication stated twice. Not merely "a panel is showing": the panel
-     names one drug and the band's rows cover every running regimen, so
-     `dosePanelCoversEveryRegimen` is the grid's own answer to whether the
-     one stands for the other (liveTiles.ts).
-
-     Read off the grid through a `$derived` boolean rather than inside the
-     query's run: the grid is rebuilt on every tick of the wear timer's
-     clock, so a run tracking it would re-issue the whole forward read once
-     a second. A boolean only wakes the query when it flips. */
+  /* Read the facts alongside the tiles. Only the projection needs the
+     dose panel's coverage; waiting for all tiles before issuing SQL adds
+     their round trips to the agenda's own. Switches and coverage changes
+     project these same facts without another read. */
   let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
-  /* Wait for the grid's dose-panel answer before reading the agenda, so
-     its first read is not repeated when the grid finishes composing.
-     The answer carries that input so the reserve also waits for later
-     coverage changes. An unanswered grid leaves no settled agenda. */
-  let agendaQuery = liveQueryWhen(() => liveTiles.ready, async (j) => {
-    const covered = dosePanelCoversEveryDose;
-    const agenda = await readAgenda(
-      { dayAhead: j.dayAhead, doses: j.doses },
-      today,
-      prefs.disguise,
-      shownAgendaKinds(prefs),
-      dosePanelCoversEveryDose
-    );
-    return { covered, agenda };
-  });
-  let agenda = $derived(agendaQuery.value?.agenda ?? null);
+  let agendaQuery = liveQuery((j) => readAgenda(j, today, prefs.disguise));
+  let agenda = $derived(
+    liveTiles.ready && !prefs.disguise
+      ? projectAgenda(agendaQuery.value, shownAgendaKinds(prefs), dosePanelCoversEveryDose)
+      : null
+  );
   let agendaExpanded = $state(false);
   /* The two fold labels, keyed in the markup so a change crosses (labelFade).
      The agenda's says what stretch of time it is holding rather than only
@@ -553,25 +525,22 @@
      every read that decides them has agreed, then crossfade them in, and a
      wrong guess travels (`resize`) rather than jumps.
 
-     "Agreed" is more than `loading` for two of them. The agenda waits for
-     the grid's dose-panel answer; the debrief offer waits for an appointment
-     id from the appointments read. Each answer carries its input, and the
-     gate waits for the current input's answer, including coverage changes
-     after the grid composes. A failed read counts as answered - it will not
-     answer any better by waiting. */
+     The agenda and grid must both answer before their shared projection
+     can draw. The debrief offer also waits for the current appointment id's
+     answer, carried with its result. A failed read counts as answered - it
+     will not answer any better by waiting. */
   const settledFor = <T,>(read: { loading: boolean; failed: boolean; value: T | undefined }, askedWith: (value: T) => boolean) =>
     !read.loading && (read.failed || (read.value !== undefined && askedWith(read.value)));
   let foldReadsAgree = $derived(
     liveTiles.ready &&
-      settledFor(agendaQuery, (answer) => answer.covered === dosePanelCoversEveryDose) &&
+      !agendaQuery.loading &&
       !appointmentsQuery.loading &&
       settledFor(debriefStateQuery, (answer) => answer.appointmentId === lastAppointmentId) &&
       !stockProjectionsQuery.loading
   );
   /* Latched, because the second condition is not one-way the way `loading`
-     is: logging a dose can flip the dose-panel answer, and the agenda's
-     next answer is a round trip behind it. Once the fold is on screen it
-     stays; the reserve is for arriving, not for every change after. Opening
+     is: an appointment change can leave the debrief answer a round trip
+     behind its current input. Once the fold is on screen it stays; the reserve is for arriving, not for every change after. Opening
      marks a screen arrival, so a notice or a tile inside the fade does not
      also play its own entrance: the fade is theirs. */
   let foldRevealed = $state(false);
