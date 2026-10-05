@@ -5,7 +5,8 @@ Was: phase-14 pre-release 06 (moved 2026-10-05)
 Type: build
 Audit findings: R5, S-09, R7
 Severity: P1, blocks release (policy); R7 P2
-Blocked by: done/phase-14 pre-release 05 (done)
+Blocked by: none
+Blocked by note: done/phase-14 pre-release 05 (done)
 Size: M
 Size note: one to two days
 Model: sonnet

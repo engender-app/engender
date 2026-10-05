@@ -113,10 +113,9 @@ describe('where the decoy name is allowed to appear', () => {
       'src/lib/components/AppNav.svelte',
       'src/routes/+page.svelte',
       /* The three gates whose title is the app's own name since redesign
-         ticket 34 (DIRECTION.md rule 15): a gate greets you if it knows your
-         name and shows the wordmark if it does not, and a lock screen is the
-         single most likely surface for somebody other than the owner to be
-         looking at. */
+         ticket 34 (DIRECTION.md rule 15), and never the person's name since
+         release-blockers ticket 12: a lock screen is the single most likely
+         surface for somebody other than the owner to be looking at. */
       'src/lib/components/JournalGate.svelte',
       'src/lib/components/AndroidKeyGate.svelte',
       'src/lib/components/SessionUnlock.svelte'
