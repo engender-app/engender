@@ -382,6 +382,37 @@
     step = to;
   }
 
+  /* Each step's question takes focus as it arrives, so a screen reader
+     says the new step and a keyboard starts from it (audit A11Y-12). Focus
+     used to stay on Continue, which said nothing, and on the two steps
+     whose Continue is a different button it fell to the body.
+
+     The first question is left to the layout, which focuses a screen's
+     heading when the screen arrives (navigation/arrivalFocus.ts). A frame
+     later rather than on mount, so the question's entrance has started
+     before focus asks for a layout (ticket 115's Android teleport).
+
+     The id is how the name field is named by its question. The question is
+     keyed, so for the length of a change two of them are in the document,
+     and the arriving one takes the id from the leaving one. */
+  const QUESTION_ID = 'ob-question';
+  let questionsArrived = 0;
+  function questionArrives(node: HTMLElement) {
+    for (const leaving of document.querySelectorAll(`#${QUESTION_ID}`)) {
+      if (leaving !== node) leaving.removeAttribute('id');
+    }
+    node.id = QUESTION_ID;
+    if (questionsArrived++ === 0) return;
+    /* Only if nothing else took focus in that frame: a tap on an answer
+       that quickly is the person already moving on. */
+    const was = document.activeElement;
+    const frame = requestAnimationFrame(() => {
+      const now = document.activeElement;
+      if (now === was || !now || now === document.body) node.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }
+
   /* The question, and it is the whole of what a step says at display size
      (DIRECTION.md rule 12). Read off a table rather than written into ten
      branches of markup, because the field holds one question wherever the
@@ -745,6 +776,9 @@
             class="setup-title"
             data-setup-question
             data-field-part
+            tabindex="-1"
+            data-arrival-focus
+            {@attach questionArrives}
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >
@@ -850,6 +884,7 @@
                     class="rule-input"
                     id="ob-name"
                     name="ob-name"
+                    aria-labelledby={QUESTION_ID}
                     placeholder={m.ob_name_placeholder()}
                     autocomplete="off"
                     bind:value={name}
