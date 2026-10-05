@@ -158,7 +158,11 @@ export async function runMigrations(
   }
 
   if (pending.length === 0) {
-    await checkForeignKeys();
+    const violations = await db.query('PRAGMA foreign_key_check');
+    if (violations.length > 0) {
+      console.warn(`Foreign key violations on clean boot: ${JSON.stringify(violations)}`);
+      return;
+    }
     // A clean boot: nothing to migrate, so any copy left over from a past
     // migration has been proven safe and can go.
     await fileOps.cleanupPreMigrationCopy();
