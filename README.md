@@ -79,10 +79,10 @@ genderfluid, bisexual, lesbian, pansexual, rainbow, agender, gay men,
 genderqueer, intersex, asexual, demiboy, demigirl, trigender and Polish.
 On Android, the launcher icon follows your chosen palette.
 
-Disguise mode uses a neutral name and icon and hides pride motifs. Quick
-exit can cover the app with decoy notes without showing journal content.
-An app lock controls access to the journal, and lock screens show no entries
-or other journal data. Android reminders use a generic label by default;
+Disguise mode uses a neutral name and icon and hides pride motifs. An app
+lock controls access to the journal, and lock screens show no entries or
+other journal data. Lock timing decides when the lock comes back: as soon as
+you leave the app, after one or five minutes away, or only on a restart. Android reminders use a generic label by default;
 you can choose to show their titles instead.
 
 The layout adapts to the space available, with a bottom navigation bar on
