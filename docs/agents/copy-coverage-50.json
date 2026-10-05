@@ -2006,7 +2006,6 @@
   "pin_confirm_body": {"owner":41,"sources":["src/lib/components/AccessModeSetup.svelte"]},
   "pin_forgot": {"owner":41,"sources":["src/lib/components/JournalGate.svelte","src/lib/components/SessionUnlock.svelte"]},
   "pin_forgot_key_note": {"owner":41,"sources":["src/lib/components/JournalGate.svelte","src/lib/components/SessionUnlock.svelte"]},
-  "pin_greeting_named": {"owner":41,"sources":["src/lib/components/SessionUnlock.svelte"]},
   "pin_mismatch": {"owner":41,"sources":["src/lib/components/AccessModeSetup.svelte","src/routes/settings/access-mode/+page.svelte"]},
   "pin_progress": {"owner":41,"sources":["src/lib/components/PinPad.svelte"]},
   "pin_throttled": {"owner":41,"sources":["src/lib/components/PinEntry.svelte"]},
