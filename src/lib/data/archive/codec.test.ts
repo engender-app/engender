@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { byteReader, type ByteReader } from './container.ts';
 import { decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
 import type { ArchivePayload } from './payload.ts';
@@ -15,6 +15,20 @@ const emptyContents: ArchiveContents = {
   files: [],
   readFile: async () => new Uint8Array()
 };
+
+test('codec imports first in a fresh module graph and encodes an archive', async () => {
+  vi.resetModules();
+  const codec = await import('./codec.ts');
+  const encoded = await codec.encodeArchive(emptyContents);
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of encoded.body) chunks.push(chunk);
+
+  assert.equal(encoded.formatVersion, 2);
+  assert.equal(chunks.reduce((length, chunk) => length + chunk.length, 0), encoded.bodyLength);
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(chunks[1])), {
+    journal: emptyContents.journal, preferences: emptyContents.preferences, files: []
+  });
+});
 
 test('write routing uses the newest registered codec', async () => {
   const called: number[] = [];
