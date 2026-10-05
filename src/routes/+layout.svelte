@@ -247,6 +247,7 @@
     });
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
+    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', `${assets}/apple-touch-icon${prefs.disguise ? '-notes' : ''}.png`);
     /* The installed app's identity follows the disguise preference. */
     const manifest = getLocale() === 'pl' ? chrome.manifest.replace('.webmanifest', '-pl.webmanifest') : chrome.manifest;
     document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${manifest}`);
