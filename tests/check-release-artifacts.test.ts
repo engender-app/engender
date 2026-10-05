@@ -1,9 +1,9 @@
 import { spawnSync, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
 
 function sha256(path: string) {
@@ -76,8 +76,13 @@ describe('releaseArtifactProblems', () => {
 
 
 describe('AAB signature verification with platform tools', () => {
+  const roots: string[] = [];
+  afterEach(() => {
+    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  });
   function fixture() {
     const root = mkdtempSync(join(tmpdir(), 'gd-aab-signature-'));
+    roots.push(root);
     const aab = join(root, 'engender-android-release-1.0.0.aab');
     writeFileSync(join(root, 'payload.txt'), 'release bundle payload\n');
     execFileSync('jar', ['--create', '--file', aab, '-C', root, 'payload.txt']);
