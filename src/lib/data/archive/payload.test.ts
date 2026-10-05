@@ -17,7 +17,7 @@ test('portable preferences are exactly the allowlist, whatever else is set', () 
 test('an archive at the current version is not migrated', () => {
   const current = payload('as written');
 
-  assert.equal(migratePayload(current, ARCHIVE_FORMAT_VERSION), current);
+  assert.equal(migratePayload(current, ARCHIVE_FORMAT_VERSION, ARCHIVE_FORMAT_VERSION), current);
 });
 
 test('the ladder walks one version at a time', () => {
@@ -54,7 +54,7 @@ const v1Archive = (activePreset: string, presets: { id: string; dims: string[] }
 const scalesOf = (p: ArchivePayload) => (p.preferences as { activeScales?: string[] }).activeScales;
 
 test('a v1 archive restores to the scales its preset stood for', () => {
-  const migrated = migratePayload(v1Archive('p-nb', [{ id: 'p-nb', dims: ['euphoria_dysphoria', 'binary_nonbinary'] }]), 1);
+  const migrated = migratePayload(v1Archive('p-nb', [{ id: 'p-nb', dims: ['euphoria_dysphoria', 'binary_nonbinary'] }]), 1, ARCHIVE_FORMAT_VERSION);
 
   assert.deepEqual(scalesOf(migrated), ['euphoria_dysphoria', 'binary_nonbinary']);
   // The old key does not survive alongside the list it became: two answers to
@@ -69,7 +69,8 @@ test('a v1 archive whose active preset was a custom one restores that custom lis
       { id: 'p-nb', dims: ['euphoria_dysphoria'] },
       { id: 'custom-1', dims: ['euphoria_dysphoria', 'femininity', 'my_own_scale'] }
     ]),
-    1
+    1,
+    ARCHIVE_FORMAT_VERSION
   );
 
   assert.deepEqual(scalesOf(migrated), ['euphoria_dysphoria', 'femininity', 'my_own_scale']);
@@ -79,13 +80,13 @@ test('a v1 archive naming a built-in preset it did not carry falls back to what 
   // A hand-edited or partial file. The eight built-in presets are a fixed
   // translation table long after they stop being a picker, which is the
   // reason BUILT_IN_PRESETS outlives the eight cards.
-  const migrated = migratePayload(v1Archive('p-agender', []), 1);
+  const migrated = migratePayload(v1Archive('p-agender', []), 1, ARCHIVE_FORMAT_VERSION);
 
   assert.deepEqual(scalesOf(migrated), ['euphoria_dysphoria', 'agender_gendered']);
 });
 
 test('a v1 archive naming a preset nobody has ever had restores the default scales', () => {
-  const migrated = migratePayload(v1Archive('p-invented', []), 1);
+  const migrated = migratePayload(v1Archive('p-invented', []), 1, ARCHIVE_FORMAT_VERSION);
 
   assert.deepEqual(scalesOf(migrated), PREFERENCE_DEFAULTS.activeScales);
 });
@@ -96,5 +97,5 @@ test('a v1 archive that never carried a preset at all is left saying nothing abo
   // Not filled in with the default: applyPortablePreferences keeps this
   // device's value for a key the archive is missing, and inventing one here
   // would turn "the file does not say" into "the file says the default".
-  assert.equal(scalesOf(migratePayload(bare, 1)), undefined);
+  assert.equal(scalesOf(migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION)), undefined);
 });

@@ -9,7 +9,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { createEntryDraft } from './entryDraft.ts';
-import { applyPersistedDraft, draftMatchesRoute, serializeDraft, type PersistedEntryDraft } from './entryDraftPersistence.ts';
+import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft, type PersistedEntryDraft } from './entryDraftPersistence.ts';
 import type { Entry } from './types.ts';
 
 const existingEntry = (): Entry => ({
@@ -263,4 +263,32 @@ test('a mirror written before ticket 289 holds one effectMarker and loads as a o
   delete (legacy as { effectMarkers?: unknown }).effectMarkers;
   applyPersistedDraft(draft, legacy as PersistedEntryDraft);
   assert.deepEqual(draft.effectMarkers, [{ effect: 'skin_softening', firstNoticedEpochDay: 20_001 }]);
+});
+
+test('entryDraftFingerprint: the draft as loaded matches itself and a fresh copy of it', () => {
+  const draft = createEntryDraft(20_000, existingEntry());
+  assert.equal(entryDraftFingerprint(draft), entryDraftFingerprint(createEntryDraft(20_000, existingEntry())));
+});
+
+test('entryDraftFingerprint: a typed note, a removed photo or an added photo each read as a change', () => {
+  const base = entryDraftFingerprint(createEntryDraft(20_000, existingEntry()));
+
+  const typed = createEntryDraft(20_000, existingEntry());
+  typed.note = 'ok day, then not';
+  assert.notEqual(entryDraftFingerprint(typed), base);
+
+  const removed = createEntryDraft(20_000, existingEntry());
+  removed.removedPhotoIds = ['p1'];
+  assert.notEqual(entryDraftFingerprint(removed), base);
+
+  const added = createEntryDraft(20_000, existingEntry());
+  added.photos = [...added.photos, { kind: 'picked' } as unknown as (typeof added.photos)[number]];
+  assert.notEqual(entryDraftFingerprint(added), base);
+});
+
+test('entryDraftFingerprint: opening a section is not an edit', () => {
+  const draft = createEntryDraft(20_000);
+  const before = entryDraftFingerprint(draft);
+  draft.openSection = 'tags';
+  assert.equal(entryDraftFingerprint(draft), before);
 });

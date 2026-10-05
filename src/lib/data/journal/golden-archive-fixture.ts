@@ -176,6 +176,10 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
   await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
   await journal.marginNotes.add({ entryId: entry, epochDay: 20050, text: 'reading this back, zażółć gęślą jaźń' });
+  const trashedEntry = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
+  await journal.revisits.setRevisit({ entryId: trashedEntry, createdEpochDay: 20001, targetEpochDay: 20101 });
+  await journal.marginNotes.add({ entryId: trashedEntry, epochDay: 20051, text: 'A note on a trashed entry' });
+  await journal.entries.deleteEntry(trashedEntry);
   // Mixed case, so the fixture pins that the write folds it (phase 8
   // features ticket 48).
   await journal.wordIgnore.setWordIgnored('Kraków', true);
@@ -381,13 +385,25 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   /* Not a binder: `kind` is a column with a default (schema v71), so a
      fixture that only ever carried the default would round-trip green
      whether the writer bound the field or not. */
-  await journal.wearSessions.upsertSession({
+  const wearSession = await journal.wearSessions.upsertSession({
     kind: 'tucking',
     startTimestamp: 1_700_000_000_000,
     durationMs: 6 * 3600000,
     note: 'a bit tight by the end',
     reminderHoursAfterStart: 8,
     reminderTitle: 'binder check-in'
+  });
+  // Older journals can retain a reminder after its wear session ended.
+  await journal.reminders.upsertReminder({
+    title: 'binder check-in',
+    type: 'other',
+    time: '07:13',
+    recurrence: null,
+    interval: null,
+    anchorEpochDay: null,
+    epochDay: 19676,
+    enabled: true,
+    autoSource: `wear:${wearSession}`
   });
 
   // Two takes' worth of audio and a full set of figures: a benchmark that

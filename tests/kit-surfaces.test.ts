@@ -99,6 +99,11 @@ describe('the surfaces', () => {
          chip - but its mark draws itself in and that motion wants one file
          to live in rather than being inlined in a row's markup. */
       'Check.svelte',
+      /* Not a surface: one choice of a set drawn as wrapping chips, for
+         choices whose labels a Segmented's equal shares clipped (phase 15
+         release-blockers ticket 05). Three call sites, the tryout kind and
+         the measurement type on the screen and in its editor. */
+      'ChoiceChips.svelte',
       /* The delete-confirm every record-logging screen drew for itself
          (phase 5 UX ticket 39a). Not a surface either - it is a Sheet with
          a fixed arrangement inside it - but sixteen screens held
@@ -107,6 +112,12 @@ describe('the surfaces', () => {
       'ConfirmDeleteSheet.svelte',
       'DayCard.svelte',
       'DayEntry.svelte',
+      /* The question leaving changed work asks (ticket 04). Not a surface:
+         a Sheet with a fixed arrangement, rendered from leaveGuard.ts, and
+         the same words on every screen that has a draft to lose, so it
+         owns its copy the way PhotoDayPromptSheet does. A screen may say
+         more about what is lost in its body line, and nothing else. */
+      'DiscardSheet.svelte',
       'Distribution.svelte',
       /* Parts of a whole where the parts have no order (phase 8 UX ticket
          04, ADR-0058): share by tag, share by presentation, share by

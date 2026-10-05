@@ -15,7 +15,6 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { beforeNavigate, goto } from '$app/navigation';
   import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { journalDataKey } from '$lib/stores/boot.svelte';
@@ -27,12 +26,12 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
 
   /** The minted key, present only between minting and leaving the screen.
       Held in one place and never written anywhere else. */
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
-  let pendingDeparture = $state<(() => void) | null>(null);
   let busy = $state(false);
 
   /* Only the Android path marks the clip sensitive and takes it back, so
@@ -92,23 +91,13 @@
     }
   }
 
-  function leaveShownKey() {
-    const leave = pendingDeparture;
-    pendingDeparture = null;
-    shown = null;
-    leave?.();
-  }
-
-  beforeNavigate((navigation) => {
-    if (shown === null) return;
-    navigation.cancel();
-    // An unload gets the browser's own confirmation because a sheet cannot
-    // wait across a reload, closed tab or external navigation.
-    if (navigation.willUnload || pendingDeparture) return;
-    pendingDeparture = () => {
-      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
-      else if (navigation.to) void goto(navigation.to.url);
-    };
+  /* The characters on screen are a draft of their own: shown once, gone
+     on any departure. Leaving asks first (leaveGuard.ts); an unload gets
+     the browser's own confirmation, because a sheet cannot wait across a
+     reload, a closed tab or an external navigation. */
+  const guard = leaveGuard({
+    holding: () => shown !== null,
+    onDiscard: () => { shown = null; }
   });
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
@@ -154,7 +143,7 @@
           type="button"
           data-recovery-key-done
           onclick={() => {
-            pendingDeparture = null;
+            guard.keep();
             shown = null;
             toast(m.rk_made_toast());
           }}>{m.rk_done()}</button
@@ -216,9 +205,9 @@
 </Sheet>
 
 <Sheet
-  open={pendingDeparture !== null}
+  open={guard.pendingDeparture !== null}
   title={m.rk_leave_title()}
-  onClose={() => (pendingDeparture = null)}
+  onClose={guard.keep}
 >
   <p class="ob-text">{m.rk_leave_body()}</p>
   <div class="rk-departure-actions">
@@ -226,11 +215,11 @@
       class="btn btn-primary"
       type="button"
       data-keep-writing-recovery-key
-      onclick={() => (pendingDeparture = null)}
+      onclick={guard.keep}
     >
       {m.rk_keep_writing()}
     </button>
-    <button class="btn btn-danger" type="button" data-leave-recovery-key onclick={leaveShownKey}>
+    <button class="btn btn-danger" type="button" data-leave-recovery-key onclick={guard.discard}>
       {m.rk_leave()}
     </button>
   </div>

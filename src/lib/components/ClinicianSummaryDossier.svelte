@@ -310,7 +310,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each dossier.exposure.doseTotals as dt, i (`${dt.drug}-${dt.route}-${dt.doseUnit}`)}
+              {#each dossier.exposure.doseTotals as dt, i (JSON.stringify([dt.drug, dt.route, dt.doseUnit]))}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td><strong>{dt.drug}</strong></td>
                   <td>{routeLabel(dt.route)}</td>
