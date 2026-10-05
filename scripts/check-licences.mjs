@@ -14,6 +14,7 @@
 
    Run `node scripts/check-licences.mjs` to see the tree's licences. */
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Licences in the tree today, all of them GPL-3.0 compatible.
@@ -53,7 +54,7 @@ const ALLOWED = new Set([
       repository read, so whoever revisits it knows what was checked.
 
     @type {Record<string, string>} */
-const READ_BY_HAND = {
+export const READ_BY_HAND = {
   // node_modules/runed/LICENSE: "MIT License", Hunter Johnston and Thomas G. Lopes.
   runed: 'MIT',
   // node_modules/sqlite-wasm-kysely/LICENSE: "MIT License", Opral US Inc.
@@ -83,6 +84,7 @@ const READ_BY_HAND = {
  * @typedef {object} Installed
  * @property {string} name
  * @property {string} path     where in node_modules it landed
+ * @property {string | null} [version]
  * @property {string | null} licence
  */
 
@@ -103,9 +105,11 @@ export function licenceProblems(packages) {
   return problems;
 }
 
-/** Every package the lockfile installs, with the licence it declares. */
-function installedPackages() {
-  const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+/** Every package the lockfile installs, with the licence it declares.
+    Also what scripts/licence-notices.mjs reads to name what the app ships.
+    @param {string} [root] the project directory, the cwd by default */
+export function lockfilePackages(root = '.') {
+  const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
   /** @type {Installed[]} */
   const packages = [];
 
@@ -117,7 +121,7 @@ function installedPackages() {
     let licence = entry.license;
     if (!licence) {
       try {
-        licence = JSON.parse(readFileSync(`${path}/package.json`, 'utf8')).license;
+        licence = JSON.parse(readFileSync(join(root, path, 'package.json'), 'utf8')).license;
       } catch {
         licence = undefined;
       }
@@ -125,13 +129,18 @@ function installedPackages() {
     if (licence && typeof licence === 'object') licence = licence.type;
 
     // The last segment, so a nested copy is named the same as a top-level one.
-    packages.push({ name: path.split('node_modules/').pop() ?? path, path, licence: licence ?? null });
+    packages.push({
+      name: path.split('node_modules/').pop() ?? path,
+      path,
+      version: entry.version ?? null,
+      licence: licence ?? null
+    });
   }
   return packages;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const packages = installedPackages();
+  const packages = lockfilePackages();
   const problems = licenceProblems(packages);
 
   for (const problem of problems) console.log('FAIL', problem);
