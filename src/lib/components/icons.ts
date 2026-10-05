@@ -108,6 +108,7 @@ export const PATHS: Record<string, string> = {
   alert: '<path d="M12 1.61 2 19.61h20z"/><path d="M12 8.61v4M12 16.11v0.5"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11.5V16"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/>',
+  code: '<path d="m8.5 6.5-5.5 5.5 5.5 5.5M15.5 6.5l5.5 5.5-5.5 5.5"/>',
   palette: '<path d="M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-2a2 2 0 0 0-1.5 3.3c.4.5.5 1.7-.5 2.2a4 4 0 0 1-2 .5z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/>',
   columns: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 3v18"/>',
   curve: '<path d="M3 17.22h18"/><path d="M4 14.22c3.5 0 4-9 8-9s4.5 9 8 9"/>',

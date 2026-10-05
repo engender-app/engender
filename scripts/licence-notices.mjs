@@ -42,6 +42,10 @@ export const LICENCE_TEXT_BY_HAND = {
     file: 'scripts/licence-texts/Apache-2.0.txt',
     read: 'package.json says Apache-2.0 and the tarball has no LICENSE; the Apache text itself is what the licence asks to pass on.'
   },
+  '@sqlite.org/sqlite-wasm': {
+    file: 'scripts/licence-texts/Apache-2.0.txt',
+    read: 'The copy SQLocal nests: package.json says Apache-2.0 and the tarball has no LICENSE. SQLite itself, inside it, is public domain.'
+  },
   '@tesseract.js-data/eng': {
     file: 'scripts/licence-texts/tesseract-js-data.txt',
     read: 'package.json says MIT, author Balearica; no LICENSE in the tarball or in github.com/naptha/tessdata.'
@@ -176,7 +180,7 @@ export function packagePathOf(id) {
  * @typedef {{ name: string, version: string, licence: string, texts: number[] }} NoticeEntry
  * @typedef {{ id: 'app' | 'android' | 'fonts', entries: NoticeEntry[] }} NoticeSection
  * @typedef {{ texts: string[], sections: NoticeSection[] }} Notices
- * @typedef {{ name: string, path: string, version: string | null, licence: string | null }} LockPackage
+ * @typedef {{ name: string, path: string, version?: string | null, licence: string | null }} LockPackage
  */
 
 /**
