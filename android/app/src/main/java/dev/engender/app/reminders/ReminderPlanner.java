@@ -1,5 +1,7 @@
 package dev.engender.app.reminders;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.time.LocalDate;
@@ -61,11 +63,31 @@ final class ReminderPlanner {
             return at;
         }
 
-        if (!"DAILY".equals(recurrence) && !"WEEKLY".equals(recurrence)) return null;
+        if (!"DAILY".equals(recurrence)) return null;
 
-        int step = "WEEKLY".equals(recurrence) ? 7 : 1;
         ZonedDateTime todayAt = occurrenceOn(today, time, now.getZone());
-        return todayAt.isAfter(now) ? todayAt : occurrenceOn(today + step, time, now.getZone());
+        return todayAt.isAfter(now) ? todayAt : occurrenceOn(today + 1, time, now.getZone());
+    }
+
+    /** Cached WEEKLY rules have no recorded weekday. Keep the old planner's
+        next occurrence once, then persist that day as a seven-day anchor. */
+    static boolean anchorLegacyWeeklyRules(JSONObject payload, ZonedDateTime now) throws JSONException {
+        JSONArray reminders = payload.optJSONArray("reminders");
+        if (reminders == null) return false;
+        boolean changed = false;
+        int today = (int) now.toLocalDate().toEpochDay();
+        for (int i = 0; i < reminders.length(); i++) {
+            JSONObject reminder = reminders.optJSONObject(i);
+            if (reminder == null || !"WEEKLY".equals(reminder.optString("recurrence"))) continue;
+            ZonedDateTime todayAt = occurrenceOn(today, reminder.optString("time", "00:00"), now.getZone());
+            int anchor = todayAt.isAfter(now) ? today : today + 7;
+            reminder.put("recurrence", "EVERY_N_DAYS");
+            reminder.put("interval", 7);
+            reminder.put("anchorEpochDay", anchor);
+            reminder.put("epochDay", JSONObject.NULL);
+            changed = true;
+        }
+        return changed;
     }
 
     static ZonedDateTime nextCheckIn(String time, ZonedDateTime now, boolean todayHasEntry) {

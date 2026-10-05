@@ -4,7 +4,7 @@
    vocabulary ('EVERY_3_DAYS') was a hard failure there, not a mapping
    detail. */
 
-import { assertValidRule } from '../reminderRule';
+import { assertValidRule, ruleFromChoice } from '../reminderRule';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Reminder } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
@@ -57,6 +57,10 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
     },
 
     async upsertReminder(input) {
+      if (input.recurrence === 'WEEKLY') {
+        const existing = input.id ? (await this.getReminders()).find((r) => r.id === input.id) ?? null : null;
+        input = { ...input, ...ruleFromChoice('WEEKLY', input.time, existing, new Date()) };
+      }
       assertValidRule(input);
       const autoSource = input.autoSource ?? null;
       if (input.id) {

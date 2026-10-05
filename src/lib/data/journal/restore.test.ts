@@ -205,8 +205,50 @@ async function exported(journal: Journal): Promise<RestoreContents> {
   };
 }
 
-const rowCount = async (db: Awaited<ReturnType<typeof migratedDb>>, sql: string): Promise<number> =>
+const rowCount = async (db: SqliteDriver, sql: string): Promise<number> =>
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
+
+test('archives omit revisits and margin notes owned by trashed entries', async () => {
+  const { driver, journal } = await everySectionDevice();
+  assert.equal(await rowCount(driver, 'entry WHERE trashed_at IS NOT NULL'), 1);
+  assert.equal(await rowCount(driver, 'revisit'), 2);
+  assert.equal(await rowCount(driver, 'margin_note'), 2);
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.revisits.length, 1);
+  assert.equal(snapshot.journal.marginNotes.length, 1);
+  const entryUuids = new Set(snapshot.journal.entries.map((entry) => entry.uuid));
+  assert.ok(entryUuids.has(snapshot.journal.revisits[0].entryId));
+  assert.ok(entryUuids.has(snapshot.journal.marginNotes[0].entryId));
+});
+
+test.each([
+  ['replace', 'same device'],
+  ['merge', 'same device'],
+  ['replace', 'fresh device'],
+  ['merge', 'fresh device']
+] as const)('%s restores an older archive with trash children on %s with foreign keys enforced', async (mode, location) => {
+  const source = await everySectionDevice();
+  const target = location === 'same device' ? { db: source.driver, journal: source.journal } : await device();
+  const contents = await exported(source.journal);
+  const trash = (await source.driver.query<{ id: number; uuid: string }>('SELECT id, uuid FROM entry WHERE trashed_at IS NOT NULL'))[0];
+  const revisit = (await source.journal.revisits.getRevisitForEntry(trash.id))!;
+  const margin = (await source.journal.marginNotes.forEntries([trash.id])).get(trash.id)![0];
+  contents.journal.revisits = contents.journal.revisits.filter((row) => row.entryId !== trash.uuid);
+  contents.journal.marginNotes = contents.journal.marginNotes.filter((row) => row.entryId !== trash.uuid);
+  contents.journal.revisits.push({
+    id: revisit.id, entryId: trash.uuid, entryEpochDay: 20001,
+    createdEpochDay: 20001, targetEpochDay: 20101
+  });
+  contents.journal.marginNotes.push({
+    id: margin.id, entryId: trash.uuid, epochDay: 20051, text: margin.text
+  });
+  assert.equal((await target.db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+  await target.journal.archive[mode](contents);
+  const restored = (await target.journal.archive.snapshot()).journal;
+  assert.equal(restored.revisits.length, 1);
+  assert.equal(restored.marginNotes.length, 1);
+  assert.deepEqual(await target.db.query('PRAGMA foreign_key_check'), []);
+});
 
 const SMALL_RESTORE_FIXTURE_ENTRIES = 20;
 // Below insertRows' own per-row chunk size for the entry table

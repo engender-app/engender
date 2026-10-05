@@ -75,9 +75,9 @@
   }
 
   /* A tap toggles: picking the selected mood again clears it. An arrow key
-     does not, because it lands on whatever it moved to and a radio group
-     that unpicked itself when you arrowed onto the current choice would be
-     unusable. Two callers, one announcement. */
+     picks nothing here, because Today's pick opens the editor: arrows only
+     move focus, and Space or Enter is the pick (rovingRadio's
+     `selectOnArrow`, audit A11Y-02). */
   function choose(i: number) {
     announce(i, STEPS[i] === value ? null : STEPS[i]);
   }
@@ -87,7 +87,7 @@
   class="kit-moods"
   data-kit-surface
   role="radiogroup"
-  use:rovingRadio
+  use:rovingRadio={{ selectOnArrow: false }}
   tabindex="-1"
   aria-label={m.mood()}
   data-mood-chips
