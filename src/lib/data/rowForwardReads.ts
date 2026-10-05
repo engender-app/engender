@@ -92,7 +92,7 @@ export async function readRowForward(areas: RowForwardAreas, todayEpochDay: numb
       areas.tryouts.getTryouts(),
       areas.appointments.getAppointments(),
       areas.procedures.getProcedures(),
-      areas.dayAhead.getDayAhead(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS, todayEpochDay),
+      areas.dayAhead.getDayAhead(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS, todayEpochDay, ['doseSlot']),
       areas.stock.getProjections(todayEpochDay),
       areas.measurements.latestMeasurement(todayEpochDay)
     ]);
