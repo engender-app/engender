@@ -32,7 +32,7 @@ Medication, injections, appointments. One-off or repeating. The daily check-in i
 
 If you need to be careful
 
-Everything in this section is off until you turn it on. App lock puts a PIN in front of the app: it stops someone picking up your unlocked phone and reading it, and it is not encryption of what is stored. Disguise gives the app a plain name and icon. Quick exit clears the screen in one gesture, and locks the app if app lock is on.
+Everything in this section is off until you turn it on. App lock puts a PIN in front of the app: it stops someone picking up your unlocked phone and reading it, and it is not encryption of what is stored. Disguise gives the app a plain name and icon. Lock timing decides how soon the app locks again after you leave it: at once, after a minute or five, or only on a restart.
 
 How it looks
 

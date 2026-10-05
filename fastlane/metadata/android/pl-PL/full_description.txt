@@ -32,7 +32,7 @@ Leki, zastrzyki, wizyty. Jednorazowe albo powtarzalne. Codzienne pytanie przycho
 
 Jeśli musisz uważać
 
-Wszystko w tej sekcji jest wyłączone, dopóki tego nie włączysz. Blokada aplikacji stawia PIN przed wejściem: zatrzymuje kogoś z twoim odblokowanym telefonem w ręku i nie jest szyfrowaniem tego, co zapisane. Kamuflaż daje aplikacji zwyczajną nazwę i ikonę. Szybkie wyjście czyści ekran jednym ruchem i blokuje aplikację, jeśli blokada jest włączona.
+Wszystko w tej sekcji jest wyłączone, dopóki tego nie włączysz. Blokada aplikacji stawia PIN przed wejściem: zatrzymuje kogoś z twoim odblokowanym telefonem w ręku i nie jest szyfrowaniem tego, co zapisane. Kamuflaż daje aplikacji zwyczajną nazwę i ikonę. Czas blokady decyduje, kiedy aplikacja zablokuje się po wyjściu z niej: od razu, po minucie lub pięciu albo dopiero po ponownym uruchomieniu.
 
 Wygląd
 
