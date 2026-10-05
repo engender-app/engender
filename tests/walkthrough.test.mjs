@@ -1156,6 +1156,56 @@ try {
 } catch (e) { fail('day detail truthfulness', e); }
 });
 
+await flow('duplicate tag labels survive saving', async () => {
+try {
+  const errorOffset = errors.length;
+  await fresh('/');
+  const countBefore = Number((await page.locator('[data-home-count]').textContent()).match(/\d+/)[0]);
+  await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-new-tag-group]').click();
+  await page.locator('#newgroup-input').fill('Duplicate label regression');
+  await page.getByRole('button', { name: 'Add group', exact: true }).click();
+  const group = page.locator('details').filter({ hasText: 'Duplicate label regression' });
+  await group.getByRole('button', { name: 'Add a tag to Duplicate label regression' }).click();
+  await page.locator('#newtag-input').fill('social dysphoria');
+  await page.getByRole('button', { name: 'Add tag', exact: true }).click();
+  await group.locator('.managed-label').filter({ hasText: /^social dysphoria$/ }).waitFor();
+
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
+  await page.locator('[data-mood="3"]').click();
+  await page.locator('[data-section-chip="tags"]').click();
+  const tags = page.locator('[data-tag]').filter({ hasText: /^social dysphoria$/ });
+  if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
+  await tags.nth(0).click();
+  await tags.nth(1).click();
+  if (!(await tags.evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-pressed') === 'true')))) {
+    throw new Error('the editor did not select both equal tag labels');
+  }
+  await page.locator('[data-save]').click();
+  await page.waitForURL(BASE + '/');
+  await page.waitForSelector('[data-home-log]');
+  await page.waitForFunction((before) => {
+    const count = document.querySelector('[data-home-count]')?.textContent?.match(/\d+/);
+    return count && Number(count[0]) === before + 1;
+  }, countBefore);
+
+  for (const path of ['/calendar', '/day/today']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await booted();
+    const entry = page.locator('[data-entry-card]').filter({ hasText: 'Duplicate tag labels survive saving' });
+    await entry.waitFor();
+    if (await entry.locator('.kit-pill').filter({ hasText: /^social dysphoria$/ }).count() !== 2) {
+      throw new Error(path + ' did not render both equal tag labels');
+    }
+  }
+  if (errors.length !== errorOffset) throw new Error(errors.slice(errorOffset).join('\n'));
+  ok('equal built-in and custom tag labels save, update Today, and both render on Journal and day detail without page errors');
+} catch (e) { fail('duplicate tag labels survive saving', e); }
+});
+
 /* 4c. a margin note: added, rendered as a layer, edited, deleted - and the
    entry's own note untouched by any of it (phase 8 features ticket 07).
    Grip handles only, per ADR-0029: data-margin-note-* rather than anything
@@ -6245,6 +6295,39 @@ try {
 
   ok('a Daylio backup previews, imports, writes a history row, and adds nothing the second time');
 } catch (e) { fail('daylio backup import', e); }
+});
+
+await flow('duplicate Daylio mood labels preview', async () => {
+try {
+  const errorOffset = errors.length;
+  const { daylioPayload, makeDaylioBackup } = await import('../src/lib/data/archive/test-support/daylio-backup.ts');
+  const payload = daylioPayload();
+  payload.customMoods[1].custom_name = 'Same mood label';
+  payload.customMoods[2].custom_name = 'Same mood label';
+  payload.customMoods.push({ id: 12, custom_name: 'built-in-0', mood_group_id: 4 });
+  const backup = await makeDaylioBackup(payload);
+
+  await fresh('/settings/export');
+  await page.locator('[data-daylio-backup]').click();
+  await page.waitForSelector('[data-pick-backup]');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('[data-pick-backup]').click();
+  await (await chooser).setFiles({ name: 'duplicate-moods.daylio', mimeType: 'application/octet-stream', buffer: Buffer.from(backup) });
+  const moods = page.locator('.value-row').filter({ has: page.locator('span', { hasText: /^Same mood label$/ }) });
+  await moods.first().waitFor({ timeout: 15000 });
+  if (await moods.count() !== 2) throw new Error('the preview did not render both equal custom mood labels');
+  const positions = (await moods.locator('strong').allTextContents()).map((value) => value.trim()[0]).sort();
+  if (JSON.stringify(positions) !== JSON.stringify(['1', '3'])) {
+    throw new Error('equal mood labels lost their distinct positions: ' + JSON.stringify(positions));
+  }
+  if (await page.locator('.value-row span').filter({ hasText: /^built-in-0$/ }).count() !== 1) {
+    throw new Error('the preview lost the custom name matching a built-in fallback');
+  }
+  if (errors.length !== errorOffset) throw new Error(errors.slice(errorOffset).join('\n'));
+  await page.locator('[data-sheet-scrim]').click({ position: { x: 4, y: 4 } });
+  await page.waitForSelector('[data-sheet-scrim]', { state: 'detached' });
+  ok('Daylio preview preserves equal custom mood labels, distinct positions, and a name matching a built-in fallback without page errors');
+} catch (e) { fail('duplicate Daylio mood labels preview', e); }
 });
 
 
