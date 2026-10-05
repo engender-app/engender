@@ -144,10 +144,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } else {
     try {
       // Android certificates are self-signed, so CA trust is not required.
-      // jarsigner exits zero for an unsigned archive too: require its explicit
-      // verification result, in a fixed language, rather than only exit status.
+      // jarsigner exits zero for unsigned archives and partially signed ones.
+      // Require verification and reject unchecked entries in a fixed language.
       const result = run('jarsigner', ['-J-Duser.language=en', '-J-Duser.country=US', '-verify', aab]);
-      if (!result.includes('jar verified.')) throw new Error('AAB is unsigned');
+      if (!result.includes('jar verified.') || result.includes('unsigned entries')) {
+        throw new Error('AAB contains unsigned payload');
+      }
     } catch {
       problems.push(`AAB signature verification failed: ${aab}`);
     }

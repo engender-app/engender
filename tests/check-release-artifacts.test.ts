@@ -111,7 +111,7 @@ describe('AAB signature verification with platform tools', () => {
     expect(verification(root)).toContain(`AAB signature verification failed: ${aab}`);
   });
 
-  it('accepts a bundle signed with a self-signed Android test key and rejects tampering', () => {
+  function signedFixture() {
     const { root, aab } = fixture();
     const keystore = join(root, 'test.p12');
     execFileSync('keytool', [
@@ -120,6 +120,22 @@ describe('AAB signature verification with platform tools', () => {
       '-validity', '2', '-dname', 'CN=Release test'
     ], { stdio: 'pipe' });
     execFileSync('jarsigner', ['-keystore', keystore, '-storepass', 'test-password', aab, 'test'], { stdio: 'pipe' });
+    return { root, aab };
+  }
+
+  it('rejects payload entries appended after signing even when jarsigner verifies the signed entries', () => {
+    const { root, aab } = signedFixture();
+    writeFileSync(join(root, 'unsigned.txt'), 'unsigned payload\n');
+    execFileSync('jar', ['--update', '--file', aab, '-C', root, 'unsigned.txt']);
+    const partial = spawnSync('jarsigner', ['-J-Duser.language=en', '-J-Duser.country=US', '-verify', aab], { encoding: 'utf8' });
+    expect(partial.status).toBe(0);
+    expect(partial.stdout).toContain('jar verified.');
+    expect(partial.stdout).toContain('unsigned entries which have not been integrity-checked');
+    expect(verification(root)).toContain(`AAB signature verification failed: ${aab}`);
+  }, 15000);
+
+  it('accepts a bundle signed with a self-signed Android test key and rejects tampering', () => {
+    const { root, aab } = signedFixture();
     expect(verification(root)).not.toContain('AAB signature verification failed:');
     writeFileSync(join(root, 'payload.txt'), 'tampered bundle payload\n');
     execFileSync('jar', ['--update', '--file', aab, '-C', root, 'payload.txt']);
