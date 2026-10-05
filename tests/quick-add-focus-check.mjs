@@ -276,6 +276,7 @@ try {
     const question = () => setup.evaluate(() => [...document.querySelectorAll('[data-setup-question]')].at(-1)?.textContent?.trim() ?? '');
     const dropped = [];
     let steps = 0;
+    let namedChecked = false;
     for (let i = 0; i < 16; i++) {
       const asked = await question();
       const next = setup.locator('[data-next]');
@@ -308,13 +309,23 @@ try {
         now
       );
       if (!landed) dropped.push(`${asked} -> ${now}: ${JSON.stringify(await focused(setup))}`);
-      if (await setup.locator('#ob-name').count()) {
+      /* Only when the name field is in the step that just arrived: a
+         keyed step that is still leaving holds the previous step's field
+         for the length of its exit. */
+      const nameStep = await setup.evaluate(() => {
+        const field = document.querySelector('#ob-name');
+        const steps = [...document.querySelectorAll('.setup-step')];
+        return !!field && field.closest('.setup-step') === steps.at(-1);
+      });
+      if (nameStep) {
+        namedChecked = true;
         const named = await setup.getByRole('textbox', { name: now, exact: true }).count();
         ok(named === 1, 'the name field is named by its question', now);
       }
       if (await setup.locator('[data-finish]').count()) break;
     }
     ok(steps >= 5, `walked ${steps} onboarding steps`);
+    ok(namedChecked, 'the name step was reached and its field checked');
     ok(dropped.length === 0, "each step's question takes focus, never the body", dropped.join('; '));
     await setup.context().close();
   });
