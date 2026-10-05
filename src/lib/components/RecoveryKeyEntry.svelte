@@ -53,18 +53,31 @@
   /** What the field does, which follows at the bottom of its dip. */
   let masked = $state(true);
   let input: HTMLInputElement | undefined = $state();
+  let toggle: HTMLButtonElement | undefined = $state();
 
   /** The characters fade out and back in around the swap, so dots never turn
       into letters in one frame. Through the crossfade duration, because this
       is opacity only and stays a fade under reduced motion, and eased in then
       out so neither half lands most of its change in its first frame. The
       caret and selection are put back, since changing an input's type can
-      move them. */
+      move them.
+
+      The button's two faces trade over both halves, also through the
+      animation API rather than a CSS transition: app.css cuts every
+      transition to 1ms under reduced motion, which would swap the words in
+      one frame. */
   async function toggleShown() {
-    if (!input) return;
+    if (!input || !toggle) return;
     const field = input;
     const half = crossfadeDuration();
     shown = !shown;
+    for (const face of toggle.querySelectorAll<HTMLElement>('[data-face]')) {
+      const arriving = (face.dataset.face === 'hide') === shown;
+      face.animate([{ opacity: arriving ? 0 : 1 }, { opacity: arriving ? 1 : 0 }], {
+        duration: 2 * half,
+        easing: 'ease-in-out'
+      });
+    }
     const { selectionStart, selectionEnd } = field;
     const out = field.animate([{ color: 'transparent' }], { duration: half, easing: 'ease-in', fill: 'forwards' });
     await out.finished.catch(() => {});
@@ -111,6 +124,7 @@
           class="btn btn-ghost rke-toggle"
           type="button"
           aria-controls="journal-recovery-key"
+          bind:this={toggle}
           data-recovery-key-toggle
           data-shown={shown}
           onpointerdown={(event) => {
@@ -173,7 +187,8 @@
   }
 
   /* The label keeps the line it had; the toggle's 48px target hangs into
-     the space around it rather than pushing the field down. */
+     the space around it rather than pushing the field down, and stops at
+     the field's top edge so a tap on the field always lands in it. */
   .rke-label-row {
     display: flex;
     align-items: center;
@@ -182,7 +197,7 @@
     margin-bottom: var(--space-2);
   }
   .rke-toggle {
-    margin-block: -12px;
+    margin-block: -12px -8px;
     margin-inline-end: calc(-1 * var(--space-3));
     padding-inline: var(--space-3);
     font-size: var(--text-sm);
@@ -194,9 +209,6 @@
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-2);
-    /* Over both halves of the field's dip, so the words finish trading as
-       the characters come back. */
-    transition: opacity calc(2 * var(--dur-crossfade)) ease-in-out;
   }
   .rke-toggle[data-shown='false'] [data-face='hide'],
   .rke-toggle[data-shown='true'] [data-face='show'] {
