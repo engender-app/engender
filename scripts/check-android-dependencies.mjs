@@ -3,6 +3,7 @@
    the runtime graph we actually ship. */
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { uncoveredAndroidLibraries } from './licence-notices.mjs';
 
 const FORBIDDEN = [
   /com\.google\.firebase:/,
@@ -50,9 +51,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const graph = readRuntimeGraph();
   const blocked = forbiddenDependencies(graph);
   for (const dep of blocked) console.log(`FAIL forbidden dependency: ${dep}`);
-  if (blocked.length) {
-    console.log(`\n${blocked.length} forbidden dependency(ies) in Android runtime graph.`);
+  /* And every library that does ship has its notice in the app's licences
+     screen (phase 15 release-blockers ticket 10): the list there is written
+     by hand, so a dependency arriving through an upgrade is caught here. */
+  const unlisted = uncoveredAndroidLibraries(graph);
+  for (const dep of unlisted) console.log(`FAIL ${dep} ships with no notice: add it to ANDROID_LIBRARIES in scripts/licence-notices.mjs`);
+  if (blocked.length || unlisted.length) {
+    console.log(`\n${blocked.length + unlisted.length} problem(s) in Android runtime graph.`);
     process.exit(1);
   }
-  console.log('PASS Android runtime graph contains no Firebase, Play Services, analytics or blocked SDK families.');
+  console.log('PASS Android runtime graph contains no Firebase, Play Services, analytics or blocked SDK families, and every library in it has a notice.');
 }
