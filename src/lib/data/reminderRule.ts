@@ -1,5 +1,5 @@
 /* The reminder rule (ADR-0010, CONTEXT: "Reminder"): a local wall-clock
-   time plus either a recurrence (DAILY / WEEKLY need nothing else,
+   time plus either a recurrence (DAILY needs nothing else,
    EVERY_N_DAYS carries its interval and an anchor day) or a concrete epoch
    day for a one-off. Never a stored next-fire instant - that would need
    rewriting after every fire, reboot and timezone change, and would shift
@@ -17,6 +17,7 @@
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
+// WEEKLY remains in the input type for older journals and archives.
 type Recurrence = 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS';
 
 export interface ReminderRule {
@@ -32,8 +33,8 @@ export interface ReminderRule {
   epochDay: number | null;
 }
 
-/** The same three-way shape the schema's CHECK enforces: a one-off day, an
-    anchored EVERY_N_DAYS, or a bare DAILY/WEEKLY - nothing in between.
+/** Current writes use a one-off day, anchored EVERY_N_DAYS, or bare DAILY.
+    The schema also accepts legacy WEEKLY inserts and anchors them by trigger.
     Validated before the row is written so a bad rule fails as one clear
     error rather than as a constraint violation from inside the driver. */
 export function assertValidRule(r: ReminderRule) {
@@ -41,7 +42,7 @@ export function assertValidRule(r: ReminderRule) {
   const everyN =
     r.recurrence === 'EVERY_N_DAYS' && r.interval != null && r.anchorEpochDay != null && r.epochDay == null;
   const plain =
-    (r.recurrence === 'DAILY' || r.recurrence === 'WEEKLY') &&
+    r.recurrence === 'DAILY' &&
     r.interval == null &&
     r.anchorEpochDay == null &&
     r.epochDay == null;
@@ -80,15 +81,15 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
     return occurrenceOn(day, rule.time);
   }
 
-  const step = rule.recurrence === 'WEEKLY' ? 7 : 1;
+  if (rule.recurrence === 'WEEKLY') throw new Error('WEEKLY reminder must be anchored before planning');
   const todayAt = occurrenceOn(today, rule.time);
-  return todayAt > now ? todayAt : occurrenceOn(today + step, rule.time);
+  return todayAt > now ? todayAt : occurrenceOn(today + 1, rule.time);
 }
 
 /* The editor's own vocabulary (F25). The segmented control offers five
-   options where the stored rule has three shapes: a one-off, the two
-   plain recurrences, and an anchored EVERY_N_DAYS split into the two
-   intervals worth a button. The pair below is the whole of that
+   options where the stored rule has three shapes: a one-off, DAILY, and
+   anchored EVERY_N_DAYS split into the two intervals worth a button. Weekly
+   writes the same seven-day progression. The pair below handles that
    translation, and it lived in settings/reminders/[id]/+page.svelte where
    nothing could run it.
 
@@ -134,8 +135,8 @@ export function ruleFromChoice(
     const at = nextOccurrence({ ...none, time, recurrence: 'DAILY' }, now)!;
     return { ...none, time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
   }
-  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS') {
-    const interval = CHOICE_INTERVAL[choice];
+  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS' || choice === 'WEEKLY') {
+    const interval = choice === 'WEEKLY' ? 7 : CHOICE_INTERVAL[choice];
     const anchorEpochDay =
       existing?.recurrence === 'EVERY_N_DAYS' && existing.interval === interval
         ? existing.anchorEpochDay

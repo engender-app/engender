@@ -61,11 +61,10 @@ final class ReminderPlanner {
             return at;
         }
 
-        if (!"DAILY".equals(recurrence) && !"WEEKLY".equals(recurrence)) return null;
+        if (!"DAILY".equals(recurrence)) return null;
 
-        int step = "WEEKLY".equals(recurrence) ? 7 : 1;
         ZonedDateTime todayAt = occurrenceOn(today, time, now.getZone());
-        return todayAt.isAfter(now) ? todayAt : occurrenceOn(today + step, time, now.getZone());
+        return todayAt.isAfter(now) ? todayAt : occurrenceOn(today + 1, time, now.getZone());
     }
 
     static ZonedDateTime nextCheckIn(String time, ZonedDateTime now, boolean todayHasEntry) {

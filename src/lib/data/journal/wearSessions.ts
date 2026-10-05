@@ -26,11 +26,11 @@
    reminder over by hand, which is why that gap is accepted rather than
    built around. */
 
-import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
+import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Reminder, WearKind, WearSession } from '../types';
 import { assertChanged, mintUuid, now } from './support';
-import type { RemindersArea } from './reminders';
+import { makeRemindersArea, type RemindersArea } from './reminders';
 import { wearAutoSource } from '../autoSource';
 
 interface WearSessionInput {
@@ -47,7 +47,8 @@ interface WearSessionInput {
   /** Hours after `startTimestamp` to remind at, or null for no reminder.
       Reconciled against this session's own auto-managed Reminder on every
       write - passing null clears whatever reminder an earlier save
-      created. Omit the field entirely to leave the reminder untouched. */
+      created. Omitting the field keeps the reminder unless its firing falls
+      after the session ends. */
   reminderHoursAfterStart?: number | null;
   /** The reminder's title, used only the first time this session gets one -
       an update reuses whatever title is already on the row, the same way
@@ -214,6 +215,7 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
     all.find((reminder) => reminder.autoSource === autoSourceFor(sessionId)) ?? null;
 
   const reconcileReminder = async (
+    reminders: RemindersArea,
     sessionId: string,
     startTimestamp: number,
     hours: number | null | undefined,
@@ -282,26 +284,38 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
     },
 
     async upsertSession(input) {
-      const note = input.note?.trim() || null;
-      const values = [input.kind, input.startTimestamp, input.durationMs, note, now()];
+      return driver.transaction(async (driver) => {
+        const note = input.note?.trim() || null;
+        const values = [input.kind, input.startTimestamp, input.durationMs, note, now()];
 
-      let id = input.id;
-      if (id) {
-        const result = await driver.run(
-          'UPDATE wear_session SET kind = ?, start_timestamp = ?, duration_ms = ?, note = ?, updated_at = ? WHERE uuid = ?',
-          [...values, id]
-        );
-        assertChanged(result, `wear session: ${id}`);
-      } else {
-        id = mintUuid();
-        await driver.run(
-          'INSERT INTO wear_session (kind, start_timestamp, duration_ms, note, updated_at, uuid) VALUES (?, ?, ?, ?, ?, ?)',
-          [...values, id]
-        );
-      }
+        let id = input.id;
+        if (id) {
+          const result = await driver.run(
+            'UPDATE wear_session SET kind = ?, start_timestamp = ?, duration_ms = ?, note = ?, updated_at = ? WHERE uuid = ?',
+            [...values, id]
+          );
+          assertChanged(result, `wear session: ${id}`);
+        } else {
+          id = mintUuid();
+          await driver.run(
+            'INSERT INTO wear_session (kind, start_timestamp, duration_ms, note, updated_at, uuid) VALUES (?, ?, ?, ?, ?, ?)',
+            [...values, id]
+          );
+        }
 
-      await reconcileReminder(id, input.startTimestamp, input.reminderHoursAfterStart, input.reminderTitle);
-      return id;
+        const scopedReminders = makeRemindersArea(driver);
+        await reconcileReminder(scopedReminders, id, input.startTimestamp, input.reminderHoursAfterStart, input.reminderTitle);
+        if (input.durationMs !== null) {
+          const pending = findAutoReminder(await scopedReminders.getReminders(), id);
+          if (
+            pending?.epochDay != null &&
+            timestampAtLocalTime(pending.epochDay, pending.time) > input.startTimestamp + input.durationMs
+          ) {
+            await scopedReminders.deleteReminder(pending.id);
+          }
+        }
+        return id;
+      });
     },
 
     async deleteSession(id) {

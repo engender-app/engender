@@ -65,3 +65,5 @@ const lines = [
 
 writeFileSync(REPORT_PATH, `${lines.join('\n')}\n`);
 console.log(`Wrote ${REPORT_PATH}`);
+
+process.exitCode = status === 'attempt-failed' ? 1 : 0;
