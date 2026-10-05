@@ -112,6 +112,12 @@ describe('the surfaces', () => {
       'ConfirmDeleteSheet.svelte',
       'DayCard.svelte',
       'DayEntry.svelte',
+      /* The question leaving changed work asks (ticket 04). Not a surface:
+         a Sheet with a fixed arrangement, rendered from leaveGuard.ts, and
+         the same words on every screen that has a draft to lose, so it
+         owns its copy the way PhotoDayPromptSheet does. A screen may say
+         more about what is lost in its body line, and nothing else. */
+      'DiscardSheet.svelte',
       'Distribution.svelte',
       /* Parts of a whole where the parts have no order (phase 8 UX ticket
          04, ADR-0058): share by tag, share by presentation, share by
