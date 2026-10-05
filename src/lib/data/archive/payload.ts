@@ -21,7 +21,6 @@
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
 import type { DocumentTargetKind, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
-import { ARCHIVE_FORMAT_VERSION } from './container';
 
 /** The preferences that describe the journal and travel with it
     (ADR-0003). An allowlist, so a preference added later stays on the
@@ -1058,7 +1057,7 @@ export const PAYLOAD_MIGRATIONS: readonly PayloadMigration[] = [presetBecomesTic
     direct v1 to v4 step nobody would remember to write.
 
     Exported with its inputs spelled out so the walk can be tested with
-    steps of its own; the archive path calls migratePayload. */
+    steps of its own; the codec supplies the target format version. */
 export function applyMigrations(
   payload: ArchivePayload,
   fromVersion: number,
@@ -1076,5 +1075,5 @@ export function applyMigrations(
 
 /* migratePayload stays exported only for its own test (AU-09 test-only
    review). */
-export const migratePayload = (payload: ArchivePayload, fromVersion: number): ArchivePayload =>
-  applyMigrations(payload, fromVersion, ARCHIVE_FORMAT_VERSION, PAYLOAD_MIGRATIONS);
+export const migratePayload = (payload: ArchivePayload, fromVersion: number, toVersion: number): ArchivePayload =>
+  applyMigrations(payload, fromVersion, toVersion, PAYLOAD_MIGRATIONS);

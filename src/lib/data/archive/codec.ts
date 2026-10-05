@@ -1,6 +1,4 @@
-import {
-  type ByteReader
-} from './container';
+import type { ByteReader } from './container';
 import {
   PAYLOAD_MIGRATIONS,
   applyMigrations,
@@ -58,6 +56,8 @@ const archiveCodecV1: ArchiveCodec = {
 const archiveCodecV2: ArchiveCodec = { ...archiveCodecV1, formatVersion: 2 };
 
 const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1, archiveCodecV2];
+
+export const ARCHIVE_FORMAT_VERSION = currentArchiveFormatVersion();
 
 export function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
   const current = codecs[codecs.length - 1];
