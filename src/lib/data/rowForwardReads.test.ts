@@ -11,7 +11,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readRowForward, type RowForwardAreas } from './rowForwardReads.ts';
 import { SPINE_FORWARD_DAYS } from './careSpine.ts';
-import type { DayAheadMark } from './journal/dayAhead.ts';
+import type { DayAheadMark, DayAheadMarkKind } from './journal/dayAhead.ts';
 
 const TODAY = 20000;
 
@@ -26,7 +26,7 @@ interface Held {
     `agendaReads.test.ts` holds next door. */
 function recordingAreas(held: Held = {}) {
   const asked: string[] = [];
-  const dayAheadCalls: { fromEpochDay: number; toEpochDay: number; todayEpochDay: number }[] = [];
+  const dayAheadCalls: { fromEpochDay: number; toEpochDay: number; todayEpochDay: number; kinds?: readonly DayAheadMarkKind[] }[] = [];
   const sealPages: number[] = [];
 
   const note =
@@ -54,9 +54,9 @@ function recordingAreas(held: Held = {}) {
     appointments: { getAppointments: note('appointments', []) },
     procedures: { getProcedures: note('procedures', []) },
     dayAhead: {
-      getDayAhead: async (fromEpochDay: number, toEpochDay: number, todayEpochDay: number) => {
+      getDayAhead: async (fromEpochDay: number, toEpochDay: number, todayEpochDay: number, kinds?: readonly DayAheadMarkKind[]) => {
         asked.push('dayAhead');
-        dayAheadCalls.push({ fromEpochDay, toEpochDay, todayEpochDay });
+        dayAheadCalls.push({ fromEpochDay, toEpochDay, todayEpochDay, kinds });
         return held.marks ?? [];
       }
     },
@@ -104,7 +104,7 @@ test('the dose slot is read off dayAhead, over the care rail’s own reach', asy
   await readRowForward(areas, TODAY);
 
   assert.deepEqual(dayAheadCalls, [
-    { fromEpochDay: TODAY, toEpochDay: TODAY + SPINE_FORWARD_DAYS, todayEpochDay: TODAY }
+    { fromEpochDay: TODAY, toEpochDay: TODAY + SPINE_FORWARD_DAYS, todayEpochDay: TODAY, kinds: ['doseSlot'] }
   ]);
 });
 
