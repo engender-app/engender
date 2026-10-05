@@ -67,6 +67,7 @@
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
   import MoodFace from './MoodFace.svelte';
+  import { firstFocusable, lockBackground, registerOverlay } from './overlayLock';
   import { holdFacesWhileStill } from '$lib/motion/holdWhileStill';
 
   let backdateOpen = $state(false);
@@ -624,13 +625,54 @@
     if (key) runTarget(key);
   }
 
-  function onWindowKeydown(e: KeyboardEvent) {
-    if (ui.chooserOpen && e.key === 'Escape') close();
+  /* The fan is a modal, for the keyboard and for assistive tech as well as
+     for the eye (audit A11Y-01). It looked like one and was not: focus
+     stayed on the add button, fifteen Tabs walked the dimmed screen under
+     the scrim before the sixteenth reached the fan, and Escape was a window
+     listener that dropped focus to the body. It takes a sheet's contract
+     now, through the same module (overlayLock.ts): the rest of the app is
+     inert, the overlay stack owns Tab and Escape (and Android's back, which
+     goes through the same stack), and the release puts focus back on
+     whatever opened it.
+
+     Two things stay live, because the fan is drawn over them on purpose.
+     The scrim is how a tap outside closes it. The bar is lifted above the
+     scrim so the add button reads as the control that closes what it
+     opened; AppNav makes the bar's own tabs inert while the fan is up, so
+     only the button in it can be reached. Neither withdraws with a blur of
+     its own either: the scrim already blurs everything under it.
+
+     Released the moment the fan starts closing rather than after its exit,
+     so a target that navigates finds the new screen live and can take focus
+     on it (the layout's arrival focus), instead of focusing into a screen
+     that is still inert. */
+  let fanEl = $state<HTMLElement>();
+  let scrimEl = $state<HTMLElement>();
+  $effect(() => {
+    const fan = fanEl;
+    if (!ui.chooserOpen || !fan) return;
+    const bar = document.querySelector<HTMLElement>('[data-app-nav]');
+    const keep = [scrimEl, bar].filter((el): el is HTMLElement => !!el);
+    const release = lockBackground(fan, { keep, withdraw: false });
+    const unregister = registerOverlay(fan, { dismiss: close });
+    return () => {
+      unregister();
+      release();
+    };
+  });
+
+  /* Focus moves in once the cards have arrived, the way a sheet's does:
+     focusing while the entrance is being set up forces a layout before its
+     keyframes attach, which ticket 115 measured as a teleport on Android.
+     Not while a press is still sliding, where focus would only chase the
+     finger, and not if Tab already went in. */
+  function focusFirstTarget() {
+    if (!fanEl || ui.chooserPressing || fanEl.contains(document.activeElement)) return;
+    firstFocusable(fanEl)?.focus({ preventScroll: true });
   }
 </script>
 
 <svelte:window
-  onkeydown={onWindowKeydown}
   onpointermove={slideMove}
   onpointerup={slideEnd}
   onpointercancel={() => {
@@ -645,6 +687,7 @@
        the screen behind the fan is plainly still there and plainly not what
        is being read. -->
   <div
+    bind:this={scrimEl}
     class="fan-scrim scrim-withdraw"
     role="presentation"
     data-quick-add
@@ -655,11 +698,11 @@
   <!-- Source order is the phone's, nearest the thumb first: the bar's fan
        is a reversed column, so the first card here is the lowest on screen.
        The rail's is a plain column, where the same order reads top down. -->
-  <div class="fan" role="group" aria-label={m.quick_add_title()} data-fan>
+  <div bind:this={fanEl} class="fan" role="dialog" aria-modal="true" aria-label={m.quick_add_title()} data-fan>
     <!-- The entry card. Everything in it makes an entry, and the mood row
          at the bottom is the one that makes today's - which is why "Today"
          is not a row of its own any more. -->
-    <div class="fan-card" in:fanIn out:fanOut>
+    <div class="fan-card" in:fanIn out:fanOut onintroend={focusFirstTarget}>
       <button
         class="fan-item"
         class:is-armed={armed === 'another-day'}

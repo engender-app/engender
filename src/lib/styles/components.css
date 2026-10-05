@@ -658,6 +658,10 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* A screen's heading takes focus when the screen arrives, so a screen
+   reader says where you are (navigation/arrivalFocus.ts). It is not a
+   control and nothing can be done to it, so it wears no ring. */
+[data-arrival-focus]:focus-visible { outline: none; }
 
 /* ---------- switch ---------- */
 /* One switch, and one accessibility contract for it. This was styled twice:

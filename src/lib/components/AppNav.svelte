@@ -82,6 +82,15 @@
      arrives, and CSS does the tween with no keyed block or JS transition. */
   let mark = $derived(ui.chooserFailed ? 'alert' : ui.chooserCaught ? 'check' : 'plus');
 
+  /* While quick add's fan is up the bar stays live above its scrim, so the
+     add button can close what it opened (QuickAdd.svelte), and its tabs go
+     inert: the fan is a modal, and a tab is the screen behind it. A press
+     on the bar anywhere but the button lands where a tab was and is a press
+     outside the fan, so it closes the fan the way the scrim does. */
+  function barPointerDown(event: PointerEvent) {
+    if (ui.chooserOpen && !(event.target as Element).closest('[data-nav-fab]')) ui.chooserOpen = false;
+  }
+
   /* Quick add opens on the way down, not on click, because the press and
      the tap are the same gesture: holding it and sliding onto a target is
      one continuous move, and a fan that waited for the click would not be
@@ -92,7 +101,12 @@
      The click that follows a pointer sequence is then swallowed, or the
      control would toggle twice per tap. A keyboard Enter fires a click with
      no pointer sequence in front of it, which is why the click handler is
-     still what opens the fan for a keyboard. */
+     still what opens the fan for a keyboard.
+
+     A press that slides onto a target and lets go there never clicks the
+     button, so the flag outlived its gesture and swallowed the next
+     keyboard Enter (audit L04-15). A keyboard click says so itself with
+     `detail` 0, and is never the click a pointer sequence owes. */
   let openedByPointer = false;
 
   function addPointerDown() {
@@ -105,11 +119,10 @@
     ui.chooserPressing = true;
   }
 
-  function addClick() {
-    if (openedByPointer) {
-      openedByPointer = false;
-      return;
-    }
+  function addClick(event: MouseEvent) {
+    const owedByPointer = openedByPointer;
+    openedByPointer = false;
+    if (owedByPointer && event.detail !== 0) return;
     ui.chooserOpen = !ui.chooserOpen;
   }
 
@@ -376,6 +389,7 @@
     data-nav-item={item.key}
     href={item.href}
     aria-current={activeKey === item.key ? 'page' : undefined}
+    inert={ui.chooserOpen}
   >
     <!-- The arrival swing (redesign ticket 26) rides the icon box rather than
          the tab, so it does not fight the tab's own press scale, and it is
@@ -398,6 +412,7 @@
   class:is-fan-open={ui.chooserOpen}
   data-app-nav
   aria-label={m.nav_main()}
+  onpointerdown={barPointerDown}
 >
   {@render lit('bar')}
   {#each LEADING as item (item.key)}{@render tab(item)}{/each}
