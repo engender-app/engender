@@ -299,6 +299,10 @@ hidden by filters. Review checkboxes work per key or for the shown keys in a
 group. Progress is saved in `.scratch/copy-review.json`; changing either
 language makes that key need review again. Unsaved edits stay in the browser
 until saved, and conflicting disk changes are reported without overwriting them.
+Find and replace matches literal, case-sensitive text in Polish, English, or
+both. Limit it to shown keys or choose **All keys (global)**. Preview lists
+every affected field, including plural forms. Applying replacements creates
+drafts; **Save all changes** writes them to the catalogues.
 
 ## Releases and hosting
 

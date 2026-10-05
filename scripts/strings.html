@@ -34,6 +34,13 @@
   .toolbar p { margin: 0; }
   #operation { white-space: pre-wrap; }
   progress { max-width: 100%; accent-color: #174d91; }
+  details { margin-top: 1rem; }
+  summary { cursor: pointer; padding: .75rem 0; }
+  .replace-fields { display: flex; flex-wrap: wrap; gap: .75rem; margin: .75rem 0; }
+  .replace-fields label { flex: 1 1 14rem; }
+  .replace-fields input, .replace-fields select { display: block; width: 100%; }
+  #replace-preview { max-height: 24rem; overflow: auto; }
+  #replace-preview td { white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 <h1>Message catalogues</h1>
 <p>Edit existing values. Save writes to <code>messages/en.json</code> or <code>messages/pl.json</code>.</p>
@@ -55,6 +62,20 @@
   <label class="toggle"><input id="changed" type="checkbox"> Changed vs main</label>
   <label class="toggle"><input id="prose-toggle" type="checkbox"> Read as prose</label>
 </div>
+<details id="replace-panel">
+  <summary>Find and replace</summary>
+  <p>Match exact text, including case. Replace every occurrence. Preview first, then apply to drafts and save when ready.</p>
+  <div class="replace-fields">
+    <label>Find text<input id="find-text" type="text"></label>
+    <label>Replace with<input id="replace-text" type="text"></label>
+    <label>Language<select id="replace-locale"><option value="pl">Polish</option><option value="en">English</option><option value="both">English and Polish</option></select></label>
+    <label>Scope<select id="replace-scope"><option value="shown">Shown keys</option><option value="all">All keys (global)</option></select></label>
+  </div>
+  <button id="preview-replacements" type="button" disabled>Preview replacements</button>
+  <button id="apply-replacements" type="button" disabled>Apply to drafts</button>
+  <p id="replace-summary" role="status"></p>
+  <div id="replace-preview"></div>
+</details>
 <p id="status" role="status">Loading…</p>
 <div id="editor" class="scroll">
   <table>
@@ -78,6 +99,13 @@
   const reviewFilter = document.querySelector('#review-filter');
   const saveAll = document.querySelector('#save-all');
   const operation = document.querySelector('#operation');
+  const findText = document.querySelector('#find-text');
+  const replaceText = document.querySelector('#replace-text');
+  const replaceLocale = document.querySelector('#replace-locale');
+  const replaceScope = document.querySelector('#replace-scope');
+  const previewReplacements = document.querySelector('#preview-replacements');
+  const applyReplacements = document.querySelector('#apply-replacements');
+  let replacementEdits = [];
   let records = [];
   let groups = new Map();
   const dirty = new Map();
@@ -128,6 +156,9 @@
     progress.value = reviewed;
     saveAll.disabled = busy || !dirty.size;
     document.querySelector('#reload').disabled = busy;
+    for (const control of [findText, replaceText, replaceLocale, replaceScope]) control.disabled = busy;
+    previewReplacements.disabled = busy || !findText.value;
+    applyReplacements.disabled = busy || !replacementEdits.length;
     for (const record of records) {
       for (const editor of record.editors) {
         editor.input.disabled = busy;
@@ -151,6 +182,79 @@
         control.wrapper.title = shown.some(hasEdits) ? 'Save edits before reviewing this group.' : 'Applies to the keys shown by the current filters.';
       }
     }
+  }
+
+  function invalidateReplacements() {
+    replacementEdits = [];
+    applyReplacements.disabled = true;
+    document.querySelector('#replace-preview').replaceChildren();
+    document.querySelector('#replace-summary').textContent = '';
+  }
+
+  function trackEdit(editor) {
+    if (editor.input.value === editor.field.text) dirty.delete(editor.input);
+    else dirty.set(editor.input, editor);
+    editor.message.textContent = '';
+  }
+
+  function previewReplacementEdits() {
+    invalidateReplacements();
+    if (busy || !findText.value) return;
+    let occurrences = 0;
+    for (const record of records) {
+      if (replaceScope.value === 'shown' && record.row.hidden) continue;
+      for (const editor of record.editors) {
+        if (replaceLocale.value !== 'both' && editor.locale !== replaceLocale.value) continue;
+        const before = editor.input.value;
+        const pieces = before.split(findText.value);
+        const after = pieces.join(replaceText.value);
+        if (pieces.length === 1 || before === after) continue;
+        occurrences += pieces.length - 1;
+        replacementEdits.push({ editor, before, after });
+      }
+    }
+    const count = replacementEdits.length;
+    const keys = new Set(replacementEdits.map(({ editor }) => editor.record.key)).size;
+    document.querySelector('#replace-summary').textContent = count
+      ? `${occurrences} occurrences in ${count} fields across ${keys} keys. Nothing saved yet.`
+      : 'No changes match this text, language and scope.';
+    if (count) {
+      const table = element('table');
+      const header = element('tr');
+      for (const text of ['Key / language / form', 'Before', 'After']) {
+        const cell = element('th', text);
+        cell.scope = 'col';
+        header.append(cell);
+      }
+      const head = element('thead');
+      head.append(header);
+      const body = element('tbody');
+      for (const { editor, before, after } of replacementEdits) {
+        const row = element('tr');
+        row.append(element('td', `${editor.record.key} ${editor.locale.toUpperCase()} ${editor.field.form ?? ''}`),
+          element('td', before), element('td', after));
+        body.append(row);
+      }
+      table.append(head, body);
+      document.querySelector('#replace-preview').append(table);
+    }
+    updateControls();
+  }
+
+  function applyReplacementEdits() {
+    if (busy || !replacementEdits.length) return;
+    if (replacementEdits.some(({ editor, before }) => editor.input.value !== before)) {
+      invalidateReplacements();
+      document.querySelector('#replace-summary').textContent = 'Text changed. Preview replacements again.';
+      return;
+    }
+    const count = replacementEdits.length;
+    for (const { editor, after } of replacementEdits) {
+      editor.input.value = after;
+      trackEdit(editor);
+    }
+    operation.textContent = `Replacements applied to ${count} fields. Use Save all changes to write them to disk.`;
+    filter();
   }
 
   async function patch(path, body) {
@@ -253,8 +357,8 @@
       const editor = { record, locale, field, input, save, message };
       record.editors.push(editor);
       input.addEventListener('input', () => {
-        if (input.value === field.text) dirty.delete(input); else dirty.set(input, editor);
-        message.textContent = '';
+        trackEdit(editor);
+        invalidateReplacements();
         updateControls();
       });
       save.addEventListener('click', () => saveEdits([editor]));
@@ -290,6 +394,7 @@
   }
 
   function filter() {
+    invalidateReplacements();
     const query = search.value.toLocaleLowerCase();
     let visible = 0;
     const paragraphs = document.createDocumentFragment();
@@ -409,6 +514,11 @@
   theme.addEventListener('change', filter);
   reviewFilter.addEventListener('change', filter);
   saveAll.addEventListener('click', () => saveEdits([...dirty.values()]));
+  for (const control of [findText, replaceText, replaceLocale, replaceScope]) {
+    control.addEventListener('input', () => { invalidateReplacements(); updateControls(); });
+  }
+  previewReplacements.addEventListener('click', previewReplacementEdits);
+  applyReplacements.addEventListener('click', applyReplacementEdits);
   document.querySelector('#reload').addEventListener('click', load);
   window.addEventListener('beforeunload', (event) => {
     if (dirty.size || busy) { event.preventDefault(); event.returnValue = ''; }
