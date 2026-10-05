@@ -59,7 +59,7 @@
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence } from '$lib/data/agenda';
-  import { fallbackReading, pinnedRows, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
+  import { fallbackReading, pinnedRows, pinReadScope, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
   import { crossesOnArrival, rememberCrossed } from '$lib/data/gettingStartedMemory';
@@ -69,6 +69,7 @@
   import Mark from '$lib/components/Mark.svelte';
   import { isAndroid } from '$lib/platform';
   import TodayEditor from '$lib/components/TodayEditor.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -312,18 +313,38 @@
      Ticket 106: while queries are resolving, render with quiet standing
      lines rather than an empty list, so the section does not expand by
      ~300px and snap content below downward on hydration. */
-  let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
+  /* Edit mode (ticket 14), which is a state of this block rather than a
+     screen of its own: the rows being arranged are these rows, so the
+     arrangement happens where they are. Off on arrival every time -
+     nothing about a page somebody edited on Tuesday should still be in
+     edit mode on Wednesday. */
+  let editing = $state(false);
+  let pinReads = $derived(pinReadScope(prefs, editing));
+  let pinReadKey = $derived(pinReads.rows.join('|'));
+  let lastWritesQuery = liveQuery(async (j) => {
+    const key = pinReadKey;
+    const value = await j.lastWrite.getLastWrites(today, pinReads.lastWrites);
+    return { key, value };
+  });
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
   /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
      the same line its hub row does, so it asks the same assembled question -
      the milestones pin said "Nothing logged for 1 year 4 months" over the
      same journal the agenda below it was already drawing a hearing from. */
-  let forwardQuery = liveQuery((j) => readRowForward(j, today));
+  let forwardQuery = liveQuery(async (j) => {
+    const key = pinReadKey;
+    const value = await readRowForward(j, today, pinReads.forward);
+    return { key, value };
+  });
   /* voice-benchmark's own second read (ticket 17): the pinned row draws the
      same line its hub row does, so it asks the same fold - a memo has no
      last write in the registry the other three reads above already answer
      (ADR-0036). */
-  let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
+  let voiceMemoLastWriteQuery = liveQuery(async (j) => {
+    const key = pinReadKey;
+    const value = pinReads.rows.includes('voice-benchmark') ? await j.voice.lastWriteEpochDay(today) : null;
+    return { key, value };
+  });
   let reading = $derived(
     lastWritesQuery.value !== undefined &&
       areaStatesQuery.value !== undefined &&
@@ -331,10 +352,10 @@
       voiceMemoLastWriteQuery.value !== undefined
       ? {
           todayEpochDay: today,
-          lastWrites: lastWritesQuery.value,
+          lastWrites: lastWritesQuery.value.value,
           states: areaStatesQuery.value,
-          forward: forwardQuery.value,
-          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value
+          forward: forwardQuery.value.value,
+          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value.value
         }
       : fallbackReading(today)
   );
@@ -348,12 +369,13 @@
   const reservePinned = readReserve('pinned');
   const rememberPinned = (px: number) => rememberReserve('pinned', px);
 
-  /* Edit mode (ticket 14), which is a state of this block rather than a
-     screen of its own: the rows being arranged are these rows, so the
-     arrangement happens where they are. Off on arrival every time -
-     nothing about a page somebody edited on Tuesday should still be in
-     edit mode on Wednesday. */
-  let editing = $state(false);
+  /* Expanded facts must answer before the add list mounts. A previous
+     pin-only answer cannot say what an unpinned row holds. */
+  let editorReadsReady = $derived(
+    (lastWritesQuery.value?.key === pinReadKey || (lastWritesQuery.failed && !lastWritesQuery.running)) &&
+    (forwardQuery.value?.key === pinReadKey || (forwardQuery.failed && !forwardQuery.running)) &&
+    (voiceMemoLastWriteQuery.value?.key === pinReadKey || (voiceMemoLastWriteQuery.failed && !voiceMemoLastWriteQuery.running))
+  );
 
   /* Getting started (Alicja, 2026-09-04). Day one is a screen with nothing
      on it once the placeholders are gone, and "write an entry" is the only
@@ -1105,13 +1127,17 @@
   <div data-home-pinned>
     {#if editing}
       <div transition:collapse={panel} data-home-editing>
-        <TodayEditor
-          {pinned}
-          {reading}
-          nowMs={liveTiles.nowMs}
-          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
-          onDone={() => (editing = false)}
-        />
+        {#if editorReadsReady}
+          <TodayEditor
+            {pinned}
+            {reading}
+            nowMs={liveTiles.nowMs}
+            role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
+            onDone={() => (editing = false)}
+          />
+        {:else}
+          <Skeleton variant="line" count={3} />
+        {/if}
       </div>
     {:else}
       <div transition:collapse={panel}>

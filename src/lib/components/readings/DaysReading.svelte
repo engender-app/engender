@@ -46,7 +46,9 @@
   /* Share by tag (ADR-0058). `tagShare` and not the recap's `topTags`: a
      parts-of-a-whole form computes each share against the sum of what it
      is handed, and a LIMIT 3 read drew three tags as a full circle. */
-  let tagShareQuery = liveList((j) => j.stats.tagShare(from, to));
+  let tagShareQuery = liveList((j) =>
+    view === 'tile' ? Promise.resolve([]) : j.stats.tagShare(from, to)
+  );
   /* Whether there is a tile is settled once the mood read answers; the
      card waits on the tag shares as well (ReadGroup). */
   joinReadGroup(() => !moodQuery.loading && (view === 'tile' || !tagShareQuery.loading));

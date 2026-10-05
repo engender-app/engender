@@ -10,6 +10,7 @@ import {
   movedPin,
   pinArrangement,
   pinnedRows,
+  pinReadScope,
   shownAgendaKinds,
   withAgendaKind,
   withoutPin,
@@ -440,4 +441,17 @@ test('pinnedRows with fallbackReading respects an explicitly unpinned empty list
   const rows = pinnedRows(arranged([]), fallbackReading(TODAY));
 
   assert.deepEqual(rows, []);
+});
+
+test('pin reads follow current arrangement, and editing expands to every available row', () => {
+  const prefs = { pinnedRows: null, onboardingAreas: ['measurements', 'care'] };
+  const initial = pinReadScope(prefs, false);
+  assert.deepEqual(initial.rows, ['measurements', 'care']);
+  assert.deepEqual(initial.lastWrites, ['measurements', 'sizeRecords']);
+  assert.deepEqual(pinReadScope({ ...prefs, pinnedRows: [] }, false).rows, []);
+  const wear = pinReadScope({ ...prefs, pinnedRows: ['wear', 'wear', 'old-row'] }, false);
+  assert.deepEqual(wear.rows, ['wear']);
+  assert.deepEqual(wear.lastWrites, ['wearSessions']);
+  assert.deepEqual(pinReadScope(prefs, true).rows, HUB_ROWS.map((row) => row.key));
+  assert.deepEqual(pinReadScope({ ...prefs, pinnedRows: ['voice-benchmark'] }, false).rows, ['voice-benchmark']);
 });

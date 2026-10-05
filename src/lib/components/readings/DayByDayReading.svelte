@@ -70,12 +70,14 @@
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
   let shown = $derived(shownMetric(metrics));
 
-  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, to, today));
+  let annotationsQuery = liveList((j) =>
+    view === 'tile' ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, to, today)
+  );
 
-  /* One query for every metric rather than one per chart: the plot draws
-     one at a time but the scales card needs all of them. */
+  /* The tile draws only the active scale. The screen also draws the
+     scales card, so it needs every metric. */
   let seriesQuery = liveQuery(async (j) => {
-    const keys = metrics.map((mt) => mt.key);
+    const keys = view === 'tile' ? [shown.key] : metrics.map((mt) => mt.key);
     const [rangeFrom, rangeTo] = [from, to];
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
@@ -123,7 +125,9 @@
 
   /* Where the picked metric's days ran between, for the values list: the
      one place on this screen that prints a single day. */
-  let spreadsQuery = liveList((j) => j.stats.daySpread(shown.key, from, to));
+  let spreadsQuery = liveList((j) =>
+    view === 'tile' ? Promise.resolve([]) : j.stats.daySpread(shown.key, from, to)
+  );
   let spreadByDay = $derived(
     spreadsQuery.loading
       ? new Map<number, (typeof spreadsQuery.rows)[number]>()

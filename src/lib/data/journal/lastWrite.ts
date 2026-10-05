@@ -366,6 +366,8 @@ export interface LastWriteArea {
   /** The day of the most recent write in every registered area, at or
       before `todayEpochDay`. Reads only - nothing here writes. */
   getLastWrites(todayEpochDay: number): Promise<Record<LastWriteKey, number | null>>;
+  /** Read only the requested areas; omitted areas have no entry in the answer. */
+  getLastWrites(todayEpochDay: number, keys: readonly LastWriteKey[]): Promise<Partial<Record<LastWriteKey, number | null>>>;
 }
 
 /** The entry list is a parameter, defaulting to the registry, so a test can
@@ -376,6 +378,10 @@ export function makeLastWriteArea(
   entries: readonly LastWriteEntry[] = LAST_WRITE_ENTRIES
 ): LastWriteArea {
   return {
-    getLastWrites: (todayEpochDay) => assembleLastWrites({ ...areas, todayEpochDay }, entries)
+    getLastWrites: (todayEpochDay, keys?: readonly LastWriteKey[]) =>
+      assembleLastWrites(
+        { ...areas, todayEpochDay },
+        keys === undefined ? entries : entries.filter((entry) => keys.includes(entry.key as LastWriteKey))
+      )
   };
 }
