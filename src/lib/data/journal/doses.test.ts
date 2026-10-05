@@ -6,7 +6,8 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay.ts';
-import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+import { makeDosesArea } from './doses.ts';
 import type { Journal } from './journal.ts';
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
@@ -944,4 +945,30 @@ test('older dose reachability across the 90-day window boundary without duplicat
 
   // No doses exist before day 19030
   assert.equal(await journal.doses.hasDosesBefore(today - 180), false);
+});
+
+
+test('schedule hydration stays three reads as schedules and their children grow', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const expected = [];
+  for (let index = 0; index < 5; index++) {
+    const input: Parameters<Journal['doses']['upsertSchedule']>[0] = {
+      episodeId: await episode(journal, 100 + index, `drug-${index}`),
+      recurrence: index % 2 === 0
+        ? { kind: 'weekdays', weekdays: [0, 3, 6] }
+        : { kind: 'everyNDays', everyNDays: 7 },
+      dosesPerDay: index + 1,
+      doseAmounts: index === 0 ? null : [
+        { dose: 2, doseUnit: 'mg' },
+        { dose: 1, doseUnit: 'mg' },
+        { dose: 2, doseUnit: 'mg' }
+      ],
+      autoLogFromEpochDay: index === 0 ? null : 100 + index
+    };
+    expected.push({ id: await journal.doses.upsertSchedule(input), ...input });
+  }
+  const counted = countingDriver(db);
+  const doses = makeDosesArea(counted.driver, journal.regimen);
+  assert.deepEqual(await doses.getSchedules(), expected);
+  assert.equal(counted.roundTrips().query, 3, 'schedule children are batched, never read per schedule');
 });
