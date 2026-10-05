@@ -6,8 +6,8 @@ Type: bug
 Audit findings: A1, V02, V16
 Severity: P2
 Blocked by: none
-Size: M (was S; grew with the 2026-10-05 audit)
-Size note: under a day (the module and the detailDraft default); moving the
+Size: M
+Size note: was S, grew with the 2026-10-05 audit; under a day (the module and the detailDraft default); moving the
 other copies is optional in scope
 Model: sonnet
 UI: yes (the discard sheet appears on two screens that had none). Mandatory
