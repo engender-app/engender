@@ -639,7 +639,8 @@
      The scrim is how a tap outside closes it. The bar is lifted above the
      scrim so the add button reads as the control that closes what it
      opened; AppNav makes the bar's own tabs inert while the fan is up, so
-     only the button in it can be reached. Neither withdraws with a blur of
+     only the button in it can be reached. So does the fan's own live region
+     below, which an inert subtree would silence. Neither withdraws with a blur of
      its own either: the scrim already blurs everything under it.
 
      Released the moment the fan starts closing rather than after its exit,
@@ -648,11 +649,12 @@
      that is still inert. */
   let fanEl = $state<HTMLElement>();
   let scrimEl = $state<HTMLElement>();
+  let statusEl: HTMLElement;
   $effect(() => {
     const fan = fanEl;
     if (!ui.chooserOpen || !fan) return;
     const bar = document.querySelector<HTMLElement>('[data-app-nav]');
-    const keep = [scrimEl, bar].filter((el): el is HTMLElement => !!el);
+    const keep = [scrimEl, bar, statusEl].filter((el): el is HTMLElement => !!el);
     const release = lockBackground(fan, { keep, withdraw: false });
     const unregister = registerOverlay(fan, { dismiss: close });
     return () => {
@@ -848,7 +850,7 @@
      that appears carrying its message is often missed. Hidden, not silent:
      nothing here is drawn, and the animation is what a sighted person
      reads. -->
-<p class="visually-hidden" role="status" aria-live="polite" data-quick-add-status>{announcement}</p>
+<p bind:this={statusEl} class="visually-hidden" role="status" aria-live="polite" data-quick-add-status>{announcement}</p>
 
 {#if flight}
   <!-- aria-hidden: the live region above already carries this in words, and
