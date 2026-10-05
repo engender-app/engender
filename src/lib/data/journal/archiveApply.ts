@@ -812,6 +812,21 @@ export async function applyMarginNotes({ driver, journal, ts }: Restoring): Prom
   await insertRows(driver, 'INSERT INTO margin_note (uuid, entry_id, epoch_day, text, updated_at)', rows);
 }
 
+export async function applyRevisits({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM revisit');
+  const entryIds = await rowidsByUuid(driver, 'entry', journal.revisits.map((revisit) => revisit.entryId));
+  const rows = journal.revisits
+    .filter((revisit) => !present.has(revisit.id) && entryIds.has(revisit.entryId))
+    .map((revisit) => [
+      revisit.id, revisit.entryId, revisit.entryEpochDay, revisit.createdEpochDay, revisit.targetEpochDay, ts
+    ]);
+  await insertRows(
+    driver,
+    'INSERT INTO revisit (uuid, entry_id, entry_epoch_day, created_epoch_day, target_epoch_day, updated_at)',
+    rows
+  );
+}
+
 /* Both of these resolve their episode by uuid against what is in the table
    after applyRegimenEpisodes ran. A row whose episode is not there is
    dropped rather than inserted against a guessed episode: a schedule
