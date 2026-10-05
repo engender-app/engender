@@ -30,6 +30,7 @@ import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { MilestonesArea } from './milestones';
 import type { FeltSenseArea } from './feltSense';
 import { todayEpochDay } from '../epochDay';
+import { adoptionMood } from '../adoptionMood';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
 
@@ -275,21 +276,8 @@ export function makeTryoutsArea(
           [id]
         );
 
-        if (feltSenseRows.length > 0) {
-          const counts = new Map<number, number>();
-          for (const f of feltSenseRows) {
-            counts.set(f.mood, (counts.get(f.mood) ?? 0) + 1);
-          }
-          let majorityMood = feltSenseRows[0].mood;
-          let maxCount = -1;
-          for (let m = 1; m <= 5; m++) {
-            const c = counts.get(m) ?? 0;
-            if (c > maxCount) {
-              maxCount = c;
-              majorityMood = m;
-            }
-          }
-
+        const majorityMood = adoptionMood(feltSenseRows);
+        if (majorityMood !== null) {
           const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
           if (feltSense) {
             await feltSense.add(
